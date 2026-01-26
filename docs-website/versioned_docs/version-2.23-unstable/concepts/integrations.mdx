@@ -1,0 +1,58 @@
+---
+title: "Introduction to Integrations"
+id: integrations
+slug: "/integrations"
+description: "The Haystack ecosystem integrates with many other technologies, such as vector databases, model providers and even custom components made by the community.  Here you can explore our integrations, which may be maintined by deepset, or submitted by others."
+---
+
+# Introduction to Integrations
+
+The Haystack ecosystem integrates with many other technologies, such as vector databases, model providers and even custom components made by the community.  Here you can explore our integrations, which may be maintined by deepset, or submitted by others.
+
+Haystack integrates with a number of other technologies and tools. For example, you can use a number of different model providers or databases with Haystack. 
+
+There are two main types of integrations:
+
+- **Maintained by deepset:** All of the integrations we maintain are hosted in the [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations) repository.
+- **Maintained by our partners or community:** These are integrations that you, our partners, or anyone else can build and maintain themselves. Given they comply with some of our requirements, we will also showcase these on our website.
+
+## What are integrations?
+
+An integration is any type of external technology that can be used to extend the capabilities of the Haystack framework. Some integration examples are those providing access to model providers like OpenAI or Cohere, to databases like Weaviate and Qdrant, or even to monitoring tools such as Traceloop. They can be components, Document Stores, or any other feature that can be used with Haystack.
+
+We maintain a list of available integrations on the [Haystack Integrations](https://haystack.deepset.ai/integrations) page, where you can see which integrations we maintain or which have been contributed by the community.
+
+An integrations page focuses on explaining how Haystack integrates with that technology. For example, the OpenAI integration page will provide a summary of the various ways Haystack and OpenAI can work together.
+
+Here are the integration types you can currently choose from:
+
+- **Model Provider**: You can see how we integrate with different model providers and the available components through these integrations
+- **Document Store**: These are the databases and vector stores you can use with your Haystack pipelines.
+- **Evaluation Framework**: Evaluation frameworks that are supported by Haystack that you can use to evaluate Haystack pipelines.
+- **Monitoring Tool**: These are tools like Chainlit and Traceloop that integrate with Haystack and provide monitoring and observability capabilities.
+- **Data Ingestion**: These are the integrations that allow you to ingest and use data from different resources, such as Notion, Mastodon, and others.
+- **Custom Component**: Some integrations that cover very unique use cases are often contributed and maintained by our community members. We list these integrations under the _Custom Component_ tag.
+
+## How do I use an integration?
+
+Each page dedicated to an integration contains installation instructions and basic usage instructions. For example, the OpenAI integration page gives you an overview of the different ways in which you can interact with OpenAI.
+
+## How can I create an integration?
+
+The most common types of integrations are custom components and Document Stores. Integrations such as model providers might even include multiple custom components. Have a look at these documentation pages that will guide you through the requirements for each integration type:
+
+- [Creating Custom Components](components/custom-components.mdx)
+- [Creating Custom Document Stores](document-store/creating-custom-document-stores.mdx)
+
+## How do I showcase my integration?
+
+To make your integration visible to the Haystack community, contribute it to our [haystack-integrations](https://github.com/deepset-ai/haystack-integrations) GitHub repository. There are several requirements you have to follow:
+
+- Make sure your contribution is [packaged](https://packaging.python.org/en/latest/), installable, and runnable. We suggest using [hatch](https://hatch.pypa.io/latest/) for this purpose.
+- Provide the GitHub repo and issue link.
+- Create a Pull Request in the [haystack-integrations](https://github.com/deepset-ai/haystack-integrations) repo by following the [draft-integration.md](https://github.com/deepset-ai/haystack-integrations/blob/main/draft-integration.md) and include a clear explanation of what your integration is. This page should include:
+  - Installation instructions
+  - A list of the components the integration includes
+  - Examples of how to use it with clear/runnable code
+  - Licensing information
+  - (Optionally) Documentation and/or API docs that you’ve generated for your repository
