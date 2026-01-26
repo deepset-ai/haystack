@@ -182,6 +182,7 @@ def compare_outputs_with_dataframes(actual: dict, expected: dict) -> bool:
             if isinstance(actual_value, DataFrame) and isinstance(expected_value, DataFrame):
                 assert actual_value.equals(expected_value)
             else:
-                assert actual_value == expected_value
+                # We do expected_value first so ANY can be used in expected outputs
+                assert expected_value == actual_value
 
     return True
