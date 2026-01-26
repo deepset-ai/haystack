@@ -1650,16 +1650,7 @@ Answer:
                 expected_component_calls={
                     ("llm", 1): {
                         "generation_kwargs": None,
-                        "prompt": """According to these documents:
-
-This is a document
-
-Answer the given question:
-
-    This is a reply
-
-
-Answer:""",
+                        "prompt": "According to these documents:\n\nThis is a document\n\nAnswer the given question: \n    \n    This is a reply\n    \n    \nAnswer:",
                     },
                     ("prompt_builder1", 1): {
                         "question": "Wha i Acromegaly?",
@@ -3494,11 +3485,13 @@ Provide additional feedback on why it fails.
     pipe.connect("agent_concatenator.output", "feedback_router.current_prompt")
     pipe.connect("feedback_router.fail", "joiner.value")
 
+    task = "Generate code to generate christmas ascii-art"
+
     return (
         pipe,
         [
             PipelineRunData(
-                inputs={"code_prompt": {"task": "Generate code to generate christmas ascii-art"}},
+                inputs={"code_prompt": {"task": task}},
                 expected_outputs={"feedback_router": {"pass": ["PASS"]}},
                 expected_component_calls={
                     ("agent_concatenator", 1): {
@@ -3782,12 +3775,7 @@ Provide additional feedback on why it fails.
                         "This is the edited file content.\n"
                         "This is the edited file content."
                     },
-                    ("code_prompt", 1): {
-                        "feedback": "",
-                        "task": "Generate code to generate christmas ascii-art",
-                        "template": None,
-                        "template_variables": None,
-                    },
+                    ("code_prompt", 1): {"feedback": "", "task": task, "template": None, "template_variables": None},
                     ("feedback_llm", 1): {
                         "prompt": "\n"
                         "\n"
@@ -4199,60 +4187,18 @@ FAIL, come on, try again."""
                     }
                 },
                 expected_component_calls={
-                    ("answer_builder", 1): {
-                        "prompt": "Generate code to generate christmas "
-                        "ascii-art\n"
-                        "invalid code\n"
-                        "FAIL\n"
-                        "invalid code\n"
-                        "FAIL, come on, try again.",
-                        "query": "Generate code to generate christmas ascii-art",
-                        "replies": [
-                            "\n"
-                            "def generate_santa_sleigh():\n"
-                            "    '''\n"
-                            "    Returns ASCII art of Santa Claus on "
-                            "his sleigh with Rudolph leading the "
-                            "way.\n"
-                            "    '''\n"
-                            "    # implementation goes here.\n"
-                            "    return art\n"
-                            "    "
-                        ],
-                    },
-                    ("code_llm", 1): {"prompt": "Generate code to generate christmas ascii-art"},
+                    ("answer_builder", 1): {"prompt": expected_prompt, "query": task, "replies": [valid_response]},
+                    ("code_llm", 1): {"prompt": task},
                     ("code_llm", 2): {"prompt": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL"},
-                    ("code_llm", 3): {
-                        "prompt": "Generate code to generate christmas ascii-art\n"
-                        "invalid code\n"
-                        "FAIL\n"
-                        "invalid code\n"
-                        "FAIL, come on, try again."
-                    },
-                    ("code_prompt", 1): {
-                        "task": "Generate code to generate christmas ascii-art",
-                        "template": None,
-                        "template_variables": None,
-                    },
+                    ("code_llm", 3): {"prompt": expected_prompt},
+                    ("code_prompt", 1): {"task": task, "template": None, "template_variables": None},
                     ("code_prompt", 2): {
                         "task": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL",
                         "template": None,
                         "template_variables": None,
                     },
-                    ("code_prompt", 3): {
-                        "task": "Generate code to generate christmas ascii-art\n"
-                        "invalid code\n"
-                        "FAIL\n"
-                        "invalid code\n"
-                        "FAIL, come on, try again.",
-                        "template": None,
-                        "template_variables": None,
-                    },
-                    ("concatenator", 1): {
-                        "code_prompt": "Generate code to generate christmas ascii-art",
-                        "feedback": "FAIL",
-                        "generated_code": ["invalid code"],
-                    },
+                    ("code_prompt", 3): {"task": expected_prompt, "template": None, "template_variables": None},
+                    ("concatenator", 1): {"code_prompt": task, "feedback": "FAIL", "generated_code": ["invalid code"]},
                     ("concatenator", 2): {
                         "code_prompt": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL",
                         "feedback": "FAIL, come on, try again.",
@@ -4297,48 +4243,13 @@ FAIL, come on, try again."""
                     },
                     ("feedback_prompt", 1): {"code": ["invalid code"], "template": None, "template_variables": None},
                     ("feedback_prompt", 2): {"code": ["invalid code"], "template": None, "template_variables": None},
-                    ("feedback_prompt", 3): {
-                        "code": [
-                            "\n"
-                            "def generate_santa_sleigh():\n"
-                            "    '''\n"
-                            "    Returns ASCII art of Santa Claus on "
-                            "his sleigh with Rudolph leading the way.\n"
-                            "    '''\n"
-                            "    # implementation goes here.\n"
-                            "    return art\n"
-                            "    "
-                        ],
-                        "template": None,
-                        "template_variables": None,
-                    },
-                    ("joiner", 1): {"value": ["Generate code to generate christmas ascii-art"]},
+                    ("feedback_prompt", 3): {"code": [valid_response], "template": None, "template_variables": None},
+                    ("joiner", 1): {"value": [task]},
                     ("joiner", 2): {"value": ["Generate code to generate christmas ascii-art\ninvalid code\nFAIL"]},
-                    ("joiner", 3): {
-                        "value": [
-                            "Generate code to generate christmas ascii-art\n"
-                            "invalid code\n"
-                            "FAIL\n"
-                            "invalid code\n"
-                            "FAIL, come on, try again."
-                        ]
-                    },
+                    ("joiner", 3): {"value": [expected_prompt]},
                     ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
                     ("router", 2): {"code": ["invalid code"], "replies": ["FAIL, come on, try again."]},
-                    ("router", 3): {
-                        "code": [
-                            "\n"
-                            "def generate_santa_sleigh():\n"
-                            "    '''\n"
-                            "    Returns ASCII art of Santa Claus on his sleigh "
-                            "with Rudolph leading the way.\n"
-                            "    '''\n"
-                            "    # implementation goes here.\n"
-                            "    return art\n"
-                            "    "
-                        ],
-                        "replies": ["PASS"],
-                    },
+                    ("router", 3): {"code": [valid_response], "replies": ["PASS"]},
                 },
             )
         ],
@@ -4390,7 +4301,7 @@ def pipeline_with_variadic_dynamic_defaults(pipeline_class):
             return {"response": kwargs[self.input_variable]}
 
     parrot = ParrotWithVariadicDynamicDefaultInputs("parrot")
-    pipeline = pipeline_class()
+    pipeline = pipeline_class(max_runs_per_component=1)
     pipeline.add_component("parrot", parrot)
     return (
         pipeline,
@@ -4479,7 +4390,6 @@ some,header,row
             },
         ),
     ]
-
     expected_csv_docs = [Document(content=csv_data, meta={"file_type": "csv"})]
 
     return (
