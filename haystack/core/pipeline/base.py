@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar, get_origin
+from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar
 
 import networkx
 
@@ -39,7 +39,7 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.core.type_utils import _safe_get_origin, _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -584,13 +584,10 @@ class PipelineBase:  # noqa: PLW1641
             # - it has at least one sender already connected
             # - it's not already variadic
             # - its origin type is list
-            origin = get_origin(receiver_socket.type) or (
-                receiver_socket.type if isinstance(receiver_socket.type, type) else None
-            )
-            if not receiver_socket.is_variadic and origin == list:
+            if not receiver_socket.is_variadic and _safe_get_origin(receiver_socket.type) == list:
                 receiver_socket.is_lazy_variadic = True
-                # We also disable wrapping in list (aka flatten by one-level) so the sender outputs matches the type
-                # of the receiver socket.
+                # We also disable wrapping inputs into list so the sender outputs matches the type of the receiver
+                # socket.
                 receiver_socket.wrap_input_in_list = False
 
             if not receiver_socket.is_variadic:
@@ -914,15 +911,20 @@ class PipelineBase:  # noqa: PLW1641
                 component_inputs = data.get(component_name, {})
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError(f"Missing input for component {component_name}: {socket_name}")
-                # TODO Another place that would need the auto-variadic logic --> less common of a use-case though
-                #      So probably fine to leave for later.
-                # Basically the check looks to see if socket.senders has one item in it (technically just more than 0)
-                # Then checks if user input data contains another input for that socket.
-                # If so, that's an error unless the socket is variadic.
-                if socket.senders and socket_name in component_inputs and not socket.is_variadic:
-                    raise ValueError(
-                        f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
-                    )
+                if socket.senders and socket_name in component_inputs:
+                    # We automatically set the receiver socket as lazy variadic if:
+                    # - it has at least one sender already connected
+                    # - it's not already variadic
+                    # - its origin type is list
+                    if not socket.is_variadic and _safe_get_origin(socket.type) == list:
+                        socket.is_lazy_variadic = True
+                        # We also disable wrapping inputs into list so the sender outputs matches the type of the
+                        # receiver socket.
+                        socket.wrap_input_in_list = False
+                    if not socket.is_variadic:
+                        raise ValueError(
+                            f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
+                        )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """
@@ -1262,7 +1264,7 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
-        receivers: list[tuple],
+        receivers: list[tuple[str, OutputSocket, InputSocket]],
         include_outputs_from: set[str],
     ) -> Mapping[str, Any]:
         """
@@ -1271,8 +1273,9 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of components that receive inputs from the component.
-        :param include_outputs_from: List of component names that should always return an output from the pipeline.
+        :param receivers: List of tuples containing name of the receiver Component and sender OutputSocket
+            and receiver InputSocket instances.
+        :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
         for receiver_name, sender_socket, receiver_socket in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
@@ -1285,7 +1288,7 @@ class PipelineBase:  # noqa: PLW1641
 
             # We want this to trigger for lazy-variadic and auto-variadic sockets
             if receiver_socket.is_lazy_variadic:
-                # If the receiver socket is lazy variadic or auto variadic, we append the new input.
+                # If the receiver socket is lazy variadic, we append the new input.
                 # Lazy variadic and auto variadic sockets can collect multiple inputs.
                 _write_to_lazy_variadic_socket(
                     inputs=inputs,
@@ -1358,7 +1361,7 @@ class PipelineBase:  # noqa: PLW1641
                 super_components.append((comp_name, comp))
         return super_components
 
-    def _merge_super_component_pipelines(self) -> tuple["networkx.MultiDiGraph", dict[str, str]]:
+    def _merge_super_component_pipelines(self) -> tuple[networkx.MultiDiGraph, dict[str, str]]:
         """
         Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
 
