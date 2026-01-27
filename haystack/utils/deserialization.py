@@ -9,7 +9,6 @@ from haystack.core.errors import DeserializationError
 from haystack.core.serialization import component_from_dict, default_from_dict, import_class_by_name
 
 
-
 def deserialize_chatgenerator_inplace(data: dict[str, Any], key: str = "chat_generator") -> None:
     """
     Deserialize a ChatGenerator in a dictionary inplace.

@@ -9,20 +9,12 @@ import pytest
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.core.errors import DeserializationError
 from haystack.document_stores.in_memory.document_store import InMemoryDocumentStore
-from haystack.utils.deserialization import (
-    deserialize_component_inplace,
-)
-
-
-
+from haystack.utils.deserialization import deserialize_component_inplace
 
 
 class ChatGeneratorWithoutFromDict:
     def to_dict(self):
         return {"type": "test_deserialization.ChatGeneratorWithoutFromDict"}
-
-
-
 
 
 class TestDeserializeComponentInplace:
