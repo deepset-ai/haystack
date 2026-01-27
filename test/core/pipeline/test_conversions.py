@@ -57,6 +57,12 @@ class IntInput:
     def run(self, value: int) -> dict[str, Any]:
         return {"value": value}
 
+@component
+class StringListOutput:
+    @component.output_types(texts=list[str])
+    def run(self) -> dict[str, Any]:
+        return {"texts": ["Hello"]}
+
 class TestImplicitConversions:
     def test_chat_message_to_str(self):
         pipe = Pipeline()
@@ -87,47 +93,56 @@ class TestImplicitConversions:
         results = pipe.run({})
         assert results["dest"]["values"] == [10]
 
-    def test_list_to_item(self):
+    def test_list_to_item_restricted(self):
+        # list[str] -> str should still work
+        pipe = Pipeline()
+        pipe.add_component("src", StringListOutput())
+        pipe.add_component("dest", StringInput())
+        pipe.connect("src.texts", "dest.text")
+
+        results = pipe.run({})
+        assert results["dest"]["text"] == "Hello"
+
+    def test_list_to_item_fails_for_non_text_chat(self):
+        # list[int] -> int should now FAIL (restricted)
         pipe = Pipeline()
         pipe.add_component("src", IntListOutput())
         pipe.add_component("dest", IntInput())
-        pipe.connect("src.values", "dest.value")
-
-        results = pipe.run({})
-        assert results["dest"]["value"] == 1
+        with pytest.raises(PipelineConnectError):
+            pipe.connect("src.values", "dest.value")
 
     def test_list_to_item_empty_list_fails_if_not_optional(self):
         @component
-        class EmptyListOutput:
-            @component.output_types(values=list[int])
+        class EmptyStringListOutput:
+            @component.output_types(values=list[str])
             def run(self) -> dict[str, Any]:
                 return {"values": []}
 
         pipe = Pipeline()
-        pipe.add_component("src", EmptyListOutput())
-        pipe.add_component("dest", IntInput())
-        pipe.connect("src.values", "dest.value")
+        pipe.add_component("src", EmptyStringListOutput())
+        pipe.add_component("dest", StringInput())
+        pipe.connect("src.values", "dest.text")
 
-        # Should raise ValueError at runtime because dest.value is int (not Optional[int])
+        # Should raise ValueError at runtime because dest.text is str (not Optional[str])
         with pytest.raises(ValueError, match="Cannot convert empty list"):
             pipe.run({})
 
     def test_list_to_item_empty_list_works_if_optional(self):
         @component
-        class EmptyListOutput:
-            @component.output_types(values=list[int])
+        class EmptyStringListOutput:
+            @component.output_types(values=list[str])
             def run(self) -> dict[str, Any]:
                 return {"values": []}
 
         @component
-        class OptionalIntInput:
-            @component.output_types(value=Optional[int])
-            def run(self, value: int | None = None):
+        class OptionalStringInput:
+            @component.output_types(value=Optional[str])
+            def run(self, value: str | None = None):
                 return {"value": value}
 
         pipe = Pipeline()
-        pipe.add_component("src", EmptyListOutput())
-        pipe.add_component("dest", OptionalIntInput())
+        pipe.add_component("src", EmptyStringListOutput())
+        pipe.add_component("dest", OptionalStringInput())
         pipe.connect("src.values", "dest.value")
 
         results = pipe.run({})
@@ -199,7 +214,7 @@ class TestImplicitConversions:
         pipe.connect("src.message", "dest.text")
 
         # Should fail because StringInput expects str, but we produced None (no text)
-        with pytest.raises(ValueError, match="result is None"):
+        with pytest.raises(ValueError, match="resulted in None"):
             pipe.run({})
 
     def test_variadic_socket_with_conversion(self):
@@ -220,7 +235,7 @@ class TestImplicitConversions:
         # Variadic collects it into [[10]].
         assert results["dest"]["values"] == [[10]]
 
-    def test_list_of_list_to_list_conversion(self):
+    def test_list_of_list_to_list_conversion_fails(self):
         @component
         class ListOfListOutput:
             @component.output_types(values=list[list[int]])
@@ -230,15 +245,11 @@ class TestImplicitConversions:
         pipe = Pipeline()
         pipe.add_component("src", ListOfListOutput())
         pipe.add_component("dest", IntListInput())
-        pipe.connect("src.values", "dest.values")
-
-        results = pipe.run({})
-        # Should take the first element: [1, 2]
-        assert results["dest"]["values"] == [1, 2]
+        # Should now FAIL because list[list[int]] -> list[int] is not text/chat
+        with pytest.raises(PipelineConnectError):
+            pipe.connect("src.values", "dest.values")
 
     def test_composite_conversion_list_chatmessage_to_str(self):
-        pipe = Pipeline()
-        pipe.add_component("src", ChatMessageOutput()) # Outputs ChatMessage
         @component
         class ChatMessageListOutput:
             @component.output_types(messages=list[ChatMessage])
@@ -255,9 +266,6 @@ class TestImplicitConversions:
         assert results["dest"]["text"] == "Hello"
 
     def test_composite_conversion_str_to_list_chatmessage(self):
-        pipe = Pipeline()
-        pipe.add_component("src", StringOutput())
-        pipe.add_component("dest", ChatMessageInput())
         @component
         class ChatMessageListInput:
             @component.output_types(messages=list[ChatMessage])
@@ -277,18 +285,17 @@ class TestImplicitConversions:
     def test_list_to_item_not_subscriptable_at_runtime(self):
         @component
         class LiarListOutput:
-            @component.output_types(values=list[int])
+            @component.output_types(values=list[str])
             def run(self):
-                # Claims to return List[int], but returns int
+                # Claims to return list[str], but returns int (not subscriptable)
                 return {"values": 10}
 
         pipe = Pipeline()
         pipe.add_component("src", LiarListOutput())
-        pipe.add_component("dest", IntInput())
-        pipe.connect("src.values", "dest.value")
+        pipe.add_component("dest", StringInput())
+        pipe.connect("src.values", "dest.text")
 
         # Should raise ValueError because the runtime value (10) is not subscriptable
-        # and therefore cannot be converted to a single item for a non-optional input.
         with pytest.raises(ValueError, match="Cannot convert empty list"):
             pipe.run({})
 
@@ -299,13 +306,13 @@ class TestImplicitConversions:
             def run(self, strict_in: list[ChatMessage], conv_in: str):
                 return {"res": "ok"}
 
-        pipe = Pipeline()
         @component
         class ChatMessageListOutput:
             @component.output_types(messages=list[ChatMessage])
             def run(self):
                 return {"messages": [ChatMessage.from_assistant("Hello")]}
 
+        pipe = Pipeline()
         pipe.add_component("src", ChatMessageListOutput())
         pipe.add_component("dest", MultiInput())
 
