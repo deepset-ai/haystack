@@ -63,7 +63,84 @@ class StringListOutput:
     def run(self) -> dict[str, Any]:
         return {"texts": ["Hello"]}
 
+@component
+class FakeGenerator:
+    @component.output_types(replies=list[str])
+    def run(self, prompt: str) -> dict[str, Any]:
+        return {"replies": ["Hello from Generator"]}
+
+@component
+class FakeChatGenerator:
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Hello from ChatGenerator")]}
+
+@component
+class FakeRetriever:
+    @component.output_types(documents=list[str])
+    def run(self, query: str) -> dict[str, Any]:
+        return {"documents": [f"Document about {query}"]}
+
+@component
+class FakePromptBuilder:
+    @component.output_types(prompt=str)
+    def run(self, template: str, query: str) -> dict[str, Any]:
+        return {"prompt": template.replace("{{query}}", query)}
+
+@component
+class FakeChatPromptBuilder:
+    @component.output_types(messages=list[ChatMessage])
+    def run(self, query: str) -> dict[str, Any]:
+        return {"messages": [ChatMessage.from_user(query)]}
+
 class TestImplicitConversions:
+    def test_generator_to_retriever_connection(self):
+        # list[str] -> str
+        pipe = Pipeline()
+        pipe.add_component("generator", FakeGenerator())
+        pipe.add_component("retriever", FakeRetriever())
+        pipe.connect("generator.replies", "retriever.query")
+
+        results = pipe.run({"generator": {"prompt": "What is Haystack?"}})
+        assert results["retriever"]["documents"] == ["Document about Hello from Generator"]
+
+    def test_chat_generator_to_retriever_connection(self):
+        # list[ChatMessage] -> str
+        pipe = Pipeline()
+        pipe.add_component("chat_generator", FakeChatGenerator())
+        pipe.add_component("retriever", FakeRetriever())
+        pipe.connect("chat_generator.replies", "retriever.query")
+
+        results = pipe.run({"chat_generator": {"messages": [ChatMessage.from_user("Hi")]}})
+        assert results["retriever"]["documents"] == ["Document about Hello from ChatGenerator"]
+
+    def test_prompt_builder_to_chat_generator_connection(self):
+        # str -> list[ChatMessage]
+        pipe = Pipeline()
+        pipe.add_component("builder", FakePromptBuilder())
+        pipe.add_component("chat_generator", FakeChatGenerator())
+        pipe.connect("builder.prompt", "chat_generator.messages")
+
+        results = pipe.run({"builder": {"template": "Translate: {{query}}", "query": "Hello"}})
+        assert results["chat_generator"]["replies"][0].text == "Hello from ChatGenerator"
+
+    def test_retriever_to_chat_prompt_builder_connection(self):
+        # list[str] -> str (for query)
+        pipe = Pipeline()
+        @component
+        class StringListOutput:
+            @component.output_types(texts=list[str])
+            def run(self) -> dict[str, Any]:
+                return {"texts": ["First text", "Second text"]}
+
+        pipe.add_component("src", StringListOutput())
+        pipe.add_component("builder", FakeChatPromptBuilder())
+        pipe.connect("src.texts", "builder.query")
+
+        results = pipe.run({})
+        # Should unwrap first text
+        assert results["builder"]["messages"][0].text == "First text"
+
     def test_chat_message_to_str(self):
         pipe = Pipeline()
         pipe.add_component("src", ChatMessageOutput())
@@ -306,17 +383,11 @@ class TestImplicitConversions:
             def run(self, strict_in: list[ChatMessage], conv_in: str):
                 return {"res": "ok"}
 
-        @component
-        class ChatMessageListOutput:
-            @component.output_types(messages=list[ChatMessage])
-            def run(self):
-                return {"messages": [ChatMessage.from_assistant("Hello")]}
-
         pipe = Pipeline()
-        pipe.add_component("src", ChatMessageListOutput())
+        pipe.add_component("src", FakeChatPromptBuilder())
         pipe.add_component("dest", MultiInput())
 
-        # List[ChatMessage] can connect to both strict_in (Strict) and conv_in (Convertible via conversion)
+        # list[ChatMessage] can connect to both strict_in (Strict) and conv_in (Convertible via conversion)
         # It should pick strict_in automatically.
         pipe.connect("src", "dest")
 
