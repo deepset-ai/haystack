@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
+    "fastembed_colbert": ["FastembedColBERTRanker"],
     "hugging_face_tei": ["HuggingFaceTEIRanker"],
     "lost_in_the_middle": ["LostInTheMiddleRanker"],
     "meta_field": ["MetaFieldRanker"],
@@ -18,6 +19,7 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
+    from .fastembed_colbert import FastembedColBERTRanker as FastembedColBERTRanker
     from .hugging_face_tei import HuggingFaceTEIRanker as HuggingFaceTEIRanker
     from .lost_in_the_middle import LostInTheMiddleRanker as LostInTheMiddleRanker
     from .meta_field import MetaFieldRanker as MetaFieldRanker
