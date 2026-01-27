@@ -40,7 +40,7 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.core.type_utils import _convert_value, _strict_types_are_compatible, _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -505,6 +505,17 @@ class PipelineBase:  # noqa: PLW1641
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
             if _types_are_compatible(sender_sock.type, receiver_sock.type, self._connection_type_validation):
                 possible_connections.append((sender_sock, receiver_sock))
+
+        # If there are multiple possibilities, and we are using type validation,
+        # prioritize strict matches over convertible ones.
+        if len(possible_connections) > 1 and self._connection_type_validation:
+            strict_matches = [
+                (out_sock, in_sock)
+                for out_sock, in_sock in possible_connections
+                if _strict_types_are_compatible(out_sock.type, in_sock.type)
+            ]
+            if strict_matches:
+                possible_connections = strict_matches
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(
@@ -1249,6 +1260,9 @@ class PipelineBase:  # noqa: PLW1641
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+
+            if value is not _NO_OUTPUT_PRODUCED:
+                value = _convert_value(value, sender_socket.type, receiver_socket.type)
 
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
