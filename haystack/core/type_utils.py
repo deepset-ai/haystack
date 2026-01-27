@@ -50,7 +50,9 @@ def _are_convertible(sender: Any, receiver: Any) -> bool:
     # Unwrap: List[T] -> U (Restricted to text/chat receivers)
     if s_origin is list and (s_args := get_args(sender)):
         inner_s = s_args[0]
-        if _is_text_or_chat(receiver) and (_strict_types_are_compatible(inner_s, receiver) or _is_base_convertible(inner_s, receiver)):
+        if _is_text_or_chat(receiver) and (
+            _strict_types_are_compatible(inner_s, receiver) or _is_base_convertible(inner_s, receiver)
+        ):
             return True
 
     # Wrap: T -> List[U]
@@ -109,6 +111,7 @@ def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
 def _is_text_or_chat(t: Any) -> bool:
     """Returns True if t is str or ChatMessage (including Optional/Union)."""
     from haystack.dataclasses import ChatMessage
+
     args = get_args(t) if _safe_get_origin(t) is Union else (t,)
     return any(arg in (str, ChatMessage) for arg in args)
 
@@ -116,6 +119,7 @@ def _is_text_or_chat(t: Any) -> bool:
 def _is_base_convertible(s: Any, r: Any) -> bool:
     """Returns True if s and r are a (str, ChatMessage) pair in any order."""
     from haystack.dataclasses import ChatMessage
+
     s_is_chat, r_is_chat = _is_type(s, ChatMessage), _is_type(r, ChatMessage)
     s_is_str, r_is_str = _is_type(s, str), _is_type(r, str)
     return (s_is_chat and r_is_str) or (s_is_str and r_is_chat)
@@ -130,6 +134,7 @@ def _is_type(t: Any, target: type) -> bool:
 def _convert_base(value: Any, s_t: Any, r_t: Any) -> Any:
     """Performs the actual transformation between str and ChatMessage."""
     from haystack.dataclasses import ChatMessage
+
     if _is_type(s_t, ChatMessage) and _is_type(r_t, str):
         return value.text if isinstance(value, ChatMessage) else str(value)
     if _is_type(s_t, str) and _is_type(r_t, ChatMessage):

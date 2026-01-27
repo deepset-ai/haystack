@@ -15,11 +15,13 @@ class ChatMessageOutput:
     def run(self) -> dict[str, Any]:
         return {"message": ChatMessage.from_assistant("Hello")}
 
+
 @component
 class StringInput:
     @component.output_types(text=str)
     def run(self, text: str) -> dict[str, Any]:
         return {"text": text}
+
 
 @component
 class StringOutput:
@@ -27,11 +29,13 @@ class StringOutput:
     def run(self) -> dict[str, Any]:
         return {"text": "Hello"}
 
+
 @component
 class ChatMessageInput:
     @component.output_types(message=ChatMessage)
     def run(self, message: ChatMessage) -> dict[str, Any]:
         return {"message": message}
+
 
 @component
 class IntOutput:
@@ -39,11 +43,13 @@ class IntOutput:
     def run(self) -> dict[str, Any]:
         return {"value": 10}
 
+
 @component
 class IntListInput:
     @component.output_types(values=list[int])
     def run(self, values: list[int]) -> dict[str, Any]:
         return {"values": values}
+
 
 @component
 class IntListOutput:
@@ -51,11 +57,13 @@ class IntListOutput:
     def run(self) -> dict[str, Any]:
         return {"values": [1, 2, 3]}
 
+
 @component
 class IntInput:
     @component.output_types(value=int)
     def run(self, value: int) -> dict[str, Any]:
         return {"value": value}
+
 
 @component
 class StringListOutput:
@@ -63,11 +71,13 @@ class StringListOutput:
     def run(self) -> dict[str, Any]:
         return {"texts": ["Hello"]}
 
+
 @component
 class FakeGenerator:
     @component.output_types(replies=list[str])
     def run(self, prompt: str) -> dict[str, Any]:
         return {"replies": ["Hello from Generator"]}
+
 
 @component
 class FakeChatGenerator:
@@ -75,11 +85,13 @@ class FakeChatGenerator:
     def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello from ChatGenerator")]}
 
+
 @component
 class FakeRetriever:
     @component.output_types(documents=list[str])
     def run(self, query: str) -> dict[str, Any]:
         return {"documents": [f"Document about {query}"]}
+
 
 @component
 class FakePromptBuilder:
@@ -87,11 +99,13 @@ class FakePromptBuilder:
     def run(self, template: str, query: str) -> dict[str, Any]:
         return {"prompt": template.replace("{{query}}", query)}
 
+
 @component
 class FakeChatPromptBuilder:
     @component.output_types(messages=list[ChatMessage])
     def run(self, query: str) -> dict[str, Any]:
         return {"messages": [ChatMessage.from_user(query)]}
+
 
 class TestImplicitConversions:
     def test_generator_to_retriever_connection(self):
@@ -127,6 +141,7 @@ class TestImplicitConversions:
     def test_retriever_to_chat_prompt_builder_connection(self):
         # list[str] -> str (for query)
         pipe = Pipeline()
+
         @component
         class StringListOutput:
             @component.output_types(texts=list[str])
@@ -302,7 +317,7 @@ class TestImplicitConversions:
                 return {"values": list(values)}
 
         pipe = Pipeline()
-        pipe.add_component("src1", IntOutput()) # Outputs int, receiver expects List[int]
+        pipe.add_component("src1", IntOutput())  # Outputs int, receiver expects List[int]
         pipe.add_component("dest", VariadicListInput())
         pipe.connect("src1.value", "dest.values")
 
