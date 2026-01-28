@@ -24,7 +24,7 @@ def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType, 
         return True
 
 
-def _safe_get_origin(_type: type[T]) -> Union[type[T], None]:
+def _safe_get_origin(_type: type | UnionType) -> type | None:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 

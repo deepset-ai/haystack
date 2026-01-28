@@ -4841,3 +4841,106 @@ def that_is_blocked_not_enough_component_inputs(pipeline_class):
             )
         ],
     )
+
+
+@given("a pipeline that is a file conversion pipeline with three auto joiners", target_fixture="pipeline_data")
+def pipeline_that_converts_files_with_three_auto_joiners(pipeline_class):
+    html_data = """
+<html><body>Some content</body></html>
+    """
+    txt_data = "Text file content"
+
+    sources = [
+        ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
+        ByteStream.from_string(text=html_data, mime_type="text/html", meta={"file_type": "html"}),
+    ]
+
+    # We use a mock writer to avoid needing to do any clean up if using a document store
+    @component
+    class MockDocumentWriter:
+        @component.output_types(documents_written=int)
+        def run(self, documents: list[Document]) -> dict[str, int]:
+            return {"documents_written": len(documents)}
+
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    pipe.add_component("router", FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"]))
+    pipe.add_component("splitter", DocumentSplitter(split_by="word", split_length=3, split_overlap=0))
+    pipe.add_component("txt_converter", TextFileToDocument())
+    pipe.add_component("csv_converter", CSVToDocument())
+    pipe.add_component("json_converter", JSONConverter(content_key="content"))
+    pipe.add_component("html_converter", HTMLToDocument())
+    pipe.add_component("writer", MockDocumentWriter())
+    pipe.add_component("page_splitter", DocumentSplitter(split_by="page", split_length=1, split_overlap=0))
+
+    pipe.connect("router.text/plain", "txt_converter.sources")
+    pipe.connect("router.application/json", "json_converter.sources")
+    pipe.connect("router.text/csv", "csv_converter.sources")
+    pipe.connect("router.text/html", "html_converter.sources")
+    pipe.connect("txt_converter.documents", "splitter.documents")
+    pipe.connect("json_converter.documents", "splitter.documents")
+    pipe.connect("csv_converter.documents", "page_splitter.documents")
+    pipe.connect("html_converter.documents", "page_splitter.documents")
+    pipe.connect("splitter.documents", "writer.documents")
+    pipe.connect("page_splitter.documents", "writer.documents")
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"router": {"sources": sources}},
+                expected_outputs={"writer": {"documents_written": 2}},
+                expected_component_calls={
+                    ("router", 1): {"sources": sources, "meta": None},
+                    ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
+                    ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
+                    # HTML converter takes longer than TXT Converter and this is why the order of documents is not
+                    # stable for AsyncPipeline. We test for [ANY, ANY] here to ensure at least two documents are
+                    # present.
+                    ("writer", 1): {"documents": [ANY, ANY]},
+                    ("splitter", 1): {"documents": [Document(content=txt_data, meta={"file_type": "txt"})]},
+                    ("page_splitter", 1): {"documents": [Document(content="Some content", meta={"file_type": "html"})]},
+                },
+            )
+        ],
+    )
+
+
+@given("a pipeline that has an auto joiner that takes in user inputs", target_fixture="pipeline_data")
+def pipeline_that_has_an_auto_joiner_that_takes_in_user_inputs(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
+            doc = Document(content=f"Document for query: {query}")
+            return {"documents": [doc]}
+
+    @component
+    class FakeRanker:
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+            return {"documents": documents}
+
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.add_component("ranker", FakeRanker())
+    pipe.connect("retriever.documents", "ranker.documents")
+
+    user_doc = Document(content="User document")
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"retriever": {"query": "test query"}, "ranker": {"documents": [user_doc]}},
+                expected_outputs={
+                    "ranker": {"documents": [user_doc, Document(content="Document for query: test query")]}
+                },
+                expected_component_calls={
+                    ("retriever", 1): {"query": "test query"},
+                    ("ranker", 1): {"documents": [user_doc, Document(content="Document for query: test query")]},
+                },
+            )
+        ],
+    )
