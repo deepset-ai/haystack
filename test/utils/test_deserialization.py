@@ -2,13 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch
 
 import pytest
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.core.errors import DeserializationError
-from haystack.document_stores.in_memory.document_store import InMemoryDocumentStore
 from haystack.utils.deserialization import deserialize_component_inplace
 
 

@@ -1,5 +1,5 @@
 ---
 upgrade:
   - |
-    Removed the deprecated `deserialize_document_store_in_init_params_inplace` function.
+    Removed the deprecated ``deserialize_document_store_in_init_params_inplace`` function.
     This function was deprecated in Haystack 2.23.0 and is no longer used.
