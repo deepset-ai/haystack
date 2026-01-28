@@ -2,9 +2,6 @@ name: Docker image release
 
 on:
   workflow_dispatch:
-
-  # JUST FOR TESTING, REMOVE BEFORE MERGING
-  pull_request:
   push:
     branches:
       - main
@@ -50,22 +47,22 @@ jobs:
 
       - name: Detect stable version
         run: |
-          version="v2.23.0"
-          if [[ "$version" =~ ^v2\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "${{ steps.meta.outputs.version }}" =~ ^v2\.[0-9]+\.[0-9]+$ ]]; then
             echo "IS_STABLE=true" >> "$GITHUB_ENV"
+            echo "Stable version detected"
+          else
+            echo "Not a stable version"
           fi
       - name: Build base images
         uses: docker/bake-action@v6
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
-          HAYSTACK_VERSION: "main"
+          HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
         with:
           source: .
           workdir: docker
           targets: base
-          # REVERT BEFORE MERGING
-          push: false
-          load: true
+          push: true
 
       - name: Test base image
         run: |
@@ -79,9 +76,9 @@ jobs:
           VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
           [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
 
-          # PLATFORM="linux/arm64"
-          # VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
-          # [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+          PLATFORM="linux/arm64"
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
 
           # Remove image after test to avoid filling the GitHub runner and prevent its failure
           docker rmi "deepset/haystack:$TAG"
