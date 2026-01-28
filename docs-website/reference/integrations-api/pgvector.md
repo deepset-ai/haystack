@@ -743,3 +743,234 @@ For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deeps
 
 The number of documents updated.
 
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_documents_by_filter"></a>
+
+#### PgvectorDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_documents_by_filter_async"></a>
+
+#### PgvectorDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### PgvectorDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Returns the count of unique values for each specified metadata field,
+
+considering only documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of metadata field names to count unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Returns**:
+
+A dictionary mapping field names to their unique value counts.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### PgvectorDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously returns the count of unique values for each specified metadata field,
+
+considering only documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of metadata field names to count unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Returns**:
+
+A dictionary mapping field names to their unique value counts.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_fields_info"></a>
+
+#### PgvectorDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns the information about the metadata fields in the document store.
+
+Since metadata is stored in a JSONB field, this method analyzes actual data
+to infer field types.
+
+Example return:
+```python
+{
+    'content': {'type': 'text'},
+    'category': {'type': 'text'},
+    'status': {'type': 'text'},
+    'priority': {'type': 'integer'},
+}
+```
+
+**Returns**:
+
+A dictionary mapping field names to their type information.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_fields_info_async"></a>
+
+#### PgvectorDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Asynchronously returns the information about the metadata fields in the document store.
+
+Since metadata is stored in a JSONB field, this method analyzes actual data
+to infer field types.
+
+**Returns**:
+
+A dictionary mapping field names to their type information.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_min_max"></a>
+
+#### PgvectorDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+Returns the minimum and maximum values for a given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
+
+**Raises**:
+
+- `ValueError`: If the field doesn't exist or has no values.
+
+**Returns**:
+
+A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
+For numeric fields (integer, real), returns numeric min/max.
+For text fields, returns lexicographic min/max based on database collation.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### PgvectorDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, Any]
+```
+
+Asynchronously returns the minimum and maximum values for a given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
+
+**Raises**:
+
+- `ValueError`: If the field doesn't exist or has no values.
+
+**Returns**:
+
+A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
+For numeric fields (integer, real), returns numeric min/max.
+For text fields, returns lexicographic min/max based on database collation.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_unique_values"></a>
+
+#### PgvectorDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(metadata_field: str,
+                                     search_term: str | None, from_: int,
+                                     size: int) -> tuple[list[str], int]
+```
+
+Returns unique values for a given metadata field, optionally filtered by a search term.
+
+**Arguments**:
+
+- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
+- `search_term`: Optional search term to filter documents by content before extracting unique values.
+If None, all documents are considered.
+- `from_`: The offset for pagination (0-based).
+- `size`: The number of unique values to return.
+
+**Returns**:
+
+A tuple containing:
+- A list of unique values (as strings)
+- The total count of unique values
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### PgvectorDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+        metadata_field: str, search_term: str | None, from_: int,
+        size: int) -> tuple[list[str], int]
+```
+
+Asynchronously returns unique values for a given metadata field, optionally filtered by a search term.
+
+**Arguments**:
+
+- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
+- `search_term`: Optional search term to filter documents by content before extracting unique values.
+If None, all documents are considered.
+- `from_`: The offset for pagination (0-based).
+- `size`: The number of unique values to return.
+
+**Returns**:
+
+A tuple containing:
+- A list of unique values (as strings)
+- The total count of unique values
+
