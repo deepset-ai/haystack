@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import FilterPolicy
 
@@ -92,10 +92,9 @@ class InMemoryBM25Retriever:
         :returns:
             Dictionary with serialized data.
         """
-        docstore = self.document_store.to_dict()
         return default_to_dict(
             self,
-            document_store=docstore,
+            document_store=self.document_store,
             filters=self.filters,
             top_k=self.top_k,
             scale_score=self.scale_score,
@@ -113,15 +112,8 @@ class InMemoryBM25Retriever:
             The deserialized component.
         """
         init_params = data.get("init_parameters", {})
-        if "document_store" not in init_params:
-            raise DeserializationError("Missing 'document_store' in serialization data")
-        if "type" not in init_params["document_store"]:
-            raise DeserializationError("Missing 'type' in document store's serialization data")
         if "filter_policy" in init_params:
             init_params["filter_policy"] = FilterPolicy.from_str(init_params["filter_policy"])
-        data["init_parameters"]["document_store"] = InMemoryDocumentStore.from_dict(
-            data["init_parameters"]["document_store"]
-        )
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])

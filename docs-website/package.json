@@ -25,6 +25,7 @@
     "@docusaurus/plugin-client-redirects": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@mdx-js/react": "^3.0.0",
+    "@types/turndown": "^5.0.6",
     "@vercel/node": "^5.5.6",
     "clsx": "^2.0.0",
     "docusaurus-plugin-generate-llms-txt": "^0.0.1",
@@ -32,6 +33,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.32.6",
+    "turndown": "^7.2.2",
     "vercel": "^48.10.3"
   },
   "devDependencies": {

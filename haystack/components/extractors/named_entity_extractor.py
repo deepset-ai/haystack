@@ -221,7 +221,7 @@ class NamedEntityExtractor:
             self,
             backend=self._backend.type.name,
             model=self._backend.model_name,
-            device=self._backend.device.to_dict(),
+            device=self._backend.device,
             pipeline_kwargs=self._backend._pipeline_kwargs,
             token=self.token,
         )
@@ -244,8 +244,6 @@ class NamedEntityExtractor:
         """
         try:
             init_params = data.get("init_parameters", {})
-            if init_params.get("device") is not None:
-                init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             init_params["backend"] = NamedEntityExtractorBackend[init_params["backend"]]
 
             hf_pipeline_kwargs = init_params.get("pipeline_kwargs")

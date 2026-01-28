@@ -16,12 +16,21 @@ from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools.tool_invoker import (
+    ResultConversionError,
     StringConversionError,
     ToolInvoker,
     ToolNotFoundException,
     ToolOutputMergeError,
 )
-from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk, ToolCall, ToolCallResult
+from haystack.dataclasses import (
+    ChatMessage,
+    ChatRole,
+    ImageContent,
+    StreamingChunk,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
+)
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
 
@@ -841,6 +850,47 @@ class TestToolInvokerErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "Failed to convert" in tool_message.tool_call_results[0].result
 
+    def test_result_conversion_error(self):
+        def handler(result):
+            raise ValueError("Handler error")
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            outputs_to_string={"handler": handler, "raw_result": True},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = "something"
+        with pytest.raises(ResultConversionError):
+            invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
+
+    def test_result_conversion_error_does_not_raise_exception(self):
+        def handler(result):
+            raise ValueError("Handler error")
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            outputs_to_string={"handler": handler, "raw_result": True},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = "something"
+        tool_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
+        assert tool_message.tool_call_results[0].error
+        assert "Failed to convert" in tool_message.tool_call_results[0].result
+
     def test_run_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
             def set(self, key: str, value: Any, handler_override=None):
@@ -1027,6 +1077,73 @@ class TestToolInvokerUtilities:
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"temperature": "14"}
+
+    def test_process_output_empty_config(self, invoker, base64_image_string):
+        image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+
+        result = invoker._process_output(
+            config={"raw_result": True},
+            result=[image_content],
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [image_content]
+
+    def test_process_output_source_only(self, invoker, base64_image_string):
+        image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+
+        result = invoker._process_output(
+            config={"source": "images", "raw_result": True},
+            result={"images": [image_content]},
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [image_content]
+
+    def test_process_output_handler_only(self, invoker, base64_image_string):
+        def handler(result: dict) -> list[ImageContent]:
+            return [ImageContent(base64_image=result["base64_image_string"], mime_type=result["mime_type"])]
+
+        result = invoker._process_output(
+            config={"handler": handler, "raw_result": True},
+            result={"base64_image_string": base64_image_string, "mime_type": "image/png"},
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+
+    def test_process_output_source_and_handler(self, invoker, base64_image_string):
+        def handler(result: dict) -> list[ImageContent]:
+            return [ImageContent(base64_image=result["base64_image_string"], mime_type=result["mime_type"])]
+
+        result = invoker._process_output(
+            config={"source": "images", "handler": handler, "raw_result": True},
+            result={
+                "images": {"base64_image_string": base64_image_string, "mime_type": "image/png"},
+                "other_key": "other_value",
+            },
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+
+    def test_output_to_result_e2e(self, weather_tool):
+        def handler(result):
+            return [
+                TextContent(text=f"weather: {result['weather']}"),
+                TextContent(text=f"temperature: {result['temperature']} {result['unit']}"),
+            ]
+
+        weather_tool.outputs_to_string = {"handler": handler, "raw_result": True}
+
+        invoker = ToolInvoker(tools=[weather_tool])
+
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+
+        tool_messages = invoker.run(messages=[message])["tool_messages"]
+
+        assert tool_messages[0].tool_call_results[0].result == [
+            TextContent(text="weather: mostly sunny"),
+            TextContent(text="temperature: 7 celsius"),
+        ]
 
 
 class TestWarmUpTools:

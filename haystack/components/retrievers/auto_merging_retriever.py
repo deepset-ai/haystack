@@ -5,10 +5,8 @@
 from collections import defaultdict
 from typing import Any
 
-from haystack import Document, component, default_to_dict
-from haystack.core.serialization import default_from_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
 @component
@@ -86,8 +84,7 @@ class AutoMergingRetriever:
         :returns:
             Dictionary with serialized data.
         """
-        docstore = self.document_store.to_dict()
-        return default_to_dict(self, document_store=docstore, threshold=self.threshold)
+        return default_to_dict(self, document_store=self.document_store, threshold=self.threshold)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AutoMergingRetriever":
@@ -99,7 +96,6 @@ class AutoMergingRetriever:
         :returns:
             An instance of the component.
         """
-        deserialize_document_store_in_init_params_inplace(data)
         return default_from_dict(cls, data)
 
     @staticmethod

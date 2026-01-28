@@ -4,6 +4,7 @@
 
 import logging
 import sys
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -35,7 +36,7 @@ class FakeComponent:
         pass
 
     @component.output_types(value=str)
-    def run(self, input_: str):
+    def run(self, input_: str) -> dict[str, Any]:
         return {"value": input_}
 
 
@@ -46,7 +47,7 @@ class FakeComponentSquared:
         self.inner = FakeComponent()
 
     @component.output_types(value=str)
-    def run(self, input_: str):
+    def run(self, input_: str) -> dict[str, Any]:
         return {"value": input_}
 
 
@@ -186,9 +187,9 @@ class TestPipelineBase:
         second_pipe = PipelineBase()
         some_component = component_class("Some")()
 
-        assert some_component.__haystack_added_to_pipeline__ is None
+        assert some_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
         first_pipe.add_component("some", some_component)
-        assert some_component.__haystack_added_to_pipeline__ is first_pipe
+        assert some_component.__haystack_added_to_pipeline__ is first_pipe  # type: ignore[attr-defined]
 
         with pytest.raises(PipelineError):
             second_pipe.add_component("some", some_component)
@@ -234,9 +235,11 @@ class TestPipelineBase:
         pipe.connect("component_2", "component_3")
         component_2 = pipe.remove_component("component_2")
 
-        assert component_2.__haystack_added_to_pipeline__ is None
-        assert component_2.__haystack_input__._sockets_dict == {"in": InputSocket(name="in", type=int, senders=[])}
-        assert component_2.__haystack_output__._sockets_dict == {
+        assert component_2.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+        assert component_2.__haystack_input__._sockets_dict == {  # type: ignore[attr-defined]
+            "in": InputSocket(name="in", type=int, senders=[])
+        }
+        assert component_2.__haystack_output__._sockets_dict == {  # type: ignore[attr-defined]
             "out": OutputSocket(name="out", type=int, receivers=[])
         }
 
@@ -247,7 +250,7 @@ class TestPipelineBase:
 
         pipe2.connect("component_4", "component_2")
         pipe2.connect("component_2", "component_5")
-        assert component_2.__haystack_added_to_pipeline__ is pipe2
+        assert component_2.__haystack_added_to_pipeline__ is pipe2  # type: ignore[attr-defined]
         assert component_2.__haystack_input__._sockets_dict == {
             "in": InputSocket(name="in", type=int, senders=["component_4"])
         }
@@ -815,7 +818,7 @@ class TestPipelineBase:
         @component
         class Hello:
             @component.output_types(output=str)
-            def run(self, word: str):
+            def run(self, word: str) -> dict[str, str]:
                 """
                 Takes a string in input and returns "Hello, <string>!" in output.
                 """
@@ -824,7 +827,7 @@ class TestPipelineBase:
         @component
         class Joiner:
             @component.output_types(output=str)
-            def run(self, word1: str, word2: str):
+            def run(self, word1: str, word2: str) -> dict[str, str]:
                 """
                 Takes two strings in input and returns "Hello, <string1> and <string2>!" in output.
                 """
@@ -860,7 +863,7 @@ class TestPipelineBase:
                 self.iteration_counter = 0
 
             @component.output_types(intermediate=str, final=str)
-            def run(self, word: str, intermediate: str | None = None):
+            def run(self, word: str, intermediate: str | None = None) -> dict[str, str]:
                 """
                 Takes a string in input and returns "Hello, <string>!" in output.
                 """
@@ -921,8 +924,8 @@ class TestPipelineBase:
         pipe.add_component("comp2", comp2)
         assert pipe.connect("comp1.value", "comp2.value") is pipe
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_already_connected(self):
@@ -934,8 +937,8 @@ class TestPipelineBase:
         pipe.connect("comp1.value", "comp2.value")
         pipe.connect("comp1.value", "comp2.value")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_with_sender_component_name(self):
@@ -946,8 +949,8 @@ class TestPipelineBase:
         pipe.add_component("comp2", comp2)
         pipe.connect("comp1", "comp2.value")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_with_receiver_component_name(self):
@@ -958,8 +961,8 @@ class TestPipelineBase:
         pipe.add_component("comp2", comp2)
         pipe.connect("comp1.value", "comp2")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_with_sender_and_receiver_component_name(self):
@@ -970,8 +973,8 @@ class TestPipelineBase:
         pipe.add_component("comp2", comp2)
         pipe.connect("comp1", "comp2")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_with_sender_not_in_pipeline(self):
@@ -1041,8 +1044,8 @@ class TestPipelineBase:
         pipe.add_component("comp2", comp2)
         pipe.connect("comp1", "comp2")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_with_multiple_receiver_connections_with_same_type_and_same_name(self):
@@ -1053,8 +1056,8 @@ class TestPipelineBase:
         pipe.add_component("comp2", comp2)
         pipe.connect("comp1", "comp2")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp2"]
-        assert comp2.__haystack_input__.value.senders == ["comp1"]
+        assert comp1.__haystack_output__.value.receivers == ["comp2"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_input__.value.senders == ["comp1"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp2", "value/value")]
 
     def test_connect_multiple_outputs_to_non_variadic_input(self):
@@ -1080,9 +1083,9 @@ class TestPipelineBase:
         pipe.connect("comp1.value", "comp3.value")
         pipe.connect("comp2.value", "comp3.value")
 
-        assert comp1.__haystack_output__.value.receivers == ["comp3"]
-        assert comp2.__haystack_output__.value.receivers == ["comp3"]
-        assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]
+        assert comp1.__haystack_output__.value.receivers == ["comp3"]  # type: ignore[attr-defined]
+        assert comp2.__haystack_output__.value.receivers == ["comp3"]  # type: ignore[attr-defined]
+        assert comp3.__haystack_input__.value.senders == ["comp1", "comp2"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("comp1", "comp3", "value/value"), ("comp2", "comp3", "value/value")]
 
     def test_connect_same_component_as_sender_and_receiver(self):
@@ -1432,7 +1435,7 @@ class TestPipelineBase:
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
-            include_outputs_from=[],
+            include_outputs_from=set(),
         )
 
         assert len(inputs["receiver1"][socket_name]) == expected_count
@@ -1474,13 +1477,13 @@ class TestPipelineBase:
         """Test handling of different output values"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket)]
         component_outputs = {"output1": output_value}
-        inputs = {}
+        inputs: dict[str, Any] = {}
         PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
-            include_outputs_from=[],
+            include_outputs_from=set(),
         )
 
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
@@ -1495,7 +1498,7 @@ class TestPipelineBase:
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
-            include_outputs_from=[],
+            include_outputs_from=set(),
         )
 
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": "keep"}]
@@ -1508,13 +1511,13 @@ class TestPipelineBase:
         receivers = [(f"receiver{i}", regular_output_socket, regular_input_socket) for i in range(receivers_count)]
         component_outputs = {"output1": 42}
 
-        inputs = {}
+        inputs: dict[str, Any] = {}
         PipelineBase._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
             receivers=receivers,
-            include_outputs_from=[],
+            include_outputs_from=set(),
         )
 
         for i in range(receivers_count):
@@ -1550,13 +1553,13 @@ class TestPipelineBase:
         queue.push("ready_component", ComponentPriority.READY)
         mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 1}
 
-        priority, component_name, component = pipeline._get_next_runnable_component(
-            queue, component_visits={"ready_component": 1}
-        )
+        result = pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 1})
+        assert result is not None
+        priority, component_name, comp = result
 
         assert priority == ComponentPriority.READY
         assert component_name == "ready_component"
-        assert component == {"instance": "test", "visits": 1}
+        assert comp == {"instance": "test", "visits": 1}
 
     @pytest.mark.parametrize(
         "queue_setup,expected_stale",
@@ -1847,6 +1850,6 @@ def test_connect_pep_604_union_type():
     # This should succeed:
     pipeline.connect("producer.words", "consumer_opt.words")
 
-    assert comp1.__haystack_output__.words.receivers == ["consumer_opt"]
-    assert comp2.__haystack_input__.words.senders == ["producer"]
+    assert comp1.__haystack_output__.words.receivers == ["consumer_opt"]  # type: ignore[attr-defined]
+    assert comp2.__haystack_input__.words.senders == ["producer"]  # type: ignore[attr-defined]
     assert list(pipeline.graph.edges) == [("producer", "consumer_opt", "words/words")]
