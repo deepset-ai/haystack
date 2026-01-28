@@ -895,22 +895,24 @@ class PipelineBase:  # noqa: PLW1641
             If inputs are invalid according to the above.
         """
         for component_name, component_inputs in data.items():
+            # Check that the component exists
             if component_name not in self.graph.nodes:
-                raise ValueError(f"Component named {component_name} not found in the pipeline.")
+                raise ValueError(f"Component named '{component_name}' not found in the pipeline.")
+            # Check that no input is provided that the component can't accept
             instance = self.graph.nodes[component_name]["instance"]
-            for socket_name, socket in instance.__haystack_input__._sockets_dict.items():
-                if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
-                    raise ValueError(f"Missing input for component {component_name}: {socket_name}")
             for input_name in component_inputs.keys():
                 if input_name not in instance.__haystack_input__._sockets_dict:
-                    raise ValueError(f"Input {input_name} not found in component {component_name}.")
+                    raise ValueError(f"Input '{input_name}' not found in component '{component_name}'.")
 
         for component_name in self.graph.nodes:
             instance = self.graph.nodes[component_name]["instance"]
             for socket_name, socket in instance.__haystack_input__._sockets_dict.items():
                 component_inputs = data.get(component_name, {})
+                # Check that no mandatory input is missing for any component in the pipeline
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
-                    raise ValueError(f"Missing input for component {component_name}: {socket_name}")
+                    raise ValueError(f"Missing mandatory input '{socket_name}' for component '{component_name}'.")
+
+                # Check if an input is provided more than once for non-variadic sockets
                 if socket.senders and socket_name in component_inputs:
                     # We automatically set the receiver socket as lazy variadic if:
                     # - it has at least one sender already connected
@@ -921,9 +923,12 @@ class PipelineBase:  # noqa: PLW1641
                         # We also disable wrapping inputs into list so the sender outputs matches the type of the
                         # receiver socket.
                         socket.wrap_input_in_list = False
+
                     if not socket.is_variadic:
                         raise ValueError(
-                            f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
+                            f"Component '{component_name}' cannot accept multiple inputs to '{socket_name}'. "
+                            f"It is already connected to component '{socket.senders[0]}' so it cannot accept "
+                            "additional inputs."
                         )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
