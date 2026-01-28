@@ -1286,7 +1286,6 @@ class PipelineBase:  # noqa: PLW1641
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
 
-            # We want this to trigger for lazy-variadic and auto-variadic sockets
             if receiver_socket.is_lazy_variadic:
                 # If the receiver socket is lazy variadic, we append the new input.
                 # Lazy variadic sockets can collect multiple inputs.
