@@ -33,7 +33,9 @@ features:
 
         pipe.connect("router.text/plain", "txt_converter.sources")
         pipe.connect("router.text/html", "html_converter.sources")
+        # The DocumentWriter accepts documents from both converters without needing a DocumentJoiner
         pipe.connect("txt_converter.documents", "writer.documents")
         pipe.connect("html_converter.documents", "writer.documents")
 
         result = pipe.run({"router": {"sources": sources}})
+        # result["writer"]["documents_written"] == 2
