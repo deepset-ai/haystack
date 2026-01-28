@@ -131,10 +131,6 @@ const config = {
             to: '/docs/document-store',
           },
           {
-            from: '/docs/components_overview',
-            to: '/docs/components-overview',
-          },
-          {
             from: '/docs/nodes_overview',
             to: '/docs/components-overview',
           },
