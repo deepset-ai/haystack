@@ -8,7 +8,7 @@ features:
     This simplifies pipeline definitions when multiple components produce compatible outputs.
     For example, multiple outputs from a ``FileTypeRouter`` can now be connected directly to a single converter or writer, without defining an intermediate ``ListJoiner`` or ``DocumentJoiner``.
 
-    .. code::
+    .. code:: python
         from haystack import Pipeline
         from haystack.components.converters import HTMLToDocument, TextFileToDocument
         from haystack.components.routers import FileTypeRouter
