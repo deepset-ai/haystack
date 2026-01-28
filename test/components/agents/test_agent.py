@@ -41,11 +41,14 @@ async def async_streaming_callback(chunk: StreamingChunk) -> None:
 
 def weather_function(location):
     weather_info = {
-        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
-        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
-        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+        "berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
     }
-    return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
+    for city, result in weather_info.items():
+        if city in location.lower():
+            return result
+    return {"weather": "unknown", "temperature": 0, "unit": "celsius"}
 
 
 @tool
@@ -884,7 +887,7 @@ class TestAgent:
     @pytest.mark.integration
     def test_run(self, weather_tool):
         # Use default model for integration tests
-        chat_generator = OpenAIChatGenerator()
+        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         agent.warm_up()
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
@@ -987,7 +990,7 @@ class TestAgent:
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, weather_tool):
-        chat_generator = OpenAIChatGenerator()
+        chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
         streaming_callback_called = False
