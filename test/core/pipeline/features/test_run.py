@@ -4904,3 +4904,43 @@ def pipeline_that_converts_files_with_three_auto_joiners(pipeline_class):
             )
         ],
     )
+
+
+@given("a pipeline that has an auto joiner that takes in user inputs", target_fixture="pipeline_data")
+def pipeline_that_has_an_auto_joiner_that_takes_in_user_inputs(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
+            doc = Document(content=f"Document for query: {query}")
+            return {"documents": [doc]}
+
+    @component
+    class FakeRanker:
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+            return {"documents": documents}
+
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.add_component("ranker", FakeRanker())
+    pipe.connect("retriever.documents", "ranker.documents")
+
+    user_doc = Document(content="User document")
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"retriever": {"query": "test query"}, "ranker": {"documents": [user_doc]}},
+                expected_outputs={
+                    "ranker": {"documents": [user_doc, Document(content="Document for query: test query")]}
+                },
+                expected_component_calls={
+                    ("retriever", 1): {"query": "test query"},
+                    ("ranker", 1): {"documents": [user_doc, Document(content="Document for query: test query")]},
+                },
+            )
+        ],
+    )
