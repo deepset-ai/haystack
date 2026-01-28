@@ -46,7 +46,7 @@ def weather_function(location):
         "rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
     }
     for city, result in weather_info.items():
-        if location.lower() in city:
+        if city in location.lower():
             return result
     return {"weather": "unknown", "temperature": 0, "unit": "celsius"}
 
