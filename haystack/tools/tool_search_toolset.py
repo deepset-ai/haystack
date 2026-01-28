@@ -224,11 +224,11 @@ class ToolSearchToolset(Toolset):
     def _create_search_tool(self) -> Tool:
         """Create the search_tools bootstrap tool."""
 
-        def search_tools(query: str, k: int | None = None) -> str:
+        def search_tools(tool_keywords: str, k: int | None = None) -> str:
             """
-            Search for tools matching a query and load them.
+            Search for tools matching tool_keywords and load them.
 
-            :param query: Search query describing the functionality needed.
+            :param tool_keywords: Keywords likely to appear in tool names/descriptions (not the user's request).
             :param k: Number of results to return (optional, defaults to top_k).
             :returns: Confirmation of loaded tools.
             """
@@ -236,10 +236,10 @@ class ToolSearchToolset(Toolset):
                 return "Error: Search engine not initialized. Call warm_up() first."
 
             num_results = k if k is not None else self._top_k
-            results = self._search_engine.search(query, num_results)
+            results = self._search_engine.search(tool_keywords, num_results)
 
             if not results:
-                return "No tools found matching your query. Try different search terms."
+                return "No tools found matching these keywords. Try different keywords."
 
             # Add found tools to _discovered_tools. These become available to the LLM
             # on the next agent iteration when __iter__ is called again - the Agent
@@ -253,21 +253,26 @@ class ToolSearchToolset(Toolset):
                 self._discovered_tools[tool.name] = tool
                 tool_names.append(tool.name)
 
-            return f"Found and loaded {len(tool_names)} tool(s): {', '.join(tool_names)}. You can now use them."
+            return f"Found and loaded {len(tool_names)} tool(s): {', '.join(tool_names)}. Use them directly as tools."
 
         return Tool(
             name="search_tools",
-            description="ALWAYS use this tool FIRST when you need to perform a task but don't have the right tool "
-            "loaded yet. Search for tools by describing what functionality you need (e.g., 'weather data', "
-            "'web search', 'database query'). Returns a confirmation message with the names of loaded tools. "
-            "The found tools are automatically loaded and will be available for you to use immediately.",
+            description="ALWAYS use this tool FIRST when you need to invoke some tools but don't have the right one "
+            "loaded yet. Provide space separated tool keywords likely to appear in tool names/descriptions "
+            "(e.g. 'route distance weather', 'search email'). Do NOT pass the user's request or task (e.g. "
+            "'things to do in X', 'user question'); matching is keyword-based. Returns loaded "
+            "tool names; they become available immediately.",
             parameters={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search query describing the functionality needed"},
+                    "tool_keywords": {
+                        "type": "string",
+                        "description": "Space-separated words from tool names/descriptions (e.g. 'route weather "
+                        "search'). NOT the user's question or task—use vocabulary from the tools you need.",
+                    },
                     "k": {"type": "integer", "description": f"Number of results to return (default: {self._top_k})"},
                 },
-                "required": ["query"],
+                "required": ["tool_keywords"],
             },
             function=search_tools,
         )

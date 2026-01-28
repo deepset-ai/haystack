@@ -339,8 +339,9 @@ class TestToolSearchToolsetBM25Mode:
         """Test that search_tools finds relevant tools."""
         toolset = ToolSearchToolset(catalog=large_catalog, top_k=3)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
-        result = toolset._bootstrap_tool.invoke(query="weather temperature city")
+        result = toolset._bootstrap_tool.invoke(tool_keywords="weather temperature city")
 
         assert "get_weather" in result
         assert "get_weather" in toolset._discovered_tools
@@ -349,11 +350,12 @@ class TestToolSearchToolsetBM25Mode:
         """Test that search_tools auto-loads found tools."""
         toolset = ToolSearchToolset(catalog=large_catalog, top_k=3)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
         # Initially only bootstrap tool
         assert len(toolset) == 1
 
-        toolset._bootstrap_tool.invoke(query="add numbers multiply")
+        toolset._bootstrap_tool.invoke(tool_keywords="add numbers multiply")
 
         # Should have bootstrap + discovered tools
         assert len(toolset) > 1
@@ -362,9 +364,10 @@ class TestToolSearchToolsetBM25Mode:
         """Test that search_tools respects k parameter."""
         toolset = ToolSearchToolset(catalog=large_catalog, top_k=2)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
         # Search with explicit k=1
-        result = toolset._bootstrap_tool.invoke(query="add numbers together", k=1)
+        result = toolset._bootstrap_tool.invoke(tool_keywords="add numbers together", k=1)
 
         # Should find exactly 1 tool
         assert "Found and loaded 1 tool(s):" in result
@@ -373,8 +376,9 @@ class TestToolSearchToolsetBM25Mode:
         """Test search_tools with no matching results."""
         toolset = ToolSearchToolset(catalog=large_catalog)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
-        result = toolset._bootstrap_tool.invoke(query="xyznonexistent123")
+        result = toolset._bootstrap_tool.invoke(tool_keywords="xyznonexistent123")
 
         assert "No tools found" in result
         assert len(toolset._discovered_tools) == 0
@@ -396,10 +400,11 @@ class TestToolSearchToolsetIteration:
         """Test iteration with discovered tools."""
         toolset = ToolSearchToolset(catalog=large_catalog)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
         # Search for tools
-        toolset._bootstrap_tool.invoke(query="weather")
-        toolset._bootstrap_tool.invoke(query="math addition")
+        toolset._bootstrap_tool.invoke(tool_keywords="weather")
+        toolset._bootstrap_tool.invoke(tool_keywords="math addition")
 
         tools = list(toolset)
 
@@ -420,8 +425,9 @@ class TestToolSearchToolsetIteration:
         """Test __contains__ for discovered tools."""
         toolset = ToolSearchToolset(catalog=large_catalog)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
-        toolset._bootstrap_tool.invoke(query="weather")
+        toolset._bootstrap_tool.invoke(tool_keywords="weather")
 
         assert "get_weather" in toolset
         assert "add_numbers" not in toolset  # Not discovered yet
@@ -464,12 +470,13 @@ class TestToolSearchToolsetSerialization:
         # Deserialize
         restored = ToolSearchToolset.from_dict(data)
         restored.warm_up()
+        assert restored._bootstrap_tool is not None
 
         # Verify behavior matches
         assert restored.is_passthrough == toolset.is_passthrough
 
         # Verify bootstrap tool works
-        result = restored._bootstrap_tool.invoke(query="weather")
+        result = restored._bootstrap_tool.invoke(tool_keywords="weather")
         assert "get_weather" in result
         assert "get_weather" in restored._discovered_tools
 
@@ -481,9 +488,10 @@ class TestToolSearchToolsetSerialization:
         data = toolset.to_dict()
         restored = ToolSearchToolset.from_dict(data)
         restored.warm_up()
+        assert restored._bootstrap_tool is not None
 
         # Search and invoke a tool
-        result_text = restored._bootstrap_tool.invoke(query="add numbers")
+        result_text = restored._bootstrap_tool.invoke(tool_keywords="add numbers")
         assert "add_numbers" in result_text
         add_tool = restored._discovered_tools["add_numbers"]
         result = add_tool.invoke(a=10, b=5)
@@ -623,10 +631,11 @@ class TestToolSearchToolsetEdgeCases:
         """Test searching for the same tool multiple times."""
         toolset = ToolSearchToolset(catalog=large_catalog)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
 
         # Search for same tool twice
-        toolset._bootstrap_tool.invoke(query="weather")
-        toolset._bootstrap_tool.invoke(query="weather temperature")
+        toolset._bootstrap_tool.invoke(tool_keywords="weather")
+        toolset._bootstrap_tool.invoke(tool_keywords="weather temperature")
 
         # Should still only have discovered tools (may be multiple if they match "weather")
         assert "get_weather" in toolset._discovered_tools
