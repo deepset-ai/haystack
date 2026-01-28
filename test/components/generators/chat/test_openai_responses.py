@@ -834,6 +834,7 @@ class TestIntegration:
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
 
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_live_run_with_agent_streaming_and_reasoning(self):
         # Tool Definition
         calculator_tool = Tool(
