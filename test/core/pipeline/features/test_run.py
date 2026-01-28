@@ -48,7 +48,7 @@ from haystack.testing.sample_components import (
     TextSplitter,
     Threshold,
 )
-from test.core.pipeline.features.conftest import PipelineRunData
+from test.core.pipeline.features.conftest import FixedGenerator, PipelineRunData
 
 pytestmark = [pytest.mark.usefixtures("pipeline_class"), pytest.mark.integration]
 
@@ -93,14 +93,10 @@ def pipeline_that_has_an_infinite_loop(pipeline_class):
         {"condition": "{{number <= 2}}", "output": "{{number + 2}}", "output_name": "small_number", "output_type": int},
     ]
 
-    main_input = BranchJoiner(int)
-    first_router = ConditionalRouter(routes=routes)
-    second_router = ConditionalRouter(routes=routes)
-
     pipe = pipeline_class(max_runs_per_component=1)
-    pipe.add_component("main_input", main_input)
-    pipe.add_component("first_router", first_router)
-    pipe.add_component("second_router", second_router)
+    pipe.add_component("main_input", BranchJoiner(int))
+    pipe.add_component("first_router", ConditionalRouter(routes=routes))
+    pipe.add_component("second_router", ConditionalRouter(routes=routes))
 
     pipe.connect("main_input", "first_router.number")
     pipe.connect("first_router.big_number", "second_router.number")
@@ -233,7 +229,7 @@ def pipeline_that_has_a_single_component_with_a_default_input(pipeline_class):
 
 @given("a pipeline that has two loops of identical lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_identical_lengths(pipeline_class):
-    pipeline = pipeline_class(max_runs_per_component=10)
+    pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -290,7 +286,7 @@ def pipeline_that_has_two_loops_of_identical_lengths(pipeline_class):
 
 @given("a pipeline that has two loops of different lengths", target_fixture="pipeline_data")
 def pipeline_that_has_two_loops_of_different_lengths(pipeline_class):
-    pipeline = pipeline_class(max_runs_per_component=10)
+    pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("remainder", Remainder(divisor=3))
     pipeline.add_component("add_one", AddFixedValue(add=1))
@@ -351,15 +347,14 @@ def pipeline_that_has_two_loops_of_different_lengths(pipeline_class):
 
 @given("a pipeline that has a single loop with two conditional branches", target_fixture="pipeline_data")
 def pipeline_that_has_a_single_loop_with_two_conditional_branches(pipeline_class):
-    accumulator = Accumulate()
-    pipeline = pipeline_class(max_runs_per_component=10)
+    pipeline = pipeline_class(max_runs_per_component=3)
 
     pipeline.add_component("add_one", AddFixedValue(add=1))
     pipeline.add_component("branch_joiner", BranchJoiner(type_=int))
     pipeline.add_component("below_10", Threshold(threshold=10))
     pipeline.add_component("below_5", Threshold(threshold=5))
     pipeline.add_component("add_three", AddFixedValue(add=3))
-    pipeline.add_component("accumulator", accumulator)
+    pipeline.add_component("accumulator", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
 
     pipeline.connect("add_one.result", "branch_joiner")
@@ -695,16 +690,11 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
         def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             return {"replies": [ChatMessage.from_assistant("Fake message")]}
 
-    prompt_builder = PassThroughPromptBuilder()
-    llm = FakeGenerator()
-    mm1 = MessageMerger()
-    mm2 = MessageMerger()
-
     pipe = pipeline_class(max_runs_per_component=1)
-    pipe.add_component("prompt_builder", prompt_builder)
-    pipe.add_component("llm", llm)
-    pipe.add_component("mm1", mm1)
-    pipe.add_component("mm2", mm2)
+    pipe.add_component("prompt_builder", PassThroughPromptBuilder())
+    pipe.add_component("llm", FakeGenerator())
+    pipe.add_component("mm1", MessageMerger())
+    pipe.add_component("mm2", MessageMerger())
 
     pipe.connect("prompt_builder.prompt", "llm.messages")
     pipe.connect("prompt_builder.prompt", "mm1")
@@ -723,89 +713,22 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                 inputs={"mm1": params, "mm2": params, "prompt_builder": {"prompt_source": messages}},
                 expected_outputs={
                     "mm1": {
-                        "merged_message": "Always respond "
-                        "in English even "
-                        "if some input "
-                        "data is in other "
-                        "languages.\n"
-                        "Tell me about "
-                        "Berlin"
+                        "merged_message": "Always respond in English even if some input data is in other languages.\n"
+                        "Tell me about Berlin"
                     },
                     "mm2": {"merged_message": "Fake message"},
                 },
                 expected_component_calls={
-                    ("llm", 1): {
-                        "messages": [
-                            ChatMessage(
-                                _role=ChatRole.SYSTEM,
-                                _content=[
-                                    TextContent(
-                                        text="Always respond in English even if some input data is in other languages."
-                                    )
-                                ],
-                                _name=None,
-                                _meta={},
-                            ),
-                            ChatMessage(
-                                _role=ChatRole.USER,
-                                _content=[TextContent(text="Tell me about Berlin")],
-                                _name=None,
-                                _meta={},
-                            ),
-                        ]
-                    },
+                    ("llm", 1): {"messages": messages},
                     ("mm1", 1): {
-                        "messages": [
-                            ChatMessage(
-                                _role=ChatRole.SYSTEM,
-                                _content=[
-                                    TextContent(
-                                        text="Always respond in English even if some input data is in other languages."
-                                    )
-                                ],
-                                _name=None,
-                                _meta={},
-                            ),
-                            ChatMessage(
-                                _role=ChatRole.USER,
-                                _content=[TextContent(text="Tell me about Berlin")],
-                                _name=None,
-                                _meta={},
-                            ),
-                        ],
+                        "messages": messages,
                         "metadata": {"meta2": "value2", "metadata_key": "metadata_value"},
                     },
                     ("mm2", 1): {
-                        "messages": [
-                            ChatMessage(
-                                _role=ChatRole.ASSISTANT,
-                                _content=[TextContent(text="Fake message")],
-                                _name=None,
-                                _meta={},
-                            )
-                        ],
+                        "messages": [ChatMessage.from_assistant(text="Fake message")],
                         "metadata": {"meta2": "value2", "metadata_key": "metadata_value"},
                     },
-                    ("prompt_builder", 1): {
-                        "prompt_source": [
-                            ChatMessage(
-                                _role=ChatRole.SYSTEM,
-                                _content=[
-                                    TextContent(
-                                        text="Always respond in English even if some input data is in other languages."
-                                    )
-                                ],
-                                _name=None,
-                                _meta={},
-                            ),
-                            ChatMessage(
-                                _role=ChatRole.USER,
-                                _content=[TextContent(text="Tell me about Berlin")],
-                                _name=None,
-                                _meta={},
-                            ),
-                        ]
-                    },
+                    ("prompt_builder", 1): {"prompt_source": messages},
                 },
             )
         ],
@@ -845,14 +768,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
                 inputs={"query": "This is my question"},
                 expected_outputs={
                     "prompt_builder": {
-                        "prompt": "Given this "
-                        "documents: "
-                        "This is a "
-                        "simple "
-                        "document "
-                        "Answer this "
-                        "question: "
-                        "This is my "
+                        "prompt": "Given this documents: This is a simple document Answer this question: This is my "
                         "question"
                     }
                 },
@@ -900,7 +816,6 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary(pipeline_class
         output_types={"b": int},
         output=1,  # type:ignore
     )
-
     pipe = pipeline_class(max_runs_per_component=10)
     pipe.add_component("comp", BrokenComponent())
     return pipe, [PipelineRunData({"comp": {"a": 1}})]
@@ -986,8 +901,7 @@ def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
                         "replies": ["Paris"],
                     },
                     ("generator", 1): {
-                        "prompt": "Given the following information, answer the "
-                        "question.\n"
+                        "prompt": "Given the following information, answer the question.\n"
                         "Context:\n"
                         "    Paris is the capital of France\n"
                         "    Rome is the capital of Italy\n"
@@ -1104,13 +1018,9 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
                     },
                     ("generator", 2): {
                         "generation_kwargs": None,
-                        "prompt": "Answer the following question.\n"
-                        "\n"
-                        "Previously you replied incorrectly this:\n"
-                        "\n"
-                        " - Paris\n"
-                        "\n"
-                        "\n"
+                        "prompt": "Answer the following question.\n\n"
+                        "Previously you replied incorrectly this:\n\n"
+                        " - Paris\n\n\n"
                         "Question: What is the capital of Italy?",
                     },
                     ("prompt_builder", 1): {
@@ -1435,10 +1345,10 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
 ):
     prompt = PromptBuilder(
         template="""Please generate an SQL query. The query should answer the following Question: {{ question }};
-            If the question cannot be answered given the provided table and columns, return 'no_answer'
-            The query is to be answered for the table is called 'absenteeism' with the following
-            Columns: {{ columns }};
-            Answer:"""
+If the question cannot be answered given the provided table and columns, return 'no_answer'
+The query is to be answered for the table is called 'absenteeism' with the following
+Columns: {{ columns }};
+Answer:"""
     )
 
     @component
@@ -1454,9 +1364,6 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
         @component.output_types(results=str)
         def run(self, query: str) -> dict[str, str]:
             return {"results": "This is the query result", "query": query}
-
-    llm = FakeGenerator()
-    sql_querier = FakeSQLQuerier()
 
     router = ConditionalRouter(
         routes=[
@@ -1477,18 +1384,17 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
 
     fallback_prompt = PromptBuilder(
         template="""User entered a query that cannot be answered with the given table.
-                    The query was: {{ question }} and the table had columns: {{ columns }}.
-                    Let the user know why the question cannot be answered"""
+The query was: {{ question }} and the table had columns: {{ columns }}.
+Let the user know why the question cannot be answered"""
     )
-    fallback_llm = FakeGenerator()
 
     pipeline = pipeline_class(max_runs_per_component=1)
     pipeline.add_component("prompt", prompt)
-    pipeline.add_component("llm", llm)
+    pipeline.add_component("llm", FakeGenerator())
     pipeline.add_component("router", router)
     pipeline.add_component("fallback_prompt", fallback_prompt)
-    pipeline.add_component("fallback_llm", fallback_llm)
-    pipeline.add_component("sql_querier", sql_querier)
+    pipeline.add_component("fallback_llm", FakeGenerator())
+    pipeline.add_component("sql_querier", FakeSQLQuerier())
 
     pipeline.connect("prompt", "llm")
     pipeline.connect("llm.replies", "router.replies")
@@ -1508,13 +1414,9 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                 expected_outputs={"fallback_llm": {"replies": ["There's simply no_answer to this question"]}},
                 expected_component_calls={
                     ("fallback_llm", 1): {
-                        "prompt": "User entered a query that cannot be answered "
-                        "with the given table.\n"
-                        "                    The query was: This is a "
-                        "question with no_answer and the table had "
-                        "columns: .\n"
-                        "                    Let the user know why "
-                        "the question cannot be answered"
+                        "prompt": "User entered a query that cannot be answered with the given table.\n"
+                        "The query was: This is a question with no_answer and the table had columns: .\n"
+                        "Let the user know why the question cannot be answered"
                     },
                     ("fallback_prompt", 1): {
                         "columns": "",
@@ -1524,15 +1426,11 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                     },
                     ("llm", 1): {
                         "prompt": "Please generate an SQL query. The query should answer "
-                        "the following Question: This is a question with "
-                        "no_answer;\n"
-                        "            If the question cannot be answered given "
-                        "the provided table and columns, return 'no_answer'\n"
-                        "            The query is to be answered for the table "
-                        "is called 'absenteeism' with the following\n"
-                        "            Columns: Age, Absenteeism_time_in_hours, "
-                        "Days, Disciplinary_failure;\n"
-                        "            Answer:"
+                        "the following Question: This is a question with no_answer;\n"
+                        "If the question cannot be answered given the provided table and columns, return 'no_answer'\n"
+                        "The query is to be answered for the table is called 'absenteeism' with the following\n"
+                        "Columns: Age, Absenteeism_time_in_hours, Days, Disciplinary_failure;\n"
+                        "Answer:"
                     },
                     ("prompt", 1): {
                         "columns": "Age, Absenteeism_time_in_hours, Days, Disciplinary_failure",
@@ -1547,113 +1445,6 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
                 },
             )
         ],
-        [
-            PipelineRunData(
-                inputs={
-                    "prompt": {"question": "This is a question that has an answer", "columns": columns},
-                    "router": {"question": "This is a question that has an answer"},
-                },
-                expected_outputs={"sql_querier": {"results": "This is the query result", "query": "Some SQL query"}},
-                expected_component_calls={
-                    ("llm", 1): {
-                        "prompt": "\n"
-                        "    You are an experienced and accurate Turkish CX "
-                        "speacialist that classifies customer comments into "
-                        "pre-defined categories below:\n"
-                        "\n"
-                        "    Negative experience labels:\n"
-                        "    - Late delivery\n"
-                        "    - Rotten/spoilt item\n"
-                        "    - Bad Courier behavior\n"
-                        "\n"
-                        "    Positive experience labels:\n"
-                        "    - Good courier behavior\n"
-                        "    - Thanks & appreciation\n"
-                        "    - Love message to courier\n"
-                        "    - Fast delivery\n"
-                        "    - Quality of products\n"
-                        "\n"
-                        "    Create a JSON object as a response. The fields "
-                        "are: 'positive_experience', 'negative_experience'.\n"
-                        "    Assign at least one of the pre-defined labels to "
-                        "the given customer comment under positive and "
-                        "negative experience fields.\n"
-                        "    If the comment has a positive experience, list "
-                        "the label under 'positive_experience' field.\n"
-                        "    If the comments has a negative_experience, list "
-                        "it under the 'negative_experience' field.\n"
-                        "    Here is the comment:\n"
-                        "I loved the quality of the meal but the courier was "
-                        "rude\n"
-                        ". Just return the category names in the list. If "
-                        "there aren't any, return an empty list.\n"
-                        "\n"
-                        "    \n"
-                        "    "
-                    },
-                    ("llm", 2): {
-                        "prompt": "\n"
-                        "    You are an experienced and accurate Turkish CX "
-                        "speacialist that classifies customer comments into "
-                        "pre-defined categories below:\n"
-                        "\n"
-                        "    Negative experience labels:\n"
-                        "    - Late delivery\n"
-                        "    - Rotten/spoilt item\n"
-                        "    - Bad Courier behavior\n"
-                        "\n"
-                        "    Positive experience labels:\n"
-                        "    - Good courier behavior\n"
-                        "    - Thanks & appreciation\n"
-                        "    - Love message to courier\n"
-                        "    - Fast delivery\n"
-                        "    - Quality of products\n"
-                        "\n"
-                        "    Create a JSON object as a response. The fields "
-                        "are: 'positive_experience', 'negative_experience'.\n"
-                        "    Assign at least one of the pre-defined labels to "
-                        "the given customer comment under positive and "
-                        "negative experience fields.\n"
-                        "    If the comment has a positive experience, list "
-                        "the label under 'positive_experience' field.\n"
-                        "    If the comments has a negative_experience, list "
-                        "it under the 'negative_experience' field.\n"
-                        "    Here is the comment:\n"
-                        "I loved the quality of the meal but the courier was "
-                        "rude\n"
-                        ". Just return the category names in the list. If "
-                        "there aren't any, return an empty list.\n"
-                        "\n"
-                        "    \n"
-                        "    You already created the following output in a "
-                        "previous attempt: ['This is an invalid reply']\n"
-                        "    However, this doesn't comply with the format "
-                        "requirements from above and triggered this Python "
-                        "exception: this is an error message\n"
-                        "    Correct the output and try again. Just return the "
-                        "corrected output without any extra explanations.\n"
-                        "    \n"
-                        "    "
-                    },
-                    ("output_validator", 1): {"replies": ["This is a valid reply"]},
-                    ("output_validator", 2): {"replies": ["This is a valid reply"]},
-                    ("prompt_builder", 1): {
-                        "comment": "",
-                        "error_message": "",
-                        "invalid_replies": "",
-                        "template": None,
-                        "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
-                    },
-                    ("prompt_builder", 2): {
-                        "comment": "",
-                        "error_message": "this is an error message",
-                        "invalid_replies": ["This is an invalid reply"],
-                        "template": None,
-                        "template_variables": {"comment": "I loved the quality of the meal but the courier was rude"},
-                    },
-                },
-            )
-        ],
     )
 
 
@@ -1664,32 +1455,37 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
 def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_receive_anything_from_its_sender_but_receives_input_from_user(
     pipeline_class,
 ):
-    template = """
-    You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
-    Negative experience labels:
-    - Late delivery
-    - Rotten/spoilt item
-    - Bad Courier behavior
+    static_content = """
+You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
+Negative experience labels:
+- Late delivery
+- Rotten/spoilt item
+- Bad Courier behavior
 
-    Positive experience labels:
-    - Good courier behavior
-    - Thanks & appreciation
-    - Love message to courier
-    - Fast delivery
-    - Quality of products
+Positive experience labels:
+- Good courier behavior
+- Thanks & appreciation
+- Love message to courier
+- Fast delivery
+- Quality of products
 
-    Create a JSON object as a response. The fields are: 'positive_experience', 'negative_experience'.
-    Assign at least one of the pre-defined labels to the given customer comment under positive and negative experience fields.
-    If the comment has a positive experience, list the label under 'positive_experience' field.
-    If the comments has a negative_experience, list it under the 'negative_experience' field.
-    Here is the comment:\n{{ comment }}\n. Just return the category names in the list. If there aren't any, return an empty list.
+Create a JSON object as a response. The fields are: 'positive_experience', 'negative_experience'.
+Assign at least one of the pre-defined labels to the given customer comment under positive and negative experience fields.
+If the comment has a positive experience, list the label under 'positive_experience' field.
+If the comments has a negative_experience, list it under the 'negative_experience' field.
+"""
+    template = (
+        static_content
+        + """Here is the comment:
+{{ comment }}
+. Just return the category names in the list. If there aren't any, return an empty list.
 
-    {% if invalid_replies and error_message %}
-    You already created the following output in a previous attempt: {{ invalid_replies }}
-    However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
-    Correct the output and try again. Just return the corrected output without any extra explanations.
-    {% endif %}
-    """
+{%- if invalid_replies and error_message -%}
+You already created the following output in a previous attempt: {{ invalid_replies }}
+However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
+Correct the output and try again. Just return the corrected output without any extra explanations.
+{%- endif -%}"""
+    )
     prompt_builder = PromptBuilder(template=template)
 
     @component
@@ -1731,84 +1527,18 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
                 expected_outputs={"output_validator": {"valid_replies": ["This is a valid reply"]}},
                 expected_component_calls={
                     ("llm", 1): {
-                        "prompt": "\n"
-                        "    You are an experienced and accurate Turkish CX "
-                        "speacialist that classifies customer comments into "
-                        "pre-defined categories below:\n"
-                        "\n"
-                        "    Negative experience labels:\n"
-                        "    - Late delivery\n"
-                        "    - Rotten/spoilt item\n"
-                        "    - Bad Courier behavior\n"
-                        "\n"
-                        "    Positive experience labels:\n"
-                        "    - Good courier behavior\n"
-                        "    - Thanks & appreciation\n"
-                        "    - Love message to courier\n"
-                        "    - Fast delivery\n"
-                        "    - Quality of products\n"
-                        "\n"
-                        "    Create a JSON object as a response. The fields "
-                        "are: 'positive_experience', 'negative_experience'.\n"
-                        "    Assign at least one of the pre-defined labels to "
-                        "the given customer comment under positive and "
-                        "negative experience fields.\n"
-                        "    If the comment has a positive experience, list "
-                        "the label under 'positive_experience' field.\n"
-                        "    If the comments has a negative_experience, list "
-                        "it under the 'negative_experience' field.\n"
-                        "    Here is the comment:\n"
-                        "I loved the quality of the meal but the courier was "
-                        "rude\n"
-                        ". Just return the category names in the list. If "
-                        "there aren't any, return an empty list.\n"
-                        "\n"
-                        "    \n"
-                        "    "
+                        "prompt": static_content
+                        + """Here is the comment:
+I loved the quality of the meal but the courier was rude
+. Just return the category names in the list. If there aren't any, return an empty list."""
                     },
                     ("llm", 2): {
-                        "prompt": "\n"
-                        "    You are an experienced and accurate Turkish CX "
-                        "speacialist that classifies customer comments into "
-                        "pre-defined categories below:\n"
-                        "\n"
-                        "    Negative experience labels:\n"
-                        "    - Late delivery\n"
-                        "    - Rotten/spoilt item\n"
-                        "    - Bad Courier behavior\n"
-                        "\n"
-                        "    Positive experience labels:\n"
-                        "    - Good courier behavior\n"
-                        "    - Thanks & appreciation\n"
-                        "    - Love message to courier\n"
-                        "    - Fast delivery\n"
-                        "    - Quality of products\n"
-                        "\n"
-                        "    Create a JSON object as a response. The fields "
-                        "are: 'positive_experience', 'negative_experience'.\n"
-                        "    Assign at least one of the pre-defined labels to "
-                        "the given customer comment under positive and "
-                        "negative experience fields.\n"
-                        "    If the comment has a positive experience, list "
-                        "the label under 'positive_experience' field.\n"
-                        "    If the comments has a negative_experience, list "
-                        "it under the 'negative_experience' field.\n"
-                        "    Here is the comment:\n"
-                        "I loved the quality of the meal but the courier was "
-                        "rude\n"
-                        ". Just return the category names in the list. If "
-                        "there aren't any, return an empty list.\n"
-                        "\n"
-                        "    \n"
-                        "    You already created the following output in a "
-                        "previous attempt: ['This is an invalid reply']\n"
-                        "    However, this doesn't comply with the format "
-                        "requirements from above and triggered this Python "
-                        "exception: this is an error message\n"
-                        "    Correct the output and try again. Just return the "
-                        "corrected output without any extra explanations.\n"
-                        "    \n"
-                        "    "
+                        "prompt": static_content
+                        + """Here is the comment:
+I loved the quality of the meal but the courier was rude
+. Just return the category names in the list. If there aren't any, return an empty list.You already created the following output in a previous attempt: ['This is an invalid reply']
+However, this doesn't comply with the format requirements from above and triggered this Python exception: this is an error message
+Correct the output and try again. Just return the corrected output without any extra explanations."""
                     },
                     ("output_validator", 1): {"replies": ["This is a valid reply"]},
                     ("output_validator", 2): {"replies": ["This is a valid reply"]},
@@ -1848,16 +1578,15 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
     """
     )
     prompt_builder2 = PromptBuilder(
-        template="""
-    According to these documents:
+        template="""According to these documents:
 
-    {% for doc in documents %}
-    {{ doc.content }}
-    {% endfor %}
+{% for doc in documents -%}
+{{ doc.content }}
+{%- endfor %}
 
-    Answer the given question: {{question}}
-    Answer:
-    """
+Answer the given question: {{question}}
+Answer:
+"""
     )
     prompt_builder3 = PromptBuilder(
         template="""
@@ -1867,30 +1596,20 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
     """
     )
 
+    doc = Document(content="This is a document")
+
     @component
     class FakeRetriever:
         @component.output_types(documents=list[Document])
         def run(
-            self,
-            query: str,
-            filters: dict[str, Any] | None = None,
-            top_k: int | None = None,
-            scale_score: bool | None = None,
+            self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
         ) -> dict[str, list[Document]]:
-            return {"documents": [Document(content="This is a document")]}
+            return {"documents": [doc]}
 
     @component
     class FakeRanker:
         @component.output_types(documents=list[Document])
-        def run(
-            self,
-            query: str,
-            documents: list[Document],
-            top_k: int | None = None,
-            scale_score: bool | None = None,
-            calibration_factor: float | None = None,
-            score_threshold: float | None = None,
-        ) -> dict[str, list[Document]]:
+        def run(self, query: str, documents: list[Document], top_k: int | None = None) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
@@ -1929,20 +1648,7 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
                 expected_component_calls={
                     ("llm", 1): {
                         "generation_kwargs": None,
-                        "prompt": "\n"
-                        "    According to these documents:\n"
-                        "\n"
-                        "    \n"
-                        "    This is a document\n"
-                        "    \n"
-                        "\n"
-                        "    Answer the given question: \n"
-                        "    \n"
-                        "    This is a reply\n"
-                        "    \n"
-                        "    \n"
-                        "    Answer:\n"
-                        "    ",
+                        "prompt": "According to these documents:\n\nThis is a document\n\nAnswer the given question: \n    \n    This is a reply\n    \n    \nAnswer:",
                     },
                     ("prompt_builder1", 1): {
                         "question": "Wha i Acromegaly?",
@@ -1950,12 +1656,7 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
                         "template_variables": None,
                     },
                     ("prompt_builder2", 1): {
-                        "documents": [
-                            Document(
-                                id="9d51914541072d3d822910785727db8a3838dba5ca6ebb0a543969260ecdeda6",
-                                content="This is a document",
-                            )
-                        ],
+                        "documents": [doc],
                         "question": "\n    \n    This is a reply\n    \n    ",
                         "template": None,
                         "template_variables": None,
@@ -1966,22 +1667,13 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
                         "template_variables": None,
                     },
                     ("ranker", 1): {
-                        "calibration_factor": None,
-                        "documents": [
-                            Document(
-                                id="9d51914541072d3d822910785727db8a3838dba5ca6ebb0a543969260ecdeda6",
-                                content="This is a document",
-                            )
-                        ],
+                        "documents": [doc],
                         "query": "\n    \n    This is a reply\n    \n    ",
-                        "scale_score": None,
-                        "score_threshold": None,
                         "top_k": None,
                     },
                     ("retriever", 1): {
                         "filters": None,
                         "query": "\n    \n    This is a reply\n    \n    ",
-                        "scale_score": None,
                         "top_k": None,
                     },
                     ("spellchecker", 1): {
@@ -2004,6 +1696,9 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
 @given("a pipeline that is linear with conditional branching and multiple joins", target_fixture="pipeline_data")
 def that_is_linear_with_conditional_branching_and_multiple_joins(pipeline_class):
     pipeline = pipeline_class()
+
+    doc1 = Document(content="This is a document")
+    doc2 = Document(content="This is another document")
 
     @component
     class FakeRouter:
@@ -2031,13 +1726,13 @@ def that_is_linear_with_conditional_branching_and_multiple_joins(pipeline_class)
         def run(self, query: str) -> dict[str, list[Document]]:
             if "injection" in query:
                 return {"documents": []}
-            return {"documents": [Document(content="This is a document")]}
+            return {"documents": [doc1]}
 
     @component
     class FakeEmbeddingRetriever:
         @component.output_types(documents=list[Document])
         def run(self, query_embedding: list[float]) -> dict[str, list[Document]]:
-            return {"documents": [Document(content="This is another document")]}
+            return {"documents": [doc2]}
 
     pipeline.add_component(name="router", instance=FakeRouter())
     pipeline.add_component(name="text_embedder", instance=FakeEmbedder())
@@ -2064,39 +1759,15 @@ def that_is_linear_with_conditional_branching_and_multiple_joins(pipeline_class)
         [
             PipelineRunData(
                 inputs={"router": {"query": "I'm a legit question"}},
-                expected_outputs={
-                    "joinerfinal": {
-                        "documents": [
-                            Document(content="This is a document"),
-                            Document(content="This is another document"),
-                        ]
-                    }
-                },
+                expected_outputs={"joinerfinal": {"documents": [doc1, doc2]}},
                 expected_component_calls={
                     ("router", 1): {"query": "I'm a legit question"},
                     ("text_embedder", 1): {"text": "I'm a legit question"},
                     ("bm25retriever", 1): {"query": "I'm a legit question"},
                     ("retriever", 1): {"query_embedding": [1.0, 2.0, 3.0]},
-                    ("joinerhybrid", 1): {
-                        "documents": [
-                            [Document(content="This is a document")],
-                            [Document(content="This is another document")],
-                        ],
-                        "top_k": None,
-                    },
-                    ("ranker", 1): {
-                        "query": "I'm a legit question",
-                        "documents": [
-                            Document(content="This is a document"),
-                            Document(content="This is another document"),
-                        ],
-                    },
-                    ("joinerfinal", 1): {
-                        "documents": [
-                            [Document(content="This is a document"), Document(content="This is another document")]
-                        ],
-                        "top_k": None,
-                    },
+                    ("joinerhybrid", 1): {"documents": [[doc1], [doc2]], "top_k": None},
+                    ("ranker", 1): {"query": "I'm a legit question", "documents": [doc1, doc2]},
+                    ("joinerfinal", 1): {"documents": [[doc1, doc2]], "top_k": None},
                 },
             ),
             PipelineRunData(
@@ -2587,28 +2258,18 @@ def that_has_a_variadic_component_that_receives_partial_inputs(pipeline_class):
     pipeline.connect("second_creator.documents", "documents_joiner.documents")
     pipeline.connect("third_creator.documents", "documents_joiner.documents")
 
+    doc1 = Document(id="First document", content="First document")
+    doc2 = Document(id="Second document", content="Second document")
+    doc3 = Document(id="Third document", content="Third document")
+
     return (
         pipeline,
         [
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "third_creator": {"create_document": True}},
-                expected_outputs={
-                    "second_creator": {"noop": None},
-                    "documents_joiner": {
-                        "documents": [
-                            Document(id="First document", content="First document"),
-                            Document(id="Third document", content="Third document"),
-                        ]
-                    },
-                },
+                expected_outputs={"second_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc3]}},
                 expected_component_calls={
-                    ("documents_joiner", 1): {
-                        "documents": [
-                            [Document(id="First document", content="First document")],
-                            [Document(id="Third document", content="Third document")],
-                        ],
-                        "top_k": None,
-                    },
+                    ("documents_joiner", 1): {"documents": [[doc1], [doc3]], "top_k": None},
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": False},
                     ("third_creator", 1): {"create_document": True},
@@ -2616,23 +2277,9 @@ def that_has_a_variadic_component_that_receives_partial_inputs(pipeline_class):
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
-                expected_outputs={
-                    "third_creator": {"noop": None},
-                    "documents_joiner": {
-                        "documents": [
-                            Document(id="First document", content="First document"),
-                            Document(id="Second document", content="Second document"),
-                        ]
-                    },
-                },
+                expected_outputs={"third_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc2]}},
                 expected_component_calls={
-                    ("documents_joiner", 1): {
-                        "documents": [
-                            [Document(id="First document", content="First document")],
-                            [Document(id="Second document", content="Second document")],
-                        ],
-                        "top_k": None,
-                    },
+                    ("documents_joiner", 1): {"documents": [[doc1], [doc2]], "top_k": None},
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": True},
                     ("third_creator", 1): {"create_document": False},
@@ -2668,28 +2315,18 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order(p
     pipeline.connect("second_creator.documents", "documents_joiner.documents")
     pipeline.connect("third_creator.documents", "documents_joiner.documents")
 
+    doc1 = Document(id="First document", content="First document")
+    doc2 = Document(id="Second document", content="Second document")
+    doc3 = Document(id="Third document", content="Third document")
+
     return (
         pipeline,
         [
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "third_creator": {"create_document": True}},
-                expected_outputs={
-                    "second_creator": {"noop": None},
-                    "documents_joiner": {
-                        "documents": [
-                            Document(id="First document", content="First document"),
-                            Document(id="Third document", content="Third document"),
-                        ]
-                    },
-                },
+                expected_outputs={"second_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc3]}},
                 expected_component_calls={
-                    ("documents_joiner", 1): {
-                        "documents": [
-                            [Document(id="First document", content="First document")],
-                            [Document(id="Third document", content="Third document")],
-                        ],
-                        "top_k": None,
-                    },
+                    ("documents_joiner", 1): {"documents": [[doc1], [doc3]], "top_k": None},
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": False},
                     ("third_creator", 1): {"create_document": True},
@@ -2697,23 +2334,9 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order(p
             ),
             PipelineRunData(
                 inputs={"first_creator": {"create_document": True}, "second_creator": {"create_document": True}},
-                expected_outputs={
-                    "third_creator": {"noop": None},
-                    "documents_joiner": {
-                        "documents": [
-                            Document(id="First document", content="First document"),
-                            Document(id="Second document", content="Second document"),
-                        ]
-                    },
-                },
+                expected_outputs={"third_creator": {"noop": None}, "documents_joiner": {"documents": [doc1, doc2]}},
                 expected_component_calls={
-                    ("documents_joiner", 1): {
-                        "documents": [
-                            [Document(id="First document", content="First document")],
-                            [Document(id="Second document", content="Second document")],
-                        ],
-                        "top_k": None,
-                    },
+                    ("documents_joiner", 1): {"documents": [[doc1], [doc2]], "top_k": None},
                     ("first_creator", 1): {"create_document": True},
                     ("second_creator", 1): {"create_document": True},
                     ("third_creator", 1): {"create_document": False},
@@ -2725,8 +2348,6 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order(p
 
 @given("a pipeline that has an answer joiner variadic component", target_fixture="pipeline_data")
 def that_has_an_answer_joiner_variadic_component(pipeline_class):
-    query = "What's Natural Language Processing?"
-
     pipeline = pipeline_class(max_runs_per_component=1)
     pipeline.add_component("answer_builder_1", AnswerBuilder())
     pipeline.add_component("answer_builder_2", AnswerBuilder())
@@ -2735,29 +2356,23 @@ def that_has_an_answer_joiner_variadic_component(pipeline_class):
     pipeline.connect("answer_builder_1.answers", "answer_joiner")
     pipeline.connect("answer_builder_2.answers", "answer_joiner")
 
+    query = "What's Natural Language Processing?"
+    reply1 = "This is a test answer"
+    reply2 = "This is a second test answer"
+
     return (
         pipeline,
         [
             PipelineRunData(
                 inputs={
-                    "answer_builder_1": {"query": query, "replies": ["This is a test answer"]},
-                    "answer_builder_2": {"query": query, "replies": ["This is a second test answer"]},
+                    "answer_builder_1": {"query": query, "replies": [reply1]},
+                    "answer_builder_2": {"query": query, "replies": [reply2]},
                 },
                 expected_outputs={
                     "answer_joiner": {
                         "answers": [
-                            GeneratedAnswer(
-                                data="This is a test answer",
-                                query="What's Natural Language Processing?",
-                                documents=[],
-                                meta={"all_messages": ["This is a test answer"]},
-                            ),
-                            GeneratedAnswer(
-                                data="This is a second test answer",
-                                query="What's Natural Language Processing?",
-                                documents=[],
-                                meta={"all_messages": ["This is a second test answer"]},
-                            ),
+                            GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]}),
+                            GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]}),
                         ]
                     }
                 },
@@ -2766,36 +2381,22 @@ def that_has_an_answer_joiner_variadic_component(pipeline_class):
                         "documents": None,
                         "meta": None,
                         "pattern": None,
-                        "query": "What's Natural Language Processing?",
+                        "query": query,
                         "reference_pattern": None,
-                        "replies": ["This is a test answer"],
+                        "replies": [reply1],
                     },
                     ("answer_builder_2", 1): {
                         "documents": None,
                         "meta": None,
                         "pattern": None,
-                        "query": "What's Natural Language Processing?",
+                        "query": query,
                         "reference_pattern": None,
-                        "replies": ["This is a second test answer"],
+                        "replies": [reply2],
                     },
                     ("answer_joiner", 1): {
                         "answers": [
-                            [
-                                GeneratedAnswer(
-                                    data="This is a test answer",
-                                    query="What's Natural Language Processing?",
-                                    documents=[],
-                                    meta={"all_messages": ["This is a test answer"]},
-                                )
-                            ],
-                            [
-                                GeneratedAnswer(
-                                    data="This is a second test answer",
-                                    query="What's Natural Language Processing?",
-                                    documents=[],
-                                    meta={"all_messages": ["This is a second test answer"]},
-                                )
-                            ],
+                            [GeneratedAnswer(data=reply1, query=query, documents=[], meta={"all_messages": [reply1]})],
+                            [GeneratedAnswer(data=reply2, query=query, documents=[], meta={"all_messages": [reply2]})],
                         ],
                         "top_k": None,
                     },
@@ -2901,7 +2502,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                             ],
                             "operator": "AND",
                         },
-                        "query": "publications 2023 Alzheimer's disease",
+                        "query": query,
                         "scale_score": None,
                         "top_k": None,
                     },
@@ -2913,33 +2514,18 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
 
 @given("a pipeline that has a cycle that would get it stuck", target_fixture="pipeline_data")
 def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
+    # NOTE: The name of this test is a bit misleading since the pipeline doesn't actually get stuck in the loop.
+    #       It doesn't even run at all b/c it gets stopped at the prompt_builder component.
+    #       The prompt_builder component doesn't run since it requires two inputs that are never provided in the first
+    #       loop: invalid_replies and error_message.
     # ruff: noqa: E501
-    template = """
-    You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
-    Negative experience labels:
-    - Late delivery
-    - Rotten/spoilt item
-    - Bad Courier behavior
+    template = """Here is the comment: {{ comment }}
 
-    Positive experience labels:
-    - Good courier behavior
-    - Thanks & appreciation
-    - Love message to courier
-    - Fast delivery
-    - Quality of products
-
-    Create a JSON object as a response. The fields are: 'positive_experience', 'negative_experience'.
-    Assign at least one of the pre-defined labels to the given customer comment under positive and negative experience fields.
-    If the comment has a positive experience, list the label under 'positive_experience' field.
-    If the comments has a negative_experience, list it under the 'negative_experience' field.
-    Here is the comment:\n{{ comment }}\n. Just return the category names in the list. If there aren't any, return an empty list.
-
-    {% if invalid_replies and error_message %}
-    You already created the following output in a previous attempt: {{ invalid_replies }}
-    However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
-    Correct the output and try again. Just return the corrected output without any extra explanations.
-    {% endif %}
-    """
+{% if invalid_replies and error_message %}
+You already created the following output in a previous attempt: {{ invalid_replies }}
+However, this doesn't comply with the format requirements from above and triggered this Python exception: {{ error_message }}
+Correct the output and try again.
+{% endif %}"""
     prompt_builder = PromptBuilder(
         template=template, required_variables=["comment", "invalid_replies", "error_message"]
     )
@@ -2959,19 +2545,15 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
         def run(self, prompt: str) -> dict[str, list[str]]:
             return {"replies": ["This is a valid reply"]}
 
-    llm = FakeGenerator()
-    validator = FakeOutputValidator()
-
     pipeline = pipeline_class(max_runs_per_component=1)
     pipeline.add_component("prompt_builder", prompt_builder)
 
-    pipeline.add_component("llm", llm)
-    pipeline.add_component("output_validator", validator)
+    pipeline.add_component("llm", FakeGenerator())
+    pipeline.add_component("output_validator", FakeOutputValidator())
 
     pipeline.connect("prompt_builder.prompt", "llm.prompt")
     pipeline.connect("llm.replies", "output_validator.replies")
     pipeline.connect("output_validator.invalid_replies", "prompt_builder.invalid_replies")
-
     pipeline.connect("output_validator.error_message", "prompt_builder.error_message")
 
     comment = "I loved the quality of the meal but the courier was rude"
@@ -3080,8 +2662,6 @@ def that_has_a_loop_in_the_middle(pipeline_class):
 
 @given("a pipeline that has variadic component that receives a conditional input", target_fixture="pipeline_data")
 def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class):
-    pipe = pipeline_class(max_runs_per_component=1)
-
     @component
     class NoOp:
         @component.output_types(documents=list[Document])
@@ -3101,6 +2681,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     res.append(Document(content=split, id=str(current_id)))
                     current_id += 1
             return {"documents": res}
+
+    pipe = pipeline_class(max_runs_per_component=1)
 
     pipe.add_component(
         "conditional_router",
@@ -3145,6 +2727,11 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
     document = Document(
         id="1000", content="This document has so many, sentences. Like this one, or this one. Or even this other one."
     )
+    expected_docs = [
+        Document(id="0", content="This document has so many"),
+        Document(id="1", content=" sentences. Like this one"),
+        Document(id="2", content=" or this one. Or even this other one."),
+    ]
 
     return pipe, [
         PipelineRunData(
@@ -3159,13 +2746,7 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                         )
                     ]
                 },
-                "document_joiner": {
-                    "documents": [
-                        Document(id="0", content="This document has so many"),
-                        Document(id="1", content=" sentences. Like this one"),
-                        Document(id="2", content=" or this one. Or even this other one."),
-                    ]
-                },
+                "document_joiner": {"documents": expected_docs},
             },
             expected_component_calls={
                 ("comma_splitter", 1): {
@@ -3186,20 +2767,10 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                         )
                     ]
                 },
-                ("document_cleaner", 1): {
-                    "documents": [
-                        Document(id="0", content="This document has so many"),
-                        Document(id="1", content=" sentences. Like this one"),
-                        Document(id="2", content=" or this one. Or even this other one."),
-                    ]
-                },
+                ("document_cleaner", 1): {"documents": expected_docs},
                 ("document_joiner", 1): {
                     "documents": [
-                        [
-                            Document(id="0", content="This document has so many"),
-                            Document(id="1", content=" sentences. Like this one"),
-                            Document(id="2", content=" or this one. Or even this other one."),
-                        ],
+                        expected_docs,
                         [
                             Document(id="0", content="This document has so many"),
                             Document(id="1", content="sentences. Like this one"),
@@ -3208,24 +2779,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     ],
                     "top_k": None,
                 },
-                ("noop2", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        )
-                    ]
-                },
-                ("noop3", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        )
-                    ]
-                },
+                ("noop2", 1): {"documents": [document]},
+                ("noop3", 1): {"documents": [document]},
             },
         ),
         PipelineRunData(
@@ -3236,54 +2791,20 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
             expected_outputs={
                 "document_joiner": {
                     "documents": [
-                        Document(id="0", content="This document has so many"),
-                        Document(id="1", content=" sentences. Like this one"),
-                        Document(id="2", content=" or this one. Or even this other one."),
+                        *expected_docs,
                         Document(id="3", content="This document has so many"),
                         Document(id="4", content=" sentences. Like this one"),
                         Document(id="5", content=" or this one. Or even this other one."),
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        ),
+                        document,
                     ]
                 }
             },
             expected_component_calls={
-                ("comma_splitter", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        ),
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        ),
-                    ]
-                },
-                ("conditional_router", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        ),
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even "
-                            "this other one.",
-                        ),
-                    ]
-                },
+                ("comma_splitter", 1): {"documents": [document, document]},
+                ("conditional_router", 1): {"documents": [document, document]},
                 ("document_cleaner", 1): {
                     "documents": [
-                        Document(id="0", content="This document has so many"),
-                        Document(id="1", content=" sentences. Like this one"),
-                        Document(id="2", content=" or this one. Or even this other one."),
+                        *expected_docs,
                         Document(id="3", content="This document has so many"),
                         Document(id="4", content=" sentences. Like this one"),
                         Document(id="5", content=" or this one. Or even this other one."),
@@ -3292,9 +2813,7 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                 ("document_joiner", 1): {
                     "documents": [
                         [
-                            Document(id="0", content="This document has so many"),
-                            Document(id="1", content=" sentences. Like this one"),
-                            Document(id="2", content=" or this one. Or even this other one."),
+                            *expected_docs,
                             Document(id="3", content="This document has so many"),
                             Document(id="4", content=" sentences. Like this one"),
                             Document(id="5", content=" or this one. Or even this other one."),
@@ -3307,63 +2826,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                             Document(id="4", content="sentences. Like this one"),
                             Document(id="5", content="or this one. Or even this other one."),
                         ],
-                        [
-                            Document(
-                                id="1000",
-                                content="This document has so many, sentences. Like this one, or this one. Or even "
-                                "this other one.",
-                            ),
-                            Document(
-                                id="1000",
-                                content="This document has so many, sentences. Like this one, or this one. Or even "
-                                "this other one.",
-                            ),
-                        ],
+                        [document, document],
                     ],
                     "top_k": None,
                 },
-                ("empty_lines_cleaner", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this "
-                            "other one.",
-                        ),
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this "
-                            "other one.",
-                        ),
-                    ]
-                },
-                ("noop2", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this "
-                            "other one.",
-                        ),
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this "
-                            "other one.",
-                        ),
-                    ]
-                },
-                ("noop3", 1): {
-                    "documents": [
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this "
-                            "other one.",
-                        ),
-                        Document(
-                            id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this "
-                            "other one.",
-                        ),
-                    ]
-                },
+                ("empty_lines_cleaner", 1): {"documents": [document, document]},
+                ("noop2", 1): {"documents": [document, document]},
+                ("noop3", 1): {"documents": [document, document]},
             },
         ),
     ]
@@ -3411,24 +2880,6 @@ def that_has_a_string_variadic_component(pipeline_class):
 @given("a pipeline that is an agent that can use RAG", target_fixture="pipeline_data")
 def an_agent_that_can_use_RAG(pipeline_class):
     @component
-    class FixedGenerator:
-        def __init__(self, replies):
-            self.replies = replies
-            self.idx = 0
-
-        @component.output_types(replies=list[str])
-        def run(self, prompt: str) -> dict[str, list[str]]:
-            if self.idx < len(self.replies):
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-            else:
-                self.idx = 0
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-
-            return {"replies": replies}
-
-    @component
     class FakeRetriever:
         @component.output_types(documents=list[Document])
         def run(self, query: str) -> dict[str, list[Document]]:
@@ -3457,16 +2908,6 @@ Documents:
 {% endfor %}
     """
 
-    joiner = BranchJoiner(type_=str)
-
-    agent_llm = FixedGenerator(replies=["search: Can you help me?", "answer: here is my answer"])
-    agent_prompt = PromptBuilder(template=agent_prompt_template)
-
-    rag_llm = FixedGenerator(replies=["This is all the information I found!"])
-    rag_prompt = PromptBuilder(template=rag_prompt_template)
-
-    retriever = FakeRetriever()
-
     router = ConditionalRouter(
         routes=[
             {
@@ -3484,37 +2925,35 @@ Documents:
         ]
     )
 
-    concatenator = OutputAdapter(template="{{current_prompt + '\n' + rag_answer[0]}}", output_type=str)
+    pipe = pipeline_class(max_runs_per_component=2)
 
-    answer_builder = AnswerBuilder()
+    pipe.add_component("joiner", BranchJoiner(type_=str))
+    pipe.add_component("rag_llm", FixedGenerator(replies=["This is all the information I found!"]))
+    pipe.add_component("rag_prompt", PromptBuilder(template=rag_prompt_template))
+    pipe.add_component("agent_prompt", PromptBuilder(template=agent_prompt_template))
+    pipe.add_component("agent_llm", FixedGenerator(replies=["search: Can you help me?", "answer: here is my answer"]))
+    pipe.add_component("router", router)
+    pipe.add_component(
+        "concatenator", OutputAdapter(template="{{current_prompt + '\n' + rag_answer[0]}}", output_type=str)
+    )
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.add_component("answer_builder", AnswerBuilder())
 
-    pp = pipeline_class(max_runs_per_component=2)
-
-    pp.add_component("joiner", joiner)
-    pp.add_component("rag_llm", rag_llm)
-    pp.add_component("rag_prompt", rag_prompt)
-    pp.add_component("agent_prompt", agent_prompt)
-    pp.add_component("agent_llm", agent_llm)
-    pp.add_component("router", router)
-    pp.add_component("concatenator", concatenator)
-    pp.add_component("retriever", retriever)
-    pp.add_component("answer_builder", answer_builder)
-
-    pp.connect("agent_prompt.prompt", "joiner.value")
-    pp.connect("joiner.value", "agent_llm.prompt")
-    pp.connect("agent_llm.replies", "router.replies")
-    pp.connect("router.search", "retriever.query")
-    pp.connect("router.answer", "answer_builder.replies")
-    pp.connect("retriever.documents", "rag_prompt.documents")
-    pp.connect("rag_prompt.prompt", "rag_llm.prompt")
-    pp.connect("rag_llm.replies", "concatenator.rag_answer")
-    pp.connect("joiner.value", "concatenator.current_prompt")
-    pp.connect("concatenator.output", "joiner.value")
+    pipe.connect("agent_prompt.prompt", "joiner.value")
+    pipe.connect("joiner.value", "agent_llm.prompt")
+    pipe.connect("agent_llm.replies", "router.replies")
+    pipe.connect("router.search", "retriever.query")
+    pipe.connect("router.answer", "answer_builder.replies")
+    pipe.connect("retriever.documents", "rag_prompt.documents")
+    pipe.connect("rag_prompt.prompt", "rag_llm.prompt")
+    pipe.connect("rag_llm.replies", "concatenator.rag_answer")
+    pipe.connect("joiner.value", "concatenator.current_prompt")
+    pipe.connect("concatenator.output", "joiner.value")
 
     query = "Does this run reliably?"
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={
@@ -3665,24 +3104,6 @@ Documents:
 
 @given("a pipeline that has a feedback loop", target_fixture="pipeline_data")
 def has_feedback_loop(pipeline_class):
-    @component
-    class FixedGenerator:
-        def __init__(self, replies):
-            self.replies = replies
-            self.idx = 0
-
-        @component.output_types(replies=list[str])
-        def run(self, prompt: str) -> dict[str, list[str]]:
-            if self.idx < len(self.replies):
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-            else:
-                self.idx = 0
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-
-            return {"replies": replies}
-
     code_prompt_template = """
 Generate code to solve the task: {{ task }}
 
@@ -3691,19 +3112,11 @@ Here is your initial attempt and some feedback:
 {{ feedback }}
 {% endif %}
     """
-
     feedback_prompt_template = """
 Check if this code is valid and can run: {{ code[0] }}
 Return "PASS" if it passes and "FAIL" if it fails.
 Provide additional feedback on why it fails.
     """
-
-    code_llm = FixedGenerator(replies=["invalid code", "valid code"])
-    code_prompt = PromptBuilder(template=code_prompt_template)
-
-    feedback_llm = FixedGenerator(replies=["FAIL", "PASS"])
-    feedback_prompt = PromptBuilder(template=feedback_prompt_template)
-
     router = ConditionalRouter(
         routes=[
             {
@@ -3721,34 +3134,32 @@ Provide additional feedback on why it fails.
         ]
     )
 
-    concatenator = OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
+    pipe = pipeline_class(max_runs_per_component=100)
 
-    answer_builder = AnswerBuilder()
+    pipe.add_component("code_llm", FixedGenerator(replies=["invalid code", "valid code"]))
+    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template))
+    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template))
+    pipe.add_component("feedback_llm", FixedGenerator(replies=["FAIL", "PASS"]))
+    pipe.add_component("router", router)
+    pipe.add_component(
+        "concatenator", OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
+    )
+    pipe.add_component("answer_builder", AnswerBuilder())
 
-    pp = pipeline_class(max_runs_per_component=100)
-
-    pp.add_component("code_llm", code_llm)
-    pp.add_component("code_prompt", code_prompt)
-    pp.add_component("feedback_prompt", feedback_prompt)
-    pp.add_component("feedback_llm", feedback_llm)
-    pp.add_component("router", router)
-    pp.add_component("concatenator", concatenator)
-    pp.add_component("answer_builder", answer_builder)
-
-    pp.connect("code_prompt.prompt", "code_llm.prompt")
-    pp.connect("code_llm.replies", "feedback_prompt.code")
-    pp.connect("feedback_llm.replies", "router.replies")
-    pp.connect("router.fail", "concatenator.feedback")
-    pp.connect("router.pass", "answer_builder.replies")
-    pp.connect("code_llm.replies", "router.code")
-    pp.connect("feedback_prompt.prompt", "feedback_llm.prompt")
-    pp.connect("code_llm.replies", "concatenator.current_prompt")
-    pp.connect("concatenator.output", "code_prompt.feedback")
+    pipe.connect("code_prompt.prompt", "code_llm.prompt")
+    pipe.connect("code_llm.replies", "feedback_prompt.code")
+    pipe.connect("feedback_llm.replies", "router.replies")
+    pipe.connect("router.fail", "concatenator.feedback")
+    pipe.connect("router.pass", "answer_builder.replies")
+    pipe.connect("code_llm.replies", "router.code")
+    pipe.connect("feedback_prompt.prompt", "feedback_llm.prompt")
+    pipe.connect("code_llm.replies", "concatenator.current_prompt")
+    pipe.connect("concatenator.output", "code_prompt.feedback")
 
     task = "Generate code to generate christmas ascii-art"
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
@@ -3835,24 +3246,6 @@ Provide additional feedback on why it fails.
 
 @given("a pipeline created in a non-standard order that has a loop", target_fixture="pipeline_data")
 def has_non_standard_order_loop(pipeline_class):
-    @component
-    class FixedGenerator:
-        def __init__(self, replies):
-            self.replies = replies
-            self.idx = 0
-
-        @component.output_types(replies=list[str])
-        def run(self, prompt: str) -> dict[str, list[str]]:
-            if self.idx < len(self.replies):
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-            else:
-                self.idx = 0
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-
-            return {"replies": replies}
-
     code_prompt_template = """
 Generate code to solve the task: {{ task }}
 
@@ -3861,19 +3254,11 @@ Here is your initial attempt and some feedback:
 {{ feedback }}
 {% endif %}
     """
-
     feedback_prompt_template = """
 Check if this code is valid and can run: {{ code[0] }}
 Return "PASS" if it passes and "FAIL" if it fails.
 Provide additional feedback on why it fails.
     """
-
-    code_llm = FixedGenerator(replies=["invalid code", "valid code"])
-    code_prompt = PromptBuilder(template=code_prompt_template)
-
-    feedback_llm = FixedGenerator(replies=["FAIL", "PASS"])
-    feedback_prompt = PromptBuilder(template=feedback_prompt_template)
-
     router = ConditionalRouter(
         routes=[
             {
@@ -3891,35 +3276,32 @@ Provide additional feedback on why it fails.
         ]
     )
 
-    concatenator = OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
+    pipe = pipeline_class(max_runs_per_component=2)
 
-    answer_builder = AnswerBuilder()
+    pipe.add_component(
+        "concatenator", OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
+    )
+    pipe.add_component("code_llm", FixedGenerator(replies=["invalid code", "valid code"]))
+    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template))
+    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template))
+    pipe.add_component("feedback_llm", FixedGenerator(replies=["FAIL", "PASS"]))
+    pipe.add_component("router", router)
+    pipe.add_component("answer_builder", AnswerBuilder())
 
-    pp = pipeline_class(max_runs_per_component=100)
-
-    pp.add_component("concatenator", concatenator)
-    pp.add_component("code_llm", code_llm)
-    pp.add_component("code_prompt", code_prompt)
-    pp.add_component("feedback_prompt", feedback_prompt)
-    pp.add_component("feedback_llm", feedback_llm)
-    pp.add_component("router", router)
-
-    pp.add_component("answer_builder", answer_builder)
-
-    pp.connect("concatenator.output", "code_prompt.feedback")
-    pp.connect("code_prompt.prompt", "code_llm.prompt")
-    pp.connect("code_llm.replies", "feedback_prompt.code")
-    pp.connect("feedback_llm.replies", "router.replies")
-    pp.connect("router.fail", "concatenator.feedback")
-    pp.connect("feedback_prompt.prompt", "feedback_llm.prompt")
-    pp.connect("router.pass", "answer_builder.replies")
-    pp.connect("code_llm.replies", "router.code")
-    pp.connect("code_llm.replies", "concatenator.current_prompt")
+    pipe.connect("concatenator.output", "code_prompt.feedback")
+    pipe.connect("code_prompt.prompt", "code_llm.prompt")
+    pipe.connect("code_llm.replies", "feedback_prompt.code")
+    pipe.connect("feedback_llm.replies", "router.replies")
+    pipe.connect("router.fail", "concatenator.feedback")
+    pipe.connect("feedback_prompt.prompt", "feedback_llm.prompt")
+    pipe.connect("router.pass", "answer_builder.replies")
+    pipe.connect("code_llm.replies", "router.code")
+    pipe.connect("code_llm.replies", "concatenator.current_prompt")
 
     task = "Generate code to generate christmas ascii-art"
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}, "answer_builder": {"query": task}},
@@ -4007,24 +3389,6 @@ Provide additional feedback on why it fails.
 @given("a pipeline that has an agent with a feedback cycle", target_fixture="pipeline_data")
 def agent_with_feedback_cycle(pipeline_class):
     @component
-    class FixedGenerator:
-        def __init__(self, replies):
-            self.replies = replies
-            self.idx = 0
-
-        @component.output_types(replies=list[str])
-        def run(self, prompt: str) -> dict[str, list[str]]:
-            if self.idx < len(self.replies):
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-            else:
-                self.idx = 0
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-
-            return {"replies": replies}
-
-    @component
     class FakeFileEditor:
         @component.output_types(files=str)
         def run(self, replies: list[str]) -> dict[str, str]:
@@ -4044,7 +3408,6 @@ Here is your initial attempt and some feedback:
 {{ feedback }}
 {% endif %}
     """
-
     feedback_prompt_template = """
 {% if task_finished %}
 Check if this code is valid and can run: {{ code }}
@@ -4052,14 +3415,6 @@ Return "PASS" if it passes and "FAIL" if it fails.
 Provide additional feedback on why it fails.
 {% endif %}
     """
-
-    code_llm = FixedGenerator(replies=["Edit: file_1.py", "Edit: file_2.py", "Edit: file_3.py", "Task finished!"])
-    code_prompt = PromptBuilder(template=code_prompt_template)
-    file_editor = FakeFileEditor()
-
-    feedback_llm = FixedGenerator(replies=["FAIL", "PASS"])
-    feedback_prompt = PromptBuilder(template=feedback_prompt_template, required_variables=["task_finished"])
-
     feedback_router = ConditionalRouter(
         routes=[
             {
@@ -4076,7 +3431,6 @@ Provide additional feedback on why it fails.
             },
         ]
     )
-
     tool_use_router = ConditionalRouter(
         routes=[
             {
@@ -4094,42 +3448,45 @@ Provide additional feedback on why it fails.
         ]
     )
 
-    joiner = BranchJoiner(type_=str)
-    agent_concatenator = OutputAdapter(template="{{current_prompt + '\n' + files}}", output_type=str)
+    pipe = pipeline_class(max_runs_per_component=8)
 
-    pp = pipeline_class(max_runs_per_component=100)
-
-    pp.add_component("code_prompt", code_prompt)
-    pp.add_component("joiner", joiner)
-    pp.add_component("code_llm", code_llm)
-    pp.add_component("tool_use_router", tool_use_router)
-    pp.add_component("file_editor", file_editor)
-    pp.add_component("agent_concatenator", agent_concatenator)
-    pp.add_component("feedback_prompt", feedback_prompt)
-    pp.add_component("feedback_llm", feedback_llm)
-    pp.add_component("feedback_router", feedback_router)
+    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template))
+    pipe.add_component("joiner", BranchJoiner(type_=str))
+    pipe.add_component(
+        "code_llm", FixedGenerator(replies=["Edit: file_1.py", "Edit: file_2.py", "Edit: file_3.py", "Task finished!"])
+    )
+    pipe.add_component("tool_use_router", tool_use_router)
+    pipe.add_component("file_editor", FakeFileEditor())
+    pipe.add_component(
+        "agent_concatenator", OutputAdapter(template="{{current_prompt + '\n' + files}}", output_type=str)
+    )
+    pipe.add_component(
+        "feedback_prompt", PromptBuilder(template=feedback_prompt_template, required_variables=["task_finished"])
+    )
+    pipe.add_component("feedback_llm", FixedGenerator(replies=["FAIL", "PASS"]))
+    pipe.add_component("feedback_router", feedback_router)
 
     # Main Agent
-    pp.connect("code_prompt.prompt", "joiner.value")
-    pp.connect("joiner.value", "code_llm.prompt")
-    pp.connect("code_llm.replies", "tool_use_router.replies")
-    pp.connect("tool_use_router.edit", "file_editor.replies")
-    pp.connect("file_editor.files", "agent_concatenator.files")
-    pp.connect("joiner.value", "agent_concatenator.current_prompt")
-    pp.connect("agent_concatenator.output", "joiner.value")
+    pipe.connect("code_prompt.prompt", "joiner.value")
+    pipe.connect("joiner.value", "code_llm.prompt")
+    pipe.connect("code_llm.replies", "tool_use_router.replies")
+    pipe.connect("tool_use_router.edit", "file_editor.replies")
+    pipe.connect("file_editor.files", "agent_concatenator.files")
+    pipe.connect("joiner.value", "agent_concatenator.current_prompt")
+    pipe.connect("agent_concatenator.output", "joiner.value")
 
     # Feedback Cycle
-    pp.connect("tool_use_router.done", "feedback_prompt.task_finished")
-    pp.connect("agent_concatenator.output", "feedback_prompt.code")
-    pp.connect("feedback_prompt.prompt", "feedback_llm.prompt")
-    pp.connect("feedback_llm.replies", "feedback_router.replies")
-    pp.connect("agent_concatenator.output", "feedback_router.current_prompt")
-    pp.connect("feedback_router.fail", "joiner.value")
+    pipe.connect("tool_use_router.done", "feedback_prompt.task_finished")
+    pipe.connect("agent_concatenator.output", "feedback_prompt.code")
+    pipe.connect("feedback_prompt.prompt", "feedback_llm.prompt")
+    pipe.connect("feedback_llm.replies", "feedback_router.replies")
+    pipe.connect("agent_concatenator.output", "feedback_router.current_prompt")
+    pipe.connect("feedback_router.fail", "joiner.value")
 
     task = "Generate code to generate christmas ascii-art"
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"code_prompt": {"task": task}},
@@ -4416,12 +3773,7 @@ Provide additional feedback on why it fails.
                         "This is the edited file content.\n"
                         "This is the edited file content."
                     },
-                    ("code_prompt", 1): {
-                        "feedback": "",
-                        "task": "Generate code to generate christmas ascii-art",
-                        "template": None,
-                        "template_variables": None,
-                    },
+                    ("code_prompt", 1): {"feedback": "", "task": task, "template": None, "template_variables": None},
                     ("feedback_llm", 1): {
                         "prompt": "\n"
                         "\n"
@@ -4743,42 +4095,19 @@ Provide additional feedback on why it fails.
 @given("a pipeline that passes outputs that are consumed in cycle to outside the cycle", target_fixture="pipeline_data")
 def passes_outputs_outside_cycle(pipeline_class):
     @component
-    class FixedGenerator:
-        def __init__(self, replies):
-            self.replies = replies
-            self.idx = 0
-
-        @component.output_types(replies=list[str])
-        def run(self, prompt: str) -> dict[str, Any]:
-            if self.idx < len(self.replies):
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-            else:
-                self.idx = 0
-                replies = [self.replies[self.idx]]
-                self.idx += 1
-
-            return {"replies": replies}
-
-    @component
     class AnswerBuilderWithPrompt:
         @component.output_types(answers=list[GeneratedAnswer])
         def run(self, replies: list[str], query: str, prompt: str | None = None) -> dict[str, Any]:
             answer = GeneratedAnswer(data=replies[0], query=query, documents=[], meta={"all_messages": replies})
-
             if prompt is not None:
                 answer.meta["prompt"] = prompt
-
             return {"answers": [answer]}
-
-    code_prompt_template = "{{task}}"
 
     feedback_prompt_template = """
 Check if this code is valid and can run: {{ code[0] }}
 Return "PASS" if it passes and "FAIL" if it fails.
 Provide additional feedback on why it fails.
     """
-
     valid_response = """
 def generate_santa_sleigh():
     '''
@@ -4787,13 +4116,6 @@ def generate_santa_sleigh():
     # implementation goes here.
     return art
     """
-
-    code_llm = FixedGenerator(replies=["invalid code", "invalid code", valid_response])
-    code_prompt = PromptBuilder(template=code_prompt_template)
-
-    feedback_llm = FixedGenerator(replies=["FAIL", "FAIL, come on, try again.", "PASS"])
-    feedback_prompt = PromptBuilder(template=feedback_prompt_template)
-
     router = ConditionalRouter(
         routes=[
             {
@@ -4810,37 +4132,33 @@ def generate_santa_sleigh():
             },
         ]
     )
-    joiner = BranchJoiner(type_=str)
-    concatenator = OutputAdapter(
-        template="{{code_prompt + '\n' + generated_code[0] + '\n' + feedback}}", output_type=str
+
+    pipe = pipeline_class(max_runs_per_component=3)
+
+    pipe.add_component(
+        "concatenator",
+        OutputAdapter(template="{{code_prompt + '\n' + generated_code[0] + '\n' + feedback}}", output_type=str),
     )
+    pipe.add_component("code_llm", FixedGenerator(replies=["invalid code", "invalid code", valid_response]))
+    pipe.add_component("code_prompt", PromptBuilder(template="{{task}}"))
+    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template))
+    pipe.add_component("feedback_llm", FixedGenerator(replies=["FAIL", "FAIL, come on, try again.", "PASS"]))
+    pipe.add_component("router", router)
+    pipe.add_component("joiner", BranchJoiner(type_=str))
+    pipe.add_component("answer_builder", AnswerBuilderWithPrompt())
 
-    answer_builder = AnswerBuilderWithPrompt()
-
-    pp = pipeline_class(max_runs_per_component=100)
-
-    pp.add_component("concatenator", concatenator)
-    pp.add_component("code_llm", code_llm)
-    pp.add_component("code_prompt", code_prompt)
-    pp.add_component("feedback_prompt", feedback_prompt)
-    pp.add_component("feedback_llm", feedback_llm)
-    pp.add_component("router", router)
-    pp.add_component("joiner", joiner)
-
-    pp.add_component("answer_builder", answer_builder)
-
-    pp.connect("concatenator.output", "joiner.value")
-    pp.connect("joiner.value", "code_prompt.task")
-    pp.connect("code_prompt.prompt", "code_llm.prompt")
-    pp.connect("code_prompt.prompt", "concatenator.code_prompt")
-    pp.connect("code_llm.replies", "feedback_prompt.code")
-    pp.connect("feedback_llm.replies", "router.replies")
-    pp.connect("router.fail", "concatenator.feedback")
-    pp.connect("feedback_prompt.prompt", "feedback_llm.prompt")
-    pp.connect("router.pass", "answer_builder.replies")
-    pp.connect("code_llm.replies", "router.code")
-    pp.connect("code_llm.replies", "concatenator.generated_code")
-    pp.connect("concatenator.output", "answer_builder.prompt")
+    pipe.connect("concatenator.output", "joiner.value")
+    pipe.connect("joiner.value", "code_prompt.task")
+    pipe.connect("code_prompt.prompt", "code_llm.prompt")
+    pipe.connect("code_prompt.prompt", "concatenator.code_prompt")
+    pipe.connect("code_llm.replies", "feedback_prompt.code")
+    pipe.connect("feedback_llm.replies", "router.replies")
+    pipe.connect("router.fail", "concatenator.feedback")
+    pipe.connect("feedback_prompt.prompt", "feedback_llm.prompt")
+    pipe.connect("router.pass", "answer_builder.replies")
+    pipe.connect("code_llm.replies", "router.code")
+    pipe.connect("code_llm.replies", "concatenator.generated_code")
+    pipe.connect("concatenator.output", "answer_builder.prompt")
 
     task = "Generate code to generate christmas ascii-art"
 
@@ -4850,7 +4168,7 @@ FAIL
 invalid code
 FAIL, come on, try again."""
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"joiner": {"value": task}, "answer_builder": {"query": task}},
@@ -4867,60 +4185,18 @@ FAIL, come on, try again."""
                     }
                 },
                 expected_component_calls={
-                    ("answer_builder", 1): {
-                        "prompt": "Generate code to generate christmas "
-                        "ascii-art\n"
-                        "invalid code\n"
-                        "FAIL\n"
-                        "invalid code\n"
-                        "FAIL, come on, try again.",
-                        "query": "Generate code to generate christmas ascii-art",
-                        "replies": [
-                            "\n"
-                            "def generate_santa_sleigh():\n"
-                            "    '''\n"
-                            "    Returns ASCII art of Santa Claus on "
-                            "his sleigh with Rudolph leading the "
-                            "way.\n"
-                            "    '''\n"
-                            "    # implementation goes here.\n"
-                            "    return art\n"
-                            "    "
-                        ],
-                    },
-                    ("code_llm", 1): {"prompt": "Generate code to generate christmas ascii-art"},
+                    ("answer_builder", 1): {"prompt": expected_prompt, "query": task, "replies": [valid_response]},
+                    ("code_llm", 1): {"prompt": task},
                     ("code_llm", 2): {"prompt": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL"},
-                    ("code_llm", 3): {
-                        "prompt": "Generate code to generate christmas ascii-art\n"
-                        "invalid code\n"
-                        "FAIL\n"
-                        "invalid code\n"
-                        "FAIL, come on, try again."
-                    },
-                    ("code_prompt", 1): {
-                        "task": "Generate code to generate christmas ascii-art",
-                        "template": None,
-                        "template_variables": None,
-                    },
+                    ("code_llm", 3): {"prompt": expected_prompt},
+                    ("code_prompt", 1): {"task": task, "template": None, "template_variables": None},
                     ("code_prompt", 2): {
                         "task": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL",
                         "template": None,
                         "template_variables": None,
                     },
-                    ("code_prompt", 3): {
-                        "task": "Generate code to generate christmas ascii-art\n"
-                        "invalid code\n"
-                        "FAIL\n"
-                        "invalid code\n"
-                        "FAIL, come on, try again.",
-                        "template": None,
-                        "template_variables": None,
-                    },
-                    ("concatenator", 1): {
-                        "code_prompt": "Generate code to generate christmas ascii-art",
-                        "feedback": "FAIL",
-                        "generated_code": ["invalid code"],
-                    },
+                    ("code_prompt", 3): {"task": expected_prompt, "template": None, "template_variables": None},
+                    ("concatenator", 1): {"code_prompt": task, "feedback": "FAIL", "generated_code": ["invalid code"]},
                     ("concatenator", 2): {
                         "code_prompt": "Generate code to generate christmas ascii-art\ninvalid code\nFAIL",
                         "feedback": "FAIL, come on, try again.",
@@ -4965,48 +4241,13 @@ FAIL, come on, try again."""
                     },
                     ("feedback_prompt", 1): {"code": ["invalid code"], "template": None, "template_variables": None},
                     ("feedback_prompt", 2): {"code": ["invalid code"], "template": None, "template_variables": None},
-                    ("feedback_prompt", 3): {
-                        "code": [
-                            "\n"
-                            "def generate_santa_sleigh():\n"
-                            "    '''\n"
-                            "    Returns ASCII art of Santa Claus on "
-                            "his sleigh with Rudolph leading the way.\n"
-                            "    '''\n"
-                            "    # implementation goes here.\n"
-                            "    return art\n"
-                            "    "
-                        ],
-                        "template": None,
-                        "template_variables": None,
-                    },
-                    ("joiner", 1): {"value": ["Generate code to generate christmas ascii-art"]},
+                    ("feedback_prompt", 3): {"code": [valid_response], "template": None, "template_variables": None},
+                    ("joiner", 1): {"value": [task]},
                     ("joiner", 2): {"value": ["Generate code to generate christmas ascii-art\ninvalid code\nFAIL"]},
-                    ("joiner", 3): {
-                        "value": [
-                            "Generate code to generate christmas ascii-art\n"
-                            "invalid code\n"
-                            "FAIL\n"
-                            "invalid code\n"
-                            "FAIL, come on, try again."
-                        ]
-                    },
+                    ("joiner", 3): {"value": [expected_prompt]},
                     ("router", 1): {"code": ["invalid code"], "replies": ["FAIL"]},
                     ("router", 2): {"code": ["invalid code"], "replies": ["FAIL, come on, try again."]},
-                    ("router", 3): {
-                        "code": [
-                            "\n"
-                            "def generate_santa_sleigh():\n"
-                            "    '''\n"
-                            "    Returns ASCII art of Santa Claus on his sleigh "
-                            "with Rudolph leading the way.\n"
-                            "    '''\n"
-                            "    # implementation goes here.\n"
-                            "    return art\n"
-                            "    "
-                        ],
-                        "replies": ["PASS"],
-                    },
+                    ("router", 3): {"code": [valid_response], "replies": ["PASS"]},
                 },
             )
         ],
@@ -5058,7 +4299,7 @@ def pipeline_with_variadic_dynamic_defaults(pipeline_class):
             return {"response": kwargs[self.input_variable]}
 
     parrot = ParrotWithVariadicDynamicDefaultInputs("parrot")
-    pipeline = pipeline_class()
+    pipeline = pipeline_class(max_runs_per_component=1)
     pipeline.add_component("parrot", parrot)
     return (
         pipeline,
@@ -5083,44 +4324,33 @@ def pipeline_that_converts_files(pipeline_class):
 some,header,row
 0,1,0
     """
-
     txt_data = "Text file content for testing this."
-
-    json_data = '{"content": "Some test content"}'
-
     sources = [
         ByteStream.from_string(text=csv_data, mime_type="text/csv", meta={"file_type": "csv"}),
         ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
-        ByteStream.from_string(text=json_data, mime_type="application/json", meta={"file_type": "json"}),
+        ByteStream.from_string(
+            text='{"content": "Some test content"}', mime_type="application/json", meta={"file_type": "json"}
+        ),
     ]
 
-    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json"])
-    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
-    txt_converter = TextFileToDocument()
-    csv_converter = CSVToDocument()
-    json_converter = JSONConverter(content_key="content")
+    pipe = pipeline_class(max_runs_per_component=1)
 
-    b_joiner = DocumentJoiner()
-    a_joiner = DocumentJoiner()
+    pipe.add_component("router", FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json"]))
+    pipe.add_component("splitter", DocumentSplitter(split_by="word", split_length=3, split_overlap=0))
+    pipe.add_component("txt_converter", TextFileToDocument())
+    pipe.add_component("csv_converter", CSVToDocument())
+    pipe.add_component("json_converter", JSONConverter(content_key="content"))
+    pipe.add_component("b_joiner", DocumentJoiner())
+    pipe.add_component("a_joiner", DocumentJoiner())
 
-    pp = pipeline_class(max_runs_per_component=1)
-
-    pp.add_component("router", router)
-    pp.add_component("splitter", splitter)
-    pp.add_component("txt_converter", txt_converter)
-    pp.add_component("csv_converter", csv_converter)
-    pp.add_component("json_converter", json_converter)
-    pp.add_component("b_joiner", b_joiner)
-    pp.add_component("a_joiner", a_joiner)
-
-    pp.connect("router.text/plain", "txt_converter.sources")
-    pp.connect("router.application/json", "json_converter.sources")
-    pp.connect("router.text/csv", "csv_converter.sources")
-    pp.connect("txt_converter.documents", "b_joiner.documents")
-    pp.connect("json_converter.documents", "b_joiner.documents")
-    pp.connect("csv_converter.documents", "a_joiner.documents")
-    pp.connect("b_joiner.documents", "splitter.documents")
-    pp.connect("splitter.documents", "a_joiner.documents")
+    pipe.connect("router.text/plain", "txt_converter.sources")
+    pipe.connect("router.application/json", "json_converter.sources")
+    pipe.connect("router.text/csv", "csv_converter.sources")
+    pipe.connect("txt_converter.documents", "b_joiner.documents")
+    pipe.connect("json_converter.documents", "b_joiner.documents")
+    pipe.connect("csv_converter.documents", "a_joiner.documents")
+    pipe.connect("b_joiner.documents", "splitter.documents")
+    pipe.connect("splitter.documents", "a_joiner.documents")
 
     expected_pre_split_docs = [
         Document(content="Some test content", meta={"file_type": "json"}),
@@ -5158,11 +4388,10 @@ some,header,row
             },
         ),
     ]
-
     expected_csv_docs = [Document(content=csv_data, meta={"file_type": "csv"})]
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
@@ -5195,65 +4424,51 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
     html_data = """
 <html><body>Some content</body></html>
     """
-
     txt_data = "Text file content"
-
     sources = [
         ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
         ByteStream.from_string(text=html_data, mime_type="text/html", meta={"file_type": "html"}),
     ]
 
-    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"])
-    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
-    page_splitter = DocumentSplitter(split_by="page", split_length=1, split_overlap=0)
-    txt_converter = TextFileToDocument()
-    csv_converter = CSVToDocument()
-    json_converter = JSONConverter(content_key="content")
-    html_converter = HTMLToDocument()
+    pipe = pipeline_class(max_runs_per_component=1)
 
-    DocumentJoiner_1 = DocumentJoiner()
-    joiner = DocumentJoiner()
-    DocumentJoiner_2 = DocumentJoiner()
+    pipe.add_component("router", FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"]))
+    pipe.add_component("splitter", DocumentSplitter(split_by="word", split_length=3, split_overlap=0))
+    pipe.add_component("txt_converter", TextFileToDocument())
+    pipe.add_component("csv_converter", CSVToDocument())
+    pipe.add_component("json_converter", JSONConverter(content_key="content"))
+    pipe.add_component("html_converter", HTMLToDocument())
+    pipe.add_component("joiner", DocumentJoiner())
+    pipe.add_component("DocumentJoiner_1", DocumentJoiner())
+    pipe.add_component("DocumentJoiner_2", DocumentJoiner())
+    pipe.add_component("page_splitter", DocumentSplitter(split_by="page", split_length=1, split_overlap=0))
 
-    pp = pipeline_class(max_runs_per_component=2)
-
-    pp.add_component("router", router)
-    pp.add_component("splitter", splitter)
-    pp.add_component("txt_converter", txt_converter)
-    pp.add_component("csv_converter", csv_converter)
-    pp.add_component("json_converter", json_converter)
-    pp.add_component("html_converter", html_converter)
-    pp.add_component("joiner", joiner)
-    pp.add_component("DocumentJoiner_1", DocumentJoiner_1)
-    pp.add_component("DocumentJoiner_2", DocumentJoiner_2)
-    pp.add_component("page_splitter", page_splitter)
-
-    pp.connect("router.text/plain", "txt_converter.sources")
-    pp.connect("router.application/json", "json_converter.sources")
-    pp.connect("router.text/csv", "csv_converter.sources")
-    pp.connect("router.text/html", "html_converter.sources")
-    pp.connect("txt_converter.documents", "joiner.documents")
-    pp.connect("json_converter.documents", "joiner.documents")
-    pp.connect("csv_converter.documents", "DocumentJoiner_1.documents")
-    pp.connect("html_converter.documents", "DocumentJoiner_1.documents")
-    pp.connect("joiner.documents", "splitter.documents")
-    pp.connect("DocumentJoiner_1.documents", "page_splitter.documents")
-    pp.connect("splitter.documents", "DocumentJoiner_2.documents")
-    pp.connect("page_splitter.documents", "DocumentJoiner_2.documents")
+    pipe.connect("router.text/plain", "txt_converter.sources")
+    pipe.connect("router.application/json", "json_converter.sources")
+    pipe.connect("router.text/csv", "csv_converter.sources")
+    pipe.connect("router.text/html", "html_converter.sources")
+    pipe.connect("txt_converter.documents", "joiner.documents")
+    pipe.connect("json_converter.documents", "joiner.documents")
+    pipe.connect("csv_converter.documents", "DocumentJoiner_1.documents")
+    pipe.connect("html_converter.documents", "DocumentJoiner_1.documents")
+    pipe.connect("joiner.documents", "splitter.documents")
+    pipe.connect("DocumentJoiner_1.documents", "page_splitter.documents")
+    pipe.connect("splitter.documents", "DocumentJoiner_2.documents")
+    pipe.connect("page_splitter.documents", "DocumentJoiner_2.documents")
 
     expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
     expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
                 # HTML converter takes longer than TXT Converter and this is why the order of documents is not stable
-                # for AsyncPipeline. We test for ANY here to make the test pass.
+                # for AsyncPipeline. We use [ANY, ANY] to indicate that we do not care about the order here.
                 # In real usage, if the user cares about the order of documents arriving at a lazy variadic component,
                 # the user should pick a different component (OutputAdapter) to combine the lists.
-                expected_outputs={"DocumentJoiner_2": {"documents": ANY}},
+                expected_outputs={"DocumentJoiner_2": {"documents": [ANY, ANY]}},
                 expected_component_calls={
                     ("router", 1): {"sources": sources, "meta": None},
                     ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
@@ -5261,7 +4476,7 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
                     ("joiner", 1): {"documents": [[expected_txt_doc]], "top_k": None},
                     ("DocumentJoiner_1", 1): {"documents": [[expected_html_doc]], "top_k": None},
                     # Same as above
-                    ("DocumentJoiner_2", 1): {"documents": ANY, "top_k": None},
+                    ("DocumentJoiner_2", 1): {"documents": [ANY, ANY], "top_k": None},
                     ("splitter", 1): {"documents": [expected_txt_doc]},
                     ("page_splitter", 1): {"documents": [expected_html_doc]},
                 },
@@ -5299,22 +4514,11 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
     html_data = """
 <html><body>Some content</body></html>
     """
-
     txt_data = "Text file content"
-
     sources = [
         ByteStream.from_string(text=txt_data, mime_type="text/plain", meta={"file_type": "txt"}),
         ByteStream.from_string(text=html_data, mime_type="text/html", meta={"file_type": "html"}),
     ]
-
-    router = FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"])
-    splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
-    page_splitter = DocumentSplitter(split_by="page", split_length=1, split_overlap=0)
-    txt_converter = TextFileToDocument()
-    csv_converter = CSVToDocument()
-    json_converter = JSONConverter(content_key="content")
-    html_converter = HTMLToDocument()
-
     extraction_router = ConditionalRouter(
         routes=[
             {
@@ -5333,38 +4537,38 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
         unsafe=True,
     )
 
-    pp = pipeline_class(max_runs_per_component=2)
+    pipe = pipeline_class(max_runs_per_component=2)
 
-    pp.add_component("router", router)
-    pp.add_component("splitter", splitter)
-    pp.add_component("txt_converter", txt_converter)
-    pp.add_component("csv_converter", csv_converter)
-    pp.add_component("json_converter", json_converter)
-    pp.add_component("html_converter", html_converter)
-    pp.add_component("joiner", DocumentJoiner())
-    pp.add_component("DocumentJoiner_1", DocumentJoiner())
-    pp.add_component("DocumentJoiner_2", DocumentJoiner())
-    pp.add_component("page_splitter", page_splitter)
-    pp.add_component("metadata_generator", FakeDataExtractor(metas=[{"iteration": 1}, {"iteration": 2}]))
-    pp.add_component("extraction_router", extraction_router)
-    pp.add_component("branch_joiner", BranchJoiner(type_=list[Document]))
+    pipe.add_component("router", FileTypeRouter(mime_types=["text/csv", "text/plain", "application/json", "text/html"]))
+    pipe.add_component("splitter", DocumentSplitter(split_by="word", split_length=3, split_overlap=0))
+    pipe.add_component("txt_converter", TextFileToDocument())
+    pipe.add_component("csv_converter", CSVToDocument())
+    pipe.add_component("json_converter", JSONConverter(content_key="content"))
+    pipe.add_component("html_converter", HTMLToDocument())
+    pipe.add_component("joiner", DocumentJoiner())
+    pipe.add_component("DocumentJoiner_1", DocumentJoiner())
+    pipe.add_component("DocumentJoiner_2", DocumentJoiner())
+    pipe.add_component("page_splitter", DocumentSplitter(split_by="page", split_length=1, split_overlap=0))
+    pipe.add_component("metadata_generator", FakeDataExtractor(metas=[{"iteration": 1}, {"iteration": 2}]))
+    pipe.add_component("extraction_router", extraction_router)
+    pipe.add_component("branch_joiner", BranchJoiner(type_=list[Document]))
 
-    pp.connect("router.text/plain", "txt_converter.sources")
-    pp.connect("router.application/json", "json_converter.sources")
-    pp.connect("router.text/csv", "csv_converter.sources")
-    pp.connect("router.text/html", "html_converter.sources")
-    pp.connect("txt_converter.documents", "joiner.documents")
-    pp.connect("json_converter.documents", "joiner.documents")
-    pp.connect("csv_converter.documents", "DocumentJoiner_1.documents")
-    pp.connect("html_converter.documents", "DocumentJoiner_1.documents")
-    pp.connect("joiner.documents", "splitter.documents")
-    pp.connect("DocumentJoiner_1.documents", "page_splitter.documents")
-    pp.connect("splitter.documents", "DocumentJoiner_2.documents")
-    pp.connect("page_splitter.documents", "DocumentJoiner_2.documents")
-    pp.connect("DocumentJoiner_2.documents", "branch_joiner.value")
-    pp.connect("branch_joiner.value", "metadata_generator.documents")
-    pp.connect("metadata_generator.documents", "extraction_router.documents")
-    pp.connect("extraction_router.continue", "branch_joiner.value")
+    pipe.connect("router.text/plain", "txt_converter.sources")
+    pipe.connect("router.application/json", "json_converter.sources")
+    pipe.connect("router.text/csv", "csv_converter.sources")
+    pipe.connect("router.text/html", "html_converter.sources")
+    pipe.connect("txt_converter.documents", "joiner.documents")
+    pipe.connect("json_converter.documents", "joiner.documents")
+    pipe.connect("csv_converter.documents", "DocumentJoiner_1.documents")
+    pipe.connect("html_converter.documents", "DocumentJoiner_1.documents")
+    pipe.connect("joiner.documents", "splitter.documents")
+    pipe.connect("DocumentJoiner_1.documents", "page_splitter.documents")
+    pipe.connect("splitter.documents", "DocumentJoiner_2.documents")
+    pipe.connect("page_splitter.documents", "DocumentJoiner_2.documents")
+    pipe.connect("DocumentJoiner_2.documents", "branch_joiner.value")
+    pipe.connect("branch_joiner.value", "metadata_generator.documents")
+    pipe.connect("metadata_generator.documents", "extraction_router.documents")
+    pipe.connect("extraction_router.continue", "branch_joiner.value")
 
     expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
     expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
@@ -5402,7 +4606,7 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
         expected_docs_iteration_2.append(doc_2)
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
@@ -5442,15 +4646,13 @@ def pipeline_has_components_returning_dataframes(pipeline_class):
         def run(self, dataframe: DataFrame) -> dict[str, Any]:
             return {"dataframe": get_df()}
 
-    pp = pipeline_class(max_runs_per_component=1)
-
-    pp.add_component("df_1", DataFramer())
-    pp.add_component("df_2", DataFramer())
-
-    pp.connect("df_1", "df_2")
+    pipe = pipeline_class(max_runs_per_component=1)
+    pipe.add_component("df_1", DataFramer())
+    pipe.add_component("df_2", DataFramer())
+    pipe.connect("df_1", "df_2")
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"df_1": {"dataframe": get_df()}},
@@ -5466,8 +4668,6 @@ def pipeline_has_components_returning_dataframes(pipeline_class):
     target_fixture="pipeline_data",
 )
 def pipeline_single_component_many_sockets_same_target(pipeline_class):
-    joiner = BranchJoiner(type_=str)
-
     router = ConditionalRouter(
         routes=[
             {
@@ -5485,16 +4685,14 @@ def pipeline_single_component_many_sockets_same_target(pipeline_class):
         ]
     )
 
-    pp = pipeline_class(max_runs_per_component=1)
-
-    pp.add_component("joiner", joiner)
-    pp.add_component("router", router)
-
-    pp.connect("router.route_1", "joiner.value")
-    pp.connect("router.route_2", "joiner.value")
+    pipe = pipeline_class(max_runs_per_component=1)
+    pipe.add_component("joiner", BranchJoiner(type_=str))
+    pipe.add_component("router", router)
+    pipe.connect("router.route_1", "joiner.value")
+    pipe.connect("router.route_2", "joiner.value")
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"router": {"query": "route_1"}},
@@ -5511,12 +4709,6 @@ def pipeline_single_component_many_sockets_same_target(pipeline_class):
     target_fixture="pipeline_data",
 )
 def pipeline_component_cycle_input_no_input(pipeline_class):
-    joiner = BranchJoiner(type_=str)
-
-    template = "{{query ~ query}}"
-
-    builder = PromptBuilder(template=template)
-
     router = ConditionalRouter(
         routes=[
             {
@@ -5533,11 +4725,6 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
             },
         ]
     )
-
-    outside_builder = PromptBuilder(
-        template="{{cycle_output ~ delayed_input}}", required_variables=["cycle_output", "delayed_input"]
-    )
-
     outside_router = ConditionalRouter(
         routes=[
             {
@@ -5555,23 +4742,28 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
         ]
     )
 
-    pp = pipeline_class(max_runs_per_component=2)
+    pipe = pipeline_class(max_runs_per_component=2)
 
-    pp.add_component("joiner", joiner)
-    pp.add_component("router", router)
-    pp.add_component("builder", builder)
-    pp.add_component("outside_builder", outside_builder)
-    pp.add_component("outside_router", outside_router)
+    pipe.add_component("joiner", BranchJoiner(type_=str))
+    pipe.add_component("router", router)
+    pipe.add_component("builder", PromptBuilder(template="{{query ~ query}}"))
+    pipe.add_component(
+        "outside_builder",
+        PromptBuilder(
+            template="{{cycle_output ~ delayed_input}}", required_variables=["cycle_output", "delayed_input"]
+        ),
+    )
+    pipe.add_component("outside_router", outside_router)
 
-    pp.connect("joiner.value", "builder.query")
-    pp.connect("builder.prompt", "router.query")
-    pp.connect("router.continue", "joiner.value")
-    pp.connect("builder.prompt", "outside_router.query")
-    pp.connect("outside_router.cycle_output", "outside_builder.cycle_output")
-    pp.connect("router.exit", "outside_builder.delayed_input")
+    pipe.connect("joiner.value", "builder.query")
+    pipe.connect("builder.prompt", "router.query")
+    pipe.connect("router.continue", "joiner.value")
+    pipe.connect("builder.prompt", "outside_router.query")
+    pipe.connect("outside_router.cycle_output", "outside_builder.cycle_output")
+    pipe.connect("router.exit", "outside_builder.delayed_input")
 
     return (
-        pp,
+        pipe,
         [
             PipelineRunData(
                 inputs={"joiner": {"value": "iteration"}},
@@ -5602,18 +4794,6 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
 
 @given("a pipeline that is blocked because not enough component inputs", target_fixture="pipeline_data")
 def that_is_blocked_not_enough_component_inputs(pipeline_class):
-    router = ConditionalRouter(
-        [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
-            {
-                "condition": "{{streams|length >= 2}}",
-                "output": "{{streams}}",
-                "output_type": list[int],
-                "output_name": "streams",
-            },
-        ]
-    )
-
     # This component requires both `streams` and `query` inputs to run
     # If one is missing then the pipeline is blocked and cannot run.
     @component
@@ -5623,7 +4803,25 @@ def that_is_blocked_not_enough_component_inputs(pipeline_class):
             return {"payload": {"streams": streams, "query": query}}
 
     pipe = pipeline_class(max_runs_per_component=1)
-    pipe.add_component("router", router)
+    pipe.add_component(
+        "router",
+        ConditionalRouter(
+            [
+                {
+                    "condition": "{{streams|length < 2}}",
+                    "output": "{{query}}",
+                    "output_type": str,
+                    "output_name": "query",
+                },
+                {
+                    "condition": "{{streams|length >= 2}}",
+                    "output": "{{streams}}",
+                    "output_type": list[int],
+                    "output_name": "streams",
+                },
+            ]
+        ),
+    )
     pipe.add_component("payload_builder", PayloadBuilder())
 
     # Since the router only outputs either `streams` or `query` it's impossible to run PayloadBuilder.
