@@ -1202,10 +1202,13 @@ class PipelineBase:  # noqa: PLW1641
         """
         for name, socket in component_input_sockets.items():
             if not socket.is_mandatory and name not in component_inputs:
-                # NOTE: Based on this logic we expect users to provide a default value in the function definition that
-                #       matches the type within the Variadic type. E.g. Variadic[str] = "test". The pipeline then wraps
-                #       it into a list[str]. However, if a user runs this component outside a pipeline, e.g. directly
-                #       calling the run() method, the default value is not wrapped and is incorrect.
+                # NOTE: Variadic inputs expect a single default value in the function signature that matches the inner
+                # type, for example Variadic[str] = "default". When executed inside a pipeline, we wrap this
+                # default into a list, resulting in ["default"],  which is the intended behavior.
+                #
+                # However, when the component is executed directly by calling run(), the default is not wrapped and
+                # is treated as an iterable.
+                # For strings, this would produce ["d", "e", "f", ...] instead of ["default"].
                 if socket.is_variadic:
                     component_inputs[name] = [socket.default_value]
                 else:
