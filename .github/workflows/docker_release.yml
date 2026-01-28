@@ -66,8 +66,6 @@ jobs:
           # REVERT BEFORE MERGING
           push: false
           load: true
-          set: |
-            base.platforms=linux/amd64
 
       - name: Test base image
         run: |
