@@ -58,7 +58,7 @@ jobs:
         uses: docker/bake-action@v6
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
-          HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
+          HAYSTACK_VERSION: "main"
         with:
           source: .
           workdir: docker
