@@ -1289,7 +1289,7 @@ class PipelineBase:  # noqa: PLW1641
             # We want this to trigger for lazy-variadic and auto-variadic sockets
             if receiver_socket.is_lazy_variadic:
                 # If the receiver socket is lazy variadic, we append the new input.
-                # Lazy variadic and auto variadic sockets can collect multiple inputs.
+                # Lazy variadic sockets can collect multiple inputs.
                 _write_to_lazy_variadic_socket(
                     inputs=inputs,
                     receiver_name=receiver_name,
