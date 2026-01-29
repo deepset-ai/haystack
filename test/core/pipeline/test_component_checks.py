@@ -24,7 +24,6 @@ from haystack.core.pipeline.component_checks import (
     has_socket_received_all_inputs,
     has_user_input,
     is_any_greedy_socket_ready,
-    is_socket_lazy_variadic,
 )
 
 
@@ -268,8 +267,8 @@ class TestAllMandatorySocketsReady:
 
     def test_mandatory_and_optional_sockets(self):
         input_sockets = {
-            "mandatory": InputSocket("mandatory", str, senders=["previous_component"]),
-            "optional": InputSocket("optional", str, senders=["previous_component"], default_value="test"),
+            "mandatory": InputSocket(name="mandatory", type=str, senders=["previous_component"]),
+            "optional": InputSocket(name="optional", type=str, senders=["previous_component"], default_value="test"),
         }
 
         component = {"input_sockets": input_sockets}
@@ -516,15 +515,18 @@ class TestLazyVariadicSocket:
 class TestSocketTypeDetection:
     def test_is_socket_lazy_variadic_with_lazy_socket(self, lazy_variadic_socket):
         """Ensures that a non-greedy variadic socket is detected as lazy."""
-        assert is_socket_lazy_variadic(lazy_variadic_socket) is True
+        assert lazy_variadic_socket.is_lazy_variadic is True
+        assert lazy_variadic_socket.is_greedy is False
 
     def test_is_socket_lazy_variadic_with_greedy_socket(self, greedy_variadic_socket):
         """Greedy variadic sockets should not be marked as lazy."""
-        assert is_socket_lazy_variadic(greedy_variadic_socket) is False
+        assert greedy_variadic_socket.is_lazy_variadic is False
+        assert greedy_variadic_socket.is_greedy is True
 
     def test_is_socket_lazy_variadic_with_regular_socket(self, regular_socket):
         """Regular sockets are not variadic at all."""
-        assert is_socket_lazy_variadic(regular_socket) is False
+        assert regular_socket.is_lazy_variadic is False
+        assert regular_socket.is_greedy is False
 
 
 class TestSocketInputCompletion:
