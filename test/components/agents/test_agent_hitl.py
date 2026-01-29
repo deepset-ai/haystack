@@ -146,7 +146,7 @@ class TestAgent:
     @pytest.mark.integration
     def test_run_blocking_confirmation_strategy_modify(self, tools):
         agent = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
             tools=tools,
             confirmation_strategies={
                 "addition_tool": BlockingConfirmationStrategy(

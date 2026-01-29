@@ -315,7 +315,7 @@ output:
             prompt=ner_prompt,
             expected_keys=["entities"],
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-mini",
+                model="gpt-4.1-nano",
                 generation_kwargs={
                     "response_format": {
                         "type": "json_schema",
