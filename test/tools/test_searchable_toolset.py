@@ -5,8 +5,8 @@
 
 import pytest
 
-from haystack.tools import Tool, ToolSearchToolset, Toolset
-from haystack.tools.tool_search_toolset import _BM25SearchEngine
+from haystack.tools import SearchableToolset, Tool, Toolset
+from haystack.tools.searchable_toolset import _BM25SearchEngine
 
 
 # Test helper functions
@@ -265,18 +265,18 @@ class TestBM25SearchEngine:
         assert results == []
 
 
-class TestToolSearchToolsetPassthrough:
+class TestSearchableToolsetPassthrough:
     """Tests for passthrough mode (small catalogs)."""
 
     def test_passthrough_mode_detected(self, small_catalog):
         """Test that small catalogs trigger passthrough mode."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
 
         assert toolset.is_passthrough is True
 
     def test_passthrough_exposes_all_tools(self, small_catalog):
         """Test that passthrough mode exposes all catalog tools."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
 
         assert len(toolset) == len(small_catalog)
@@ -288,14 +288,14 @@ class TestToolSearchToolsetPassthrough:
 
     def test_passthrough_no_bootstrap_tool(self, small_catalog):
         """Test that passthrough mode doesn't create bootstrap tool."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
 
         assert toolset._bootstrap_tool is None
 
     def test_passthrough_contains_by_name(self, small_catalog):
         """Test __contains__ by name in passthrough mode."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
 
         assert "get_weather" in toolset
@@ -303,7 +303,7 @@ class TestToolSearchToolsetPassthrough:
 
     def test_passthrough_contains_by_tool(self, small_catalog, weather_tool):
         """Test __contains__ by tool instance in passthrough mode."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
 
         assert weather_tool in toolset
@@ -311,18 +311,18 @@ class TestToolSearchToolsetPassthrough:
     def test_custom_search_threshold(self, large_catalog):
         """Test that custom search_threshold changes passthrough behavior."""
         # With threshold of 10, 8 tools should be passthrough
-        toolset = ToolSearchToolset(catalog=large_catalog, search_threshold=10)
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=10)
 
         assert toolset.is_passthrough is True
         assert len(list(toolset)) == 8
 
 
-class TestToolSearchToolsetBM25Mode:
+class TestSearchableToolsetBM25Mode:
     """Tests for BM25 discovery mode."""
 
     def test_bm25_mode_creates_search_tools(self, large_catalog):
         """Test that BM25 mode creates search_tools bootstrap tool."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
 
         assert toolset._bootstrap_tool is not None
@@ -330,14 +330,14 @@ class TestToolSearchToolsetBM25Mode:
 
     def test_bm25_mode_initializes_search_engine(self, large_catalog):
         """Test that BM25 mode initializes search engine."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
 
         assert toolset._search_engine is not None
 
     def test_search_tools_finds_relevant_tools(self, large_catalog):
         """Test that search_tools finds relevant tools."""
-        toolset = ToolSearchToolset(catalog=large_catalog, top_k=3)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=3)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -348,7 +348,7 @@ class TestToolSearchToolsetBM25Mode:
 
     def test_search_tools_auto_loads(self, large_catalog):
         """Test that search_tools auto-loads found tools."""
-        toolset = ToolSearchToolset(catalog=large_catalog, top_k=3)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=3)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -362,7 +362,7 @@ class TestToolSearchToolsetBM25Mode:
 
     def test_search_tools_respects_k(self, large_catalog):
         """Test that search_tools respects k parameter."""
-        toolset = ToolSearchToolset(catalog=large_catalog, top_k=2)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=2)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -374,7 +374,7 @@ class TestToolSearchToolsetBM25Mode:
 
     def test_search_tools_no_results(self, large_catalog):
         """Test search_tools with no matching results."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -384,12 +384,12 @@ class TestToolSearchToolsetBM25Mode:
         assert len(toolset._discovered_tools) == 0
 
 
-class TestToolSearchToolsetIteration:
+class TestSearchableToolsetIteration:
     """Tests for iteration and collection behavior."""
 
     def test_iter_passthrough(self, small_catalog):
         """Test iteration in passthrough mode."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
 
         tools = list(toolset)
@@ -398,7 +398,7 @@ class TestToolSearchToolsetIteration:
 
     def test_iter_with_discovered_tools(self, large_catalog):
         """Test iteration with discovered tools."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -415,7 +415,7 @@ class TestToolSearchToolsetIteration:
 
     def test_contains_bootstrap_tool(self, large_catalog):
         """Test __contains__ for bootstrap tool."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
 
         assert "search_tools" in toolset
@@ -423,7 +423,7 @@ class TestToolSearchToolsetIteration:
 
     def test_contains_discovered_tool(self, large_catalog):
         """Test __contains__ for discovered tools."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -433,17 +433,17 @@ class TestToolSearchToolsetIteration:
         assert "add_numbers" not in toolset  # Not discovered yet
 
 
-class TestToolSearchToolsetSerialization:
+class TestSearchableToolsetSerialization:
     """Tests for serialization and deserialization."""
 
     def test_to_dict(self, large_catalog):
         """Test serialization to dict."""
-        toolset = ToolSearchToolset(catalog=large_catalog, top_k=3, search_threshold=5)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=3, search_threshold=5)
 
         data = toolset.to_dict()
 
         assert "type" in data
-        assert "haystack.tools.tool_search_toolset.ToolSearchToolset" in data["type"]
+        assert "haystack.tools.searchable_toolset.SearchableToolset" in data["type"]
         assert "data" in data
         assert data["data"]["top_k"] == 3
         assert data["data"]["search_threshold"] == 5
@@ -451,24 +451,24 @@ class TestToolSearchToolsetSerialization:
 
     def test_from_dict(self, large_catalog):
         """Test deserialization from dict."""
-        toolset = ToolSearchToolset(catalog=large_catalog, top_k=3)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=3)
 
         data = toolset.to_dict()
-        restored = ToolSearchToolset.from_dict(data)
+        restored = SearchableToolset.from_dict(data)
 
         assert restored._top_k == 3
         assert len(restored._catalog) == len(large_catalog)
 
     def test_serde_roundtrip(self, large_catalog):
         """Test full serialization roundtrip."""
-        toolset = ToolSearchToolset(catalog=large_catalog, top_k=5, search_threshold=6)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=5, search_threshold=6)
         toolset.warm_up()
 
         # Serialize
         data = toolset.to_dict()
 
         # Deserialize
-        restored = ToolSearchToolset.from_dict(data)
+        restored = SearchableToolset.from_dict(data)
         restored.warm_up()
         assert restored._bootstrap_tool is not None
 
@@ -482,11 +482,11 @@ class TestToolSearchToolsetSerialization:
 
     def test_serde_preserves_catalog_tools(self, large_catalog):
         """Test that serialization preserves catalog tool functionality."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
 
         data = toolset.to_dict()
-        restored = ToolSearchToolset.from_dict(data)
+        restored = SearchableToolset.from_dict(data)
         restored.warm_up()
         assert restored._bootstrap_tool is not None
 
@@ -499,20 +499,20 @@ class TestToolSearchToolsetSerialization:
         assert result == 15
 
 
-class TestToolSearchToolsetWithToolset:
+class TestSearchableToolsetWithToolset:
     """Tests for using a Toolset as catalog input."""
 
     def test_accepts_toolset_as_catalog(self, small_catalog):
         """Test that a Toolset can be used as catalog."""
         base_toolset = Toolset(tools=small_catalog)
-        search_toolset = ToolSearchToolset(catalog=base_toolset, search_threshold=10)
+        search_toolset = SearchableToolset(catalog=base_toolset, search_threshold=10)
 
         assert len(search_toolset._catalog) == len(small_catalog)
 
     def test_toolset_catalog_passthrough(self, small_catalog):
         """Test passthrough mode with Toolset catalog."""
         base_toolset = Toolset(tools=small_catalog)
-        search_toolset = ToolSearchToolset(catalog=base_toolset)
+        search_toolset = SearchableToolset(catalog=base_toolset)
         search_toolset.warm_up()
 
         assert search_toolset.is_passthrough is True
@@ -523,7 +523,7 @@ class TestToolSearchToolsetWithToolset:
         toolset1 = Toolset(tools=[weather_tool, add_tool])
         toolset2 = Toolset(tools=[multiply_tool, stock_tool])
 
-        search_toolset = ToolSearchToolset(catalog=[toolset1, toolset2], search_threshold=10)
+        search_toolset = SearchableToolset(catalog=[toolset1, toolset2], search_threshold=10)
 
         assert len(search_toolset._catalog) == 4
         assert any(t.name == "get_weather" for t in search_toolset._catalog)
@@ -535,7 +535,7 @@ class TestToolSearchToolsetWithToolset:
         """Test that a mixed list of Tools and Toolsets can be used as catalog."""
         toolset = Toolset(tools=[add_tool, multiply_tool])
 
-        search_toolset = ToolSearchToolset(catalog=[weather_tool, toolset], search_threshold=10)
+        search_toolset = SearchableToolset(catalog=[weather_tool, toolset], search_threshold=10)
 
         assert len(search_toolset._catalog) == 3
         assert any(t.name == "get_weather" for t in search_toolset._catalog)
@@ -543,12 +543,12 @@ class TestToolSearchToolsetWithToolset:
         assert any(t.name == "multiply_numbers" for t in search_toolset._catalog)
 
 
-class TestToolSearchToolsetWarmUp:
+class TestSearchableToolsetWarmUp:
     """Tests for warm_up behavior."""
 
     def test_warm_up_idempotent(self, large_catalog):
         """Test that warm_up can be called multiple times safely."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
 
         toolset.warm_up()
         first_bootstrap = toolset._bootstrap_tool
@@ -561,7 +561,7 @@ class TestToolSearchToolsetWarmUp:
 
     def test_warm_up_not_required_for_passthrough(self, small_catalog):
         """Test that passthrough works without warm_up."""
-        toolset = ToolSearchToolset(catalog=small_catalog)
+        toolset = SearchableToolset(catalog=small_catalog)
 
         # Should work without warm_up
         tools = list(toolset)
@@ -569,17 +569,17 @@ class TestToolSearchToolsetWarmUp:
 
     def test_bootstrap_tool_before_warm_up(self, large_catalog):
         """Test that bootstrap tool is None before warm_up."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
 
         assert toolset._bootstrap_tool is None
 
 
-class TestToolSearchToolsetEdgeCases:
+class TestSearchableToolsetEdgeCases:
     """Tests for edge cases and error handling."""
 
     def test_empty_catalog(self):
         """Test with empty catalog."""
-        toolset = ToolSearchToolset(catalog=[])
+        toolset = SearchableToolset(catalog=[])
         toolset.warm_up()
 
         assert toolset.is_passthrough is True
@@ -587,7 +587,7 @@ class TestToolSearchToolsetEdgeCases:
 
     def test_single_tool_catalog(self, weather_tool):
         """Test with single tool catalog."""
-        toolset = ToolSearchToolset(catalog=[weather_tool])
+        toolset = SearchableToolset(catalog=[weather_tool])
         toolset.warm_up()
 
         assert toolset.is_passthrough is True
@@ -605,7 +605,7 @@ class TestToolSearchToolsetEdgeCases:
             for i in range(8)
         ]
 
-        toolset = ToolSearchToolset(catalog=tools, search_threshold=8)
+        toolset = SearchableToolset(catalog=tools, search_threshold=8)
 
         # Should NOT be passthrough (>= threshold triggers discovery)
         assert toolset.is_passthrough is False
@@ -622,14 +622,14 @@ class TestToolSearchToolsetEdgeCases:
             for i in range(7)
         ]
 
-        toolset = ToolSearchToolset(catalog=tools, search_threshold=8)
+        toolset = SearchableToolset(catalog=tools, search_threshold=8)
 
         # Should be passthrough
         assert toolset.is_passthrough is True
 
     def test_multiple_loads_same_tool(self, large_catalog):
         """Test searching for the same tool multiple times."""
-        toolset = ToolSearchToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
@@ -711,7 +711,7 @@ def integration_catalog():
 
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
-class TestToolSearchToolsetAgentIntegration:
+class TestSearchableToolsetAgentIntegration:
     """Integration tests with real Agent and OpenAIChatGenerator."""
 
     def test_agent_with_bm25_mode(self, integration_catalog):
@@ -721,7 +721,7 @@ class TestToolSearchToolsetAgentIntegration:
         from haystack.dataclasses import ChatMessage
 
         # Create toolset with search_threshold=3 to trigger discovery (we have 5 tools)
-        toolset = ToolSearchToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
+        toolset = SearchableToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
 
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=5)
 
@@ -745,7 +745,7 @@ class TestToolSearchToolsetAgentIntegration:
         from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.dataclasses import ChatMessage
 
-        toolset = ToolSearchToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
+        toolset = SearchableToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
 
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=5)
 
@@ -766,7 +766,7 @@ class TestToolSearchToolsetAgentIntegration:
         from haystack.dataclasses import ChatMessage
 
         # Set high threshold so 5 tools trigger passthrough mode
-        toolset = ToolSearchToolset(catalog=integration_catalog, search_threshold=10)
+        toolset = SearchableToolset(catalog=integration_catalog, search_threshold=10)
 
         # In passthrough mode, all tools are directly available (no search needed)
         assert toolset.is_passthrough is True
@@ -787,7 +787,7 @@ class TestToolSearchToolsetAgentIntegration:
         from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.dataclasses import ChatMessage
 
-        toolset = ToolSearchToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
+        toolset = SearchableToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
 
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=8)
 

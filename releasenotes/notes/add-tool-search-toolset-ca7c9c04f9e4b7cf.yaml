@@ -1,6 +1,6 @@
 ---
 highlights: >
-    Introducing ToolSearchToolset - a new toolset that enables agents to dynamically
+    Introducing SearchableToolset - a new toolset that enables agents to dynamically
     discover tools from large catalogs using semantic search. Instead of exposing all
     tools upfront (which can overwhelm LLMs with large tool definitions), agents start
     with a single ``search_tools`` function and progressively discover relevant tools
@@ -8,7 +8,7 @@ highlights: >
     directly.
 features:
   - |
-    Added ``ToolSearchToolset`` to ``haystack.tools`` module. This toolset wraps a catalog
+    Added ``SearchableToolset`` to ``haystack.tools`` module. This toolset wraps a catalog
     of tools and provides on-demand tool discovery via BM25 search. Key features include:
     configurable search threshold for automatic passthrough mode, top-k result limiting,
     and a ``clear()`` method to reset discovered tools between agent runs.

@@ -125,7 +125,7 @@ class _BM25SearchEngine:
         return score
 
 
-class ToolSearchToolset(Toolset):
+class SearchableToolset(Toolset):
     """
     Dynamic tool discovery from large catalogs using BM25 search.
 
@@ -140,7 +140,7 @@ class ToolSearchToolset(Toolset):
     ### Usage Example
 
     ```python
-    from haystack.tools import Tool, ToolSearchToolset
+    from haystack.tools import Tool, SearchableToolset
 
     # Create a catalog of tools
     catalog = [
@@ -149,7 +149,7 @@ class ToolSearchToolset(Toolset):
         # ... 100s more tools
     ]
 
-    toolset = ToolSearchToolset(catalog=catalog)
+    toolset = SearchableToolset(catalog=catalog)
     toolset.warm_up()
 
     agent = Agent(chat_generator=generator, tools=toolset)
@@ -162,7 +162,7 @@ class ToolSearchToolset(Toolset):
 
     def __init__(self, catalog: "ToolsType", *, top_k: int = 3, search_threshold: int = 8):
         """
-        Initialize the ToolSearchToolset.
+        Initialize the SearchableToolset.
 
         :param catalog: Source of tools - a list of Tools, list of Toolsets, or a single Toolset.
         :param top_k: Default number of results for search_tools.
@@ -364,12 +364,12 @@ class ToolSearchToolset(Toolset):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ToolSearchToolset":
+    def from_dict(cls, data: dict[str, Any]) -> "SearchableToolset":
         """
         Deserialize a toolset from a dictionary.
 
         :param data: Dictionary representation of the toolset.
-        :returns: New ToolSearchToolset instance.
+        :returns: New SearchableToolset instance.
         """
         inner_data = data["data"]
 
