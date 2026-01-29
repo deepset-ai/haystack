@@ -886,7 +886,6 @@ class TestAgent:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
-        # Use default model for integration tests
         chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         agent.warm_up()

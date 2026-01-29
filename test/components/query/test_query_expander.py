@@ -372,7 +372,7 @@ class TestQueryExpanderIntegration:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     def test_query_expansion(self):
-        expander = QueryExpander(n_expansions=3)
+        expander = QueryExpander(n_expansions=3, chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
         expander.warm_up()
         result = expander.run("renewable energy sources")
 
@@ -387,7 +387,9 @@ class TestQueryExpanderIntegration:
     def test_different_domains(self):
         test_queries = ["machine learning algorithms", "climate change effects", "quantum computing applications"]
 
-        expander = QueryExpander(n_expansions=2, include_original_query=False)
+        expander = QueryExpander(
+            n_expansions=2, include_original_query=False, chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano")
+        )
         expander.warm_up()
 
         for query in test_queries:

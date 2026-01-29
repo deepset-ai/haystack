@@ -353,7 +353,7 @@ class TestLLMDocumentContentExtractor:
     def test_live_run(self):
         docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
         doc_store = InMemoryDocumentStore()
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"))
+        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
         writer = DocumentWriter(document_store=doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
