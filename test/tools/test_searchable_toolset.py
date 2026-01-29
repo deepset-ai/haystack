@@ -6,7 +6,6 @@
 import pytest
 
 from haystack.tools import SearchableToolset, Tool, Toolset
-from haystack.tools.searchable_toolset import _BM25SearchEngine
 
 
 # Test helper functions
@@ -193,78 +192,6 @@ def large_catalog():
     return tools
 
 
-class TestBM25SearchEngine:
-    """Tests for the internal BM25 search engine."""
-
-    def test_index_and_search(self, large_catalog):
-        """Test basic indexing and search functionality."""
-        engine = _BM25SearchEngine()
-        engine.index_tools(large_catalog)
-
-        results = engine.search("weather city temperature", k=3)
-
-        assert len(results) > 0
-        # Weather tool should be top result
-        assert results[0][0].name == "get_weather"
-
-    def test_search_returns_scores(self, large_catalog):
-        """Test that search returns tools with scores."""
-        engine = _BM25SearchEngine()
-        engine.index_tools(large_catalog)
-
-        results = engine.search("add numbers", k=2)
-
-        assert len(results) > 0
-        for tool, score in results:
-            assert isinstance(tool, Tool)
-            assert isinstance(score, float)
-            assert score > 0
-
-    def test_search_empty_query(self, large_catalog):
-        """Test search with empty query returns empty results."""
-        engine = _BM25SearchEngine()
-        engine.index_tools(large_catalog)
-
-        results = engine.search("", k=5)
-        assert results == []
-
-    def test_search_no_matches(self, large_catalog):
-        """Test search with no matching terms."""
-        engine = _BM25SearchEngine()
-        engine.index_tools(large_catalog)
-
-        results = engine.search("xyz123nonexistent", k=5)
-        assert results == []
-
-    def test_search_respects_k_limit(self, large_catalog):
-        """Test that search respects the k limit."""
-        engine = _BM25SearchEngine()
-        engine.index_tools(large_catalog)
-
-        results = engine.search("number", k=2)
-        assert len(results) <= 2
-
-    def test_tokenization(self):
-        """Test tokenization produces expected tokens."""
-        engine = _BM25SearchEngine()
-
-        tokens = engine._tokenize("Get current weather for a city")
-        assert "get" in tokens
-        assert "current" in tokens
-        assert "weather" in tokens
-        assert "city" in tokens
-        # Single character words should be excluded
-        assert "a" not in tokens
-
-    def test_search_on_empty_index(self):
-        """Test search on empty index returns empty results."""
-        engine = _BM25SearchEngine()
-        engine.index_tools([])
-
-        results = engine.search("weather", k=5)
-        assert results == []
-
-
 class TestSearchableToolsetPassthrough:
     """Tests for passthrough mode (small catalogs)."""
 
@@ -328,12 +255,12 @@ class TestSearchableToolsetBM25Mode:
         assert toolset._bootstrap_tool is not None
         assert toolset._bootstrap_tool.name == "search_tools"
 
-    def test_bm25_mode_initializes_search_engine(self, large_catalog):
-        """Test that BM25 mode initializes search engine."""
+    def test_bm25_mode_initializes_document_store(self, large_catalog):
+        """Test that BM25 mode initializes document store."""
         toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
 
-        assert toolset._search_engine is not None
+        assert toolset._document_store is not None
 
     def test_search_tools_finds_relevant_tools(self, large_catalog):
         """Test that search_tools finds relevant tools."""
@@ -423,7 +350,7 @@ class TestSearchableToolsetIteration:
 
     def test_contains_discovered_tool(self, large_catalog):
         """Test __contains__ for discovered tools."""
-        toolset = SearchableToolset(catalog=large_catalog)
+        toolset = SearchableToolset(catalog=large_catalog, top_k=1)
         toolset.warm_up()
         assert toolset._bootstrap_tool is not None
 
