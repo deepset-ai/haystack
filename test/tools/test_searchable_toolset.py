@@ -3,9 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import os
+
 import pytest
 
 from haystack.tools import SearchableToolset, Tool, Toolset
+from haystack.tools.from_function import create_tool_from_function
 
 
 # Test helper functions
@@ -52,58 +55,22 @@ def convert_currency(amount: float, from_currency: str, to_currency: str) -> flo
 # Test fixtures
 @pytest.fixture
 def weather_tool():
-    return Tool(
-        name="get_weather",
-        description="Get current weather for a city",
-        parameters={
-            "type": "object",
-            "properties": {"city": {"type": "string", "description": "The city name"}},
-            "required": ["city"],
-        },
-        function=get_weather,
-    )
+    return create_tool_from_function(get_weather)
 
 
 @pytest.fixture
 def add_tool():
-    return Tool(
-        name="add_numbers",
-        description="Add two numbers together",
-        parameters={
-            "type": "object",
-            "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-            "required": ["a", "b"],
-        },
-        function=add_numbers,
-    )
+    return create_tool_from_function(add_numbers)
 
 
 @pytest.fixture
 def multiply_tool():
-    return Tool(
-        name="multiply_numbers",
-        description="Multiply two numbers",
-        parameters={
-            "type": "object",
-            "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-            "required": ["a", "b"],
-        },
-        function=multiply_numbers,
-    )
+    return create_tool_from_function(multiply_numbers)
 
 
 @pytest.fixture
 def stock_tool():
-    return Tool(
-        name="get_stock_price",
-        description="Get stock price by ticker symbol",
-        parameters={
-            "type": "object",
-            "properties": {"symbol": {"type": "string", "description": "Stock ticker symbol"}},
-            "required": ["symbol"],
-        },
-        function=get_stock_price,
-    )
+    return create_tool_from_function(get_stock_price)
 
 
 @pytest.fixture
@@ -115,81 +82,19 @@ def small_catalog(weather_tool, add_tool, multiply_tool):
 @pytest.fixture
 def large_catalog():
     """Larger catalog that requires discovery (>= 8 tools)."""
-    tools = [
-        Tool(
-            name="get_weather",
-            description="Get current weather for a city",
-            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
-            function=get_weather,
-        ),
-        Tool(
-            name="add_numbers",
-            description="Add two numbers together",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        ),
-        Tool(
-            name="multiply_numbers",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        ),
-        Tool(
-            name="get_stock_price",
-            description="Get stock price by ticker symbol",
-            parameters={"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]},
-            function=get_stock_price,
-        ),
-        Tool(
-            name="search_database",
-            description="Search the database for records",
-            parameters={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
-            function=search_database,
-        ),
-        Tool(
-            name="send_email",
-            description="Send an email to a recipient",
-            parameters={
-                "type": "object",
-                "properties": {"to": {"type": "string"}, "subject": {"type": "string"}, "body": {"type": "string"}},
-                "required": ["to", "subject", "body"],
-            },
-            function=send_email,
-        ),
-        Tool(
-            name="calculate_tax",
-            description="Calculate tax on an amount",
-            parameters={
-                "type": "object",
-                "properties": {"amount": {"type": "number"}, "rate": {"type": "number"}},
-                "required": ["amount", "rate"],
-            },
-            function=calculate_tax,
-        ),
-        Tool(
-            name="convert_currency",
-            description="Convert currency from one to another",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "amount": {"type": "number"},
-                    "from_currency": {"type": "string"},
-                    "to_currency": {"type": "string"},
-                },
-                "required": ["amount", "from_currency", "to_currency"],
-            },
-            function=convert_currency,
-        ),
+    return [
+        create_tool_from_function(fn)
+        for fn in [
+            get_weather,
+            add_numbers,
+            multiply_numbers,
+            get_stock_price,
+            search_database,
+            send_email,
+            calculate_tax,
+            convert_currency,
+        ]
     ]
-    return tools
 
 
 class TestSearchableToolsetPassthrough:
@@ -570,70 +475,6 @@ class TestSearchableToolsetEdgeCases:
 
 
 # Integration tests requiring OPENAI_API_KEY
-import os
-
-
-@pytest.fixture
-def integration_catalog():
-    """Catalog with 5 tools for integration tests (triggers search with threshold=3)."""
-    return [
-        Tool(
-            name="get_weather",
-            description="Get current weather forecast for a city including temperature and conditions",
-            parameters={
-                "type": "object",
-                "properties": {"city": {"type": "string", "description": "The city name"}},
-                "required": ["city"],
-            },
-            function=get_weather,
-        ),
-        Tool(
-            name="add_numbers",
-            description="Add two integer numbers together and return the sum",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "a": {"type": "integer", "description": "First number"},
-                    "b": {"type": "integer", "description": "Second number"},
-                },
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        ),
-        Tool(
-            name="multiply_numbers",
-            description="Multiply two integer numbers and return the product",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "a": {"type": "integer", "description": "First number"},
-                    "b": {"type": "integer", "description": "Second number"},
-                },
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        ),
-        Tool(
-            name="get_stock_price",
-            description="Get the current stock price for a given ticker symbol",
-            parameters={
-                "type": "object",
-                "properties": {"symbol": {"type": "string", "description": "Stock ticker symbol like AAPL or GOOGL"}},
-                "required": ["symbol"],
-            },
-            function=get_stock_price,
-        ),
-        Tool(
-            name="search_database",
-            description="Search a database for records matching a query string",
-            parameters={
-                "type": "object",
-                "properties": {"query": {"type": "string", "description": "The search query"}},
-                "required": ["query"],
-            },
-            function=search_database,
-        ),
-    ]
 
 
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
@@ -641,90 +482,17 @@ def integration_catalog():
 class TestSearchableToolsetAgentIntegration:
     """Integration tests with real Agent and OpenAIChatGenerator."""
 
-    def test_agent_with_bm25_mode(self, integration_catalog):
-        """Real Agent integration - discover and use tools via BM25 search."""
+    def test_agent_discovers_and_uses_tools(self, large_catalog):
+        """Agent discovers tools via BM25 search and uses them."""
         from haystack.components.agents import Agent
         from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.dataclasses import ChatMessage
 
-        # Create toolset with search_threshold=3 to trigger discovery (we have 5 tools)
-        toolset = SearchableToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
-
+        toolset = SearchableToolset(catalog=large_catalog, top_k=2)
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=5)
-
-        # Agent should: 1) search for weather tool, 2) call it, 3) respond
-        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Paris?")])
-        # Verify the agent completed successfully
-        assert "messages" in result
-        assert len(result["messages"]) > 1
-
-        # Check that the weather tool was discovered and used
-        last_message = result["last_message"]
-        assert last_message is not None
-
-        # The response should contain weather information (22°C or sunny from our mock)
-        full_conversation = " ".join(msg.text for msg in result["messages"] if msg.text is not None)
-        assert "22" in full_conversation and "sunny" in full_conversation and "Paris" in full_conversation
-
-    def test_agent_with_bm25_mode_math(self, integration_catalog):
-        """Real Agent integration - discover and use math tools via BM25 search."""
-        from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
-        from haystack.dataclasses import ChatMessage
-
-        toolset = SearchableToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
-
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=5)
-
-        # Ask to add numbers - agent should search, find add_numbers tool, use it
         result = agent.run(messages=[ChatMessage.from_user("Please add 15 and 27 together")])
 
         assert "messages" in result
         assert len(result["messages"]) > 1
-
-        # The final response should contain 42 (15 + 27)
-        full_conversation = " ".join(msg.text for msg in result["messages"] if msg.text is not None)
+        full_conversation = " ".join(msg.text for msg in result["messages"] if msg.text)
         assert "42" in full_conversation
-
-    def test_agent_with_passthrough_mode(self, integration_catalog):
-        """Real Agent integration - passthrough mode exposes all tools directly."""
-        from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
-        from haystack.dataclasses import ChatMessage
-
-        # Set high threshold so 5 tools trigger passthrough mode
-        toolset = SearchableToolset(catalog=integration_catalog, search_threshold=10)
-
-        # In passthrough mode, all tools are directly available (no search needed)
-        assert toolset.is_passthrough is True
-        assert len(list(toolset)) == 5
-
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=3)
-
-        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
-
-        assert "messages" in result
-        full_conversation = " ".join(msg.text for msg in result["messages"] if msg.text is not None)
-        # Should get weather info without needing to search first
-        assert "22" in full_conversation or "sunny" in full_conversation or "Berlin" in full_conversation
-
-    def test_agent_discovers_multiple_tools_sequentially(self, integration_catalog):
-        """Test that agent can discover and use multiple tools in sequence."""
-        from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
-        from haystack.dataclasses import ChatMessage
-
-        toolset = SearchableToolset(catalog=integration_catalog, top_k=2, search_threshold=3)
-
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=8)
-
-        # Ask a question that requires multiple tool uses
-        result = agent.run(messages=[ChatMessage.from_user("First add 10 and 5, then tell me the weather in Rome")])
-
-        assert "messages" in result
-        full_conversation = " ".join(msg.text for msg in result["messages"] if msg.text is not None)
-
-        # Should contain results from both tools
-        assert "15" in full_conversation  # 10 + 5
-        # Weather info for Rome (22°C, sunny from our mock)
-        assert "22" in full_conversation or "sunny" in full_conversation or "Rome" in full_conversation

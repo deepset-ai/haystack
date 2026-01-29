@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Annotated, Any, Iterator
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
+from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 from haystack.tools.utils import flatten_tools_or_toolsets
@@ -121,13 +122,21 @@ class SearchableToolset(Toolset):
     def _create_search_tool(self) -> Tool:
         """Create the search_tools bootstrap tool."""
 
-        def search_tools(tool_keywords: str, k: int | None = None) -> str:
+        def search_tools(
+            tool_keywords: Annotated[
+                str,
+                "Space-separated words from tool names/descriptions (e.g. 'route weather search')."
+                " NOT the user's question or task—use vocabulary from the tools you need.",
+            ],
+            k: Annotated[int | None, f"Number of results to return (default: {self._top_k})"] = None,
+        ) -> str:
             """
-            Search for tools matching tool_keywords and load them.
+            ALWAYS use this tool FIRST when you need to invoke some tools but don't have the right one loaded yet.
 
-            :param tool_keywords: Keywords likely to appear in tool names/descriptions (not the user's request).
-            :param k: Number of results to return (optional, defaults to top_k).
-            :returns: Confirmation of loaded tools.
+            Provide space separated tool keywords likely to appear in tool names/descriptions
+            (e.g. 'route distance weather', 'search email'). Do NOT pass the user's request or task (e.g.
+            'things to do in X', 'user question'); matching is keyword-based. Returns loaded
+            tool names; they become available immediately.
             """
             if self._document_store is None:
                 return "Error: Document store not initialized. Call warm_up() first."
@@ -157,27 +166,7 @@ class SearchableToolset(Toolset):
 
             return f"Found and loaded {len(tool_names)} tool(s): {', '.join(tool_names)}. Use them directly as tools."
 
-        return Tool(
-            name="search_tools",
-            description="ALWAYS use this tool FIRST when you need to invoke some tools but don't have the right one "
-            "loaded yet. Provide space separated tool keywords likely to appear in tool names/descriptions "
-            "(e.g. 'route distance weather', 'search email'). Do NOT pass the user's request or task (e.g. "
-            "'things to do in X', 'user question'); matching is keyword-based. Returns loaded "
-            "tool names; they become available immediately.",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "tool_keywords": {
-                        "type": "string",
-                        "description": "Space-separated words from tool names/descriptions (e.g. 'route weather "
-                        "search'). NOT the user's question or task—use vocabulary from the tools you need.",
-                    },
-                    "k": {"type": "integer", "description": f"Number of results to return (default: {self._top_k})"},
-                },
-                "required": ["tool_keywords"],
-            },
-            function=search_tools,
-        )
+        return create_tool_from_function(function=search_tools, name="search_tools")
 
     def __iter__(self) -> Iterator[Tool]:
         """
