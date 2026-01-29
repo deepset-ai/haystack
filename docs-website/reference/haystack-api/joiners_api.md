@@ -609,7 +609,7 @@ print(pipeline.run(data={"prompt_builder_1": {"query": string_1}, "prompt_builde
 
 ```python
 @component.output_types(strings=list[str])
-def run(strings: Variadic[str])
+def run(strings: Variadic[str]) -> dict[str, list[str]]
 ```
 
 Joins strings into a list of strings
