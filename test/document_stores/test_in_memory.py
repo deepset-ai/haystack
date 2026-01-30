@@ -109,6 +109,88 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(docs)
 
+    def test_delete_all_documents(self, document_store: InMemoryDocumentStore):
+        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        document_store.delete_all_documents()
+        assert document_store.count_documents() == 0
+        assert document_store.filter_documents() == []
+
+        # Store remains functional after delete_all
+        document_store.write_documents([Document(content="New doc")])
+        assert document_store.count_documents() == 1
+
+    def test_delete_all_documents_empty_store(self, document_store: InMemoryDocumentStore):
+        document_store.delete_all_documents()
+        assert document_store.count_documents() == 0
+
+    def test_update_by_filter(self, document_store: InMemoryDocumentStore):
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
+            Document(content="Doc 2", meta={"category": "B", "year": 2023}),
+            Document(content="Doc 3", meta={"category": "A", "year": 2024}),
+        ]
+        document_store.write_documents(docs)
+
+        updated = document_store.update_by_filter(
+            filters={"field": "meta.category", "operator": "==", "value": "A"}, meta={"updated": True, "tag": "foo"}
+        )
+        assert updated == 2
+
+        all_docs = document_store.filter_documents()
+        category_a = [d for d in all_docs if d.meta.get("category") == "A"]
+        category_b = [d for d in all_docs if d.meta.get("category") == "B"]
+        assert len(category_a) == 2
+        assert all(d.meta.get("updated") is True and d.meta.get("tag") == "foo" for d in category_a)
+        assert len(category_b) == 1
+        assert "updated" not in category_b[0].meta and "tag" not in category_b[0].meta
+
+    def test_update_by_filter_no_matches(self, document_store: InMemoryDocumentStore):
+        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
+        document_store.write_documents(docs)
+
+        updated = document_store.update_by_filter(
+            filters={"field": "meta.category", "operator": "==", "value": "C"}, meta={"updated": True}
+        )
+        assert updated == 0
+        assert document_store.count_documents() == 2
+
+    def test_delete_by_filter(self, document_store: InMemoryDocumentStore):
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
+            Document(content="Doc 2", meta={"category": "B", "year": 2023}),
+            Document(content="Doc 3", meta={"category": "A", "year": 2024}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        deleted = document_store.delete_by_filter(filters={"field": "meta.category", "operator": "==", "value": "A"})
+        assert deleted == 2
+        assert document_store.count_documents() == 1
+        remaining = document_store.filter_documents()
+        assert remaining[0].meta["category"] == "B"
+
+        deleted = document_store.delete_by_filter(filters={"field": "meta.year", "operator": "==", "value": 2023})
+        assert deleted == 1
+        assert document_store.count_documents() == 0
+
+    def test_delete_by_filter_no_matches(self, document_store: InMemoryDocumentStore):
+        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
+        document_store.write_documents(docs)
+
+        deleted = document_store.delete_by_filter(filters={"field": "meta.category", "operator": "==", "value": "C"})
+        assert deleted == 0
+        assert document_store.count_documents() == 2
+
+    def test_delete_by_filter_invalid_filters(self, document_store: InMemoryDocumentStore):
+        document_store.write_documents([Document(content="Doc 1")])
+        with pytest.raises(ValueError, match="Invalid filter syntax"):
+            document_store.delete_by_filter(filters={"invalid": "filter"})
+        with pytest.raises(ValueError, match="Invalid filter syntax"):
+            document_store.update_by_filter(filters={"invalid": "filter"}, meta={"key": "value"})
+
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
