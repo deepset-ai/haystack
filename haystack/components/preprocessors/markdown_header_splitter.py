@@ -265,9 +265,7 @@ class MarkdownHeaderSplitter:
                 total_pages=total_pages,
             )
             for split_idx, split in enumerate(splits):
-                meta = {}
-                if doc.meta:
-                    meta = doc.meta.copy()
+                meta = doc.meta.copy() if doc.meta else {}
                 meta.update({"source_id": doc.id, "page_number": current_page, "split_id": split_idx})
                 if split.get("meta"):
                     meta.update(split["meta"])
