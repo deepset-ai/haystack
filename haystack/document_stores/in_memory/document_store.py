@@ -426,10 +426,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         :returns: A list of Documents that match the given filters.
         """
         if filters:
-            if "operator" not in filters and "conditions" not in filters:
-                raise ValueError(
-                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-                )
+            InMemoryDocumentStore._validate_filters(filters)
             docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         else:
             docs = list(self.storage.values())
@@ -505,6 +502,13 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             except ZeroDivisionError:
                 self._avg_doc_len = 0
 
+    @staticmethod
+    def _validate_filters(filters: dict[str, Any] | None) -> None:
+        if "operator" not in filters and "conditions" not in filters:
+            raise ValueError(
+                "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+            )
+
     def delete_all_documents(self) -> None:
         """
         Deletes all documents in the document store.
@@ -522,11 +526,10 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             For filter syntax, see filter_documents.
         :param meta: The metadata fields to update. These will be merged with existing metadata.
         :returns: The number of documents updated.
+        :raises: ValueError if no filters are not valid.
         """
-        if filters and "operator" not in filters and "conditions" not in filters:
-            raise ValueError(
-                "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-            )
+        if filters:
+            InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         for doc in matching:
             doc.meta.update(meta)
@@ -540,11 +543,10 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         :param filters: The filters to apply to select documents for deletion.
             For filter syntax, see filter_documents.
         :returns: The number of documents deleted.
+        :raises: ValueError if no filters are not valid.
         """
-        if filters and "operator" not in filters and "conditions" not in filters:
-            raise ValueError(
-                "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-            )
+        if filters:
+            InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         doc_ids = [doc.id for doc in matching]
         self.delete_documents(doc_ids)
@@ -627,15 +629,13 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
+        :raises: ValueError if no filters are not valid.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
 
         if filters:
-            if "operator" not in filters and "conditions" not in filters:
-                raise ValueError(
-                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-                )
+            InMemoryDocumentStore._validate_filters(filters)
             all_documents = [
                 doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)
             ]
