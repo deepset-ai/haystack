@@ -502,3 +502,270 @@ For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deeps
 
 The number of documents updated.
 
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_documents_by_filter"></a>
+
+#### PineconeDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the count of documents that match the provided filters.
+
+Note: Due to Pinecone's limitations, this method fetches documents and counts them.
+For large result sets, this is subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `filters`: The filters to apply to the document list.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_documents_by_filter_async"></a>
+
+#### PineconeDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the count of documents that match the provided filters.
+
+Note: Due to Pinecone's limitations, this method fetches documents and counts them.
+For large result sets, this is subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `filters`: The filters to apply to the document list.
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### PineconeDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Counts unique values for each specified metadata field in documents matching the filters.
+
+Note: Due to Pinecone's limitations, this method fetches documents and aggregates in Python.
+Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents.
+- `metadata_fields`: List of metadata field names to count unique values for.
+
+**Returns**:
+
+Dictionary mapping field names to counts of unique values.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### PineconeDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously counts unique values for each specified metadata field in documents matching the filters.
+
+Note: Due to Pinecone's limitations, this method fetches documents and aggregates in Python.
+Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents.
+- `metadata_fields`: List of metadata field names to count unique values for.
+
+**Returns**:
+
+Dictionary mapping field names to counts of unique values.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_fields_info"></a>
+
+#### PineconeDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns information about metadata fields and their types by sampling documents.
+
+Note: Pinecone doesn't provide a schema introspection API, so this method infers field types
+by examining the metadata of documents stored in the index (up to 1000 documents).
+
+Type mappings:
+- 'text': Document content field
+- 'keyword': String metadata values
+- 'long': Numeric metadata values (int or float)
+- 'boolean': Boolean metadata values
+
+**Returns**:
+
+Dictionary mapping field names to type information.
+Example:
+```python
+{
+    'content': {'type': 'text'},
+    'category': {'type': 'keyword'},
+    'priority': {'type': 'long'},
+}
+```
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_fields_info_async"></a>
+
+#### PineconeDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Asynchronously returns information about metadata fields and their types by sampling documents.
+
+Note: Pinecone doesn't provide a schema introspection API, so this method infers field types
+by examining the metadata of documents stored in the index (up to 1000 documents).
+
+Type mappings:
+- 'text': Document content field
+- 'keyword': String metadata values
+- 'long': Numeric metadata values (int or float)
+- 'boolean': Boolean metadata values
+
+**Returns**:
+
+Dictionary mapping field names to type information.
+Example:
+```python
+{
+    'content': {'type': 'text'},
+    'category': {'type': 'keyword'},
+    'priority': {'type': 'long'},
+}
+```
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_min_max"></a>
+
+#### PineconeDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+Returns the minimum and maximum values for a metadata field.
+
+Supports numeric (int, float), boolean, and string (keyword) types:
+- Numeric: Returns min/max based on numeric value
+- Boolean: Returns False as min, True as max
+- String: Returns min/max based on alphabetical ordering
+
+Note: This method fetches all documents and computes min/max in Python.
+Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to analyze.
+
+**Raises**:
+
+- `ValueError`: If the field doesn't exist or has no values.
+
+**Returns**:
+
+Dictionary with 'min' and 'max' keys.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### PineconeDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, Any]
+```
+
+Asynchronously returns the minimum and maximum values for a metadata field.
+
+Supports numeric (int, float), boolean, and string (keyword) types:
+- Numeric: Returns min/max based on numeric value
+- Boolean: Returns False as min, True as max
+- String: Returns min/max based on alphabetical ordering
+
+Note: This method fetches all documents and computes min/max in Python.
+Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to analyze.
+
+**Raises**:
+
+- `ValueError`: If the field doesn't exist or has no values.
+
+**Returns**:
+
+Dictionary with 'min' and 'max' keys.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_unique_values"></a>
+
+#### PineconeDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(metadata_field: str,
+                                     search_term: str | None = None,
+                                     from_: int = 0,
+                                     size: int = 10) -> tuple[list[str], int]
+```
+
+Retrieves unique values for a metadata field with optional search and pagination.
+
+Note: This method fetches documents and extracts unique values in Python.
+Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to get unique values for.
+- `search_term`: Optional search term to filter values (case-insensitive substring match).
+- `from_`: Starting offset for pagination (default: 0).
+- `size`: Number of values to return (default: 10).
+
+**Returns**:
+
+Tuple of (list of unique values, total count of matching values).
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### PineconeDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10) -> tuple[list[str], int]
+```
+
+Asynchronously retrieves unique values for a metadata field with optional search and pagination.
+
+Note: This method fetches documents and extracts unique values in Python.
+Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to get unique values for.
+- `search_term`: Optional search term to filter values (case-insensitive substring match).
+- `from_`: Starting offset for pagination (default: 0).
+- `size`: Number of values to return (default: 10).
+
+**Returns**:
+
+Tuple of (list of unique values, total count of matching values).
+

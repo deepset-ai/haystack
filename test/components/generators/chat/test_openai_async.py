@@ -345,7 +345,7 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.asyncio
     async def test_live_run_async(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -382,7 +382,9 @@ class TestOpenAIChatGeneratorAsync:
             responses += chunk.content if chunk.content else ""
 
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+            model="gpt-4.1-nano",
+            streaming_callback=callback,
+            generation_kwargs={"stream_options": {"include_usage": True}},
         )
         results = await component.run_async([ChatMessage.from_user("What's the capital of France?")])
 
@@ -413,7 +415,7 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.asyncio
     async def test_live_run_with_tools_async(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = OpenAIChatGenerator(tools=tools)
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=tools)
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
