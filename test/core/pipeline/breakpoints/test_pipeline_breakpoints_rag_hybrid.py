@@ -20,23 +20,23 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 @component
 class FakeEmbedder:
     @component.output_types(documents=list[Document], embedding=list[float])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, list[Document] | list[float]]:
         return {"embedding": [random() for _ in range(100)]}
 
 
 @component
 class FakeRanker:
     @component.output_types(documents=list[Document])
-    def run(self, query: str, documents: list[Document], top_k: int = None):
+    def run(self, query: str, documents: list[Document], top_k: int | None = None) -> dict[str, list[Document]]:
         for i, doc in enumerate(documents):
             doc.score = 1.0 / (i + 1)
-        return {"documents": sorted(documents, key=lambda x: x.score, reverse=True)[:top_k]}
+        return {"documents": sorted(documents, key=lambda x: x.score or 0, reverse=True)[:top_k]}
 
 
 @component
 class FakeGenerator:
     @component.output_types(replies=list[str], meta=list[dict[str, Any]])
-    def run(self, prompt: str):
+    def run(self, prompt: str) -> dict[str, list[str | dict[str, Any]]]:
         return {"replies": ["Mark lives in Berlin."], "meta": [{"model": "fake"}]}
 
 

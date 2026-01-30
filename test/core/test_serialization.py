@@ -18,8 +18,10 @@ from haystack.core.serialization import (
     generate_qualified_class_name,
     import_class_by_name,
 )
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing import factory
 from haystack.utils import ComponentDevice, Secret
+from haystack.utils.auth import EnvVarSecret
 from haystack.utils.device import Device, DeviceMap
 
 
@@ -47,7 +49,7 @@ def test_default_component_from_dict():
         MyComponent, {"type": "haystack.testing.factory.MyComponent", "init_parameters": {"some_param": 10}}
     )
     assert isinstance(comp, MyComponent)
-    assert comp.some_param == 10
+    assert comp.some_param == 10  # type: ignore[attr-defined]
 
 
 def test_default_component_from_dict_without_type():
@@ -141,7 +143,7 @@ class CustomComponentWithSecrets:
         self.regular_param = regular_param
 
     @component.output_types(value=str)
-    def run(self, value: str):
+    def run(self, value: str) -> dict[str, str]:
         return {"value": value}
 
 
@@ -232,8 +234,9 @@ def test_component_to_dict_and_from_dict_roundtrip_with_secret():
     assert serialized["init_parameters"]["api_key"]["type"] == "env_var"
 
     deserialized_comp = component_from_dict(CustomComponentWithSecrets, serialized, "test_component")
-    assert isinstance(deserialized_comp.api_key, Secret)
+    assert isinstance(deserialized_comp.api_key, EnvVarSecret)
     assert deserialized_comp.api_key.type.value == "env_var"
+    assert isinstance(original_secret, EnvVarSecret)
     assert deserialized_comp.api_key._env_vars == original_secret._env_vars
 
     # Test roundtrip with multiple secrets
@@ -247,11 +250,13 @@ def test_component_to_dict_and_from_dict_roundtrip_with_secret():
     assert serialized["init_parameters"]["regular_param"] == "test"
 
     deserialized_comp = component_from_dict(CustomComponentWithSecrets, serialized, "test_component")
-    assert isinstance(deserialized_comp.api_key, Secret)
-    assert isinstance(deserialized_comp.token, Secret)
+    assert isinstance(deserialized_comp.api_key, EnvVarSecret)
+    assert isinstance(deserialized_comp.token, EnvVarSecret)
     assert deserialized_comp.api_key.type.value == "env_var"
     assert deserialized_comp.token.type.value == "env_var"
     assert deserialized_comp.regular_param == "test"
+    assert isinstance(env_secret1, EnvVarSecret)
+    assert isinstance(env_secret2, EnvVarSecret)
     assert deserialized_comp.api_key._env_vars == env_secret1._env_vars
     assert deserialized_comp.token._env_vars == env_secret2._env_vars
 
@@ -269,7 +274,7 @@ class CustomComponentWithDevice:
         self.name = name
 
     @component.output_types(value=str)
-    def run(self, value: str):
+    def run(self, value: str) -> dict[str, str]:
         return {"value": value}
 
 
@@ -427,3 +432,141 @@ def test_component_to_dict_and_from_dict_roundtrip_with_component_device():
     assert deserialized_comp.device.to_torch_str() == "cpu"
     assert deserialized_comp.other_device.to_torch_str() == "cuda:0"
     assert deserialized_comp.name == "test"
+
+
+@component
+class CustomComponentWithDocumentStore:
+    def __init__(self, document_store: InMemoryDocumentStore | None = None, name: str | None = None):
+        self.document_store = document_store
+        self.name = name
+
+    @component.output_types(value=str)
+    def run(self, value: str) -> dict[str, str]:
+        return {"value": value}
+
+
+def test_component_to_dict_with_document_store():
+    """Test that DocumentStore instances are automatically serialized in component_to_dict."""
+    # Test with InMemoryDocumentStore
+    doc_store = InMemoryDocumentStore()
+    comp = CustomComponentWithDocumentStore(document_store=doc_store)
+    res = component_to_dict(comp, "test_component")
+    assert "type" in res["init_parameters"]["document_store"]
+    assert "init_parameters" in res["init_parameters"]["document_store"]
+    assert (
+        res["init_parameters"]["document_store"]["type"]
+        == "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
+    )
+
+    # Test with None
+    comp = CustomComponentWithDocumentStore(document_store=None)
+    res = component_to_dict(comp, "test_component")
+    assert res["init_parameters"]["document_store"] is None
+
+
+def test_component_from_dict_with_document_store():
+    """Test that serialized DocumentStore dictionaries are automatically deserialized in component_from_dict."""
+    # Test with InMemoryDocumentStore
+    doc_store = InMemoryDocumentStore()
+    serialized_doc_store = doc_store.to_dict()
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {"document_store": serialized_doc_store, "name": "test"},
+    }
+    comp = component_from_dict(CustomComponentWithDocumentStore, data, "test_component")
+    assert isinstance(comp, CustomComponentWithDocumentStore)
+    assert isinstance(comp.document_store, InMemoryDocumentStore)
+    assert comp.name == "test"
+
+    # Test with None
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {"document_store": None, "name": "test"},
+    }
+    comp = component_from_dict(CustomComponentWithDocumentStore, data, "test_component")
+    assert comp.document_store is None
+    assert comp.name == "test"
+
+
+def test_component_to_dict_and_from_dict_roundtrip_with_document_store():
+    """Test that serialization and deserialization work together for DocumentStore."""
+    # Test roundtrip with InMemoryDocumentStore
+    original_doc_store = InMemoryDocumentStore()
+    comp = CustomComponentWithDocumentStore(document_store=original_doc_store)
+
+    serialized = component_to_dict(comp, "test_component")
+    assert "type" in serialized["init_parameters"]["document_store"]
+    assert (
+        serialized["init_parameters"]["document_store"]["type"]
+        == "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
+    )
+
+    deserialized_comp = component_from_dict(CustomComponentWithDocumentStore, serialized, "test_component")
+    assert isinstance(deserialized_comp.document_store, InMemoryDocumentStore)
+    assert deserialized_comp.document_store.bm25_algorithm == original_doc_store.bm25_algorithm
+    assert (
+        deserialized_comp.document_store.embedding_similarity_function
+        == original_doc_store.embedding_similarity_function
+    )
+
+    # Test roundtrip with custom parameters
+    original_doc_store = InMemoryDocumentStore(
+        bm25_algorithm="BM25Okapi", embedding_similarity_function="cosine", return_embedding=False
+    )
+    comp = CustomComponentWithDocumentStore(document_store=original_doc_store)
+
+    serialized = component_to_dict(comp, "test_component")
+    deserialized_comp = component_from_dict(CustomComponentWithDocumentStore, serialized, "test_component")
+    assert isinstance(deserialized_comp.document_store, InMemoryDocumentStore)
+    assert deserialized_comp.document_store.bm25_algorithm == "BM25Okapi"
+    assert deserialized_comp.document_store.embedding_similarity_function == "cosine"
+    assert deserialized_comp.document_store.return_embedding is False
+
+
+def test_default_to_dict_with_document_store():
+    """Test that DocumentStore instances are automatically serialized in default_to_dict."""
+    doc_store = InMemoryDocumentStore()
+    res = default_to_dict(doc_store)
+    assert res["type"] == "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
+    assert "init_parameters" in res
+
+    # Test that DocumentStore is serialized when passed as a parameter
+    doc_store = InMemoryDocumentStore()
+    comp = CustomComponentWithDocumentStore(document_store=doc_store)
+    res = default_to_dict(comp, document_store=doc_store, name="test")
+    assert "type" in res["init_parameters"]["document_store"]
+    assert res["init_parameters"]["name"] == "test"
+
+
+def test_default_from_dict_with_document_store():
+    """Test that serialized DocumentStore dictionaries are automatically deserialized in default_from_dict."""
+    doc_store = InMemoryDocumentStore()
+    serialized = doc_store.to_dict()
+
+    # Test direct deserialization
+    deserialized = default_from_dict(InMemoryDocumentStore, serialized)
+    assert isinstance(deserialized, InMemoryDocumentStore)
+    assert deserialized.bm25_algorithm == doc_store.bm25_algorithm
+
+    # Test deserialization when DocumentStore is in init_parameters
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {"document_store": serialized, "name": "test"},
+    }
+    comp = default_from_dict(CustomComponentWithDocumentStore, data)
+    assert isinstance(comp.document_store, InMemoryDocumentStore)
+    assert comp.name == "test"
+
+
+def test_default_from_dict_with_invalid_class_name():
+    """Test that deserialization raises ImportError with improved message when class cannot be imported."""
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {
+            "document_store": {"type": "nonexistent.module.Class", "init_parameters": {}},
+            "name": "test",
+        },
+    }
+    # Verify the error message includes the parameter key and original error
+    with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*nonexistent\.module\.Class"):
+        default_from_dict(CustomComponentWithDocumentStore, data)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import sys
 from unittest.mock import Mock, patch
 
 import pytest
@@ -197,7 +198,8 @@ class TestOpenAPIConnectorIntegration:
         not os.environ.get("GITHUB_TOKEN", None), reason="Export an env var called GITHUB_TOKEN to run this test."
     )
     @pytest.mark.integration
-    @pytest.mark.flaky(reruns=3, reruns_delay=5)
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid hitting rate limits")
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_github_api_integration(self):
         component = OpenAPIConnector(
             openapi_spec="https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",

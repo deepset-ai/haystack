@@ -17,8 +17,12 @@ A component for retrieving documents from Weaviate using the BM25 algorithm.
 
 Example usage:
 ```python
-from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
-from haystack_integrations.components.retrievers.weaviate.bm25_retriever import WeaviateBM25Retriever
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
+from haystack_integrations.components.retrievers.weaviate.bm25_retriever import (
+    WeaviateBM25Retriever,
+)
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
 retriever = WeaviateBM25Retriever(document_store=document_store)
@@ -577,7 +581,9 @@ Usage example with Weaviate Cloud Services:
 ```python
 import os
 from haystack_integrations.document_stores.weaviate.auth import AuthApiKey
-from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
 
 os.environ["WEAVIATE_API_KEY"] = "MY_API_KEY"
 
@@ -589,7 +595,9 @@ document_store = WeaviateDocumentStore(
 
 Usage example with self-hosted Weaviate:
 ```python
-from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
 ```
@@ -689,6 +697,265 @@ def count_documents() -> int
 
 Returns the number of documents present in the DocumentStore.
 
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.count_documents_by_filter"></a>
+
+#### WeaviateDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see
+[Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.count_documents_by_filter_async"></a>
+
+#### WeaviateDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see
+[Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_fields_info"></a>
+
+#### WeaviateDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns metadata field names and their types, excluding special fields.
+
+Special fields (content, blob_data, blob_mime_type, _original_id, score) are excluded
+as they are not user metadata fields.
+
+**Returns**:
+
+A dictionary where keys are field names and values are dictionaries
+containing type information, e.g.:
+```python
+{
+    'number': {'type': 'int'},
+    'date': {'type': 'date'},
+    'category': {'type': 'text'},
+    'status': {'type': 'text'}
+}
+```
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_fields_info_async"></a>
+
+#### WeaviateDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Asynchronously returns metadata field names and their types, excluding special fields.
+
+Special fields (content, blob_data, blob_mime_type, _original_id, score) are excluded
+as they are not user metadata fields.
+
+**Returns**:
+
+A dictionary where keys are field names and values are dictionaries
+containing type information, e.g.:
+```python
+{
+    'number': {'type': 'int'},
+    'date': {'type': 'date'},
+    'category': {'type': 'text'},
+    'status': {'type': 'text'}
+}
+```
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_field_min_max"></a>
+
+#### WeaviateDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+Returns the minimum and maximum values for a numeric or date metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to get min/max for.
+Can be prefixed with 'meta.' (e.g., 'meta.year' or 'year').
+
+**Raises**:
+
+- `ValueError`: If the field is not found or doesn't support min/max operations.
+
+**Returns**:
+
+A dictionary with 'min' and 'max' keys containing the respective values.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### WeaviateDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, Any]
+```
+
+Asynchronously returns the minimum and maximum values for a numeric or date metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to get min/max for.
+Can be prefixed with 'meta.' (e.g., 'meta.year' or 'year').
+
+**Raises**:
+
+- `ValueError`: If the field is not found or doesn't support min/max operations.
+
+**Returns**:
+
+A dictionary with 'min' and 'max' keys containing the respective values.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### WeaviateDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Returns the count of unique values for each specified metadata field.
+
+**Arguments**:
+
+- `filters`: The filters to apply when counting unique values.
+For filter syntax, see
+[Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+- `metadata_fields`: List of metadata field names to count unique values for.
+Field names can be prefixed with 'meta.' (e.g., 'meta.category' or 'category').
+
+**Raises**:
+
+- `ValueError`: If any of the requested fields don't exist in the collection schema.
+
+**Returns**:
+
+A dictionary mapping field names to counts of unique values.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### WeaviateDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously returns the count of unique values for each specified metadata field.
+
+**Arguments**:
+
+- `filters`: The filters to apply when counting unique values.
+For filter syntax, see
+[Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+- `metadata_fields`: List of metadata field names to count unique values for.
+Field names can be prefixed with 'meta.' (e.g., 'meta.category' or 'category').
+
+**Raises**:
+
+- `ValueError`: If any of the requested fields don't exist in the collection schema.
+
+**Returns**:
+
+A dictionary mapping field names to counts of unique values.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_field_unique_values"></a>
+
+#### WeaviateDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10000) -> tuple[list[str], int]
+```
+
+Returns unique values for a metadata field with pagination support.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to get unique values for.
+Can be prefixed with 'meta.' (e.g., 'meta.category' or 'category').
+- `search_term`: Optional term to filter documents by content before
+extracting unique values. If provided, only documents whose content
+contains this term will be considered.
+Note: Uses substring matching (case-sensitive, no stemming).
+- `from_`: The starting offset for pagination (0-indexed). Defaults to 0.
+- `size`: The maximum number of unique values to return. Defaults to 10000.
+
+**Raises**:
+
+- `ValueError`: If the field is not found in the collection schema.
+
+**Returns**:
+
+A tuple of (list of unique values, total count of unique values).
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### WeaviateDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10000) -> tuple[list[str], int]
+```
+
+Asynchronously returns unique values for a metadata field with pagination support.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field name to get unique values for.
+Can be prefixed with 'meta.' (e.g., 'meta.category' or 'category').
+- `search_term`: Optional term to filter documents by content before
+extracting unique values. If provided, only documents whose content
+contains this term will be considered.
+Note: Uses substring matching (case-sensitive, no stemming).
+- `from_`: The starting offset for pagination (0-indexed). Defaults to 0.
+- `size`: The maximum number of unique values to return. Defaults to 10000.
+
+**Raises**:
+
+- `ValueError`: If the field is not found in the collection schema.
+
+**Returns**:
+
+A tuple of (list of unique values, total count of unique values).
+
 <a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.filter_documents"></a>
 
 #### WeaviateDocumentStore.filter\_documents
@@ -701,6 +968,10 @@ Returns the documents that match the filters provided.
 
 For a detailed specification of the filters, refer to the
 DocumentStore.filter_documents() protocol documentation.
+
+Note: The ``contains`` filter operator is case-sensitive (substring
+matching). For case-insensitive matching, normalize the value before
+building the filter.
 
 **Arguments**:
 

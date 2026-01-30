@@ -91,7 +91,7 @@ dependencies = [
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                       # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch, sentencepiece]>=4.55.4,<4.57",  # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "transformers[torch, sentencepiece]>=4.57,<5",      # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
   "sentence-transformers>=5.0.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
@@ -162,7 +162,7 @@ integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test
 all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/pipeline/features/test_run.py}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/}"
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]

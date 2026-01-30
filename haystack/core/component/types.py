@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
+from types import UnionType
 from typing import Annotated, Any, Iterable, TypeAlias, TypedDict, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
@@ -42,20 +43,29 @@ class InputSocket:
         The type of the input.
     :param default_value:
         The default value of the input. If not set, the input is mandatory.
-    :param is_variadic:
-        Whether the input is variadic or not.
-    :param is_greedy
+    :param is_lazy_variadic:
+        Whether the input is a lazy variadic or not.
+    :param is_greedy:
         Whether the input is a greedy variadic or not.
     :param senders:
         The list of components that send data to this input.
+    :param wrap_input_in_list:
+        Whether to wrap the input in a list before passing it to the component.
+        Only applies to lazy variadic inputs so when is_lazy_variadic is True.
     """
 
     name: str
-    type: type
+    type: type | UnionType
     default_value: Any = _empty
-    is_variadic: bool = field(init=False)
+    is_lazy_variadic: bool = field(init=False)
     is_greedy: bool = field(init=False)
     senders: list[str] = field(default_factory=list)
+    wrap_input_in_list: bool = True
+
+    @property
+    def is_variadic(self):
+        """Check if the input is variadic."""
+        return self.is_greedy or self.is_lazy_variadic
 
     @property
     def is_mandatory(self):
@@ -65,17 +75,16 @@ class InputSocket:
     def __post_init__(self):
         try:
             # __metadata__ is a tuple
-            self.is_variadic = hasattr(self.type, "__metadata__") and self.type.__metadata__[0] in [
-                HAYSTACK_VARIADIC_ANNOTATION,
-                HAYSTACK_GREEDY_VARIADIC_ANNOTATION,
-            ]
+            self.is_lazy_variadic = (
+                hasattr(self.type, "__metadata__") and self.type.__metadata__[0] == HAYSTACK_VARIADIC_ANNOTATION
+            )
             self.is_greedy = (
                 hasattr(self.type, "__metadata__") and self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
             )
         except AttributeError:
-            self.is_variadic = False
+            self.is_lazy_variadic = False
             self.is_greedy = False
-        if self.is_variadic:
+        if self.is_lazy_variadic or self.is_greedy:
             # We need to "unpack" the type inside the Variadic annotation,
             # otherwise the pipeline connection api will try to match
             # `Annotated[type, HAYSTACK_VARIADIC_ANNOTATION]`.
@@ -95,10 +104,10 @@ class InputSocket:
 
 class InputSocketTypeDescriptor(TypedDict):
     """
-    Describes the type of an `InputSocket`.
+    Describes the type of `InputSocket`.
     """
 
-    type: type
+    type: type | UnionType
     is_mandatory: bool
 
 

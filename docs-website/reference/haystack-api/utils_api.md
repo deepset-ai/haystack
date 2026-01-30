@@ -293,30 +293,6 @@ The callable
 
 ## Module deserialization
 
-<a id="deserialization.deserialize_document_store_in_init_params_inplace"></a>
-
-#### deserialize\_document\_store\_in\_init\_params\_inplace
-
-```python
-def deserialize_document_store_in_init_params_inplace(
-        data: dict[str, Any], key: str = "document_store") -> None
-```
-
-Deserializes a generic document store from the init_parameters of a serialized component in place.
-
-**Arguments**:
-
-- `data`: The dictionary to deserialize from.
-- `key`: The key in the `data["init_parameters"]` dictionary where the document store is specified.
-
-**Raises**:
-
-- `DeserializationError`: If the document store is not properly specified in the serialization data or its type cannot be imported.
-
-**Returns**:
-
-The dictionary, with the document store deserialized.
-
 <a id="deserialization.deserialize_chatgenerator_inplace"></a>
 
 #### deserialize\_chatgenerator\_inplace

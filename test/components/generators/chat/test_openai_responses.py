@@ -15,8 +15,8 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall
-from haystack.tools import ComponentTool, Tool, Toolset
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, TextContent, ToolCall
+from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
 from haystack.utils import Secret
 
 
@@ -496,11 +496,13 @@ class TestRun:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4", generation_kwargs={"reasoning_effort": "low", "reasoning_summary": "auto"}
+            model="gpt-4",
+            generation_kwargs={"reasoning_effort": "low", "reasoning_summary": "auto", "verbosity": "low"},
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
+        assert openai_mock_responses.call_args.kwargs["text"] == {"verbosity": "low"}
 
     def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta):
         streaming_callback_called = False
@@ -560,13 +562,13 @@ class TestIntegration:
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4" in message.meta["model"]
+        assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
@@ -574,12 +576,14 @@ class TestIntegration:
 
     def test_live_run_with_reasoning(self):
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]
-        component = OpenAIResponsesChatGenerator(generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}})
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5-nano", generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}}
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Moon" in message.text
-        assert "gpt-5-mini" in message.meta["model"]
+        assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -589,7 +593,9 @@ class TestIntegration:
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
-        component = OpenAIResponsesChatGenerator(generation_kwargs={"text_format": calendar_event_model})
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5-nano", generation_kwargs={"text_format": calendar_event_model}
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -618,7 +624,7 @@ class TestIntegration:
             }
         }
         chat_messages = [ChatMessage.from_user("Jane 54 years old")]
-        component = OpenAIResponsesChatGenerator(generation_kwargs={"text": json_schema})
+        component = OpenAIResponsesChatGenerator(model="gpt-5-nano", generation_kwargs={"text": json_schema})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -647,25 +653,12 @@ class TestIntegration:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
-    def test_live_run_with_ser_deser_and_text_format(self, calendar_event_model):
-        chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
-        ]
-        component = OpenAIResponsesChatGenerator(generation_kwargs={"text_format": calendar_event_model})
-        serialized = component.to_dict()
-        deser = OpenAIResponsesChatGenerator.from_dict(serialized)
-        results = deser.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
-        assert isinstance(msg["event_date"], str)
-        assert isinstance(msg["event_location"], str)
-
     def test_live_run_streaming(self):
         callback = RecordingCallback()
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4", streaming_callback=callback, generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-4.1-nano",
+            streaming_callback=callback,
+            generation_kwargs={"include": ["message.output_text.logprobs"]},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -678,7 +671,7 @@ class TestIntegration:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4" in metadata["model"]
+        assert "gpt-4.1-nano" in metadata["model"]
         assert metadata["logprobs"] is not None
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -696,14 +689,16 @@ class TestIntegration:
         callback = RecordingCallback()
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]
         component = OpenAIResponsesChatGenerator(
-            generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}}, streaming_callback=callback
+            model="gpt-5-nano",
+            generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
+            streaming_callback=callback,
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert callback.reasoning == message.reasoning.reasoning_text
         assert "Moon" in callback.content
-        assert "gpt-5-mini" in message.meta["model"]
+        assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -712,7 +707,9 @@ class TestIntegration:
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
-        component = OpenAIResponsesChatGenerator(model="gpt-5", tools=tools, streaming_callback=print_streaming_chunk)
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5-nano", tools=tools, streaming_callback=print_streaming_chunk
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -736,7 +733,7 @@ class TestIntegration:
     def test_live_run_with_toolset(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
-        component = OpenAIResponsesChatGenerator(tools=toolset)
+        component = OpenAIResponsesChatGenerator(model="gpt-5-nano", tools=toolset)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -807,7 +804,7 @@ class TestIntegration:
         ]
 
         component = OpenAIResponsesChatGenerator(
-            model="gpt-5",
+            model="gpt-5-nano",
             tools=tools,
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
@@ -832,6 +829,7 @@ class TestIntegration:
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
 
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_live_run_with_agent_streaming_and_reasoning(self):
         # Tool Definition
         calculator_tool = Tool(
@@ -849,7 +847,9 @@ class TestIntegration:
         # Agent Setup
         agent = Agent(
             chat_generator=OpenAIResponsesChatGenerator(
-                tools_strict=True, generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}}
+                model="gpt-5-nano",
+                tools_strict=True,
+                generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
             ),
             streaming_callback=print_streaming_chunk,
             tools=[calculator_tool],
@@ -880,6 +880,31 @@ class TestIntegration:
         # Verify state was updated
         assert "calc_result" in response
         assert response["messages"][-1].text is not None
+
+    def test_live_run_agent_with_images_in_tool_result(self, test_files_path):
+        def retrieve_image():
+            return [
+                TextContent("Here is the retrieved image."),
+                ImageContent.from_file_path(test_files_path / "images" / "apple.jpg", size=(100, 100), detail="low"),
+            ]
+
+        image_retriever_tool = create_tool_from_function(
+            name="retrieve_image",
+            description="Tool to retrieve an image",
+            function=retrieve_image,
+            outputs_to_string={"raw_result": True},
+        )
+
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
+            system_prompt="You are an Agent that can retrieve images and describe them.",
+            tools=[image_retriever_tool],
+        )
+
+        user_message = ChatMessage.from_user("Retrieve the image and describe it in max 5 words.")
+        result = agent.run(messages=[user_message])
+
+        assert "apple" in result["last_message"].text.lower()
 
 
 class TestOpenAIResponsesChatGeneratorAsync:
@@ -921,13 +946,13 @@ class TestOpenAIResponsesChatGeneratorAsync:
     async def test_live_run_async(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4", generation_kwargs={"include": ["message.output_text.logprobs"]}
+            model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
         )
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4" in message.meta["model"]
+        assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None

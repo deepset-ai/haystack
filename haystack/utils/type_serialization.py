@@ -29,7 +29,7 @@ def _is_union_type(target: Any) -> bool:
     return origin is Union or origin is UnionType
 
 
-def _build_pep604_union_type(types: list) -> Any:
+def _build_pep604_union_type(types: list[type | UnionType]) -> type | UnionType:
     """Build a union type from a list of types using PEP 604 syntax (X | Y)."""
     result = types[0]
     for t in types[1:]:

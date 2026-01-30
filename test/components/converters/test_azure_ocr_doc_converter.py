@@ -253,12 +253,11 @@ D,$54.35,$6345.,
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
         )
-        output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
+        output = component.run(sources=[test_files_path / "pdf" / "non_text_searchable.pdf"])
         documents = output["documents"]
         assert len(documents) == 1
-        assert "A sample PDF file" in documents[0].content
-        assert "Page 2 of Sample PDF" in documents[0].content
-        assert "Page 4 of Sample PDF" in documents[0].content
+        assert "This is an example of a non-text-searchable PDF" in documents[0].content
+        assert "it cannot be rendered as plain text" in documents[0].content
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")

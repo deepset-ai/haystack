@@ -2,12 +2,15 @@
 title: "Get Started"
 id: get-started
 slug: "/get-started"
-description: "Have a look at this page to learn how to quickly get up and running with Haystack. It contains instructions for installing, running your first RAG pipeline, adding data and further resources."
+description: "Learn how to quickly get up and running with Haystack. Build your first RAG pipeline and tool-calling Agent with step-by-step examples for multiple LLM providers."
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Get Started
 
-Have a look at this page to learn how to quickly get up and running with Haystack. It contains instructions for installing, running your first RAG pipeline, adding data and further resources.
+Have a look at this page to learn how to quickly get up and running with Haystack. It contains instructions for installing Haystack, building your first RAG pipeline, and creating a tool-calling Agent.
 
 ## Build your first RAG application
 
@@ -19,39 +22,14 @@ First, install the minimal form of Haystack:
 pip install haystack-ai
 ```
 
-<details>
+In the examples below, we show how to set an API key using a Haystack [Secret](../concepts/secret-management.mdx). Choose your preferred LLM provider from the tabs below. For easier use, you can also set the API key as an environment variable.
 
-<summary>Were you already using Haystack 1.x?</summary>
+<Tabs>
+<TabItem value="openai" label="OpenAI" default>
 
-:::warning
-
-Installing `farm-haystack` and `haystack-ai` in the same Python environment (virtualenv, Colab, or system) causes problems.
-
-Installing both packages in the same environment can somehow work or fail in obscure ways. We suggest installing only one of these packages per Python environment. Make sure that you remove both packages if they are installed in the same environment, followed by installing only one of them:
-
-```bash
-pip uninstall -y farm-haystack haystack-ai
-pip install haystack-ai
-```
-
-If you have any questions, please reach out to us on the [GitHub Discussion](https://github.com/deepset-ai/haystack/discussions) or [Discord](https://discord.com/invite/VBpFzsgRVF).
-:::
-
-</details>
-
-In the example below, we show how to set an API key using a Haystack [Secret](../concepts/secret-management.mdx). However, for easier use, you can also set an OpenAI key as an `OPENAI_API_KEY` environment variable.
-
-:::note
-**Using OpenAIChatGenerator requires an OpenAI API key with sufficient quota.**  
-New users on the free tier may immediately encounter a `429` ("insufficient_quota") error when running
-the example below.
-
-If you do not have enough OpenAI credits, you may skip this example or use an alternative Generator such as
-`HuggingFaceAPIChatGenerator`.
-:::
+[OpenAIChatGenerator](../pipeline-components/generators/openaichatgenerator.mdx) is included in the `haystack-ai` package.
 
 ```python
-# import necessary dependencies
 from haystack import Pipeline, Document
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers import InMemoryBM25Retriever
@@ -60,7 +38,6 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
-# create a document store and write documents to it
 document_store = InMemoryDocumentStore()
 document_store.write_documents([
     Document(content="My name is Jean and I live in Paris."),
@@ -68,7 +45,6 @@ document_store.write_documents([
     Document(content="My name is Giorgio and I live in Rome.")
 ])
 
-# A prompt corresponds to an NLP task and contains instructions for the model. Here, the pipeline will go through each Document to figure out the answer.
 prompt_template = [
     ChatMessage.from_system(
         """
@@ -77,32 +53,25 @@ prompt_template = [
         {% for doc in documents %}
             {{ doc.content }}
         {% endfor %}
-        Question:
         """
     ),
-    ChatMessage.from_user(
-        "{{question}}"
-    ),
-    ChatMessage.from_system("Answer:")
+    ChatMessage.from_user("{{question}}")
 ]
 
-# create the components adding the necessary parameters
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    model="gpt-4o-mini"
+)
 
-# Create the pipeline and add the components to it. The order doesn't matter.
-# At this stage, the Pipeline validates the components without running them yet.
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
 rag_pipeline.add_component("prompt_builder", prompt_builder)
 rag_pipeline.add_component("llm", llm)
-
-# Arrange pipeline components in the order you need them. If a component has more than one inputs or outputs, indicate which input you want to connect to which output using the format ("component_name.output_name", "component_name, input_name").
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
 
-# Run the pipeline by specifying the first component in the pipeline and passing its mandatory inputs. Optionally, you can pass inputs to other components.
 question = "Who lives in Paris?"
 results = rag_pipeline.run(
     {
@@ -112,9 +81,471 @@ results = rag_pipeline.run(
 )
 
 print(results["llm"]["replies"])
-
 ```
 
-### Adding Your Data
+</TabItem>
+<TabItem value="huggingface" label="Hugging Face">
 
-Instead of running the RAG pipeline on example data, learn how you can add your own custom data using [Document Stores](../concepts/document-store.mdx).
+[HuggingFaceAPIChatGenerator](../pipeline-components/generators/huggingfaceapichatgenerator.mdx) is included in the `haystack-ai` package. You can get a [free Hugging Face token](https://huggingface.co/settings/tokens) to use the Serverless Inference API.
+
+```python
+from haystack import Pipeline, Document
+from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.builders import ChatPromptBuilder
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents([
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome.")
+])
+
+prompt_template = [
+    ChatMessage.from_system(
+        """
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
+        """
+    ),
+    ChatMessage.from_user("{{question}}")
+]
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+llm = HuggingFaceAPIChatGenerator(
+    api_type="serverless_inference_api",
+    api_params={"model": "Qwen/Qwen2.5-72B-Instruct"},
+    token=Secret.from_env_var("HF_API_TOKEN")
+)
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component("retriever", retriever)
+rag_pipeline.add_component("prompt_builder", prompt_builder)
+rag_pipeline.add_component("llm", llm)
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+
+question = "Who lives in Paris?"
+results = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    }
+)
+
+print(results["llm"]["replies"])
+```
+
+</TabItem>
+<TabItem value="anthropic" label="Anthropic">
+
+Install the [Anthropic integration](https://haystack.deepset.ai/integrations/anthropic):
+
+```bash
+pip install anthropic-haystack
+```
+
+See the [AnthropicChatGenerator](../pipeline-components/generators/anthropicchatgenerator.mdx) docs for more details.
+
+```python
+from haystack import Pipeline, Document
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.builders import ChatPromptBuilder
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents([
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome.")
+])
+
+prompt_template = [
+    ChatMessage.from_system(
+        """
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
+        """
+    ),
+    ChatMessage.from_user("{{question}}")
+]
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+llm = AnthropicChatGenerator(
+    api_key=Secret.from_env_var("ANTHROPIC_API_KEY"),
+    model="claude-sonnet-4-5-20250929"
+)
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component("retriever", retriever)
+rag_pipeline.add_component("prompt_builder", prompt_builder)
+rag_pipeline.add_component("llm", llm)
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+
+question = "Who lives in Paris?"
+results = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    }
+)
+
+print(results["llm"]["replies"])
+```
+
+</TabItem>
+<TabItem value="amazon-bedrock" label="Amazon Bedrock">
+
+Install the [Amazon Bedrock integration](https://haystack.deepset.ai/integrations/amazon-bedrock):
+
+```bash
+pip install amazon-bedrock-haystack
+```
+
+See the [AmazonBedrockChatGenerator](../pipeline-components/generators/amazonbedrockchatgenerator.mdx) docs for more details.
+
+```python
+import os
+from haystack import Pipeline, Document
+from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+os.environ["AWS_ACCESS_KEY_ID"] = "YOUR_AWS_ACCESS_KEY_ID"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "YOUR_AWS_SECRET_ACCESS_KEY"
+os.environ["AWS_DEFAULT_REGION"] = "YOUR_AWS_REGION"
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents([
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome.")
+])
+
+prompt_template = [
+    ChatMessage.from_system(
+        """
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
+        """
+    ),
+    ChatMessage.from_user("{{question}}")
+]
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+llm = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component("retriever", retriever)
+rag_pipeline.add_component("prompt_builder", prompt_builder)
+rag_pipeline.add_component("llm", llm)
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+
+question = "Who lives in Paris?"
+results = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    }
+)
+
+print(results["llm"]["replies"])
+```
+
+</TabItem>
+<TabItem value="google-gemini" label="Google Gemini">
+
+Install the [Google Gen AI integration](https://haystack.deepset.ai/integrations/google-genai):
+
+```bash
+pip install google-genai-haystack
+```
+
+See the [GoogleGenAIChatGenerator](../pipeline-components/generators/googlegenaichatgenerator.mdx) docs for more details.
+
+```python
+from haystack import Pipeline, Document
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.builders import ChatPromptBuilder
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents([
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome.")
+])
+
+prompt_template = [
+    ChatMessage.from_system(
+        """
+        Given these documents, answer the question.
+        Documents:
+        {% for doc in documents %}
+            {{ doc.content }}
+        {% endfor %}
+        """
+    ),
+    ChatMessage.from_user("{{question}}")
+]
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+llm = GoogleGenAIChatGenerator(
+    api_key=Secret.from_env_var("GOOGLE_API_KEY"),
+    model="gemini-2.5-flash"
+)
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component("retriever", retriever)
+rag_pipeline.add_component("prompt_builder", prompt_builder)
+rag_pipeline.add_component("llm", llm)
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+
+question = "Who lives in Paris?"
+results = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    }
+)
+
+print(results["llm"]["replies"])
+```
+
+</TabItem>
+<TabItem value="more-providers" label="More Providers">
+
+<div style={{backgroundColor: 'var(--ifm-color-emphasis-100)', padding: '1.5rem', borderRadius: '8px'}}>
+
+Haystack supports many more model providers including **Cohere**, **Mistral**, **NVIDIA**, **Ollama**, and others—both cloud-hosted and local options.
+
+Browse the full list of supported models and chat generators in the [Generators documentation](../pipeline-components/generators.mdx).
+
+You can also explore all available integrations on the [Haystack Integrations](https://haystack.deepset.ai/integrations) page.
+
+</div>
+
+</TabItem>
+</Tabs>
+
+### Next Steps
+
+Ready to dive deeper? Check out the [Creating Your First QA Pipeline with Retrieval-Augmentation](https://haystack.deepset.ai/tutorials/27_first_rag_pipeline) tutorial for a step-by-step guide on building a complete RAG pipeline with your own data.
+
+## Build your first Agent
+
+Agents are AI systems that can use tools to gather information, perform actions, and interact with external systems. Let's build an agent that can search the web to answer questions.
+
+This example requires a [SerperDev API key](https://serper.dev/) for web search. Set it as the `SERPERDEV_API_KEY` environment variable.
+
+<Tabs>
+<TabItem value="openai" label="OpenAI" default>
+
+[OpenAIChatGenerator](../pipeline-components/generators/openaichatgenerator.mdx) is included in the `haystack-ai` package.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+
+search_tool = ComponentTool(component=SerperDevWebSearch())
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(
+        api_key=Secret.from_env_var("OPENAI_API_KEY"),
+        model="gpt-4o-mini"
+    ),
+    tools=[search_tool],
+    system_prompt="You are a helpful assistant that can search the web for information."
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
+
+print(result["last_message"].text)
+```
+
+</TabItem>
+<TabItem value="huggingface" label="Hugging Face">
+
+[HuggingFaceAPIChatGenerator](../pipeline-components/generators/huggingfaceapichatgenerator.mdx) is included in the `haystack-ai` package. You can get a [free Hugging Face token](https://huggingface.co/settings/tokens) to use the Serverless Inference API.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+
+search_tool = ComponentTool(component=SerperDevWebSearch())
+
+agent = Agent(
+    chat_generator=HuggingFaceAPIChatGenerator(
+        api_type="serverless_inference_api",
+        api_params={"model": "Qwen/Qwen2.5-72B-Instruct"},
+        token=Secret.from_env_var("HF_API_TOKEN")
+    ),
+    tools=[search_tool],
+    system_prompt="You are a helpful assistant that can search the web for information."
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
+
+print(result["last_message"].text)
+```
+
+</TabItem>
+<TabItem value="anthropic" label="Anthropic">
+
+Install the [Anthropic integration](https://haystack.deepset.ai/integrations/anthropic):
+
+```bash
+pip install anthropic-haystack
+```
+
+See the [AnthropicChatGenerator](../pipeline-components/generators/anthropicchatgenerator.mdx) docs for more details.
+
+```python
+from haystack.components.agents import Agent
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+
+search_tool = ComponentTool(component=SerperDevWebSearch())
+
+agent = Agent(
+    chat_generator=AnthropicChatGenerator(
+        api_key=Secret.from_env_var("ANTHROPIC_API_KEY"),
+        model="claude-sonnet-4-5-20250929"
+    ),
+    tools=[search_tool],
+    system_prompt="You are a helpful assistant that can search the web for information."
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
+
+print(result["last_message"].text)
+```
+
+</TabItem>
+<TabItem value="amazon-bedrock" label="Amazon Bedrock">
+
+Install the [Amazon Bedrock integration](https://haystack.deepset.ai/integrations/amazon-bedrock):
+
+```bash
+pip install amazon-bedrock-haystack
+```
+
+See the [AmazonBedrockChatGenerator](../pipeline-components/generators/amazonbedrockchatgenerator.mdx) docs for more details.
+
+```python
+import os
+from haystack.components.agents import Agent
+from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.components.websearch import SerperDevWebSearch
+
+os.environ["AWS_ACCESS_KEY_ID"] = "YOUR_AWS_ACCESS_KEY_ID"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "YOUR_AWS_SECRET_ACCESS_KEY"
+os.environ["AWS_DEFAULT_REGION"] = "YOUR_AWS_REGION"
+
+search_tool = ComponentTool(component=SerperDevWebSearch())
+
+agent = Agent(
+    chat_generator=AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0"),
+    tools=[search_tool],
+    system_prompt="You are a helpful assistant that can search the web for information."
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
+
+print(result["last_message"].text)
+```
+
+</TabItem>
+<TabItem value="google-gemini" label="Google Gemini">
+
+Install the [Google Gen AI integration](https://haystack.deepset.ai/integrations/google-genai):
+
+```bash
+pip install google-genai-haystack
+```
+
+See the [GoogleGenAIChatGenerator](../pipeline-components/generators/googlegenaichatgenerator.mdx) docs for more details.
+
+```python
+from haystack.components.agents import Agent
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+
+search_tool = ComponentTool(component=SerperDevWebSearch())
+
+agent = Agent(
+    chat_generator=GoogleGenAIChatGenerator(
+        api_key=Secret.from_env_var("GOOGLE_API_KEY"),
+        model="gemini-2.5-flash"
+    ),
+    tools=[search_tool],
+    system_prompt="You are a helpful assistant that can search the web for information."
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
+
+print(result["last_message"].text)
+```
+
+</TabItem>
+<TabItem value="more-providers" label="More Providers">
+
+<div style={{backgroundColor: 'var(--ifm-color-emphasis-100)', padding: '1.5rem', borderRadius: '8px'}}>
+
+Haystack supports many more model providers including **Cohere**, **Mistral**, **NVIDIA**, **Ollama**, and others—both cloud-hosted and local options.
+
+Browse the full list of supported models and chat generators in the [Generators documentation](../pipeline-components/generators.mdx).
+
+You can also explore all available integrations on the [Haystack Integrations](https://haystack.deepset.ai/integrations) page.
+
+</div>
+
+</TabItem>
+</Tabs>
+
+### Next Steps
+
+For a hands-on guide on creating a tool-calling agent that can use both components and pipelines as tools, check out the [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent) tutorial.
