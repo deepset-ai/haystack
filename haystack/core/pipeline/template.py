@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,15 @@ class PredefinedPipeline(Enum):
     RAG = "rag"
     INDEXING = "indexing"
     CHAT_WITH_WEBSITE = "chat_with_website"
+
+    def __init__(self, value: str):  # noqa: B027
+        warnings.warn(
+            "`PredefinedPipeline` is deprecated. "
+            "It will be removed in Haystack version 2.25. "
+            "Pipeline YAML files should be used instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
 
 class PipelineTemplate:

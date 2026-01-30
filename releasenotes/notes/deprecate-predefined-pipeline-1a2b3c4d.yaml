@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    Deprecated ``PredefinedPipeline`` and its options (like ``PredefinedPipeline.CHAT_WITH_WEBSITE``).
+    These templates will be removed in Haystack 2.25. Users should switch to using Pipeline YAML files.
