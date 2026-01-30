@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added new `FastembedColBERTRanker` component to enable bi-encoder reranking using ColBERT models.
+    This ranker uses the FastEmbed library to generate token-level embeddings and compute relevance scores
+    via the MaxSim algorithm, offering faster inference than cross-encoders while maintaining high accuracy
+    for reranking tasks. Addresses issue #8245.
