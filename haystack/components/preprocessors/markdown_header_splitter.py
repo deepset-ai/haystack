@@ -143,7 +143,7 @@ class MarkdownHeaderSplitter:
                 chunks.append(
                     {
                         "content": chunk_content,
-                        "meta": {} if self.keep_headers else {"header": header_text, "parent_headers": parent_headers},
+                        "meta": {"header": header_text, "parent_headers": parent_headers},
                     }
                 )
                 pending_headers = []  # reset pending headers
