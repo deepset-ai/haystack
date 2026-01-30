@@ -47,6 +47,11 @@ class TestPipelineTemplate:
         tpl = PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
         assert len(tpl.template_content)
 
+    def test_from_predefined_emits_deprecation_warning(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "")
+        with pytest.warns(DeprecationWarning, match="PipelineTemplate.*deprecated.*2\\.25"):
+            PipelineTemplate.from_predefined(PredefinedPipeline.INDEXING)
+
     #  Building a pipeline directly using all default components specified in a predefined or custom template.
     def test_build_pipeline_with_default_components(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake_key")

@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from jinja2 import PackageLoader, TemplateSyntaxError, meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -24,15 +24,6 @@ class PredefinedPipeline(Enum):
     RAG = "rag"
     INDEXING = "indexing"
     CHAT_WITH_WEBSITE = "chat_with_website"
-
-    def __init__(self, value: str):  # noqa: B027
-        warnings.warn(
-            "`PredefinedPipeline` is deprecated. "
-            "It will be removed in Haystack version 2.25. "
-            "Pipeline YAML files should be used instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
 
 class PipelineTemplate:
@@ -85,6 +76,12 @@ class PipelineTemplate:
 
         :param template_content: The raw template source to use in the template.
         """
+        msg = (
+            "`PipelineTemplate` and `PredefinedPipeline` are deprecated. "
+            "They will be removed in Haystack version 2.25. "
+            "Pipeline YAML files should be used instead."
+        )
+        warn(msg, DeprecationWarning, stacklevel=4)
         env = SandboxedEnvironment(
             loader=PackageLoader("haystack.core.pipeline", "predefined"), trim_blocks=True, lstrip_blocks=True
         )
