@@ -215,7 +215,7 @@ def test_preserve_document_metadata():
 
 
 # Error and edge case handling
-def test_non_text_document(caplog):
+def test_non_text_document():
     """Test that the component correctly handles non-text documents."""
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content=None)]
