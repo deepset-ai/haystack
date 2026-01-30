@@ -296,6 +296,8 @@ class MarkdownHeaderSplitter:
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
                 - All other metadata copied from the original document.
         """
+        if self.secondary_split and not self._is_warmed_up:
+            self.warm_up()
         # validate input documents
         for doc in documents:
             if doc.content is None:
