@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack.core.component import Component, component
 from haystack.core.serialization import default_from_dict, default_to_dict
@@ -12,10 +12,10 @@ from haystack.document_stores.types import DocumentStore, DuplicatePolicy
 
 def document_store_class(
     name: str,
-    documents: Optional[list[Document]] = None,
-    documents_count: Optional[int] = None,
-    bases: Optional[tuple[type, ...]] = None,
-    extra_fields: Optional[dict[str, Any]] = None,
+    documents: list[Document] | None = None,
+    documents_count: int | None = None,
+    bases: tuple[type, ...] | None = None,
+    extra_fields: dict[str, Any] | None = None,
 ) -> type[DocumentStore]:
     """
     Utility function to create a DocumentStore class with the given name and list of documents.
@@ -88,10 +88,10 @@ def document_store_class(
     elif documents_count is None:
         documents_count = 0
 
-    def count_documents(self) -> Union[int, None]:
+    def count_documents(self) -> int | None:
         return documents_count
 
-    def filter_documents(self, filters: Optional[dict[str, Any]] = None) -> list[Document]:
+    def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
         if documents is not None:
             return documents
         return []
@@ -126,11 +126,11 @@ def document_store_class(
 
 def component_class(  # pylint: disable=too-many-positional-arguments
     name: str,
-    input_types: Optional[dict[str, Any]] = None,
-    output_types: Optional[dict[str, Any]] = None,
-    output: Optional[dict[str, Any]] = None,
-    bases: Optional[tuple[type, ...]] = None,
-    extra_fields: Optional[dict[str, Any]] = None,
+    input_types: dict[str, Any] | None = None,
+    output_types: dict[str, Any] | None = None,
+    output: dict[str, Any] | None = None,
+    bases: tuple[type, ...] | None = None,
+    extra_fields: dict[str, Any] | None = None,
 ) -> type[Component]:
     """
     Utility class to create a Component class with the given name and input and output types.

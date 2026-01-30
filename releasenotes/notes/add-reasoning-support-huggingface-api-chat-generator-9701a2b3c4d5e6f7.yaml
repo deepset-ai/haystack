@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+---
+enhancements:
+  - |
+    Added reasoning content support to ``HuggingFaceAPIChatGenerator``. The component now extracts
+    reasoning content from models that support chain-of-thought reasoning (e.g., DeepSeek R1).
+    Both streaming and non-streaming modes are supported. Access via ``reply.reasoning.reasoning_text``.

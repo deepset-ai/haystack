@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -36,9 +36,9 @@ class InvalidMappingValueError(Exception):
 class _SuperComponent:
     def __init__(
         self,
-        pipeline: Union[Pipeline, AsyncPipeline],
-        input_mapping: Optional[dict[str, list[str]]] = None,
-        output_mapping: Optional[dict[str, str]] = None,
+        pipeline: Pipeline | AsyncPipeline,
+        input_mapping: dict[str, list[str]] | None = None,
+        output_mapping: dict[str, str] | None = None,
     ) -> None:
         """
         Creates a SuperComponent with optional input and output mappings.
@@ -67,7 +67,7 @@ class _SuperComponent:
         if pipeline is None:
             raise ValueError("Pipeline must be provided to SuperComponent.")
 
-        self.pipeline: Union[Pipeline, AsyncPipeline] = pipeline
+        self.pipeline: Pipeline | AsyncPipeline = pipeline
         self._warmed_up = False
 
         # Determine input types based on pipeline and mapping
@@ -487,7 +487,7 @@ class SuperComponent(_SuperComponent):
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
 
-    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> None:
+    def show(self, server_url: str = "https://mermaid.ink", params: dict | None = None, timeout: int = 30) -> None:
         """
         Display an image representing this SuperComponent's underlying pipeline in a Jupyter notebook.
 
@@ -522,7 +522,7 @@ class SuperComponent(_SuperComponent):
         self.pipeline.show(server_url=server_url, params=params, timeout=timeout)
 
     def draw(
-        self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30
+        self, path: Path, server_url: str = "https://mermaid.ink", params: dict | None = None, timeout: int = 30
     ) -> None:
         """
         Save an image representing this SuperComponent's underlying pipeline to the specified file path.

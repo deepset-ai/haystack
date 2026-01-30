@@ -241,6 +241,7 @@ export default {
             'pipeline-components/converters/multifileconverter',
             'pipeline-components/converters/openapiservicetofunctions',
             'pipeline-components/converters/outputadapter',
+            'pipeline-components/converters/paddleocrvldocumentconverter',
             'pipeline-components/converters/pdfminertodocument',
             'pipeline-components/converters/pdftoimagecontent',
             'pipeline-components/converters/pptxtodocument',
@@ -344,6 +345,7 @@ export default {
             'pipeline-components/extractors/llmdocumentcontentextractor',
             'pipeline-components/extractors/llmmetadataextractor',
             'pipeline-components/extractors/namedentityextractor',
+            'pipeline-components/extractors/regextextextractor',
           ],
         },
         {
@@ -454,6 +456,7 @@ export default {
             'pipeline-components/preprocessors/documentcleaner',
             'pipeline-components/preprocessors/documentpreprocessor',
             'pipeline-components/preprocessors/documentsplitter',
+            'pipeline-components/preprocessors/embeddingbaseddocumentsplitter',
             'pipeline-components/preprocessors/hierarchicaldocumentsplitter',
             'pipeline-components/preprocessors/recursivesplitter',
             'pipeline-components/preprocessors/textcleaner',

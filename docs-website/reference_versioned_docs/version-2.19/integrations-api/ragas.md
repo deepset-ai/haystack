@@ -50,9 +50,9 @@ output['result']
 #### RagasEvaluator.\_\_init\_\_
 
 ```python
-def __init__(ragas_metrics: List[Metric],
-             evaluator_llm: Optional[BaseRagasLLM] = None,
-             evaluator_embedding: Optional[BaseRagasEmbeddings] = None)
+def __init__(ragas_metrics: list[Metric],
+             evaluator_llm: BaseRagasLLM | None = None,
+             evaluator_embedding: BaseRagasEmbeddings | None = None)
 ```
 
 Constructs a new Ragas evaluator.
@@ -69,13 +69,13 @@ Constructs a new Ragas evaluator.
 
 ```python
 @component.output_types(result=EvaluationResult)
-def run(query: Optional[str] = None,
-        response: Optional[Union[List[ChatMessage], str]] = None,
-        documents: Optional[List[Union[Document, str]]] = None,
-        reference_contexts: Optional[List[str]] = None,
-        multi_responses: Optional[List[str]] = None,
-        reference: Optional[str] = None,
-        rubrics: Optional[Dict[str, str]] = None) -> Dict[str, Any]
+def run(query: str | None = None,
+        response: list[ChatMessage] | str | None = None,
+        documents: list[Document | str] | None = None,
+        reference_contexts: list[str] | None = None,
+        multi_responses: list[str] | None = None,
+        reference: str | None = None,
+        rubrics: dict[str, str] | None = None) -> dict[str, Any]
 ```
 
 Evaluates the provided query against the documents and returns the evaluation result.
@@ -94,3 +94,4 @@ and the values represent the corresponding evaluation criteria.
 **Returns**:
 
 A dictionary containing the evaluation result.
+

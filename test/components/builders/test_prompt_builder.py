@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import patch
 
 import arrow
@@ -28,8 +28,8 @@ class TestPromptBuilder:
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
-        assert inputs["template"].type == Optional[str]
-        assert inputs["template_variables"].type == Optional[dict[str, Any]]
+        assert inputs["template"].type == str | None
+        assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
@@ -48,8 +48,8 @@ class TestPromptBuilder:
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
-        assert inputs["template"].type == Optional[str]
-        assert inputs["template_variables"].type == Optional[dict[str, Any]]
+        assert inputs["template"].type == str | None
+        assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
@@ -70,8 +70,8 @@ class TestPromptBuilder:
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
-        assert inputs["template"].type == Optional[str]
-        assert inputs["template_variables"].type == Optional[dict[str, Any]]
+        assert inputs["template"].type == str | None
+        assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["var1"].type == Any
         assert inputs["var2"].type == Any
         assert inputs["var3"].type == Any
@@ -80,14 +80,6 @@ class TestPromptBuilder:
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == str
-
-    @patch("haystack.components.builders.prompt_builder.Jinja2TimeExtension")
-    def test_init_with_missing_extension_dependency(self, extension_mock):
-        extension_mock.side_effect = ImportError
-        builder = PromptBuilder(template="This is a {{ variable }}")
-        assert builder._env.extensions == {}
-        res = builder.run(variable="test")
-        assert res == {"prompt": "This is a test"}
 
     def test_to_dict(self):
         builder = PromptBuilder(
@@ -277,6 +269,70 @@ class TestPromptBuilder:
         }
         assert result == expected_dynamic
 
+    def test_warning_no_required_variables(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _ = PromptBuilder(template="This is a {{ variable }}")
+            assert "but `required_variables` is not set." in caplog.text
+
+    def test_variables_correct_with_assignment(self) -> None:
+        template = """{% if existing_documents is not none %}
+{% set existing_doc_len = existing_documents|length %}
+{% else %}
+{% set existing_doc_len = 0 %}
+{% endif %}
+{% for doc in docs %}
+<document reference="{{loop.index + existing_doc_len}}">
+{{ doc.content }}
+</document>
+{% endfor %}
+"""
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert set(builder.variables) == {"docs", "existing_documents"}
+        assert builder.required_variables == "*"
+
+    def test_variables_correct_with_tuple_assignment(self):
+        template = """{% if existing_documents is not none -%}
+{% set x, y = (existing_documents|length, 1) -%}
+{% else -%}
+{% set x, y = (0, 1) -%}
+{% endif -%}
+x={{ x }}, y={{ y }}
+"""
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["existing_documents"]
+        assert builder.required_variables == "*"
+        res = builder.run(existing_documents=None)
+        assert res["prompt"] == "x=0, y=1"
+
+    def test_variables_correct_with_list_assignment(self):
+        template = """{% if existing_documents is not none -%}
+{% set x, y = [existing_documents|length, 1] -%}
+{% else -%}
+{% set x, y = [0, 1] -%}
+{% endif -%}
+x={{ x }}, y={{ y }}
+"""
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["existing_documents"]
+        assert builder.required_variables == "*"
+        res = builder.run(existing_documents=None)
+        assert res["prompt"] == "x=0, y=1"
+
+
+class TestPromptBuilderWithJinja2TimeExtension:
+    @pytest.fixture(autouse=True)
+    def mock_now(self, monkeypatch):
+        """Mock the arrow.now function to return a fixed datetime"""
+        monkeypatch.setattr("arrow.now", lambda timezone="UTC": arrow.get("1970-01-01 00:00:00").to(timezone))
+
+    @patch("haystack.components.builders.prompt_builder.Jinja2TimeExtension")
+    def test_init_with_missing_extension_dependency(self, extension_mock):
+        extension_mock.side_effect = ImportError
+        builder = PromptBuilder(template="This is a {{ variable }}")
+        assert builder._env.extensions == {}
+        res = builder.run(variable="test")
+        assert res == {"prompt": "This is a test"}
+
     def test_with_custom_dateformat(self) -> None:
         template = "Formatted date: {% now 'UTC', '%Y-%m-%d' %}"
         builder = PromptBuilder(template=template)
@@ -332,8 +388,3 @@ class TestPromptBuilder:
         # Expect ValueError for invalid offset
         with pytest.raises(ValueError, match="Invalid offset or operator"):
             builder.run()
-
-    def test_warning_no_required_variables(self, caplog):
-        with caplog.at_level(logging.WARNING):
-            _ = PromptBuilder(template="This is a {{ variable }}")
-            assert "but `required_variables` is not set." in caplog.text

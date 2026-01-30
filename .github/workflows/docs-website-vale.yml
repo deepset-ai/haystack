@@ -3,11 +3,7 @@ name: Vale Lint
 on:
   pull_request:
     paths:
-      - 'docs-website/**'
-  push:
-    branches: [ main ]
-    paths:
-      - 'docs-website/**'
+      - 'docs-website/docs/**'
 
 permissions:
   contents: read
@@ -16,7 +12,7 @@ permissions:
 jobs:
   vale:
     name: Run Vale
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -26,15 +22,15 @@ jobs:
         with:
           node-version: '20'
 
+      # mdx2vast is needed to support mdx files: https://vale.sh/docs/formats/mdx
       - name: Install mdx2vast
         run: npm install -g mdx2vast
 
       - name: Vale
         uses: errata-ai/vale-action@v2
         with:
-          files: |
-            docs-website/docs
-            docs-website/versioned_docs
+          vale_flags: "--config=docs-website/.vale.ini"
+          files: docs-website/docs
           reporter: github-pr-review
           fail_on_error: false
         env:

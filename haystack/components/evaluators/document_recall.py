@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Union
+from typing import Any
 
 from haystack import component, default_to_dict, logging
 from haystack.dataclasses import Document
@@ -68,7 +68,7 @@ class DocumentRecallEvaluator:
     ```
     """
 
-    def __init__(self, mode: Union[str, RecallMode] = RecallMode.SINGLE_HIT):
+    def __init__(self, mode: str | RecallMode = RecallMode.SINGLE_HIT):
         """
         Create a DocumentRecallEvaluator component.
 

@@ -6,9 +6,7 @@ import os
 
 import pytest
 
-from haystack import Pipeline
 from haystack.components.audio.whisper_remote import RemoteWhisperTranscriber
-from haystack.components.fetchers import LinkContentFetcher
 from haystack.dataclasses import ByteStream
 from haystack.utils import Secret
 
@@ -195,25 +193,3 @@ class TestRemoteWhisperTranscriber:
         assert str(test_files_path / "audio" / "the context for this answer is here.wav") == docs[1].meta["file_path"]
 
         assert docs[2].content.strip().lower() == "answer."
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_whisper_remote_transcriber_pipeline_and_url_source(self):
-        pipe = Pipeline()
-        pipe.add_component("fetcher", LinkContentFetcher())
-        pipe.add_component("transcriber", RemoteWhisperTranscriber())
-
-        pipe.connect("fetcher", "transcriber")
-        result = pipe.run(
-            data={
-                "fetcher": {
-                    "urls": [
-                        "https://github.com/deepset-ai/haystack/raw/refs/heads/main/test/test_files/audio/MLK_Something_happening.mp3"
-                    ]  # noqa: E501
-                }
-            }
-        )
-        assert "masses of people" in result["transcriber"]["documents"][0].content

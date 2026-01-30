@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 import typing
-from typing import Any, Optional
+from typing import Any
 
 if typing.TYPE_CHECKING:
     from structlog.typing import EventDict, Processor, WrappedLogger
@@ -159,7 +159,7 @@ def patch_log_with_level_method_to_kwargs_only(func: typing.Callable) -> typing.
 
     @functools.wraps(func)
     def _log_only_with_kwargs(
-        level: typing.Union[int, str],
+        level: int | str,
         msg: str,
         *,
         _: Any = None,
@@ -190,7 +190,7 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
     @functools.wraps(original_make_records)
     def _wrapper(  # pylint: disable=too-many-positional-arguments
         name: str,
-        level: typing.Union[int, str],
+        level: int | str,
         fn: str,
         lno: int,
         msg: str,
@@ -222,9 +222,9 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
 
         # completely copied from structlog. We only add `haystack.logging` to the list of ignored frames
         # pylint: disable=unused-variable
-        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, Optional[str]]:
+        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, str | None]:
             try:
-                sinfo: Optional[str]
+                sinfo: str | None
                 # we need to exclude `haystack.logging` from the stack
                 f, name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
                 sinfo = _format_stack(f) if stack_info else None
@@ -296,7 +296,7 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
     return event_dict
 
 
-def configure_logging(use_json: Optional[bool] = None) -> None:
+def configure_logging(use_json: bool | None = None) -> None:
     """
     Configure logging for Haystack.
 

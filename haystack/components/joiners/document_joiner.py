@@ -6,7 +6,7 @@ import itertools
 from collections import defaultdict
 from enum import Enum
 from math import inf
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
@@ -86,9 +86,9 @@ class DocumentJoiner:
 
     def __init__(
         self,
-        join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-        weights: Optional[list[float]] = None,
-        top_k: Optional[int] = None,
+        join_mode: str | JoinMode = JoinMode.CONCATENATE,
+        weights: list[float] | None = None,
+        top_k: int | None = None,
         sort_by_score: bool = True,
     ):
         """
@@ -127,7 +127,7 @@ class DocumentJoiner:
         self.sort_by_score = sort_by_score
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: Variadic[list[Document]], top_k: Optional[int] = None):
+    def run(self, documents: Variadic[list[Document]], top_k: int | None = None):
         """
         Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 

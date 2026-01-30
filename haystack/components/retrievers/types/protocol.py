@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 # Ellipsis are needed to define the Protocol but pylint complains. See https://github.com/pylint-dev/pylint/issues/9319.
 # pylint: disable=unnecessary-ellipsis
@@ -16,7 +16,7 @@ class TextRetriever(Protocol):
     store or other data source. They return a dictionary with a list of Document objects.
     """
 
-    def run(self, query: str, filters: Optional[dict[str, Any]] = None, top_k: Optional[int] = None) -> dict[str, Any]:
+    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None) -> dict[str, Any]:
         """
         Retrieve documents that are relevant to the query.
 
@@ -42,7 +42,7 @@ class EmbeddingRetriever(Protocol):
     """
 
     def run(
-        self, query_embedding: list[float], filters: Optional[dict[str, Any]] = None, top_k: Optional[int] = None
+        self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
     ) -> dict[str, Any]:
         """
         Retrieve documents that are relevant to the query.

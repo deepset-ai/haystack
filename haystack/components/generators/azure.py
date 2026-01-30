@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import StreamingCallbackT
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 
@@ -57,21 +57,21 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     # pylint: disable=super-init-not-called
     def __init__(  # pylint: disable=too-many-positional-arguments  # noqa: PLR0913
         self,
-        azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2024-12-01-preview",
-        azure_deployment: Optional[str] = "gpt-4.1-mini",
-        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
-        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
-        organization: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        system_prompt: Optional[str] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        default_headers: Optional[dict[str, str]] = None,
+        azure_endpoint: str | None = None,
+        api_version: str | None = "2024-12-01-preview",
+        azure_deployment: str | None = "gpt-4.1-mini",
+        api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
+        organization: str | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        system_prompt: str | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        default_headers: dict[str, str] | None = None,
         *,
-        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
     ):
         """
         Initialize the Azure OpenAI Generator.
@@ -185,8 +185,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             streaming_callback=callback_name,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
-            api_key=self.api_key.to_dict() if self.api_key is not None else None,
-            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            api_key=self.api_key,
+            azure_ad_token=self.azure_ad_token,
             timeout=self.timeout,
             max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
@@ -204,7 +204,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

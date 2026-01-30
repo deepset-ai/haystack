@@ -4,11 +4,11 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Mapping, Optional
+from typing import Any, AsyncIterator, Mapping
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -17,6 +17,7 @@ from haystack.core.pipeline.base import (
     PipelineBase,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,9 @@ class AsyncPipeline(PipelineBase):
         component: dict[str, Any],
         component_inputs: dict[str, Any],
         component_visits: dict[str, int],
-        parent_span: Optional[tracing.Span] = None,
+        parent_span: tracing.Span | None = None,
+        *,
+        break_point: Breakpoint | None = None,
     ) -> Mapping[str, Any]:
         """
         Executes a single component asynchronously.
@@ -51,6 +54,13 @@ class AsyncPipeline(PipelineBase):
         :param component_inputs: Inputs for the component.
         :returns: Outputs from the component that can be yielded from run_async_generator.
         """
+        if (
+            isinstance(break_point, Breakpoint)
+            and break_point.component_name == component_name
+            and break_point.visit_count == component_visits[component_name]
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
+
         instance: Component = component["instance"]
 
         with PipelineBase._create_component_span(
@@ -89,7 +99,7 @@ class AsyncPipeline(PipelineBase):
             return outputs
 
     async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
@@ -464,7 +474,7 @@ class AsyncPipeline(PipelineBase):
             yield _deepcopy_with_exceptions(pipeline_outputs)
 
     async def run_async(
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
         """
         Provides an asynchronous interface to run the pipeline with provided input data.
@@ -581,7 +591,7 @@ class AsyncPipeline(PipelineBase):
         return final or {}
 
     def run(
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
         """
         Provides a synchronous interface to run the pipeline with given input data.

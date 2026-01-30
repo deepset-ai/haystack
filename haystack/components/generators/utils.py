@@ -5,7 +5,7 @@
 import json
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             logprobs.append(chunk.meta.get("logprobs"))
     tool_calls = []
 
+    # Accumulate reasoning content from chunks
+    reasoning_parts = [chunk.reasoning.reasoning_text for chunk in chunks if chunk.reasoning]
+    reasoning = ReasoningContent(reasoning_text="".join(reasoning_parts)) if reasoning_parts else None
+
     # Process tool calls if present in any chunk
     tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
@@ -130,18 +134,28 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
+    # usage info can appear in different chunks depending on the API provider
+    # (e.g., OpenAI returns it in the last chunk with empty choices, but Qwen3 may return it differently)
+    # so we look for the last non-None usage value across all chunks
+    usage = None
+    for chunk in reversed(chunks):
+        chunk_usage = chunk.meta.get("usage")
+        if chunk_usage is not None:
+            usage = chunk_usage
+            break
+
     meta = {
         "model": chunks[-1].meta.get("model"),
         "index": 0,
         "finish_reason": finish_reason,
         "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+        "usage": usage,
     }
 
     if logprobs:
         meta["logprobs"] = logprobs
 
-    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
+    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
 
 
 def _serialize_object(obj):

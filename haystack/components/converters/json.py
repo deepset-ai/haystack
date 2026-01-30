@@ -5,7 +5,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -91,9 +91,9 @@ class JSONConverter:
 
     def __init__(
         self,
-        jq_schema: Optional[str] = None,
-        content_key: Optional[str] = None,
-        extra_meta_fields: Optional[Union[set[str], Literal["*"]]] = None,
+        jq_schema: str | None = None,
+        content_key: str | None = None,
+        extra_meta_fields: set[str] | Literal["*"] | None = None,
         store_full_path: bool = False,
     ):
         """
@@ -247,11 +247,7 @@ class JSONConverter:
         return result
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts a list of JSON files to documents.
 

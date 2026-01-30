@@ -6,7 +6,7 @@ import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from typing import Any, Optional, Union
+from typing import Any
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -93,7 +93,31 @@ class LLMMetadataExtractor:
             "max_completion_tokens": 500,
             "temperature": 0.0,
             "seed": 0,
-            "response_format": {"type": "json_object"},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "entity_extraction",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "entities": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "entity": {"type": "string"},
+                                        "entity_type": {"type": "string"}
+                                    },
+                                    "required": ["entity", "entity_type"],
+                                    "additionalProperties": False
+                                }
+                            }
+                        },
+                        "required": ["entities"],
+                        "additionalProperties": False
+                    }
+                }
+            },
         },
         max_retries=1,
         timeout=60.0,
@@ -128,8 +152,8 @@ class LLMMetadataExtractor:
         self,
         prompt: str,
         chat_generator: ChatGenerator,
-        expected_keys: Optional[list[str]] = None,
-        page_range: Optional[list[Union[str, int]]] = None,
+        expected_keys: list[str] | None = None,
+        page_range: list[str | int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
     ):
@@ -233,9 +257,9 @@ class LLMMetadataExtractor:
         return parsed_metadata
 
     def _prepare_prompts(
-        self, documents: list[Document], expanded_range: Optional[list[int]] = None
-    ) -> list[Union[ChatMessage, None]]:
-        all_prompts: list[Union[ChatMessage, None]] = []
+        self, documents: list[Document], expanded_range: list[int] | None = None
+    ) -> list[ChatMessage | None]:
+        all_prompts: list[ChatMessage | None] = []
         for document in documents:
             if not document.content:
                 logger.warning("Document {doc_id} has no content. Skipping metadata extraction.", doc_id=document.id)
@@ -261,7 +285,7 @@ class LLMMetadataExtractor:
 
         return all_prompts
 
-    def _run_on_thread(self, prompt: Optional[ChatMessage]) -> dict[str, Any]:
+    def _run_on_thread(self, prompt: ChatMessage | None) -> dict[str, Any]:
         # If prompt is None, return an error dictionary
         if prompt is None:
             return {"error": "Document has no content, skipping LLM call."}
@@ -280,7 +304,7 @@ class LLMMetadataExtractor:
         return result
 
     @component.output_types(documents=list[Document], failed_documents=list[Document])
-    def run(self, documents: list[Document], page_range: Optional[list[Union[str, int]]] = None):
+    def run(self, documents: list[Document], page_range: list[str | int] | None = None):
         """
         Extract metadata from documents using a Large Language Model.
 

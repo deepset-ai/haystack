@@ -6,7 +6,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable
 
 
 class SecretType(Enum):
@@ -54,7 +54,7 @@ class Secret(ABC):
         return TokenSecret(_token=token)
 
     @staticmethod
-    def from_env_var(env_vars: Union[str, list[str]], *, strict: bool = True) -> "Secret":
+    def from_env_var(env_vars: str | list[str], *, strict: bool = True) -> "Secret":
         """
         Create an environment variable-based secret. Accepts one or more environment variables.
 
@@ -101,7 +101,7 @@ class Secret(ABC):
         return secret_map[secret_type]._from_dict(dict)  # type: ignore
 
     @abstractmethod
-    def resolve_value(self) -> Optional[Any]:
+    def resolve_value(self) -> Any | None:
         """
         Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
 
@@ -157,7 +157,7 @@ class TokenSecret(Secret):
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
 
-    def resolve_value(self) -> Optional[Any]:
+    def resolve_value(self) -> Any | None:
         """Return the token."""
         return self._token
 
@@ -193,7 +193,7 @@ class EnvVarSecret(Secret):
     def _from_dict(dictionary: dict[str, Any]) -> "Secret":
         return EnvVarSecret(tuple(dictionary["env_vars"]), _strict=dictionary["strict"])
 
-    def resolve_value(self) -> Optional[Any]:
+    def resolve_value(self) -> Any | None:
         """Resolve the secret to an atomic value. The semantics of the value is secret-dependent."""
         out = None
         for env_var in self._env_vars:

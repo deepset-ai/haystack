@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import logging
 
@@ -282,10 +282,10 @@ def combine_two_comparison_filters(
 
 def apply_filter_policy(
     filter_policy: FilterPolicy,
-    init_filters: Optional[dict[str, Any]] = None,
-    runtime_filters: Optional[dict[str, Any]] = None,
+    init_filters: dict[str, Any] | None = None,
+    runtime_filters: dict[str, Any] | None = None,
     default_logical_operator: Literal["AND", "OR", "NOT"] = "AND",
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Apply the filter policy to the given initial and runtime filters to determine the final set of filters used.
 

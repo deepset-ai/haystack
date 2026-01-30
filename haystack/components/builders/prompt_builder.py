@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
-from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +141,8 @@ class PromptBuilder:
     def __init__(
         self,
         template: str,
-        required_variables: Optional[Union[list[str], Literal["*"]]] = None,
-        variables: Optional[list[str]] = None,
+        required_variables: list[str] | Literal["*"] | None = None,
+        variables: list[str] | None = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -174,11 +174,13 @@ class PromptBuilder:
             self._env = SandboxedEnvironment()
 
         self.template = self._env.from_string(template)
+
         if not variables:
-            # infer variables from template
-            ast = self._env.parse(template)
-            template_variables = meta.find_undeclared_variables(ast)
-            variables = list(template_variables)
+            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                env=self._env, template=template
+            )
+            variables = list(template_variables - assigned_variables)
+
         variables = variables or []
         self.variables = variables
 
@@ -210,7 +212,7 @@ class PromptBuilder:
         )
 
     @component.output_types(prompt=str)
-    def run(self, template: Optional[str] = None, template_variables: Optional[dict[str, Any]] = None, **kwargs):
+    def run(self, template: str | None = None, template_variables: dict[str, Any] | None = None, **kwargs):
         """
         Renders the prompt template with the provided variables.
 

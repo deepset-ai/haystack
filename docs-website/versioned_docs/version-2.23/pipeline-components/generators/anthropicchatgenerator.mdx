@@ -1,0 +1,198 @@
+---
+title: "AnthropicChatGenerator"
+id: anthropicchatgenerator
+slug: "/anthropicchatgenerator"
+description: "This component enables chat completions using Anthropic large language models (LLMs)."
+---
+
+# AnthropicChatGenerator
+
+This component enables chat completions using Anthropic large language models (LLMs).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: An Anthropic API key. Can be set with `ANTHROPIC_API_KEY` env var. |
+| **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **API reference** | [Anthropic](/reference/integrations-anthropic) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
+
+</div>
+
+## Overview
+
+This integration supports Anthropic `chat` models such as `claude-3-5-sonnet-20240620`,`claude-3-opus-20240229`, `claude-3-haiku-20240307`, and similar. Check out the most recent full list in [Anthropic documentation](https://docs.anthropic.com/en/docs/about-claude/models).
+
+### Parameters
+
+`AnthropicChatGenerator` needs an Anthropic API key to work. You can provide this key in:
+
+- The `ANTHROPIC_API_KEY` environment variable (recommended)
+- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
+
+Set your preferred Anthropic model with the `model` parameter when initializing the component.
+
+`AnthropicChatGenerator` requires a prompt to generate text, but you can pass any text generation parameters available in the Anthropic [Messaging API](https://docs.anthropic.com/en/api/messages) method directly to this component using the `generation_kwargs` parameter, both at initialization and when running the component. For more details on the parameters supported by the Anthropic API, see the [Anthropic documentation](https://docs.anthropic.com).
+
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+Only text input modality is supported at this time.
+
+### Tool Support
+
+`AnthropicChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = AnthropicChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+You can stream output as it’s generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+## Configure any `Generator` or `ChatGenerator` with a streaming callback
+component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
+
+## If this is a `ChatGenerator`, pass a list of messages:
+## from haystack.dataclasses import ChatMessage
+## component.run([ChatMessage.from_user("Your question here")])
+
+## If this is a (non-chat) `Generator`, pass a prompt:
+## component.run({"prompt": "Your prompt here"})
+```
+
+:::info
+Streaming works only with a single response. If a provider supports multiple candidates, set `n=1`.
+:::
+
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+### Prompt caching
+
+Prompt caching is a feature for Anthropic LLMs that stores large text inputs for reuse. It allows you to send a large text block once and then refer to it in later requests without resending the entire text.
+This feature is particularly useful for coding assistants that need full codebase context and for processing large documents. It can help reduce costs and improve response times.
+
+Here's an example of an instance of `AnthropicChatGenerator` being initialized with prompt caching and tagging a message to be cached:
+
+```python python
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generation_kwargs = {"extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}}
+
+claude_llm = AnthropicChatGenerator(
+    api_key=Secret.from_env_var("ANTHROPIC_API_KEY"), generation_kwargs=generation_kwargs
+)
+
+system_message = ChatMessage.from_system("Replace with some long text documents, code or instructions")
+system_message.meta["cache_control"] = {"type": "ephemeral"}
+
+messages = [system_message, ChatMessage.from_user("A query about the long text for example")]
+result = claude_llm.run(messages)
+
+## and now invoke again with
+
+messages = [system_message, ChatMessage.from_user("Another query about the long text etc")]
+result = claude_llm.run(messages)
+
+## and so on, either invoking component directly or in the pipeline
+```
+
+For more details, refer to Anthropic's [documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) and integration [examples](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic/example).
+
+## Usage
+
+Install the`anthropic-haystack` package to use the `AnthropicChatGenerator`:
+
+```shell
+pip install anthropic-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generator = AnthropicChatGenerator()
+message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
+print(generator.run([message]))
+```
+
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+
+llm = AnthropicChatGenerator()
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
+```
+
+### In a pipeline
+
+You can also use `AnthropicChatGenerator`with the Anthropic chat models in your pipeline.
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.utils import Secret
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", AnthropicChatGenerator(Secret.from_env_var("ANTHROPIC_API_KEY")))
+pipe.connect("prompt_builder", "llm")
+
+country = "Germany"
+system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
+messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+
+res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+print(res)
+
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)

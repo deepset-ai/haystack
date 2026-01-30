@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -62,8 +62,8 @@ class RecursiveDocumentSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         split_unit: Literal["word", "char", "token"] = "word",
-        separators: Optional[list[str]] = None,
-        sentence_splitter_params: Optional[dict[str, Any]] = None,
+        separators: list[str] | None = None,
+        sentence_splitter_params: dict[str, Any] | None = None,
     ):
         """
         Initializes a RecursiveDocumentSplitter.
@@ -93,7 +93,7 @@ class RecursiveDocumentSplitter:
         self.sentence_splitter_params = (
             {"keep_white_spaces": True} if sentence_splitter_params is None else sentence_splitter_params
         )
-        self.tiktoken_tokenizer: Optional["tiktoken.Encoding"] = None
+        self.tiktoken_tokenizer: "tiktoken.Encoding" | None = None
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -461,14 +461,10 @@ class RecursiveDocumentSplitter:
         :returns:
             A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
             to the input documents.
-
-        :raises RuntimeError: If the component wasn't warmed up but requires it for sentence splitting or tokenization.
         """
         if not self._is_warmed_up and ("sentence" in self.separators or self.split_units == "token"):
-            raise RuntimeError(
-                "The component RecursiveDocumentSplitter wasn't warmed up but requires it "
-                "for sentence splitting or tokenization. Call 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
+
         docs = []
         for doc in documents:
             if not doc.content or doc.content == "":

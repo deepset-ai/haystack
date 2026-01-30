@@ -64,7 +64,7 @@ import textwrap
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
 FENCE_END_RE = re.compile(r"^\s*```\s*$")
@@ -104,7 +104,7 @@ class Snippet:
     code: str
     """The code content of the snippet."""
 
-    skipped_reason: Optional[str] = None
+    skipped_reason: str | None = None
     forced_run: bool = False
     forced_concept: bool = False
     requires_files: list[str] | None = None  # paths relative to repo root
@@ -174,7 +174,7 @@ def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
                 continue
             break
 
-        pending_skipped_reason: Optional[str] = None
+        pending_skipped_reason: str | None = None
         pending_forced_run = False
         pending_forced_concept = False
         pending_requires_files: list[str] = []
@@ -245,7 +245,7 @@ def _should_skip_snippet(snippet: Snippet, repo_root: str, skip_unsafe: bool) ->
     return None
 
 
-def contains_unsafe_pattern(code: str) -> Optional[str]:
+def contains_unsafe_pattern(code: str) -> str | None:
     """Return the unsafe pattern found in code, if any."""
 
     for pat in UNSAFE_PATTERNS:
@@ -273,10 +273,10 @@ class ExecutionStatus(Enum):
 class ExecutionResult:
     snippet: Snippet
     status: ExecutionStatus
-    return_code: Optional[int] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-    reason: Optional[str] = None
+    return_code: int | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    reason: str | None = None
 
 
 def run_snippet(snippet: Snippet, timeout_seconds: int, cwd: str, skip_unsafe: bool) -> ExecutionResult:
@@ -331,12 +331,25 @@ def run_snippet(snippet: Snippet, timeout_seconds: int, cwd: str, skip_unsafe: b
             stderr=completed.stderr,
         )
     except subprocess.TimeoutExpired as exc:
+        # Handle stderr which might be bytes or str
+        stderr_text = exc.stderr
+        if stderr_text is None:
+            stderr_text = ""
+        elif isinstance(stderr_text, bytes):
+            stderr_text = stderr_text.decode("utf-8", errors="replace")
+        stderr_text = stderr_text + f"\n[timeout after {timeout_seconds}s]"
+
+        # Handle stdout which might be bytes or str
+        stdout_text = exc.stdout
+        if stdout_text is not None and isinstance(stdout_text, bytes):
+            stdout_text = stdout_text.decode("utf-8", errors="replace")
+
         return ExecutionResult(
             snippet=snippet,
             status=ExecutionStatus.FAILED,
             reason=f"timeout after {timeout_seconds}s",
-            stdout=exc.stdout or None,
-            stderr=(exc.stderr or "") + f"\n[timeout after {timeout_seconds}s]",
+            stdout=stdout_text,
+            stderr=stderr_text,
         )
 
 
@@ -397,7 +410,7 @@ def process_file_snippets(  # pylint: disable=too-many-positional-arguments
     return results, stats
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI entry point for snippet execution."""
     parser = argparse.ArgumentParser(description="Test Python code snippets in Docusaurus docs")
     parser.add_argument(
@@ -414,7 +427,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "(defaults to docs and versioned_docs)"
         ),
     )
-    parser.add_argument("--timeout-seconds", type=int, default=30, help="Timeout per snippet execution (seconds)")
+    parser.add_argument("--timeout-seconds", type=int, default=600, help="Timeout per snippet execution (seconds)")
     parser.add_argument(
         "--allow-unsafe", action="store_true", help="Allow execution of snippets with potentially unsafe patterns"
     )

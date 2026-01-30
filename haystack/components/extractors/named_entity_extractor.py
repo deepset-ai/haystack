@@ -6,11 +6,11 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils.auth import Secret, deserialize_secrets_inplace
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
@@ -71,7 +71,7 @@ class NamedEntityAnnotation:
     entity: str
     start: int
     end: int
-    score: Optional[float] = None
+    score: float | None = None
 
 
 @component
@@ -108,11 +108,11 @@ class NamedEntityExtractor:
     def __init__(
         self,
         *,
-        backend: Union[str, NamedEntityExtractorBackend],
+        backend: str | NamedEntityExtractorBackend,
         model: str,
-        pipeline_kwargs: Optional[dict[str, Any]] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        pipeline_kwargs: dict[str, Any] | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Create a Named Entity extractor component.
@@ -192,8 +192,7 @@ class NamedEntityExtractor:
             If the backend fails to process a document.
         """
         if not self._warmed_up:
-            msg = "The component NamedEntityExtractor was not warmed up. Call warm_up() before running the component."
-            raise RuntimeError(msg)
+            self.warm_up()
 
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)
@@ -222,9 +221,9 @@ class NamedEntityExtractor:
             self,
             backend=self._backend.type.name,
             model=self._backend.model_name,
-            device=self._backend.device.to_dict(),
+            device=self._backend.device,
             pipeline_kwargs=self._backend._pipeline_kwargs,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         hf_pipeline_kwargs = serialization_dict["init_parameters"]["pipeline_kwargs"]
@@ -244,14 +243,11 @@ class NamedEntityExtractor:
             Deserialized component.
         """
         try:
-            deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
             init_params = data.get("init_parameters", {})
-            if init_params.get("device") is not None:
-                init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             init_params["backend"] = NamedEntityExtractorBackend[init_params["backend"]]
 
-            hf_pipeline_kwargs = init_params.get("pipeline_kwargs", {})
-            deserialize_hf_model_kwargs(hf_pipeline_kwargs)
+            hf_pipeline_kwargs = init_params.get("pipeline_kwargs")
+            deserialize_hf_model_kwargs(hf_pipeline_kwargs or {})
             return default_from_dict(cls, data)
         except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
@@ -264,7 +260,7 @@ class NamedEntityExtractor:
         return self._backend.initialized
 
     @classmethod
-    def get_stored_annotations(cls, document: Document) -> Optional[list[NamedEntityAnnotation]]:
+    def get_stored_annotations(cls, document: Document) -> list[NamedEntityAnnotation] | None:
         """
         Returns the document's named entity annotations stored in its metadata, if any.
 
@@ -283,10 +279,7 @@ class _NerBackend(ABC):
     """
 
     def __init__(
-        self,
-        _type: NamedEntityExtractorBackend,
-        device: ComponentDevice,
-        pipeline_kwargs: Optional[dict[str, Any]] = None,
+        self, _type: NamedEntityExtractorBackend, device: ComponentDevice, pipeline_kwargs: dict[str, Any] | None = None
     ) -> None:
         super().__init__()
 
@@ -352,7 +345,7 @@ class _HfBackend(_NerBackend):
     """
 
     def __init__(
-        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[dict[str, Any]] = None
+        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: dict[str, Any] | None = None
     ) -> None:
         """
         Construct a Hugging Face NER backend.
@@ -375,9 +368,9 @@ class _HfBackend(_NerBackend):
         transformers_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self.tokenizer: Optional[AutoTokenizer] = None
-        self.model: Optional[AutoModelForTokenClassification] = None
-        self.pipeline: Optional[HfPipeline] = None
+        self.tokenizer: AutoTokenizer | None = None
+        self.model: AutoModelForTokenClassification | None = None
+        self.pipeline: HfPipeline | None = None
 
     def initialize(self) -> None:
         token = self._pipeline_kwargs.get("token", None)
@@ -428,7 +421,7 @@ class _SpacyBackend(_NerBackend):
     """
 
     def __init__(
-        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[dict[str, Any]] = None
+        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: dict[str, Any] | None = None
     ) -> None:
         """
         Construct a spaCy NER backend.
@@ -448,7 +441,7 @@ class _SpacyBackend(_NerBackend):
         spacy_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self.pipeline: Optional[SpacyPipeline] = None
+        self.pipeline: SpacyPipeline | None = None
 
         if self.device.has_multiple_devices:
             raise ValueError("spaCy backend for named entity extractor only supports inference on single devices")

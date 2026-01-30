@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import gc
-from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,12 +10,11 @@ from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
-from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
-from haystack.utils.hf import AsyncHFTokenStreamingHandler
 
 
 # used to test serialization of streaming_callback
@@ -75,7 +72,7 @@ def tools():
     return [tool]
 
 
-def custom_tool_parser(text: str) -> Optional[list[ToolCall]]:
+def custom_tool_parser(text: str) -> list[ToolCall] | None:
     """Test implementation of a custom tool parser."""
     return [ToolCall(tool_name="weather", arguments={"city": "Berlin"})]
 
@@ -133,7 +130,7 @@ class TestHuggingFaceLocalChatGenerator:
         )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "HuggingFaceH4/zephyr-7b-beta",
+            "model": "Qwen/Qwen3-0.6B",
             "task": "text2text-generation",
             "token": None,
             "device": "cpu",
@@ -147,7 +144,7 @@ class TestHuggingFaceLocalChatGenerator:
         )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "HuggingFaceH4/zephyr-7b-beta",
+            "model": "Qwen/Qwen3-0.6B",
             "task": "text2text-generation",
             "token": None,
             "device": "cpu",
@@ -178,6 +175,7 @@ class TestHuggingFaceLocalChatGenerator:
             streaming_callback=None,
             chat_template="irrelevant",
             tools=tools,
+            enable_thinking=True,
         )
 
         # Call the to_dict method
@@ -191,6 +189,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert init_params["generation_kwargs"] == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
         assert init_params["streaming_callback"] is None
         assert init_params["chat_template"] == "irrelevant"
+        assert init_params["enable_thinking"] is True
         assert init_params["tools"] == [
             {
                 "type": "haystack.tools.tool.Tool",
@@ -214,6 +213,7 @@ class TestHuggingFaceLocalChatGenerator:
             streaming_callback=None,
             chat_template="irrelevant",
             tools=tools,
+            enable_thinking=True,
         )
         # Call the to_dict method
         result = generator.to_dict()
@@ -224,6 +224,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert generator_2.generation_kwargs == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is None
         assert generator_2.chat_template == "irrelevant"
+        assert generator_2.enable_thinking is True
         assert len(generator_2.tools) == 1
         assert generator_2.tools[0].name == "weather"
         assert generator_2.tools[0].description == "useful to determine the weather in a given location"
@@ -487,19 +488,40 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run(self, monkeypatch):
+        """Test live run with default behavior (no thinking)."""
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
 
-        llm = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50}
-        )
-        llm.warm_up()
+        llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
 
         result = llm.run(messages)
 
         assert "replies" in result
         assert isinstance(result["replies"][0], ChatMessage)
         assert "climate change" in result["replies"][0].text.lower()
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    def test_live_run_thinking(self, monkeypatch):
+        """Test live run with enable_thinking=True."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        messages = [ChatMessage.from_user("What is 2+2?")]
+
+        llm = HuggingFaceLocalChatGenerator(
+            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 450}, enable_thinking=True
+        )
+
+        result = llm.run(messages)
+
+        assert "replies" in result
+        assert isinstance(result["replies"][0], ChatMessage)
+        reply_text = result["replies"][0].text
+        assert reply_text is not None
+        assert "<think>" in reply_text
+        assert "</think>" in reply_text
+        assert len(reply_text) > 0
+        assert "4" in reply_text.lower()
 
     def test_init_fail_with_duplicate_tool_names(self, model_info_mock, tools):
         duplicate_tools = [tools[0], tools[0]]
@@ -513,7 +535,7 @@ class TestHuggingFaceLocalChatGenerator:
             )
 
     def test_run_with_tools(self, model_info_mock, tools):
-        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf", tools=tools)
+        generator = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", tools=tools)
 
         # Mock pipeline and tokenizer
         mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
@@ -644,9 +666,11 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test async functionality with tools"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
-        generator.pipeline = mock_pipeline_with_tokenizer
-        # Mock the pipeline to return a tool call format
-        generator.pipeline.return_value = [{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}]
+        # Create a new mock with return_value set in constructor to avoid thread-safety issues
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}])
+        # Copy the tokenizer from the fixture to the new mock
+        mock_pipeline.tokenizer = mock_pipeline_with_tokenizer.tokenizer
+        generator.pipeline = mock_pipeline
 
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         results = await generator.run_async(messages=messages)
@@ -679,10 +703,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         """Test error handling in async context"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
 
-        # Test without warm_up
-        with pytest.raises(RuntimeError, match="The generation model has not been loaded"):
-            await generator.run_async(messages=[ChatMessage.from_user("test")])
-
         # Test with invalid streaming callback
         generator.pipeline = mock_pipeline_with_tokenizer
         with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
@@ -691,15 +711,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
                 streaming_callback=lambda x: None,
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
-
-    def test_executor_shutdown(self, model_info_mock, mock_pipeline_with_tokenizer):
-        with patch("haystack.components.generators.chat.hugging_face_local.pipeline"):
-            generator = HuggingFaceLocalChatGenerator(model="mocked-model")
-            executor = generator.executor
-            with patch.object(executor, "shutdown", wraps=executor.shutdown) as mock_shutdown:
-                del generator
-                gc.collect()
-                mock_shutdown.assert_called_once_with(wait=True)
 
     def test_hugging_face_local_generator_with_toolset_initialization(
         self, model_info_mock, mock_pipeline_with_tokenizer, tools
@@ -805,11 +816,8 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             streaming_chunks.append(chunk)
 
         llm = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen2.5-0.5B-Instruct",
-            generation_kwargs={"max_new_tokens": 50},
-            streaming_callback=streaming_callback,
+            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50}, streaming_callback=streaming_callback
         )
-        llm.warm_up()
 
         response = await llm.run_async(
             messages=[ChatMessage.from_user("Please create a summary about the following topic: Capital of France")]

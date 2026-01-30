@@ -338,16 +338,13 @@ class TestSimilarityRanker:
 
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TransformersSimilarityRanker()
+        # Mock all attributes that are set during warm_up
         sampler.model = MagicMock()
+        sampler.tokenizer = MagicMock()
+        sampler.device = MagicMock()
 
         output = sampler.run(query="City in Germany", documents=[])
         assert not output["documents"]
-
-    #  Raises ComponentError if model is not warmed up
-    def test_raises_component_error_if_model_not_warmed_up(self):
-        sampler = TransformersSimilarityRanker()
-        with pytest.raises(RuntimeError):
-            sampler.run(query="query", documents=[Document(content="document")])
 
     @pytest.mark.integration
     @pytest.mark.slow

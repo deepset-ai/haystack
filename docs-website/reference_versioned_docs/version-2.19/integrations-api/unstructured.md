@@ -39,13 +39,13 @@ documents = converter.run(paths = ["a/file/path.pdf", "a/directory/path"])["docu
 
 ```python
 def __init__(api_url: str = UNSTRUCTURED_HOSTED_API_URL,
-             api_key: Optional[Secret] = Secret.from_env_var(
+             api_key: Secret | None = Secret.from_env_var(
                  "UNSTRUCTURED_API_KEY", strict=False),
              document_creation_mode: Literal[
                  "one-doc-per-file", "one-doc-per-page",
                  "one-doc-per-element"] = "one-doc-per-file",
              separator: str = "\n\n",
-             unstructured_kwargs: Optional[Dict[str, Any]] = None,
+             unstructured_kwargs: dict[str, Any] | None = None,
              progress_bar: bool = True)
 ```
 
@@ -72,7 +72,7 @@ For the available parameters, see
 #### UnstructuredFileConverter.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -87,7 +87,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "UnstructuredFileConverter"
+def from_dict(cls, data: dict[str, Any]) -> "UnstructuredFileConverter"
 ```
 
 Deserializes the component from a dictionary.
@@ -105,11 +105,11 @@ Deserialized component.
 #### UnstructuredFileConverter.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(
-    paths: Union[List[str], List[os.PathLike]],
-    meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None
-) -> Dict[str, List[Document]]
+    paths: list[str] | list[os.PathLike],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+) -> dict[str, list[Document]]
 ```
 
 Convert files to Haystack Documents using the Unstructured API.
@@ -133,3 +133,4 @@ Please note that if the paths contain directories, `meta` can only be a single d
 
 A dictionary with the following key:
 - `documents`: List of Haystack Documents.
+

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 import pytest
 
@@ -11,6 +10,13 @@ from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
+
+
+@component
+class WrongOutput:
+    @component.output_types(output=str)
+    def run(self, value: str) -> dict[str, str]:
+        return "not_a_dict"  # type: ignore[return-value]
 
 
 class TestPipeline:
@@ -79,13 +85,6 @@ class TestPipeline:
 
     def test__run_component_fail(self):
         """Test error when component doesn't return a dictionary"""
-
-        @component
-        class WrongOutput:
-            @component.output_types(output=str)
-            def run(self, value: str):
-                return "not_a_dict"
-
         wrong = WrongOutput()
         pp = Pipeline()
         pp.add_component("wrong", wrong)
@@ -133,21 +132,21 @@ class TestPipeline:
             def __init__(self, prefix: str):
                 self.prefix = prefix
 
-            @component.output_types(value=Optional[str])
-            def run(self, text: Optional[str]):
+            @component.output_types(value=str | None)
+            def run(self, text: str | None) -> dict[str, str | None]:
                 return {"value": f"{self.prefix}: {text}"}
 
         @component
         class EmptyProcessor:
             @component.output_types()
-            def run(self, sources: list[str]):
+            def run(self, sources: list[str]) -> dict:
                 # Returns empty dict when sources is empty
                 return {}
 
         @component
         class Combiner:
             @component.output_types(combined=str)
-            def run(self, input_a: Optional[str], input_b: Optional[str]):
+            def run(self, input_a: str | None, input_b: str | None) -> dict[str, str]:
                 if input_a is None:
                     input_a = ""
                 if input_b is None:

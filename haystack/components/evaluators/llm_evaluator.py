@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from tqdm import tqdm
 
@@ -59,7 +59,7 @@ class LLMEvaluator:
         progress_bar: bool = True,
         *,
         raise_on_failure: bool = True,
-        chat_generator: Optional[ChatGenerator] = None,
+        chat_generator: ChatGenerator | None = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -107,6 +107,17 @@ class LLMEvaluator:
         else:
             generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
             self._chat_generator = OpenAIChatGenerator(generation_kwargs=generation_kwargs)
+
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the component by warming up the underlying chat generator.
+        """
+        if not self._is_warmed_up:
+            if hasattr(self._chat_generator, "warm_up"):
+                self._chat_generator.warm_up()
+            self._is_warmed_up = True
 
     @staticmethod
     def validate_init_parameters(
@@ -181,6 +192,9 @@ class LLMEvaluator:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         self.validate_input_parameters(dict(self.inputs), inputs)
 
         # inputs is a dictionary with keys being input names and values being a list of input values
@@ -188,7 +202,7 @@ class LLMEvaluator:
         input_names, values = inputs.keys(), list(zip(*inputs.values()))
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
-        results: list[Optional[dict[str, Any]]] = []
+        results: list[dict[str, Any] | None] = []
         metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):

@@ -5,7 +5,7 @@ on:
 
 jobs:
   makestale:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - uses: actions/stale@v10
         with:

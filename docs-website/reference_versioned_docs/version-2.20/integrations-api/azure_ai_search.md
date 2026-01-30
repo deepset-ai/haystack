@@ -23,9 +23,9 @@ Must be connected to the AzureAISearchDocumentStore to run.
 ```python
 def __init__(*,
              document_store: AzureAISearchDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
              **kwargs: Any)
 ```
 
@@ -51,7 +51,7 @@ For more information on parameters, see the
 #### AzureAISearchEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -66,7 +66,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AzureAISearchEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "AzureAISearchEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -84,10 +84,10 @@ Deserialized component.
 #### AzureAISearchEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the AzureAISearchDocumentStore.
@@ -125,9 +125,8 @@ def __init__(*,
                  "AZURE_AI_SEARCH_ENDPOINT", strict=True),
              index_name: str = "default",
              embedding_dimension: int = 768,
-             metadata_fields: Optional[Dict[str, Union[SearchField,
-                                                       type]]] = None,
-             vector_search_configuration: Optional[VectorSearch] = None,
+             metadata_fields: dict[str, SearchField | type] | None = None,
+             vector_search_configuration: VectorSearch | None = None,
              include_search_metadata: bool = False,
              **index_creation_kwargs: Any)
 ```
@@ -181,7 +180,7 @@ For more information on parameters, see the [official Azure AI Search documentat
 #### AzureAISearchDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -196,7 +195,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AzureAISearchDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "AzureAISearchDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -228,7 +227,7 @@ list of retrieved documents.
 #### AzureAISearchDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -253,7 +252,7 @@ the number of documents added to index.
 #### AzureAISearchDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes all documents with a matching document_ids from the search index.
@@ -277,13 +276,58 @@ Deletes all documents in the document store.
 - `recreate_index`: If True, the index will be deleted and recreated with the original schema.
 If False, all documents will be deleted while preserving the index.
 
+<a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore.delete_by_filter"></a>
+
+#### AzureAISearchDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+Azure AI Search does not support server-side delete by query, so this method
+first searches for matching documents, then deletes them in a batch operation.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore.update_by_filter"></a>
+
+#### AzureAISearchDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the fields of all documents that match the provided filters.
+
+Azure AI Search does not support server-side update by query, so this method
+first searches for matching documents, then updates them using merge operations.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The fields to update. These fields must exist in the index schema.
+
+**Returns**:
+
+The number of documents updated.
+
 <a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore.search_documents"></a>
 
 #### AzureAISearchDocumentStore.search\_documents
 
 ```python
 def search_documents(search_text: str = "*",
-                     top_k: int = 10) -> List[Document]
+                     top_k: int = 10) -> list[Document]
 ```
 
 Returns all documents that match the provided search_text.
@@ -304,8 +348,7 @@ A list of Documents that match the given search_text.
 #### AzureAISearchDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the provided filters.

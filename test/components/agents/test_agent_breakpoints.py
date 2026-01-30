@@ -5,7 +5,7 @@
 import os
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
@@ -13,7 +13,7 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.tools import Tool, Toolset
@@ -40,7 +40,7 @@ def weather_tool():
 
 @component
 class MockChatGenerator:
-    def __init__(self, responses: Optional[list[ChatMessage]] = None):
+    def __init__(self, responses: list[ChatMessage] | None = None):
         self._counter = 0
         self.responses = responses or [
             ChatMessage.from_assistant(
@@ -58,9 +58,7 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         if self._counter >= len(self.responses):
             return {"replies": [self.responses[-1]]}
         else:
@@ -70,7 +68,7 @@ class MockChatGenerator:
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
     ) -> dict[str, Any]:
         if self._counter >= len(self.responses):
             return {"replies": [self.responses[-1]]}
@@ -141,12 +139,14 @@ class TestAgentBreakpoints:
                 "serialization_schema": {
                     "type": "object",
                     "properties": {
+                        "enable_streaming_callback_passthrough": {"type": "boolean"},
                         "messages": {"type": "array", "items": {}},
                         "state": {"type": "haystack.components.agents.state.state.State"},
                         "tools": {"type": "array", "items": {"type": "haystack.tools.tool.Tool"}},
                     },
                 },
                 "serialized_data": {
+                    "enable_streaming_callback_passthrough": False,
                     "messages": [],
                     "state": {
                         "schema": {
@@ -273,6 +273,7 @@ class TestAgentBreakpoints:
                 "serialization_schema": {
                     "type": "object",
                     "properties": {
+                        "enable_streaming_callback_passthrough": {"type": "boolean"},
                         "messages": {
                             "type": "array",
                             "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
@@ -282,6 +283,7 @@ class TestAgentBreakpoints:
                     },
                 },
                 "serialized_data": {
+                    "enable_streaming_callback_passthrough": False,
                     "messages": [
                         {
                             "role": "assistant",
@@ -412,7 +414,8 @@ class TestAgentBreakpoints:
             },
         }
 
-    def test_resume_from_chat_generator(self, agent, tmp_path):
+    def test_resume_from_chat_generator(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         debug_path = str(tmp_path / "debug_snapshots")
         agent_breakpoint = AgentBreakpoint(
             break_point=Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path),
@@ -438,7 +441,8 @@ class TestAgentBreakpoints:
         # There should be 4 messages: user + assistant + tool call result + final assistant message
         assert len(result["messages"]) == 4
 
-    def test_resume_from_tool_invoker(self, agent, tmp_path):
+    def test_resume_from_tool_invoker(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         debug_path = str(tmp_path / "debug_snapshots")
         tool_bp = ToolBreakpoint(component_name="tool_invoker", snapshot_file_path=debug_path)
@@ -462,7 +466,8 @@ class TestAgentBreakpoints:
         assert "last_message" in result
         assert len(result["messages"]) > 0
 
-    def test_resume_from_tool_invoker_and_new_breakpoint(self, weather_tool, tmp_path):
+    def test_resume_from_tool_invoker_and_new_breakpoint(self, weather_tool, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(
             chat_generator=MockChatGenerator(
                 [
@@ -526,9 +531,76 @@ class TestAgentBreakpoints:
             )
             agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
 
+    def test_chat_generator_breakpoint_with_snapshot_callback(self, agent, tmp_path):
+        """Test that snapshot_callback is invoked and no file is saved when breaking at chat_generator."""
+        captured_snapshots = []
+
+        def custom_callback(snapshot):
+            captured_snapshots.append(snapshot)
+            return "custom_callback_id"
+
+        debug_path = str(tmp_path / "debug_snapshots")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path),
+            agent_name="test_agent",
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            agent.run(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                snapshot_callback=custom_callback,
+            )
+
+        # Verify callback was invoked
+        assert len(captured_snapshots) == 1
+        assert captured_snapshots[0].agent_snapshot is not None
+
+        # Verify the file path in exception is from callback
+        assert exc_info.value.pipeline_snapshot_file_path == "custom_callback_id"
+
+        # Verify no file was saved to disk
+        Path(debug_path).mkdir(parents=True, exist_ok=True)  # Create dir to check it's empty
+        assert list(Path(debug_path).glob("*.json")) == []
+
+    def test_tool_invoker_breakpoint_with_snapshot_callback(self, agent, tmp_path):
+        """Test that snapshot_callback is invoked and no file is saved when breaking at tool_invoker."""
+        captured_snapshots = []
+
+        def custom_callback(snapshot):
+            captured_snapshots.append(snapshot)
+            return "tool_callback_id"
+
+        debug_path = str(tmp_path / "debug_snapshots")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(
+                component_name="tool_invoker", tool_name="weather_tool", snapshot_file_path=debug_path
+            ),
+            agent_name="test_agent",
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            agent.run(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                snapshot_callback=custom_callback,
+            )
+
+        # Verify callback was invoked
+        assert len(captured_snapshots) == 1
+        assert captured_snapshots[0].agent_snapshot is not None
+
+        # Verify the file path in exception is from callback
+        assert exc_info.value.pipeline_snapshot_file_path == "tool_callback_id"
+
+        # Verify no file was saved to disk
+        Path(debug_path).mkdir(parents=True, exist_ok=True)
+        assert list(Path(debug_path).glob("*.json")) == []
+
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_live_resume_from_tool_invoker(self, tmp_path, weather_tool):
+    def test_live_resume_from_tool_invoker(self, tmp_path, weather_tool, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o"), tools=[weather_tool])
         debug_path = str(tmp_path / "debug_snapshots")
         agent_breakpoint = AgentBreakpoint(
@@ -584,7 +656,8 @@ class TestAsyncAgentBreakpoints:
         assert "messages" in exc_info.value.inputs["tool_invoker"]["serialized_data"]
 
     @pytest.mark.asyncio
-    async def test_resume_from_chat_generator_async(self, agent, tmp_path):
+    async def test_resume_from_chat_generator_async(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         debug_path = str(tmp_path / "debug_snapshots")
         chat_generator_bp = Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name="test_agent")
@@ -610,7 +683,8 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) == 4
 
     @pytest.mark.asyncio
-    async def test_resume_from_tool_invoker_async(self, agent, tmp_path):
+    async def test_resume_from_tool_invoker_async(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         debug_path = str(tmp_path / "debug_snapshots")
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool", snapshot_file_path=debug_path)
@@ -636,7 +710,8 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) > 0
 
     @pytest.mark.asyncio
-    async def test_resume_from_tool_invoker_and_new_breakpoint_async(self, weather_tool, tmp_path):
+    async def test_resume_from_tool_invoker_and_new_breakpoint_async(self, weather_tool, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(
             chat_generator=MockChatGenerator(
                 [
@@ -699,3 +774,71 @@ class TestAsyncAgentBreakpoints:
             await agent.run_async(
                 messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint
             )
+
+    @pytest.mark.asyncio
+    async def test_chat_generator_breakpoint_with_snapshot_callback_async(self, agent, tmp_path):
+        """Test that snapshot_callback is invoked in async mode when breaking at chat_generator."""
+        captured_snapshots = []
+
+        def custom_callback(snapshot):
+            captured_snapshots.append(snapshot)
+            return "async_callback_id"
+
+        debug_path = str(tmp_path / "debug_snapshots")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path),
+            agent_name="test_agent",
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            await agent.run_async(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                snapshot_callback=custom_callback,
+            )
+
+        # Verify callback was invoked
+        assert len(captured_snapshots) == 1
+        assert captured_snapshots[0].agent_snapshot is not None
+
+        # Verify the file path in exception is from callback
+        assert exc_info.value.pipeline_snapshot_file_path == "async_callback_id"
+
+        # Verify no file was saved to disk
+        Path(debug_path).mkdir(parents=True, exist_ok=True)
+        assert list(Path(debug_path).glob("*.json")) == []
+
+    @pytest.mark.asyncio
+    async def test_tool_invoker_breakpoint_with_snapshot_callback_async(self, agent, tmp_path):
+        """Test that snapshot_callback is invoked in async mode when breaking at tool_invoker."""
+        captured_snapshots = []
+
+        def custom_callback(snapshot):
+            captured_snapshots.append(snapshot)
+            return "async_tool_callback_id"
+
+        debug_path = str(tmp_path / "debug_snapshots")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(
+                component_name="tool_invoker", tool_name="weather_tool", snapshot_file_path=debug_path
+            ),
+            agent_name="test_agent",
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            await agent.run_async(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                snapshot_callback=custom_callback,
+            )
+
+        # Verify callback was invoked
+        assert len(captured_snapshots) == 1
+        assert captured_snapshots[0].agent_snapshot is not None
+
+        # Verify the file path in exception is from callback
+        assert exc_info.value.pipeline_snapshot_file_path == "async_tool_callback_id"
+
+        # Verify no file was saved to disk
+        Path(debug_path).mkdir(parents=True, exist_ok=True)
+        assert list(Path(debug_path).glob("*.json")) == []

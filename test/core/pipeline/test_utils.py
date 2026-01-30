@@ -15,7 +15,7 @@ from haystack.core.pipeline.utils import (
     args_deprecated,
     parse_connect_string,
 )
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import ComponentTool
 
 
 def get_weather_report(city: str) -> str:
@@ -260,7 +260,7 @@ class TestArgsDeprecated:
     @pytest.fixture
     def sample_function(self):
         @args_deprecated
-        def sample_func(param1: str = "default1", param2: int = 42):
+        def sample_func(param1: str = "default1", param2: int = 42) -> str:
             return f"{param1}-{param2}"
 
         return sample_func

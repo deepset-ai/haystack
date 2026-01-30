@@ -25,16 +25,16 @@ def setup_document_store():
 @component
 class InvalidOutputEmbeddingRetriever:
     @component.output_types(documents=list[Document])
-    def run(self, query_embedding: list[float]):
+    def run(self, query_embedding: list[float]) -> dict[str, list[Document]]:
         # Return an int instead of the expected dict with 'documents' key
         # This will cause the pipeline to crash when trying to pass it to the next component
-        return 42
+        return 42  # type: ignore[return-value]
 
 
 @component
 class MockTextEmbedder:
     @component.output_types(embedding=list[float])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, list[float]]:
         embedding = np.ones(384).tolist()  # Mock embedding of size 384
         return {"embedding": embedding}
 
@@ -84,9 +84,11 @@ class TestPipelineOutputsRaisedInException:
         assert "Component name: 'embedding_retriever'" in str(exc_info.value)
         assert exc_info.value.component_name == "embedding_retriever"
         assert exc_info.value.component_type == InvalidOutputEmbeddingRetriever
-        assert "embedding_retriever" in exc_info.value.pipeline_snapshot_file_path
+        # File saving is disabled by default, so pipeline_snapshot_file_path is None
+        assert exc_info.value.pipeline_snapshot_file_path is None
 
         pipeline_snapshot = exc_info.value.pipeline_snapshot
+        assert pipeline_snapshot is not None
         pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
 

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 from pandas import DataFrame
 
@@ -22,7 +24,6 @@ from haystack.core.pipeline.component_checks import (
     has_socket_received_all_inputs,
     has_user_input,
     is_any_greedy_socket_ready,
-    is_socket_lazy_variadic,
 )
 
 
@@ -183,8 +184,7 @@ class TestCanComponentRun:
     def test_component_with_no_inputs_first_visit(self, basic_component):
         """Checks that a component with no input sockets can be triggered on its first visit."""
         basic_component["input_sockets"] = {}
-        inputs = {}
-        assert can_component_run(basic_component, inputs) is True
+        assert can_component_run(basic_component, {}) is True
 
     def test_component_triggered_on_second_visit_with_new_input(self, basic_component):
         """
@@ -219,15 +219,13 @@ class TestHasAnyTrigger:
     def test_trigger_without_inputs_first_visit(self, basic_component):
         """Checks that a component with no inputs is triggered on the first visit."""
         basic_component["input_sockets"] = {}
-        inputs = {}
-        assert has_any_trigger(basic_component, inputs) is True
+        assert has_any_trigger(basic_component, {}) is True
 
     def test_no_trigger_without_inputs_after_first_visit(self, basic_component):
         """Checks that on subsequent visits, no inputs means no trigger."""
         basic_component["input_sockets"] = {}
         basic_component["visits"] = 1
-        inputs = {}
-        assert has_any_trigger(basic_component, inputs) is False
+        assert has_any_trigger(basic_component, {}) is False
 
 
 class TestAllMandatorySocketsReady:
@@ -269,8 +267,8 @@ class TestAllMandatorySocketsReady:
 
     def test_mandatory_and_optional_sockets(self):
         input_sockets = {
-            "mandatory": InputSocket("mandatory", str, senders=["previous_component"]),
-            "optional": InputSocket("optional", str, senders=["previous_component"], default_value="test"),
+            "mandatory": InputSocket(name="mandatory", type=str, senders=["previous_component"]),
+            "optional": InputSocket(name="optional", type=str, senders=["previous_component"], default_value="test"),
         }
 
         component = {"input_sockets": input_sockets}
@@ -280,8 +278,7 @@ class TestAllMandatorySocketsReady:
 
     def test_empty_inputs(self, basic_component):
         """Checks that if there are no inputs at all, mandatory sockets are not ready."""
-        inputs = {}
-        assert are_all_sockets_ready(basic_component, inputs) is False
+        assert are_all_sockets_ready(basic_component, {}) is False
 
     def test_no_mandatory_sockets(self, basic_component):
         """Ensures that if there are no mandatory sockets, the component is considered ready."""
@@ -289,8 +286,7 @@ class TestAllMandatorySocketsReady:
             "optional_1": InputSocket("optional_1", str, default_value="default1"),
             "optional_2": InputSocket("optional_2", str, default_value="default2"),
         }
-        inputs = {}
-        assert are_all_sockets_ready(basic_component, inputs) is True
+        assert are_all_sockets_ready(basic_component, {}) is True
 
     def test_multiple_mandatory_sockets(self, basic_component):
         """Checks readiness when multiple mandatory sockets are defined."""
@@ -337,8 +333,7 @@ class TestPredecessorInputDetection:
 
     def test_any_predecessors_provided_input_empty_inputs(self, component_with_multiple_sockets):
         """Ensures that empty inputs dictionary returns False."""
-        inputs = {}
-        assert any_predecessors_provided_input(component_with_multiple_sockets, inputs) is False
+        assert any_predecessors_provided_input(component_with_multiple_sockets, {}) is False
 
 
 class TestSocketValueFromPredecessor:
@@ -389,8 +384,7 @@ class TestUserInputDetection:
 
     def test_has_user_input_empty_inputs(self):
         """Checks that an empty inputs dict has no user input."""
-        inputs = {}
-        assert has_user_input(inputs) is False
+        assert has_user_input({}) is False
 
     def test_has_user_input_with_no_output(self):
         """
@@ -430,8 +424,7 @@ class TestSocketExecutionStatus:
 
     def test_regular_socket_predecessor_not_executed(self, input_socket_with_sender):
         """If there are no inputs, the predecessor is not considered executed."""
-        socket_inputs = []
-        assert all_socket_predecessors_executed(input_socket_with_sender, socket_inputs) is False
+        assert all_socket_predecessors_executed(input_socket_with_sender, []) is False
 
     def test_regular_socket_with_wrong_predecessor(self, input_socket_with_sender):
         """Checks that a mismatch in sender means the socket is not yet executed."""
@@ -453,7 +446,7 @@ class TestSocketExecutionStatus:
         User input (sender=None) doesn't block the socket from being 'executed' if
         all named predecessors have also produced outputs.
         """
-        socket_inputs = [
+        socket_inputs: list[dict[str, Any]] = [
             {"sender": "component1", "value": 42},
             {"sender": None, "value": 43},
             {"sender": "component2", "value": 44},
@@ -462,8 +455,7 @@ class TestSocketExecutionStatus:
 
     def test_variadic_socket_no_execution(self, variadic_socket_with_senders):
         """Empty inputs means no predecessor has executed."""
-        socket_inputs = []
-        assert all_socket_predecessors_executed(variadic_socket_with_senders, socket_inputs) is False
+        assert all_socket_predecessors_executed(variadic_socket_with_senders, []) is False
 
 
 class TestSocketInputReceived:
@@ -508,7 +500,7 @@ class TestLazyVariadicSocket:
         User input doesn't block a lazy variadic socket, as long as all named senders
         also provided outputs.
         """
-        socket_inputs = [
+        socket_inputs: list[dict[str, Any]] = [
             {"sender": "component1", "value": 42},
             {"sender": None, "value": 43},
             {"sender": "component2", "value": 44},
@@ -523,15 +515,18 @@ class TestLazyVariadicSocket:
 class TestSocketTypeDetection:
     def test_is_socket_lazy_variadic_with_lazy_socket(self, lazy_variadic_socket):
         """Ensures that a non-greedy variadic socket is detected as lazy."""
-        assert is_socket_lazy_variadic(lazy_variadic_socket) is True
+        assert lazy_variadic_socket.is_lazy_variadic is True
+        assert lazy_variadic_socket.is_greedy is False
 
     def test_is_socket_lazy_variadic_with_greedy_socket(self, greedy_variadic_socket):
         """Greedy variadic sockets should not be marked as lazy."""
-        assert is_socket_lazy_variadic(greedy_variadic_socket) is False
+        assert greedy_variadic_socket.is_lazy_variadic is False
+        assert greedy_variadic_socket.is_greedy is True
 
     def test_is_socket_lazy_variadic_with_regular_socket(self, regular_socket):
         """Regular sockets are not variadic at all."""
-        assert is_socket_lazy_variadic(regular_socket) is False
+        assert regular_socket.is_lazy_variadic is False
+        assert regular_socket.is_greedy is False
 
 
 class TestSocketInputCompletion:
@@ -547,8 +542,7 @@ class TestSocketInputCompletion:
 
     def test_regular_socket_no_inputs(self, regular_socket):
         """No inputs at all means the socket is incomplete."""
-        inputs = []
-        assert has_socket_received_all_inputs(regular_socket, inputs) is False
+        assert has_socket_received_all_inputs(regular_socket, []) is False
 
     def test_lazy_variadic_socket_all_inputs(self, lazy_variadic_socket):
         """Lazy variadic socket is complete only if all senders have produced valid outputs."""
@@ -639,8 +633,7 @@ class TestLazyVariadicResolution:
 
     def test_lazy_variadic_sockets_with_no_inputs(self, complex_component):
         """No inputs: lazy variadic socket is not resolved."""
-        inputs = {}
-        assert are_all_lazy_variadic_sockets_resolved(complex_component, inputs) is False
+        assert are_all_lazy_variadic_sockets_resolved(complex_component, {}) is False
 
     def test_lazy_variadic_sockets_with_predecessors_executed(self, complex_component):
         """
@@ -674,8 +667,7 @@ class TestGreedySocketReadiness:
 
     def test_greedy_socket_no_inputs(self, complex_component):
         """No inputs at all: the greedy socket is not ready."""
-        inputs = {}
-        assert is_any_greedy_socket_ready(complex_component, inputs) is False
+        assert is_any_greedy_socket_ready(complex_component, {}) is False
 
     def test_greedy_socket_with_user_input(self, complex_component):
         """User input can also trigger readiness for a greedy variadic socket."""

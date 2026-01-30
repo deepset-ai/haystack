@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -146,7 +146,7 @@ def mock_parsed_chat_completion():
 @component
 class MessageExtractor:
     @component.output_types(messages=list[str], meta=dict[str, Any])
-    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], meta: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 
@@ -802,12 +802,12 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-5" in message.meta["model"]
+        assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
 
@@ -820,7 +820,9 @@ class TestOpenAIChatGenerator:
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
-        component = OpenAIChatGenerator(generation_kwargs={"response_format": calendar_event_model})
+        component = OpenAIChatGenerator(
+            model="gpt-4.1-nano", generation_kwargs={"response_format": calendar_event_model}
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -841,7 +843,7 @@ class TestOpenAIChatGenerator:
                 'For example: {"city": "Paris"}'
             )
         ]
-        comp = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}})
+        comp = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"response_format": {"type": "json_object"}})
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -868,7 +870,9 @@ class TestOpenAIChatGenerator:
             )
         ]
         comp = OpenAIChatGenerator(
-            generation_kwargs={"response_format": {"type": "json_object"}}, streaming_callback=streaming_callback
+            model="gpt-4.1-nano",
+            generation_kwargs={"response_format": {"type": "json_object"}},
+            streaming_callback=streaming_callback,
         )
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -903,7 +907,7 @@ class TestOpenAIChatGenerator:
         }
 
         chat_messages = [ChatMessage.from_user("What's the capital of France?")]
-        comp = OpenAIChatGenerator(generation_kwargs={"response_format": response_schema})
+        comp = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"response_format": response_schema})
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -945,7 +949,9 @@ class TestOpenAIChatGenerator:
 
         chat_messages = [ChatMessage.from_user("What's the capital of France?")]
         comp = OpenAIChatGenerator(
-            generation_kwargs={"response_format": response_schema}, streaming_callback=streaming_callback
+            model="gpt-4.1-nano",
+            generation_kwargs={"response_format": response_schema},
+            streaming_callback=streaming_callback,
         )
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -985,7 +991,9 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+            model="gpt-4.1-nano",
+            streaming_callback=callback,
+            generation_kwargs={"stream_options": {"include_usage": True}},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -998,7 +1006,7 @@ class TestOpenAIChatGenerator:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-5" in metadata["model"]
+        assert "gpt-4.1-nano" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         # Usage information checks
@@ -1023,7 +1031,7 @@ class TestOpenAIChatGenerator:
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
         component = OpenAIChatGenerator(
-            model="gpt-5",
+            model="gpt-4.1-nano",
             tools=tools,
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"stream_options": {"include_usage": True}},
@@ -1077,7 +1085,7 @@ class TestOpenAIChatGenerator:
     def test_live_run_with_toolset(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
-        component = OpenAIChatGenerator(tools=toolset)
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=toolset)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -1088,8 +1096,8 @@ class TestOpenAIChatGenerator:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
+        assert tool_call.arguments.keys() == {"city"}
+        assert "Paris" in tool_call.arguments["city"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -1491,6 +1499,20 @@ def chat_completion_chunks():
 
 
 @pytest.fixture
+def chat_completion_chunk_delta_none():
+    chunk = ChatCompletionChunk(
+        id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
+        choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), index=0)],
+        created=1742207200,
+        model="gpt-5-mini",
+        object="chat.completion.chunk",
+    )
+    # pydantic complains if we set delta to None at initialization
+    chunk.choices[0].delta = None
+    return chunk
+
+
+@pytest.fixture
 def streaming_chunks():
     return [
         StreamingChunk(
@@ -1720,8 +1742,34 @@ class TestChatCompletionChunkConversion:
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
 
-    def test_handle_stream_response(self, chat_completion_chunks):
-        openai_chunks = chat_completion_chunks
+    def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none):
+        """
+        Test that a chat completion chunk with a delta set to None is converted to a streaming chunk properly.
+        This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
+        """
+
+        result = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk=chat_completion_chunk_delta_none, previous_chunks=[]
+        )
+
+        assert result.content == ""
+        assert result.start is False
+        assert result.tool_calls is None
+        assert result.tool_call_result is None
+        assert result.index == 0
+        assert result.component_info is None
+        assert result.finish_reason is None
+        assert result.reasoning is None
+
+        assert result.meta["model"] == "gpt-5-mini"
+        assert result.meta["received_at"] is not None
+        assert result.meta["index"] == 0
+        assert result.meta["finish_reason"] is None
+        assert result.meta["usage"] is None
+        assert result.meta["tool_calls"] is None
+
+    def test_handle_stream_response(self, chat_completion_chunks, chat_completion_chunk_delta_none):
+        openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         result = comp._handle_stream_response(openai_chunks, callback=lambda chunk: None)[0]  # type: ignore
 

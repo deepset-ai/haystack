@@ -98,23 +98,23 @@ def __init__(user: str,
              account: str,
              authenticator: Literal["SNOWFLAKE", "SNOWFLAKE_JWT",
                                     "OAUTH"] = "SNOWFLAKE",
-             api_key: Optional[Secret] = Secret.from_env_var(
-                 "SNOWFLAKE_API_KEY", strict=False),
-             database: Optional[str] = None,
-             db_schema: Optional[str] = None,
-             warehouse: Optional[str] = None,
-             login_timeout: Optional[int] = 60,
+             api_key: Secret | None = Secret.from_env_var("SNOWFLAKE_API_KEY",
+                                                          strict=False),
+             database: str | None = None,
+             db_schema: str | None = None,
+             warehouse: str | None = None,
+             login_timeout: int | None = 60,
              return_markdown: bool = True,
-             private_key_file: Optional[Secret] = Secret.from_env_var(
+             private_key_file: Secret | None = Secret.from_env_var(
                  "SNOWFLAKE_PRIVATE_KEY_FILE", strict=False),
-             private_key_file_pwd: Optional[Secret] = Secret.from_env_var(
+             private_key_file_pwd: Secret | None = Secret.from_env_var(
                  "SNOWFLAKE_PRIVATE_KEY_PWD", strict=False),
-             oauth_client_id: Optional[Secret] = Secret.from_env_var(
+             oauth_client_id: Secret | None = Secret.from_env_var(
                  "SNOWFLAKE_OAUTH_CLIENT_ID", strict=False),
-             oauth_client_secret: Optional[Secret] = Secret.from_env_var(
+             oauth_client_secret: Secret | None = Secret.from_env_var(
                  "SNOWFLAKE_OAUTH_CLIENT_SECRET", strict=False),
-             oauth_token_request_url: Optional[str] = None,
-             oauth_authorization_url: Optional[str] = None) -> None
+             oauth_token_request_url: str | None = None,
+             oauth_authorization_url: str | None = None) -> None
 ```
 
 **Arguments**:
@@ -155,7 +155,7 @@ Warm up the component by initializing the authenticator handler and testing the 
 #### SnowflakeTableRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -170,7 +170,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "SnowflakeTableRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "SnowflakeTableRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -189,7 +189,8 @@ Deserialized component.
 
 ```python
 @component.output_types(dataframe=DataFrame, table=str)
-def run(query: str, return_markdown: Optional[bool] = None) -> Dict[str, Any]
+def run(query: str,
+        return_markdown: bool | None = None) -> dict[str, DataFrame | str]
 ```
 
 Executes a SQL query against a Snowflake database using ADBC and Polars.
@@ -205,3 +206,4 @@ If not provided, uses the value set during initialization.
 A dictionary containing:
 - `"dataframe"`: A Pandas DataFrame with the query results.
 - `"table"`: A Markdown-formatted string representation of the DataFrame.
+

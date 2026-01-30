@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional, Union
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,9 @@ class SerperDevWebSearch:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
-        top_k: Optional[int] = 10,
-        allowed_domains: Optional[list[str]] = None,
-        search_params: Optional[dict[str, Any]] = None,
+        top_k: int | None = 10,
+        allowed_domains: list[str] | None = None,
+        search_params: dict[str, Any] | None = None,
         *,
         exclude_subdomains: bool = False,
     ):
@@ -93,18 +93,19 @@ class SerperDevWebSearch:
             allowed_domains=self.allowed_domains,
             exclude_subdomains=self.exclude_subdomains,
             search_params=self.search_params,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
         )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SerperDevWebSearch":
         """
-        Serializes the component to a dictionary.
+        Deserializes the component from a dictionary.
 
+        :param data:
+            The dictionary to deserialize from.
         :returns:
-                Dictionary with serialized data.
+            The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     def _is_domain_allowed(self, url: str) -> bool:
@@ -138,7 +139,7 @@ class SerperDevWebSearch:
             return True
 
     @component.output_types(documents=list[Document], links=list[str])
-    def run(self, query: str) -> dict[str, Union[list[Document], list[str]]]:
+    def run(self, query: str) -> dict[str, list[Document] | list[str]]:
         """
         Use [Serper](https://serper.dev/) to search the web.
 

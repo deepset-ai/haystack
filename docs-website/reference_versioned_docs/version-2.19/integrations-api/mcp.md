@@ -764,7 +764,7 @@ Example without source: `{"documents": {"handler": custom_handler}}`
 #### MCPTool.ainvoke
 
 ```python
-async def ainvoke(**kwargs: Any) -> str
+async def ainvoke(**kwargs: Any) -> str | dict[str, Any]
 ```
 
 Asynchronous tool invocation.
@@ -780,7 +780,8 @@ Asynchronous tool invocation.
 
 **Returns**:
 
-JSON string representation of the tool invocation result
+JSON string or dictionary representation of the tool invocation result.
+Returns a dictionary when outputs_to_state is configured to enable state updates.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.warm_up"></a>
 
@@ -973,6 +974,30 @@ toolset = MCPToolset(
 # Use the toolset as shown in the pipeline example above
 ```
 
+Example with state configuration for Agent integration:
+```python
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+
+# Create the toolset with per-tool state configuration
+# This enables tools to read from and write to the Agent's State
+toolset = MCPToolset(
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-git"]),
+    tool_names=["git_status", "git_diff", "git_log"],
+
+    # Maps the state key "repository" to the tool parameter "repo_path" for each tool
+    inputs_from_state={
+        "git_status": {"repository": "repo_path"},
+        "git_diff": {"repository": "repo_path"},
+        "git_log": {"repository": "repo_path"},
+    },
+    # Map tool outputs to state keys for each tool
+    outputs_to_state={
+        "git_status": {"status_result": {"source": "status"}},  # Extract "status" from output
+        "git_diff": {"diff_result": {}},  # use full output with default handling
+    },
+)
+```
+
 Example using SSE (deprecated):
 ```python
 from haystack_integrations.tools.mcp import MCPToolset, SSEServerInfo
@@ -996,7 +1021,11 @@ def __init__(server_info: MCPServerInfo,
              tool_names: list[str] | None = None,
              connection_timeout: float = 30.0,
              invocation_timeout: float = 30.0,
-             eager_connect: bool = False)
+             eager_connect: bool = False,
+             inputs_from_state: dict[str, dict[str, str]] | None = None,
+             outputs_to_state: dict[str, dict[str, dict[str, Any]]]
+             | None = None,
+             outputs_to_string: dict[str, dict[str, Any]] | None = None)
 ```
 
 Initialize the MCP toolset.
@@ -1010,10 +1039,28 @@ matching names will be added to the toolset.
 - `invocation_timeout`: Default timeout in seconds for tool invocations
 - `eager_connect`: If True, connect to server and load tools during initialization.
 If False (default), defer connection to warm_up.
+- `inputs_from_state`: Optional dictionary mapping tool names to their inputs_from_state config.
+Each config maps state keys to tool parameter names.
+Tool names should match available tools from the server; a warning is logged for
+unknown tools. Note: With Haystack >= 2.22.0, parameter names are validated;
+ValueError is raised for invalid parameters. With earlier versions, invalid
+parameters fail at runtime.
+Example: `{"git_status": {"repository": "repo_path"}}`
+- `outputs_to_state`: Optional dictionary mapping tool names to their outputs_to_state config.
+Each config defines how tool outputs map to state keys with optional handlers.
+Tool names should match available tools from the server; a warning is logged for
+unknown tools.
+Example: `{"git_status": {"status_result": {"source": "status"}}}`
+- `outputs_to_string`: Optional dictionary mapping tool names to their outputs_to_string config.
+Each config defines how tool outputs are converted to strings.
+Tool names should match available tools from the server; a warning is logged for
+unknown tools.
+Example: `{"git_diff": {"source": "diff", "handler": format_diff}}`
 
 **Raises**:
 
 - `MCPToolNotFoundError`: If any of the specified tool names are not found on the server
+- `ValueError`: If parameter names in inputs_from_state are invalid (Haystack >= 2.22.0 only)
 
 <a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.warm_up"></a>
 

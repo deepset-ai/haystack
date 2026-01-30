@@ -6,11 +6,10 @@ from typing import Any
 
 import pytest
 
-from haystack import AsyncPipeline, DeserializationError, Pipeline
+from haystack import AsyncPipeline
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.testing.factory import document_store_class
 
 
 @pytest.fixture()

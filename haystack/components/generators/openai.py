@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional, Union
+from typing import Any
 
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
@@ -22,7 +22,7 @@ from haystack.dataclasses import (
     StreamingChunk,
     select_streaming_callback,
 )
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -65,14 +65,14 @@ class OpenAIGenerator:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -164,7 +164,7 @@ class OpenAIGenerator:
             organization=self.organization,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             http_client_kwargs=self.http_client_kwargs,
         )
 
@@ -178,7 +178,6 @@ class OpenAIGenerator:
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
@@ -189,10 +188,10 @@ class OpenAIGenerator:
     def run(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-    ):
+        system_prompt: str | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, list[str] | list[dict[str, Any]]]:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
@@ -230,7 +229,7 @@ class OpenAIGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
-        completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
+        completion: Stream[ChatCompletionChunk] | ChatCompletion = self.client.chat.completions.create(
             model=self.model,
             messages=openai_formatted_messages,  # type: ignore
             stream=streaming_callback is not None,
@@ -265,4 +264,7 @@ class OpenAIGenerator:
         for response in completions:
             _check_finish_reason(response.meta)
 
-        return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
+        return {
+            "replies": [message.text or "" for message in completions],
+            "meta": [message.meta for message in completions],
+        }

@@ -4,11 +4,11 @@
 
 from copy import copy
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
@@ -42,20 +42,22 @@ class SentenceTransformersSimilarityRanker:
     def __init__(  # noqa: PLR0913
         self,
         *,
-        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
+        query_suffix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        document_suffix: str = "",
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
-        score_threshold: Optional[float] = None,
+        score_threshold: float | None = None,
         trust_remote_code: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         batch_size: int = 16,
     ):
@@ -73,9 +75,15 @@ class SentenceTransformersSimilarityRanker:
         :param query_prefix:
             A string to add at the beginning of the query text before ranking.
             Use it to prepend the text with an instruction, as required by reranking models like `bge`.
+        :param query_suffix:
+            A string to add at the end of the query text before ranking.
+            Use it to append the text with an instruction, as required by reranking models like `qwen`.
         :param document_prefix:
             A string to add at the beginning of each document before ranking. You can use it to prepend the document
             with an instruction, as required by embedding models like `bge`.
+        :param document_suffix:
+            A string to add at the end of each document before ranking. You can use it to append the document
+            with an instruction, as required by embedding models like `qwen`.
         :param meta_fields_to_embed:
             List of metadata fields to embed with the document.
         :param embedding_separator:
@@ -115,7 +123,9 @@ class SentenceTransformersSimilarityRanker:
         self.model = str(model)
         self._cross_encoder = None
         self.query_prefix = query_prefix
+        self.query_suffix = query_suffix
         self.document_prefix = document_prefix
+        self.document_suffix = document_suffix
         self.device = ComponentDevice.resolve_device(device)
         self.top_k = top_k
         self.token = token
@@ -161,12 +171,14 @@ class SentenceTransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=self.device.to_dict(),
+            device=self.device,
             model=self.model,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             top_k=self.top_k,
             query_prefix=self.query_prefix,
+            query_suffix=self.query_suffix,
             document_prefix=self.document_prefix,
+            document_suffix=self.document_suffix,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             scale_score=self.scale_score,
@@ -193,11 +205,8 @@ class SentenceTransformersSimilarityRanker:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
 
         return default_from_dict(cls, data)
 
@@ -207,9 +216,9 @@ class SentenceTransformersSimilarityRanker:
         *,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        score_threshold: float | None = None,
     ) -> dict[str, list[Document]]:
         """
         Returns a list of documents ranked by their similarity to the given query.
@@ -233,14 +242,9 @@ class SentenceTransformersSimilarityRanker:
 
         :raises ValueError:
             If `top_k` is not > 0.
-        :raises RuntimeError:
-            If the model is not loaded because `warm_up()` was not called before.
         """
         if self._cross_encoder is None:
-            raise RuntimeError(
-                "The component SentenceTransformersSimilarityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"documents": []}
@@ -252,19 +256,22 @@ class SentenceTransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        prepared_query = self.query_prefix + query
+        prepared_query = self.query_prefix + query + self.query_suffix
         prepared_documents = []
         for doc in documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
             prepared_documents.append(
-                self.document_prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+                self.document_prefix
+                + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+                + self.document_suffix
             )
 
         activation_fn = Sigmoid() if scale_score else Identity()
 
-        ranking_result = self._cross_encoder.rank(
+        # mypy doesn't know this is set in warm_up
+        ranking_result = self._cross_encoder.rank(  # type: ignore[attr-defined]
             query=prepared_query,
             documents=prepared_documents,
             batch_size=self.batch_size,

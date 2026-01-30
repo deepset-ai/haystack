@@ -6,7 +6,6 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import pytest
 
@@ -16,7 +15,7 @@ from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, load_pipeline_snapshot
 from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -92,7 +91,7 @@ class MockHTMLToDocument:
         return {"documents": documents}
 
 
-def add_database_tool_function(name: str, surname: str, job_title: Optional[str], other: Optional[str]):
+def add_database_tool_function(name: str, surname: str, job_title: str | None, other: str | None):
     document_store.write_documents(
         [Document(content=name + " " + surname + " " + (job_title or ""), meta={"other": other})]
     )
@@ -101,6 +100,7 @@ def add_database_tool_function(name: str, surname: str, job_title: Optional[str]
 @pytest.fixture
 def pipeline_with_agent(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test_key")
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
     generator = OpenAIChatGenerator()
     call_count = 0
 
@@ -267,7 +267,7 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
-            assert False, "Expected PipelineBreakpointException was not raised"
+            assert False, "Expected BreakpointException was not raised"
 
         except BreakpointException as e:
             assert e.component == "chat_generator"
@@ -315,7 +315,7 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
-            assert False, "Expected PipelineBreakpointException was not raised"
+            assert False, "Expected BreakpointException was not raised"
 
         except BreakpointException as e:
             assert e.component == "tool_invoker"

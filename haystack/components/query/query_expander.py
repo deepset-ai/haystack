@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -87,8 +87,8 @@ class QueryExpander:
     def __init__(
         self,
         *,
-        chat_generator: Optional[ChatGenerator] = None,
-        prompt_template: Optional[str] = None,
+        chat_generator: ChatGenerator | None = None,
+        prompt_template: str | None = None,
         n_expansions: int = 4,
         include_original_query: bool = True,
     ) -> None:
@@ -180,7 +180,7 @@ class QueryExpander:
         return default_from_dict(cls, data)
 
     @component.output_types(queries=list[str])
-    def run(self, query: str, n_expansions: Optional[int] = None) -> dict[str, list[str]]:
+    def run(self, query: str, n_expansions: int | None = None) -> dict[str, list[str]]:
         """
         Expand the input query into multiple semantically similar queries.
 

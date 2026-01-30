@@ -71,7 +71,8 @@ nested_container_types = [
 ]
 literals = [Literal["a", "b", "c"], Literal[Enum1.TEST1]]
 haystack_types = [ByteStream, ChatMessage, Document, GeneratedAnswer]
-extras = [Union[int, str]]
+extras = [Union[int, str], int | str]
+pep604_optional_types = [int | None, str | None]
 
 
 def generate_id(sender, receiver):
@@ -91,6 +92,7 @@ def generate_symmetric_cases():
             + haystack_types
             + nested_container_types
             + extras
+            + pep604_optional_types
         )
     ]
 
@@ -106,12 +108,16 @@ def generate_strict_asymmetric_cases():
         cases.append(pytest.param(t, Optional[t], id=generate_id(t, Optional[t])))
         cases.append(pytest.param(t, Union[t, complex], id=generate_id(t, Union[t, complex])))
         cases.append(pytest.param(t, Any, id=generate_id(t, Any)))
+        cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))  # type: ignore[operator]
+        cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
 
     # Classes: Optional, Union, Any
     for cls in class_types:
         cases.append(pytest.param(cls, Optional[cls], id=generate_id(cls, Optional[cls])))
         cases.append(pytest.param(cls, Union[cls, complex], id=generate_id(cls, Union[cls, complex])))
         cases.append(pytest.param(cls, Any, id=generate_id(cls, Any)))
+        cases.append(pytest.param(cls, cls | None, id=generate_id(cls, cls | None)))
+        cases.append(pytest.param(cls, cls | complex, id=generate_id(cls, cls | complex)))
 
     # Subclass → Superclass
     cases.extend(
@@ -120,6 +126,7 @@ def generate_strict_asymmetric_cases():
             pytest.param(Class3, Class1, id=generate_id(Class3, Class1)),
             # Subclass → Union of Superclass and other type
             pytest.param(Class3, Union[int, Class1], id=generate_id(Class3, Union[int, Class1])),
+            pytest.param(Class3, int | Class1, id=generate_id(Class3, int | Class1)),
             # List of Class3 → List of Class1
             pytest.param(List[Class3], List[Class1], id=generate_id(List[Class3], List[Class1])),
             pytest.param(list[Class3], list[Class1], id=generate_id(list[Class3], list[Class1])),
@@ -136,12 +143,18 @@ def generate_strict_asymmetric_cases():
         cases.append(pytest.param(container, Optional[container], id=generate_id(container, Optional[container])))
         cases.append(pytest.param(container, Union[container, int], id=generate_id(container, Union[container, int])))
         cases.append(pytest.param(container, Any, id=generate_id(container, Any)))
+        cases.append(
+            pytest.param(container, container | None, id=generate_id(container, container | None))  # type: ignore[operator]
+        )
+        cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
 
     # Extra cases
     cases.extend(
         [
             pytest.param(bool, int, id="different-primitives"),
             pytest.param((Literal["a", "b"]), (Literal["a", "b", "c"]), id="sending-subset-literal"),
+            pytest.param(int, int | str, id="primitive-to-union-pep604"),
+            pytest.param(str, str | int | float, id="primitive-to-multi-union-pep604"),
         ]
     )
 
@@ -422,6 +435,13 @@ asymmetric_cases = generate_strict_asymmetric_cases()
             "tuple[Optional[Literal['a', 'b', 'c']], Union[Path, dict[int, Class1]]]",
             id="deeply-nested-complex-type",
         ),
+        pytest.param((int | str), "int | str", id="pep604-union"),
+        pytest.param((int | None), "int | None", id="pep604-optional"),
+        pytest.param((list[int] | None), "list[int] | None", id="pep604-optional-list"),
+        pytest.param((dict[str, int] | None), "dict[str, int] | None", id="pep604-optional-dict"),
+        pytest.param((int | str | float), "int | str | float", id="pep604-multi-union"),
+        pytest.param((list[int | str]), "list[int | str]", id="pep604-list-of-union"),
+        pytest.param((dict[str, int | None]), "dict[str, int | None]", id="pep604-dict-with-optional-value"),
     ],
 )
 def test_type_name(type_, repr_):
@@ -561,6 +581,8 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
     [
         pytest.param((Union[(int, bool)]), (Union[(int, str)]), id="partially-overlapping-unions-with-primitives"),
         pytest.param((Union[(int, Class1)]), (Union[(int, Class2)]), id="partially-overlapping-unions-with-classes"),
+        pytest.param((int | bool), (int | str), id="partially-overlapping-unions-with-primitives-pep604"),
+        pytest.param((int | Class1), (int | Class2), id="partially-overlapping-unions-with-classes-pep604"),
     ],
 )
 def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, receiver_type):
@@ -613,6 +635,8 @@ def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
         pytest.param(Literal["test"], Literal, id="literal-to-bare-literal"),
         pytest.param(Union[str, int], Union, id="union-to-bare-union"),
         pytest.param(Optional[str], Optional, id="optional-to-bare-optional"),
+        pytest.param(str | int, Union, id="pep604-union-to-bare-union"),
+        pytest.param(str | None, Optional, id="pep604-optional-to-bare-optional"),
     ],
 )
 def test_always_incompatible_bare_types(sender_type, receiver_type):
@@ -749,7 +773,7 @@ if sys.version_info >= (3, 10):
             + nested_container_types
             + extras
         ):
-            cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))
+            cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))  # type: ignore[operator]
             cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
 
         # Classes: UnionType
@@ -767,7 +791,13 @@ if sys.version_info >= (3, 10):
 
         # Containers: Optional, Union, and Any compatibility
         for container in container_types:
-            cases.append(pytest.param(container, container | None, id=generate_id(container, container | None)))
+            cases.append(
+                pytest.param(
+                    container,
+                    container | None,  # type: ignore[operator]
+                    id=generate_id(container, container | None),  # type: ignore[operator]
+                )
+            )
             cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
 
         # builtins Extra container cases

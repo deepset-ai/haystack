@@ -1,0 +1,108 @@
+---
+title: "OpenSearchEmbeddingRetriever"
+id: opensearchembeddingretriever
+slug: "/opensearchembeddingretriever"
+description: "An embedding-based Retriever compatible with the OpenSearch Document Store."
+---
+
+# OpenSearchEmbeddingRetriever
+
+An embedding-based Retriever compatible with the OpenSearch Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)                                                                                                                                                                              |
+| **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
+| **API reference**                      | [OpenSearch](/reference/integrations-opensearch)                                                                                                                                                                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch                                                                                                                                                                              |
+
+</div>
+
+## Overview
+
+The `OpenSearchEmbeddingRetriever` is an embedding-based Retriever compatible with the `OpenSearchDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `OpenSearchDocumentStore` based on the outcome.
+
+When using the `OpenSearchEmbeddingRetriever` in your NLP system, make sure it has the query and Document embeddings available. You can do so by adding a Document Embedder to your indexing pipeline and a Text Embedder to your query pipeline.
+
+In addition to the `query_embedding`, the `OpenSearchEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+
+The `embedding_dim` for storing and retrieving embeddings must be defined when the corresponding `OpenSearchDocumentStore` is initialized.
+
+### Setup and installation
+
+[Install](https://opensearch.org/docs/latest/install-and-configure/install-opensearch/index/) and run an OpenSearch instance.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+
+```shell
+docker pull opensearchproject/opensearch:2.11.0
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" opensearchproject/opensearch:2.11.0
+```
+
+As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
+
+```shell
+docker compose up
+```
+
+Once you have a running OpenSearch instance, install the `opensearch-haystack` integration:
+
+```shell
+pip install opensearch-haystack
+```
+
+## Usage
+
+### In a pipeline
+
+Use this Retriever in a query Pipeline like this:
+
+```python
+from haystack_integrations.components.retrievers.opensearch  import OpenSearchEmbeddingRetriever
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+
+from haystack.document_stores.types import DuplicatePolicy
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+
+document_store = OpenSearchDocumentStore(hosts="http://localhost:9200", use_ssl=True,
+verify_certs=False, http_auth=("admin", "admin"))
+
+model = "sentence-transformers/all-mpnet-base-v2"
+
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+
+document_embedder = SentenceTransformersDocumentEmbedder(model=model)
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.SKIP)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder(model=model))
+query_pipeline.add_component("retriever", OpenSearchEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result['retriever']['documents'][0])
+```
+
+The example output would be:
+
+```python
+Document(id=cfe93bc1c274908801e6670440bf2bbba54fad792770d57421f85ffa2a4fcc94, content: 'There are over 7,000 languages spoken around the world today.', score: 0.70026743, embedding: vector of size 768)
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)

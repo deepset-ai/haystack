@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -16,9 +16,9 @@ from haystack.core.pipeline.base import (
     PipelineBase,
 )
 from haystack.core.pipeline.breakpoint import (
+    SnapshotCallback,
     _create_pipeline_snapshot,
     _save_pipeline_snapshot,
-    _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
 )
@@ -44,7 +44,9 @@ class Pipeline(PipelineBase):
         component: dict[str, Any],
         inputs: dict[str, Any],
         component_visits: dict[str, int],
-        parent_span: Optional[tracing.Span] = None,
+        parent_span: tracing.Span | None = None,
+        *,
+        break_point: Breakpoint | None = None,
     ) -> Mapping[str, Any]:
         """
         Runs a Component with the given inputs.
@@ -58,6 +60,13 @@ class Pipeline(PipelineBase):
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
         :return: The output of the Component.
         """
+        if (
+            isinstance(break_point, Breakpoint)
+            and break_point.component_name == component_name
+            and break_point.visit_count == component_visits[component_name]
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
+
         instance: Component = component["instance"]
 
         with PipelineBase._create_component_span(
@@ -100,10 +109,11 @@ class Pipeline(PipelineBase):
     def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
         self,
         data: dict[str, Any],
-        include_outputs_from: Optional[set[str]] = None,
+        include_outputs_from: set[str] | None = None,
         *,
-        break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        break_point: Breakpoint | AgentBreakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -186,6 +196,14 @@ class Pipeline(PipelineBase):
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
 
+        :param snapshot_callback:
+            Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string
+            (e.g., a file path or identifier).
+            If provided, the callback is used instead of the default file-saving behavior,
+            allowing custom handling of snapshots (e.g., saving to a database, sending to a remote service).
+            If not provided, the default behavior saves snapshots to a JSON file.
+
         :returns:
             A dictionary where each entry corresponds to a component name
             and its output. If `include_outputs_from` is `None`, this dictionary
@@ -252,12 +270,7 @@ class Pipeline(PipelineBase):
             include_outputs_from = pipeline_snapshot.include_outputs_from
 
             # also intermediate_outputs from the snapshot when resuming
-            # keep the deserialization of pipeline_outputs backwards compatible with the old pipeline_outputs format
-            # TODO: remove this in haystack 2.23.0
-            if "serialization_schema" not in pipeline_snapshot.pipeline_state.pipeline_outputs.keys():
-                pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
-            else:
-                pipeline_outputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.pipeline_outputs)
+            pipeline_outputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.pipeline_outputs)
 
         cached_topological_sort = None
         # We need to access a component's receivers multiple times during a pipeline run.
@@ -313,7 +326,6 @@ class Pipeline(PipelineBase):
                         priority_queue=priority_queue,
                         topological_sort=cached_topological_sort,
                     )
-
                     cached_topological_sort = topological_sort
                     component = self._get_component_with_graph_metadata_and_visits(
                         component_name, component_visits[component_name]
@@ -352,39 +364,10 @@ class Pipeline(PipelineBase):
                         component_inputs["snapshot"] = pipeline_snapshot.agent_snapshot
                         component_inputs["break_point"] = None
 
-                # Scenario 2: A break point is provided to stop the pipeline at a specific component
-                component_break_point_triggered = (
-                    break_point
-                    and isinstance(break_point, Breakpoint)
-                    and break_point.component_name == component_name
-                    and break_point.visit_count == component_visits[component_name]
-                )
-                agent_break_point_triggered = (
-                    break_point
-                    and isinstance(break_point, AgentBreakpoint)
-                    and component_name == break_point.agent_name
-                )
-                if break_point and (component_break_point_triggered or agent_break_point_triggered):
-                    new_pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=_deepcopy_with_exceptions(inputs),
-                        component_inputs=_deepcopy_with_exceptions(component_inputs),
-                        break_point=break_point,
-                        component_visits=component_visits,
-                        original_input_data=data,
-                        ordered_component_names=ordered_component_names,
-                        include_outputs_from=include_outputs_from,
-                        pipeline_outputs=pipeline_outputs,
-                    )
-
-                    # An AgentBreakpoint is provided to stop the pipeline at an Agent component so we pass on the
-                    # break point and snapshot to the Agent's inputs
-                    if agent_break_point_triggered:
-                        component_inputs["break_point"] = break_point
-                        component_inputs["parent_snapshot"] = new_pipeline_snapshot
-
-                    # trigger the break point if needed
-                    if component_break_point_triggered:
-                        _trigger_break_point(pipeline_snapshot=new_pipeline_snapshot)
+                # If AgentBreakpoint is provided pass onto Agent's inputs
+                if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
+                    component_inputs["break_point"] = break_point
+                    component_inputs["snapshot_callback"] = snapshot_callback
 
                 try:
                     component_outputs = self._run_component(
@@ -393,20 +376,25 @@ class Pipeline(PipelineBase):
                         inputs=component_inputs,  # the inputs to the current component
                         component_visits=component_visits,
                         parent_span=span,
+                        # A break point is provided to stop the pipeline at a specific component
+                        break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
-                except PipelineRuntimeError as error:
-                    out_dir = _get_output_dir("pipeline_snapshot")
-                    break_point = Breakpoint(
-                        component_name=component_name,
-                        visit_count=component_visits[component_name],
-                        snapshot_file_path=out_dir,
-                    )
+                except (BreakpointException, PipelineRuntimeError) as error:
+                    saved_break_point: Breakpoint | AgentBreakpoint
+                    if isinstance(error, PipelineRuntimeError):
+                        saved_break_point = Breakpoint(
+                            component_name=component_name,
+                            visit_count=component_visits[component_name],
+                            snapshot_file_path=_get_output_dir("pipeline_snapshot"),
+                        )
+                    else:
+                        saved_break_point = error.break_point
 
                     # Create a snapshot of the state of the pipeline before the error occurred.
                     pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=_deepcopy_with_exceptions(inputs),
                         component_inputs=_deepcopy_with_exceptions(component_inputs),
-                        break_point=break_point,
+                        break_point=saved_break_point,
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
@@ -414,8 +402,8 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                    # If the pipeline_snapshot already exists it came from an Agent component.
-                    # We take the agent snapshot and attach it to the pipeline snapshot we create here.
+                    # If the PipelineRuntimeError or BreakpointException came from an Agent component, we take the
+                    # agent snapshot and attach it to the pipeline snapshot we create here.
                     # We also update the break_point to be an AgentBreakpoint.
                     if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
                         pipeline_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
@@ -424,7 +412,9 @@ class Pipeline(PipelineBase):
                     # Attach the pipeline snapshot to the error before re-raising
                     error.pipeline_snapshot = pipeline_snapshot
                     full_file_path = _save_pipeline_snapshot(
-                        pipeline_snapshot=pipeline_snapshot, raise_on_failure=False
+                        pipeline_snapshot=pipeline_snapshot,
+                        raise_on_failure=isinstance(error, BreakpointException),
+                        snapshot_callback=snapshot_callback,
                     )
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error

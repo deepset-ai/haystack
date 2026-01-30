@@ -3,18 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import re
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import pytest
 from pandas import DataFrame
 from pytest_bdd import parsers, then, when
 
-from haystack import AsyncPipeline, Pipeline
-
-PIPELINE_NAME_REGEX = re.compile(r"\[(.*)\]")
+from haystack import AsyncPipeline, Pipeline, component
+from test.tracing.utils import SpyingTracer
 
 
 @pytest.fixture(params=[AsyncPipeline, Pipeline])
@@ -50,8 +47,9 @@ class _PipelineResult:
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
-    pipeline_data: tuple[Union[AsyncPipeline, Pipeline], list[PipelineRunData]], spying_tracer
-) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]] | tuple[AsyncPipeline, list[PipelineRunData]],
+    spying_tracer: SpyingTracer,
+) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     if isinstance(pipeline_data[0], AsyncPipeline):
         return run_async_pipeline(pipeline_data, spying_tracer)
     else:
@@ -59,8 +57,8 @@ def run_pipeline(
 
 
 def run_async_pipeline(
-    pipeline_data: tuple[Union[AsyncPipeline], list[PipelineRunData]], spying_tracer
-) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[AsyncPipeline, list[PipelineRunData]], spying_tracer: SpyingTracer
+) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
@@ -98,8 +96,8 @@ def run_async_pipeline(
 
 
 def run_sync_pipeline(
-    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer
-) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer: SpyingTracer
+) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
@@ -128,36 +126,23 @@ def run_sync_pipeline(
             spying_tracer.spans.clear()
         except Exception as e:
             return e
-    return list(zip(results, pipeline_run_data))
-
-
-@then("draw it to file")
-def draw_pipeline(pipeline_data: tuple[Pipeline, list[PipelineRunData]], request):
-    """
-    Draw the pipeline to a file with the same name as the test.
-    """
-    if m := PIPELINE_NAME_REGEX.search(request.node.name):
-        name = m.group(1).replace(" ", "_")
-        pipeline = pipeline_data[0]
-        graphs_dir = Path(request.config.rootpath) / "test_pipeline_graphs"
-        graphs_dir.mkdir(exist_ok=True)
-        pipeline.draw(graphs_dir / f"{name}.png")
+    return list(zip(results, pipeline_run_data, strict=True))
 
 
 @then("it should return the expected result")
-def check_pipeline_result(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]):
+def check_pipeline_result(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]) -> None:
     for res, data in pipeline_result:
         compare_outputs_with_dataframes(res.outputs, data.expected_outputs)
 
 
 @then("components are called with the expected inputs")
-def check_component_calls(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]):
+def check_component_calls(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]) -> None:
     for res, data in pipeline_result:
         assert compare_outputs_with_dataframes(res.component_calls, data.expected_component_calls)
 
 
 @then(parsers.parse("it must have raised {exception_class_name}"))
-def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str):
+def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str) -> None:
     assert pipeline_result.__class__.__name__ == exception_class_name
 
 
@@ -180,6 +165,26 @@ def compare_outputs_with_dataframes(actual: dict, expected: dict) -> bool:
             if isinstance(actual_value, DataFrame) and isinstance(expected_value, DataFrame):
                 assert actual_value.equals(expected_value)
             else:
-                assert actual_value == expected_value
+                # We do expected_value first so ANY can be used in expected outputs
+                assert expected_value == actual_value
 
     return True
+
+
+@component
+class FixedGenerator:
+    def __init__(self, replies):
+        self.replies = replies
+        self.idx = 0
+
+    @component.output_types(replies=list[str])
+    def run(self, prompt: str) -> dict[str, Any]:
+        if self.idx < len(self.replies):
+            replies = [self.replies[self.idx]]
+            self.idx += 1
+        else:
+            self.idx = 0
+            replies = [self.replies[self.idx]]
+            self.idx += 1
+
+        return {"replies": replies}

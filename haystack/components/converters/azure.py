@@ -6,7 +6,7 @@ import copy
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 import networkx as nx
 
@@ -14,7 +14,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +40,19 @@ class AzureOCRDocumentConverter:
     ### Usage example
 
     ```python
+    import os
+    from datetime import datetime
     from haystack.components.converters import AzureOCRDocumentConverter
     from haystack.utils import Secret
 
-    converter = AzureOCRDocumentConverter(endpoint="<url>", api_key=Secret.from_token("<your-api-key>"))
-    results = converter.run(sources=["path/to/doc_with_images.pdf"], meta={"date_added": datetime.now().isoformat()})
+    converter = AzureOCRDocumentConverter(
+        endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"],
+        api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY"),
+    )
+    results = converter.run(
+        sources=["test/test_files/pdf/react_paper.pdf"],
+        meta={"date_added": datetime.now().isoformat()},
+    )
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the PDF file.'
@@ -60,7 +68,7 @@ class AzureOCRDocumentConverter:
         following_context_len: int = 3,
         merge_multiple_column_headers: bool = True,
         page_layout: Literal["natural", "single_column"] = "natural",
-        threshold_y: Optional[float] = 0.05,
+        threshold_y: float | None = 0.05,
         store_full_path: bool = False,
     ):
         """
@@ -109,11 +117,7 @@ class AzureOCRDocumentConverter:
             self.threshold_y = 0.05
 
     @component.output_types(documents=list[Document], raw_azure_response=list[dict])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Convert a list of files to Documents using Azure's Document Intelligence service.
 
@@ -165,7 +169,7 @@ class AzureOCRDocumentConverter:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             endpoint=self.endpoint,
             model_id=self.model_id,
             preceding_context_len=self.preceding_context_len,
@@ -186,11 +190,10 @@ class AzureOCRDocumentConverter:
         :returns:
             The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     # pylint: disable=line-too-long
-    def _convert_tables_and_text(self, result: "AnalyzeResult", meta: Optional[dict[str, Any]]) -> list[Document]:
+    def _convert_tables_and_text(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> list[Document]:
         """
         Converts the tables and text extracted by Azure's Document Intelligence service into Haystack Documents.
 
@@ -209,7 +212,7 @@ class AzureOCRDocumentConverter:
         docs = [*tables, text]
         return docs
 
-    def _convert_tables(self, result: "AnalyzeResult", meta: Optional[dict[str, Any]]) -> list[Document]:
+    def _convert_tables(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> list[Document]:
         """
         Converts the tables extracted by Azure's Document Intelligence service into Haystack Documents.
 
@@ -316,7 +319,7 @@ class AzureOCRDocumentConverter:
 
         return converted_tables
 
-    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[dict[str, Any]]) -> Document:
+    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> Document:
         """
         This converts the `AnalyzeResult` object into a single document.
 
@@ -361,7 +364,7 @@ class AzureOCRDocumentConverter:
         return Document(content=all_text, meta=meta if meta else {})
 
     def _convert_to_single_column_text(
-        self, result: "AnalyzeResult", meta: Optional[dict[str, str]], threshold_y: float = 0.05
+        self, result: "AnalyzeResult", meta: dict[str, str] | None, threshold_y: float = 0.05
     ) -> Document:
         """
         This converts the `AnalyzeResult` object into a single Haystack Document.

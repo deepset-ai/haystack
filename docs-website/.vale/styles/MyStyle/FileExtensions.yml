@@ -1,5 +1,5 @@
 extends: substitution
-message: "Use uppercase for file extensions (e.g., '%s' → '%s')."
+message: "Use uppercase for file extensions: '%s' → '%s'."
 level: warning
 ignorecase: false
 swap:

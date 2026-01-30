@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
-from haystack.dataclasses.breakpoints import PipelineSnapshot
+from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot, ToolBreakpoint
 
 
 class PipelineError(Exception):
@@ -14,12 +14,12 @@ class PipelineError(Exception):
 class PipelineRuntimeError(Exception):
     def __init__(
         self,
-        component_name: Optional[str],
-        component_type: Optional[type],
+        component_name: str | None,
+        component_type: type | None,
         message: str,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
         *,
-        pipeline_snapshot_file_path: Optional[str] = None,
+        pipeline_snapshot_file_path: str | None = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
@@ -111,14 +111,28 @@ class BreakpointException(Exception):
     def __init__(
         self,
         message: str,
-        component: Optional[str] = None,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        pipeline_snapshot_file_path: Optional[str] = None,
+        component: str | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        pipeline_snapshot_file_path: str | None = None,
+        *,
+        break_point: AgentBreakpoint | Breakpoint | ToolBreakpoint | None = None,
     ):
         super().__init__(message)
         self.component = component
         self.pipeline_snapshot = pipeline_snapshot
         self.pipeline_snapshot_file_path = pipeline_snapshot_file_path
+        self._break_point = break_point
+
+        if self.pipeline_snapshot is None and self._break_point is None:
+            raise ValueError("Either pipeline_snapshot or break_point must be provided.")
+
+    @classmethod
+    def from_triggered_breakpoint(cls, break_point: Breakpoint | ToolBreakpoint) -> "BreakpointException":
+        """
+        Create a BreakpointException from a triggered breakpoint.
+        """
+        msg = f"Breaking at component {break_point.component_name} at visit count {break_point.visit_count}"
+        return BreakpointException(message=msg, component=break_point.component_name, break_point=break_point)
 
     @property
     def inputs(self):
@@ -149,6 +163,19 @@ class BreakpointException(Exception):
         if self.pipeline_snapshot.agent_snapshot:
             return self.pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"]
         return self.pipeline_snapshot.pipeline_state.pipeline_outputs
+
+    @property
+    def break_point(self) -> AgentBreakpoint | Breakpoint | ToolBreakpoint:
+        """
+        Returns the Breakpoint or AgentBreakpoint that caused this exception, if available.
+
+        If a specific break point was provided during initialization, it is returned.
+        Otherwise, if the pipeline snapshot contains a break point, that is returned.
+        """
+        if self._break_point is not None:
+            return self._break_point
+        # Mypy doesn't know that pipeline_snapshot.break_point must not be None here based on the constructor check
+        return self.pipeline_snapshot.break_point  # type: ignore[union-attr]
 
 
 class PipelineInvalidPipelineSnapshotError(Exception):

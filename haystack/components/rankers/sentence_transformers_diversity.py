@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
@@ -113,20 +113,20 @@ class SentenceTransformersDiversityRanker:
         self,
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        similarity: Union[str, DiversityRankingSimilarity] = "cosine",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        similarity: str | DiversityRankingSimilarity = "cosine",
         query_prefix: str = "",
         query_suffix: str = "",
         document_prefix: str = "",
         document_suffix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-        strategy: Union[str, DiversityRankingStrategy] = "greedy_diversity_order",
+        strategy: str | DiversityRankingStrategy = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         """
@@ -175,7 +175,7 @@ class SentenceTransformersDiversityRanker:
         self.top_k = top_k
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
-        self.model: Optional[SentenceTransformer] = None
+        self.model: SentenceTransformer | None = None
         self.similarity = DiversityRankingSimilarity.from_str(similarity) if isinstance(similarity, str) else similarity
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
@@ -217,8 +217,8 @@ class SentenceTransformersDiversityRanker:
             self,
             model=self.model_name_or_path,
             top_k=self.top_k,
-            device=self.device.to_dict(),
-            token=self.token.to_dict() if self.token else None,
+            device=self.device,
+            token=self.token,
             similarity=str(self.similarity),
             query_prefix=self.query_prefix,
             query_suffix=self.query_suffix,
@@ -248,9 +248,6 @@ class SentenceTransformersDiversityRanker:
             The deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
@@ -387,11 +384,7 @@ class SentenceTransformersDiversityRanker:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        query: str,
-        documents: list[Document],
-        top_k: Optional[int] = None,
-        lambda_threshold: Optional[float] = None,
+        self, query: str, documents: list[Document], top_k: int | None = None, lambda_threshold: float | None = None
     ) -> dict[str, list[Document]]:
         """
         Rank the documents based on their diversity.
@@ -406,14 +399,9 @@ class SentenceTransformersDiversityRanker:
             - `documents`: List of Document objects that have been selected based on the diversity ranking.
 
         :raises ValueError: If the top_k value is less than or equal to 0.
-        :raises RuntimeError: If the component has not been warmed up.
         """
         if self.model is None:
-            error_msg = (
-                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
-            raise RuntimeError(error_msg)
+            self.warm_up()
 
         if not documents:
             return {"documents": []}
