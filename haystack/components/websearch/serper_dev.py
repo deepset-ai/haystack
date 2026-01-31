@@ -149,12 +149,7 @@ class SerperDevWebSearch:
         :raises SerperDevError: If an error occurs while querying the SerperDev API.
         :raises TimeoutError: If the request to the SerperDev API times out.
         """
-        query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
-        payload = {"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **self.search_params}
-        if (api_key := self.api_key.resolve_value()) is None:
-            raise ValueError("API key cannot be `None`.")
-        headers = {"X-API-KEY": api_key}
-
+        payload, headers = self._prepare_request(query)
         try:
             response = httpx.post(SERPERDEV_BASE_URL, headers=headers, json=payload, timeout=30)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
@@ -164,6 +159,59 @@ class SerperDevWebSearch:
         except httpx.HTTPError as e:
             raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
 
+        documents, links = self._parse_response(response)
+
+        logger.debug(
+            "Serper Dev returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
+        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}
+
+    @component.output_types(documents=list[Document], links=list[str])
+    async def run_async(self, query: str) -> dict[str, list[Document] | list[str]]:
+        """
+        Asynchronously uses [Serper](https://serper.dev/) to search the web.
+
+        This is the asynchronous version of the `run` method with the same parameters and return values.
+
+
+        :param query: Search query.
+        :returns: A dictionary with the following keys:
+            - "documents": List of documents returned by the search engine.
+            - "links": List of links returned by the search engine.
+        :raises SerperDevError: If an error occurs while querying the SerperDev API.
+        :raises TimeoutError: If the request to the SerperDev API times out.
+        """
+        payload, headers = self._prepare_request(query)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(SERPERDEV_BASE_URL, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()  # Will raise an HTTPError for bad responses
+        except httpx.ConnectTimeout as error:
+            raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+
+        except httpx.HTTPError as e:
+            raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
+
+        documents, links = self._parse_response(response)
+
+        logger.debug(
+            "Serper Dev returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
+        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}
+
+    def _prepare_request(self, query: str) -> tuple[httpx._types.QueryParamTypes, httpx._types.HeaderTypes]:
+        query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
+        payload = {"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **self.search_params}
+        if (api_key := self.api_key.resolve_value()) is None:
+            raise ValueError("API key cannot be `None`.")
+        headers = {"X-API-KEY": api_key}
+        return payload, headers
+
+    def _parse_response(self, response: httpx.Response) -> tuple[list[Document], list[str]]:
         # If we reached this point, it means the request was successful and we can proceed
         json_result = response.json()
 
@@ -214,10 +262,4 @@ class SerperDevWebSearch:
         documents = answer_box + organic + people_also_ask
 
         links = [result["link"] for result in json_result["organic"] if self._is_domain_allowed(result.get("link", ""))]
-
-        logger.debug(
-            "Serper Dev returned {number_documents} documents for the query '{query}'",
-            number_documents=len(documents),
-            query=query,
-        )
-        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}
+        return documents, links
