@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from typing import Any
 from urllib.parse import urlparse
 
-import requests
+import httpx
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
 from haystack.utils import Secret
@@ -57,7 +56,7 @@ class SerperDevWebSearch:
         search_params: dict[str, Any] | None = None,
         *,
         exclude_subdomains: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the SerperDevWebSearch component.
 
@@ -151,19 +150,18 @@ class SerperDevWebSearch:
         :raises TimeoutError: If the request to the SerperDev API times out.
         """
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
-
-        payload = json.dumps(
-            {"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **self.search_params}
-        )
-        headers = {"X-API-KEY": self.api_key.resolve_value(), "Content-Type": "application/json"}
+        payload = {"q": query_prepend + query, "gl": "us", "hl": "en", "autocorrect": True, **self.search_params}
+        if (api_key := self.api_key.resolve_value()) is None:
+            raise ValueError("API key cannot be `None`.")
+        headers = {"X-API-KEY": api_key}
 
         try:
-            response = requests.post(SERPERDEV_BASE_URL, headers=headers, data=payload, timeout=30)
+            response = httpx.post(SERPERDEV_BASE_URL, headers=headers, json=payload, timeout=30)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
-        except requests.Timeout as error:
+        except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
 
-        except requests.RequestException as e:
+        except httpx.HTTPError as e:
             raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
 
         # If we reached this point, it means the request was successful and we can proceed

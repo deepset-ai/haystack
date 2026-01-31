@@ -6,7 +6,7 @@ import os
 from unittest.mock import Mock, patch
 
 import pytest
-from requests import HTTPError, RequestException, Timeout
+from httpx import ConnectTimeout, HTTPStatusError, Request, RequestError, Response
 
 from haystack import Document
 from haystack.components.websearch.serper_dev import SerperDevError, SerperDevWebSearch
@@ -116,7 +116,7 @@ EXAMPLE_SERPERDEV_RESPONSE = {
 
 @pytest.fixture
 def mock_serper_dev_search_result():
-    with patch("haystack.components.websearch.serper_dev.requests") as mock_run:
+    with patch("haystack.components.websearch.serper_dev.httpx") as mock_run:
         mock_run.post.return_value = Mock(status_code=200, json=lambda: EXAMPLE_SERPERDEV_RESPONSE)
         yield mock_run
 
@@ -125,7 +125,7 @@ def mock_serper_dev_search_result():
 def mock_serper_dev_search_result_no_snippet():
     resp = {**EXAMPLE_SERPERDEV_RESPONSE}
     del resp["organic"][0]["snippet"]
-    with patch("haystack.components.websearch.serper_dev.requests") as mock_run:
+    with patch("haystack.components.websearch.serper_dev.httpx") as mock_run:
         mock_run.post.return_value = Mock(status_code=200, json=lambda: resp)
         yield mock_run
 
@@ -166,27 +166,31 @@ class TestSerperDevSearchAPI:
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=1)
         ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @patch("requests.post")
+    @patch("httpx.post")
     def test_timeout_error(self, mock_post):
-        mock_post.side_effect = Timeout
+        mock_post.side_effect = ConnectTimeout("Request has timed out.")
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(TimeoutError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @patch("requests.post")
+    @patch("httpx.post")
     def test_request_exception(self, mock_post):
-        mock_post.side_effect = RequestException
+        mock_post.side_effect = RequestError("An errors has occurred in the request.")
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(SerperDevError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @patch("requests.post")
+    @patch("httpx.post")
     def test_bad_response_code(self, mock_post):
         mock_response = mock_post.return_value
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = HTTPError
+        mock_error_request = Request("POST", "https://example.com")
+        mock_error_response = Response(404)
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "404 Not Found.", request=mock_error_request, response=mock_error_response
+        )
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(SerperDevError):
@@ -237,7 +241,7 @@ class TestSerperDevSearchAPI:
             ]
         }
 
-        with patch("haystack.components.websearch.serper_dev.requests") as mock_requests:
+        with patch("haystack.components.websearch.serper_dev.httpx") as mock_requests:
             mock_requests.post.return_value = Mock(status_code=200, json=lambda: mock_response)
 
             # Test with exclude_subdomains=False (default behavior)
