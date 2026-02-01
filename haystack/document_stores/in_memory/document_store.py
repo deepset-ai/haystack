@@ -526,7 +526,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             For filter syntax, see filter_documents.
         :param meta: The metadata fields to update. These will be merged with existing metadata.
         :returns: The number of documents updated.
-        :raises: ValueError if no filters are not valid.
+        :raises: ValueError if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
