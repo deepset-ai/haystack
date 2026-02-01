@@ -504,7 +504,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
 
     @staticmethod
     def _validate_filters(filters: dict[str, Any] | None) -> None:
-        if "operator" not in filters and "conditions" not in filters:
+        if filters and "operator" not in filters and "conditions" not in filters:
             raise ValueError(
                 "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
             )
