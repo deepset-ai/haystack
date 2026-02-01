@@ -627,7 +627,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises: ValueError if no filters are not valid.
+        :raises: ValueError if filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
