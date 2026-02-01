@@ -542,7 +542,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         :param filters: The filters to apply to select documents for deletion.
             For filter syntax, see filter_documents.
         :returns: The number of documents deleted.
-        :raises: ValueError if no filters are not valid.
+        :raises: ValueError if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
