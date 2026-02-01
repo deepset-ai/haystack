@@ -48,8 +48,8 @@ class DocumentCleaner:
         remove_regex: str | None = None,
         unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         ascii_only: bool = False,
-        strip_whitespace: bool = False,
-        regex_replace: dict[str, str] | None = None,
+        strip_whitespaces: bool = False,
+        replace_regexes: dict[str, str] | None = None,
     ):
         """
         Initialize DocumentCleaner.
@@ -68,10 +68,10 @@ class DocumentCleaner:
             Will remove accents from characters and replace them with ASCII characters.
             Other non-ASCII characters will be removed.
             Note: This will run before any pattern matching or removal.
-        :param strip_whitespace: If `True`, removes leading and trailing whitespace from the document content
+        :param strip_whitespaces: If `True`, removes leading and trailing whitespace from the document content
             using Python's `str.strip()`. Unlike `remove_extra_whitespaces`, this only affects the beginning
             and end of the text, preserving internal whitespace (useful for markdown formatting).
-        :param regex_replace: A dictionary mapping regex patterns to their replacement strings.
+        :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
             For example, `{r'\\n\\n+': '\\n'}` replaces multiple consecutive newlines with a single newline.
             This is applied after `remove_regex` and allows custom replacements instead of just removal.
         """
@@ -86,8 +86,8 @@ class DocumentCleaner:
         self.keep_id = keep_id
         self.unicode_normalization = unicode_normalization
         self.ascii_only = ascii_only
-        self.strip_whitespace = strip_whitespace
-        self.regex_replace = regex_replace
+        self.strip_whitespaces = strip_whitespaces
+        self.replace_regexes = replace_regexes
 
     def _validate_params(self, unicode_normalization: str | None):
         """
@@ -138,11 +138,11 @@ class DocumentCleaner:
                 text = self._remove_substrings(text, self.remove_substrings)
             if self.remove_regex:
                 text = self._remove_regex(text, self.remove_regex)
-            if self.regex_replace:
-                text = self._replace_regex(text, self.regex_replace)
+            if self.replace_regexes:
+                text = self._replace_regexes(text, self.replace_regexes)
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
-            if self.strip_whitespace:
+            if self.strip_whitespaces:
                 text = text.strip()
 
             clean_doc = Document(
@@ -218,17 +218,21 @@ class DocumentCleaner:
         cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
         return "\f".join(cleaned_text)
 
-    def _replace_regex(self, text: str, regex_replace: dict[str, str]) -> str:
+    def _replace_regexes(self, text: str, replace_regexes: dict[str, str]) -> str:
         """
         Replace substrings that match the specified regex patterns with custom replacement strings.
 
         :param text: Text to clean.
-        :param regex_replace: A dictionary mapping regex patterns to their replacement strings.
+        :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
         :returns: The text with the regex matches replaced by the specified strings.
         """
-        for pattern, replacement in regex_replace.items():
-            text = re.sub(pattern, replacement, text)
-        return text
+        pages = text.split("\f")
+        cleaned_pages = []
+        for page in pages:
+            for pattern, replacement in replace_regexes.items():
+                page = re.sub(pattern, replacement, page)
+            cleaned_pages.append(page)
+        return "\f".join(cleaned_pages)
 
     def _remove_substrings(self, text: str, substrings: list[str]) -> str:
         """

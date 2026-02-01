@@ -1,14 +1,14 @@
 ---
 enhancements:
   - |
-    Add ``strip_whitespace`` and ``regex_replace`` parameters to DocumentCleaner component.
+    Add ``strip_whitespaces`` and ``replace_regexes`` parameters to DocumentCleaner component.
 
-    The ``strip_whitespace`` parameter removes leading and trailing whitespace from document
+    The ``strip_whitespaces`` parameter removes leading and trailing whitespace from document
     content using Python's ``str.strip()``method. Unlike ``remove_extra_whitespaces``, this only
     affects the beginning and end of the text, preserving internal whitespace which is useful
     for maintaining markdown formatting.
 
-    The ``regex_replace`` parameter accepts a dictionary mapping regex patterns to replacement
+    The ``replace_regexes`` parameter accepts a dictionary mapping regex patterns to replacement
     strings, allowing custom text transformations. For example, ``{r'\\n\\n+': '\\n'}`` replaces
     multiple consecutive newlines with a single newline. This is applied after ``remove_regex``
     and provides more flexibility than simple pattern removal.
@@ -21,8 +21,8 @@ enhancements:
       from haystack.dataclasses import Document
 
       cleaner = DocumentCleaner(
-          strip_whitespace=True,
-          regex_replace={r'\n\n+': '\n'}
+          strip_whitespaces=True,
+          replace_regexes={r'\n\n+': '\n'}
       )
       
       doc = Document(content="  \n\nHello World\n\n\n  ")
