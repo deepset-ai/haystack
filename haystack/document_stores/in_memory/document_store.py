@@ -528,8 +528,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         :returns: The number of documents updated.
         :raises: ValueError if no filters are not valid.
         """
-        if filters:
-            InMemoryDocumentStore._validate_filters(filters)
+        InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         for doc in matching:
             doc.meta.update(meta)
