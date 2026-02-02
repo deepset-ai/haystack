@@ -32,7 +32,9 @@ from datasets import load_dataset
 
 @super_component
 class HybridRetriever:
-    def __init__(self, document_store: InMemoryDocumentStore, embedder_model: str = "BAAI/bge-small-en-v1.5"):
+    def __init__(
+        self, document_store: InMemoryDocumentStore, embedder_model: str = "BAAI/bge-small-en-v1.5"
+    ):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store)
         bm25_retriever = InMemoryBM25Retriever(document_store)
         text_embedder = SentenceTransformersTextEmbedder(embedder_model)
@@ -159,13 +161,13 @@ print(result)
 
 ## Type Checking and Static Code Analysis
 
-Creating SuperComponents using the @supercomponent decorator can induce type or linting errors. One way to avoid these issues is to add the exposed public methods to your SuperComponent. Here's an example:
+Creating SuperComponents using the @super_component decorator can induce type or linting errors. One way to avoid these issues is to add the exposed public methods to your SuperComponent. Here's an example:
 
 ```python
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    def run(self, *, documents: List[Document]) -> dict[str, list[Document]]:
+    def run(self, *, documents: list[Document]) -> dict[str, list[Document]]:
         ...
     def warm_up(self) -> None:  # noqa: D102
         ...

@@ -128,11 +128,11 @@ In such cases, you can provide your own implementation  `from_dict` and `to_dict
 from haystack import component, default_from_dict, default_to_dict
 
 class SetIntersector:
-		def __init__(self, intersect_with: set):
-	      self.intersect_with = intersect_with
+    def __init__(self, intersect_with: set):
+        self.intersect_with = intersect_with
 
     @component.output_types(result=set)
-	  def run(self, data: set):
+    def run(self, data: set):
         return data.intersect(self.intersect_with)
 
     def to_dict(self):

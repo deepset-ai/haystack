@@ -109,8 +109,9 @@ os.environ["WEAVIATE_API_KEY"] = "YOUR-API-KEY"
 
 auth_client_secret = AuthApiKey()
 
-document_store = WeaviateDocumentStore(url="YOUR-WEAVIATE-URL",
-    auth_client_secret=auth_client_secret)
+document_store = WeaviateDocumentStore(
+    url="YOUR-WEAVIATE-URL", auth_client_secret=auth_client_secret
+)
 ```
 
 ## Authorization
