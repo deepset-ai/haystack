@@ -312,9 +312,7 @@ This is a paragraph.
     def test_replace_regexes_with_page_breaks(self):
         """Test replace_regexes with page breaks (form feed character)."""
         cleaner = DocumentCleaner(
-            remove_empty_lines=False,
-            remove_extra_whitespaces=False,
-            replace_regexes={r"Page \d+": ""},
+            remove_empty_lines=False, remove_extra_whitespaces=False, replace_regexes={r"Page \d+": ""}
         )
         content = "Page 1 content.\fPage 2 content."
         result = cleaner.run(documents=[Document(content=content)])
