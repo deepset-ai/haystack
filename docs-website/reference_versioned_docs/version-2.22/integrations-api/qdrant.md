@@ -41,14 +41,14 @@ retriever.run(query_embedding=[0.1]*768)
 
 ```python
 def __init__(document_store: QdrantDocumentStore,
-             filters: Optional[Union[dict[str, Any], models.Filter]] = None,
+             filters: dict[str, Any] | models.Filter | None = None,
              top_k: int = 10,
              scale_score: bool = False,
              return_embedding: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             score_threshold: Optional[float] = None,
-             group_by: Optional[str] = None,
-             group_size: Optional[int] = None) -> None
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             score_threshold: float | None = None,
+             group_by: str | None = None,
+             group_size: int | None = None) -> None
 ```
 
 Create a QdrantEmbeddingRetriever component.
@@ -114,13 +114,13 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
-        group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | models.Filter | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None,
+        score_threshold: float | None = None,
+        group_by: str | None = None,
+        group_size: int | None = None) -> dict[str, list[Document]]
 ```
 
 Run the Embedding Retriever on the given input data.
@@ -154,13 +154,13 @@ The retrieved documents.
 @component.output_types(documents=list[Document])
 async def run_async(
         query_embedding: list[float],
-        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
-        group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | models.Filter | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None,
+        score_threshold: float | None = None,
+        group_by: str | None = None,
+        group_size: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the Embedding Retriever on the given input data.
@@ -219,14 +219,14 @@ retriever.run(query_sparse_embedding=sparse_embedding)
 
 ```python
 def __init__(document_store: QdrantDocumentStore,
-             filters: Optional[Union[dict[str, Any], models.Filter]] = None,
+             filters: dict[str, Any] | models.Filter | None = None,
              top_k: int = 10,
              scale_score: bool = False,
              return_embedding: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             score_threshold: Optional[float] = None,
-             group_by: Optional[str] = None,
-             group_size: Optional[int] = None) -> None
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             score_threshold: float | None = None,
+             group_by: str | None = None,
+             group_size: int | None = None) -> None
 ```
 
 Create a QdrantSparseEmbeddingRetriever component.
@@ -292,13 +292,13 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
-        group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | models.Filter | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None,
+        score_threshold: float | None = None,
+        group_by: str | None = None,
+        group_size: int | None = None) -> dict[str, list[Document]]
 ```
 
 Run the Sparse Embedding Retriever on the given input data.
@@ -337,13 +337,13 @@ The retrieved documents.
 @component.output_types(documents=list[Document])
 async def run_async(
         query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
-        group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | models.Filter | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None,
+        score_threshold: float | None = None,
+        group_by: str | None = None,
+        group_size: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the Sparse Embedding Retriever on the given input data.
@@ -413,13 +413,13 @@ retriever.run(query_embedding=embedding, query_sparse_embedding=sparse_embedding
 
 ```python
 def __init__(document_store: QdrantDocumentStore,
-             filters: Optional[Union[dict[str, Any], models.Filter]] = None,
+             filters: dict[str, Any] | models.Filter | None = None,
              top_k: int = 10,
              return_embedding: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             score_threshold: Optional[float] = None,
-             group_by: Optional[str] = None,
-             group_size: Optional[int] = None) -> None
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             score_threshold: float | None = None,
+             group_by: str | None = None,
+             group_size: int | None = None) -> None
 ```
 
 Create a QdrantHybridRetriever component.
@@ -485,12 +485,12 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
         query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
-        top_k: Optional[int] = None,
-        return_embedding: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
-        group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | models.Filter | None = None,
+        top_k: int | None = None,
+        return_embedding: bool | None = None,
+        score_threshold: float | None = None,
+        group_by: str | None = None,
+        group_size: int | None = None) -> dict[str, list[Document]]
 ```
 
 Run the Sparse Embedding Retriever on the given input data.
@@ -530,12 +530,12 @@ The retrieved documents.
 async def run_async(
         query_embedding: list[float],
         query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
-        top_k: Optional[int] = None,
-        return_embedding: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
-        group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | models.Filter | None = None,
+        top_k: int | None = None,
+        return_embedding: bool | None = None,
+        score_threshold: float | None = None,
+        group_by: str | None = None,
+        group_size: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the Sparse Embedding Retriever on the given input data.
@@ -625,17 +625,17 @@ document_store.write_documents([
 #### QdrantDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(location: Optional[str] = None,
-             url: Optional[str] = None,
+def __init__(location: str | None = None,
+             url: str | None = None,
              port: int = 6333,
              grpc_port: int = 6334,
              prefer_grpc: bool = False,
-             https: Optional[bool] = None,
-             api_key: Optional[Secret] = None,
-             prefix: Optional[str] = None,
-             timeout: Optional[int] = None,
-             host: Optional[str] = None,
-             path: Optional[str] = None,
+             https: bool | None = None,
+             api_key: Secret | None = None,
+             prefix: str | None = None,
+             timeout: int | None = None,
+             host: str | None = None,
+             path: str | None = None,
              force_disable_check_same_thread: bool = False,
              index: str = "Document",
              embedding_dim: int = 768,
@@ -646,19 +646,19 @@ def __init__(location: Optional[str] = None,
              return_embedding: bool = False,
              progress_bar: bool = True,
              recreate_index: bool = False,
-             shard_number: Optional[int] = None,
-             replication_factor: Optional[int] = None,
-             write_consistency_factor: Optional[int] = None,
-             on_disk_payload: Optional[bool] = None,
-             hnsw_config: Optional[dict] = None,
-             optimizers_config: Optional[dict] = None,
-             wal_config: Optional[dict] = None,
-             quantization_config: Optional[dict] = None,
+             shard_number: int | None = None,
+             replication_factor: int | None = None,
+             write_consistency_factor: int | None = None,
+             on_disk_payload: bool | None = None,
+             hnsw_config: dict | None = None,
+             optimizers_config: dict | None = None,
+             wal_config: dict | None = None,
+             quantization_config: dict | None = None,
              wait_result_from_api: bool = True,
-             metadata: Optional[dict] = None,
+             metadata: dict | None = None,
              write_batch_size: int = 100,
              scroll_size: int = 10_000,
-             payload_fields_to_index: Optional[list[dict]] = None) -> None
+             payload_fields_to_index: list[dict] | None = None) -> None
 ```
 
 Initializes a QdrantDocumentStore.
@@ -740,8 +740,7 @@ Asynchronously returns the number of documents present in the document dtore.
 
 ```python
 def filter_documents(
-    filters: Optional[Union[dict[str, Any], rest.Filter]] = None
-) -> list[Document]
+        filters: dict[str, Any] | rest.Filter | None = None) -> list[Document]
 ```
 
 Returns the documents that match the provided filters.
@@ -763,8 +762,7 @@ A list of documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-    filters: Optional[Union[dict[str, Any], rest.Filter]] = None
-) -> list[Document]
+        filters: dict[str, Any] | rest.Filter | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the provided filters.
@@ -855,7 +853,7 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 #### QdrantDocumentStore.delete\_by\_filter
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> None
+def delete_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Deletes all documents that match the provided filters.
@@ -874,7 +872,7 @@ The number of documents deleted.
 #### QdrantDocumentStore.delete\_by\_filter\_async
 
 ```python
-async def delete_by_filter_async(filters: dict[str, Any]) -> None
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
@@ -964,6 +962,218 @@ Asynchronously deletes all documents from the document store.
 **Arguments**:
 
 - `recreate_index`: Whether to recreate the index after deleting all documents.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.count_documents_by_filter"></a>
+
+#### QdrantDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.count_documents_by_filter_async"></a>
+
+#### QdrantDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for counting.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.get_metadata_fields_info"></a>
+
+#### QdrantDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, str]
+```
+
+Returns the information about the fields from the collection.
+
+**Returns**:
+
+A dictionary mapping field names to their types e.g.:
+```python
+{"field_name": "integer"}
+```
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.get_metadata_fields_info_async"></a>
+
+#### QdrantDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, str]
+```
+
+Asynchronously returns the information about the fields from the collection.
+
+**Returns**:
+
+A dictionary mapping field names to their types e.g.:
+```python
+{"field_name": "integer"}
+```
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.get_metadata_field_min_max"></a>
+
+#### QdrantDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+Returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field key (inside ``meta``) to get the minimum and maximum values for.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
+metadata field across all documents. Returns an empty dict if no documents have the field.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### QdrantDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, Any]
+```
+
+Asynchronously returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field key (inside ``meta``) to get the minimum and maximum values for.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
+metadata field across all documents. Returns an empty dict if no documents have the field.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### QdrantDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Returns the number of unique values for each specified metadata field among documents that match the filters.
+
+**Arguments**:
+
+- `filters`: The filters to restrict the documents considered.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of metadata field keys (inside ``meta``) to count unique values for.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of its unique values among the filtered
+documents.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### QdrantDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously returns the number of unique values for each specified metadata field among documents that
+
+match the filters.
+
+**Arguments**:
+
+- `filters`: The filters to restrict the documents considered.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of metadata field keys (inside ``meta``) to count unique values for.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of its unique values among the filtered
+documents.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.get_metadata_field_unique_values"></a>
+
+#### QdrantDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(metadata_field: str,
+                                     filters: dict[str, Any] | None = None,
+                                     limit: int = 100,
+                                     offset: int = 0) -> list[Any]
+```
+
+Returns unique values for a metadata field, with optional filters and offset/limit pagination.
+
+Unique values are ordered by first occurrence during scroll. Pagination is offset-based over that order.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field key (inside ``meta``) to get unique values for.
+- `filters`: Optional filters to restrict the documents considered.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `limit`: Maximum number of unique values to return per page. Defaults to 100.
+- `offset`: Number of unique values to skip (for pagination). Defaults to 0.
+
+**Returns**:
+
+A list of unique values for the field (at most ``limit`` items, starting at ``offset``).
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### QdrantDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(metadata_field: str,
+                                                 filters: dict[str, Any]
+                                                 | None = None,
+                                                 limit: int = 100,
+                                                 offset: int = 0) -> list[Any]
+```
+
+Asynchronously returns unique values for a metadata field, with optional filters and offset/limit pagination.
+
+Unique values are ordered by first occurrence during scroll. Pagination is offset-based over that order.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field key (inside ``meta``) to get unique values for.
+- `filters`: Optional filters to restrict the documents considered.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `limit`: Maximum number of unique values to return per page. Defaults to 100.
+- `offset`: Number of unique values to skip (for pagination). Defaults to 0.
+
+**Returns**:
+
+A list of unique values for the field (at most ``limit`` items, starting at ``offset``).
 
 <a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.from_dict"></a>
 
@@ -1064,8 +1274,8 @@ The corresponding rest.Distance object.
 def recreate_collection(collection_name: str,
                         distance: rest.Distance,
                         embedding_dim: int,
-                        on_disk: Optional[bool] = None,
-                        use_sparse_embeddings: Optional[bool] = None,
+                        on_disk: bool | None = None,
+                        use_sparse_embeddings: bool | None = None,
                         sparse_idf: bool = False) -> None
 ```
 
@@ -1085,13 +1295,12 @@ Recreates the Qdrant collection with the specified parameters.
 #### QdrantDocumentStore.recreate\_collection\_async
 
 ```python
-async def recreate_collection_async(
-        collection_name: str,
-        distance: rest.Distance,
-        embedding_dim: int,
-        on_disk: Optional[bool] = None,
-        use_sparse_embeddings: Optional[bool] = None,
-        sparse_idf: bool = False) -> None
+async def recreate_collection_async(collection_name: str,
+                                    distance: rest.Distance,
+                                    embedding_dim: int,
+                                    on_disk: bool | None = None,
+                                    use_sparse_embeddings: bool | None = None,
+                                    sparse_idf: bool = False) -> None
 ```
 
 Asynchronously recreates the Qdrant collection with the specified parameters.
