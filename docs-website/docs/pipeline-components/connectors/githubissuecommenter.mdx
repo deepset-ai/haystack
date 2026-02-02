@@ -85,7 +85,9 @@ issue_viewer = GitHubIssueViewer()
 issue_commenter = GitHubIssueCommenter()
 
 prompt_template = [
-    ChatMessage.from_system("You are a helpful assistant that analyzes GitHub issues and creates appropriate responses."),
+    ChatMessage.from_system(
+        "You are a helpful assistant that analyzes GitHub issues and creates appropriate responses."
+    ),
     ChatMessage.from_user(
         "Based on the following GitHub issue:\n"
         "{% for document in documents %}"
