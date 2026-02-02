@@ -43,8 +43,8 @@ document_store = QdrantDocumentStore(
     wait_result_from_api=True,
 )
 document_store.write_documents([
-	Document(content="This is first", embedding=[0.0]*768),
-	Document(content="This is second", embedding=[0.1]*768)
+    Document(content="This is first", embedding=[0.0]*768),
+    Document(content="This is second", embedding=[0.1]*768)
 ])
 print(document_store.count_documents())
 ```
@@ -70,8 +70,8 @@ document_store = QdrantDocumentStore(
 )
 
 document_store.write_documents([
-	  Document(content="This is first", embedding=[0.0]*5),
-	  Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
+    Document(content="This is first", embedding=[0.0]*5),
+    Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
 ])
 print(document_store.count_documents())
 ```
