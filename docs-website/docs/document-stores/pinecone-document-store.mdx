@@ -46,17 +46,17 @@ from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 
 ## Make sure you have the PINECONE_API_KEY environment variable set
 document_store = PineconeDocumentStore(
-		index="default",
-		namespace="default",
-		dimension=5,
-  	metric="cosine",
-  	spec={"serverless": {"region": "us-east-1", "cloud": "aws"}}
+    index="default",
+    namespace="default",
+    dimension=5,
+    metric="cosine",
+    spec={"serverless": {"region": "us-east-1", "cloud": "aws"}}
 )
 
 document_store.write_documents([
     Document(content="This is first", embedding=[0.1]*5),
     Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
-    ])
+])
 print(document_store.count_documents())
 
 ```
