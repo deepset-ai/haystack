@@ -57,6 +57,16 @@ While the data (the initial query) flows through the entire pipeline, individual
 
 To connect components and integrations in a pipeline, you must know the names of their inputs and outputs. The output of one component must be accepted as input by the following component. When you connect components in a pipeline with `Pipeline.connect()`, it validates if the input and output types match.
 
+### Smart Pipeline Connections
+
+Pipelines support smarter connection semantics that simplify how components are wired together.
+Compatible outputs can be implicitly combined when connected to a single input, and certain types can be flexibly connected without additional adapters.
+
+These behaviors reduce the need for glue components like `Joiners` and `OutputAdapters`, keeping pipelines concise and easier to read.
+
+See [Smart Pipeline Connections](pipelines/smart-connections.mdx) for details and examples.
+
+
 <iframe
   width="560"
   height="315"
