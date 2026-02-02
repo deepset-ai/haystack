@@ -314,6 +314,165 @@ The way runtime filters are applied depends on the `filter_policy` selected when
 A dictionary with the following keys:
 - `documents`: List of `Document`s that match the query.
 
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever"></a>
+
+## Module haystack\_integrations.components.retrievers.elasticsearch.sql\_retriever
+
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever.ElasticsearchSQLRetriever"></a>
+
+### ElasticsearchSQLRetriever
+
+Executes raw Elasticsearch SQL queries against an ElasticsearchDocumentStore.
+
+This component allows you to execute SQL queries directly against the Elasticsearch index,
+which is useful for fetching metadata, aggregations, and other structured data at runtime.
+
+Returns the raw JSON response from the Elasticsearch SQL API.
+
+Usage example:
+```python
+from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack_integrations.components.retrievers.elasticsearch import ElasticsearchSQLRetriever
+
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200")
+retriever = ElasticsearchSQLRetriever(document_store=document_store)
+
+result = retriever.run(
+    query="SELECT content, category FROM \"my_index\" WHERE category = 'A'"
+)
+# result["result"] contains the raw Elasticsearch JSON response
+```
+
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever.ElasticsearchSQLRetriever.__init__"></a>
+
+#### ElasticsearchSQLRetriever.\_\_init\_\_
+
+```python
+def __init__(*,
+             document_store: ElasticsearchDocumentStore,
+             raise_on_failure: bool = True,
+             fetch_size: int | None = None)
+```
+
+Creates the ElasticsearchSQLRetriever component.
+
+**Arguments**:
+
+- `document_store`: An instance of ElasticsearchDocumentStore to use with the Retriever.
+- `raise_on_failure`: Whether to raise an exception if the API call fails. Otherwise, log a warning and return an empty dict.
+- `fetch_size`: Optional number of results to fetch per page. If not provided, the default
+fetch size set in Elasticsearch is used.
+
+**Raises**:
+
+- `ValueError`: If `document_store` is not an instance of ElasticsearchDocumentStore.
+
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever.ElasticsearchSQLRetriever.to_dict"></a>
+
+#### ElasticsearchSQLRetriever.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever.ElasticsearchSQLRetriever.from_dict"></a>
+
+#### ElasticsearchSQLRetriever.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "ElasticsearchSQLRetriever"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized component.
+
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever.ElasticsearchSQLRetriever.run"></a>
+
+#### ElasticsearchSQLRetriever.run
+
+```python
+@component.output_types(result=dict[str, Any])
+def run(query: str,
+        document_store: ElasticsearchDocumentStore | None = None,
+        fetch_size: int | None = None) -> dict[str, dict[str, Any]]
+```
+
+Execute a raw Elasticsearch SQL query against the index.
+
+**Arguments**:
+
+- `query`: The Elasticsearch SQL query to execute.
+- `document_store`: Optionally, an instance of ElasticsearchDocumentStore to use with the Retriever.
+- `fetch_size`: Optional number of results to fetch per page. If not provided, uses the value
+specified during initialization, or the default fetch size set in Elasticsearch.
+
+**Returns**:
+
+A dictionary containing the raw JSON response from Elasticsearch SQL API:
+- result: The raw JSON response from Elasticsearch (dict) or empty dict on error.
+
+Example:
+    ```python
+    retriever = ElasticsearchSQLRetriever(document_store=document_store)
+    result = retriever.run(
+        query="SELECT content, category FROM \"my_index\" WHERE category = 'A'"
+    )
+    # result["result"] contains the raw Elasticsearch JSON response
+    # result["result"]["columns"] contains column metadata
+    # result["result"]["rows"] contains the data rows
+    ```
+
+<a id="haystack_integrations.components.retrievers.elasticsearch.sql_retriever.ElasticsearchSQLRetriever.run_async"></a>
+
+#### ElasticsearchSQLRetriever.run\_async
+
+```python
+@component.output_types(result=dict[str, Any])
+async def run_async(
+        query: str,
+        document_store: ElasticsearchDocumentStore | None = None,
+        fetch_size: int | None = None) -> dict[str, dict[str, Any]]
+```
+
+Asynchronously execute a raw Elasticsearch SQL query against the index.
+
+**Arguments**:
+
+- `query`: The Elasticsearch SQL query to execute.
+- `document_store`: Optionally, an instance of ElasticsearchDocumentStore to use with the Retriever.
+- `fetch_size`: Optional number of results to fetch per page. If not provided, uses the value
+specified during initialization, or the default fetch size set in Elasticsearch.
+
+**Returns**:
+
+A dictionary containing the raw JSON response from Elasticsearch SQL API:
+- result: The raw JSON response from Elasticsearch (dict) or empty dict on error.
+
+Example:
+    ```python
+    retriever = ElasticsearchSQLRetriever(document_store=document_store)
+    result = await retriever.run_async(
+        query="SELECT content, category FROM \"my_index\" WHERE category = 'A'"
+    )
+    # result["result"] contains the raw Elasticsearch JSON response
+    # result["result"]["columns"] contains column metadata
+    # result["result"]["rows"] contains the data rows
+    ```
+
 <a id="haystack_integrations.document_stores.elasticsearch.document_store"></a>
 
 ## Module haystack\_integrations.document\_stores.elasticsearch.document\_store
