@@ -55,14 +55,16 @@ print(result)
 
 ### In a pipeline
 
-In the following indexing pipeline, the `PyPDFToDocument` Converter extracts text from PDF files. Documents are then split by pages using a `DocumentSplitter`. Next, the `DocumentLengthRouter` routes short documents to `LLMDocumentContentExtractor` to extract text, which is particularly useful for non-textual, image-based pages. Finally, all documents are collected using `DocumentJoiner` and written to the Document Store.
+In the following indexing pipeline, the `PyPDFToDocument` Converter extracts text from PDF files.
+Documents are then split by pages using a `DocumentSplitter`.
+Next, the `DocumentLengthRouter` routes short documents to `LLMDocumentContentExtractor` to extract text, which is particularly useful for non-textual, image-based pages.
+Finally, all documents are sent to the `DocumentWriter` and written to the Document Store.
 
 ```python
 from haystack import Pipeline
 from haystack.components.converters import PyPDFToDocument
 from haystack.components.extractors.image import LLMDocumentContentExtractor
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.joiners import DocumentJoiner
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.routers import DocumentLengthRouter
 from haystack.components.writers import DocumentWriter
@@ -97,10 +99,6 @@ indexing_pipe.add_component(
     )
 )
 indexing_pipe.add_component(
-    "doc_joiner",
-    DocumentJoiner(sort_by_score=False)
-)
-indexing_pipe.add_component(
     "document_writer",
     DocumentWriter(document_store=document_store)
 )
@@ -114,13 +112,12 @@ indexing_pipe.connect(
 )
 indexing_pipe.connect(
     "doc_length_router.long_documents",
-    "doc_joiner.documents"
+    "document_writer.documents"
 )
 indexing_pipe.connect(
     "content_extractor.documents",
-    "doc_joiner.documents"
+    "document_writer.documents"
 )
-indexing_pipe.connect("doc_joiner.documents", "document_writer.documents")
 
 ## Run the indexing pipeline with sources
 indexing_result = indexing_pipe.run(
