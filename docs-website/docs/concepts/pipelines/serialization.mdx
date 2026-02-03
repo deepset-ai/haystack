@@ -95,7 +95,7 @@ The serialization system uses `default_to_dict` and `default_from_dict` to handl
 - **ComponentDevice**: device configuration is detected and restored automatically.
 - **Objects with their own `to_dict`/`from_dict`**: any init parameter whose type defines `to_dict()` is serialized by calling it; any dict in `init_parameters` with a `type` key pointing to a class with `from_dict()` is deserialized automatically.
 
-To serialize or deserialize a single component, you can use `component_to_dict` and `component_from_dict` from `haystack.core.serialization`. They use the default behavior above as a fallback when the component does not define custom `to_dict`/`from_dict`:
+To serialize or deserialize a single component, you can use `component_to_dict` and `component_from_dict` from `haystack.core.serialization`. They use the default behavior above as a fallback when the component doesn't define custom `to_dict`/`from_dict`:
 
 ```python
 from haystack import component
