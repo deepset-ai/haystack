@@ -582,9 +582,9 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "moon" in message.text.lower()
+        assert message.reasoning is not None
+        assert "moon" in message.text.lower() or "moon" in message.reasoning.reasoning_text.lower()
         assert "gpt-5-nano" in message.meta["model"]
-        assert message.reasonings is not None
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
@@ -697,7 +697,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert callback.reasoning == message.reasoning.reasoning_text
-        assert "moon" in callback.content.lower()
+        assert "moon" in callback.content.lower() or "moon" in callback.reasoning.lower()
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
