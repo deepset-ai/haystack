@@ -469,13 +469,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_greater_than_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_with_string(document_store, filterable_docs):
         """Test filter_documents() with > comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": ">", "value": "1"})
 
-    def test_comparison_greater_than_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_with_list(document_store, filterable_docs):
         """Test filter_documents() with > comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -512,13 +514,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_greater_than_equal_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_equal_with_string(document_store, filterable_docs):
         """Test filter_documents() with >= comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": ">=", "value": "1"})
 
-    def test_comparison_greater_than_equal_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_equal_with_list(document_store, filterable_docs):
         """Test filter_documents() with >= comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -555,13 +559,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_less_than_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_with_string(document_store, filterable_docs):
         """Test filter_documents() with < comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": "<", "value": "1"})
 
-    def test_comparison_less_than_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_with_list(document_store, filterable_docs):
         """Test filter_documents() with < comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -598,13 +604,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_less_than_equal_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_equal_with_string(document_store, filterable_docs):
         """Test filter_documents() with <= comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": "<=", "value": "1"})
 
-    def test_comparison_less_than_equal_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_equal_with_list(document_store, filterable_docs):
         """Test filter_documents() with <= comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -625,13 +633,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         expected = [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] in [10, -10]]
         self.assert_documents_are_equal(result, expected)
 
-    def test_comparison_in_with_with_non_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_in_with_with_non_list(document_store, filterable_docs):
         """Test filter_documents() with 'in' comparator and non-iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents({"field": "meta.number", "operator": "in", "value": 9})
 
-    def test_comparison_in_with_with_non_list_iterable(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_in_with_with_non_list_iterable(document_store, filterable_docs):
         """Test filter_documents() with 'in' comparator and iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -644,13 +654,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         result = document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": [9, 10]})
         self.assert_documents_are_equal(result, [d for d in filterable_docs if d.meta.get("number") not in [9, 10]])
 
-    def test_comparison_not_in_with_with_non_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_not_in_with_with_non_list(document_store, filterable_docs):
         """Test filter_documents() with 'not in' comparator and non-iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": 9})
 
-    def test_comparison_not_in_with_with_non_list_iterable(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_not_in_with_with_non_list_iterable(document_store, filterable_docs):
         """Test filter_documents() with 'not in' comparator and iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
