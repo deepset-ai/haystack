@@ -272,6 +272,55 @@ class DeleteDocumentsTest:
         assert len(retrieved) == 1
         assert retrieved[0].content == "New document after delete all with recreate"
 
+    @staticmethod
+    def test_delete_by_filter(document_store: DocumentStore):
+        """
+        Test delete_by_filter() removes documents matching the filter.
+
+        This test only runs for stores that implement delete_by_filter.
+        Stores that don't support this method will skip this test.
+        """
+        if not hasattr(document_store, "delete_by_filter"):
+            pytest.skip("Store doesn't implement delete_by_filter")
+
+        docs = [
+            Document(content="Doc 1", meta={"category": "A"}),
+            Document(content="Doc 2", meta={"category": "B"}),
+            Document(content="Doc 3", meta={"category": "A"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        deleted_count = document_store.delete_by_filter(
+            filters={"field": "meta.category", "operator": "==", "value": "A"}
+        )
+        assert deleted_count == 2
+        assert document_store.count_documents() == 1
+
+        remaining_docs = document_store.filter_documents()
+        assert len(remaining_docs) == 1
+        assert remaining_docs[0].meta["category"] == "B"
+
+    @staticmethod
+    def test_delete_by_filter_no_matches(document_store: DocumentStore):
+        """
+        Test delete_by_filter() when no documents match the filter.
+
+        This test only runs for stores that implement delete_by_filter.
+        """
+        if not hasattr(document_store, "delete_by_filter"):
+            pytest.skip("Store doesn't implement delete_by_filter")
+
+        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        deleted_count = document_store.delete_by_filter(
+            filters={"field": "meta.category", "operator": "==", "value": "C"}
+        )
+        assert deleted_count == 0
+        assert document_store.count_documents() == 2
+
 
 def create_filterable_docs() -> list[Document]:
     """
@@ -696,7 +745,58 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             )
 
 
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest):
+class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
+    """
+    Utility class to test a Document Store `update_by_filter` method.
+    """
+
+    def test_update_by_filter(self, document_store: DocumentStore, filterable_docs: list[Document]):
+        """Test update_by_filter() updates metadata of documents matching the filter."""
+        if not hasattr(document_store, "update_by_filter"):
+            pytest.skip("Store doesn't implement update_by_filter")
+
+        document_store.write_documents(filterable_docs)
+        expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
+        assert document_store.count_documents() == len(filterable_docs)
+
+        updated_count = document_store.update_by_filter(
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}
+        )
+        assert updated_count == expected_count
+
+        updated_docs = document_store.filter_documents(
+            filters={"field": "meta.updated", "operator": "==", "value": True}
+        )
+        assert len(updated_docs) == expected_count
+        for doc in updated_docs:
+            assert doc.meta["chapter"] == "intro"
+            assert doc.meta["updated"] is True
+
+        not_updated_docs = document_store.filter_documents(
+            filters={"field": "meta.chapter", "operator": "==", "value": "abstract"}
+        )
+        for doc in not_updated_docs:
+            assert doc.meta.get("updated") is not True
+
+    def test_update_by_filter_no_matches(self, document_store: DocumentStore, filterable_docs: list[Document]):
+        """Test update_by_filter() when no documents match the filter."""
+        if not hasattr(document_store, "update_by_filter"):
+            pytest.skip("Store doesn't implement update_by_filter")
+
+        document_store.write_documents(filterable_docs)
+        initial_count = len(filterable_docs)
+        assert document_store.count_documents() == initial_count
+
+        updated_count = document_store.update_by_filter(
+            filters={"field": "meta.chapter", "operator": "==", "value": "nonexistent_chapter"}, meta={"updated": True}
+        )
+        assert updated_count == 0
+        assert document_store.count_documents() == initial_count
+
+
+class DocumentStoreBaseTests(
+    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, UpdateByFilterTest, FilterDocumentsTest
+):
     @pytest.fixture
     def document_store(self) -> DocumentStore:
         """Base fixture, to be reimplemented when deriving from DocumentStoreBaseTests"""
