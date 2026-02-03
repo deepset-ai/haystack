@@ -888,6 +888,62 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         for doc in not_updated_docs:
             assert doc.meta.get("extra_field") != "set"
 
+    @staticmethod
+    def test_update_by_filter_advanced_filters(document_store: DocumentStore):
+        """
+        Test update_by_filter() with AND/OR logical filters.
+
+        This test only runs for stores that implement update_by_filter.
+        Uses word values for category (not single characters) so backends that
+        treat short tokens as stopwords work correctly.
+        """
+        if not hasattr(document_store, "update_by_filter"):
+            pytest.skip("Store doesn't implement update_by_filter")
+
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "draft"}),
+            Document(content="Doc 3", meta={"category": "Beta", "year": 2023, "status": "draft"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        updated_count = document_store.update_by_filter(
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            },
+            meta={"status": "published"},
+        )
+        assert updated_count == 1
+
+        published_docs = document_store.filter_documents(
+            filters={"field": "meta.status", "operator": "==", "value": "published"}
+        )
+        assert len(published_docs) == 1
+        assert published_docs[0].meta["category"] == "Alpha"
+        assert published_docs[0].meta["year"] == 2023
+
+        updated_count = document_store.update_by_filter(
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Beta"},
+                    {"field": "meta.year", "operator": "==", "value": 2024},
+                ],
+            },
+            meta={"featured": True},
+        )
+        assert updated_count == 2
+
+        featured_docs = document_store.filter_documents(
+            filters={"field": "meta.featured", "operator": "==", "value": True}
+        )
+        assert len(featured_docs) == 2
+
 
 class DocumentStoreBaseTests(
     CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, UpdateByFilterTest, FilterDocumentsTest
