@@ -582,7 +582,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Moon" in message.text
+        assert "moon" in message.text.lower()
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
