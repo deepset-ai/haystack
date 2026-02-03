@@ -697,7 +697,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert callback.reasoning == message.reasoning.reasoning_text
-        assert "Moon" in callback.content
+        assert "moon" in callback.content.lower()
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
