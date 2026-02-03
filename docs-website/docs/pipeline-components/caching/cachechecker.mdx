@@ -38,7 +38,9 @@ my_doc_store = InMemoryDocumentStore()
 
 ## For URL-based caching
 cache_checker = CacheChecker(document_store=my_doc_store, cache_field="url")
-cache_check_results = cache_checker.run(items=["https://example.com/resource", "https://another_example.com/other_resources"])
+cache_check_results = cache_checker.run(
+    items=["https://example.com/resource", "https://another_example.com/other_resources"]
+)
 print(cache_check_results["hits"])    # List of Documents that were found in the cache: all of these have 'url': <one of the above> in the metadata
 print(cache_check_results["misses"])  # URLs that were not found in the cache, like ["https://example.com/resource"]
 
@@ -61,11 +63,21 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 pipeline = Pipeline()
 document_store = InMemoryDocumentStore()
-pipeline.add_component(instance=CacheChecker(document_store, cache_field="meta.file_path"), name="cache_checker")
+pipeline.add_component(
+    instance=CacheChecker(document_store, cache_field="meta.file_path"),
+    name="cache_checker"
+)
 pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
 pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
-pipeline.add_component(instance=DocumentSplitter(split_by="sentence", split_length=250, split_overlap=30), name="splitter")
-pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+pipeline.add_component(
+    instance=DocumentSplitter(
+        split_by="sentence", split_length=250, split_overlap=30
+    ),
+    name="splitter"
+)
+pipeline.add_component(
+    instance=DocumentWriter(document_store=document_store), name="writer"
+)
 pipeline.connect("cache_checker.misses", "text_file_converter.sources")
 pipeline.connect("text_file_converter.documents", "cleaner.documents")
 pipeline.connect("cleaner.documents", "splitter.documents")

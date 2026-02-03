@@ -166,11 +166,9 @@ pipeline.inputs()
 From the above response, you can see that the `urls` input is mandatory for `LinkContentFetcher`. This is how you would then run this pipeline:
 
 ```python
-pipeline.run(data=
-             {"fetcher":
-              	{"urls": ["https://docs.haystack.deepset.ai/docs/pipelines"]}
-             }
-            )
+pipeline.run(
+    data={"fetcher": {"urls": ["https://docs.haystack.deepset.ai/docs/pipelines"]}}
+)
 ```
 
 ## Example

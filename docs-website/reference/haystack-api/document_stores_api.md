@@ -215,6 +215,63 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - `document_ids`: The object_ids to delete.
 
+<a id="document_store.InMemoryDocumentStore.delete_all_documents"></a>
+
+#### InMemoryDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents() -> None
+```
+
+Deletes all documents in the document store.
+
+<a id="document_store.InMemoryDocumentStore.update_by_filter"></a>
+
+#### InMemoryDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see filter_documents.
+- `meta`: The metadata fields to update. These will be merged with existing metadata.
+
+**Raises**:
+
+- `None`: ValueError if filters have invalid syntax.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="document_store.InMemoryDocumentStore.delete_by_filter"></a>
+
+#### InMemoryDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see filter_documents.
+
+**Raises**:
+
+- `None`: ValueError if filters have invalid syntax.
+
+**Returns**:
+
+The number of documents deleted.
+
 <a id="document_store.InMemoryDocumentStore.bm25_retrieval"></a>
 
 #### InMemoryDocumentStore.bm25\_retrieval
@@ -263,6 +320,10 @@ Retrieves documents that are most similar to the query embedding using a vector 
 - `return_embedding`: Whether to return the embedding of the retrieved Documents.
 If not provided, the value of the `return_embedding` parameter set at component
 initialization will be used. Default is False.
+
+**Raises**:
+
+- `None`: ValueError if filters have invalid syntax.
 
 **Returns**:
 

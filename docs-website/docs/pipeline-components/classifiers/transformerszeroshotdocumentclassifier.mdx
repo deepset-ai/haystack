@@ -47,8 +47,10 @@ Available models for the task of zero-shot-classification are:
 from haystack import Document
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
 
-documents = [Document(id="0", content="Cats don't get teeth cavities."),
-             Document(id="1", content="Cucumbers can be grown in water.")]
+documents = [
+    Document(id="0", content="Cats don't get teeth cavities."),
+    Document(id="1", content="Cucumbers can be grown in water.")
+]
 
 document_classifier = TransformersZeroShotDocumentClassifier(
     model="cross-encoder/nli-deberta-v3-xsmall",
@@ -71,8 +73,10 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.core.pipeline import Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
 
-documents = [Document(id="0", content="Today was a nice day!"),
-             Document(id="1", content="Yesterday was a bad day!")]
+documents = [
+    Document(id="0", content="Today was a nice day!"),
+    Document(id="1", content="Yesterday was a bad day!")
+]
 
 document_store = InMemoryDocumentStore()
 retriever = InMemoryBM25Retriever(document_store=document_store)
@@ -84,8 +88,8 @@ document_classifier = TransformersZeroShotDocumentClassifier(
 document_store.write_documents(documents)
 
 pipeline = Pipeline()
-pipeline.add_component(instance=retriever, name="retriever")
-pipeline.add_component(instance=document_classifier, name="document_classifier")
+pipeline.add_component(retriever, name="retriever")
+pipeline.add_component(document_classifier, name="document_classifier")
 pipeline.connect("retriever", "document_classifier")
 
 queries = ["How was your day today?", "How was your day yesterday?"]
@@ -93,7 +97,9 @@ expected_predictions = ["positive", "negative"]
 
 for idx, query in enumerate(queries):
     result = pipeline.run({"retriever": {"query": query, "top_k": 1}})
-    assert result["document_classifier"]["documents"][0].to_dict()["id"] == str(idx)
-    assert (result["document_classifier"]["documents"][0].to_dict()["classification"]["label"]
-            == expected_predictions[idx])
+    classified_docs = result["document_classifier"]["documents"]
+    assert classified_docs[0].id == str(idx)
+    assert (
+        classified_docs[0].meta["classification"]["label"] == expected_predictions[idx]
+    )
 ```
