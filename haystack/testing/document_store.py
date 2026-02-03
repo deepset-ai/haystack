@@ -193,7 +193,7 @@ class DeleteDocumentsTest:
         assert document_store.count_documents() == 2
 
         # Delete all documents
-        document_store.delete_all_documents()
+        document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
 
         # Verify store is still functional - can write new documents
@@ -209,7 +209,7 @@ class DeleteDocumentsTest:
         This should not raise an error and should leave the store empty.
         """
         assert document_store.count_documents() == 0
-        document_store.delete_all_documents()
+        document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
 
     @staticmethod
@@ -221,7 +221,7 @@ class DeleteDocumentsTest:
         Stores that don't support this parameter will skip this test.
         """
         # Check if delete_all_documents supports recreate_index parameter
-        sig = inspect.signature(document_store.delete_all_documents)
+        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
         if "recreate_index" not in sig.parameters:
             pytest.skip("Store doesn't support recreate_index parameter")
 
@@ -231,7 +231,7 @@ class DeleteDocumentsTest:
         assert document_store.count_documents() == 2
 
         # Delete all documents without recreating index
-        document_store.delete_all_documents(recreate_index=False)
+        document_store.delete_all_documents(recreate_index=False)  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
 
         # Verify store is still functional
@@ -249,7 +249,7 @@ class DeleteDocumentsTest:
         recreate_index parameter.
         """
         # Check if delete_all_documents supports recreate_index parameter
-        sig = inspect.signature(document_store.delete_all_documents)
+        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
         if "recreate_index" not in sig.parameters:
             pytest.skip("Store doesn't support recreate_index parameter")
 
@@ -259,7 +259,7 @@ class DeleteDocumentsTest:
         assert document_store.count_documents() == 2
 
         # Delete all documents with recreating index
-        document_store.delete_all_documents(recreate_index=True)
+        document_store.delete_all_documents(recreate_index=True)  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
 
         # Verify store is still functional and can accept new documents
