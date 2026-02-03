@@ -326,6 +326,50 @@ class DeleteDocumentsTest:
         assert deleted_count == 0
         assert document_store.count_documents() == 2
 
+    @staticmethod
+    def test_delete_by_filter_advanced_filters(document_store: DocumentStore):
+        """
+        Test delete_by_filter() with AND/OR logical filters.
+
+        This test only runs for stores that implement delete_by_filter.
+        Uses word values for category (not single characters) so backends that
+        treat short tokens as stopwords work correctly.
+        """
+        if not hasattr(document_store, "delete_by_filter"):
+            pytest.skip("Store doesn't implement delete_by_filter")
+
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "published"}),
+            Document(content="Doc 3", meta={"category": "Beta", "year": 2023, "status": "draft"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        deleted_count = document_store.delete_by_filter(
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            }
+        )
+        assert deleted_count == 1
+        assert document_store.count_documents() == 2
+
+        deleted_count = document_store.delete_by_filter(
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Beta"},
+                    {"field": "meta.status", "operator": "==", "value": "published"},
+                ],
+            }
+        )
+        assert deleted_count == 2
+        assert document_store.count_documents() == 0
+
 
 def create_filterable_docs() -> list[Document]:
     """
