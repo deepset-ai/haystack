@@ -136,3 +136,9 @@ class DocumentStore(Protocol):
         :param document_ids: the object_ids to delete
         """
         ...
+
+    def delete_all_documents(self, recreate_index: bool = False) -> None:
+        """
+        Deletes all documents from the DocumentStore.
+        """
+        ...

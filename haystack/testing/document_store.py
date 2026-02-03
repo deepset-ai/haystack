@@ -31,7 +31,8 @@ TEST_EMBEDDING_2 = _random_embeddings(768)
 
 
 class AssertDocumentsEqualMixin:
-    def assert_documents_are_equal(self, received: list[Document], expected: list[Document]):
+    @staticmethod
+    def assert_documents_are_equal(received: list[Document], expected: list[Document]):
         """
         Assert that two lists of Documents are equal.
 
@@ -58,11 +59,13 @@ class CountDocumentsTest:
     ```
     """
 
-    def test_count_empty(self, document_store: DocumentStore):
+    @staticmethod
+    def test_count_empty(document_store: DocumentStore):
         """Test count is zero for an empty document store"""
         assert document_store.count_documents() == 0
 
-    def test_count_not_empty(self, document_store: DocumentStore):
+    @staticmethod
+    def test_count_not_empty(document_store: DocumentStore):
         """Test count is greater than zero if the document store contains documents"""
         document_store.write_documents(
             [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
@@ -106,7 +109,8 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
             document_store.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
         self.assert_documents_are_equal(document_store.filter_documents(), [doc])
 
-    def test_write_documents_duplicate_skip(self, document_store: DocumentStore):
+    @staticmethod
+    def test_write_documents_duplicate_skip(document_store: DocumentStore):
         """Test write_documents() skips writing when using DuplicatePolicy.SKIP."""
         doc = Document(content="test doc")
         assert document_store.write_documents([doc], policy=DuplicatePolicy.SKIP) == 1
@@ -122,7 +126,8 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         assert document_store.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE) == 1
         self.assert_documents_are_equal(document_store.filter_documents(), [doc1])
 
-    def test_write_documents_invalid_input(self, document_store: DocumentStore):
+    @staticmethod
+    def test_write_documents_invalid_input(document_store: DocumentStore):
         """Test write_documents() fails when providing unexpected input."""
         with pytest.raises(ValueError):
             document_store.write_documents(["not a document for sure"])  # type: ignore
@@ -147,7 +152,8 @@ class DeleteDocumentsTest:
     ```
     """
 
-    def test_delete_documents(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_documents(document_store: DocumentStore):
         """Test delete_documents() normal behaviour."""
         doc = Document(content="test doc")
         document_store.write_documents([doc])
@@ -156,12 +162,14 @@ class DeleteDocumentsTest:
         document_store.delete_documents([doc.id])
         assert document_store.count_documents() == 0
 
-    def test_delete_documents_empty_document_store(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_documents_empty_document_store(document_store: DocumentStore):
         """Test delete_documents() doesn't fail when called using an empty Document Store."""
         document_store.delete_documents(["non_existing_id"])
 
-    def test_delete_documents_non_existing_document(self, document_store: DocumentStore):
-        """Test delete_documents() doesn't delete any Document when called with non existing id."""
+    @staticmethod
+    def test_delete_documents_non_existing_document(document_store: DocumentStore):
+        """Test delete_documents() doesn't delete any Document when called with non-existing id."""
         doc = Document(content="test doc")
         document_store.write_documents([doc])
         assert document_store.count_documents() == 1
@@ -171,7 +179,8 @@ class DeleteDocumentsTest:
         # No Document has been deleted
         assert document_store.count_documents() == 1
 
-    def test_delete_all_documents(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_all_documents(document_store: DocumentStore):
         """
         Test delete_all_documents() normal behaviour.
 
@@ -192,7 +201,8 @@ class DeleteDocumentsTest:
         document_store.write_documents([new_doc])
         assert document_store.count_documents() == 1
 
-    def test_delete_all_documents_empty_store(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_all_documents_empty_store(document_store: DocumentStore):
         """
         Test delete_all_documents() on an empty store.
 
@@ -202,7 +212,8 @@ class DeleteDocumentsTest:
         document_store.delete_all_documents()
         assert document_store.count_documents() == 0
 
-    def test_delete_all_documents_without_recreate_index(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
         """
         Test delete_all_documents() with recreate_index=False.
 
@@ -228,7 +239,8 @@ class DeleteDocumentsTest:
         document_store.write_documents([new_doc])
         assert document_store.count_documents() == 1
 
-    def test_delete_all_documents_with_recreate_index(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_all_documents_with_recreate_index(document_store: DocumentStore):
         """
         Test delete_all_documents() with recreate_index=True.
 
