@@ -117,3 +117,5 @@ Here's a list of projects and companies using Haystack. Are you also using Hayst
 - Media & Entertainment: [Netflix](https://netflix.com), [Comcast](https://arxiv.org/html/2405.00801v2), [Zeit Online](https://www.deepset.ai/case-studies/zeit-online), [Rakuten](https://www.rakuten.com/)
 - Legal & Publishing: [Manz](https://www.deepset.ai/case-studies/manz), [Oxford University Press](https://corp.oup.com/)
 - Startups & Research: [YPulse](https://www.deepset.ai/case-studies/ypulse), [BetterUp](https://www.betterup.com/), [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
+
+- [AgentMarket](https://agentmarket.cloud) - B2A marketplace for AI agents. 189 listings, 28M+ energy records, enterprise-ready API.
