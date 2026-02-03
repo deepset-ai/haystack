@@ -9,7 +9,6 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.deserialization import deserialize_component_inplace
 
 
 @component
@@ -109,7 +108,7 @@ class MultiQueryEmbeddingRetriever:
                 - `documents`: List of retrieved documents sorted by relevance score.
         """
         docs: list[Document] = []
-        seen_contents = set()
+        seen_ids = set()
         retriever_kwargs = retriever_kwargs or {}
 
         if not self._is_warmed_up:
@@ -121,10 +120,10 @@ class MultiQueryEmbeddingRetriever:
                 if not result:
                     continue
                 for doc in result:
-                    # deduplicate based on content
-                    if doc.content not in seen_contents:
+                    # deduplicate based on id
+                    if doc.id not in seen_ids:
                         docs.append(doc)
-                        seen_contents.add(doc.content)
+                        seen_ids.add(doc.id)
 
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
@@ -167,6 +166,4 @@ class MultiQueryEmbeddingRetriever:
         :returns:
             The deserialized component.
         """
-        deserialize_component_inplace(data["init_parameters"], key="retriever")
-        deserialize_component_inplace(data["init_parameters"], key="query_embedder")
         return default_from_dict(cls, data)
