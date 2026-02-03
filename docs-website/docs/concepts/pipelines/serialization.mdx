@@ -91,11 +91,11 @@ pipe = Pipeline.loads(pipeline_yaml, callbacks=DeserializationCallbacks(componen
 
 The serialization system uses `default_to_dict` and `default_from_dict` to handle many object types automatically. You typically do **not** need to implement custom `to_dict`/`from_dict` for:
 
-- **Secrets** (`haystack.utils.auth.Secret`) — serialized and deserialized automatically so that sensitive values are not stored in plain text.
-- **ComponentDevice** (`haystack.utils.device.ComponentDevice`) — device configuration is detected and restored automatically.
-- **Objects with their own `to_dict`/`from_dict`** — any init parameter whose type defines `to_dict()` is serialized by calling it; any dict in `init_parameters` with a `type` key pointing to a class with `from_dict()` is deserialized automatically.
+- **Secrets**: serialized and deserialized automatically so that sensitive values aren't stored in plain text.
+- **ComponentDevice**: device configuration is detected and restored automatically.
+- **Objects with their own `to_dict`/`from_dict`**: any init parameter whose type defines `to_dict()` is serialized by calling it; any dict in `init_parameters` with a `type` key pointing to a class with `from_dict()` is deserialized automatically.
 
-To serialize or deserialize a single component (for example, outside of a pipeline), you can use `component_to_dict` and `component_from_dict` from `haystack.core.serialization`. They use the default behavior above as a fallback when the component does not define custom `to_dict`/`from_dict`:
+To serialize or deserialize a single component, you can use `component_to_dict` and `component_from_dict` from `haystack.core.serialization`. They use the default behavior above as a fallback when the component does not define custom `to_dict`/`from_dict`:
 
 ```python
 from haystack import component
@@ -121,7 +121,7 @@ assert restored.message == greeter.message
 
 :::caution Init parameters must be stored as instance attributes
 
-Default serialization only works when there is a **1:1 mapping** between init parameter names and instance attributes. For every argument in `__init__`, the component must assign it to an attribute with the same name. For example, if you have `def __init__(self, prompt: str)`, you must have `self.prompt = prompt` in the class. Otherwise the serialization logic cannot find the value to serialize and will raise an error (or use the default value if the parameter has one).
+Default serialization only works when there is a **1:1 mapping** between init parameter names and instance attributes. For every argument in `__init__`, the component must assign it to an attribute with the same name. For example, if you have `def __init__(self, prompt: str)`, you must have `self.prompt = prompt` in the class. Otherwise the serialization logic can't find the value to serialize and raises an error or uses the default value if the parameter has one.
 :::
 
 ## Performing Custom Serialization
