@@ -279,27 +279,29 @@ class DeleteDocumentsTest:
 
         This test only runs for stores that implement delete_by_filter.
         Stores that don't support this method will skip this test.
+        Uses word values for category (not single characters) so backends that
+        treat short tokens as stopwords (e.g. Weaviate) work correctly.
         """
         if not hasattr(document_store, "delete_by_filter"):
             pytest.skip("Store doesn't implement delete_by_filter")
 
         docs = [
-            Document(content="Doc 1", meta={"category": "A"}),
-            Document(content="Doc 2", meta={"category": "B"}),
-            Document(content="Doc 3", meta={"category": "A"}),
+            Document(content="Doc 1", meta={"category": "Alpha"}),
+            Document(content="Doc 2", meta={"category": "Beta"}),
+            Document(content="Doc 3", meta={"category": "Alpha"}),
         ]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
         deleted_count = document_store.delete_by_filter(
-            filters={"field": "meta.category", "operator": "==", "value": "A"}
+            filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
         )
         assert deleted_count == 2
         assert document_store.count_documents() == 1
 
         remaining_docs = document_store.filter_documents()
         assert len(remaining_docs) == 1
-        assert remaining_docs[0].meta["category"] == "B"
+        assert remaining_docs[0].meta["category"] == "Beta"
 
     @staticmethod
     def test_delete_by_filter_no_matches(document_store: DocumentStore):
@@ -311,12 +313,15 @@ class DeleteDocumentsTest:
         if not hasattr(document_store, "delete_by_filter"):
             pytest.skip("Store doesn't implement delete_by_filter")
 
-        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha"}),
+            Document(content="Doc 2", meta={"category": "Beta"}),
+        ]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
         deleted_count = document_store.delete_by_filter(
-            filters={"field": "meta.category", "operator": "==", "value": "C"}
+            filters={"field": "meta.category", "operator": "==", "value": "Gamma"}
         )
         assert deleted_count == 0
         assert document_store.count_documents() == 2
@@ -762,7 +767,8 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
     Utility class to test a Document Store `update_by_filter` method.
     """
 
-    def test_update_by_filter(self, document_store: DocumentStore, filterable_docs: list[Document]):
+    @staticmethod
+    def test_update_by_filter(document_store: DocumentStore, filterable_docs: list[Document]):
         """Test update_by_filter() updates metadata of documents matching the filter."""
         if not hasattr(document_store, "update_by_filter"):
             pytest.skip("Store doesn't implement update_by_filter")
@@ -790,7 +796,8 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         for doc in not_updated_docs:
             assert doc.meta.get("updated") is not True
 
-    def test_update_by_filter_no_matches(self, document_store: DocumentStore, filterable_docs: list[Document]):
+    @staticmethod
+    def test_update_by_filter_no_matches(document_store: DocumentStore, filterable_docs: list[Document]):
         """Test update_by_filter() when no documents match the filter."""
         if not hasattr(document_store, "update_by_filter"):
             pytest.skip("Store doesn't implement update_by_filter")
@@ -804,6 +811,38 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         )
         assert updated_count == 0
         assert document_store.count_documents() == initial_count
+
+    @staticmethod
+    def test_update_by_filter_multiple_fields(document_store: DocumentStore, filterable_docs: list[Document]):
+        """Test update_by_filter() updates multiple metadata fields and preserves existing ones."""
+        if not hasattr(document_store, "update_by_filter"):
+            pytest.skip("Store doesn't implement update_by_filter")
+
+        document_store.write_documents(filterable_docs)
+        expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
+        assert document_store.count_documents() == len(filterable_docs)
+
+        updated_count = document_store.update_by_filter(
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
+            meta={"updated": True, "extra_field": "set"},
+        )
+        assert updated_count == expected_count
+
+        updated_docs = document_store.filter_documents(
+            filters={"field": "meta.extra_field", "operator": "==", "value": "set"}
+        )
+        assert len(updated_docs) == expected_count
+        for doc in updated_docs:
+            assert doc.meta["updated"] is True
+            assert doc.meta["extra_field"] == "set"
+            assert doc.meta["chapter"] == "intro"
+            assert doc.meta.get("number") == 2
+
+        not_updated_docs = document_store.filter_documents(
+            filters={"field": "meta.chapter", "operator": "==", "value": "abstract"}
+        )
+        for doc in not_updated_docs:
+            assert doc.meta.get("extra_field") != "set"
 
 
 class DocumentStoreBaseTests(
