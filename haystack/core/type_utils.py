@@ -9,7 +9,9 @@ from typing import Any, Union, get_args, get_origin
 from haystack.dataclasses import ChatMessage
 
 
-def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, bool]:
+def _types_are_compatible(
+    sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True
+) -> tuple[bool, bool]:
     """
     Determines if two types are compatible based on the specified validation mode.
 
@@ -31,7 +33,7 @@ def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = Tr
     return False, False
 
 
-def _safe_get_origin(_type: Any) -> type | None:
+def _safe_get_origin(_type: type | UnionType) -> type | None:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 
@@ -114,12 +116,11 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint:
     if sender is Any:
         return False
 
-    if isinstance(sender, type) and isinstance(receiver, type):
-        try:
-            if issubclass(sender, receiver):
-                return True
-        except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
-            pass
+    try:
+        if issubclass(sender, receiver):
+            return True
+    except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
+        pass
 
     sender_origin = _safe_get_origin(sender)
     receiver_origin = _safe_get_origin(receiver)
@@ -150,37 +151,22 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint:
     )
 
 
-def _check_callable_compatibility(sender_args: tuple[Any, ...], receiver_args: tuple[Any, ...]) -> bool:
-    """
-    Helper function to check compatibility of Callable types.
-
-    For Callable types, args structure is ([param_types], return_type).
-    The args come from get_args() which returns tuple[Any, ...].
-    """
+def _check_callable_compatibility(sender_args, receiver_args):
+    """Helper function to check compatibility of Callable types"""
     if not receiver_args:
         return True
     if not sender_args:
-        first_receiver = receiver_args[0]
-        param_count = len(first_receiver) if isinstance(first_receiver, list) else 0
-        sender_args = ([Any] * param_count, Any)
+        sender_args = ([Any] * len(receiver_args[0]), Any)
     # Standard Callable has two elements in args: argument list and return type
     if len(sender_args) != 2 or len(receiver_args) != 2:
         return False
-
-    sender_params, sender_return = sender_args
-    receiver_params, receiver_return = receiver_args
-
     # Return types must be compatible
-    if not _strict_types_are_compatible(sender_return, receiver_return):
+    if not _strict_types_are_compatible(sender_args[1], receiver_args[1]):
         return False
-
     # Input Arguments must be of same length
-    if not isinstance(sender_params, list) or not isinstance(receiver_params, list):
+    if len(sender_args[0]) != len(receiver_args[0]):
         return False
-    if len(sender_params) != len(receiver_params):
-        return False
-
-    return all(_strict_types_are_compatible(sender_params[i], receiver_params[i]) for i in range(len(sender_params)))
+    return all(_strict_types_are_compatible(sender_args[0][i], receiver_args[0][i]) for i in range(len(sender_args[0])))
 
 
 def _type_name(type_: Any) -> str:

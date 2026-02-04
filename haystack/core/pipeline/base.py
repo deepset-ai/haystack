@@ -1320,13 +1320,11 @@ class PipelineBase:  # noqa: PLW1641
                 except Exception as e:
                     sender_node = self.graph.nodes.get(component_name)
                     sender_instance = sender_node.get("instance") if sender_node else None
-                    sender_type = type(sender_instance) if sender_instance else None
-                    sender_type_name = sender_type.__name__ if sender_type else "unknown"
+                    sender_type_name = type(sender_instance).__name__ if sender_instance else "unknown"
 
                     receiver_node = self.graph.nodes.get(receiver_name)
                     receiver_instance = receiver_node.get("instance") if receiver_node else None
-                    receiver_type = type(receiver_instance) if receiver_instance else None
-                    receiver_type_name = receiver_type.__name__ if receiver_type else "unknown"
+                    receiver_type_name = type(receiver_instance).__name__ if receiver_instance else "unknown"
 
                     msg = (
                         f"Failed to perform conversion between components:\n"
@@ -1336,9 +1334,7 @@ class PipelineBase:  # noqa: PLW1641
                         f"Receiver socket: '{receiver_socket.name}'\n"
                         f"Error: {e}"
                     )
-                    raise PipelineRuntimeError(
-                        component_name=component_name, component_type=sender_type, message=msg
-                    ) from e
+                    raise PipelineRuntimeError(component_name=None, component_type=None, message=msg) from e
 
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
