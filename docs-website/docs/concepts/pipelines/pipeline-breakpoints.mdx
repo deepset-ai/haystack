@@ -49,9 +49,7 @@ To access the pipeline state during the breakpoint we can both catch the excepti
 
 ## Using a custom snapshot callback
 
-You can pass a `snapshot_callback` to `Pipeline.run()` or `Agent.run()` to handle snapshots yourself instead of saving to a file. When a breakpoint
-is triggered or a snapshot is created on error, the callback is invoked with the `PipelineSnapshot` object. This is useful for saving snapshots to a database, sending
-them to a remote service, or custom logging.
+You can pass a `snapshot_callback` to `Pipeline.run()` or `Agent.run()` to handle snapshots yourself instead of saving to a file. When a breakpoint is triggered or a snapshot is created on error, the callback is invoked with the `PipelineSnapshot` object. This is useful for saving snapshots to a database, sending them to a remote service, or custom logging.
 
 ```python
 from haystack.core.errors import BreakpointException
@@ -118,8 +116,7 @@ You can also set breakpoints in an Agent component. An Agent supports two types 
 1. **Chat Generator Breakpoint**: Pauses before LLM calls.
 2. **Tool Invoker Breakpoint**: Pauses before any tool execution.
 
-A `ChatGenerator` breakpoint is defined as shown below. You need to define a `Breakpoint` as for a pipeline breakpoint and then an `AgentBreakpoint` where you pass
-the breakpoint defined before and the name of Agent component.
+A `ChatGenerator` breakpoint is defined as shown below. You need to define a `Breakpoint` as for a pipeline breakpoint and then an `AgentBreakpoint` where you pass the breakpoint defined before and the name of Agent component.
 
 ```python
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
@@ -155,8 +152,7 @@ agent_breakpoint = AgentBreakpoint(
 
 ### Resuming Agent Execution
 
-When an Agent breakpoint is triggered, you can resume execution using the saved snapshot. Similar to the regular component in a pipeline, pass the JSON file
-with the snapshot to the `run()` method of the pipeline.
+When an Agent breakpoint is triggered, you can resume execution using the saved snapshot. Similar to the regular component in a pipeline, pass the JSON file with the snapshot to the `run()` method of the pipeline.
 
 ```python
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
