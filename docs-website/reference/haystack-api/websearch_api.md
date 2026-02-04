@@ -35,7 +35,7 @@ assert results["links"]
 def __init__(api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
              top_k: int | None = 10,
              allowed_domains: list[str] | None = None,
-             search_params: dict[str, Any] | None = None)
+             search_params: dict[str, Any] | None = None) -> None
 ```
 
 Initialize the SearchApiWebSearch component.
@@ -111,6 +111,34 @@ A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
 
+<a id="searchapi.SearchApiWebSearch.run_async"></a>
+
+#### SearchApiWebSearch.run\_async
+
+```python
+@component.output_types(documents=list[Document], links=list[str])
+async def run_async(query: str) -> dict[str, list[Document] | list[str]]
+```
+
+Asynchronously uses [SearchApi](https://www.searchapi.io/) to search the web.
+
+This is the asynchronous version of the `run` method with the same parameters and return values.
+
+**Arguments**:
+
+- `query`: Search query.
+
+**Raises**:
+
+- `TimeoutError`: If the request to the SearchApi API times out.
+- `SearchApiError`: If an error occurs while querying the SearchApi API.
+
+**Returns**:
+
+A dictionary with the following keys:
+- "documents": List of documents returned by the search engine.
+- "links": List of links returned by the search engine.
+
 <a id="serper_dev"></a>
 
 ## Module serper\_dev
@@ -154,7 +182,7 @@ def __init__(api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
              allowed_domains: list[str] | None = None,
              search_params: dict[str, Any] | None = None,
              *,
-             exclude_subdomains: bool = False)
+             exclude_subdomains: bool = False) -> None
 ```
 
 Initialize the SerperDevWebSearch component.
@@ -214,6 +242,34 @@ def run(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Use [Serper](https://serper.dev/) to search the web.
+
+**Arguments**:
+
+- `query`: Search query.
+
+**Raises**:
+
+- `SerperDevError`: If an error occurs while querying the SerperDev API.
+- `TimeoutError`: If the request to the SerperDev API times out.
+
+**Returns**:
+
+A dictionary with the following keys:
+- "documents": List of documents returned by the search engine.
+- "links": List of links returned by the search engine.
+
+<a id="serper_dev.SerperDevWebSearch.run_async"></a>
+
+#### SerperDevWebSearch.run\_async
+
+```python
+@component.output_types(documents=list[Document], links=list[str])
+async def run_async(query: str) -> dict[str, list[Document] | list[str]]
+```
+
+Asynchronously uses [Serper](https://serper.dev/) to search the web.
+
+This is the asynchronous version of the `run` method with the same parameters and return values.
 
 **Arguments**:
 
