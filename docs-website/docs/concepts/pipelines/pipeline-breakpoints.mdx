@@ -11,12 +11,9 @@ Learn how to pause and resume Haystack pipeline or Agent execution using breakpo
 
 ## Introduction
 
-Haystack pipelines support breakpoints for debugging complex execution flows. A `Breakpoint` allows you to pause the execution at specific components, inspect the pipeline
-state, and resume execution from saved snapshots. This feature works for any regular component as well as an `Agent` component.
+Haystack pipelines support breakpoints for debugging complex execution flows. A `Breakpoint` allows you to pause the execution at specific components, inspect the pipeline state, and resume execution from saved snapshots. This feature works for any regular component as well as an `Agent` component.
 
-You can set a `Breakpoint` on any component in a pipeline with a specific visit count. When triggered, the system stops the execution of the `Pipeline` and captures a
-snapshot of the current pipeline state. The state can be saved to a JSON file when snapshot file saving is enabled, see [Snapshot file saving](#snapshot-file-saving) below.
-You can inspect and modify the snapshot and use it to resume execution from the exact point where it stopped.
+You can set a `Breakpoint` on any component in a pipeline with a specific visit count. When triggered, the system stops the execution of the `Pipeline` and captures a snapshot of the current pipeline state. The state can be saved to a JSON file when snapshot file saving is enabled, see [Snapshot file saving](#snapshot-file-saving) below. You can inspect and modify the snapshot and use it to resume execution from the exact point where it stopped.
 
 You can also set breakpoints on an Agent, specifically on the `ChatGenerator` component or on any of the `Tool` specified in the `ToolInvoker` component .
 
@@ -44,14 +41,11 @@ except BreakpointException as e:
     print(f"Pipeline results so far: {e.results}")
 ```
 
-A `BreakpointException` is raised containing the component inputs and the outputs of the pipeline up until the moment where the execution was interrupted, such as just
-before the execution of component associated with the breakpoint – the `llm` in the example above.
+A `BreakpointException` is raised containing the component inputs and the outputs of the pipeline up until the moment where the execution was interrupted, such as just before the execution of component associated with the breakpoint – the `llm` in the example above.
 
-If a `snapshot_file_path` is specified in the `Breakpoint` and snapshot file saving is enabled, the system saves a JSON snapshot with the same information as in
-the `BreakpointException`. Snapshot file saving to disk is disabled by default; see [Snapshot file saving](#snapshot-file-saving) below.
+If a `snapshot_file_path` is specified in the `Breakpoint` and snapshot file saving is enabled, the system saves a JSON snapshot with the same information as in the `BreakpointException`. Snapshot file saving to disk is disabled by default; see [Snapshot file saving](#snapshot-file-saving) below.
 
-To access the pipeline state during the breakpoint we can both catch the exception raised by the breakpoint as well as specify where the JSON file should be
-saved, note that file saving is enabled must be enabled.
+To access the pipeline state during the breakpoint we can both catch the exception raised by the breakpoint as well as specify where the JSON file should be saved, note that file saving is enabled must be enabled.
 
 ## Using a custom snapshot callback
 
@@ -78,14 +72,11 @@ except BreakpointException as e:
     print(f"Breakpoint triggered: {e.component}")
 ```
 
-When `snapshot_callback` is provided, the default file-saving behavior is not used for that run; the callback is responsible for handling the snapshot. The same parameter
-is available on `Agent.run()` for agent breakpoints.
+When `snapshot_callback` is provided, the default file-saving behavior is not used for that run; the callback is responsible for handling the snapshot. The same parameter is available on `Agent.run()` for agent breakpoints.
 
 ## Snapshot file saving
 
-Snapshot file saving to disk is **disabled by default**. To save snapshots as JSON files when a breakpoint is triggered (or on pipeline failure), set the environment
-variable `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to `"true"` or `"1"` (case-insensitive). When enabled, snapshots are written to the path given by `snapshot_file_path`
-on the breakpoint, or to the default directory in [Error Recovery with Snapshots](#error-recovery-with-snapshots) when a run fails.
+Snapshot file saving to disk is **disabled by default**. To save snapshots as JSON files when a breakpoint is triggered (or on pipeline failure), set the environment variable `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to `"true"` or `"1"` (case-insensitive). When enabled, snapshots are written to the path given by `snapshot_file_path` on the breakpoint, or to the default directory in [Error Recovery with Snapshots](#error-recovery-with-snapshots) when a run fails.
 
 Custom `snapshot_callback` functions are always invoked when provided, regardless of this setting.
 
@@ -143,8 +134,7 @@ agent_breakpoint = AgentBreakpoint(
 
 To set a breakpoint on a Tool in an Agent, do the following:
 
-First, define a `ToolBreakpoint` specifying the `ToolInvoker` component whose name is `tool_invoker` and then the tool associated with the breakpoint, in this
-case – a `weather_tool` .
+First, define a `ToolBreakpoint` specifying the `ToolInvoker` component whose name is `tool_invoker` and then the tool associated with the breakpoint, in this case – a `weather_tool` .
 
 Then, define an `AgentBreakpoint` passing the `ToolBreakpoint` defined before as the breakpoint.
 
@@ -183,8 +173,7 @@ print(f"Final result: {result}")
 
 ## Error Recovery with Snapshots
 
-Pipelines automatically create a snapshot of the last valid state if a run fails. The snapshot contains inputs, visit counts, and intermediate outputs up
-to the failure. You can inspect it, fix the issue, and resume execution from that checkpoint instead of restarting the whole run.
+Pipelines automatically create a snapshot of the last valid state if a run fails. The snapshot contains inputs, visit counts, and intermediate outputs up to the failure. You can inspect it, fix the issue, and resume execution from that checkpoint instead of restarting the whole run.
 
 ### Access the Snapshot on Failure
 
