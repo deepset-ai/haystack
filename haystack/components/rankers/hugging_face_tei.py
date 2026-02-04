@@ -246,6 +246,7 @@ class HuggingFaceTEIRanker:
             return {"documents": []}
 
         # Prepare the payload
+        documents = _deduplicate_documents(documents)
         texts = [doc.content for doc in documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:

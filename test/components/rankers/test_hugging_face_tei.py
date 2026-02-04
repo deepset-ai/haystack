@@ -350,6 +350,40 @@ class TestHuggingFaceTEIRanker:
 
     @pytest.mark.asyncio
     @patch("haystack.components.rankers.hugging_face_tei.async_request_with_retry")
+    async def test_run_async_deduplicates_documents(self, mock_request, monkeypatch):
+        """Test that duplicate documents are removed before sending to the API."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.json.return_value = [{"index": 1, "score": 0.9}, {"index": 0, "score": 0.2}]
+        mock_request.return_value = mock_response
+
+        ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
+        # Document with duplicate id and lower score should be dropped
+        docs = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+
+        result = await ranker.run_async(query="test query", documents=docs)
+
+        mock_request.assert_called_once_with(
+            method="POST",
+            url="https://api.my-tei-service.com/rerank",
+            json={"query": "test query", "texts": ["keep me", "unique"], "raw_scores": False},
+            timeout=30,
+            headers={},
+            attempts=3,
+            status_codes_to_retry=None,
+        )
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "unique"
+        assert result["documents"][1].content == "keep me"
+
+    @pytest.mark.asyncio
+    @patch("haystack.components.rankers.hugging_face_tei.async_request_with_retry")
     async def test_run_async_empty_documents(self, mock_request, monkeypatch):
         """Test run_async with empty documents list"""
         # Ensure we're not using system environment variables
