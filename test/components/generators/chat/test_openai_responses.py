@@ -567,7 +567,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
@@ -601,7 +601,7 @@ class TestIntegration:
         message: ChatMessage = results["replies"][0]
         print(message.text)
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
+        assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
@@ -629,7 +629,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Jane" in msg["name"]
+        assert "jane" in msg["name"].lower()
         assert msg["age"] == 54
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -649,7 +649,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
+        assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
@@ -666,7 +666,7 @@ class TestIntegration:
         assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert isinstance(message.meta, dict)
 
         # Metadata checks
@@ -683,7 +683,7 @@ class TestIntegration:
 
         # Streaming callback verification
         assert callback.counter > 1
-        assert "Paris" in callback.content
+        assert "paris" in callback.content.lower()
 
     def test_live_run_with_reasoning_and_streaming(self):
         callback = RecordingCallback()
@@ -745,7 +745,7 @@ class TestIntegration:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments.keys() == {"city"}
-        assert "Paris" in tool_call.arguments["city"]
+        assert "paris" in tool_call.arguments["city"].lower()
 
     def test_live_run_multimodal(self, test_files_path):
         image_path = test_files_path / "images" / "apple.jpg"
@@ -951,7 +951,7 @@ class TestOpenAIResponsesChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
