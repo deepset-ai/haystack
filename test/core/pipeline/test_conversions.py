@@ -110,7 +110,7 @@ class TestImplicitConversions:
         @component
         class OptionalChatMessageOutput:
             @component.output_types(message=ChatMessage | None)
-            def run(self):
+            def run(self) -> dict[str, Any]:
                 return {"message": ChatMessage.from_assistant("Hello")}
 
         pipe = Pipeline()
@@ -124,7 +124,7 @@ class TestImplicitConversions:
         @component
         class OptionalChatMessageInput:
             @component.output_types(message=ChatMessage | None)
-            def run(self, message: ChatMessage | None):
+            def run(self, message: ChatMessage | None) -> dict[str, Any]:
                 return {"message": message}
 
         pipe = Pipeline()
@@ -140,7 +140,7 @@ class TestImplicitConversions:
         @component
         class ImageOnlyMessageOutput:
             @component.output_types(message=ChatMessage)
-            def run(self):
+            def run(self) -> dict[str, Any]:
                 return {"message": ChatMessage.from_user(content_parts=[ImageContent(base64_image="YWI=")])}
 
         pipe = Pipeline()
