@@ -506,8 +506,8 @@ class PipelineBase:  # noqa: PLW1641
             if not self._connection_type_validation or is_compat:
                 possible_connections.append((sender_sock, receiver_sock, is_strict))
 
-        # If there are multiple possibilities, and we are using type validation,
-        # prioritize strict matches over convertible ones.
+        # If there are multiple possibilities, prioritize strict matches over convertible ones.
+        # This ensures backward compatibility: previously, pipelines did not allow type conversion.
         if len(possible_connections) > 1 and self._connection_type_validation:
             strict_matches = [
                 (out_sock, in_sock, is_strict) for out_sock, in_sock, is_strict in possible_connections if is_strict
@@ -1308,7 +1308,7 @@ class PipelineBase:  # noqa: PLW1641
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
             if value is not _NO_OUTPUT_PRODUCED and convert:
-                value = _convert_value(value, sender_socket.type, receiver_socket.type)
+                value = _convert_value(value, sender_socket, receiver_socket)
 
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
@@ -1433,8 +1433,7 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching input socket in the entry point
                     entry_point_sockets = internal_graph.nodes[entry_point]["input_sockets"]
                     for socket_name, socket in entry_point_sockets.items():
-                        is_compat, _ = _types_are_compatible(sender_socket.type, socket.type)
-                        if not self._connection_type_validation or is_compat:
+                        if _types_are_compatible(sender_socket.type, socket.type)[0]:
                             merged_graph.add_edge(
                                 sender,
                                 entry_point,
@@ -1452,8 +1451,7 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching output socket in the exit point
                     exit_point_sockets = internal_graph.nodes[exit_point]["output_sockets"]
                     for socket_name, socket in exit_point_sockets.items():
-                        is_compat, _ = _types_are_compatible(socket.type, receiver_socket.type)
-                        if not self._connection_type_validation or is_compat:
+                        if _types_are_compatible(socket.type, receiver_socket.type)[0]:
                             merged_graph.add_edge(
                                 exit_point,
                                 receiver,

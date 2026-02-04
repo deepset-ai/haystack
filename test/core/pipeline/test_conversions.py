@@ -149,5 +149,5 @@ class TestImplicitConversions:
         pipe.connect("src.message", "dest.text")
 
         # Should fail because StringInput expects str, but we produced None (no text)
-        with pytest.raises(ValueError, match="Cannot convert ChatMessage to str because it has no text."):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text."):
             pipe.run({})

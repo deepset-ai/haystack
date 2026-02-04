@@ -6,25 +6,33 @@ import collections.abc
 from types import NoneType, UnionType
 from typing import Any, TypeVar, Union, get_args, get_origin
 
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.dataclasses import ChatMessage
 
 T = TypeVar("T")
 
 
-def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType) -> tuple[bool, bool]:
+def _types_are_compatible(
+    sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True
+) -> tuple[bool, bool]:
     """
-    Checks if two types are compatible and if they are strictly compatible.
+    Determines if two types are compatible based on the specified validation mode.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
-    :return: A tuple where the first element is True if the types are compatible (either strictly or via conversion),
-             and the second element is True if they are strictly compatible.
+    :param type_validation: Whether to perform strict type validation.
+    :return: A tuple where the first element is True if the types are compatible, and the second
+             element is True if they are strictly compatible.
     """
-    strict = _strict_types_are_compatible(sender, receiver)
-    if strict:
+    if not type_validation:
         return True, True
+
+    if _strict_types_are_compatible(sender, receiver):
+        return True, True
+
     if _types_are_convertible(sender, receiver):
         return True, False
+
     return False, False
 
 
@@ -47,63 +55,54 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
     return origin
 
 
-def _is_type(t: Any, target: type) -> bool:
-    """Checks if target is present in t (handles Union/Optional)."""
-    args = get_args(t) if _safe_get_origin(t) is Union else (t,)
-    return any(arg == target for arg in args)
+def _contains_type(container: Any, target: Any) -> bool:
+    """Checks if the container type includes the target type"""
+    if container is target:
+        return True
+    return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _can_be_none(t: Any) -> bool:
-    """Checks if a type can be None (e.g., Optional[T] or Union[T, None])."""
-    return t is NoneType or (_safe_get_origin(t) is Union and any(arg is NoneType for arg in get_args(t)))
-
-
-def _types_are_convertible(sender, receiver):
+def _types_are_convertible(sender: Any, receiver: Any) -> bool:
     """
     Checks whether the sender type is convertible to the receiver type.
 
     ChatMessage is convertible to str and vice versa.
     """
-    # Strict Nullability: Optional[T] should not connect to T
-    if _can_be_none(sender) and not _can_be_none(receiver):
+    # Optional[T] must not connect to T
+    if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
         return False
 
-    s_is_chat, r_is_chat = _is_type(sender, ChatMessage), _is_type(receiver, ChatMessage)
-    s_is_str, r_is_str = _is_type(sender, str), _is_type(receiver, str)
-    return (s_is_chat and r_is_str) or (s_is_str and r_is_chat)
+    return (_contains_type(sender, ChatMessage) and _contains_type(receiver, str)) or (
+        _contains_type(sender, str) and _contains_type(receiver, ChatMessage)
+    )
 
 
-def _convert_base(value: Any, s_t: Any, r_t: Any) -> Any:
-    """Performs the actual transformation between str and ChatMessage."""
-
-    if _is_type(s_t, ChatMessage) and _is_type(r_t, str):
-        if value.text is None:
-            raise ValueError("Cannot convert ChatMessage to str because it has no text.")
-        return value.text
-    if _is_type(s_t, str) and _is_type(r_t, ChatMessage):
-        return ChatMessage.from_user(value)
-    return value
-
-
-def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
+def _convert_value(value: Any, sender: OutputSocket, receiver: InputSocket) -> Any:
     """
     Converts a value from the sender type to the receiver type at runtime without checking for compatibility.
 
     :param value: The value to convert.
-    :param sender_type: The type of the value.
+    :param sender: The sender socket.
+    :param receiver: The receiver socket.
     :param receiver_type: The type to convert to.
     :return: The converted value.
     """
-    # 3. Base: ChatMessage <-> str
-    if value is None:
-        if _can_be_none(receiver_type):
-            return None
-        raise ValueError(f"Cannot convert None to non-optional type {receiver_type}.")
+    sender_type = sender.type
+    receiver_type = receiver.type
 
-    converted = _convert_base(value, sender_type, receiver_type)
-    if converted is None and not _can_be_none(receiver_type):
-        raise ValueError(f"Conversion of {value} to {receiver_type} resulted in None.")
-    return converted
+    if _contains_type(sender_type, ChatMessage) and _contains_type(receiver_type, str):
+        if value.text is None:
+            msg = (
+                f"Failed conversion from `{sender.name}` to `{receiver.name}`. "
+                "Cannot convert `ChatMessage` to `str` because it has no text. "
+            )
+            raise ValueError(msg)
+        return value.text
+
+    if _contains_type(sender_type, str) and _contains_type(receiver_type, ChatMessage):
+        return ChatMessage.from_user(value)
+
+    return value
 
 
 def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
