@@ -18,11 +18,13 @@ from haystack.core.errors import (
     PipelineDrawingError,
     PipelineError,
     PipelineMaxComponentRuns,
+    PipelineRuntimeError,
 )
-from haystack.core.pipeline import PredefinedPipeline
+from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
+from haystack.dataclasses import ChatMessage
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
 
@@ -1198,7 +1200,7 @@ class TestPipelineBase:
         if existing_inputs:
             inputs = {"receiver1": {socket_name: existing_inputs}}
         component_outputs = {"output1": 42}
-        PipelineBase._write_component_outputs(
+        PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
@@ -1222,7 +1224,7 @@ class TestPipelineBase:
     ):
         """Test output pruning behavior under different scenarios"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
-        pruned_outputs = PipelineBase._write_component_outputs(
+        pruned_outputs = PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs={},
@@ -1243,7 +1245,7 @@ class TestPipelineBase:
         receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
         component_outputs = {"output1": output_value}
         inputs: dict[str, Any] = {}
-        PipelineBase._write_component_outputs(
+        PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
@@ -1258,7 +1260,7 @@ class TestPipelineBase:
         receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
         component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
         inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
-        PipelineBase._write_component_outputs(
+        PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
@@ -1279,7 +1281,7 @@ class TestPipelineBase:
         component_outputs = {"output1": 42}
 
         inputs: dict[str, Any] = {}
-        PipelineBase._write_component_outputs(
+        PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
             inputs=inputs,
@@ -1291,6 +1293,58 @@ class TestPipelineBase:
             receiver_name = f"receiver{i}"
             assert receiver_name in inputs
             assert inputs[receiver_name]["input1"] == [{"sender": "sender1", "value": 42}]
+
+    def test__write_component_outputs_conversion_chat_message(self):
+        # ChatMessage to str
+        out = OutputSocket("output1", ChatMessage, receivers=["receiver1"])
+        inp = InputSocket("input1", str, senders=["sender1"])
+        receivers = [("receiver1", out, inp, True)]
+        component_outputs: dict = {"output1": ChatMessage.from_user("Hello")}
+        inputs: dict = {}
+        PipelineBase()._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs=inputs,
+            receivers=receivers,
+            include_outputs_from=set(),
+        )
+        assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": "Hello"}]
+
+        # str to ChatMessage
+        out = OutputSocket("output1", str, receivers=["receiver1"])
+        inp = InputSocket("input1", ChatMessage, senders=["sender1"])
+        receivers = [("receiver1", out, inp, True)]
+        component_outputs = {"output1": "Hello"}
+        inputs = {}
+        PipelineBase()._write_component_outputs(
+            component_name="sender1",
+            component_outputs=component_outputs,
+            inputs=inputs,
+            receivers=receivers,
+            include_outputs_from=set(),
+        )
+        assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": ChatMessage.from_user("Hello")}]
+
+    def test__write_component_outputs_conversion_chat_message_no_text(self):
+        @component
+        class ChatMessageOutputter:
+            @component.output_types(message=ChatMessage)
+            def run(self):
+                return {"message": ChatMessage.from_assistant()}
+
+        @component
+        class StringReceiver:
+            @component.output_types(text=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"text": text}
+
+        pipe = Pipeline()
+        pipe.add_component("sender", ChatMessageOutputter())
+        pipe.add_component("receiver", StringReceiver())
+        pipe.connect("sender.message", "receiver.text")
+
+        with pytest.raises(PipelineRuntimeError, match="Failed to perform conversion between components:"):
+            pipe.run({})
 
     def test__get_next_runnable_component_empty(self):
         """Test with empty queue returns None"""
@@ -1861,6 +1915,71 @@ class TestPipelineConnect:
         inp_socket.wrap_input_in_list = False
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
+
+    def test_connect_with_conversion(self):
+        @component
+        class ChatMessageOutput:
+            @component.output_types(message=ChatMessage)
+            def run(self) -> dict[str, ChatMessage]:
+                return {"message": ChatMessage.from_assistant("Hello")}
+
+        @component
+        class StringInput:
+            @component.output_types(text=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"text": text}
+
+        chat_message_output = ChatMessageOutput()
+        string_input = StringInput()
+
+        pipe = PipelineBase()
+        pipe.add_component("chat_message_output", chat_message_output)
+        pipe.add_component("string_input", string_input)
+        pipe.connect("chat_message_output.message", "string_input.text")
+
+        assert chat_message_output.__haystack_output__.message.receivers == ["string_input"]  # type: ignore[attr-defined]
+        assert string_input.__haystack_input__.text.senders == ["chat_message_output"]  # type: ignore[attr-defined]
+        assert list(pipe.graph.edges) == [("chat_message_output", "string_input", "message/text")]
+
+    def test_connect_prioritizes_strict_connections(self):
+        """
+        Test that when connecting a component with multiple convertible output sockets to another component
+        the strict connection is prioritized over the convertible one.
+        """
+
+        @component
+        class MultiOutputComponent:
+            @component.output_types(message=ChatMessage, string=str)
+            def run(self) -> dict[str, ChatMessage | str]:
+                return {"message": ChatMessage.from_assistant("Hello"), "string": "Hello"}
+
+        @component
+        class ComponentStrInput:
+            @component.output_types(string=str)
+            def run(self, string: str) -> dict[str, str]:
+                return {"string": string}
+
+        multi_output_component = MultiOutputComponent()
+        component_str_input = ComponentStrInput()
+
+        pipe = PipelineBase()
+        pipe.add_component("multi_output_component", multi_output_component)
+        pipe.add_component("component_str_input", component_str_input)
+        pipe.connect("multi_output_component", "component_str_input")
+
+        connections = list(pipe.graph.edges(data=True))
+        assert len(connections) == 1
+        assert connections[0] == (
+            "multi_output_component",
+            "component_str_input",
+            {
+                "conn_type": "str",
+                "convert": False,
+                "from_socket": OutputSocket(name="string", type=str, receivers=["component_str_input"]),
+                "to_socket": InputSocket(name="string", type=str, senders=["multi_output_component"]),
+                "mandatory": True,
+            },
+        )
 
 
 class TestValidateInput:

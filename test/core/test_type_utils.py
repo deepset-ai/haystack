@@ -10,7 +10,13 @@ from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Option
 import pytest
 
 from haystack.core.component.types import Variadic
-from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    _contains_type,
+    _convert_value,
+    _type_name,
+    _types_are_compatible,
+    _types_are_convertible,
+)
 from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
 
 
@@ -863,3 +869,40 @@ if sys.version_info >= (3, 10):
     @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases_pep_604)
     def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_type):
         assert _types_are_compatible(sender_type, receiver_type)[0]
+
+
+@pytest.mark.parametrize("sender_type, receiver_type", [(ChatMessage, str), (str, ChatMessage)])
+def test_types_are_compatible_convertible(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (True, False)
+
+
+def test_contains_type():
+    assert _contains_type(container=str, target=str) is True
+    assert _contains_type(container=Union[bool, str], target=str) is True
+    assert _contains_type(container=Union[bool, str], target=bool) is True
+    assert _contains_type(container=Union[bool, str], target=Union[bool, str]) is True
+    assert _contains_type(container=Union[bool, str], target=int) is False
+    assert _contains_type(container=Optional[str], target=str) is True
+
+
+def test_types_are_convertible():
+    assert _types_are_convertible(sender=Optional[str], receiver=str) is False
+    assert _types_are_convertible(sender=str, receiver=Optional[str]) is True
+    assert _types_are_convertible(sender=ChatMessage, receiver=str) is True
+    assert _types_are_convertible(sender=str, receiver=ChatMessage) is True
+    assert _types_are_convertible(sender=int, receiver=str) is False
+
+
+def test_convert_value():
+    with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+        _convert_value(value=ChatMessage.from_assistant(), sender_type=ChatMessage, receiver_type=str)
+
+    assert (
+        _convert_value(value=ChatMessage.from_assistant("Hello"), sender_type=ChatMessage, receiver_type=str) == "Hello"
+    )
+    assert (
+        _convert_value(value=ChatMessage.from_assistant("Hello"), sender_type=ChatMessage, receiver_type=Optional[str])
+        == "Hello"
+    )
+    assert _convert_value(value="Hello", sender_type=str, receiver_type=ChatMessage) == ChatMessage.from_user("Hello")
+    assert _convert_value(value="Hello", sender_type=str, receiver_type=str) == "Hello"

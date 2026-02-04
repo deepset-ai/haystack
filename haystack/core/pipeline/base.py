@@ -21,6 +21,7 @@ from haystack.core.errors import (
     PipelineDrawingError,
     PipelineError,
     PipelineMaxComponentRuns,
+    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
@@ -498,6 +499,8 @@ class PipelineBase:  # noqa: PLW1641
         receiver_socket_candidates: list[InputSocket] = (
             [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
+
+        is_strict_match = True
 
         # Find all possible connections between these two components
         possible_connections: list[tuple[OutputSocket, InputSocket, bool]] = []
@@ -1285,8 +1288,8 @@ class PipelineBase:  # noqa: PLW1641
 
         return component_name, topological_sort
 
-    @staticmethod
     def _write_component_outputs(
+        self,
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
@@ -1310,7 +1313,32 @@ class PipelineBase:  # noqa: PLW1641
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
             if value is not _NO_OUTPUT_PRODUCED and convert:
-                value = _convert_value(value, sender_socket, receiver_socket)
+                try:
+                    value = _convert_value(
+                        value=value, sender_type=sender_socket.type, receiver_type=receiver_socket.type
+                    )
+                except Exception as e:
+                    sender_node = self.graph.nodes.get(component_name)
+                    sender_instance = sender_node.get("instance") if sender_node else None
+                    sender_type = type(sender_instance) if sender_instance else None
+                    sender_type_name = sender_type.__name__ if sender_type else "unknown"
+
+                    receiver_node = self.graph.nodes.get(receiver_name)
+                    receiver_instance = receiver_node.get("instance") if receiver_node else None
+                    receiver_type = type(receiver_instance) if receiver_instance else None
+                    receiver_type_name = receiver_type.__name__ if receiver_type else "unknown"
+
+                    msg = (
+                        f"Failed to perform conversion between components:\n"
+                        f"Sender component: '{component_name}' (type: '{sender_type_name}')\n"
+                        f"Sender socket: '{sender_socket.name}'\n"
+                        f"Receiver component: '{receiver_name}' (type: '{receiver_type_name}')\n"
+                        f"Receiver socket: '{receiver_socket.name}'\n"
+                        f"Error: {e}"
+                    )
+                    raise PipelineRuntimeError(
+                        component_name=component_name, component_type=sender_type, message=msg
+                    ) from e
 
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}

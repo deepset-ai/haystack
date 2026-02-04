@@ -4,17 +4,12 @@
 
 import collections.abc
 from types import NoneType, UnionType
-from typing import Any, TypeVar, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
-from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.dataclasses import ChatMessage
 
-T = TypeVar("T")
 
-
-def _types_are_compatible(
-    sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True
-) -> tuple[bool, bool]:
+def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, bool]:
     """
     Determines if two types are compatible based on the specified validation mode.
 
@@ -36,7 +31,7 @@ def _types_are_compatible(
     return False, False
 
 
-def _safe_get_origin(_type: type | UnionType) -> type | None:
+def _safe_get_origin(_type: Any) -> type | None:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 
@@ -55,14 +50,14 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
     return origin
 
 
-def _contains_type(container: Any, target: type) -> bool:
+def _contains_type(container: Any, target: Any) -> bool:
     """Checks if the container type includes the target type"""
     if container is target:
         return True
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _types_are_convertible(sender: type | UnionType, receiver: type | UnionType) -> bool:
+def _types_are_convertible(sender: Any, receiver: Any) -> bool:
     """
     Checks whether the sender type is convertible to the receiver type.
 
@@ -72,29 +67,27 @@ def _types_are_convertible(sender: type | UnionType, receiver: type | UnionType)
     if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
         return False
 
-    return (_contains_type(sender, ChatMessage) and _contains_type(receiver, str)) or (
-        _contains_type(sender, str) and _contains_type(receiver, ChatMessage)
-    )
+    if _contains_type(receiver, sender):
+        return True
+
+    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+        return True
+
+    return _contains_type(sender, str) and _contains_type(receiver, ChatMessage)
 
 
-def _convert_value(value: Any, sender: OutputSocket, receiver: InputSocket) -> Any:
+def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
     """
     Converts a value from the sender type to the receiver type.
 
     :param value: The value to convert.
-    :param sender: The sender socket.
-    :param receiver: The receiver socket.
+    :param sender_type: The sender type.
+    :param receiver_type: The receiver type.
     :return: The converted value.
     """
-    sender_type = sender.type
-    receiver_type = receiver.type
-
     if _contains_type(sender_type, ChatMessage) and _contains_type(receiver_type, str):
         if value.text is None:
-            msg = (
-                f"Failed conversion from `{sender.name}` to `{receiver.name}`. "
-                "Cannot convert `ChatMessage` to `str` because it has no text. "
-            )
+            msg = "Cannot convert `ChatMessage` to `str` because it has no text. "
             raise ValueError(msg)
         return value.text
 
@@ -121,11 +114,12 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint:
     if sender is Any:
         return False
 
-    try:
-        if issubclass(sender, receiver):
-            return True
-    except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
-        pass
+    if isinstance(sender, type) and isinstance(receiver, type):
+        try:
+            if issubclass(sender, receiver):
+                return True
+        except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
+            pass
 
     sender_origin = _safe_get_origin(sender)
     receiver_origin = _safe_get_origin(receiver)
@@ -157,21 +151,36 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint:
 
 
 def _check_callable_compatibility(sender_args: tuple[Any, ...], receiver_args: tuple[Any, ...]) -> bool:
-    """Helper function to check compatibility of Callable types"""
+    """
+    Helper function to check compatibility of Callable types.
+
+    For Callable types, args structure is ([param_types], return_type).
+    The args come from get_args() which returns tuple[Any, ...].
+    """
     if not receiver_args:
         return True
     if not sender_args:
-        sender_args = ([Any] * len(receiver_args[0]), Any)
+        first_receiver = receiver_args[0]
+        param_count = len(first_receiver) if isinstance(first_receiver, list) else 0
+        sender_args = ([Any] * param_count, Any)
     # Standard Callable has two elements in args: argument list and return type
     if len(sender_args) != 2 or len(receiver_args) != 2:
         return False
+
+    sender_params, sender_return = sender_args
+    receiver_params, receiver_return = receiver_args
+
     # Return types must be compatible
-    if not _strict_types_are_compatible(sender_args[1], receiver_args[1]):
+    if not _strict_types_are_compatible(sender_return, receiver_return):
         return False
+
     # Input Arguments must be of same length
-    if len(sender_args[0]) != len(receiver_args[0]):
+    if not isinstance(sender_params, list) or not isinstance(receiver_params, list):
         return False
-    return all(_strict_types_are_compatible(sender_args[0][i], receiver_args[0][i]) for i in range(len(sender_args[0])))
+    if len(sender_params) != len(receiver_params):
+        return False
+
+    return all(_strict_types_are_compatible(sender_params[i], receiver_params[i]) for i in range(len(sender_params)))
 
 
 def _type_name(type_: Any) -> str:
