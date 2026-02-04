@@ -6,6 +6,8 @@ import collections.abc
 from types import NoneType, UnionType
 from typing import Any, TypeVar, Union, get_args, get_origin
 
+from haystack.dataclasses import ChatMessage
+
 T = TypeVar("T")
 
 
@@ -19,9 +21,8 @@ def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType, 
     :return: True if the types are compatible, False otherwise.
     """
     if type_validation:
-        return _strict_types_are_compatible(sender, receiver)
-    else:
-        return True
+        return _strict_types_are_compatible(sender, receiver) or _types_are_convertible(sender, receiver)
+    return True
 
 
 def _safe_get_origin(_type: type | UnionType) -> type | None:
@@ -43,13 +44,74 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
     return origin
 
 
+def _is_type(t: Any, target: type) -> bool:
+    """Checks if target is present in t (handles Union/Optional)."""
+    args = get_args(t) if _safe_get_origin(t) is Union else (t,)
+    return any(arg == target for arg in args)
+
+
+def _can_be_none(t: Any) -> bool:
+    """Checks if a type can be None (e.g., Optional[T] or Union[T, None])."""
+    return t is NoneType or (_safe_get_origin(t) is Union and any(arg is NoneType for arg in get_args(t)))
+
+
+def _types_are_convertible(sender, receiver):
+    """
+    Checks whether the sender type is convertible to the receiver type.
+
+    ChatMessage is convertible to str and vice versa.
+    """
+    # Strict Nullability: Optional[T] should not connect to T
+    if _can_be_none(sender) and not _can_be_none(receiver):
+        return False
+
+    s_is_chat, r_is_chat = _is_type(sender, ChatMessage), _is_type(receiver, ChatMessage)
+    s_is_str, r_is_str = _is_type(sender, str), _is_type(receiver, str)
+    return (s_is_chat and r_is_str) or (s_is_str and r_is_chat)
+
+
+def _convert_base(value: Any, s_t: Any, r_t: Any) -> Any:
+    """Performs the actual transformation between str and ChatMessage."""
+
+    if _is_type(s_t, ChatMessage) and _is_type(r_t, str):
+        if value.text is None:
+            raise ValueError("Cannot convert ChatMessage to str because it has no text.")
+        return value.text
+    if _is_type(s_t, str) and _is_type(r_t, ChatMessage):
+        return ChatMessage.from_user(value)
+    return value
+
+
+def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
+    """
+    Converts a value from the sender type to the receiver type at runtime.
+    :param value: The value to convert.
+    :param sender_type: The type of the value.
+    :param receiver_type: The type to convert to.
+    :return: The converted value.
+    """
+    if _strict_types_are_compatible(sender_type, receiver_type):
+        return value
+
+    s_origin, r_origin = _safe_get_origin(sender_type), _safe_get_origin(receiver_type)
+
+    # 3. Base: ChatMessage <-> str
+    if value is None:
+        if _can_be_none(receiver_type):
+            return None
+        raise ValueError(f"Cannot convert None to non-optional type {receiver_type}.")
+
+    converted = _convert_base(value, sender_type, receiver_type)
+    if converted is None and not _can_be_none(receiver_type):
+        raise ValueError(f"Conversion of {value} to {receiver_type} resulted in None.")
+    return converted
+
+
 def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
-    Note: this method has no pretense to perform proper type matching. It especially does not deal with aliasing of
-    typing classes such as `List` or `Dict` to their runtime counterparts `list` and `dict`. It also does not deal well
-    with "bare" types, so `List` is treated differently from `List[Any]`, even though they should be the same.
+    Note: this method has no pretense to perform complete type matching.
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
 
     :param sender: The sender type.

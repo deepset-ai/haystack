@@ -39,7 +39,13 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import _safe_get_origin, _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    _convert_value,
+    _safe_get_origin,
+    _strict_types_are_compatible,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -505,6 +511,17 @@ class PipelineBase:  # noqa: PLW1641
             if _types_are_compatible(sender_sock.type, receiver_sock.type, self._connection_type_validation):
                 possible_connections.append((sender_sock, receiver_sock))
 
+        # If there are multiple possibilities, and we are using type validation,
+        # prioritize strict matches over convertible ones.
+        if len(possible_connections) > 1 and self._connection_type_validation:
+            strict_matches = [
+                (out_sock, in_sock)
+                for out_sock, in_sock in possible_connections
+                if _strict_types_are_compatible(out_sock.type, in_sock.type)
+            ]
+            if strict_matches:
+                possible_connections = strict_matches
+
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(
             sender_node=sender_component_name,
@@ -613,6 +630,7 @@ class PipelineBase:  # noqa: PLW1641
             from_socket=sender_socket,
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
+            convert=not _strict_types_are_compatible(sender_socket.type, receiver_socket.type),
         )
         return self
 
@@ -1017,7 +1035,7 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket]]:
+    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, bool]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 
@@ -1025,14 +1043,15 @@ class PipelineBase:  # noqa: PLW1641
             Name of the sender Component
 
         :returns:
-            List of tuples containing name of the receiver Component and sender OutputSocket
-            and receiver InputSocket instances
+            List of tuples containing name of the receiver Component, sender OutputSocket,
+            receiver InputSocket instances, and a boolean indicating if conversion is needed.
         """
         res = []
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
             receiver_socket: InputSocket = connection["to_socket"]
-            res.append((receiver_name, sender_socket, receiver_socket))
+            convert: bool = connection.get("convert", False)
+            res.append((receiver_name, sender_socket, receiver_socket, convert))
         return res
 
     @staticmethod
@@ -1272,7 +1291,7 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
-        receivers: list[tuple[str, OutputSocket, InputSocket]],
+        receivers: list[tuple[str, OutputSocket, InputSocket, bool]],
         include_outputs_from: set[str],
     ) -> Mapping[str, Any]:
         """
@@ -1281,15 +1300,18 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of tuples containing name of the receiver Component and sender OutputSocket
-            and receiver InputSocket instances.
+        :param receivers: List of tuples containing name of the receiver Component, sender OutputSocket,
+            receiver InputSocket instances, and a boolean indicating if conversion is needed.
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
-        for receiver_name, sender_socket, receiver_socket in receivers:
+        for receiver_name, sender_socket, receiver_socket, convert in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+
+            if value is not _NO_OUTPUT_PRODUCED and convert:
+                value = _convert_value(value, sender_socket.type, receiver_socket.type)
 
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
@@ -1322,7 +1344,7 @@ class PipelineBase:  # noqa: PLW1641
 
         # We prune outputs that were consumed by any receiving sockets.
         # All remaining outputs will be added to the final outputs of the pipeline.
-        consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers}
+        consumed_outputs = {sender_socket.name for _, sender_socket, __, ___ in receivers}
         pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
 
         return pruned_outputs
