@@ -10,7 +10,7 @@ description: "Learn how Haystack pipelines simplify connections through implicit
 Haystack pipelines support smarter connection semantics that reduce boilerplate and make pipeline definitions easier to read and maintain.
 These features focus on simplifying how components are connected, without changing component behavior.
 
-Smart connections help eliminate common glue components such as `Joiners` and `OutputAdapters` in many pipelines.
+Smart connections help eliminate common glue components such as `Joiners` in many pipelines.
 
 ## Implicit List Joining
 
@@ -57,33 +57,14 @@ result = pipe.run({"router": {"sources": sources}})
 
 This pattern is especially useful when routing files, documents, or results across multiple parallel branches.
 
-## Flexible Type Connections
 
-To further streamline pipeline definitions, Haystack pipelines support limited implicit type adaptation at connection time.
-This makes pipeline connections more flexible and reduces the need for `OutputAdapter` components.
+## When You Still Need `Joiners`
 
-Supported implicit adaptations include:
-
-- `str` can connect to `ChatMessage`
-- `ChatMessage` can connect to `str`
-- `T` can connect to `list[T]`
-- `list[str | ChatMessage]` can connect to `str` or `ChatMessage`
-
-Valid adaptations are checked at connection time to ensure type safety.
-The adaptations themselves are only applied at run time when the pipeline executes.
-
-### Why this matters
-
-Previously, pipelines often required output adapters to normalize outputs between components.
-With these flexible connections built-in, many common cases no longer need explicit adapters.
-
-## When You Still Need `Joiners` or `OutputAdapters`
-
-Explicit `Joiners` or `OutputAdapters` are still useful when you need:
+Explicit `Joiners` are still useful when you need:
 
 - Custom aggregation logic beyond simple list concatenation
 - Type conversions not covered by implicit adaptation
-- Explicit control over formatting or ordering
+- Explicit control over ordering
 
 Smart connections reduce the need for glue components, but they do not remove them entirely.
 When in doubt, explicit components provide clarity and more control.
