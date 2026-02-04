@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Deduplicate documents in Rankers.
