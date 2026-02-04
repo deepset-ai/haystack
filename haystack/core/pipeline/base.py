@@ -500,7 +500,7 @@ class PipelineBase:  # noqa: PLW1641
         )
 
         # Find all possible connections between these two components
-        possible_connections = []
+        possible_connections: list[tuple[OutputSocket, InputSocket, bool]] = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
             is_compat, is_strict = _types_are_compatible(sender_sock.type, receiver_sock.type)
             if not self._connection_type_validation or is_compat:
@@ -513,7 +513,7 @@ class PipelineBase:  # noqa: PLW1641
                 (out_sock, in_sock, is_strict) for out_sock, in_sock, is_strict in possible_connections if is_strict
             ]
             if strict_matches:
-                possible_connections = strict_matches
+                possible_connections[:] = strict_matches
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(

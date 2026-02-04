@@ -55,14 +55,14 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
     return origin
 
 
-def _contains_type(container: Any, target: Any) -> bool:
+def _contains_type(container: Any, target: type) -> bool:
     """Checks if the container type includes the target type"""
     if container is target:
         return True
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _types_are_convertible(sender: Any, receiver: Any) -> bool:
+def _types_are_convertible(sender: type | UnionType, receiver: type | UnionType) -> bool:
     """
     Checks whether the sender type is convertible to the receiver type.
 
@@ -84,7 +84,6 @@ def _convert_value(value: Any, sender: OutputSocket, receiver: InputSocket) -> A
     :param value: The value to convert.
     :param sender: The sender socket.
     :param receiver: The receiver socket.
-    :param receiver_type: The type to convert to.
     :return: The converted value.
     """
     sender_type = sender.type
@@ -105,7 +104,7 @@ def _convert_value(value: Any, sender: OutputSocket, receiver: InputSocket) -> A
     return value
 
 
-def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
+def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
@@ -157,7 +156,7 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
     )
 
 
-def _check_callable_compatibility(sender_args, receiver_args):
+def _check_callable_compatibility(sender_args: tuple[Any, ...], receiver_args: tuple[Any, ...]) -> bool:
     """Helper function to check compatibility of Callable types"""
     if not receiver_args:
         return True
