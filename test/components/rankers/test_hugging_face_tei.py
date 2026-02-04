@@ -236,6 +236,39 @@ class TestHuggingFaceTEIRanker:
         assert result["documents"][1].content == "Document 3"
 
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
+    def test_run_deduplicates_documents(self, mock_request, monkeypatch):
+        """Test that duplicate documents are removed before sending to the API."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
+        mock_response = MagicMock(spec=requests.Response)
+        mock_response.json.return_value = [{"index": 1, "score": 0.9}, {"index": 0, "score": 0.2}]
+        mock_request.return_value = mock_response
+
+        ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
+        # Document with duplicate id and lower score should be dropped
+        docs = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+
+        result = ranker.run(query="test query", documents=docs)
+
+        mock_request.assert_called_once_with(
+            method="POST",
+            url="https://api.my-tei-service.com/rerank",
+            json={"query": "test query", "texts": ["keep me", "unique"], "raw_scores": False},
+            timeout=30,
+            headers={},
+            attempts=3,
+            status_codes_to_retry=None,
+        )
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "unique"
+        assert result["documents"][1].content == "keep me"
+
+    @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
     def test_error_handling(self, mock_request, monkeypatch):
         """Test error handling in the ranker"""
         # Ensure we're not using system environment variables
