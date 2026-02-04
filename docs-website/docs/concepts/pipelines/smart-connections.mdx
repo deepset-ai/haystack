@@ -27,6 +27,8 @@ When multiple outputs are connected to the same input, the pipeline implicitly c
 
 Multiple converters can write directly into a single `DocumentWriter` without using a `DocumentJoiner`:
 
+<ClickableImage src="/img/pipeline-illustration-auto-joiner.png" alt="Pipeline architecture diagram showing a DocumentWriter receiving inputs from multiple converters without a Joiner" size="large" />
+
 ```python
 from haystack import Pipeline
 from haystack.components.converters import HTMLToDocument, TextFileToDocument
