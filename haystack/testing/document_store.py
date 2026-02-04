@@ -187,6 +187,9 @@ class DeleteDocumentsTest:
         This test verifies that delete_all_documents() removes all documents from the store
         and that the store remains functional after deletion.
         """
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
         # Write some documents
         docs = [Document(content="first doc", id="1"), Document(content="second doc", id="2")]
         document_store.write_documents(docs)
@@ -208,6 +211,9 @@ class DeleteDocumentsTest:
 
         This should not raise an error and should leave the store empty.
         """
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
         assert document_store.count_documents() == 0
         document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
@@ -220,6 +226,9 @@ class DeleteDocumentsTest:
         This test only runs for stores that support the recreate_index parameter.
         Stores that don't support this parameter will skip this test.
         """
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
         # Check if delete_all_documents supports recreate_index parameter
         sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
         if "recreate_index" not in sig.parameters:
@@ -249,6 +258,9 @@ class DeleteDocumentsTest:
         recreate_index parameter.
         """
         # Check if delete_all_documents supports recreate_index parameter
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
         sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
         if "recreate_index" not in sig.parameters:
             pytest.skip("Store doesn't support recreate_index parameter")
