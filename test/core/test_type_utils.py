@@ -450,17 +450,17 @@ def test_type_name(type_, repr_):
 
 @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases)
 def test_same_types_are_compatible_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, True)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_compatible_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, True)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(receiver_type, sender_type, True)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 incompatible_type_cases = [
@@ -573,7 +573,7 @@ incompatible_type_cases = [
 
 @pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
 def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -586,7 +586,7 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
     ],
 )
 def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -604,9 +604,9 @@ def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, rec
     ],
 )
 def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
     # Bare container types should not be compatible with their typed counterparts
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -625,8 +625,8 @@ def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_t
 )
 def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
     # Both are compatible
-    assert _types_are_compatible(sender_type, receiver_type)
-    assert _types_are_compatible(receiver_type, sender_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+    assert _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -641,8 +641,8 @@ def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
 )
 def test_always_incompatible_bare_types(sender_type, receiver_type):
     # Neither are compatible
-    assert not _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -691,9 +691,9 @@ def test_always_incompatible_bare_types(sender_type, receiver_type):
     ],
 )
 def test_nested_container_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
     # Bare container types should not be compatible with their typed counterparts
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -705,8 +705,8 @@ def test_nested_container_compatibility(sender_type, receiver_type):
     ],
 )
 def test_callable_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -728,9 +728,9 @@ def test_callable_compatibility(sender_type, receiver_type):
     ],
 )
 def test_nested_callable_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
     # Bare callable container types should not be compatible with their typed counterparts
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -749,8 +749,8 @@ def test_nested_callable_compatibility(sender_type, receiver_type):
     ],
 )
 def test_always_incompatible_callable_types(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 if sys.version_info >= (3, 10):
@@ -857,9 +857,9 @@ if sys.version_info >= (3, 10):
     @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
     @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases_pep_604)
     def test_same_types_are_compatible_strict_pep_604(sender_type, receiver_type):
-        assert _types_are_compatible(sender_type, receiver_type, True)
+        assert _types_are_compatible(sender_type, receiver_type)[0]
 
     @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
     @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases_pep_604)
     def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_type):
-        assert _types_are_compatible(sender_type, receiver_type, True)
+        assert _types_are_compatible(sender_type, receiver_type)[0]

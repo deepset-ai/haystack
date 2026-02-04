@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -109,7 +109,7 @@ class TestImplicitConversions:
     def test_optional_to_str_conversion_fails(self):
         @component
         class OptionalChatMessageOutput:
-            @component.output_types(message=Optional[ChatMessage])
+            @component.output_types(message=ChatMessage | None)
             def run(self):
                 return {"message": ChatMessage.from_assistant("Hello")}
 
@@ -123,7 +123,7 @@ class TestImplicitConversions:
     def test_str_to_optional_chat_message_conversion(self):
         @component
         class OptionalChatMessageInput:
-            @component.output_types(message=Optional[ChatMessage])
+            @component.output_types(message=ChatMessage | None)
             def run(self, message: ChatMessage | None):
                 return {"message": message}
 
