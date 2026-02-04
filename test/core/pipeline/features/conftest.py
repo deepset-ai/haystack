@@ -3,19 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import pytest
 from pandas import DataFrame
 from pytest_bdd import parsers, then, when
 
-from haystack import AsyncPipeline, Pipeline
+from haystack import AsyncPipeline, Pipeline, component
 from test.tracing.utils import SpyingTracer
-
-PIPELINE_NAME_REGEX = re.compile(r"\[(.*)\]")
 
 
 @pytest.fixture(params=[AsyncPipeline, Pipeline])
@@ -130,20 +126,7 @@ def run_sync_pipeline(
             spying_tracer.spans.clear()
         except Exception as e:
             return e
-    return list(zip(results, pipeline_run_data))
-
-
-@then("draw it to file")
-def draw_pipeline(pipeline_data: tuple[Pipeline, list[PipelineRunData]], request: pytest.FixtureRequest) -> None:
-    """
-    Draw the pipeline to a file with the same name as the test.
-    """
-    if m := PIPELINE_NAME_REGEX.search(request.node.name):
-        name = m.group(1).replace(" ", "_")
-        pipeline = pipeline_data[0]
-        graphs_dir = Path(request.config.rootpath) / "test_pipeline_graphs"
-        graphs_dir.mkdir(exist_ok=True)
-        pipeline.draw(path=graphs_dir / f"{name}.png")
+    return list(zip(results, pipeline_run_data, strict=True))
 
 
 @then("it should return the expected result")
@@ -182,6 +165,26 @@ def compare_outputs_with_dataframes(actual: dict, expected: dict) -> bool:
             if isinstance(actual_value, DataFrame) and isinstance(expected_value, DataFrame):
                 assert actual_value.equals(expected_value)
             else:
-                assert actual_value == expected_value
+                # We do expected_value first so ANY can be used in expected outputs
+                assert expected_value == actual_value
 
     return True
+
+
+@component
+class FixedGenerator:
+    def __init__(self, replies):
+        self.replies = replies
+        self.idx = 0
+
+    @component.output_types(replies=list[str])
+    def run(self, prompt: str) -> dict[str, Any]:
+        if self.idx < len(self.replies):
+            replies = [self.replies[self.idx]]
+            self.idx += 1
+        else:
+            self.idx = 0
+            replies = [self.replies[self.idx]]
+            self.idx += 1
+
+        return {"replies": replies}

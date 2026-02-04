@@ -53,12 +53,12 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.23-unstable',
+              label: '2.24-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.22',
+          lastVersion: '2.23',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -97,12 +97,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.23-unstable',
+            label: '2.24-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.22',
+        lastVersion: '2.23',
       },
     ],
     [
@@ -121,6 +121,54 @@ const config = {
           {
             from: '/docs',
             to: '/docs/intro',
+          },
+          {
+            from: '/docs/get_started',
+            to: '/docs/get-started',
+          },
+          {
+            from: '/docs/document_store',
+            to: '/docs/document-store',
+          },
+          {
+            from: '/docs/components_overview',
+            to: '/docs/components',
+          },
+          {
+            from: '/docs/nodes_overview',
+            to: '/docs/components',
+          },
+          {
+            from: '/docs/retriever',
+            to: '/docs/retrievers',
+          },
+          {
+            from: '/docs/ranker',
+            to: '/docs/rankers',
+          },
+          {
+            from: '/docs/pipeline',
+            to: '/docs/pipelines',
+          },
+          {
+            from: '/docs/prompt_node',
+            to: '/docs/promptbuilder',
+          },
+          {
+            from: '/docs/ready_made_pipelines',
+            to: '/docs/pipeline-templates',
+          },
+          {
+            from: '/docs/join_documents',
+            to: '/docs/documentjoiner',
+          },
+          {
+            from: '/docs/dynamicchatpromptbuilder',
+            to: '/docs/chatpromptbuilder',
+          },
+          {
+            from: '/docs/dynamicpromptbuilder',
+            to: '/docs/promptbuilder',
           },
         ],
       },

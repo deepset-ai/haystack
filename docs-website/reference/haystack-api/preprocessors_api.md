@@ -192,7 +192,9 @@ def __init__(remove_empty_lines: bool = True,
              remove_regex: str | None = None,
              unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"]
              | None = None,
-             ascii_only: bool = False)
+             ascii_only: bool = False,
+             strip_whitespaces: bool = False,
+             replace_regexes: dict[str, str] | None = None)
 ```
 
 Initialize DocumentCleaner.
@@ -213,6 +215,12 @@ Note: This will run before any other steps.
 Will remove accents from characters and replace them with ASCII characters.
 Other non-ASCII characters will be removed.
 Note: This will run before any pattern matching or removal.
+- `strip_whitespaces`: If `True`, removes leading and trailing whitespace from the document content
+using Python's `str.strip()`. Unlike `remove_extra_whitespaces`, this only affects the beginning
+and end of the text, preserving internal whitespace (useful for markdown formatting).
+- `replace_regexes`: A dictionary mapping regex patterns to their replacement strings.
+For example, `{r'\n\n+': '\n'}` replaces multiple consecutive newlines with a single newline.
+This is applied after `remove_regex` and allows custom replacements instead of just removal.
 
 <a id="document_cleaner.DocumentCleaner.run"></a>
 

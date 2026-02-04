@@ -55,7 +55,7 @@ is a branch of artificial intelligence
 ```python
 def __init__(*,
              model: str,
-             api_base_url: str = "http://localhost:8321/v1/openai/v1",
+             api_base_url: str = "http://localhost:8321/v1",
              organization: str | None = None,
              streaming_callback: StreamingCallbackT | None = None,
              generation_kwargs: dict[str, Any] | None = None,

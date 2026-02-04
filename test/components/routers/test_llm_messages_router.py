@@ -205,7 +205,7 @@ class TestLLMMessagesRouter:
     def test_live_run(self):
         system_prompt = "Classify the messages into safe or unsafe. Respond with the label only, no other text."
         router = LLMMessagesRouter(
-            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
             system_prompt=system_prompt,
             output_names=["safe", "unsafe"],
             output_patterns=[r"(?i)safe", r"(?i)unsafe"],

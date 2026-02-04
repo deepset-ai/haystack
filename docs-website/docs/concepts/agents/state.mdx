@@ -305,9 +305,9 @@ retrieval_tool = Tool(
     },
     function=retrieve_documents,
     outputs_to_state={
-        "documents": {"source": "documents"},      # Maps tool's "documents" output to state's "documents"
-        "result_count": {"source": "count"},       # Maps tool's "count" output to state's "result_count"
-        "last_query": {"source": "query"}          # Maps tool's "query" output to state's "last_query"
+        "documents": {"source": "documents"},  # Maps tool's "documents" output to state's "documents"
+        "result_count": {"source": "count"},   # Maps tool's "count" output to state's "result_count"
+        "last_query": {"source": "query"}      # Maps tool's "query" output to state's "last_query"
     }
 )
 

@@ -1,0 +1,108 @@
+---
+title: "WatsonxTextEmbedder"
+id: watsonxtextembedder
+slug: "/watsonxtextembedder"
+description: "When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents."
+---
+
+# WatsonxTextEmbedder
+
+When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
+| **Mandatory init variables** | `api_key`: An IBM Cloud API key. Can be set with `WATSONX_API_KEY` env var.  <br /> <br />`project_id`: An IBM Cloud project ID. Can be set with `WATSONX_PROJECT_ID` env var. |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [Watsonx](/reference/integrations-watsonx) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/watsonx |
+
+</div>
+
+## Overview
+
+To see the list of compatible IBM watsonx.ai embedding models, head over to IBM [documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx). The default model for `WatsonxTextEmbedder` is `ibm/slate-30m-english-rtrvr`. You can specify another model with the `model` parameter when initializing this component.
+
+Use `WatsonxTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`WatsonxDocumentEmbedder`](watsonxdocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
+
+The component uses `WATSONX_API_KEY` and `WATSONX_PROJECT_ID` environment variables by default. Otherwise, you can pass API credentials at initialization with `api_key` and `project_id`:
+
+```python
+embedder = WatsonxTextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    project_id=Secret.from_token("<your-project-id>")
+)
+```
+
+## Usage
+
+Install the `watsonx-haystack` package to use the `WatsonxTextEmbedder`:
+
+```shell
+pip install watsonx-haystack
+```
+
+### On its own
+
+Here is how you can use the component on its own:
+
+```python
+from haystack_integrations.components.embedders.watsonx.text_embedder import WatsonxTextEmbedder
+from haystack.utils import Secret
+
+text_to_embed = "I love pizza!"
+
+text_embedder = WatsonxTextEmbedder(
+    api_key=Secret.from_env_var("WATSONX_API_KEY"),
+    project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
+    model="ibm/slate-30m-english-rtrvr"
+)
+
+print(text_embedder.run(text_to_embed))
+
+## {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+## 'meta': {'model': 'ibm/slate-30m-english-rtrvr',
+## 'truncated_input_tokens': 3}}
+```
+
+:::info
+We recommend setting WATSONX_API_KEY and WATSONX_PROJECT_ID as environment variables instead of setting them as parameters.
+:::
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.watsonx.text_embedder import WatsonxTextEmbedder
+from haystack_integrations.components.embedders.watsonx.document_embedder import WatsonxDocumentEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = WatsonxDocumentEmbedder()
+documents_with_embeddings = document_embedder.run(documents)['documents']
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", WatsonxTextEmbedder())
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., mimetype: 'text/plain',
+## text: 'My name is Wolfgang and I live in Berlin')
+```

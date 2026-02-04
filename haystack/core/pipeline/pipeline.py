@@ -326,7 +326,6 @@ class Pipeline(PipelineBase):
                         priority_queue=priority_queue,
                         topological_sort=cached_topological_sort,
                     )
-
                     cached_topological_sort = topological_sort
                     component = self._get_component_with_graph_metadata_and_visits(
                         component_name, component_visits[component_name]
