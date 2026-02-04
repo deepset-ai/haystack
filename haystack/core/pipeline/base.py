@@ -1290,6 +1290,7 @@ class PipelineBase:  # noqa: PLW1641
 
     def _write_component_outputs(
         self,
+        *,
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
