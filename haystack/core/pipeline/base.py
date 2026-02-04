@@ -502,8 +502,10 @@ class PipelineBase:  # noqa: PLW1641
         # Find all possible connections between these two components
         possible_connections: list[tuple[OutputSocket, InputSocket, bool]] = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            is_compat, is_strict = _types_are_compatible(sender_sock.type, receiver_sock.type)
-            if not self._connection_type_validation or is_compat:
+            is_compat, is_strict = _types_are_compatible(
+                sender_sock.type, receiver_sock.type, self._connection_type_validation
+            )
+            if is_compat:
                 possible_connections.append((sender_sock, receiver_sock, is_strict))
 
         # If there are multiple possibilities, prioritize strict matches over convertible ones.
@@ -1433,7 +1435,7 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching input socket in the entry point
                     entry_point_sockets = internal_graph.nodes[entry_point]["input_sockets"]
                     for socket_name, socket in entry_point_sockets.items():
-                        if _types_are_compatible(sender_socket.type, socket.type)[0]:
+                        if _types_are_compatible(sender_socket.type, socket.type, self._connection_type_validation)[0]:
                             merged_graph.add_edge(
                                 sender,
                                 entry_point,
@@ -1451,7 +1453,9 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching output socket in the exit point
                     exit_point_sockets = internal_graph.nodes[exit_point]["output_sockets"]
                     for socket_name, socket in exit_point_sockets.items():
-                        if _types_are_compatible(socket.type, receiver_socket.type)[0]:
+                        if _types_are_compatible(socket.type, receiver_socket.type, self._connection_type_validation)[
+                            0
+                        ]:
                             merged_graph.add_edge(
                                 exit_point,
                                 receiver,

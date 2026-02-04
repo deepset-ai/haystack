@@ -79,7 +79,7 @@ def _types_are_convertible(sender: type | UnionType, receiver: type | UnionType)
 
 def _convert_value(value: Any, sender: OutputSocket, receiver: InputSocket) -> Any:
     """
-    Converts a value from the sender type to the receiver type at runtime without checking for compatibility.
+    Converts a value from the sender type to the receiver type.
 
     :param value: The value to convert.
     :param sender: The sender socket.
