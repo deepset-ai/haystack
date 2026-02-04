@@ -17,7 +17,7 @@ repos:
         args: [--markdown-linebreak-ext=md, --markdown-linebreak-ext=mdx]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
+    rev: v0.15.0
     hooks:
     - id: ruff-check
       args: [ --fix ]
