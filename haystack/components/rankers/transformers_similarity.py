@@ -9,6 +9,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
@@ -270,6 +271,7 @@ class TransformersSimilarityRanker:
             )
 
         query_doc_pairs = []
+        documents = _deduplicate_documents(documents)
         for doc in documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]

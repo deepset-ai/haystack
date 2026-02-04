@@ -4,6 +4,7 @@
 
 
 from haystack import Document, component
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -88,6 +89,7 @@ class LostInTheMiddleRanker:
         top_k = top_k or self.top_k
         word_count_threshold = word_count_threshold or self.word_count_threshold
 
+        documents = _deduplicate_documents(documents)
         documents_to_reorder = documents[:top_k] if top_k else documents
 
         # If there's only one document, return it as is

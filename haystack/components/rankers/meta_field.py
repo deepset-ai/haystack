@@ -8,6 +8,7 @@ from typing import Any, Callable, Literal
 from dateutil.parser import parse as date_parse
 
 from haystack import Document, component, logging
+from haystack.utils.misc import _deduplicate_documents
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,7 @@ class MetaFieldRanker:
         if weight == 0:
             return {"documents": documents[:top_k]}
 
+        documents = _deduplicate_documents(documents)
         docs_with_meta_field = [doc for doc in documents if self.meta_field in doc.meta]
         docs_missing_meta_field = [doc for doc in documents if self.meta_field not in doc.meta]
 

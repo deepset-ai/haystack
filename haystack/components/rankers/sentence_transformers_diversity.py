@@ -9,6 +9,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
     import torch
@@ -411,6 +412,7 @@ class SentenceTransformersDiversityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
+        documents = _deduplicate_documents(documents)
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold

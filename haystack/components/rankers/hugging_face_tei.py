@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import Secret
+from haystack.utils.misc import _deduplicate_documents
 from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
 
 
@@ -191,6 +192,7 @@ class HuggingFaceTEIRanker:
             return {"documents": []}
 
         # Prepare the payload
+        documents = _deduplicate_documents(documents)
         texts = [doc.content for doc in documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:

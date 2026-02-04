@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any
 
 from haystack import Document, component
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -91,6 +92,7 @@ class MetaFieldGroupingRanker:
         document_groups: dict[str, dict[str, list[Document]]] = defaultdict(lambda: defaultdict(list))
         no_group_docs = []
 
+        documents = _deduplicate_documents(documents)
         for doc in documents:
             group_value = str(doc.meta.get(self.group_by, ""))
 
