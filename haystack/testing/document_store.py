@@ -293,9 +293,16 @@ class DeleteDocumentsTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        deleted_count = document_store.delete_by_filter(
-            filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
-        )
+        sig = inspect.signature(document_store.delete_by_filter)
+        if "refresh" in sig.parameters:
+            deleted_count = document_store.delete_by_filter(
+                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, refresh=True
+            )
+
+        else:
+            deleted_count = document_store.delete_by_filter(
+                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
+            )
         assert deleted_count == 2
         assert document_store.count_documents() == 1
 
@@ -346,27 +353,53 @@ class DeleteDocumentsTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        deleted_count = document_store.delete_by_filter(
-            filters={
-                "operator": "AND",
-                "conditions": [
-                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                    {"field": "meta.year", "operator": "==", "value": 2023},
-                ],
-            }
-        )
+        sig = inspect.signature(document_store.delete_by_filter)
+        if "refresh" in sig.parameters:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "AND",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                        {"field": "meta.year", "operator": "==", "value": 2023},
+                    ],
+                },
+                refresh=True,
+            )
+        else:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "AND",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                        {"field": "meta.year", "operator": "==", "value": 2023},
+                    ],
+                }
+            )
         assert deleted_count == 1
         assert document_store.count_documents() == 2
 
-        deleted_count = document_store.delete_by_filter(
-            filters={
-                "operator": "OR",
-                "conditions": [
-                    {"field": "meta.category", "operator": "==", "value": "Beta"},
-                    {"field": "meta.status", "operator": "==", "value": "published"},
-                ],
-            }
-        )
+        sig = inspect.signature(document_store.delete_by_filter)
+        if "refresh" in sig.parameters:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Beta"},
+                        {"field": "meta.status", "operator": "==", "value": "published"},
+                    ],
+                },
+                refresh=True,
+            )
+        else:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Beta"},
+                        {"field": "meta.status", "operator": "==", "value": "published"},
+                    ],
+                }
+            )
         assert deleted_count == 2
         assert document_store.count_documents() == 0
 
@@ -821,9 +854,18 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
         assert document_store.count_documents() == len(filterable_docs)
 
-        updated_count = document_store.update_by_filter(
-            filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}
-        )
+        sig = inspect.signature(document_store.update_by_filter)
+        if "refresh" in sig.parameters:
+            updated_count = document_store.update_by_filter(
+                filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
+                meta={"updated": True},
+                refresh=True,
+            )
+
+        else:
+            updated_count = document_store.update_by_filter(
+                filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}
+            )
         assert updated_count == expected_count
 
         updated_docs = document_store.filter_documents(
@@ -866,10 +908,18 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
         assert document_store.count_documents() == len(filterable_docs)
 
-        updated_count = document_store.update_by_filter(
-            filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
-            meta={"updated": True, "extra_field": "set"},
-        )
+        sig = inspect.signature(document_store.update_by_filter)
+        if "refresh" in sig.parameters:
+            updated_count = document_store.update_by_filter(
+                filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
+                meta={"updated": True, "extra_field": "set"},
+                refresh=True,
+            )
+        else:
+            updated_count = document_store.update_by_filter(
+                filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
+                meta={"updated": True, "extra_field": "set"},
+            )
         assert updated_count == expected_count
 
         updated_docs = document_store.filter_documents(
@@ -908,16 +958,29 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        updated_count = document_store.update_by_filter(
-            filters={
-                "operator": "AND",
-                "conditions": [
-                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                    {"field": "meta.year", "operator": "==", "value": 2023},
-                ],
-            },
-            meta={"status": "published"},
-        )
+        if "refresh" in inspect.signature(document_store.update_by_filter).parameters:
+            updated_count = document_store.update_by_filter(
+                filters={
+                    "operator": "AND",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                        {"field": "meta.year", "operator": "==", "value": 2023},
+                    ],
+                },
+                meta={"status": "published"},
+                refresh=True,
+            )
+        else:
+            updated_count = document_store.update_by_filter(
+                filters={
+                    "operator": "AND",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                        {"field": "meta.year", "operator": "==", "value": 2023},
+                    ],
+                },
+                meta={"status": "published"},
+            )
         assert updated_count == 1
 
         published_docs = document_store.filter_documents(
@@ -927,16 +990,30 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         assert published_docs[0].meta["category"] == "Alpha"
         assert published_docs[0].meta["year"] == 2023
 
-        updated_count = document_store.update_by_filter(
-            filters={
-                "operator": "OR",
-                "conditions": [
-                    {"field": "meta.category", "operator": "==", "value": "Beta"},
-                    {"field": "meta.year", "operator": "==", "value": 2024},
-                ],
-            },
-            meta={"featured": True},
-        )
+        if "refresh" in inspect.signature(document_store.update_by_filter).parameters:
+            updated_count = document_store.update_by_filter(
+                filters={
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Beta"},
+                        {"field": "meta.year", "operator": "==", "value": 2024},
+                    ],
+                },
+                meta={"featured": True},
+                refresh=True,
+            )
+        else:
+            updated_count = document_store.update_by_filter(
+                filters={
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Beta"},
+                        {"field": "meta.year", "operator": "==", "value": 2024},
+                    ],
+                },
+                meta={"featured": True},
+            )
+
         assert updated_count == 2
 
         featured_docs = document_store.filter_documents(
@@ -946,7 +1023,7 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
 
 
 class DocumentStoreBaseTests(
-    CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, UpdateByFilterTest, FilterDocumentsTest
+    CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, UpdateByFilterTest, WriteDocumentsTest
 ):
     @pytest.fixture
     def document_store(self) -> DocumentStore:
