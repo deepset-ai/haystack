@@ -39,13 +39,7 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import (
-    _convert_value,
-    _safe_get_origin,
-    _strict_types_are_compatible,
-    _type_name,
-    _types_are_compatible,
-)
+from haystack.core.type_utils import _convert_value, _safe_get_origin, _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -508,16 +502,15 @@ class PipelineBase:  # noqa: PLW1641
         # Find all possible connections between these two components
         possible_connections = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            if _types_are_compatible(sender_sock.type, receiver_sock.type, self._connection_type_validation):
-                possible_connections.append((sender_sock, receiver_sock))
+            is_compat, is_strict = _types_are_compatible(sender_sock.type, receiver_sock.type)
+            if not self._connection_type_validation or is_compat:
+                possible_connections.append((sender_sock, receiver_sock, is_strict))
 
         # If there are multiple possibilities, and we are using type validation,
         # prioritize strict matches over convertible ones.
         if len(possible_connections) > 1 and self._connection_type_validation:
             strict_matches = [
-                (out_sock, in_sock)
-                for out_sock, in_sock in possible_connections
-                if _strict_types_are_compatible(out_sock.type, in_sock.type)
+                (out_sock, in_sock, is_strict) for out_sock, in_sock, is_strict in possible_connections if is_strict
             ]
             if strict_matches:
                 possible_connections = strict_matches
@@ -549,11 +542,14 @@ class PipelineBase:  # noqa: PLW1641
             # There's only one possible connection, use it
             sender_socket = possible_connections[0][0]
             receiver_socket = possible_connections[0][1]
+            is_strict_match = possible_connections[0][2]
 
         if len(possible_connections) > 1:
             # There are multiple possible connection, let's try to match them by name
             name_matches = [
-                (out_sock, in_sock) for out_sock, in_sock in possible_connections if in_sock.name == out_sock.name
+                (out_sock, in_sock, is_strict)
+                for out_sock, in_sock, is_strict in possible_connections
+                if in_sock.name == out_sock.name
             ]
             if len(name_matches) != 1:
                 # There's are either no matches or more than one, we can't pick one reliably
@@ -569,6 +565,7 @@ class PipelineBase:  # noqa: PLW1641
             # Get the only possible match
             sender_socket = name_matches[0][0]
             receiver_socket = name_matches[0][1]
+            is_strict_match = name_matches[0][2]
 
         # Connection must be valid on both sender/receiver sides
         if not sender_socket or not receiver_socket or not sender_component_name or not receiver_component_name:
@@ -630,7 +627,7 @@ class PipelineBase:  # noqa: PLW1641
             from_socket=sender_socket,
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
-            convert=not _strict_types_are_compatible(sender_socket.type, receiver_socket.type),
+            convert=not is_strict_match,
         )
         return self
 
@@ -1436,7 +1433,8 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching input socket in the entry point
                     entry_point_sockets = internal_graph.nodes[entry_point]["input_sockets"]
                     for socket_name, socket in entry_point_sockets.items():
-                        if _types_are_compatible(sender_socket.type, socket.type, self._connection_type_validation):
+                        is_compat, _ = _types_are_compatible(sender_socket.type, socket.type)
+                        if not self._connection_type_validation or is_compat:
                             merged_graph.add_edge(
                                 sender,
                                 entry_point,
@@ -1454,7 +1452,8 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching output socket in the exit point
                     exit_point_sockets = internal_graph.nodes[exit_point]["output_sockets"]
                     for socket_name, socket in exit_point_sockets.items():
-                        if _types_are_compatible(socket.type, receiver_socket.type, self._connection_type_validation):
+                        is_compat, _ = _types_are_compatible(socket.type, receiver_socket.type)
+                        if not self._connection_type_validation or is_compat:
                             merged_graph.add_edge(
                                 exit_point,
                                 receiver,

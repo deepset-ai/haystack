@@ -11,18 +11,21 @@ from haystack.dataclasses import ChatMessage
 T = TypeVar("T")
 
 
-def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True) -> bool:
+def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType) -> tuple[bool, bool]:
     """
-    Determines if two types are compatible based on the specified validation mode.
+    Checks if two types are compatible and if they are strictly compatible.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
-    :param type_validation: Whether to perform strict type validation.
-    :return: True if the types are compatible, False otherwise.
+    :return: A tuple where the first element is True if the types are compatible (either strictly or via conversion),
+             and the second element is True if they are strictly compatible.
     """
-    if type_validation:
-        return _strict_types_are_compatible(sender, receiver) or _types_are_convertible(sender, receiver)
-    return True
+    strict = _strict_types_are_compatible(sender, receiver)
+    if strict:
+        return True, True
+    if _types_are_convertible(sender, receiver):
+        return True, False
+    return False, False
 
 
 def _safe_get_origin(_type: type | UnionType) -> type | None:
@@ -84,17 +87,13 @@ def _convert_base(value: Any, s_t: Any, r_t: Any) -> Any:
 
 def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
     """
-    Converts a value from the sender type to the receiver type at runtime.
+    Converts a value from the sender type to the receiver type at runtime without checking for compatibility.
+
     :param value: The value to convert.
     :param sender_type: The type of the value.
     :param receiver_type: The type to convert to.
     :return: The converted value.
     """
-    if _strict_types_are_compatible(sender_type, receiver_type):
-        return value
-
-    s_origin, r_origin = _safe_get_origin(sender_type), _safe_get_origin(receiver_type)
-
     # 3. Base: ChatMessage <-> str
     if value is None:
         if _can_be_none(receiver_type):
