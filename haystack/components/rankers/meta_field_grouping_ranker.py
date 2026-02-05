@@ -78,6 +78,9 @@ class MetaFieldGroupingRanker:
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 
+        Before grouping, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         The output is a list of documents reordered based on how they were grouped.
 
         :param documents: The list of documents to group.

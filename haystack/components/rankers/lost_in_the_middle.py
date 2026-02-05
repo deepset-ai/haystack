@@ -66,6 +66,9 @@ class LostInTheMiddleRanker:
         """
         Reranks documents based on the "lost in the middle" order.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
         :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.

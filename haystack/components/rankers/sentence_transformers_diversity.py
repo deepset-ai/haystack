@@ -95,6 +95,9 @@ class SentenceTransformersDiversityRanker:
         relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
         trade-off between relevance and diversity.
 
+    Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+    if a score is present.
+
     ### Usage example
     ```python
     from haystack import Document

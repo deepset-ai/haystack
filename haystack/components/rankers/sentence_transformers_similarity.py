@@ -224,6 +224,9 @@ class SentenceTransformersSimilarityRanker:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param query:
             The input query to compare the documents to.
         :param documents:

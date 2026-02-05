@@ -176,6 +176,9 @@ class MetaFieldRanker:
         weight.
         3. Returning the top-k documents.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param documents:
             Documents to be ranked.
         :param top_k:

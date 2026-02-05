@@ -173,6 +173,9 @@ class HuggingFaceTEIRanker:
         """
         Reranks the provided documents by relevance to the query using the TEI API.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
         :param top_k: Optional override for the maximum number of documents to return.
@@ -227,6 +230,9 @@ class HuggingFaceTEIRanker:
     ) -> dict[str, list[Document]]:
         """
         Asynchronously reranks the provided documents by relevance to the query using the TEI API.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
