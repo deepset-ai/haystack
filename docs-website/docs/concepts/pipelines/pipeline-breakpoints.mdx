@@ -70,11 +70,11 @@ except BreakpointException as e:
     print(f"Breakpoint triggered: {e.component}")
 ```
 
-When `snapshot_callback` is provided, file-saving is skipped; the callback is responsible for handling the snapshot. The same parameter is available on `Agent.run()` for agent breakpoints.
+When `snapshot_callback` is provided, file-saving is skipped and the callback is responsible for handling the snapshot. The same parameter is available on `Agent.run()` for agent breakpoints.
 
 ## Snapshot file saving
 
-Snapshot file saving to disk is **disabled by default**. To save snapshots as JSON files when a breakpoint is triggered (or on pipeline failure), set the environment variable `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to `"true"` or `"1"` (case-insensitive). When enabled, snapshots are written to the path given by `snapshot_file_path` on the breakpoint, or to the default directory in [Error Recovery with Snapshots](#error-recovery-with-snapshots) when a run fails.
+Snapshot file saving to disk is **disabled by default**. To save snapshots as JSON files when a breakpoint is triggered or on pipeline failure, set the environment variable `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to `"true"` or `"1"` (case-insensitive). When enabled, snapshots are written to the path given by `snapshot_file_path` on the breakpoint, or to the default directory in [Error Recovery with Snapshots](#error-recovery-with-snapshots) when a run fails.
 
 Custom `snapshot_callback` functions are always invoked when provided, regardless of this setting.
 
