@@ -1313,7 +1313,7 @@ class PipelineBase:  # noqa: PLW1641
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
-            if value is not _NO_OUTPUT_PRODUCED and convert:
+            if value != _NO_OUTPUT_PRODUCED and convert:
                 try:
                     value = _convert_value(
                         value=value, sender_type=sender_socket.type, receiver_type=receiver_socket.type

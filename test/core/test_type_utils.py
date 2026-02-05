@@ -883,6 +883,7 @@ def test_contains_type():
 def test_types_are_convertible():
     assert _types_are_convertible(sender=Optional[str], receiver=str) is False
     assert _types_are_convertible(sender=str, receiver=Optional[str]) is True
+    assert _types_are_convertible(sender=str, receiver=Union[str, int]) is True
     assert _types_are_convertible(sender=ChatMessage, receiver=str) is True
     assert _types_are_convertible(sender=str, receiver=ChatMessage) is True
     assert _types_are_convertible(sender=int, receiver=str) is False

@@ -54,7 +54,7 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
 
 def _contains_type(container: Any, target: Any) -> bool:
     """Checks if the container type includes the target type"""
-    if container is target:
+    if container == target:
         return True
     return _safe_get_origin(container) is Union and target in get_args(container)
 
@@ -69,6 +69,8 @@ def _types_are_convertible(sender: Any, receiver: Any) -> bool:
     if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
         return False
 
+    # if sender is a single type and receiver is a Union/Optional containing that type, they are convertible
+    # e.g. str is convertible to Optional[str] or Union[str, int] etc.
     if _contains_type(receiver, sender):
         return True
 
