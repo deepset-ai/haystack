@@ -635,7 +635,7 @@ class DeleteAllTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        document_store.delete_all_documents()  # type:ignore[arg-type]
+        document_store.delete_all_documents()  # type:ignore[attr-defined]
         assert document_store.count_documents() == 0
 
         new_doc = Document(content="new doc after delete all", id="3")
@@ -650,7 +650,7 @@ class DeleteAllTest:
         This should not raise an error and should leave the store empty.
         """
         assert document_store.count_documents() == 0
-        document_store.delete_all_documents()  # type:ignore[arg-type]
+        document_store.delete_all_documents()  # type:ignore[attr-defined]
         assert document_store.count_documents() == 0
 
     @staticmethod
@@ -665,16 +665,9 @@ class DeleteAllTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-
-        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[arg-type]
+        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
         params = {"recreate_index": False} if "recreate_index" in sig.parameters else {}
-        document_store.delete_all_documents(**params)   # type:ignore[arg-type]
-
-        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[arg-type]
-        if "recreate_index" in sig.parameters:
-            document_store.delete_all_documents(recreate_index=False)  # type:ignore[arg-type]
-        else:
-            document_store.delete_all_documents()  # type:ignore[arg-type]
+        document_store.delete_all_documents(**params)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 0
 
         new_doc = Document(id="3", content="New document after delete all")
@@ -693,11 +686,9 @@ class DeleteAllTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[arg-type]
-        if "recreate_index" in sig.parameters:
-            document_store.delete_all_documents(recreate_index=True)  # type:ignore[arg-type]
-        else:
-            document_store.delete_all_documents()  # type:ignore[arg-type]
+        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
+        params = {"recreate_index": True} if "recreate_index" in sig.parameters else {}
+        document_store.delete_all_documents(**params)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 0
 
         new_doc = Document(id="3", content="New document after delete all with recreate")
@@ -726,16 +717,11 @@ class DeleteByFilterTest:
         assert document_store.count_documents() == 3
 
         # `delete_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
-                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, refresh=True
-            )
-
-        else:
-            deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
-                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
-            )
+        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, **params
+        )
         assert deleted_count == 2
         assert document_store.count_documents() == 1
 
@@ -753,7 +739,7 @@ class DeleteByFilterTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
             filters={"field": "meta.category", "operator": "==", "value": "Gamma"}
         )
         assert deleted_count == 0
@@ -771,54 +757,31 @@ class DeleteByFilterTest:
         assert document_store.count_documents() == 3
 
         # `delete_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
-                filters={
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                        {"field": "meta.year", "operator": "==", "value": 2023},
-                    ],
-                },
-                refresh=True,
-            )
-        else:
-            deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
-                filters={
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                        {"field": "meta.year", "operator": "==", "value": 2023},
-                    ],
-                }
-            )
+        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            },
+            **params,
+        )
         assert deleted_count == 1
         assert document_store.count_documents() == 2
 
-        # `delete_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
-                filters={
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Beta"},
-                        {"field": "meta.status", "operator": "==", "value": "published"},
-                    ],
-                },
-                refresh=True,
-            )
-        else:
-            deleted_count = document_store.delete_by_filter(  # type:ignore[arg-type]
-                filters={
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Beta"},
-                        {"field": "meta.status", "operator": "==", "value": "published"},
-                    ],
-                }
-            )
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Beta"},
+                    {"field": "meta.status", "operator": "==", "value": "published"},
+                ],
+            },
+            **params,
+        )
         assert deleted_count == 2
         assert document_store.count_documents() == 0
 
@@ -836,18 +799,11 @@ class UpdateByFilterTest:
         assert document_store.count_documents() == len(filterable_docs)
 
         # `update_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
-                filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
-                meta={"updated": True},
-                refresh=True,
-            )
-
-        else:
-            updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
-                filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}
-            )
+        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}, **params
+        )
         assert updated_count == expected_count
 
         updated_docs = document_store.filter_documents(
@@ -871,7 +827,7 @@ class UpdateByFilterTest:
         initial_count = len(filterable_docs)
         assert document_store.count_documents() == initial_count
 
-        updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
             filters={"field": "meta.chapter", "operator": "==", "value": "nonexistent_chapter"}, meta={"updated": True}
         )
         assert updated_count == 0
@@ -885,18 +841,13 @@ class UpdateByFilterTest:
         assert document_store.count_documents() == len(filterable_docs)
 
         # `update_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
-                filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
-                meta={"updated": True, "extra_field": "set"},
-                refresh=True,
-            )
-        else:
-            updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
-                filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
-                meta={"updated": True, "extra_field": "set"},
-            )
+        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
+            meta={"updated": True, "extra_field": "set"},
+            **params,
+        )
         assert updated_count == expected_count
 
         updated_docs = document_store.filter_documents(
@@ -927,30 +878,19 @@ class UpdateByFilterTest:
         assert document_store.count_documents() == 3
 
         # `update_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
-                filters={
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                        {"field": "meta.year", "operator": "==", "value": 2023},
-                    ],
-                },
-                meta={"status": "published"},
-                refresh=True,
-            )
-        else:
-            updated_count = document_store.update_by_filter(  # type:ignore[arg-type]
-                filters={
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                        {"field": "meta.year", "operator": "==", "value": 2023},
-                    ],
-                },
-                meta={"status": "published"},
-            )
+        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            },
+            meta={"status": "published"},
+            **params,
+        )
         assert updated_count == 1
 
         published_docs = document_store.filter_documents(
@@ -960,32 +900,17 @@ class UpdateByFilterTest:
         assert published_docs[0].meta["category"] == "Alpha"
         assert published_docs[0].meta["year"] == 2023
 
-        # `update_by_filter` is not part of the DocumentStore protocol
-        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[arg-type]
-        if "refresh" in sig.parameters:
-            updated_count = document_store.update_by_filter(  # type: ignore
-                filters={
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Beta"},
-                        {"field": "meta.year", "operator": "==", "value": 2024},
-                    ],
-                },
-                meta={"featured": True},
-                refresh=True,
-            )
-        else:
-            updated_count = document_store.update_by_filter(  # type: ignore
-                filters={
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Beta"},
-                        {"field": "meta.year", "operator": "==", "value": 2024},
-                    ],
-                },
-                meta={"featured": True},
-            )
-
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Beta"},
+                    {"field": "meta.year", "operator": "==", "value": 2024},
+                ],
+            },
+            meta={"featured": True},
+            **params,
+        )
         assert updated_count == 2
 
         featured_docs = document_store.filter_documents(
@@ -1001,9 +926,7 @@ class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocu
         raise NotImplementedError()
 
 
-class DocumentStoreBaseExtendedTests(
-    AssertDocumentsEqualMixin, FilterableDocsFixtureMixin, DeleteAllTest, DeleteByFilterTest, UpdateByFilterTest
-):
+class DocumentStoreBaseExtendedTests(DocumentStoreBaseTests, DeleteAllTest, DeleteByFilterTest, UpdateByFilterTest):  # pylint: disable=too-many-ancestors
     """
     Extended tests for Document Stores.
 
@@ -1012,3 +935,8 @@ class DocumentStoreBaseExtendedTests(
     - delete_by_filter()
     - update_by_filter()
     """
+
+    @pytest.fixture
+    def document_store(self) -> DocumentStore:
+        """Base fixture, to be reimplemented when deriving from DocumentStoreBaseTests"""
+        raise NotImplementedError()
