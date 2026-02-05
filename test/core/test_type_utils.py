@@ -873,17 +873,33 @@ def test_types_are_compatible_convertible(sender_type, receiver_type):
 
 def test_contains_type():
     assert _contains_type(container=str, target=str) is True
+
     assert _contains_type(container=Union[bool, str], target=str) is True
+    assert _contains_type(container=bool | str, target=str) is True
+
     assert _contains_type(container=Union[bool, str], target=bool) is True
+    assert _contains_type(container=bool | str, target=bool) is True
+
     assert _contains_type(container=Union[bool, str], target=Union[bool, str]) is True
+    assert _contains_type(container=bool | str, target=bool | str) is True
+
     assert _contains_type(container=Union[bool, str], target=int) is False
+    assert _contains_type(container=bool | str, target=int) is False
+
     assert _contains_type(container=Optional[str], target=str) is True
+    assert _contains_type(container=str | None, target=str) is True
 
 
 def test_types_are_convertible():
     assert _types_are_convertible(sender=Optional[str], receiver=str) is False
+    assert _types_are_convertible(sender=str | None, receiver=str) is False
+
     assert _types_are_convertible(sender=str, receiver=Optional[str]) is True
+    assert _types_are_convertible(sender=str, receiver=str | None) is True
+
     assert _types_are_convertible(sender=str, receiver=Union[str, int]) is True
+    assert _types_are_convertible(sender=str, receiver=str | int) is True
+
     assert _types_are_convertible(sender=ChatMessage, receiver=str) is True
     assert _types_are_convertible(sender=str, receiver=ChatMessage) is True
     assert _types_are_convertible(sender=int, receiver=str) is False
