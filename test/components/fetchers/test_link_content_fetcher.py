@@ -433,3 +433,136 @@ class TestLinkContentFetcherAsyncIntegration:
         streams = (await fetcher.run_async([HTML_URL]))["streams"]
         assert len(streams) == 1
         assert "Haystack" in streams[0].data.decode("utf-8")
+
+
+class TestLinkContentFetcherSSRFProtection:
+    """Tests for SSRF (Server-Side Request Forgery) protection functionality."""
+
+    def test_init_block_internal_urls_default(self):
+        """Test that block_internal_urls is True by default."""
+        fetcher = LinkContentFetcher()
+        assert fetcher.block_internal_urls is True
+
+    def test_init_block_internal_urls_disabled(self):
+        """Test that block_internal_urls can be set to False."""
+        fetcher = LinkContentFetcher(block_internal_urls=False)
+        assert fetcher.block_internal_urls is False
+
+    def test_filter_safe_urls_blocks_localhost(self):
+        """Test that localhost URLs are blocked."""
+        fetcher = LinkContentFetcher()
+        safe, blocked = fetcher._filter_safe_urls(["http://localhost/admin", "https://example.com"])
+        assert "http://localhost/admin" in blocked
+        assert "https://example.com" in safe
+
+    def test_filter_safe_urls_blocks_127_0_0_1(self):
+        """Test that 127.0.0.1 URLs are blocked."""
+        fetcher = LinkContentFetcher()
+        safe, blocked = fetcher._filter_safe_urls(["http://127.0.0.1:8080/api", "https://google.com"])
+        assert "http://127.0.0.1:8080/api" in blocked
+        assert "https://google.com" in safe
+
+    def test_filter_safe_urls_blocks_private_ip_10(self):
+        """Test that 10.x.x.x private IPs are blocked."""
+        fetcher = LinkContentFetcher()
+        safe, blocked = fetcher._filter_safe_urls(["http://10.0.0.1/internal"])
+        assert "http://10.0.0.1/internal" in blocked
+        assert len(safe) == 0
+
+    def test_filter_safe_urls_blocks_private_ip_172(self):
+        """Test that 172.16-31.x.x private IPs are blocked."""
+        fetcher = LinkContentFetcher()
+        safe, blocked = fetcher._filter_safe_urls(["http://172.16.0.1/internal"])
+        assert "http://172.16.0.1/internal" in blocked
+        assert len(safe) == 0
+
+    def test_filter_safe_urls_blocks_private_ip_192(self):
+        """Test that 192.168.x.x private IPs are blocked."""
+        fetcher = LinkContentFetcher()
+        safe, blocked = fetcher._filter_safe_urls(["http://192.168.1.1/router"])
+        assert "http://192.168.1.1/router" in blocked
+        assert len(safe) == 0
+
+    def test_filter_safe_urls_blocks_cloud_metadata(self):
+        """Test that cloud metadata endpoint (169.254.169.254) is blocked."""
+        fetcher = LinkContentFetcher()
+        safe, blocked = fetcher._filter_safe_urls(["http://169.254.169.254/latest/meta-data/"])
+        assert "http://169.254.169.254/latest/meta-data/" in blocked
+        assert len(safe) == 0
+
+    def test_filter_safe_urls_allows_public_urls(self):
+        """Test that public URLs are allowed."""
+        fetcher = LinkContentFetcher()
+        urls = ["https://example.com", "https://www.google.com", "http://github.com/api"]
+        safe, blocked = fetcher._filter_safe_urls(urls)
+        assert len(safe) == 3
+        assert len(blocked) == 0
+
+    def test_filter_safe_urls_disabled(self):
+        """Test that all URLs pass when block_internal_urls is False."""
+        fetcher = LinkContentFetcher(block_internal_urls=False)
+        urls = ["http://localhost/admin", "http://127.0.0.1:8080", "http://10.0.0.1/internal"]
+        safe, blocked = fetcher._filter_safe_urls(urls)
+        assert len(safe) == 3
+        assert len(blocked) == 0
+
+    def test_run_blocks_internal_url_single_raises(self):
+        """Test that run() raises ValueError for single internal URL with raise_on_failure=True."""
+        fetcher = LinkContentFetcher(raise_on_failure=True)
+        with pytest.raises(ValueError, match="internal/private address"):
+            fetcher.run(urls=["http://localhost/secret"])
+
+    def test_run_blocks_internal_url_single_no_raise(self):
+        """Test that run() returns empty streams for single internal URL with raise_on_failure=False."""
+        fetcher = LinkContentFetcher(raise_on_failure=False)
+        result = fetcher.run(urls=["http://localhost/secret"])
+        assert len(result["streams"]) == 0
+
+    def test_run_blocks_internal_mixed_urls(self):
+        """Test that run() filters out internal URLs from a mixed list."""
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher()
+            result = fetcher.run(urls=["http://localhost/admin", "https://example.com"])
+
+            # Only example.com should be fetched
+            assert mock_get.call_count == 1
+            call_url = mock_get.call_args[0][0]
+            assert "example.com" in call_url
+
+
+@pytest.mark.asyncio
+class TestLinkContentFetcherSSRFProtectionAsync:
+    """Async tests for SSRF protection."""
+
+    async def test_run_async_blocks_internal_url_single_raises(self):
+        """Test that run_async() raises ValueError for single internal URL with raise_on_failure=True."""
+        fetcher = LinkContentFetcher(raise_on_failure=True)
+        with pytest.raises(ValueError, match="internal/private address"):
+            await fetcher.run_async(urls=["http://127.0.0.1:8080/api"])
+
+    async def test_run_async_blocks_internal_url_single_no_raise(self):
+        """Test that run_async() returns empty streams for single internal URL with raise_on_failure=False."""
+        fetcher = LinkContentFetcher(raise_on_failure=False)
+        result = await fetcher.run_async(urls=["http://10.0.0.1/internal"])
+        assert len(result["streams"]) == 0
+
+    async def test_run_async_blocks_cloud_metadata(self):
+        """Test that run_async() blocks cloud metadata endpoint."""
+        fetcher = LinkContentFetcher(raise_on_failure=True)
+        with pytest.raises(ValueError, match="internal/private address"):
+            await fetcher.run_async(urls=["http://169.254.169.254/latest/meta-data/"])
+
+    async def test_run_async_mixed_urls_filters_internal(self):
+        """Test that run_async() filters out internal URLs from a mixed list."""
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher()
+            await fetcher.run_async(urls=["http://192.168.1.1/router", "https://example.com"])
+
+            # Only example.com should be fetched
+            assert mock_get.call_count == 1
