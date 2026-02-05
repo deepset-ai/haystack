@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Pipeline connections now support connection and automatic conversion between ``ChatMessage`` and ``str`` types.
+    Pipelines now support connection and automatic conversion between ``ChatMessage`` and ``str`` types.
     - When a ``str`` output is connected to a ``ChatMessage`` input, it is automatically converted to a user
     ``ChatMessage``.
     - When a ``ChatMessage`` output is connected to a ``str`` input, its ``text`` attribute is automatically
