@@ -265,7 +265,7 @@ class MetaFieldRanker:
                 meta_field=self.meta_field,
                 document_ids=",".join([doc.id for doc in deduplicated_documents]),
             )
-            return {"documents": documents[:top_k]}
+            return {"documents": deduplicated_documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
             warning_start = (
