@@ -666,10 +666,8 @@ class DeleteAllTest:
         assert document_store.count_documents() == 2
 
         sig = inspect.signature(document_store.delete_all_documents)  # type: ignore
-        if "recreate_index" in sig.parameters:
-            document_store.delete_all_documents(recreate_index=False)  # type: ignore
-        else:
-            document_store.delete_all_documents()  # type: ignore
+   params = {"recreate_index": False} if "recreate_index" in sig.parameters else {}
+   document_store.delete_all_documents(**params)
         assert document_store.count_documents() == 0
 
         new_doc = Document(id="3", content="New document after delete all")
