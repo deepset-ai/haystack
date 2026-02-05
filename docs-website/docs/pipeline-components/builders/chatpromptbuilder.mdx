@@ -300,7 +300,7 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage, ImageContent
 
 template = """
-{% message role="user" %}
+{% message role="user" meta={"key": "value"}%}
 Hello! I am {{user_name}}. What's the difference between the following images?
 {% for image in images %}
 {{ image | templatize_part }}
@@ -319,7 +319,8 @@ assert result["prompt"] == [
         content_parts=[
             "Hello! I am John. What's the difference between the following images?",
             *images
-        ]
+        ],
+        meta = {"key": "value"}
     )
 ]
 ```
