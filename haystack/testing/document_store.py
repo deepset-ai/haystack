@@ -654,20 +654,33 @@ class DeleteAllTest:
         assert document_store.count_documents() == 0
 
     @staticmethod
+    def _delete_all_supports_recreate(document_store: DocumentStore) -> tuple[bool, str | None]:
+        """
+        Return (True, param_name) if delete_all_documents has recreate_index or recreate_collection, else (False, None).
+        """
+        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
+        if "recreate_index" in sig.parameters:
+            return True, "recreate_index"
+        if "recreate_collection" in sig.parameters:
+            return True, "recreate_collection"
+        return False, None
+
+    @staticmethod
     def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
         """
-        Test delete_all_documents() with recreate_index=False when supported.
+        Test delete_all_documents() with recreate_index/recreate_collection=False when supported.
 
-        When the store does not support recreate_index, calls delete_all_documents()
-        with no arguments and asserts the store is empty and functional.
+        Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
         """
+        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if not supports:
+            pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
+
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
-        params = {"recreate_index": False} if "recreate_index" in sig.parameters else {}
-        document_store.delete_all_documents(**params)  # type:ignore[attr-defined]
+        document_store.delete_all_documents(**{param_name: False})  # type:ignore[attr-defined]
         assert document_store.count_documents() == 0
 
         new_doc = Document(id="3", content="New document after delete all")
@@ -677,18 +690,19 @@ class DeleteAllTest:
     @staticmethod
     def test_delete_all_documents_with_recreate_index(document_store: DocumentStore):
         """
-        Test delete_all_documents() with recreate_index=True when supported.
+        Test delete_all_documents() with recreate_index/recreate_collection=True when supported.
 
-        When the store does not support recreate_index, calls delete_all_documents()
-        with no arguments and asserts the store is empty and functional.
+        Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
         """
+        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if not supports:
+            pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
+
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
-        params = {"recreate_index": True} if "recreate_index" in sig.parameters else {}
-        document_store.delete_all_documents(**params)  # type:ignore[attr-defined]
+        document_store.delete_all_documents(**{param_name: True})  # type:ignore[attr-defined]
         assert document_store.count_documents() == 0
 
         new_doc = Document(id="3", content="New document after delete all with recreate")
