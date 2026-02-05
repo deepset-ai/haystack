@@ -149,10 +149,8 @@ class TestPipelineBase:
         self, mock_ipython_display, mock_ipython_image, mock_is_in_jupyter, mock_to_mermaid_image
     ):
         pipe = PipelineBase()
-
         mock_to_mermaid_image.return_value = b"some_image_data"
         mock_is_in_jupyter.return_value = True
-
         pipe.show()
         mock_ipython_image.assert_called_once_with(b"some_image_data")
         mock_ipython_display.assert_called_once()
@@ -160,9 +158,7 @@ class TestPipelineBase:
     @patch("haystack.core.pipeline.base.is_in_jupyter")
     def test_show_not_in_notebook(self, mock_is_in_jupyter):
         pipe = PipelineBase()
-
         mock_is_in_jupyter.return_value = False
-
         with pytest.raises(PipelineDrawingError):
             pipe.show()
 
@@ -170,7 +166,6 @@ class TestPipelineBase:
     def test_draw(self, mock_to_mermaid_image, tmp_path):
         pipe = PipelineBase()
         mock_to_mermaid_image.return_value = b"some_image_data"
-
         image_path = tmp_path / "test.png"
         pipe.draw(path=image_path)
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
@@ -196,10 +191,8 @@ class TestPipelineBase:
 
     def test_remove_component_raises_if_invalid_component_name(self):
         pipe = PipelineBase()
-        component = component_class("Some")()
-
-        pipe.add_component("1", component)
-
+        comp = component_class("Some")()
+        pipe.add_component("1", comp)
         with pytest.raises(ValueError):
             pipe.remove_component("2")
 
@@ -262,7 +255,6 @@ class TestPipelineBase:
         pipe = PipelineBase()
         some_component = component_class("Some")()
         pipe.add_component("some", some_component)
-
         assert pipe.get_component_name(some_component) == "some"
 
     def test_get_component_name_not_added_to_pipeline(self):
@@ -292,13 +284,10 @@ class TestPipelineBase:
         assert repr(pipe) == expected_repr
 
     def test_to_dict(self):
-        add_two = AddFixedValue(add=2)
-        add_default = AddFixedValue()
-        double = Double()
         pipe = PipelineBase(metadata={"test": "test"}, max_runs_per_component=42)
-        pipe.add_component("add_two", add_two)
-        pipe.add_component("add_default", add_default)
-        pipe.add_component("double", double)
+        pipe.add_component("add_two", AddFixedValue(add=2))
+        pipe.add_component("add_default", AddFixedValue())
+        pipe.add_component("double", Double())
         pipe.connect("add_two", "double")
         pipe.connect("double", "add_default")
 
@@ -497,7 +486,6 @@ class TestPipelineBase:
     def test_from_dict_with_empty_dict(self):
         assert PipelineBase() == PipelineBase.from_dict({})
 
-    # TODO: UNIT, consider deprecating this argument
     def test_from_dict_with_components_instances(self):
         add_two = AddFixedValue(add=2)
         add_default = AddFixedValue()
@@ -774,18 +762,12 @@ class TestPipelineBase:
         class Hello:
             @component.output_types(output=str)
             def run(self, word: str) -> dict[str, str]:
-                """
-                Takes a string in input and returns "Hello, <string>!" in output.
-                """
                 return {"output": f"Hello, {word}!"}
 
         @component
         class Joiner:
             @component.output_types(output=str)
             def run(self, word1: str, word2: str) -> dict[str, str]:
-                """
-                Takes two strings in input and returns "Hello, <string1> and <string2>!" in output.
-                """
                 return {"output": f"Hello, {word1} and {word2}!"}
 
         pipeline = PipelineBase()
@@ -819,9 +801,6 @@ class TestPipelineBase:
 
             @component.output_types(intermediate=str, final=str)
             def run(self, word: str, intermediate: str | None = None) -> dict[str, str]:
-                """
-                Takes a string in input and returns "Hello, <string>!" in output.
-                """
                 if self.iteration_counter < 3:
                     self.iteration_counter += 1
                     return {"intermediate": f"Hello, {intermediate or word}!"}
@@ -1516,23 +1495,16 @@ class TestPipelineBase:
         ],
     )
     def test__consume_component_inputs(self, input_sockets, component_inputs, expected_consumed, expected_remaining):
-        # Setup
-        component = {"input_sockets": input_sockets}
+        comp = {"input_sockets": input_sockets}
         inputs = {"test_component": component_inputs}
-
-        # Run
-        consumed = PipelineBase._consume_component_inputs("test_component", component, inputs)
-
-        # Verify
+        consumed = PipelineBase._consume_component_inputs("test_component", comp, inputs)
         assert consumed == expected_consumed
         assert inputs["test_component"] == expected_remaining
 
     def test__consume_component_inputs_with_df(self, regular_input_socket):
-        component = {"input_sockets": {"input1": regular_input_socket}}
+        comp = {"input_sockets": {"input1": regular_input_socket}}
         inputs = {"test_component": {"input1": [{"sender": "sender1", "value": DataFrame({"a": [1, 2], "b": [1, 2]})}]}}
-
-        consumed = PipelineBase._consume_component_inputs("test_component", component, inputs)
-
+        consumed = PipelineBase._consume_component_inputs("test_component", comp, inputs)
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
     @pytest.mark.integration
@@ -1640,6 +1612,71 @@ class TestPipelineBase:
         ]
         actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
         assert sorted(actual_edges) == expected_edges
+
+    def test_is_pipeline_possibly_blocked_has_expected_outputs(self):
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent("out"))
+        assert pipe._is_pipeline_possibly_blocked(current_pipeline_outputs={"comp1": {"value": "out"}}) is False
+
+    def test_is_pipeline_possibly_blocked_missing_expected_outputs(self):
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent("out"))
+        assert pipe._is_pipeline_possibly_blocked(current_pipeline_outputs={}) is True
+
+    def test_is_pipeline_possibly_blocked_no_expected_outputs(self):
+        pipe = PipelineBase()
+        assert pipe._is_pipeline_possibly_blocked(current_pipeline_outputs={}) is False
+
+    def test_tiebreak_defer_components(self):
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent())
+        pipe.add_component("comp2", FakeComponent())
+
+        # Since comp2 is downstream of comp1, it should have a higher topological order, and thus be prioritized in
+        # the tie-break
+        pipe.connect("comp1", "comp2")
+
+        priority_queue = FIFOPriorityQueue()
+        priority_queue.push("comp1", ComponentPriority.DEFER)
+        priority_queue.push("comp2", ComponentPriority.DEFER)
+
+        component_name, topological_sort = pipe._tiebreak_waiting_components(
+            component_name="comp1",
+            priority=ComponentPriority.DEFER,
+            priority_queue=priority_queue,
+            topological_sort=None,
+        )
+        assert component_name == "comp1"
+        assert topological_sort == {"comp1": 0, "comp2": 1}
+
+    def test_tiebreak_defer_components_in_a_loop(self):
+        from haystack.components.joiners import BranchJoiner
+
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent())
+        # We need to use branch joiner to create a cycle in the graph
+        pipe.add_component("branch_joiner", BranchJoiner(type_=str))
+        pipe.add_component("comp3", FakeComponent())
+
+        # Create a cycle between comp2 and comp3. Entry point is comp1 -> comp2
+        pipe.connect("comp1", "branch_joiner")
+        pipe.connect("branch_joiner", "comp3")
+        pipe.connect("comp3", "branch_joiner")
+
+        priority_queue = FIFOPriorityQueue()
+        priority_queue.push("branch_joiner", ComponentPriority.DEFER)
+        priority_queue.push("comp3", ComponentPriority.DEFER)
+
+        component_name, topological_sort = pipe._tiebreak_waiting_components(
+            component_name="branch_joiner",
+            priority=ComponentPriority.DEFER,
+            priority_queue=priority_queue,
+            topological_sort=None,
+        )
+        # In a cycle, the original order should be preserved
+        assert component_name == "branch_joiner"
+        # Since branch_joiner and comp3 are in a cycle, their topological sort values are the same
+        assert topological_sort == {"branch_joiner": 1, "comp3": 1, "comp1": 0}
 
 
 class TestPipelineConnect:

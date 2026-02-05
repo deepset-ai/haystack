@@ -1151,7 +1151,6 @@ class PipelineBase:  # noqa: PLW1641
             comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
             priority = self._calculate_priority(comp, inputs.get(component_name, {}))
             priority_queue.push(component_name, priority)
-
         return priority_queue
 
     @staticmethod
@@ -1256,9 +1255,13 @@ class PipelineBase:  # noqa: PLW1641
         :param priority: Priority of the component.
         :param priority_queue: Priority queue of component names.
         :param topological_sort: Cached topological sort of all components in the pipeline.
-        """
-        components_with_same_priority = [component_name]
 
+        :returns:
+            The name of the component to run and the cached topological sort of all components in the pipeline.
+        """
+        # Create a list of all components that have the same priority as the current component, including the
+        # current component itself and remove them from the priority queue.
+        components_with_same_priority = [component_name]
         while len(priority_queue) > 0:
             next_priority, next_component_name = priority_queue.peek()
             if next_priority == priority:
@@ -1267,12 +1270,19 @@ class PipelineBase:  # noqa: PLW1641
             else:
                 break
 
+        # If there are multiple components with the same priority, we tiebreak them to decide which one to run first.
         if len(components_with_same_priority) > 1:
             if topological_sort is None:
                 if networkx.is_directed_acyclic_graph(self.graph):
+                    # If the graph is a DAG, we use lexicographical topological sort to get a deterministic order of
+                    # the components.
                     topological_sort = networkx.lexicographical_topological_sort(self.graph)
                     topological_sort = {node: idx for idx, node in enumerate(topological_sort)}
                 else:
+                    # If the graph is not a DAG, we use the condensation of the graph to get a topological sort of
+                    # the strongly connected components. This way, components that are part of the same cycle will
+                    # have the same priority and will be tiebroken by their name in lexicographical order, while
+                    # components that are not part of the same cycle will be tiebroken by their topological order.
                     condensed = networkx.condensation(self.graph)
                     condensed_sorted = {node: idx for idx, node in enumerate(networkx.topological_sort(condensed))}
                     topological_sort = {
@@ -1377,6 +1387,13 @@ class PipelineBase:  # noqa: PLW1641
     def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:
         """
         Checks if the priority queue needs to be recomputed because the priorities might have changed.
+
+        The queue is considered stale if it is empty or if the highest priority component is not READY or HIGHEST.
+
+        For example, if the next component in a queue has the priority READY then the equality becomes
+        ComponentPriority.READY > ComponentPriority.READY which is false.
+        However, if the next component has priority DEFER (or BLOCKED) then the equality becomes
+        ComponentPriority.DEFER > ComponentPriority.READY which is true, indicating that the queue is stale.
 
         :param priority_queue: Priority queue of component names.
         """
