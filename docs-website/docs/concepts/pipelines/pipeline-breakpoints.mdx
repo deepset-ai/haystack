@@ -70,7 +70,7 @@ except BreakpointException as e:
     print(f"Breakpoint triggered: {e.component}")
 ```
 
-When `snapshot_callback` is provided, the default file-saving behavior is not used for that run; the callback is responsible for handling the snapshot. The same parameter is available on `Agent.run()` for agent breakpoints.
+When `snapshot_callback` is provided, file-saving is skipped; the callback is responsible for handling the snapshot. The same parameter is available on `Agent.run()` for agent breakpoints.
 
 ## Snapshot file saving
 
