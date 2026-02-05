@@ -271,8 +271,8 @@ class TransformersSimilarityRanker:
             )
 
         query_doc_pairs = []
-        documents = _deduplicate_documents(documents)
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
@@ -315,8 +315,8 @@ class TransformersSimilarityRanker:
         ranked_docs = []
         for sorted_index in list_sorted_indices:
             i = sorted_index
-            documents[i].score = list_similarity_scores[i]
-            ranked_docs.append(documents[i])
+            deduplicated_documents[i].score = list_similarity_scores[i]
+            ranked_docs.append(deduplicated_documents[i])
 
         if score_threshold is not None:
             ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]

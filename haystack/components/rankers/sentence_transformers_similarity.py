@@ -257,10 +257,10 @@ class SentenceTransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        documents = _deduplicate_documents(documents)
+        deduplicated_documents = _deduplicate_documents(documents)
         prepared_query = self.query_prefix + query + self.query_suffix
         prepared_documents = []
-        for doc in documents:
+        for doc in deduplicated_documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
@@ -286,7 +286,7 @@ class SentenceTransformersSimilarityRanker:
         for el in ranking_result:
             index = el["corpus_id"]
             score = float(el["score"])
-            document = copy(documents[index])
+            document = copy(deduplicated_documents[index])
             document.score = score
             ranked_docs.append(document)
 

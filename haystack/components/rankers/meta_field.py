@@ -248,9 +248,9 @@ class MetaFieldRanker:
         if weight == 0:
             return {"documents": documents[:top_k]}
 
-        documents = _deduplicate_documents(documents)
-        docs_with_meta_field = [doc for doc in documents if self.meta_field in doc.meta]
-        docs_missing_meta_field = [doc for doc in documents if self.meta_field not in doc.meta]
+        deduplicated_documents = _deduplicate_documents(documents)
+        docs_with_meta_field = [doc for doc in deduplicated_documents if self.meta_field in doc.meta]
+        docs_missing_meta_field = [doc for doc in deduplicated_documents if self.meta_field not in doc.meta]
 
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
@@ -260,7 +260,7 @@ class MetaFieldRanker:
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
                 "Returning the <top_k> of the original Documents since there are no values to rank.",
                 meta_field=self.meta_field,
-                document_ids=",".join([doc.id for doc in documents]),
+                document_ids=",".join([doc.id for doc in deduplicated_documents]),
             )
             return {"documents": documents[:top_k]}
 
@@ -305,16 +305,16 @@ class MetaFieldRanker:
                 document_ids=",".join([doc.id for doc in docs_with_meta_field]),
                 error=error,
             )
-            return {"documents": documents[:top_k]}
+            return {"documents": deduplicated_documents[:top_k]}
 
         # Merge rankings and handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         if missing_meta == "bottom":
             sorted_documents = sorted_by_meta + docs_missing_meta_field
-            sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+            sorted_documents = self._merge_rankings(deduplicated_documents, sorted_documents, weight, ranking_mode)
         elif missing_meta == "top":
             sorted_documents = docs_missing_meta_field + sorted_by_meta
-            sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+            sorted_documents = self._merge_rankings(deduplicated_documents, sorted_documents, weight, ranking_mode)
         else:
             sorted_documents = sorted_by_meta
             sorted_documents = self._merge_rankings(docs_with_meta_field, sorted_documents, weight, ranking_mode)

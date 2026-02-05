@@ -412,15 +412,15 @@ class SentenceTransformersDiversityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        documents = _deduplicate_documents(documents)
+        deduplicated_documents = _deduplicate_documents(documents)
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold
             self._check_lambda_threshold(lambda_threshold, self.strategy)
             re_ranked_docs = self._maximum_margin_relevance(
-                query=query, documents=documents, lambda_threshold=lambda_threshold, top_k=top_k
+                query=query, documents=deduplicated_documents, lambda_threshold=lambda_threshold, top_k=top_k
             )
         else:
-            re_ranked_docs = self._greedy_diversity_order(query=query, documents=documents)
+            re_ranked_docs = self._greedy_diversity_order(query=query, documents=deduplicated_documents)
 
         return {"documents": re_ranked_docs[:top_k]}

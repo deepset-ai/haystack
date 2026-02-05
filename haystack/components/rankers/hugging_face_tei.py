@@ -192,8 +192,8 @@ class HuggingFaceTEIRanker:
             return {"documents": []}
 
         # Prepare the payload
-        documents = _deduplicate_documents(documents)
-        texts = [doc.content for doc in documents]
+        deduplicated_documents = _deduplicate_documents(documents)
+        texts = [doc.content for doc in deduplicated_documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
@@ -215,7 +215,7 @@ class HuggingFaceTEIRanker:
 
         result: dict[str, str] | list[dict[str, Any]] = response.json()
 
-        return self._compose_response(result, top_k, documents)
+        return self._compose_response(result, top_k, deduplicated_documents)
 
     @component.output_types(documents=list[Document])
     async def run_async(
@@ -246,8 +246,8 @@ class HuggingFaceTEIRanker:
             return {"documents": []}
 
         # Prepare the payload
-        documents = _deduplicate_documents(documents)
-        texts = [doc.content for doc in documents]
+        deduplicated_documents = _deduplicate_documents(documents)
+        texts = [doc.content for doc in deduplicated_documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
@@ -269,4 +269,4 @@ class HuggingFaceTEIRanker:
 
         result: dict[str, str] | list[dict[str, Any]] = response.json()
 
-        return self._compose_response(result, top_k, documents)
+        return self._compose_response(result, top_k, deduplicated_documents)

@@ -92,8 +92,8 @@ class MetaFieldGroupingRanker:
         document_groups: dict[str, dict[str, list[Document]]] = defaultdict(lambda: defaultdict(list))
         no_group_docs = []
 
-        documents = _deduplicate_documents(documents)
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             group_value = str(doc.meta.get(self.group_by, ""))
 
             # If no group value, add to no_group_docs and continue
