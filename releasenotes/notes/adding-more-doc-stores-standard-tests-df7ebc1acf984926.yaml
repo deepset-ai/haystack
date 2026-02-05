@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add new DocumentStore standard tests for the following operations: delete_all_documents(), update_by_filter(), delete_by_filter()
