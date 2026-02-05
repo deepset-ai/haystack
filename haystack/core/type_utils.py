@@ -59,6 +59,14 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
+def _is_base_convertible(s: Any, r: Any) -> bool:
+    """Returns True if s and r are a (str, ChatMessage) pair in any order."""
+
+    s_is_chat, r_is_chat = _contains_type(s, ChatMessage), _contains_type(r, ChatMessage)
+    s_is_str, r_is_str = _contains_type(s, str), _contains_type(r, str)
+    return (s_is_chat and r_is_str) or (s_is_str and r_is_chat)
+
+
 def _types_are_convertible(sender: Any, receiver: Any) -> bool:
     """
     Checks whether the sender type is convertible to the receiver type.
@@ -74,10 +82,19 @@ def _types_are_convertible(sender: Any, receiver: Any) -> bool:
     if _contains_type(receiver, sender):
         return True
 
-    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+    # Base: ChatMessage <-> str
+    if _is_base_convertible(sender, receiver):
         return True
 
-    return _contains_type(sender, str) and _contains_type(receiver, ChatMessage)
+    s_origin, r_origin = _safe_get_origin(sender), _safe_get_origin(receiver)
+
+    # Wrap: T -> List[T]
+    if r_origin is list and (r_args := get_args(receiver)):
+        inner_r = r_args[0]
+        if _strict_types_are_compatible(sender, inner_r) or _is_base_convertible(sender, inner_r):
+            return True
+
+    return False
 
 
 def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
@@ -89,6 +106,13 @@ def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
     :param receiver_type: The receiver type.
     :return: The converted value.
     """
+    s_origin, r_origin = _safe_get_origin(sender_type), _safe_get_origin(receiver_type)
+
+    # 2. Wrap: T -> List[U]
+    if r_origin is list:
+        # Recursively convert the value to the inner type of the list
+        return [_convert_value(value, sender_type, get_args(receiver_type)[0])]
+
     if _contains_type(sender_type, ChatMessage) and _contains_type(receiver_type, str):
         if value.text is None:
             msg = "Cannot convert `ChatMessage` to `str` because it has no text. "

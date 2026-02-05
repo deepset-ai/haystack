@@ -904,6 +904,12 @@ def test_types_are_convertible():
     assert _types_are_convertible(sender=str, receiver=ChatMessage) is True
     assert _types_are_convertible(sender=int, receiver=str) is False
 
+    assert _types_are_convertible(sender=str, receiver=List[str]) is True
+    assert _types_are_convertible(sender=str, receiver=list[str]) is True
+
+    assert _types_are_convertible(sender=ChatMessage, receiver=List[str]) is True
+    assert _types_are_convertible(sender=ChatMessage, receiver=list[str]) is True
+
 
 def test_convert_value():
     with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
@@ -918,3 +924,12 @@ def test_convert_value():
     )
     assert _convert_value(value="Hello", sender_type=str, receiver_type=ChatMessage) == ChatMessage.from_user("Hello")
     assert _convert_value(value="Hello", sender_type=str, receiver_type=str) == "Hello"
+
+    assert _convert_value(value="Hello", sender_type=str, receiver_type=List[str]) == ["Hello"]
+    assert _convert_value(value="Hello", sender_type=str, receiver_type=list[str]) == ["Hello"]
+    assert _convert_value(
+        value=ChatMessage.from_assistant("Hello"), sender_type=ChatMessage, receiver_type=List[str]
+    ) == ["Hello"]
+    assert _convert_value(
+        value=ChatMessage.from_assistant("Hello"), sender_type=ChatMessage, receiver_type=list[str]
+    ) == ["Hello"]
