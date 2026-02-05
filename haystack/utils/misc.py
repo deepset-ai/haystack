@@ -4,7 +4,6 @@
 
 import mimetypes
 import tempfile
-from collections import defaultdict
 from math import inf
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, overload
@@ -130,11 +129,18 @@ def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
     :returns: List of deduplicated documents.
     """
 
-    output = []
-    docs_per_id = defaultdict(list)
+    # Keep for each Document id the one with the highest score
+    highest_scoring_docs = {}
     for doc in documents:
-        docs_per_id[doc.id].append(doc)
-    for docs in docs_per_id.values():
-        doc_with_best_score = max(docs, key=lambda doc: doc.score if doc.score else -inf)
-        output.append(doc_with_best_score)
-    return output
+        doc_id = doc.id
+        score = doc.score if doc.score is not None else -inf
+
+        if doc_id not in highest_scoring_docs:
+            highest_scoring_docs[doc_id] = doc
+        else:
+            existing_doc = highest_scoring_docs[doc_id]
+            existing_score = existing_doc.score if existing_doc.score is not None else -inf
+            if score > existing_score:
+                highest_scoring_docs[doc_id] = doc
+
+    return list(highest_scoring_docs.values())
