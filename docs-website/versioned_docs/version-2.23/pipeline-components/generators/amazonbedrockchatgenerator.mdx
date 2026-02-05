@@ -78,13 +78,13 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 Prompt caching on Bedrock is available for [selected models](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html).
 It allows you to define cache points within a request, as long as the input meets a model-specific minimum token threshold.
 
-Each request can contain up to 4 cache points.
+Each request can contain up to four cache points.
 
 #### Caching messages
 
 This generator allows you control cache points at the `ChatMessage` level via the `meta` field.
 
-For example, to cache a long user message that will be reused across multiple requests:
+For example, to cache a long user message to be reused across multiple requests:
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
@@ -102,7 +102,9 @@ result = generator.run(messages=[msg])
 ```
 
 If the cache point is successfully written, the number of cached input tokens is available at:
-`result["replies"][0].meta["usage"]["cache_write_input_tokens"]`.
+```python
+result["replies"][0].meta["usage"]["cache_write_input_tokens"]
+```
 
 #### Caching tools
 
@@ -114,7 +116,6 @@ model supports prompt caching.
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
 
 # define or load your tools
-# my_tools = [...]
 
 generator = AmazonBedrockChatGenerator(
     model="anthropic.claude-sonnet-4-5-20250929-v1:0",
