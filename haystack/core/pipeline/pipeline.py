@@ -295,7 +295,9 @@ class Pipeline(PipelineBase):
             while True:
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
-                # If there are no runnable components left, we can exit the loop
+                # If there are no runnable components left, we can exit the loop.
+                # In practice this rarely happens because the queue is constantly refilled even with components that
+                # have already run. They just get a BLOCKED priority since their inputs have already been consumed.
                 if candidate is None:
                     break
 
