@@ -179,242 +179,6 @@ class DeleteDocumentsTest:
         # No Document has been deleted
         assert document_store.count_documents() == 1
 
-    @staticmethod
-    def test_delete_all_documents(document_store: DocumentStore):
-        """
-        Test delete_all_documents() normal behaviour.
-
-        This test verifies that delete_all_documents() removes all documents from the store
-        and that the store remains functional after deletion.
-        """
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        # Write some documents
-        docs = [Document(content="first doc", id="1"), Document(content="second doc", id="2")]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 2
-
-        # Delete all documents
-        document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
-        assert document_store.count_documents() == 0
-
-        # Verify store is still functional - can write new documents
-        new_doc = Document(content="new doc after delete all", id="3")
-        document_store.write_documents([new_doc])
-        assert document_store.count_documents() == 1
-
-    @staticmethod
-    def test_delete_all_documents_empty_store(document_store: DocumentStore):
-        """
-        Test delete_all_documents() on an empty store.
-
-        This should not raise an error and should leave the store empty.
-        """
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        assert document_store.count_documents() == 0
-        document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
-        assert document_store.count_documents() == 0
-
-    @staticmethod
-    def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
-        """
-        Test delete_all_documents() with recreate_index=False.
-
-        This test only runs for stores that support the recreate_index parameter.
-        Stores that don't support this parameter will skip this test.
-        """
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        # Check if delete_all_documents supports recreate_index parameter
-        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
-        if "recreate_index" not in sig.parameters:
-            pytest.skip("Store doesn't support recreate_index parameter")
-
-        # Write some documents
-        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 2
-
-        # Delete all documents without recreating index
-        document_store.delete_all_documents(recreate_index=False)  # type: ignore # since it's not part of the DocumentStore protocol
-        assert document_store.count_documents() == 0
-
-        # Verify store is still functional
-        new_doc = Document(id="3", content="New document after delete all")
-        document_store.write_documents([new_doc])
-        assert document_store.count_documents() == 1
-
-    @staticmethod
-    def test_delete_all_documents_with_recreate_index(document_store: DocumentStore):
-        """
-        Test delete_all_documents() with recreate_index=True.
-
-        This test verifies that when recreate_index=True, the index/collection structure
-        is preserved after deletion. This test only runs for stores that support the
-        recreate_index parameter.
-        """
-        # Check if delete_all_documents supports recreate_index parameter
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
-        if "recreate_index" not in sig.parameters:
-            pytest.skip("Store doesn't support recreate_index parameter")
-
-        # Write some documents
-        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 2
-
-        # Delete all documents with recreating index
-        document_store.delete_all_documents(recreate_index=True)  # type: ignore # since it's not part of the DocumentStore protocol
-        assert document_store.count_documents() == 0
-
-        # Verify store is still functional and can accept new documents
-        new_doc = Document(id="3", content="New document after delete all with recreate")
-        document_store.write_documents([new_doc])
-        assert document_store.count_documents() == 1
-
-        # Verify the document can be retrieved
-        retrieved = document_store.filter_documents()
-        assert len(retrieved) == 1
-        assert retrieved[0].content == "New document after delete all with recreate"
-
-    @staticmethod
-    def test_delete_by_filter(document_store: DocumentStore):
-        """
-        Test delete_by_filter() removes documents matching the filter.
-
-        This test only runs for stores that implement delete_by_filter.
-        Stores that don't support this method will skip this test.
-        Uses word values for category (not single characters) so backends that
-        treat short tokens as stopwords (e.g. Weaviate) work correctly.
-        """
-        if not hasattr(document_store, "delete_by_filter"):
-            pytest.skip("Store doesn't implement delete_by_filter")
-
-        docs = [
-            Document(content="Doc 1", meta={"category": "Alpha"}),
-            Document(content="Doc 2", meta={"category": "Beta"}),
-            Document(content="Doc 3", meta={"category": "Alpha"}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 3
-
-        sig = inspect.signature(document_store.delete_by_filter)
-        if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(
-                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, refresh=True
-            )
-
-        else:
-            deleted_count = document_store.delete_by_filter(
-                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
-            )
-        assert deleted_count == 2
-        assert document_store.count_documents() == 1
-
-        remaining_docs = document_store.filter_documents()
-        assert len(remaining_docs) == 1
-        assert remaining_docs[0].meta["category"] == "Beta"
-
-    @staticmethod
-    def test_delete_by_filter_no_matches(document_store: DocumentStore):
-        """
-        Test delete_by_filter() when no documents match the filter.
-
-        This test only runs for stores that implement delete_by_filter.
-        """
-        if not hasattr(document_store, "delete_by_filter"):
-            pytest.skip("Store doesn't implement delete_by_filter")
-
-        docs = [
-            Document(content="Doc 1", meta={"category": "Alpha"}),
-            Document(content="Doc 2", meta={"category": "Beta"}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 2
-
-        deleted_count = document_store.delete_by_filter(
-            filters={"field": "meta.category", "operator": "==", "value": "Gamma"}
-        )
-        assert deleted_count == 0
-        assert document_store.count_documents() == 2
-
-    @staticmethod
-    def test_delete_by_filter_advanced_filters(document_store: DocumentStore):
-        """
-        Test delete_by_filter() with AND/OR logical filters.
-
-        This test only runs for stores that implement delete_by_filter.
-        Uses word values for category (not single characters) so backends that
-        treat short tokens as stopwords work correctly.
-        """
-        if not hasattr(document_store, "delete_by_filter"):
-            pytest.skip("Store doesn't implement delete_by_filter")
-
-        docs = [
-            Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
-            Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "published"}),
-            Document(content="Doc 3", meta={"category": "Beta", "year": 2023, "status": "draft"}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 3
-
-        sig = inspect.signature(document_store.delete_by_filter)
-        if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(
-                filters={
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                        {"field": "meta.year", "operator": "==", "value": 2023},
-                    ],
-                },
-                refresh=True,
-            )
-        else:
-            deleted_count = document_store.delete_by_filter(
-                filters={
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
-                        {"field": "meta.year", "operator": "==", "value": 2023},
-                    ],
-                }
-            )
-        assert deleted_count == 1
-        assert document_store.count_documents() == 2
-
-        sig = inspect.signature(document_store.delete_by_filter)
-        if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(
-                filters={
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Beta"},
-                        {"field": "meta.status", "operator": "==", "value": "published"},
-                    ],
-                },
-                refresh=True,
-            )
-        else:
-            deleted_count = document_store.delete_by_filter(
-                filters={
-                    "operator": "OR",
-                    "conditions": [
-                        {"field": "meta.category", "operator": "==", "value": "Beta"},
-                        {"field": "meta.status", "operator": "==", "value": "published"},
-                    ],
-                }
-            )
-        assert deleted_count == 2
-        assert document_store.count_documents() == 0
-
 
 def create_filterable_docs() -> list[Document]:
     """
@@ -851,10 +615,254 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             )
 
 
-class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
+class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
     """
-    Utility class to test a Document Store `update_by_filter` method.
+    Extended tests for Document Stores.
+
+    Tests implemented:
+    - delete_all_documents()
+    - delete_by_filter()
+    - update_by_filter()
+
+    To use it create a custom test class and override the `document_store` fixture.
+    Tests for unsupported methods are skipped automatically.
     """
+
+    @staticmethod
+    def test_delete_all_documents(document_store: DocumentStore):
+        """
+        Test delete_all_documents() normal behaviour.
+
+        This test verifies that delete_all_documents() removes all documents from the store
+        and that the store remains functional after deletion.
+        """
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
+        # Write some documents
+        docs = [Document(content="first doc", id="1"), Document(content="second doc", id="2")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        # Delete all documents
+        document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
+        assert document_store.count_documents() == 0
+
+        # Verify store is still functional - can write new documents
+        new_doc = Document(content="new doc after delete all", id="3")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+    @staticmethod
+    def test_delete_all_documents_empty_store(document_store: DocumentStore):
+        """
+        Test delete_all_documents() on an empty store.
+
+        This should not raise an error and should leave the store empty.
+        """
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
+        assert document_store.count_documents() == 0
+        document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
+        assert document_store.count_documents() == 0
+
+    @staticmethod
+    def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
+        """
+        Test delete_all_documents() with recreate_index=False.
+
+        This test only runs for stores that support the recreate_index parameter.
+        Stores that don't support this parameter will skip this test.
+        """
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
+        # Check if delete_all_documents supports recreate_index parameter
+        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
+        if "recreate_index" not in sig.parameters:
+            pytest.skip("Store doesn't support recreate_index parameter")
+
+        # Write some documents
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        # Delete all documents without recreating index
+        document_store.delete_all_documents(recreate_index=False)  # type: ignore # since it's not part of the DocumentStore protocol
+        assert document_store.count_documents() == 0
+
+        # Verify store is still functional
+        new_doc = Document(id="3", content="New document after delete all")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+    @staticmethod
+    def test_delete_all_documents_with_recreate_index(document_store: DocumentStore):
+        """
+        Test delete_all_documents() with recreate_index=True.
+
+        This test verifies that when recreate_index=True, the index/collection structure
+        is preserved after deletion. This test only runs for stores that support the
+        recreate_index parameter.
+        """
+        # Check if delete_all_documents supports recreate_index parameter
+        if not hasattr(document_store, "delete_all_documents"):
+            pytest.skip("Store doesn't implement delete_all_documents")
+
+        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
+        if "recreate_index" not in sig.parameters:
+            pytest.skip("Store doesn't support recreate_index parameter")
+
+        # Write some documents
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        # Delete all documents with recreating index
+        document_store.delete_all_documents(recreate_index=True)  # type: ignore # since it's not part of the DocumentStore protocol
+        assert document_store.count_documents() == 0
+
+        # Verify store is still functional and can accept new documents
+        new_doc = Document(id="3", content="New document after delete all with recreate")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+        # Verify the document can be retrieved
+        retrieved = document_store.filter_documents()
+        assert len(retrieved) == 1
+        assert retrieved[0].content == "New document after delete all with recreate"
+
+    @staticmethod
+    def test_delete_by_filter(document_store: DocumentStore):
+        """
+        Test delete_by_filter() removes documents matching the filter.
+
+        This test only runs for stores that implement delete_by_filter.
+        Stores that don't support this method will skip this test.
+        Uses word values for category (not single characters) so backends that
+        treat short tokens as stopwords (e.g. Weaviate) work correctly.
+        """
+        if not hasattr(document_store, "delete_by_filter"):
+            pytest.skip("Store doesn't implement delete_by_filter")
+
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha"}),
+            Document(content="Doc 2", meta={"category": "Beta"}),
+            Document(content="Doc 3", meta={"category": "Alpha"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        sig = inspect.signature(document_store.delete_by_filter)
+        if "refresh" in sig.parameters:
+            deleted_count = document_store.delete_by_filter(
+                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, refresh=True
+            )
+
+        else:
+            deleted_count = document_store.delete_by_filter(
+                filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
+            )
+        assert deleted_count == 2
+        assert document_store.count_documents() == 1
+
+        remaining_docs = document_store.filter_documents()
+        assert len(remaining_docs) == 1
+        assert remaining_docs[0].meta["category"] == "Beta"
+
+    @staticmethod
+    def test_delete_by_filter_no_matches(document_store: DocumentStore):
+        """
+        Test delete_by_filter() when no documents match the filter.
+
+        This test only runs for stores that implement delete_by_filter.
+        """
+        if not hasattr(document_store, "delete_by_filter"):
+            pytest.skip("Store doesn't implement delete_by_filter")
+
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha"}),
+            Document(content="Doc 2", meta={"category": "Beta"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        deleted_count = document_store.delete_by_filter(
+            filters={"field": "meta.category", "operator": "==", "value": "Gamma"}
+        )
+        assert deleted_count == 0
+        assert document_store.count_documents() == 2
+
+    @staticmethod
+    def test_delete_by_filter_advanced_filters(document_store: DocumentStore):
+        """
+        Test delete_by_filter() with AND/OR logical filters.
+
+        This test only runs for stores that implement delete_by_filter.
+        Uses word values for category (not single characters) so backends that
+        treat short tokens as stopwords work correctly.
+        """
+        if not hasattr(document_store, "delete_by_filter"):
+            pytest.skip("Store doesn't implement delete_by_filter")
+
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "published"}),
+            Document(content="Doc 3", meta={"category": "Beta", "year": 2023, "status": "draft"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        sig = inspect.signature(document_store.delete_by_filter)
+        if "refresh" in sig.parameters:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "AND",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                        {"field": "meta.year", "operator": "==", "value": 2023},
+                    ],
+                },
+                refresh=True,
+            )
+        else:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "AND",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                        {"field": "meta.year", "operator": "==", "value": 2023},
+                    ],
+                }
+            )
+        assert deleted_count == 1
+        assert document_store.count_documents() == 2
+
+        sig = inspect.signature(document_store.delete_by_filter)
+        if "refresh" in sig.parameters:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Beta"},
+                        {"field": "meta.status", "operator": "==", "value": "published"},
+                    ],
+                },
+                refresh=True,
+            )
+        else:
+            deleted_count = document_store.delete_by_filter(
+                filters={
+                    "operator": "OR",
+                    "conditions": [
+                        {"field": "meta.category", "operator": "==", "value": "Beta"},
+                        {"field": "meta.status", "operator": "==", "value": "published"},
+                    ],
+                }
+            )
+        assert deleted_count == 2
+        assert document_store.count_documents() == 0
 
     @staticmethod
     def test_update_by_filter(document_store: DocumentStore, filterable_docs: list[Document]):
@@ -1034,9 +1042,7 @@ class UpdateByFilterTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
         assert len(featured_docs) == 2
 
 
-class DocumentStoreBaseTests(
-    CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, UpdateByFilterTest, WriteDocumentsTest
-):
+class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):
     @pytest.fixture
     def document_store(self) -> DocumentStore:
         """Base fixture, to be reimplemented when deriving from DocumentStoreBaseTests"""
