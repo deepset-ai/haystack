@@ -1,4 +1,49 @@
 ---
 enhancements:
   - |
-    Deduplicate documents in Rankers.
+    Rankers now deduplicate documents by ``id`` before ranking, preventing identical documents from being scored
+    multiple times in hybrid retrieval setups and keeping ranking outputs more consistent.
+
+    It also means you can connect multiple retriever outputs directly to a Ranker without inserting a
+    ``DocumentJoiner`` just to avoid duplicates. For example:
+
+    .. code:: python
+
+        from haystack import Pipeline
+        from haystack.components.embedders import SentenceTransformersTextEmbedder
+        from haystack.components.rankers import TransformersSimilarityRanker
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        document_store = InMemoryDocumentStore()
+        text_embedder = SentenceTransformersTextEmbedder(model="BAAI/bge-small-en-v1.5")
+
+        embedding_retriever = InMemoryEmbeddingRetriever(document_store)
+        bm25_retriever = InMemoryBM25Retriever(document_store)
+        ranker = TransformersSimilarityRanker(model="BAAI/bge-reranker-base")
+
+        hybrid_retrieval = Pipeline()
+        hybrid_retrieval.add_component("text_embedder", text_embedder)
+        hybrid_retrieval.add_component("embedding_retriever", embedding_retriever)
+        hybrid_retrieval.add_component("bm25_retriever", bm25_retriever)
+        hybrid_retrieval.add_component("ranker", ranker)
+
+        hybrid_retrieval.connect("text_embedder", "embedding_retriever")
+        hybrid_retrieval.connect("embedding_retriever", "ranker")
+        hybrid_retrieval.connect("bm25_retriever", "ranker")
+
+        query = "apnea in infants"
+        result = hybrid_retrieval.run(
+            {"text_embedder": {"text": query}, "bm25_retriever": {"query": query}, "ranker": {"query": query}}
+        )
+
+upgrade:
+  - |
+    Deduplication in Rankers is a breaking change for users who rely on keeping duplicate documents with the same
+    user-defined ``id`` in the ranking output. This change only affects users with custom document ids who want duplicates
+    preserved. To keep the previous behavior, ensure that your user-defined document ids are unique across retriever
+    outputs.
+
+    Affected Rankers: ``HuggingFaceTEIRanker``, ``LostInTheMiddleRanker``, ``MetaFieldRanker``,
+    ``MetaFieldGroupingRanker``, ``SentenceTransformersDiversityRanker``, ``SentenceTransformersSimilarityRanker``,
+    ``TransformersSimilarityRanker``.
