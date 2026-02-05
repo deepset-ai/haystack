@@ -86,6 +86,18 @@ class TestMetaFieldRanker:
         assert result["documents"][0].content == "unique"
         assert result["documents"][1].content == "keep me"
 
+    def test_run_deduplicates_documents_when_weight_is_0(self):
+        ranker = MetaFieldRanker(meta_field="rating", weight=0)
+        docs_before = [
+            Document(id="duplicate", content="keep me", meta={"rating": 1.3}, score=0.9),
+            Document(id="duplicate", content="drop me", meta={"rating": 1.2}, score=0.1),
+            Document(id="unique", content="unique", meta={"rating": 2.1}),
+        ]
+        result = ranker.run(documents=docs_before)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
+
     def test_meta_value_type_int(self):
         ranker = MetaFieldRanker(meta_field="rating", weight=1.0, meta_value_type="int")
         docs_before = [Document(content="abc", meta={"rating": value}) for value in ["1", "10", "2"]]

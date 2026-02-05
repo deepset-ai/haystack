@@ -244,11 +244,11 @@ class MetaFieldRanker:
             meta_value_type=meta_value_type,
         )
 
+        deduplicated_documents = _deduplicate_documents(documents)
         # If the weight is 0 then ranking by meta field is disabled and the original documents should be returned
         if weight == 0:
-            return {"documents": documents[:top_k]}
+            return {"documents": deduplicated_documents[:top_k]}
 
-        deduplicated_documents = _deduplicate_documents(documents)
         docs_with_meta_field = [doc for doc in deduplicated_documents if self.meta_field in doc.meta]
         docs_missing_meta_field = [doc for doc in deduplicated_documents if self.meta_field not in doc.meta]
 
