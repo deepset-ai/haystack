@@ -295,7 +295,9 @@ class Pipeline(PipelineBase):
             while True:
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
-                # If there are no runnable components left, we can exit the loop
+                # If there are no runnable components left, we can exit the loop.
+                # In practice this rarely happens because the queue is constantly refilled even with components that
+                # have already run. They just get a BLOCKED priority since their inputs have already been consumed.
                 if candidate is None:
                     break
 
@@ -306,6 +308,11 @@ class Pipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
+                        # TODO This becomes a little tricky to determine the component that is actually most likely
+                        #      blocked. The queue basically always has all components in them even when they have
+                        #      already run (they just get put back in with a BLOCKED priority).
+                        #      So to really identify the blocked component we probably need to at least screen out
+                        #      all components that have the max component visits already.
                         logger.warning(
                             "Cannot run pipeline - the next component that is meant to run is blocked.\n"
                             "Component name: '{component_name}'\n"
