@@ -4,10 +4,14 @@
 
 import mimetypes
 import tempfile
+from math import inf
 from pathlib import Path
-from typing import Any, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from numpy import exp, ndarray
+
+if TYPE_CHECKING:
+    from haystack.dataclasses import Document
 
 CUSTOM_MIMETYPES = {
     # we add markdown because it is not added by the mimetypes module
@@ -115,3 +119,28 @@ def _get_output_dir(out_dir: str) -> str:
     raise RuntimeError(
         f"Could not create a writable directory for output files in any of the following locations: {candidates}"
     )
+
+
+def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
+    """
+    Deduplicate a list of documents by their id keeping the duplicate with the highest score if a score is present.
+
+    :param documents: List of documents to deduplicate.
+    :returns: List of deduplicated documents.
+    """
+
+    # Keep for each Document id the one with the highest score
+    highest_scoring_docs = {}
+    for doc in documents:
+        doc_id = doc.id
+        score = doc.score if doc.score is not None else -inf
+
+        if doc_id not in highest_scoring_docs:
+            highest_scoring_docs[doc_id] = doc
+        else:
+            existing_doc = highest_scoring_docs[doc_id]
+            existing_score = existing_doc.score if existing_doc.score is not None else -inf
+            if score > existing_score:
+                highest_scoring_docs[doc_id] = doc
+
+    return list(highest_scoring_docs.values())
