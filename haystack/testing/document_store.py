@@ -615,17 +615,12 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             )
 
 
-class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
+class DeleteAllTest:
     """
-    Extended tests for Document Stores.
-
-    Tests implemented:
-    - delete_all_documents()
-    - delete_by_filter()
-    - update_by_filter()
+    Tests for Document Store delete_all_documents().
 
     To use it create a custom test class and override the `document_store` fixture.
-    Tests for unsupported methods are skipped automatically.
+    Only mix in for stores that implement delete_all_documents.
     """
 
     @staticmethod
@@ -636,19 +631,13 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         This test verifies that delete_all_documents() removes all documents from the store
         and that the store remains functional after deletion.
         """
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        # Write some documents
         docs = [Document(content="first doc", id="1"), Document(content="second doc", id="2")]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        # Delete all documents
         document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
 
-        # Verify store is still functional - can write new documents
         new_doc = Document(content="new doc after delete all", id="3")
         document_store.write_documents([new_doc])
         assert document_store.count_documents() == 1
@@ -660,9 +649,6 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
 
         This should not raise an error and should leave the store empty.
         """
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
         assert document_store.count_documents() == 0
         document_store.delete_all_documents()  # type: ignore # since it's not part of the DocumentStore protocol
         assert document_store.count_documents() == 0
@@ -670,29 +656,22 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
     @staticmethod
     def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
         """
-        Test delete_all_documents() with recreate_index=False.
+        Test delete_all_documents() with recreate_index=False when supported.
 
-        This test only runs for stores that support the recreate_index parameter.
-        Stores that don't support this parameter will skip this test.
+        When the store does not support recreate_index, calls delete_all_documents()
+        with no arguments and asserts the store is empty and functional.
         """
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        # Check if delete_all_documents supports recreate_index parameter
-        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
-        if "recreate_index" not in sig.parameters:
-            pytest.skip("Store doesn't support recreate_index parameter")
-
-        # Write some documents
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        # Delete all documents without recreating index
-        document_store.delete_all_documents(recreate_index=False)  # type: ignore # since it's not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore
+        if "recreate_index" in sig.parameters:
+            document_store.delete_all_documents(recreate_index=False)  # type: ignore
+        else:
+            document_store.delete_all_documents()  # type: ignore
         assert document_store.count_documents() == 0
 
-        # Verify store is still functional
         new_doc = Document(id="3", content="New document after delete all")
         document_store.write_documents([new_doc])
         assert document_store.count_documents() == 1
@@ -700,52 +679,39 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
     @staticmethod
     def test_delete_all_documents_with_recreate_index(document_store: DocumentStore):
         """
-        Test delete_all_documents() with recreate_index=True.
+        Test delete_all_documents() with recreate_index=True when supported.
 
-        This test verifies that when recreate_index=True, the index/collection structure
-        is preserved after deletion. This test only runs for stores that support the
-        recreate_index parameter.
+        When the store does not support recreate_index, calls delete_all_documents()
+        with no arguments and asserts the store is empty and functional.
         """
-        # Check if delete_all_documents supports recreate_index parameter
-        if not hasattr(document_store, "delete_all_documents"):
-            pytest.skip("Store doesn't implement delete_all_documents")
-
-        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore # since it's not part of the DocumentStore protocol
-        if "recreate_index" not in sig.parameters:
-            pytest.skip("Store doesn't support recreate_index parameter")
-
-        # Write some documents
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        # Delete all documents with recreating index
-        document_store.delete_all_documents(recreate_index=True)  # type: ignore # since it's not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_all_documents)  # type: ignore
+        if "recreate_index" in sig.parameters:
+            document_store.delete_all_documents(recreate_index=True)  # type: ignore
+        else:
+            document_store.delete_all_documents()  # type: ignore
         assert document_store.count_documents() == 0
 
-        # Verify store is still functional and can accept new documents
         new_doc = Document(id="3", content="New document after delete all with recreate")
         document_store.write_documents([new_doc])
         assert document_store.count_documents() == 1
 
-        # Verify the document can be retrieved
         retrieved = document_store.filter_documents()
         assert len(retrieved) == 1
         assert retrieved[0].content == "New document after delete all with recreate"
 
+
+class DeleteByFilterTest:
+    """
+    Tests for Document Store delete_by_filter().
+    """
+
     @staticmethod
     def test_delete_by_filter(document_store: DocumentStore):
-        """
-        Test delete_by_filter() removes documents matching the filter.
-
-        This test only runs for stores that implement delete_by_filter.
-        Stores that don't support this method will skip this test.
-        Uses word values for category (not single characters) so backends that
-        treat short tokens as stopwords (e.g. Weaviate) work correctly.
-        """
-        if not hasattr(document_store, "delete_by_filter"):
-            pytest.skip("Store doesn't implement delete_by_filter")
-
+        """Delete documents matching a filter and verify count and remaining docs."""
         docs = [
             Document(content="Doc 1", meta={"category": "Alpha"}),
             Document(content="Doc 2", meta={"category": "Beta"}),
@@ -754,14 +720,15 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        sig = inspect.signature(document_store.delete_by_filter)
+        # `delete_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_by_filter)  # type: ignore
         if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(
+            deleted_count = document_store.delete_by_filter(  # type: ignore
                 filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, refresh=True
             )
 
         else:
-            deleted_count = document_store.delete_by_filter(
+            deleted_count = document_store.delete_by_filter(  # type: ignore
                 filters={"field": "meta.category", "operator": "==", "value": "Alpha"}
             )
         assert deleted_count == 2
@@ -773,14 +740,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
 
     @staticmethod
     def test_delete_by_filter_no_matches(document_store: DocumentStore):
-        """
-        Test delete_by_filter() when no documents match the filter.
-
-        This test only runs for stores that implement delete_by_filter.
-        """
-        if not hasattr(document_store, "delete_by_filter"):
-            pytest.skip("Store doesn't implement delete_by_filter")
-
+        """Delete with a filter that matches no documents returns 0 and leaves store unchanged."""
         docs = [
             Document(content="Doc 1", meta={"category": "Alpha"}),
             Document(content="Doc 2", meta={"category": "Beta"}),
@@ -788,7 +748,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
 
-        deleted_count = document_store.delete_by_filter(
+        deleted_count = document_store.delete_by_filter(  # type: ignore
             filters={"field": "meta.category", "operator": "==", "value": "Gamma"}
         )
         assert deleted_count == 0
@@ -796,16 +756,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
 
     @staticmethod
     def test_delete_by_filter_advanced_filters(document_store: DocumentStore):
-        """
-        Test delete_by_filter() with AND/OR logical filters.
-
-        This test only runs for stores that implement delete_by_filter.
-        Uses word values for category (not single characters) so backends that
-        treat short tokens as stopwords work correctly.
-        """
-        if not hasattr(document_store, "delete_by_filter"):
-            pytest.skip("Store doesn't implement delete_by_filter")
-
+        """Delete with AND/OR filter combinations and verify remaining documents."""
         docs = [
             Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
             Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "published"}),
@@ -814,9 +765,10 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        sig = inspect.signature(document_store.delete_by_filter)
+        # `delete_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_by_filter)  # type: ignore
         if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(
+            deleted_count = document_store.delete_by_filter(  # type: ignore
                 filters={
                     "operator": "AND",
                     "conditions": [
@@ -827,7 +779,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
                 refresh=True,
             )
         else:
-            deleted_count = document_store.delete_by_filter(
+            deleted_count = document_store.delete_by_filter(  # type: ignore
                 filters={
                     "operator": "AND",
                     "conditions": [
@@ -839,9 +791,10 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         assert deleted_count == 1
         assert document_store.count_documents() == 2
 
-        sig = inspect.signature(document_store.delete_by_filter)
+        # `delete_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_by_filter)  # type: ignore
         if "refresh" in sig.parameters:
-            deleted_count = document_store.delete_by_filter(
+            deleted_count = document_store.delete_by_filter(  # type: ignore
                 filters={
                     "operator": "OR",
                     "conditions": [
@@ -852,7 +805,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
                 refresh=True,
             )
         else:
-            deleted_count = document_store.delete_by_filter(
+            deleted_count = document_store.delete_by_filter(  # type: ignore
                 filters={
                     "operator": "OR",
                     "conditions": [
@@ -864,26 +817,30 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         assert deleted_count == 2
         assert document_store.count_documents() == 0
 
+
+class UpdateByFilterTest:
+    """
+    Tests for Document Store update_by_filter().
+    """
+
     @staticmethod
     def test_update_by_filter(document_store: DocumentStore, filterable_docs: list[Document]):
-        """Test update_by_filter() updates metadata of documents matching the filter."""
-        if not hasattr(document_store, "update_by_filter"):
-            pytest.skip("Store doesn't implement update_by_filter")
-
+        """Update documents matching a filter and verify count and meta changes."""
         document_store.write_documents(filterable_docs)
         expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
         assert document_store.count_documents() == len(filterable_docs)
 
-        sig = inspect.signature(document_store.update_by_filter)
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type: ignore
         if "refresh" in sig.parameters:
-            updated_count = document_store.update_by_filter(
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
                 meta={"updated": True},
                 refresh=True,
             )
 
         else:
-            updated_count = document_store.update_by_filter(
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}
             )
         assert updated_count == expected_count
@@ -904,15 +861,12 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
 
     @staticmethod
     def test_update_by_filter_no_matches(document_store: DocumentStore, filterable_docs: list[Document]):
-        """Test update_by_filter() when no documents match the filter."""
-        if not hasattr(document_store, "update_by_filter"):
-            pytest.skip("Store doesn't implement update_by_filter")
-
+        """Update with a filter that matches no documents returns 0 and leaves store unchanged."""
         document_store.write_documents(filterable_docs)
         initial_count = len(filterable_docs)
         assert document_store.count_documents() == initial_count
 
-        updated_count = document_store.update_by_filter(
+        updated_count = document_store.update_by_filter(  # type: ignore
             filters={"field": "meta.chapter", "operator": "==", "value": "nonexistent_chapter"}, meta={"updated": True}
         )
         assert updated_count == 0
@@ -920,23 +874,21 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
 
     @staticmethod
     def test_update_by_filter_multiple_fields(document_store: DocumentStore, filterable_docs: list[Document]):
-        """Test update_by_filter() updates multiple metadata fields and preserves existing ones."""
-        if not hasattr(document_store, "update_by_filter"):
-            pytest.skip("Store doesn't implement update_by_filter")
-
+        """Update matching documents with multiple meta fields and verify all are set."""
         document_store.write_documents(filterable_docs)
         expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
         assert document_store.count_documents() == len(filterable_docs)
 
-        sig = inspect.signature(document_store.update_by_filter)
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type: ignore
         if "refresh" in sig.parameters:
-            updated_count = document_store.update_by_filter(
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
                 meta={"updated": True, "extra_field": "set"},
                 refresh=True,
             )
         else:
-            updated_count = document_store.update_by_filter(
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
                 meta={"updated": True, "extra_field": "set"},
             )
@@ -960,16 +912,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
 
     @staticmethod
     def test_update_by_filter_advanced_filters(document_store: DocumentStore):
-        """
-        Test update_by_filter() with AND/OR logical filters.
-
-        This test only runs for stores that implement update_by_filter.
-        Uses word values for category (not single characters) so backends that
-        treat short tokens as stopwords work correctly.
-        """
-        if not hasattr(document_store, "update_by_filter"):
-            pytest.skip("Store doesn't implement update_by_filter")
-
+        """Update with AND/OR filter combinations and verify updated documents."""
         docs = [
             Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
             Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "draft"}),
@@ -978,8 +921,10 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        if "refresh" in inspect.signature(document_store.update_by_filter).parameters:
-            updated_count = document_store.update_by_filter(
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type: ignore
+        if "refresh" in sig.parameters:
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={
                     "operator": "AND",
                     "conditions": [
@@ -991,7 +936,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
                 refresh=True,
             )
         else:
-            updated_count = document_store.update_by_filter(
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={
                     "operator": "AND",
                     "conditions": [
@@ -1010,8 +955,10 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
         assert published_docs[0].meta["category"] == "Alpha"
         assert published_docs[0].meta["year"] == 2023
 
-        if "refresh" in inspect.signature(document_store.update_by_filter).parameters:
-            updated_count = document_store.update_by_filter(
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type: ignore
+        if "refresh" in sig.parameters:
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={
                     "operator": "OR",
                     "conditions": [
@@ -1023,7 +970,7 @@ class DocumentStoreBaseExtendedTests(AssertDocumentsEqualMixin, FilterableDocsFi
                 refresh=True,
             )
         else:
-            updated_count = document_store.update_by_filter(
+            updated_count = document_store.update_by_filter(  # type: ignore
                 filters={
                     "operator": "OR",
                     "conditions": [
@@ -1047,3 +994,16 @@ class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocu
     def document_store(self) -> DocumentStore:
         """Base fixture, to be reimplemented when deriving from DocumentStoreBaseTests"""
         raise NotImplementedError()
+
+
+class DocumentStoreBaseExtendedTests(
+    AssertDocumentsEqualMixin, FilterableDocsFixtureMixin, DeleteAllTest, DeleteByFilterTest, UpdateByFilterTest
+):
+    """
+    Extended tests for Document Stores.
+
+    Besides the base tests, it also tests for:
+    - delete_all_documents()
+    - delete_by_filter()
+    - update_by_filter()
+    """
