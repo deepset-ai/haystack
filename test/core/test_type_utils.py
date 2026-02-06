@@ -862,17 +862,23 @@ def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_ty
 
 def test_convert_value():
     with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
-        _convert_value(value=ChatMessage.from_assistant(), strategy="chat_message_to_str")
+        _convert_value(value=ChatMessage.from_assistant(), conversion_strategy="chat_message_to_str")
 
-    assert _convert_value(value=ChatMessage.from_assistant("Hello"), strategy="chat_message_to_str") == "Hello"
-    assert _convert_value(value="Hello", strategy="str_to_chat_message") == ChatMessage.from_user("Hello")
+    assert (
+        _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="chat_message_to_str") == "Hello"
+    )
+    assert _convert_value(value="Hello", conversion_strategy="str_to_chat_message") == ChatMessage.from_user("Hello")
 
-    assert _convert_value(value="Hello", strategy="wrap") == ["Hello"]
-    assert _convert_value(value=ChatMessage.from_assistant("Hello"), strategy="wrap") == [
+    assert _convert_value(value="Hello", conversion_strategy="wrap") == ["Hello"]
+    assert _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap") == [
         ChatMessage.from_assistant("Hello")
     ]
-    assert _convert_value(value=ChatMessage.from_assistant("Hello"), strategy="wrap_chat_message_to_str") == ["Hello"]
-    assert _convert_value(value="Hello", strategy="wrap_str_to_chat_message") == [ChatMessage.from_user("Hello")]
+    assert _convert_value(
+        value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap_chat_message_to_str"
+    ) == ["Hello"]
+    assert _convert_value(value="Hello", conversion_strategy="wrap_str_to_chat_message") == [
+        ChatMessage.from_user("Hello")
+    ]
 
 
 def test_contains_type():

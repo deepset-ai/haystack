@@ -40,9 +40,9 @@ def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = Tr
     if _strict_types_are_compatible(sender, receiver):
         return True, None
 
-    strategy = _get_conversion_strategy(sender, receiver)
-    if strategy:
-        return True, strategy
+    conversion_strategy = _get_conversion_strategy(sender, receiver)
+    if conversion_strategy:
+        return True, conversion_strategy
 
     return False, None
 
@@ -102,11 +102,11 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
     return None
 
 
-def _convert_value(value: Any, strategy: str) -> Any:
+def _convert_value(value: Any, conversion_strategy: str) -> Any:
     """
     Converts a value from the sender type to the receiver type using a strategy.
     """
-    return _CONVERSION_STRATEGIES[strategy](value)
+    return _CONVERSION_STRATEGIES[conversion_strategy](value)
 
 
 def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements
