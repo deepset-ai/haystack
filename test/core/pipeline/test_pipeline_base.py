@@ -24,6 +24,7 @@ from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
+from haystack.core.type_utils import ConversionStrategy
 from haystack.dataclasses import ChatMessage
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -376,7 +377,7 @@ class TestPipelineBase:
             "double",
             {
                 "conn_type": "int",
-                "convert": False,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
@@ -387,7 +388,7 @@ class TestPipelineBase:
             "add_default",
             {
                 "conn_type": "int",
-                "convert": False,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
@@ -544,7 +545,7 @@ class TestPipelineBase:
             "double",
             {
                 "conn_type": "int",
-                "convert": False,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
@@ -555,7 +556,7 @@ class TestPipelineBase:
             "add_default",
             {
                 "conn_type": "int",
-                "convert": False,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
@@ -911,7 +912,7 @@ class TestPipelineBase:
                 "document_builder",
                 OutputSocket(name="text", type=str, receivers=["document_builder"]),
                 InputSocket(name="text", type=str, default_value=_empty, senders=["sentence_builder"]),
-                False,
+                None,
             )
         ]
 
@@ -926,7 +927,7 @@ class TestPipelineBase:
                     default_value=_empty,
                     senders=["document_builder", "conditional_document_builder"],
                 ),
-                False,
+                None,
             )
         ]
 
@@ -944,7 +945,7 @@ class TestPipelineBase:
                     default_value=_empty,
                     senders=["document_builder", "conditional_document_builder"],
                 ),
-                False,
+                None,
             )
         ]
 
@@ -1174,7 +1175,7 @@ class TestPipelineBase:
         """Test writing to different socket types with various existing input states"""
         receiver_socket = lazy_variadic_input_socket if socket_type == "lazy_variadic" else regular_input_socket
         socket_name = receiver_socket.name
-        receivers = [("receiver1", regular_output_socket, receiver_socket, False)]
+        receivers = [("receiver1", regular_output_socket, receiver_socket, None)]
         inputs = {}
         if existing_inputs:
             inputs = {"receiver1": {socket_name: existing_inputs}}
@@ -1202,7 +1203,7 @@ class TestPipelineBase:
         self, component_outputs, include_outputs, expected_pruned, regular_output_socket, regular_input_socket
     ):
         """Test output pruning behavior under different scenarios"""
-        receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
+        receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
         pruned_outputs = PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
@@ -1221,7 +1222,7 @@ class TestPipelineBase:
         self, output_value, regular_output_socket, regular_input_socket
     ):
         """Test handling of different output values"""
-        receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
+        receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
         component_outputs = {"output1": output_value}
         inputs: dict[str, Any] = {}
         PipelineBase()._write_component_outputs(
@@ -1236,7 +1237,7 @@ class TestPipelineBase:
 
     def test__write_component_outputs_dont_overwrite_with_no_output(self, regular_output_socket, regular_input_socket):
         """Test that existing inputs are not overwritten with _NO_OUTPUT_PRODUCED"""
-        receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
+        receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
         component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
         inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
         PipelineBase()._write_component_outputs(
@@ -1255,7 +1256,7 @@ class TestPipelineBase:
     ):
         """Test writing to multiple receivers"""
         receivers = [
-            (f"receiver{i}", regular_output_socket, regular_input_socket, False) for i in range(receivers_count)
+            (f"receiver{i}", regular_output_socket, regular_input_socket, None) for i in range(receivers_count)
         ]
         component_outputs = {"output1": 42}
 
@@ -1277,7 +1278,7 @@ class TestPipelineBase:
         # ChatMessage to str
         out = OutputSocket("output1", ChatMessage, receivers=["receiver1"])
         inp = InputSocket("input1", str, senders=["sender1"])
-        receivers = [("receiver1", out, inp, True)]
+        receivers = [("receiver1", out, inp, ConversionStrategy.CHAT_MESSAGE_TO_STR)]
         component_outputs: dict = {"output1": ChatMessage.from_user("Hello")}
         inputs: dict = {}
         PipelineBase()._write_component_outputs(
@@ -1292,7 +1293,7 @@ class TestPipelineBase:
         # str to ChatMessage
         out = OutputSocket("output1", str, receivers=["receiver1"])
         inp = InputSocket("input1", ChatMessage, senders=["sender1"])
-        receivers = [("receiver1", out, inp, True)]
+        receivers = [("receiver1", out, inp, ConversionStrategy.STR_TO_CHAT_MESSAGE)]
         component_outputs = {"output1": "Hello"}
         inputs = {}
         PipelineBase()._write_component_outputs(
@@ -1953,7 +1954,7 @@ class TestPipelineConnect:
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
 
-    def test_connect_with_conversion(self):
+    def test_connect_with_conversion_chat_message_to_str(self):
         @component
         class ChatMessageOutput:
             @component.output_types(message=ChatMessage)
@@ -1977,6 +1978,56 @@ class TestPipelineConnect:
         assert chat_message_output.__haystack_output__.message.receivers == ["string_input"]  # type: ignore[attr-defined]
         assert string_input.__haystack_input__.text.senders == ["chat_message_output"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("chat_message_output", "string_input", "message/text")]
+
+    def test_connect_with_conversion_list_unwrap(self):
+        @component
+        class ListOutput:
+            @component.output_types(list=list[ChatMessage])
+            def run(self) -> dict[str, list[ChatMessage]]:
+                return {"list": [ChatMessage.from_user("Hello")]}
+
+        @component
+        class StringInput:
+            @component.output_types(text=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"text": text}
+
+        list_output = ListOutput()
+        string_input = StringInput()
+
+        pipe = PipelineBase()
+        pipe.add_component("list_output", list_output)
+        pipe.add_component("string_input", string_input)
+        pipe.connect("list_output.list", "string_input.text")
+
+        assert list_output.__haystack_output__.list.receivers == ["string_input"]  # type: ignore[attr-defined]
+        assert string_input.__haystack_input__.text.senders == ["list_output"]  # type: ignore[attr-defined]
+        assert list(pipe.graph.edges) == [("list_output", "string_input", "list/text")]
+
+    def test_connect_with_conversion_wrap(self):
+        @component
+        class StringOutput:
+            @component.output_types(string=str)
+            def run(self) -> dict[str, str]:
+                return {"string": "Hello"}
+
+        @component
+        class ListChatMessageInput:
+            @component.output_types(messages=list[ChatMessage])
+            def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+                return {"messages": messages}
+
+        string_output = StringOutput()
+        list_chat_message_input = ListChatMessageInput()
+
+        pipe = PipelineBase()
+        pipe.add_component("string_output", string_output)
+        pipe.add_component("list_chat_message_input", list_chat_message_input)
+        pipe.connect("string_output.string", "list_chat_message_input.messages")
+
+        assert string_output.__haystack_output__.string.receivers == ["list_chat_message_input"]  # type: ignore[attr-defined]
+        assert list_chat_message_input.__haystack_input__.messages.senders == ["string_output"]  # type: ignore[attr-defined]
+        assert list(pipe.graph.edges) == [("string_output", "list_chat_message_input", "string/messages")]
 
     def test_connect_prioritizes_strict_connections(self):
         """
@@ -2011,7 +2062,7 @@ class TestPipelineConnect:
             "component_str_input",
             {
                 "conn_type": "str",
-                "convert": False,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="string", type=str, receivers=["component_str_input"]),
                 "to_socket": InputSocket(name="string", type=str, senders=["multi_output_component"]),
                 "mandatory": True,

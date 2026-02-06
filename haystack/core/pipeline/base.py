@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar
+from typing import Any, ContextManager, Iterator, Mapping, Sequence, TextIO, TypeVar
 
 import networkx
 
@@ -40,7 +40,13 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import _convert_value, _safe_get_origin, _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    ConversionStrategyType,
+    _convert_value,
+    _safe_get_origin,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -500,22 +506,24 @@ class PipelineBase:  # noqa: PLW1641
             [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
 
-        is_strict_match = True
+        conversion_strategy = None
 
         # Find all possible connections between these two components
-        possible_connections: list[tuple[OutputSocket, InputSocket, bool]] = []
+        possible_connections: list[tuple[OutputSocket, InputSocket, ConversionStrategyType]] = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            is_compat, is_strict = _types_are_compatible(
+            is_compat, conversion_strategy = _types_are_compatible(
                 sender_sock.type, receiver_sock.type, self._connection_type_validation
             )
             if is_compat:
-                possible_connections.append((sender_sock, receiver_sock, is_strict))
+                possible_connections.append((sender_sock, receiver_sock, conversion_strategy))
 
         # If there are multiple possibilities, prioritize strict matches over convertible ones.
         # This ensures backward compatibility: previously, pipelines did not allow type conversion.
         if len(possible_connections) > 1 and self._connection_type_validation:
             strict_matches = [
-                (out_sock, in_sock, is_strict) for out_sock, in_sock, is_strict in possible_connections if is_strict
+                (out_sock, in_sock, None)
+                for out_sock, in_sock, conversion_strategy in possible_connections
+                if conversion_strategy is None
             ]
             if strict_matches:
                 possible_connections[:] = strict_matches
@@ -547,13 +555,13 @@ class PipelineBase:  # noqa: PLW1641
             # There's only one possible connection, use it
             sender_socket = possible_connections[0][0]
             receiver_socket = possible_connections[0][1]
-            is_strict_match = possible_connections[0][2]
+            conversion_strategy = possible_connections[0][2]
 
         if len(possible_connections) > 1:
             # There are multiple possible connection, let's try to match them by name
             name_matches = [
-                (out_sock, in_sock, is_strict)
-                for out_sock, in_sock, is_strict in possible_connections
+                (out_sock, in_sock, conversion_strategy_)
+                for out_sock, in_sock, conversion_strategy_ in possible_connections
                 if in_sock.name == out_sock.name
             ]
             if len(name_matches) != 1:
@@ -570,7 +578,7 @@ class PipelineBase:  # noqa: PLW1641
             # Get the only possible match
             sender_socket = name_matches[0][0]
             receiver_socket = name_matches[0][1]
-            is_strict_match = name_matches[0][2]
+            conversion_strategy = name_matches[0][2]
 
         # Connection must be valid on both sender/receiver sides
         if not sender_socket or not receiver_socket or not sender_component_name or not receiver_component_name:
@@ -632,7 +640,7 @@ class PipelineBase:  # noqa: PLW1641
             from_socket=sender_socket,
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
-            convert=not is_strict_match,
+            conversion_strategy=conversion_strategy,
         )
         return self
 
@@ -1037,23 +1045,26 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, bool]]:
+    def _find_receivers_from(
+        self, component_name: str
+    ) -> list[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 
         :param component_name:
             Name of the sender Component
 
-        :returns:
-            List of tuples containing name of the receiver Component, sender OutputSocket,
-            receiver InputSocket instances, and a boolean indicating if conversion is needed.
+        :returns: A list of tuples containing:
+            - receiver component name
+            - sender OutputSocket
+            - receiver InputSocket
+            - ConversionStrategy if conversion is required, otherwise None.
         """
         res = []
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
             receiver_socket: InputSocket = connection["to_socket"]
-            convert: bool = connection.get("convert", False)
-            res.append((receiver_name, sender_socket, receiver_socket, convert))
+            res.append((receiver_name, sender_socket, receiver_socket, connection.get("conversion_strategy")))
         return res
 
     @staticmethod
@@ -1304,7 +1315,7 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
-        receivers: list[tuple[str, OutputSocket, InputSocket, bool]],
+        receivers: Sequence[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]],
         include_outputs_from: set[str],
     ) -> Mapping[str, Any]:
         """
@@ -1313,21 +1324,22 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of tuples containing name of the receiver Component, sender OutputSocket,
-            receiver InputSocket instances, and a boolean indicating if conversion is needed.
+        :param receivers: A sequence of tuples containing:
+            - receiver component name,
+            - output socket of the sender,
+            - input socket of the receiver,
+            - ConversionStrategy to be used to convert the value if required, otherwise None.
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
-        for receiver_name, sender_socket, receiver_socket, convert in receivers:
+        for receiver_name, sender_socket, receiver_socket, conversion_strategy in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
-            if value is not _NO_OUTPUT_PRODUCED and convert:
+            if value is not _NO_OUTPUT_PRODUCED and conversion_strategy:
                 try:
-                    value = _convert_value(
-                        value=value, sender_type=sender_socket.type, receiver_type=receiver_socket.type
-                    )
+                    value = _convert_value(value=value, conversion_strategy=conversion_strategy)
                 except Exception as e:
                     sender_node = self.graph.nodes.get(component_name)
                     sender_instance = sender_node.get("instance") if sender_node else None
