@@ -76,7 +76,7 @@ Supported adaptations
 | `str`                    | `ChatMessage`       | Wrapped into a `ChatMessage` with user role.                 |
 | `ChatMessage`            | `str`               | Extracts `ChatMessage.text`; raises `PipelineRuntimeError` if `None`. |
 | `T`                      | `list[T]`           | Wraps the item into a single-element list.                   |
-| `list[str | ChatMessage]`| `str` or `ChatMessage` | Extracts the first item; raises `PipelineRuntimeError` if the list is empty. |
+| `list[str] or list[ChatMessage]`| `str` or `ChatMessage` | Extracts the first item; raises `PipelineRuntimeError` if the list is empty. |
 
 
 All adaptations are checked at connection time to ensure type safety, but applied at runtime during pipeline execution.
