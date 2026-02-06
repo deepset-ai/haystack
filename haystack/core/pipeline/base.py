@@ -1324,8 +1324,11 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of tuples containing name of the receiver Component, sender OutputSocket,
-            receiver InputSocket instances, and the conversion strategy name if needed.
+        :param receivers: A sequence of tuples containing:
+            - receiver component name,
+            - output socket of the sender,
+            - input socket of the receiver,
+            - ConversionStrategy to be used to convert the value if required, otherwise None.
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
         for receiver_name, sender_socket, receiver_socket, conversion_strategy in receivers:
