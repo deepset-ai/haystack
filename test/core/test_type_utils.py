@@ -973,3 +973,6 @@ class TestConversion:
             )
             == "Hello"
         )
+
+        with pytest.raises(ValueError, match="Unknown conversion strategy: unknown"):
+            _convert_value(value="Hello", conversion_strategy="unknown")

@@ -1953,7 +1953,7 @@ class TestPipelineConnect:
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
 
-    def test_connect_with_conversion(self):
+    def test_connect_with_conversion_chat_message_to_str(self):
         @component
         class ChatMessageOutput:
             @component.output_types(message=ChatMessage)
@@ -1977,6 +1977,56 @@ class TestPipelineConnect:
         assert chat_message_output.__haystack_output__.message.receivers == ["string_input"]  # type: ignore[attr-defined]
         assert string_input.__haystack_input__.text.senders == ["chat_message_output"]  # type: ignore[attr-defined]
         assert list(pipe.graph.edges) == [("chat_message_output", "string_input", "message/text")]
+
+    def test_connect_with_conversion_list_unwrap(self):
+        @component
+        class ListOutput:
+            @component.output_types(list=list[ChatMessage])
+            def run(self) -> dict[str, list[ChatMessage]]:
+                return {"list": [ChatMessage.from_user("Hello")]}
+
+        @component
+        class StringInput:
+            @component.output_types(text=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"text": text}
+
+        list_output = ListOutput()
+        string_input = StringInput()
+
+        pipe = PipelineBase()
+        pipe.add_component("list_output", list_output)
+        pipe.add_component("string_input", string_input)
+        pipe.connect("list_output.list", "string_input.text")
+
+        assert list_output.__haystack_output__.list.receivers == ["string_input"]  # type: ignore[attr-defined]
+        assert string_input.__haystack_input__.text.senders == ["list_output"]  # type: ignore[attr-defined]
+        assert list(pipe.graph.edges) == [("list_output", "string_input", "list/text")]
+
+    def test_connect_with_conversion_wrap(self):
+        @component
+        class StringOutput:
+            @component.output_types(string=str)
+            def run(self) -> dict[str, str]:
+                return {"string": "Hello"}
+
+        @component
+        class ListChatMessageInput:
+            @component.output_types(messages=list[ChatMessage])
+            def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+                return {"messages": messages}
+
+        string_output = StringOutput()
+        list_chat_message_input = ListChatMessageInput()
+
+        pipe = PipelineBase()
+        pipe.add_component("string_output", string_output)
+        pipe.add_component("list_chat_message_input", list_chat_message_input)
+        pipe.connect("string_output.string", "list_chat_message_input.messages")
+
+        assert string_output.__haystack_output__.string.receivers == ["list_chat_message_input"]  # type: ignore[attr-defined]
+        assert list_chat_message_input.__haystack_input__.messages.senders == ["string_output"]  # type: ignore[attr-defined]
+        assert list(pipe.graph.edges) == [("string_output", "list_chat_message_input", "string/messages")]
 
     def test_connect_prioritizes_strict_connections(self):
         """
