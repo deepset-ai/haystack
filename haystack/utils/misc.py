@@ -128,19 +128,14 @@ def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
     :param documents: List of documents to deduplicate.
     :returns: List of deduplicated documents.
     """
-
     # Keep for each Document id the one with the highest score
-    highest_scoring_docs = {}
+    highest_scoring_docs: dict[str, "Document"] = {}
     for doc in documents:
-        doc_id = doc.id
         score = doc.score if doc.score is not None else -inf
+        best = highest_scoring_docs.get(doc.id)
 
-        if doc_id not in highest_scoring_docs:
-            highest_scoring_docs[doc_id] = doc
-        else:
-            existing_doc = highest_scoring_docs[doc_id]
-            existing_score = existing_doc.score if existing_doc.score is not None else -inf
-            if score > existing_score:
-                highest_scoring_docs[doc_id] = doc
+        if best is None or score > (best.score if best.score is not None else -inf):
+            highest_scoring_docs[doc.id] = doc
+            continue
 
     return list(highest_scoring_docs.values())
