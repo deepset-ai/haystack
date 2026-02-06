@@ -7,6 +7,14 @@
 # ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool and PipelineTool)
 
 from haystack.tools.from_function import create_tool_from_function, tool
+from haystack.tools.nory_x402 import (
+    NORY_X402_TOOLS,
+    nory_get_payment_requirements,
+    nory_health_check,
+    nory_lookup_transaction,
+    nory_settle_payment,
+    nory_verify_payment,
+)
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
 from haystack.tools.component_tool import ComponentTool
@@ -28,6 +36,12 @@ __all__ = [
     "create_tool_from_function",
     "deserialize_tools_or_toolset_inplace",
     "flatten_tools_or_toolsets",
+    "NORY_X402_TOOLS",
+    "nory_get_payment_requirements",
+    "nory_health_check",
+    "nory_lookup_transaction",
+    "nory_settle_payment",
+    "nory_verify_payment",
     "PipelineTool",
     "serialize_tools_or_toolset",
     "Tool",
