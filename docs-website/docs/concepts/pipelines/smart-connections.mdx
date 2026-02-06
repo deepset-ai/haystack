@@ -87,13 +87,6 @@ The adaptations themselves are only applied at run time when the pipeline execut
 Pipeline connecting the Chat Generator `messages` output (`list[ChatMessage]`) to the retriever `query` input (`str`)
 without using an `OutputAdapter`:
 
-<details>
-
-<summary>Expand to see the pipeline graph</summary>
-<ClickableImage src="/img/pipeline-illustration-auto-joiner.png" alt="Pipeline architecture diagram showing a DocumentWriter receiving inputs from multiple converters without a Joiner" size="large" />
-
-</details>
-
 ```python
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.dataclasses import Document
