@@ -82,6 +82,7 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
         inner = args[0]
         if _strict_types_are_compatible(sender, inner):
             return "wrap"
+        # Wrap + conversion
         if _contains_type(sender, ChatMessage) and _contains_type(inner, str):
             return "wrap_chat_message_to_str"
         if _contains_type(sender, str) and _contains_type(inner, ChatMessage):
@@ -94,6 +95,7 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
             _contains_type(inner, str) and _contains_type(receiver, str)
         ):
             return "unwrap"
+        # Unwrap + conversion
         if _contains_type(inner, str) and _contains_type(receiver, ChatMessage):
             return "unwrap_str_to_chat_message"
         if _contains_type(inner, ChatMessage) and _contains_type(receiver, str):

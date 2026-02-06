@@ -515,7 +515,7 @@ class PipelineBase:  # noqa: PLW1641
         # This ensures backward compatibility: previously, pipelines did not allow type conversion.
         if len(possible_connections) > 1 and self._connection_type_validation:
             strict_matches = [
-                (out_sock, in_sock, conversion_strategy)
+                (out_sock, in_sock, None)
                 for out_sock, in_sock, conversion_strategy in possible_connections
                 if conversion_strategy is None
             ]
