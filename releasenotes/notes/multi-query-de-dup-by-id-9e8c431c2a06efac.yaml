@@ -1,0 +1,17 @@
+---
+enhancements:
+  - |
+    The ``MultiQueryEmbeddingRetriever`` and ``MultiQueryTextRetriever`` now deduplicate documents by ``id`` instead of by ``content``,
+    preventing identical documents from being returned multiple times.
+
+upgrade:
+  - |
+    Deduplication behavior in ``MultiQueryEmbeddingRetriever`` and ``MultiQueryTextRetriever`` has changed and may be breaking
+    for users who relied on deduplication based on document content rather than document id.
+
+    Documents are now considered duplicates only if they share the same ``id``. Document ids can be user-defined or are
+    automatically generated as a hash of the document’s attributes (e.g. content, metadata, etc.).
+
+    This change affects setups where multiple documents have identical content but different ids (for example, due to
+    differing metadata). To preserve the previous behavior, ensure that documents with identical content are assigned
+    the same ``id`` across retriever outputs.
