@@ -136,6 +136,5 @@ def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
 
         if best is None or score > (best.score if best.score is not None else -inf):
             highest_scoring_docs[doc.id] = doc
-            continue
 
     return list(highest_scoring_docs.values())
