@@ -382,7 +382,7 @@ The deserialized component.
 def run(query: str,
         filters: dict[str, Any] | None = None,
         top_k: int | None = None,
-        scale_score: bool | None = None)
+        scale_score: bool | None = None) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryBM25Retriever on the given input data.
@@ -409,10 +409,11 @@ The retrieved documents.
 
 ```python
 @component.output_types(documents=list[Document])
-async def run_async(query: str,
-                    filters: dict[str, Any] | None = None,
-                    top_k: int | None = None,
-                    scale_score: bool | None = None)
+async def run_async(
+        query: str,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryBM25Retriever on the given input data.
@@ -555,7 +556,7 @@ def run(query_embedding: list[float],
         filters: dict[str, Any] | None = None,
         top_k: int | None = None,
         scale_score: bool | None = None,
-        return_embedding: bool | None = None)
+        return_embedding: bool | None = None) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryEmbeddingRetriever on the given input data.
@@ -584,11 +585,12 @@ The retrieved documents.
 
 ```python
 @component.output_types(documents=list[Document])
-async def run_async(query_embedding: list[float],
-                    filters: dict[str, Any] | None = None,
-                    top_k: int | None = None,
-                    scale_score: bool | None = None,
-                    return_embedding: bool | None = None)
+async def run_async(
+        query_embedding: list[float],
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryEmbeddingRetriever on the given input data.
