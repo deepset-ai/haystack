@@ -10,7 +10,7 @@ description: "Learn how Haystack pipelines simplify connections through implicit
 Haystack pipelines support smarter connection semantics that reduce boilerplate and make pipeline definitions easier to read and maintain.
 These features focus on simplifying how components are connected, without changing component behavior.
 
-Smart connections help eliminate common glue components such as `Joiners` in many pipelines.
+Smart connections help eliminate common glue components such as `Joiners` and `OutputAdapters` in many pipelines.
 
 ## Implicit List Joining
 
@@ -64,14 +64,83 @@ result = pipe.run({"router": {"sources": sources}})
 
 This pattern is especially useful when routing files, documents, or results across multiple parallel branches.
 
+## Flexible Type Connections
 
-## When You Still Need `Joiners`
+To further streamline pipeline definitions, Haystack pipelines support limited implicit type adaptation at connection time.
+This makes pipeline connections more flexible and reduces the need for `OutputAdapter` components.
 
-Explicit `Joiners` are still useful when you need:
+Supported implicit adaptations include:
+
+- `str` can connect to `ChatMessage`: the string is transformed into a `ChatMessage` with user role.
+- `ChatMessage` can connect to `str`: `ChatMessage.text` is extracted. In case it's None, an informative `PipelineRuntimeError`
+is raised.
+- `T` can connect to `list[T]`: the item of type T is wrapped into a list.
+- `list[str | ChatMessage]` can connect to `str` or `ChatMessage`. This covers several use case so it's worth supporting
+it. In case the list is empty, an informative `PipelineRuntimeError`
+is raised.
+
+Valid adaptations are checked at connection time to ensure type safety.
+The adaptations themselves are only applied at run time when the pipeline executes.
+
+### Example
+
+Pipeline connecting the Chat Generator `messages` output (`list[ChatMessage]`) to the retriever `query` input (`str`)
+without using an `OutputAdapter`:
+
+<details>
+
+<summary>Expand to see the pipeline graph</summary>
+<ClickableImage src="/img/pipeline-illustration-auto-joiner.png" alt="Pipeline architecture diagram showing a DocumentWriter receiving inputs from multiple converters without a Joiner" size="large" />
+
+</details>
+
+```python
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.dataclasses import Document
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+document_store = InMemoryDocumentStore()
+
+documents = [
+    Document(content="Bob lives in Paris."),
+    Document(content="Alice lives in London."),
+    Document(content="Ivy lives in Melbourne."),
+    Document(content="Kate lives in Brisbane."),
+    Document(content="Liam lives in Adelaide."),
+]
+
+document_store.write_documents(documents)
+
+template ="""{% message role="user" %}
+Rewrite the following query to be used for keyword search.
+{{ query }}
+{% endmessage %}
+"""
+
+p = Pipeline()
+p.add_component("prompt_builder", ChatPromptBuilder(template=template))
+p.add_component("llm", OpenAIChatGenerator(model="gpt-4.1-mini"))
+p.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=3))
+
+p.connect("prompt_builder", "llm")
+p.connect("llm", "retriever")
+
+query = """Someday I'd love to visit Brisbane, but for now I just want
+to know the names of the people who live there."""
+
+result = p.run(data={"prompt_builder": {"query": query}})
+```
+
+## When You Still Need `Joiners` or `OutputAdapters`
+
+Explicit `Joiners` or `OutputAdapters` are still useful when you need:
 
 - Custom aggregation logic beyond simple list concatenation
 - Type conversions not covered by implicit adaptation
-- Explicit control over ordering
+- Explicit control over formatting or ordering
 
 Smart connections reduce the need for glue components, but they do not remove them entirely.
 When in doubt, explicit components provide clarity and more control.
