@@ -47,7 +47,7 @@ features:
       p.connect("prompt_builder", "llm")
       p.connect("llm", "retriever")
 
-      query = """One day I would love visiting Brisbane.
-      But for now I would like to know the names of the people who live there."""
+      query = """Someday I'd love to visit Brisbane, but for now I just want
+      to know the names of the people who live there."""
 
       results = p.run(data={"prompt_builder": {"query": query}})
