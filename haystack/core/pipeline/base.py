@@ -1054,8 +1054,7 @@ class PipelineBase:  # noqa: PLW1641
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
             receiver_socket: InputSocket = connection["to_socket"]
-            conversion_strategy: str | None = connection.get("conversion_strategy")
-            res.append((receiver_name, sender_socket, receiver_socket, conversion_strategy))
+            res.append((receiver_name, sender_socket, receiver_socket, connection.get("conversion_strategy")))
         return res
 
     @staticmethod

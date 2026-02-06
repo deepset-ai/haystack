@@ -9,7 +9,14 @@ from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Option
 import pytest
 
 from haystack.core.component.types import Variadic
-from haystack.core.type_utils import _contains_type, _convert_value, _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    _chat_message_to_str,
+    _contains_type,
+    _convert_value,
+    _get_first_item,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
 
 
@@ -860,27 +867,6 @@ def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_ty
     assert _types_are_compatible(sender_type, receiver_type)[0]
 
 
-def test_convert_value():
-    with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
-        _convert_value(value=ChatMessage.from_assistant(), conversion_strategy="chat_message_to_str")
-
-    assert (
-        _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="chat_message_to_str") == "Hello"
-    )
-    assert _convert_value(value="Hello", conversion_strategy="str_to_chat_message") == ChatMessage.from_user("Hello")
-
-    assert _convert_value(value="Hello", conversion_strategy="wrap") == ["Hello"]
-    assert _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap") == [
-        ChatMessage.from_assistant("Hello")
-    ]
-    assert _convert_value(
-        value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap_chat_message_to_str"
-    ) == ["Hello"]
-    assert _convert_value(value="Hello", conversion_strategy="wrap_str_to_chat_message") == [
-        ChatMessage.from_user("Hello")
-    ]
-
-
 def test_contains_type():
     assert _contains_type(container=str, target=str) is True
 
@@ -900,26 +886,90 @@ def test_contains_type():
     assert _contains_type(container=str | None, target=str) is True
 
 
-def test_types_are_compatible_with_conversion():
-    assert _types_are_compatible(sender=Optional[str], receiver=str) == (False, None)
-    assert _types_are_compatible(sender=str | None, receiver=str) == (False, None)
+class TestConversion:
+    def test_chat_message_to_str(self):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+            _chat_message_to_str(value=ChatMessage.from_assistant())
 
-    assert _types_are_compatible(sender=int, receiver=str) == (False, None)
+        assert _chat_message_to_str(value=ChatMessage.from_assistant("Hello")) == "Hello"
 
-    assert _types_are_compatible(sender=str, receiver=Optional[str]) == (True, None)
-    assert _types_are_compatible(sender=str, receiver=str | None) == (True, None)
+    def test_get_first_item(self):
+        with pytest.raises(ValueError, match="Cannot get first item of an empty list. "):
+            _get_first_item(value=[])
 
-    assert _types_are_compatible(sender=str, receiver=Union[str, int]) == (True, None)
-    assert _types_are_compatible(sender=str, receiver=str | int) == (True, None)
+        assert _get_first_item(value=["Hello"]) == "Hello"
+        assert _get_first_item(value=[ChatMessage.from_assistant("Hello")]) == ChatMessage.from_assistant("Hello")
 
-    assert _types_are_compatible(sender=ChatMessage, receiver=str) == (True, "chat_message_to_str")
-    assert _types_are_compatible(sender=str, receiver=ChatMessage) == (True, "str_to_chat_message")
+    def test_types_are_compatible_with_conversion(self):
+        assert _types_are_compatible(sender=Optional[str], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str | None, receiver=str) == (False, None)
 
-    assert _types_are_compatible(sender=str, receiver=List[str]) == (True, "wrap")
-    assert _types_are_compatible(sender=str, receiver=list[str]) == (True, "wrap")
+        assert _types_are_compatible(sender=int, receiver=str) == (False, None)
 
-    assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (True, "wrap_chat_message_to_str")
-    assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (True, "wrap_chat_message_to_str")
+        assert _types_are_compatible(sender=str, receiver=Optional[str]) == (True, None)
+        assert _types_are_compatible(sender=str, receiver=str | None) == (True, None)
 
-    assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (True, "wrap_str_to_chat_message")
-    assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (True, "wrap_str_to_chat_message")
+        assert _types_are_compatible(sender=str, receiver=Union[str, int]) == (True, None)
+        assert _types_are_compatible(sender=str, receiver=str | int) == (True, None)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=str) == (True, "chat_message_to_str")
+        assert _types_are_compatible(sender=str, receiver=ChatMessage) == (True, "str_to_chat_message")
+
+        assert _types_are_compatible(sender=str, receiver=List[str]) == (True, "wrap")
+        assert _types_are_compatible(sender=str, receiver=list[str]) == (True, "wrap")
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (True, "wrap_chat_message_to_str")
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (True, "wrap_chat_message_to_str")
+
+        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (True, "wrap_str_to_chat_message")
+        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (True, "wrap_str_to_chat_message")
+
+        assert _types_are_compatible(sender=List[str], receiver=str) == (True, "unwrap")
+        assert _types_are_compatible(sender=list[str], receiver=str) == (True, "unwrap")
+
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (True, "unwrap")
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (True, "unwrap")
+
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (True, "unwrap_chat_message_to_str")
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (True, "unwrap_chat_message_to_str")
+
+        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (True, "unwrap_str_to_chat_message")
+        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (True, "unwrap_str_to_chat_message")
+
+    def test_convert_value(self):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+            _convert_value(value=ChatMessage.from_assistant(), conversion_strategy="chat_message_to_str")
+
+        assert (
+            _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="chat_message_to_str")
+            == "Hello"
+        )
+        assert _convert_value(value="Hello", conversion_strategy="str_to_chat_message") == ChatMessage.from_user(
+            "Hello"
+        )
+
+        assert _convert_value(value="Hello", conversion_strategy="wrap") == ["Hello"]
+        assert _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap") == [
+            ChatMessage.from_assistant("Hello")
+        ]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap_chat_message_to_str"
+        ) == ["Hello"]
+        assert _convert_value(value="Hello", conversion_strategy="wrap_str_to_chat_message") == [
+            ChatMessage.from_user("Hello")
+        ]
+
+        assert _convert_value(value=["Hello"], conversion_strategy="unwrap") == "Hello"
+        assert _convert_value(
+            value=[ChatMessage.from_assistant("Hello")], conversion_strategy="unwrap"
+        ) == ChatMessage.from_assistant("Hello")
+
+        assert _convert_value(
+            value=["Hello"], conversion_strategy="unwrap_str_to_chat_message"
+        ) == ChatMessage.from_user("Hello")
+        assert (
+            _convert_value(
+                value=[ChatMessage.from_assistant("Hello")], conversion_strategy="unwrap_chat_message_to_str"
+            )
+            == "Hello"
+        )

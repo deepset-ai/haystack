@@ -4,24 +4,9 @@
 
 import collections.abc
 from types import NoneType, UnionType
-from typing import Any, Callable, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from haystack.dataclasses import ChatMessage
-
-
-def _chat_message_to_str(value: Any) -> str:
-    if value.text is None:
-        raise ValueError("Cannot convert `ChatMessage` to `str` because it has no text. ")
-    return value.text
-
-
-_CONVERSION_STRATEGIES: dict[str, Callable[[Any], Any]] = {
-    "chat_message_to_str": _chat_message_to_str,
-    "str_to_chat_message": ChatMessage.from_user,
-    "wrap": lambda v: [v],
-    "wrap_chat_message_to_str": lambda v: [_chat_message_to_str(v)],
-    "wrap_str_to_chat_message": lambda v: [ChatMessage.from_user(v)],
-}
 
 
 def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, str | None]:
@@ -47,7 +32,7 @@ def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = Tr
     return False, None
 
 
-def _safe_get_origin(_type: Any) -> type | None:
+def _safe_get_origin(_type: type | UnionType) -> type | None:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 
@@ -73,7 +58,7 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylint: disable=too-many-return-statements
+def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
     Returns the name of the conversion strategy to use for the given sender and receiver types.
     """
@@ -81,11 +66,11 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
     if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
         return None
 
-    # Base: ChatMessage -> str
+    # ChatMessage -> str
     if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
         return "chat_message_to_str"
 
-    # Base: str -> ChatMessage
+    # str -> ChatMessage
     if _contains_type(sender, str) and _contains_type(receiver, ChatMessage):
         return "str_to_chat_message"
 
@@ -99,14 +84,56 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
         if _contains_type(sender, str) and _contains_type(inner, ChatMessage):
             return "wrap_str_to_chat_message"
 
+    # Unwrap: List[T] -> T - for str and ChatMessage only
+    if _safe_get_origin(sender) is list and (args := get_args(sender)):
+        inner = args[0]
+        if (_contains_type(inner, ChatMessage) and _contains_type(receiver, ChatMessage)) or (
+            _contains_type(inner, str) and _contains_type(receiver, str)
+        ):
+            return "unwrap"
+        if _contains_type(inner, str) and _contains_type(receiver, ChatMessage):
+            return "unwrap_str_to_chat_message"
+        if _contains_type(inner, ChatMessage) and _contains_type(receiver, str):
+            return "unwrap_chat_message_to_str"
+
     return None
 
 
-def _convert_value(value: Any, conversion_strategy: str) -> Any:
+def _chat_message_to_str(value: Any) -> str:
+    if value.text is None:
+        raise ValueError("Cannot convert `ChatMessage` to `str` because it has no text. ")
+    return value.text
+
+
+def _get_first_item(value: list[Any]) -> Any:
+    if not value:
+        raise ValueError("Cannot get first item of an empty list. ")
+    return value[0]
+
+
+def _convert_value(value: Any, conversion_strategy: str) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
-    Converts a value from the sender type to the receiver type using a strategy.
+    Converts a value using the specified conversion strategy.
     """
-    return _CONVERSION_STRATEGIES[conversion_strategy](value)
+    match conversion_strategy:
+        case "chat_message_to_str":
+            return _chat_message_to_str(value)
+        case "str_to_chat_message":
+            return ChatMessage.from_user(value)
+        case "wrap":
+            return [value]
+        case "wrap_chat_message_to_str":
+            return [_chat_message_to_str(value)]
+        case "wrap_str_to_chat_message":
+            return [ChatMessage.from_user(value)]
+        case "unwrap":
+            return _get_first_item(value)
+        case "unwrap_str_to_chat_message":
+            return ChatMessage.from_user(_get_first_item(value))
+        case "unwrap_chat_message_to_str":
+            return _chat_message_to_str(_get_first_item(value))
+        case _:
+            raise ValueError(f"Unknown conversion strategy: {conversion_strategy}")
 
 
 def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements
