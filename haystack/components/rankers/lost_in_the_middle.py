@@ -4,6 +4,7 @@
 
 
 from haystack import Document, component
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -65,6 +66,9 @@ class LostInTheMiddleRanker:
         """
         Reranks documents based on the "lost in the middle" order.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
         :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
@@ -88,7 +92,8 @@ class LostInTheMiddleRanker:
         top_k = top_k or self.top_k
         word_count_threshold = word_count_threshold or self.word_count_threshold
 
-        documents_to_reorder = documents[:top_k] if top_k else documents
+        deduplicated_documents = _deduplicate_documents(documents)
+        documents_to_reorder = deduplicated_documents[:top_k] if top_k else deduplicated_documents
 
         # If there's only one document, return it as is
         if len(documents_to_reorder) == 1:

@@ -135,6 +135,9 @@ def run(
 
 Reranks the provided documents by relevance to the query using the TEI API.
 
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
+
 **Arguments**:
 
 - `query`: The user query string to guide reranking.
@@ -167,6 +170,9 @@ async def run_async(
 ```
 
 Asynchronously reranks the provided documents by relevance to the query using the TEI API.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
 
 **Arguments**:
 
@@ -252,6 +258,9 @@ def run(documents: list[Document],
 ```
 
 Reranks documents based on the "lost in the middle" order.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
 
 **Arguments**:
 
@@ -368,6 +377,9 @@ Ranks a list of Documents based on the selected meta field by:
 2. Merging the rankings from the previous component and based on the meta field according to ranking mode and
 weight.
 3. Returning the top-k documents.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
 
 **Arguments**:
 
@@ -501,6 +513,9 @@ def run(documents: list[Document]) -> dict[str, Any]
 
 Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 
+Before grouping, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
+
 The output is a list of documents reordered based on how they were grouped.
 
 **Arguments**:
@@ -595,6 +610,9 @@ Applies a document ranking algorithm based on one of the two strategies:
     selected documents. The algorithm iteratively selects documents based on their MMR scores, balancing between
     relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
     trade-off between relevance and diversity.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
 
 ### Usage example
 ```python
@@ -898,6 +916,9 @@ def run(*,
 
 Returns a list of documents ranked by their similarity to the given query.
 
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
+
 **Arguments**:
 
 - `query`: The input query to compare the documents to.
@@ -1063,6 +1084,9 @@ def run(query: str,
 ```
 
 Returns a list of documents ranked by their similarity to the given query.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
 
 **Arguments**:
 

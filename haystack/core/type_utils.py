@@ -4,24 +4,33 @@
 
 import collections.abc
 from types import NoneType, UnionType
-from typing import Any, TypeVar, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
-T = TypeVar("T")
+from haystack.dataclasses import ChatMessage
 
 
-def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True) -> bool:
+def _types_are_compatible(
+    sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True
+) -> tuple[bool, bool]:
     """
     Determines if two types are compatible based on the specified validation mode.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
     :param type_validation: Whether to perform strict type validation.
-    :return: True if the types are compatible, False otherwise.
+    :return: A tuple where the first element is True if the types are compatible, and the second
+             element is True if they are strictly compatible.
     """
-    if type_validation:
-        return _strict_types_are_compatible(sender, receiver)
-    else:
-        return True
+    if not type_validation:
+        return True, True
+
+    if _strict_types_are_compatible(sender, receiver):
+        return True, True
+
+    if _types_are_convertible(sender, receiver):
+        return True, False
+
+    return False, False
 
 
 def _safe_get_origin(_type: type | UnionType) -> type | None:
@@ -43,13 +52,60 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
     return origin
 
 
-def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
+def _contains_type(container: Any, target: Any) -> bool:
+    """Checks if the container type includes the target type"""
+    if container == target:
+        return True
+    return _safe_get_origin(container) is Union and target in get_args(container)
+
+
+def _types_are_convertible(sender: Any, receiver: Any) -> bool:
+    """
+    Checks whether the sender type is convertible to the receiver type.
+
+    ChatMessage is convertible to str and vice versa.
+    """
+    # Optional[T] must not connect to T
+    if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
+        return False
+
+    # if sender is a single type and receiver is a Union/Optional containing that type, they are convertible
+    # e.g. str is convertible to Optional[str] or Union[str, int] etc.
+    if _contains_type(receiver, sender):
+        return True
+
+    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+        return True
+
+    return _contains_type(sender, str) and _contains_type(receiver, ChatMessage)
+
+
+def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
+    """
+    Converts a value from the sender type to the receiver type.
+
+    :param value: The value to convert.
+    :param sender_type: The sender type.
+    :param receiver_type: The receiver type.
+    :return: The converted value.
+    """
+    if _contains_type(sender_type, ChatMessage) and _contains_type(receiver_type, str):
+        if value.text is None:
+            msg = "Cannot convert `ChatMessage` to `str` because it has no text. "
+            raise ValueError(msg)
+        return value.text
+
+    if _contains_type(sender_type, str) and _contains_type(receiver_type, ChatMessage):
+        return ChatMessage.from_user(value)
+
+    return value
+
+
+def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
-    Note: this method has no pretense to perform proper type matching. It especially does not deal with aliasing of
-    typing classes such as `List` or `Dict` to their runtime counterparts `list` and `dict`. It also does not deal well
-    with "bare" types, so `List` is treated differently from `List[Any]`, even though they should be the same.
+    Note: this method has no pretense to perform complete type matching.
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
 
     :param sender: The sender type.

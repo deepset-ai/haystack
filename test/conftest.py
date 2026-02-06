@@ -44,7 +44,7 @@ def mock_tokenizer():
     """
     tokenizer = Mock()
     tokenizer.encode = lambda text: text.split()
-    tokenizer.decode = lambda tokens: " ".join(tokens)
+    tokenizer.decode = lambda tokens: " ".join(tokens)  # noqa: PLW0108
     return tokenizer
 
 
