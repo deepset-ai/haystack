@@ -10,11 +10,13 @@ import pytest
 
 from haystack.core.component.types import Variadic
 from haystack.core.type_utils import (
+    ConversionStrategy,
+    _chat_message_to_str,
     _contains_type,
     _convert_value,
+    _get_first_item,
     _type_name,
     _types_are_compatible,
-    _types_are_convertible,
 )
 from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
 
@@ -866,11 +868,6 @@ def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_ty
     assert _types_are_compatible(sender_type, receiver_type)[0]
 
 
-@pytest.mark.parametrize("sender_type, receiver_type", [(ChatMessage, str), (str, ChatMessage)])
-def test_types_are_compatible_convertible(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type) == (True, False)
-
-
 def test_contains_type():
     assert _contains_type(container=str, target=str) is True
 
@@ -890,31 +887,144 @@ def test_contains_type():
     assert _contains_type(container=str | None, target=str) is True
 
 
-def test_types_are_convertible():
-    assert _types_are_convertible(sender=Optional[str], receiver=str) is False
-    assert _types_are_convertible(sender=str | None, receiver=str) is False
+class TestConversion:
+    def test_chat_message_to_str(self):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+            _chat_message_to_str(value=ChatMessage.from_assistant())
 
-    assert _types_are_convertible(sender=str, receiver=Optional[str]) is True
-    assert _types_are_convertible(sender=str, receiver=str | None) is True
+        assert _chat_message_to_str(value=ChatMessage.from_assistant("Hello")) == "Hello"
 
-    assert _types_are_convertible(sender=str, receiver=Union[str, int]) is True
-    assert _types_are_convertible(sender=str, receiver=str | int) is True
+    def test_get_first_item(self):
+        with pytest.raises(ValueError, match="Cannot get first item of an empty list. "):
+            _get_first_item(value=[])
 
-    assert _types_are_convertible(sender=ChatMessage, receiver=str) is True
-    assert _types_are_convertible(sender=str, receiver=ChatMessage) is True
-    assert _types_are_convertible(sender=int, receiver=str) is False
+        assert _get_first_item(value=["Hello"]) == "Hello"
+        assert _get_first_item(value=[ChatMessage.from_assistant("Hello")]) == ChatMessage.from_assistant("Hello")
 
+    def test_types_are_compatible_with_conversion(self):
+        assert _types_are_compatible(sender=Optional[str], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str | None, receiver=str) == (False, None)
 
-def test_convert_value():
-    with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
-        _convert_value(value=ChatMessage.from_assistant(), sender_type=ChatMessage, receiver_type=str)
+        assert _types_are_compatible(sender=int, receiver=str) == (False, None)
 
-    assert (
-        _convert_value(value=ChatMessage.from_assistant("Hello"), sender_type=ChatMessage, receiver_type=str) == "Hello"
-    )
-    assert (
-        _convert_value(value=ChatMessage.from_assistant("Hello"), sender_type=ChatMessage, receiver_type=Optional[str])
-        == "Hello"
-    )
-    assert _convert_value(value="Hello", sender_type=str, receiver_type=ChatMessage) == ChatMessage.from_user("Hello")
-    assert _convert_value(value="Hello", sender_type=str, receiver_type=str) == "Hello"
+        assert _types_are_compatible(sender=str, receiver=Optional[str]) == (True, None)
+        assert _types_are_compatible(sender=str, receiver=str | None) == (True, None)
+
+        assert _types_are_compatible(sender=str, receiver=Union[str, int]) == (True, None)
+        assert _types_are_compatible(sender=str, receiver=str | int) == (True, None)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=str) == (True, ConversionStrategy.CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=str, receiver=ChatMessage) == (True, ConversionStrategy.STR_TO_CHAT_MESSAGE)
+
+        assert _types_are_compatible(sender=str, receiver=List[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=str, receiver=list[str]) == (True, ConversionStrategy.WRAP)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
+
+        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=List[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=list[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
+
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+
+        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=str | ChatMessage, receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str | int, receiver=int) == (False, None)
+
+        # multi-level unwrap not supported
+        assert _types_are_compatible(sender=List[List[str]], receiver=List[str]) == (False, None)
+        assert _types_are_compatible(sender=list[list[str]], receiver=list[str]) == (False, None)
+
+        # multi-level wrap not supported
+        assert _types_are_compatible(sender=str, receiver=List[List[str]]) == (False, None)
+
+    def test_convert_value(self):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+            _convert_value(
+                value=ChatMessage.from_assistant(), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR
+            )
+
+        assert (
+            _convert_value(
+                value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR
+            )
+            == "Hello"
+        )
+        assert _convert_value(
+            value="Hello", conversion_strategy=ConversionStrategy.STR_TO_CHAT_MESSAGE
+        ) == ChatMessage.from_user("Hello")
+
+        assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP) == ["Hello"]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP
+        ) == [ChatMessage.from_assistant("Hello")]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        ) == ["Hello"]
+        assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE) == [
+            ChatMessage.from_user("Hello")
+        ]
+
+        assert _convert_value(value=["Hello"], conversion_strategy=ConversionStrategy.UNWRAP) == "Hello"
+        assert _convert_value(
+            value=[ChatMessage.from_assistant("Hello")], conversion_strategy=ConversionStrategy.UNWRAP
+        ) == ChatMessage.from_assistant("Hello")
+
+        assert _convert_value(
+            value=["Hello"], conversion_strategy=ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
+        ) == ChatMessage.from_user("Hello")
+        assert (
+            _convert_value(
+                value=[ChatMessage.from_assistant("Hello")],
+                conversion_strategy=ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+            )
+            == "Hello"
+        )
+
+    def test_union_in_sender_problem(self):
+        # Case 1: sender is a union that includes the type that can be converted
+        # If sender is `str | ChatMessage` and receiver is `str`, it is NOT compatible
+        # because the `str` part of the sender doesn't need conversion, while the `ChatMessage` part does.
+        # Allowing this would lead to runtime errors if a `str` is actually sent.
+        is_compatible, strategy = _types_are_compatible(sender=str | ChatMessage, receiver=str)
+        assert not is_compatible
+        assert strategy is None
