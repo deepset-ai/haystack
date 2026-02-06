@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from unittest.mock import ANY
 
 import pytest
 
@@ -69,31 +70,36 @@ class TestMultiQueryTextRetriever:
         assert retriever.retriever == in_memory_retriever
         assert retriever.max_workers == 2
 
-    def test_run_with_multiple_queries(self, document_store_with_docs):
-        in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
-        multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever)
-        queries = ["renewable energy", "solar power", "wind turbines"]
-        multi_retriever.warm_up()
-        result = multi_retriever.run(queries=queries)
-
-        assert "documents" in result
-        assert len(result["documents"]) > 0
-        assert all(isinstance(doc, Document) for doc in result["documents"])
-        scores = [doc.score for doc in result["documents"] if doc.score is not None]
-        assert scores == sorted(scores, reverse=True)
-
     def test_to_dict(self):
         in_memory_retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
         multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=2)
         result = multi_retriever.to_dict()
-        assert "type" in result
-        assert "init_parameters" in result
-        assert result["init_parameters"]["max_workers"] == 2
-        assert "retriever" in result["init_parameters"]
-        assert (
-            result["init_parameters"]["retriever"]["type"]
-            == "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever"
-        )
+        assert result == {
+            "type": "haystack.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever",
+            "init_parameters": {
+                "retriever": {
+                    "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
+                    "init_parameters": {
+                        "document_store": {
+                            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                            "init_parameters": {
+                                "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                                "bm25_algorithm": "BM25L",
+                                "bm25_parameters": {},
+                                "embedding_similarity_function": "dot_product",
+                                "index": ANY,
+                                "return_embedding": True,
+                            },
+                        },
+                        "filters": None,
+                        "top_k": 10,
+                        "scale_score": False,
+                        "filter_policy": "replace",
+                    },
+                },
+                "max_workers": 2,
+            },
+        }
 
     def test_from_dict(self):
         data = {
@@ -110,7 +116,7 @@ class TestMultiQueryTextRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "88144fa9-6e45-4e5d-8647-4c4002d8b6db",
-                                # 'return_embedding': True  # ToDo: investigate why this fails
+                                "return_embedding": True,
                             },
                         },
                         "filters": None,
@@ -122,12 +128,22 @@ class TestMultiQueryTextRetriever:
                 "max_workers": 3,
             },
         }
-
         result = MultiQueryTextRetriever.from_dict(data)
-
         assert isinstance(result, MultiQueryTextRetriever)
         assert result.retriever.__class__.__name__ == "InMemoryBM25Retriever"
         assert result.max_workers == 3
+
+    def test_run_with_multiple_queries(self, document_store_with_docs):
+        in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
+        multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever)
+        queries = ["renewable energy", "solar power", "wind turbines"]
+        result = multi_retriever.run(queries=queries)
+
+        assert "documents" in result
+        assert len(result["documents"]) > 0
+        assert all(isinstance(doc, Document) for doc in result["documents"])
+        scores = [doc.score for doc in result["documents"] if doc.score is not None]
+        assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.integration
     def test_run_with_filters(self, document_store_with_docs):
