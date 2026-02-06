@@ -10,6 +10,7 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
 from haystack.components.extractors.image import LLMDocumentContentExtractor
+from haystack.components.extractors.image.llm_document_content_extractor import DEFAULT_METADATA_PROMPT_TEMPLATE
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.core.serialization import component_to_dict
@@ -45,12 +46,17 @@ class TestLLMDocumentContentExtractor:
         assert extractor.size == (800, 600)
         assert extractor.raise_on_failure is True
         assert extractor.max_workers == 5
+        assert extractor.extraction_mode == "content"
+        assert extractor.metadata_key == "extracted_metadata"
 
     def test_init_with_defaults(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator()
         extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
+        assert extractor.extraction_mode == "content"
         assert extractor.prompt.startswith("\nYou are part of an information extraction pipeline")
+        assert extractor.metadata_prompt == DEFAULT_METADATA_PROMPT_TEMPLATE
+        assert extractor.metadata_key == "extracted_metadata"
         assert extractor.file_path_meta_field == "file_path"
         assert extractor.root_path == ""
         assert extractor.detail is None
@@ -92,7 +98,10 @@ class TestLLMDocumentContentExtractor:
             "type": "haystack.components.extractors.image.llm_document_content_extractor.LLMDocumentContentExtractor",
             "init_parameters": {
                 "chat_generator": component_to_dict(chat_generator, "chat_generator"),
+                "extraction_mode": "content",
                 "prompt": "Custom extraction prompt",
+                "metadata_prompt": DEFAULT_METADATA_PROMPT_TEMPLATE,
+                "metadata_key": "extracted_metadata",
                 "file_path_meta_field": "custom_path",
                 "root_path": "/custom/root",
                 "detail": "low",
@@ -122,7 +131,10 @@ class TestLLMDocumentContentExtractor:
 
         extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
 
+        assert extractor.extraction_mode == "content"
         assert extractor.prompt == "Custom extraction prompt"
+        assert extractor.metadata_prompt == DEFAULT_METADATA_PROMPT_TEMPLATE
+        assert extractor.metadata_key == "extracted_metadata"
         assert extractor.file_path_meta_field == "custom_path"
         assert extractor.root_path == "/custom/root"
         assert extractor.detail == "low"
@@ -130,6 +142,28 @@ class TestLLMDocumentContentExtractor:
         assert extractor.raise_on_failure is True
         assert extractor.max_workers == 4
         assert component_to_dict(extractor._chat_generator, "name") == component_to_dict(chat_generator, "name")
+
+    def test_from_dict_backward_compatible_without_new_keys(self, monkeypatch):
+        """Old serialized dicts without extraction_mode/metadata_prompt/metadata_key still deserialize."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
+        extractor_dict = {
+            "type": "haystack.components.extractors.image.llm_document_content_extractor.LLMDocumentContentExtractor",
+            "init_parameters": {
+                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
+                "prompt": "Custom extraction prompt",
+                "file_path_meta_field": "custom_path",
+                "root_path": "/custom/root",
+                "detail": "low",
+                "size": (1024, 768),
+                "raise_on_failure": True,
+                "max_workers": 4,
+            },
+        }
+        extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
+        assert extractor.extraction_mode == "content"
+        assert extractor.metadata_key == "extracted_metadata"
+        assert extractor.prompt == "Custom extraction prompt"
 
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
@@ -319,6 +353,46 @@ class TestLLMDocumentContentExtractor:
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == doc2.id
         assert "content_extraction_error" in failed_doc.meta
+
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_extraction_mode_metadata_at_init(self, mock_doc_to_image_run):
+        """When extraction_mode is 'metadata', output goes to meta and content is preserved."""
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant(text="title: Sample Doc\nauthor: Test\ndocument_type: report")]
+        }
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=mock_chat_generator, extraction_mode="metadata", metadata_key="llm_metadata"
+        )
+        original_content = "Original content"
+        docs = [Document(content=original_content, meta={"file_path": "/path/to/image.pdf"})]
+        result = extractor.run(documents=docs)
+        assert len(result["documents"]) == 1
+        assert len(result["failed_documents"]) == 0
+        processed = result["documents"][0]
+        assert processed.content == original_content
+        assert processed.meta["llm_metadata"] == "title: Sample Doc\nauthor: Test\ndocument_type: report"
+        assert "metadata_extraction_error" not in processed.meta
+
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_extraction_mode_override_at_runtime(self, mock_doc_to_image_run):
+        """extraction_mode in run() overrides init for that run only."""
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant(text="Extracted text")]}
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator, extraction_mode="content")
+        docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
+        result_content = extractor.run(documents=docs, extraction_mode="content")
+        assert result_content["documents"][0].content == "Extracted text"
+        assert "extracted_metadata" not in result_content["documents"][0].meta
+        result_metadata = extractor.run(documents=docs, extraction_mode="metadata")
+        assert result_metadata["documents"][0].content == ""
+        assert result_metadata["documents"][0].meta["extracted_metadata"] == "Extracted text"
 
     def test_run_on_thread_with_none_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
