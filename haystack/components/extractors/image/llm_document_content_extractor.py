@@ -89,7 +89,9 @@ def _validate_prompt_no_variables(prompt: str, context: str) -> None:
 @component
 class LLMDocumentContentExtractor:
     """
-    Extracts textual content or metadata from image-based documents using a vision-enabled LLM.
+    Extracts textual content or metadata from image-based documents using a vision-enabled Large-Language Model (LLM).
+
+    This component converts each input document into an image using the DocumentToImageContent component,
 
     This component can run in two modes (chosen at init and optionally overridden at runtime):
     - **content**: the LLM output is written to the document's content (default, backward compatible).
@@ -97,11 +99,14 @@ class LLMDocumentContentExtractor:
 
     One LLM call is made per document. The component converts each document to an image via
     DocumentToImageContent, sends it with a prompt to the ChatGenerator, and writes the response
-    to content or metadata according to the effective extraction mode. Prompts must not contain
-    Jinja variables.
+    to content or metadata according to the effective extraction mode.
 
-    Failed documents are returned in `failed_documents` with either `content_extraction_error` or
-    `metadata_extraction_error` in metadata, depending on the mode.
+    Prompts must not contain Jinja variables,they should only include instructions for the LLM. Image data
+    and the instructions for the LLM.
+
+    Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list. These
+    failed documents will have either a `content_extraction_error` or `metadata_extraction_error` entry in their
+    metadata. This metadata can be used for debugging or for reprocessing the documents later.
 
     ### Usage example (content mode, default)
     ```python
@@ -116,7 +121,10 @@ class LLMDocumentContentExtractor:
         Document(content="", meta={"file_path": "document.pdf", "page_number": 1}),
     ]
     updated_documents = extractor.run(documents=documents)["documents"]
-    # updated_documents[0].content contains the extracted text
+    print(updated_documents)
+    # [Document(content='Extracted text from image.jpg',
+    #           meta={'file_path': 'image.jpg'}),
+    #  ...]
     ```
 
     ### Usage example (metadata mode, runtime override)
