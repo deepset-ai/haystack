@@ -14,6 +14,7 @@ from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_
 from haystack import component, logging
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils.url_validation import is_safe_url
 from haystack.version import __version__
 
 # HTTP/2 support via lazy import
@@ -119,6 +120,7 @@ class LinkContentFetcher:
         http2: bool = False,
         client_kwargs: dict | None = None,
         request_headers: dict[str, str] | None = None,
+        block_internal_urls: bool = True,
     ):
         """
         Initializes the component.
@@ -133,6 +135,12 @@ class LinkContentFetcher:
                      Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
+        :param block_internal_urls: If `True` (default), blocks requests to internal/private IP addresses
+            and localhost to prevent SSRF (Server-Side Request Forgery) attacks. This includes private
+            IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x), loopback addresses, and link-local
+            addresses (169.254.x.x, commonly used for cloud metadata endpoints).
+            Set to `False` only if you need to fetch content from internal network resources
+            and trust the URL sources.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -142,6 +150,7 @@ class LinkContentFetcher:
         self.http2 = http2
         self.client_kwargs = client_kwargs or {}
         self.request_headers = request_headers or {}
+        self.block_internal_urls = block_internal_urls
 
         # Configure default client settings
         self.client_kwargs.setdefault("timeout", timeout)
@@ -222,6 +231,30 @@ class LinkContentFetcher:
             # Suppress any exceptions during cleanup
             pass
 
+    def _filter_safe_urls(self, urls: list[str]) -> tuple[list[str], list[str]]:
+        """
+        Filter URLs to separate safe and blocked URLs based on SSRF protection settings.
+
+        :param urls: List of URLs to filter.
+        :returns: Tuple of (safe_urls, blocked_urls).
+        """
+        if not self.block_internal_urls:
+            return urls, []
+
+        safe_urls = []
+        blocked_urls = []
+        for url in urls:
+            if is_safe_url(url):
+                safe_urls.append(url)
+            else:
+                blocked_urls.append(url)
+                logger.warning(
+                    "Blocked URL '{url}' as it points to an internal/private address. "
+                    "Set block_internal_urls=False to allow internal URLs.",
+                    url=url,
+                )
+        return safe_urls, blocked_urls
+
     @component.output_types(streams=list[ByteStream])
     def run(self, urls: list[str]):
         """
@@ -239,20 +272,34 @@ class LinkContentFetcher:
             `True`, an exception will be raised in case of an error during content retrieval.
             In all other scenarios, any retrieval errors are logged, and a list of successfully retrieved `ByteStream`
              objects is returned.
+        :raises ValueError: If `block_internal_urls` is `True` and a single URL points to an internal address.
         """
         streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
+        # Filter out internal/private URLs if SSRF protection is enabled
+        safe_urls, blocked_urls = self._filter_safe_urls(urls)
+
+        # If all URLs were blocked and we have a single URL with raise_on_failure, raise an error
+        if not safe_urls and blocked_urls and len(urls) == 1 and self.raise_on_failure:
+            raise ValueError(
+                f"URL '{urls[0]}' points to an internal/private address and was blocked for security reasons. "
+                "Set block_internal_urls=False if you need to access internal resources."
+            )
+
+        if not safe_urls:
+            return {"streams": streams}
+
         # don't use multithreading if there's only one URL
-        if len(urls) == 1:
-            stream_metadata, stream = self._fetch(urls[0])
+        if len(safe_urls) == 1:
+            stream_metadata, stream = self._fetch(safe_urls[0])
             stream.meta.update(stream_metadata)
             stream.mime_type = stream.meta.get("content_type", None)
             streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
-                results = executor.map(self._fetch_with_exception_suppression, urls)
+                results = executor.map(self._fetch_with_exception_suppression, safe_urls)
 
             for stream_metadata, stream in results:  # type: ignore
                 if stream_metadata is not None and stream is not None:
@@ -271,27 +318,41 @@ class LinkContentFetcher:
 
         :param urls: A list of URLs to fetch content from.
         :returns: `ByteStream` objects representing the extracted content.
+        :raises ValueError: If `block_internal_urls` is `True` and a single URL points to an internal address.
         """
         streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
+        # Filter out internal/private URLs if SSRF protection is enabled
+        safe_urls, blocked_urls = self._filter_safe_urls(urls)
+
+        # If all URLs were blocked and we have a single URL with raise_on_failure, raise an error
+        if not safe_urls and blocked_urls and len(urls) == 1 and self.raise_on_failure:
+            raise ValueError(
+                f"URL '{urls[0]}' points to an internal/private address and was blocked for security reasons. "
+                "Set block_internal_urls=False if you need to access internal resources."
+            )
+
+        if not safe_urls:
+            return {"streams": streams}
+
         # Create tasks for all URLs using _fetch_async directly
-        tasks = [self._fetch_async(url, self._async_client) for url in urls]
+        tasks = [self._fetch_async(url, self._async_client) for url in safe_urls]
 
         # Only capture exceptions when we have multiple URLs or raise_on_failure=False
         # This ensures errors propagate appropriately for single URLs with raise_on_failure=True
-        return_exceptions = not (len(urls) == 1 and self.raise_on_failure)
+        return_exceptions = not (len(safe_urls) == 1 and self.raise_on_failure)
         results = await asyncio.gather(*tasks, return_exceptions=return_exceptions)
 
         # Process results
         for i, result in enumerate(results):
             # Handle exception results (only happens when return_exceptions=True)
             if isinstance(result, Exception):
-                logger.warning("Error fetching {url}: {error}", url=urls[i], error=str(result))
+                logger.warning("Error fetching {url}: {error}", url=safe_urls[i], error=str(result))
                 # Add an empty result for failed URLs when raise_on_failure=False
                 if not self.raise_on_failure:
-                    streams.append(ByteStream(data=b"", meta={"content_type": "Unknown", "url": urls[i]}))
+                    streams.append(ByteStream(data=b"", meta={"content_type": "Unknown", "url": safe_urls[i]}))
                 continue
 
             # Process successful results
