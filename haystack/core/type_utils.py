@@ -40,7 +40,7 @@ def _types_are_compatible(
 
     :returns: A tuple of (is_compatible, conversion_strategy) where:
         - is_compatible is True if the types are strictly compatible or can be converted.
-        - conversion_strategy is a ConversionStrategyType if conversion is required, otherwise None
+        - conversion_strategy is a ConversionStrategy if conversion is required, otherwise None
           (including when types are strictly compatible, incompatible, or type validation is disabled).
     """
     if not type_validation:
