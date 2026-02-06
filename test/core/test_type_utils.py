@@ -10,6 +10,7 @@ import pytest
 
 from haystack.core.component.types import Variadic
 from haystack.core.type_utils import (
+    ConversionStrategy,
     _chat_message_to_str,
     _contains_type,
     _convert_value,
@@ -912,29 +913,29 @@ class TestConversion:
         assert _types_are_compatible(sender=str, receiver=Union[str, int]) == (True, None)
         assert _types_are_compatible(sender=str, receiver=str | int) == (True, None)
 
-        assert _types_are_compatible(sender=ChatMessage, receiver=str) == (True, "chat_message_to_str")
-        assert _types_are_compatible(sender=str, receiver=ChatMessage) == (True, "str_to_chat_message")
+        assert _types_are_compatible(sender=ChatMessage, receiver=str) == (True, ConversionStrategy.CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=str, receiver=ChatMessage) == (True, ConversionStrategy.STR_TO_CHAT_MESSAGE)
 
-        assert _types_are_compatible(sender=str, receiver=List[str]) == (True, "wrap")
-        assert _types_are_compatible(sender=str, receiver=list[str]) == (True, "wrap")
+        assert _types_are_compatible(sender=str, receiver=List[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=str, receiver=list[str]) == (True, ConversionStrategy.WRAP)
 
-        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (True, "wrap_chat_message_to_str")
-        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (True, "wrap_chat_message_to_str")
+        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (True, ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (True, ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR)
 
-        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (True, "wrap_str_to_chat_message")
-        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (True, "wrap_str_to_chat_message")
+        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (True, ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE)
+        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (True, ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE)
 
-        assert _types_are_compatible(sender=List[str], receiver=str) == (True, "unwrap")
-        assert _types_are_compatible(sender=list[str], receiver=str) == (True, "unwrap")
+        assert _types_are_compatible(sender=List[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=list[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
 
-        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (True, "unwrap")
-        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (True, "unwrap")
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP)
 
-        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (True, "unwrap_chat_message_to_str")
-        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (True, "unwrap_chat_message_to_str")
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (True, ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (True, ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR)
 
-        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (True, "unwrap_str_to_chat_message")
-        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (True, "unwrap_str_to_chat_message")
+        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE)
+        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE)
 
         assert _types_are_compatible(sender=str | ChatMessage, receiver=str) == (False, None)
         assert _types_are_compatible(sender=str | int, receiver=int) == (False, None)
@@ -948,44 +949,44 @@ class TestConversion:
 
     def test_convert_value(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
-            _convert_value(value=ChatMessage.from_assistant(), conversion_strategy="chat_message_to_str")
+            _convert_value(value=ChatMessage.from_assistant(), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR)
 
-        assert (
-            _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="chat_message_to_str")
-            == "Hello"
-        )
-        assert _convert_value(value="Hello", conversion_strategy="str_to_chat_message") == ChatMessage.from_user(
-            "Hello"
-        )
-
-        assert _convert_value(value="Hello", conversion_strategy="wrap") == ["Hello"]
-        assert _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap") == [
-            ChatMessage.from_assistant("Hello")
-        ]
-        assert _convert_value(
-            value=ChatMessage.from_assistant("Hello"), conversion_strategy="wrap_chat_message_to_str"
-        ) == ["Hello"]
-        assert _convert_value(value="Hello", conversion_strategy="wrap_str_to_chat_message") == [
-            ChatMessage.from_user("Hello")
-        ]
-
-        assert _convert_value(value=["Hello"], conversion_strategy="unwrap") == "Hello"
-        assert _convert_value(
-            value=[ChatMessage.from_assistant("Hello")], conversion_strategy="unwrap"
-        ) == ChatMessage.from_assistant("Hello")
-
-        assert _convert_value(
-            value=["Hello"], conversion_strategy="unwrap_str_to_chat_message"
-        ) == ChatMessage.from_user("Hello")
         assert (
             _convert_value(
-                value=[ChatMessage.from_assistant("Hello")], conversion_strategy="unwrap_chat_message_to_str"
+                value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR
             )
             == "Hello"
         )
+        assert _convert_value(
+            value="Hello", conversion_strategy=ConversionStrategy.STR_TO_CHAT_MESSAGE
+        ) == ChatMessage.from_user("Hello")
 
-        with pytest.raises(ValueError, match="Unknown conversion strategy: unknown"):
-            _convert_value(value="Hello", conversion_strategy="unknown")
+        assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP) == ["Hello"]
+        assert _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP) == [
+            ChatMessage.from_assistant("Hello")
+        ]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        ) == ["Hello"]
+        assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE) == [
+            ChatMessage.from_user("Hello")
+        ]
+
+        assert _convert_value(value=["Hello"], conversion_strategy=ConversionStrategy.UNWRAP) == "Hello"
+        assert _convert_value(
+            value=[ChatMessage.from_assistant("Hello")], conversion_strategy=ConversionStrategy.UNWRAP
+        ) == ChatMessage.from_assistant("Hello")
+
+        assert _convert_value(
+            value=["Hello"], conversion_strategy=ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
+        ) == ChatMessage.from_user("Hello")
+        assert (
+            _convert_value(
+                value=[ChatMessage.from_assistant("Hello")],
+                conversion_strategy=ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+            )
+            == "Hello"
+        )
 
     def test_union_in_sender_problem(self):
         # Case 1: sender is a union that includes the type that can be converted

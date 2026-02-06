@@ -22,6 +22,7 @@ from haystack.core.errors import (
 )
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
+from haystack.core.type_utils import ConversionStrategy
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.dataclasses import ChatMessage
@@ -1277,7 +1278,7 @@ class TestPipelineBase:
         # ChatMessage to str
         out = OutputSocket("output1", ChatMessage, receivers=["receiver1"])
         inp = InputSocket("input1", str, senders=["sender1"])
-        receivers = [("receiver1", out, inp, "chat_message_to_str")]
+        receivers = [("receiver1", out, inp, ConversionStrategy.CHAT_MESSAGE_TO_STR)]
         component_outputs: dict = {"output1": ChatMessage.from_user("Hello")}
         inputs: dict = {}
         PipelineBase()._write_component_outputs(
@@ -1292,7 +1293,7 @@ class TestPipelineBase:
         # str to ChatMessage
         out = OutputSocket("output1", str, receivers=["receiver1"])
         inp = InputSocket("input1", ChatMessage, senders=["sender1"])
-        receivers = [("receiver1", out, inp, "str_to_chat_message")]
+        receivers = [("receiver1", out, inp, ConversionStrategy.STR_TO_CHAT_MESSAGE)]
         component_outputs = {"output1": "Hello"}
         inputs = {}
         PipelineBase()._write_component_outputs(

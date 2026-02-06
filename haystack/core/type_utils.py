@@ -3,21 +3,43 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections.abc
+from enum import Enum
 from types import NoneType, UnionType
 from typing import Any, Union, get_args, get_origin
 
 from haystack.dataclasses import ChatMessage
 
 
-def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, str | None]:
+class ConversionStrategy(Enum):
     """
-    Determines if two types are compatible based on the specified validation mode.
+    Strategies for converting values between compatible types in pipeline connections.
+    """
+
+    CHAT_MESSAGE_TO_STR = "chat_message_to_str"
+    STR_TO_CHAT_MESSAGE = "str_to_chat_message"
+    WRAP = "wrap"
+    WRAP_CHAT_MESSAGE_TO_STR = "wrap_chat_message_to_str"
+    WRAP_STR_TO_CHAT_MESSAGE = "wrap_str_to_chat_message"
+    UNWRAP = "unwrap"
+    UNWRAP_STR_TO_CHAT_MESSAGE = "unwrap_str_to_chat_message"
+    UNWRAP_CHAT_MESSAGE_TO_STR = "unwrap_chat_message_to_str"
+
+
+ConversionStrategyType = ConversionStrategy | None
+
+
+def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, ConversionStrategyType]:
+    """
+    Determines whether two types are compatible, optionally allowing conversion.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
-    :param type_validation: Whether to perform strict type validation.
-    :return: A tuple where the first element is True if the types are compatible, and the second
-             element is the conversion strategy name (or None if strictly compatible or type validation is disabled).
+    :param type_validation: If False, all types are considered compatible.
+    
+    :returns: A tuple of (is_compatible, conversion_strategy) where:
+        - is_compatible is True if the types are strictly compatible or can be converted.
+        - conversion_strategy is a ConversionStrategyType if conversion is required, otherwise None 
+          (including when types are strictly compatible, incompatible, or type validation is disabled).  
     """
     if not type_validation:
         return True, None
@@ -58,9 +80,14 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyType:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
-    Returns the name of the conversion strategy to use for the given sender and receiver types.
+    Determines whether a conversion exists from sender to receiver.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+
+    :returns: The ConversionStrategy if conversion is required and supported, otherwise None.
     """
     # If sender is a Union, it's only compatible if ALL its types are compatible with the same strategy
     if _safe_get_origin(sender) is Union:
@@ -71,22 +98,22 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
 
     # ChatMessage -> str
     if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
-        return "chat_message_to_str"
+        return ConversionStrategy.CHAT_MESSAGE_TO_STR
 
     # str -> ChatMessage
     if _contains_type(sender, str) and _contains_type(receiver, ChatMessage):
-        return "str_to_chat_message"
+        return ConversionStrategy.STR_TO_CHAT_MESSAGE
 
     # Wrap: T -> List[T]
     if _safe_get_origin(receiver) is list and (args := get_args(receiver)):
         inner = args[0]
         if _strict_types_are_compatible(sender, inner):
-            return "wrap"
+            return ConversionStrategy.WRAP
         # Wrap + conversion
         if _contains_type(sender, ChatMessage) and _contains_type(inner, str):
-            return "wrap_chat_message_to_str"
+            return ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
         if _contains_type(sender, str) and _contains_type(inner, ChatMessage):
-            return "wrap_str_to_chat_message"
+            return ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
 
     # Unwrap: List[T] -> T - for str and ChatMessage only
     if _safe_get_origin(sender) is list and (args := get_args(sender)):
@@ -94,12 +121,12 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
         if (_contains_type(inner, ChatMessage) and _contains_type(receiver, ChatMessage)) or (
             _contains_type(inner, str) and _contains_type(receiver, str)
         ):
-            return "unwrap"
+            return ConversionStrategy.UNWRAP
         # Unwrap + conversion
         if _contains_type(inner, str) and _contains_type(receiver, ChatMessage):
-            return "unwrap_str_to_chat_message"
+            return ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
         if _contains_type(inner, ChatMessage) and _contains_type(receiver, str):
-            return "unwrap_chat_message_to_str"
+            return ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR
 
     return None
 
@@ -116,29 +143,27 @@ def _get_first_item(value: list[Any]) -> Any:
     return value[0]
 
 
-def _convert_value(value: Any, conversion_strategy: str) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _convert_value(value: Any, conversion_strategy: ConversionStrategy) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
     Converts a value using the specified conversion strategy.
     """
     match conversion_strategy:
-        case "chat_message_to_str":
+        case ConversionStrategy.CHAT_MESSAGE_TO_STR:
             return _chat_message_to_str(value)
-        case "str_to_chat_message":
+        case ConversionStrategy.STR_TO_CHAT_MESSAGE:
             return ChatMessage.from_user(value)
-        case "wrap":
+        case ConversionStrategy.WRAP:
             return [value]
-        case "wrap_chat_message_to_str":
+        case ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR:
             return [_chat_message_to_str(value)]
-        case "wrap_str_to_chat_message":
+        case ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE:
             return [ChatMessage.from_user(value)]
-        case "unwrap":
+        case ConversionStrategy.UNWRAP:
             return _get_first_item(value)
-        case "unwrap_str_to_chat_message":
+        case ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE:
             return ChatMessage.from_user(_get_first_item(value))
-        case "unwrap_chat_message_to_str":
+        case ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR:
             return _chat_message_to_str(_get_first_item(value))
-        case _:
-            raise ValueError(f"Unknown conversion strategy: {conversion_strategy}")
 
 
 def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements

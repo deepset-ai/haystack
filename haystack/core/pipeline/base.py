@@ -40,7 +40,7 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import _convert_value, _safe_get_origin, _type_name, _types_are_compatible
+from haystack.core.type_utils import ConversionStrategyType, _convert_value, _safe_get_origin, _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -503,7 +503,7 @@ class PipelineBase:  # noqa: PLW1641
         conversion_strategy = None
 
         # Find all possible connections between these two components
-        possible_connections: list[tuple[OutputSocket, InputSocket, str | None]] = []
+        possible_connections: list[tuple[OutputSocket, InputSocket, ConversionStrategyType]] = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
             is_compat, conversion_strategy = _types_are_compatible(
                 sender_sock.type, receiver_sock.type, self._connection_type_validation
@@ -1039,16 +1039,18 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, str | None]]:
+    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 
         :param component_name:
             Name of the sender Component
 
-        :returns:
-            List of tuples containing name of the receiver Component, sender OutputSocket,
-            receiver InputSocket instances, and the conversion strategy name if needed.
+        :returns: A list of tuples containing:
+            - receiver component name
+            - sender OutputSocket
+            - receiver InputSocket
+            - ConversionStrategy if conversion is required, otherwise None.
         """
         res = []
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
@@ -1305,7 +1307,7 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
-        receivers: Sequence[tuple[str, OutputSocket, InputSocket, str | None]],
+        receivers: Sequence[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]],
         include_outputs_from: set[str],
     ) -> Mapping[str, Any]:
         """
