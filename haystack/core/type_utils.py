@@ -4,22 +4,35 @@
 
 import collections.abc
 from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Callable, Union, get_args, get_origin
 
 from haystack.dataclasses import ChatMessage
 
 
-def _types_are_compatible(
-    sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True
-) -> tuple[bool, str | None]:
+def _chat_message_to_str(value: Any) -> str:
+    if value.text is None:
+        raise ValueError("Cannot convert `ChatMessage` to `str` because it has no text. ")
+    return value.text
+
+
+_CONVERSION_STRATEGIES: dict[str, Callable[[Any], Any]] = {
+    "chat_message_to_str": _chat_message_to_str,
+    "str_to_chat_message": ChatMessage.from_user,
+    "wrap": lambda v: [v],
+    "wrap_chat_message_to_str": lambda v: [_chat_message_to_str(v)],
+    "wrap_str_to_chat_message": lambda v: [ChatMessage.from_user(v)],
+}
+
+
+def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, str | None]:
     """
-    Determines if two types are compatible and returns the conversion strategy if needed.
+    Determines if two types are compatible based on the specified validation mode.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
     :param type_validation: Whether to perform strict type validation.
     :return: A tuple where the first element is True if the types are compatible, and the second
-             element is the conversion strategy name (or None if strictly compatible).
+             element is the conversion strategy name (or None if strictly compatible or type validation is disabled).
     """
     if not type_validation:
         return True, None
@@ -34,7 +47,7 @@ def _types_are_compatible(
     return False, None
 
 
-def _safe_get_origin(_type: type | UnionType) -> type | None:
+def _safe_get_origin(_type: Any) -> type | None:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 
@@ -60,7 +73,7 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:
+def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylint: disable=too-many-return-statements
     """
     Returns the name of the conversion strategy to use for the given sender and receiver types.
     """
@@ -89,36 +102,11 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:
     return None
 
 
-def _types_are_convertible(sender: Any, receiver: Any) -> bool:
-    """
-    Checks whether the sender type is convertible to the receiver type.
-    """
-    return _strict_types_are_compatible(sender, receiver) or _get_conversion_strategy(sender, receiver) is not None
-
-
-def _chat_message_to_str(value: Any) -> str:
-    if value.text is None:
-        raise ValueError("Cannot convert `ChatMessage` to `str` because it has no text. ")
-    return value.text
-
-
-_CONVERSION_STRATEGIES = {
-    "chat_message_to_str": _chat_message_to_str,
-    "str_to_chat_message": ChatMessage.from_user,
-    "wrap": lambda v: [v],
-    "wrap_chat_message_to_str": lambda v: [_chat_message_to_str(v)],
-    "wrap_str_to_chat_message": lambda v: [ChatMessage.from_user(v)],
-}
-
-
-def _convert_value(value: Any, strategy: str | None = None) -> Any:
+def _convert_value(value: Any, strategy: str) -> Any:
     """
     Converts a value from the sender type to the receiver type using a strategy.
     """
-    if strategy:
-        return _CONVERSION_STRATEGIES[strategy](value)
-
-    return value
+    return _CONVERSION_STRATEGIES[strategy](value)
 
 
 def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements

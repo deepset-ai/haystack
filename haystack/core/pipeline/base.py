@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar
+from typing import Any, ContextManager, Iterator, Mapping, Sequence, TextIO, TypeVar
 
 import networkx
 
@@ -554,8 +554,8 @@ class PipelineBase:  # noqa: PLW1641
         if len(possible_connections) > 1:
             # There are multiple possible connection, let's try to match them by name
             name_matches = [
-                (out_sock, in_sock, strat)
-                for out_sock, in_sock, strat in possible_connections
+                (out_sock, in_sock, strategy_)
+                for out_sock, in_sock, strategy_ in possible_connections
                 if in_sock.name == out_sock.name
             ]
             if len(name_matches) != 1:
@@ -634,7 +634,7 @@ class PipelineBase:  # noqa: PLW1641
             from_socket=sender_socket,
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
-            convert=strategy,
+            conversion_strategy=strategy,
         )
         return self
 
@@ -1039,7 +1039,7 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, bool]]:
+    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, str | None]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 
@@ -1048,14 +1048,14 @@ class PipelineBase:  # noqa: PLW1641
 
         :returns:
             List of tuples containing name of the receiver Component, sender OutputSocket,
-            receiver InputSocket instances, and a boolean indicating if conversion is needed.
+            receiver InputSocket instances, and the conversion strategy name if needed.
         """
         res = []
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
             receiver_socket: InputSocket = connection["to_socket"]
-            convert: bool = connection.get("convert", False)
-            res.append((receiver_name, sender_socket, receiver_socket, convert))
+            conversion_strategy: str | None = connection.get("conversion_strategy")
+            res.append((receiver_name, sender_socket, receiver_socket, conversion_strategy))
         return res
 
     @staticmethod
@@ -1306,7 +1306,7 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
-        receivers: list[tuple[str, OutputSocket, InputSocket, bool]],
+        receivers: Sequence[tuple[str, OutputSocket, InputSocket, str | None]],
         include_outputs_from: set[str],
     ) -> Mapping[str, Any]:
         """
@@ -1316,18 +1316,18 @@ class PipelineBase:  # noqa: PLW1641
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
         :param receivers: List of tuples containing name of the receiver Component, sender OutputSocket,
-            receiver InputSocket instances, and a boolean indicating if conversion is needed.
+            receiver InputSocket instances, and the conversion strategy name if needed.
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
-        for receiver_name, sender_socket, receiver_socket, convert in receivers:
+        for receiver_name, sender_socket, receiver_socket, conversion_strategy in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
-            if value is not _NO_OUTPUT_PRODUCED and convert:
+            if value is not _NO_OUTPUT_PRODUCED and conversion_strategy:
                 try:
-                    value = _convert_value(value=value, strategy=convert)
+                    value = _convert_value(value=value, strategy=conversion_strategy)
                 except Exception as e:
                     sender_node = self.graph.nodes.get(component_name)
                     sender_instance = sender_node.get("instance") if sender_node else None

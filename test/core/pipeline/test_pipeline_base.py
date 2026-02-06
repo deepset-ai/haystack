@@ -376,7 +376,7 @@ class TestPipelineBase:
             "double",
             {
                 "conn_type": "int",
-                "convert": None,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
@@ -387,7 +387,7 @@ class TestPipelineBase:
             "add_default",
             {
                 "conn_type": "int",
-                "convert": None,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
@@ -544,7 +544,7 @@ class TestPipelineBase:
             "double",
             {
                 "conn_type": "int",
-                "convert": None,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
@@ -555,7 +555,7 @@ class TestPipelineBase:
             "add_default",
             {
                 "conn_type": "int",
-                "convert": None,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
@@ -2011,7 +2011,7 @@ class TestPipelineConnect:
             "component_str_input",
             {
                 "conn_type": "str",
-                "convert": None,
+                "conversion_strategy": None,
                 "from_socket": OutputSocket(name="string", type=str, receivers=["component_str_input"]),
                 "to_socket": InputSocket(name="string", type=str, senders=["multi_output_component"]),
                 "mandatory": True,
