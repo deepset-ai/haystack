@@ -28,18 +28,20 @@ class ConversionStrategy(Enum):
 ConversionStrategyType = ConversionStrategy | None
 
 
-def _types_are_compatible(sender: Any, receiver: Any, type_validation: bool = True) -> tuple[bool, ConversionStrategyType]:
+def _types_are_compatible(
+    sender: Any, receiver: Any, type_validation: bool = True
+) -> tuple[bool, ConversionStrategyType]:
     """
     Determines whether two types are compatible, optionally allowing conversion.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
     :param type_validation: If False, all types are considered compatible.
-    
+
     :returns: A tuple of (is_compatible, conversion_strategy) where:
         - is_compatible is True if the types are strictly compatible or can be converted.
-        - conversion_strategy is a ConversionStrategyType if conversion is required, otherwise None 
-          (including when types are strictly compatible, incompatible, or type validation is disabled).  
+        - conversion_strategy is a ConversionStrategyType if conversion is required, otherwise None
+          (including when types are strictly compatible, incompatible, or type validation is disabled).
     """
     if not type_validation:
         return True, None

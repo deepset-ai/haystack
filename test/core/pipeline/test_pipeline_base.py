@@ -22,9 +22,9 @@ from haystack.core.errors import (
 )
 from haystack.core.pipeline import Pipeline, PredefinedPipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
-from haystack.core.type_utils import ConversionStrategy
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
+from haystack.core.type_utils import ConversionStrategy
 from haystack.dataclasses import ChatMessage
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet

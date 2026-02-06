@@ -40,7 +40,13 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import ConversionStrategyType, _convert_value, _safe_get_origin, _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    ConversionStrategyType,
+    _convert_value,
+    _safe_get_origin,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -1039,7 +1045,9 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]]:
+    def _find_receivers_from(
+        self, component_name: str
+    ) -> list[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 

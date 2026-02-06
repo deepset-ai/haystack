@@ -919,23 +919,53 @@ class TestConversion:
         assert _types_are_compatible(sender=str, receiver=List[str]) == (True, ConversionStrategy.WRAP)
         assert _types_are_compatible(sender=str, receiver=list[str]) == (True, ConversionStrategy.WRAP)
 
-        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (True, ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR)
-        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (True, ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
 
-        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (True, ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE)
-        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (True, ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE)
+        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+        )
 
         assert _types_are_compatible(sender=List[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
         assert _types_are_compatible(sender=list[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
 
-        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP)
-        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
 
-        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (True, ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR)
-        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (True, ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
 
-        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE)
-        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (True, ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE)
+        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
 
         assert _types_are_compatible(sender=str | ChatMessage, receiver=str) == (False, None)
         assert _types_are_compatible(sender=str | int, receiver=int) == (False, None)
@@ -949,7 +979,9 @@ class TestConversion:
 
     def test_convert_value(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
-            _convert_value(value=ChatMessage.from_assistant(), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR)
+            _convert_value(
+                value=ChatMessage.from_assistant(), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR
+            )
 
         assert (
             _convert_value(
@@ -962,9 +994,9 @@ class TestConversion:
         ) == ChatMessage.from_user("Hello")
 
         assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP) == ["Hello"]
-        assert _convert_value(value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP) == [
-            ChatMessage.from_assistant("Hello")
-        ]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP
+        ) == [ChatMessage.from_assistant("Hello")]
         assert _convert_value(
             value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
         ) == ["Hello"]
