@@ -42,13 +42,13 @@ class DocumentEmbedder(Protocol):
         Generate embeddings for the input documents.
 
         Implementing classes may accept additional optional parameters in their run method.
-        For example: `def run (self, documents: List[Document], param_a="default", param_b="another_default")`.
+        For example: `def run (self, documents: list[Document], param_a="default", param_b="another_default")`.
 
         :param documents:
             The input documents to be embedded.
         :returns:
             A dictionary containing the keys:
-                - 'documents', which is expected to be a List[Document] with embeddings added to each document.
+                - 'documents', which is expected to be a list[Document] with embeddings added to each document.
                 - any optional keys such as 'metadata'.
         """
         ...
