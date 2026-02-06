@@ -201,6 +201,29 @@ class BlockingConfirmationStrategy:
         return default_from_dict(cls, data)
 
 
+def _get_confirmation_strategy(
+    *, tool_name: str, confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]
+) -> ConfirmationStrategy | None:
+    """
+    Get the confirmation strategy for a given tool name.
+
+    :param tool_name:
+        The name of the tool to look up.
+    :param confirmation_strategies:
+        Dictionary of confirmation strategies with string or tuple keys.
+    :returns:
+        The confirmation strategy if found, None otherwise.
+    """
+    if tool_name in confirmation_strategies:
+        return confirmation_strategies[tool_name]
+
+    for key, strategy in confirmation_strategies.items():
+        if isinstance(key, tuple) and tool_name in key:
+            return strategy
+
+    return None
+
+
 def _prepare_tool_args(
     *,
     tool: Tool,
@@ -241,7 +264,7 @@ def _prepare_tool_args(
 
 def _process_confirmation_strategies(
     *,
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
@@ -282,7 +305,7 @@ def _process_confirmation_strategies(
 
 async def _process_confirmation_strategies_async(
     *,
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
@@ -291,7 +314,7 @@ async def _process_confirmation_strategies_async(
 
     Run the confirmation strategies and return modified tool call messages and updated chat history.
 
-    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
+    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies.
     :param messages_with_tool_calls: Chat messages containing tool calls
     :param execution_context: The current execution context of the agent
     :returns:
@@ -324,14 +347,14 @@ async def _process_confirmation_strategies_async(
 
 
 def _run_confirmation_strategies(
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> list[ToolExecutionDecision]:
     """
     Run confirmation strategies for tool calls in the provided chat messages.
 
-    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
+    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies.
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param execution_context: The current execution context containing state and inputs
     :returns:
@@ -365,7 +388,8 @@ def _run_confirmation_strategies(
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
-            if tool_name not in confirmation_strategies:
+            strategy = _get_confirmation_strategy(tool_name=tool_name, confirmation_strategies=confirmation_strategies)
+            if strategy is None:
                 teds.append(
                     ToolExecutionDecision(
                         tool_call_id=tool_call.id, tool_name=tool_name, execute=True, final_tool_params=final_args
@@ -378,7 +402,7 @@ def _run_confirmation_strategies(
 
             # If not, run the confirmation strategy
             if not ted:
-                ted = confirmation_strategies[tool_name].run(
+                ted = strategy.run(
                     tool_name=tool_name,
                     tool_description=tool_to_invoke.description,
                     tool_params=final_args,
@@ -391,7 +415,7 @@ def _run_confirmation_strategies(
 
 
 async def _run_confirmation_strategies_async(
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> list[ToolExecutionDecision]:
@@ -400,7 +424,8 @@ async def _run_confirmation_strategies_async(
 
     Run confirmation strategies for tool calls in the provided chat messages.
 
-    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
+    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies.
+        String keys map individual tools, tuple keys map multiple tools to the same strategy.
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param execution_context: The current execution context containing state and inputs
     :returns:
@@ -434,7 +459,8 @@ async def _run_confirmation_strategies_async(
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
-            if tool_name not in confirmation_strategies:
+            strategy = _get_confirmation_strategy(tool_name=tool_name, confirmation_strategies=confirmation_strategies)
+            if strategy is None:
                 teds.append(
                     ToolExecutionDecision(
                         tool_call_id=tool_call.id, tool_name=tool_name, execute=True, final_tool_params=final_args
@@ -447,7 +473,6 @@ async def _run_confirmation_strategies_async(
 
             # If not, run the confirmation strategy (async version)
             if not ted:
-                strategy = confirmation_strategies[tool_name]
                 # Use run_async if available, otherwise fall back to sync run
                 if hasattr(strategy, "run_async"):
                     ted = await strategy.run_async(
