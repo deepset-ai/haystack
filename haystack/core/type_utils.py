@@ -62,8 +62,11 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:  # pylin
     """
     Returns the name of the conversion strategy to use for the given sender and receiver types.
     """
-    # Optional[T] must not connect to T
-    if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
+    # If sender is a Union, it's only compatible if ALL its types are compatible with the same strategy
+    if _safe_get_origin(sender) is Union:
+        strategies = {_get_conversion_strategy(arg, receiver) for arg in get_args(sender)}
+        if len(strategies) == 1:
+            return strategies.pop()
         return None
 
     # ChatMessage -> str

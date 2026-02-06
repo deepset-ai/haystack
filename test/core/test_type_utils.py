@@ -936,6 +936,16 @@ class TestConversion:
         assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (True, "unwrap_str_to_chat_message")
         assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (True, "unwrap_str_to_chat_message")
 
+        assert _types_are_compatible(sender=str | ChatMessage, receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str | int, receiver=int) == (False, None)
+
+        # multi-level unwrap not supported
+        assert _types_are_compatible(sender=List[List[str]], receiver=List[str]) == (False, None)
+        assert _types_are_compatible(sender=list[list[str]], receiver=list[str]) == (False, None)
+
+        # multi-level wrap not supported
+        assert _types_are_compatible(sender=str, receiver=List[List[str]]) == (False, None)
+
     def test_convert_value(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
             _convert_value(value=ChatMessage.from_assistant(), conversion_strategy="chat_message_to_str")
@@ -976,3 +986,12 @@ class TestConversion:
 
         with pytest.raises(ValueError, match="Unknown conversion strategy: unknown"):
             _convert_value(value="Hello", conversion_strategy="unknown")
+
+    def test_union_in_sender_problem(self):
+        # Case 1: sender is a union that includes the type that can be converted
+        # If sender is `str | ChatMessage` and receiver is `str`, it is NOT compatible
+        # because the `str` part of the sender doesn't need conversion, while the `ChatMessage` part does.
+        # Allowing this would lead to runtime errors if a `str` is actually sent.
+        is_compatible, strategy = _types_are_compatible(sender=str | ChatMessage, receiver=str)
+        assert not is_compatible
+        assert strategy is None
