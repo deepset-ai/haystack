@@ -66,7 +66,7 @@ export default {
             'concepts/pipelines/pipeline-loops',
             'concepts/pipelines/pipeline-templates',
             'concepts/pipelines/asyncpipeline',
-            'concepts/pipelines/smart-connections',
+            'concepts/pipelines/smart-pipeline-connections',
           ],
         },
         {
