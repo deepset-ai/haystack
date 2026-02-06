@@ -500,22 +500,24 @@ class PipelineBase:  # noqa: PLW1641
             [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
 
-        is_strict_match = True
+        strategy = None
 
         # Find all possible connections between these two components
-        possible_connections: list[tuple[OutputSocket, InputSocket, bool]] = []
+        possible_connections: list[tuple[OutputSocket, InputSocket, str | None]] = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            is_compat, is_strict = _types_are_compatible(
+            is_compat, strategy = _types_are_compatible(
                 sender_sock.type, receiver_sock.type, self._connection_type_validation
             )
             if is_compat:
-                possible_connections.append((sender_sock, receiver_sock, is_strict))
+                possible_connections.append((sender_sock, receiver_sock, strategy))
 
         # If there are multiple possibilities, prioritize strict matches over convertible ones.
         # This ensures backward compatibility: previously, pipelines did not allow type conversion.
         if len(possible_connections) > 1 and self._connection_type_validation:
             strict_matches = [
-                (out_sock, in_sock, is_strict) for out_sock, in_sock, is_strict in possible_connections if is_strict
+                (out_sock, in_sock, strategy)
+                for out_sock, in_sock, strategy in possible_connections
+                if strategy is None
             ]
             if strict_matches:
                 possible_connections[:] = strict_matches
@@ -547,13 +549,13 @@ class PipelineBase:  # noqa: PLW1641
             # There's only one possible connection, use it
             sender_socket = possible_connections[0][0]
             receiver_socket = possible_connections[0][1]
-            is_strict_match = possible_connections[0][2]
+            strategy = possible_connections[0][2]
 
         if len(possible_connections) > 1:
             # There are multiple possible connection, let's try to match them by name
             name_matches = [
-                (out_sock, in_sock, is_strict)
-                for out_sock, in_sock, is_strict in possible_connections
+                (out_sock, in_sock, strat)
+                for out_sock, in_sock, strat in possible_connections
                 if in_sock.name == out_sock.name
             ]
             if len(name_matches) != 1:
@@ -570,7 +572,7 @@ class PipelineBase:  # noqa: PLW1641
             # Get the only possible match
             sender_socket = name_matches[0][0]
             receiver_socket = name_matches[0][1]
-            is_strict_match = name_matches[0][2]
+            strategy = name_matches[0][2]
 
         # Connection must be valid on both sender/receiver sides
         if not sender_socket or not receiver_socket or not sender_component_name or not receiver_component_name:
@@ -632,7 +634,7 @@ class PipelineBase:  # noqa: PLW1641
             from_socket=sender_socket,
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
-            convert=not is_strict_match,
+            convert=strategy,
         )
         return self
 
@@ -1325,9 +1327,7 @@ class PipelineBase:  # noqa: PLW1641
 
             if value is not _NO_OUTPUT_PRODUCED and convert:
                 try:
-                    value = _convert_value(
-                        value=value, sender_type=sender_socket.type, receiver_type=receiver_socket.type
-                    )
+                    value = _convert_value(value=value, strategy=convert)
                 except Exception as e:
                     sender_node = self.graph.nodes.get(component_name)
                     sender_instance = sender_node.get("instance") if sender_node else None

@@ -11,26 +11,27 @@ from haystack.dataclasses import ChatMessage
 
 def _types_are_compatible(
     sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True
-) -> tuple[bool, bool]:
+) -> tuple[bool, str | None]:
     """
-    Determines if two types are compatible based on the specified validation mode.
+    Determines if two types are compatible and returns the conversion strategy if needed.
 
     :param sender: The sender type.
     :param receiver: The receiver type.
     :param type_validation: Whether to perform strict type validation.
     :return: A tuple where the first element is True if the types are compatible, and the second
-             element is True if they are strictly compatible.
+             element is the conversion strategy name (or None if strictly compatible).
     """
     if not type_validation:
-        return True, True
+        return True, None
 
     if _strict_types_are_compatible(sender, receiver):
-        return True, True
+        return True, None
 
-    if _types_are_convertible(sender, receiver):
-        return True, False
+    strategy = _get_conversion_strategy(sender, receiver)
+    if strategy:
+        return True, strategy
 
-    return False, False
+    return False, None
 
 
 def _safe_get_origin(_type: type | UnionType) -> type | None:
@@ -59,68 +60,63 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _is_base_convertible(s: Any, r: Any) -> bool:
-    """Returns True if s and r are a (str, ChatMessage) pair in any order."""
+def _get_conversion_strategy(sender: Any, receiver: Any) -> str | None:
+    """
+    Returns the name of the conversion strategy to use for the given sender and receiver types.
+    """
+    # Optional[T] must not connect to T
+    if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
+        return None
 
-    s_is_chat, r_is_chat = _contains_type(s, ChatMessage), _contains_type(r, ChatMessage)
-    s_is_str, r_is_str = _contains_type(s, str), _contains_type(r, str)
-    return (s_is_chat and r_is_str) or (s_is_str and r_is_chat)
+    # Base: ChatMessage -> str
+    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+        return "chat_message_to_str"
+
+    # Base: str -> ChatMessage
+    if _contains_type(sender, str) and _contains_type(receiver, ChatMessage):
+        return "str_to_chat_message"
+
+    # Wrap: T -> List[T]
+    if _safe_get_origin(receiver) is list and (args := get_args(receiver)):
+        inner = args[0]
+        if _strict_types_are_compatible(sender, inner):
+            return "wrap"
+        if _contains_type(sender, ChatMessage) and _contains_type(inner, str):
+            return "wrap_chat_message_to_str"
+        if _contains_type(sender, str) and _contains_type(inner, ChatMessage):
+            return "wrap_str_to_chat_message"
+
+    return None
 
 
 def _types_are_convertible(sender: Any, receiver: Any) -> bool:
     """
     Checks whether the sender type is convertible to the receiver type.
-
-    ChatMessage is convertible to str and vice versa.
     """
-    # Optional[T] must not connect to T
-    if _contains_type(sender, NoneType) and not _contains_type(receiver, NoneType):
-        return False
-
-    # if sender is a single type and receiver is a Union/Optional containing that type, they are convertible
-    # e.g. str is convertible to Optional[str] or Union[str, int] etc.
-    if _contains_type(receiver, sender):
-        return True
-
-    # Base: ChatMessage <-> str
-    if _is_base_convertible(sender, receiver):
-        return True
-
-    s_origin, r_origin = _safe_get_origin(sender), _safe_get_origin(receiver)
-
-    # Wrap: T -> List[T]
-    if r_origin is list and (r_args := get_args(receiver)):
-        inner_r = r_args[0]
-        if _strict_types_are_compatible(sender, inner_r) or _is_base_convertible(sender, inner_r):
-            return True
-
-    return False
+    return _strict_types_are_compatible(sender, receiver) or _get_conversion_strategy(sender, receiver) is not None
 
 
-def _convert_value(value: Any, sender_type: Any, receiver_type: Any) -> Any:
+def _chat_message_to_str(value: Any) -> str:
+    if value.text is None:
+        raise ValueError("Cannot convert `ChatMessage` to `str` because it has no text. ")
+    return value.text
+
+
+_CONVERSION_STRATEGIES = {
+    "chat_message_to_str": _chat_message_to_str,
+    "str_to_chat_message": ChatMessage.from_user,
+    "wrap": lambda v: [v],
+    "wrap_chat_message_to_str": lambda v: [_chat_message_to_str(v)],
+    "wrap_str_to_chat_message": lambda v: [ChatMessage.from_user(v)],
+}
+
+
+def _convert_value(value: Any, strategy: str | None = None) -> Any:
     """
-    Converts a value from the sender type to the receiver type.
-
-    :param value: The value to convert.
-    :param sender_type: The sender type.
-    :param receiver_type: The receiver type.
-    :return: The converted value.
+    Converts a value from the sender type to the receiver type using a strategy.
     """
-    s_origin, r_origin = _safe_get_origin(sender_type), _safe_get_origin(receiver_type)
-
-    # 2. Wrap: T -> List[U]
-    if r_origin is list:
-        # Recursively convert the value to the inner type of the list
-        return [_convert_value(value, sender_type, get_args(receiver_type)[0])]
-
-    if _contains_type(sender_type, ChatMessage) and _contains_type(receiver_type, str):
-        if value.text is None:
-            msg = "Cannot convert `ChatMessage` to `str` because it has no text. "
-            raise ValueError(msg)
-        return value.text
-
-    if _contains_type(sender_type, str) and _contains_type(receiver_type, ChatMessage):
-        return ChatMessage.from_user(value)
+    if strategy:
+        return _CONVERSION_STRATEGIES[strategy](value)
 
     return value
 

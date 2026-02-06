@@ -376,7 +376,7 @@ class TestPipelineBase:
             "double",
             {
                 "conn_type": "int",
-                "convert": False,
+                "convert": None,
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
@@ -387,7 +387,7 @@ class TestPipelineBase:
             "add_default",
             {
                 "conn_type": "int",
-                "convert": False,
+                "convert": None,
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
@@ -544,7 +544,7 @@ class TestPipelineBase:
             "double",
             {
                 "conn_type": "int",
-                "convert": False,
+                "convert": None,
                 "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
                 "mandatory": True,
@@ -555,7 +555,7 @@ class TestPipelineBase:
             "add_default",
             {
                 "conn_type": "int",
-                "convert": False,
+                "convert": None,
                 "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
                 "to_socket": InputSocket(name="value", type=int, senders=["double"]),
                 "mandatory": True,
@@ -911,7 +911,7 @@ class TestPipelineBase:
                 "document_builder",
                 OutputSocket(name="text", type=str, receivers=["document_builder"]),
                 InputSocket(name="text", type=str, default_value=_empty, senders=["sentence_builder"]),
-                False,
+                None,
             )
         ]
 
@@ -926,7 +926,7 @@ class TestPipelineBase:
                     default_value=_empty,
                     senders=["document_builder", "conditional_document_builder"],
                 ),
-                False,
+                None,
             )
         ]
 
@@ -944,7 +944,7 @@ class TestPipelineBase:
                     default_value=_empty,
                     senders=["document_builder", "conditional_document_builder"],
                 ),
-                False,
+                None,
             )
         ]
 
@@ -1174,7 +1174,7 @@ class TestPipelineBase:
         """Test writing to different socket types with various existing input states"""
         receiver_socket = lazy_variadic_input_socket if socket_type == "lazy_variadic" else regular_input_socket
         socket_name = receiver_socket.name
-        receivers = [("receiver1", regular_output_socket, receiver_socket, False)]
+        receivers = [("receiver1", regular_output_socket, receiver_socket, None)]
         inputs = {}
         if existing_inputs:
             inputs = {"receiver1": {socket_name: existing_inputs}}
@@ -1202,7 +1202,7 @@ class TestPipelineBase:
         self, component_outputs, include_outputs, expected_pruned, regular_output_socket, regular_input_socket
     ):
         """Test output pruning behavior under different scenarios"""
-        receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
+        receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
         pruned_outputs = PipelineBase()._write_component_outputs(
             component_name="sender1",
             component_outputs=component_outputs,
@@ -1221,7 +1221,7 @@ class TestPipelineBase:
         self, output_value, regular_output_socket, regular_input_socket
     ):
         """Test handling of different output values"""
-        receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
+        receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
         component_outputs = {"output1": output_value}
         inputs: dict[str, Any] = {}
         PipelineBase()._write_component_outputs(
@@ -1236,7 +1236,7 @@ class TestPipelineBase:
 
     def test__write_component_outputs_dont_overwrite_with_no_output(self, regular_output_socket, regular_input_socket):
         """Test that existing inputs are not overwritten with _NO_OUTPUT_PRODUCED"""
-        receivers = [("receiver1", regular_output_socket, regular_input_socket, False)]
+        receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
         component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
         inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
         PipelineBase()._write_component_outputs(
@@ -1255,7 +1255,7 @@ class TestPipelineBase:
     ):
         """Test writing to multiple receivers"""
         receivers = [
-            (f"receiver{i}", regular_output_socket, regular_input_socket, False) for i in range(receivers_count)
+            (f"receiver{i}", regular_output_socket, regular_input_socket, None) for i in range(receivers_count)
         ]
         component_outputs = {"output1": 42}
 
@@ -1277,7 +1277,7 @@ class TestPipelineBase:
         # ChatMessage to str
         out = OutputSocket("output1", ChatMessage, receivers=["receiver1"])
         inp = InputSocket("input1", str, senders=["sender1"])
-        receivers = [("receiver1", out, inp, True)]
+        receivers = [("receiver1", out, inp, "chat_message_to_str")]
         component_outputs: dict = {"output1": ChatMessage.from_user("Hello")}
         inputs: dict = {}
         PipelineBase()._write_component_outputs(
@@ -1292,7 +1292,7 @@ class TestPipelineBase:
         # str to ChatMessage
         out = OutputSocket("output1", str, receivers=["receiver1"])
         inp = InputSocket("input1", ChatMessage, senders=["sender1"])
-        receivers = [("receiver1", out, inp, True)]
+        receivers = [("receiver1", out, inp, "str_to_chat_message")]
         component_outputs = {"output1": "Hello"}
         inputs = {}
         PipelineBase()._write_component_outputs(
@@ -2011,7 +2011,7 @@ class TestPipelineConnect:
             "component_str_input",
             {
                 "conn_type": "str",
-                "convert": False,
+                "convert": None,
                 "from_socket": OutputSocket(name="string", type=str, receivers=["component_str_input"]),
                 "to_socket": InputSocket(name="string", type=str, senders=["multi_output_component"]),
                 "mandatory": True,
