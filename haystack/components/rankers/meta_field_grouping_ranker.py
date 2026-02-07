@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any
 
 from haystack import Document, component
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -77,6 +78,9 @@ class MetaFieldGroupingRanker:
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 
+        Before grouping, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         The output is a list of documents reordered based on how they were grouped.
 
         :param documents: The list of documents to group.
@@ -91,7 +95,8 @@ class MetaFieldGroupingRanker:
         document_groups: dict[str, dict[str, list[Document]]] = defaultdict(lambda: defaultdict(list))
         no_group_docs = []
 
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             group_value = str(doc.meta.get(self.group_by, ""))
 
             # If no group value, add to no_group_docs and continue

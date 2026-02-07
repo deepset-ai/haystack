@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar
+from typing import Any, ContextManager, Iterator, Mapping, Sequence, TextIO, TypeVar
 
 import networkx
 
@@ -21,6 +21,7 @@ from haystack.core.errors import (
     PipelineDrawingError,
     PipelineError,
     PipelineMaxComponentRuns,
+    PipelineRuntimeError,
     PipelineUnmarshalError,
     PipelineValidationError,
 )
@@ -39,7 +40,13 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import _safe_get_origin, _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    ConversionStrategyType,
+    _convert_value,
+    _safe_get_origin,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -499,11 +506,27 @@ class PipelineBase:  # noqa: PLW1641
             [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
 
+        conversion_strategy = None
+
         # Find all possible connections between these two components
-        possible_connections = []
+        possible_connections: list[tuple[OutputSocket, InputSocket, ConversionStrategyType]] = []
         for sender_sock, receiver_sock in itertools.product(sender_socket_candidates, receiver_socket_candidates):
-            if _types_are_compatible(sender_sock.type, receiver_sock.type, self._connection_type_validation):
-                possible_connections.append((sender_sock, receiver_sock))
+            is_compat, conversion_strategy = _types_are_compatible(
+                sender_sock.type, receiver_sock.type, self._connection_type_validation
+            )
+            if is_compat:
+                possible_connections.append((sender_sock, receiver_sock, conversion_strategy))
+
+        # If there are multiple possibilities, prioritize strict matches over convertible ones.
+        # This ensures backward compatibility: previously, pipelines did not allow type conversion.
+        if len(possible_connections) > 1 and self._connection_type_validation:
+            strict_matches = [
+                (out_sock, in_sock, None)
+                for out_sock, in_sock, conversion_strategy in possible_connections
+                if conversion_strategy is None
+            ]
+            if strict_matches:
+                possible_connections[:] = strict_matches
 
         # We need this status for error messages, since we might need it in multiple places we calculate it here
         status = _connections_status(
@@ -532,11 +555,14 @@ class PipelineBase:  # noqa: PLW1641
             # There's only one possible connection, use it
             sender_socket = possible_connections[0][0]
             receiver_socket = possible_connections[0][1]
+            conversion_strategy = possible_connections[0][2]
 
         if len(possible_connections) > 1:
             # There are multiple possible connection, let's try to match them by name
             name_matches = [
-                (out_sock, in_sock) for out_sock, in_sock in possible_connections if in_sock.name == out_sock.name
+                (out_sock, in_sock, conversion_strategy_)
+                for out_sock, in_sock, conversion_strategy_ in possible_connections
+                if in_sock.name == out_sock.name
             ]
             if len(name_matches) != 1:
                 # There's are either no matches or more than one, we can't pick one reliably
@@ -552,6 +578,7 @@ class PipelineBase:  # noqa: PLW1641
             # Get the only possible match
             sender_socket = name_matches[0][0]
             receiver_socket = name_matches[0][1]
+            conversion_strategy = name_matches[0][2]
 
         # Connection must be valid on both sender/receiver sides
         if not sender_socket or not receiver_socket or not sender_component_name or not receiver_component_name:
@@ -613,6 +640,7 @@ class PipelineBase:  # noqa: PLW1641
             from_socket=sender_socket,
             to_socket=receiver_socket,
             mandatory=receiver_socket.is_mandatory,
+            conversion_strategy=conversion_strategy,
         )
         return self
 
@@ -1017,22 +1045,26 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket]]:
+    def _find_receivers_from(
+        self, component_name: str
+    ) -> list[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 
         :param component_name:
             Name of the sender Component
 
-        :returns:
-            List of tuples containing name of the receiver Component and sender OutputSocket
-            and receiver InputSocket instances
+        :returns: A list of tuples containing:
+            - receiver component name
+            - sender OutputSocket
+            - receiver InputSocket
+            - ConversionStrategy if conversion is required, otherwise None.
         """
         res = []
         for _, receiver_name, connection in self.graph.edges(nbunch=component_name, data=True):
             sender_socket: OutputSocket = connection["from_socket"]
             receiver_socket: InputSocket = connection["to_socket"]
-            res.append((receiver_name, sender_socket, receiver_socket))
+            res.append((receiver_name, sender_socket, receiver_socket, connection.get("conversion_strategy")))
         return res
 
     @staticmethod
@@ -1130,7 +1162,6 @@ class PipelineBase:  # noqa: PLW1641
             comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
             priority = self._calculate_priority(comp, inputs.get(component_name, {}))
             priority_queue.push(component_name, priority)
-
         return priority_queue
 
     @staticmethod
@@ -1235,9 +1266,13 @@ class PipelineBase:  # noqa: PLW1641
         :param priority: Priority of the component.
         :param priority_queue: Priority queue of component names.
         :param topological_sort: Cached topological sort of all components in the pipeline.
-        """
-        components_with_same_priority = [component_name]
 
+        :returns:
+            The name of the component to run and the cached topological sort of all components in the pipeline.
+        """
+        # Create a list of all components that have the same priority as the current component, including the
+        # current component itself and remove them from the priority queue.
+        components_with_same_priority = [component_name]
         while len(priority_queue) > 0:
             next_priority, next_component_name = priority_queue.peek()
             if next_priority == priority:
@@ -1246,12 +1281,19 @@ class PipelineBase:  # noqa: PLW1641
             else:
                 break
 
+        # If there are multiple components with the same priority, we tiebreak them to decide which one to run first.
         if len(components_with_same_priority) > 1:
             if topological_sort is None:
                 if networkx.is_directed_acyclic_graph(self.graph):
+                    # If the graph is a DAG, we use lexicographical topological sort to get a deterministic order of
+                    # the components.
                     topological_sort = networkx.lexicographical_topological_sort(self.graph)
                     topological_sort = {node: idx for idx, node in enumerate(topological_sort)}
                 else:
+                    # If the graph is not a DAG, we use the condensation of the graph to get a topological sort of
+                    # the strongly connected components. This way, components that are part of the same cycle will
+                    # have the same priority and will be tiebroken by their name in lexicographical order, while
+                    # components that are not part of the same cycle will be tiebroken by their topological order.
                     condensed = networkx.condensation(self.graph)
                     condensed_sorted = {node: idx for idx, node in enumerate(networkx.topological_sort(condensed))}
                     topological_sort = {
@@ -1267,12 +1309,13 @@ class PipelineBase:  # noqa: PLW1641
 
         return component_name, topological_sort
 
-    @staticmethod
     def _write_component_outputs(
+        self,
+        *,
         component_name: str,
         component_outputs: Mapping[str, Any],
         inputs: dict[str, Any],
-        receivers: list[tuple[str, OutputSocket, InputSocket]],
+        receivers: Sequence[tuple[str, OutputSocket, InputSocket, ConversionStrategyType]],
         include_outputs_from: set[str],
     ) -> Mapping[str, Any]:
         """
@@ -1281,15 +1324,40 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of the component.
         :param component_outputs: The outputs of the component.
         :param inputs: The current global input state.
-        :param receivers: List of tuples containing name of the receiver Component and sender OutputSocket
-            and receiver InputSocket instances.
+        :param receivers: A sequence of tuples containing:
+            - receiver component name,
+            - output socket of the sender,
+            - input socket of the receiver,
+            - ConversionStrategy to be used to convert the value if required, otherwise None.
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
-        for receiver_name, sender_socket, receiver_socket in receivers:
+        for receiver_name, sender_socket, receiver_socket, conversion_strategy in receivers:
             # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+
+            if value is not _NO_OUTPUT_PRODUCED and conversion_strategy:
+                try:
+                    value = _convert_value(value=value, conversion_strategy=conversion_strategy)
+                except Exception as e:
+                    sender_node = self.graph.nodes.get(component_name)
+                    sender_instance = sender_node.get("instance") if sender_node else None
+                    sender_type_name = type(sender_instance).__name__ if sender_instance else "unknown"
+
+                    receiver_node = self.graph.nodes.get(receiver_name)
+                    receiver_instance = receiver_node.get("instance") if receiver_node else None
+                    receiver_type_name = type(receiver_instance).__name__ if receiver_instance else "unknown"
+
+                    msg = (
+                        f"Failed to perform conversion between components:\n"
+                        f"Sender component: '{component_name}' (type: '{sender_type_name}')\n"
+                        f"Sender socket: '{sender_socket.name}'\n"
+                        f"Receiver component: '{receiver_name}' (type: '{receiver_type_name}')\n"
+                        f"Receiver socket: '{receiver_socket.name}'\n"
+                        f"Error: {e}"
+                    )
+                    raise PipelineRuntimeError(component_name=None, component_type=None, message=msg) from e
 
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
@@ -1322,7 +1390,7 @@ class PipelineBase:  # noqa: PLW1641
 
         # We prune outputs that were consumed by any receiving sockets.
         # All remaining outputs will be added to the final outputs of the pipeline.
-        consumed_outputs = {sender_socket.name for _, sender_socket, __ in receivers}
+        consumed_outputs = {sender_socket.name for _, sender_socket, __, ___ in receivers}
         pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
 
         return pruned_outputs
@@ -1331,6 +1399,13 @@ class PipelineBase:  # noqa: PLW1641
     def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:
         """
         Checks if the priority queue needs to be recomputed because the priorities might have changed.
+
+        The queue is considered stale if it is empty or if the highest priority component is not READY or HIGHEST.
+
+        For example, if the next component in a queue has the priority READY then the equality becomes
+        ComponentPriority.READY > ComponentPriority.READY which is false.
+        However, if the next component has priority DEFER (or BLOCKED) then the equality becomes
+        ComponentPriority.DEFER > ComponentPriority.READY which is true, indicating that the queue is stale.
 
         :param priority_queue: Priority queue of component names.
         """
@@ -1414,7 +1489,7 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching input socket in the entry point
                     entry_point_sockets = internal_graph.nodes[entry_point]["input_sockets"]
                     for socket_name, socket in entry_point_sockets.items():
-                        if _types_are_compatible(sender_socket.type, socket.type, self._connection_type_validation):
+                        if _types_are_compatible(sender_socket.type, socket.type, self._connection_type_validation)[0]:
                             merged_graph.add_edge(
                                 sender,
                                 entry_point,
@@ -1432,7 +1507,9 @@ class PipelineBase:  # noqa: PLW1641
                     # find a matching output socket in the exit point
                     exit_point_sockets = internal_graph.nodes[exit_point]["output_sockets"]
                     for socket_name, socket in exit_point_sockets.items():
-                        if _types_are_compatible(socket.type, receiver_socket.type, self._connection_type_validation):
+                        if _types_are_compatible(socket.type, receiver_socket.type, self._connection_type_validation)[
+                            0
+                        ]:
                             merged_graph.add_edge(
                                 exit_point,
                                 receiver,

@@ -396,6 +396,21 @@ class TestSentenceTransformersSimilarityRanker:
         for d in out["documents"]:
             assert isinstance(d.score, float)
 
+    def test_run_deduplicates_documents(self):
+        ranker = SentenceTransformersSimilarityRanker()
+        ranker._cross_encoder = MagicMock()
+        ranker._cross_encoder.rank.return_value = [{"score": 0.42, "corpus_id": 0}, {"score": 0.12, "corpus_id": 1}]
+
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run(self):

@@ -9,6 +9,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
@@ -227,6 +228,9 @@ class TransformersSimilarityRanker:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param query:
             The input query to compare the documents to.
         :param documents:
@@ -270,7 +274,8 @@ class TransformersSimilarityRanker:
             )
 
         query_doc_pairs = []
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
@@ -313,8 +318,8 @@ class TransformersSimilarityRanker:
         ranked_docs = []
         for sorted_index in list_sorted_indices:
             i = sorted_index
-            documents[i].score = list_similarity_scores[i]
-            ranked_docs.append(documents[i])
+            deduplicated_documents[i].score = list_similarity_scores[i]
+            ranked_docs.append(deduplicated_documents[i])
 
         if score_threshold is not None:
             ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]

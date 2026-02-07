@@ -338,6 +338,21 @@ class TestSentenceTransformersDiversityRanker:
         assert len(ranked_docs) == 2
         assert all(isinstance(doc, Document) for doc in ranked_docs)
 
+    def test_run_deduplicates_documents(self):
+        ranker = SentenceTransformersDiversityRanker()
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
+
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_negative_top_k_at_init(self, similarity):
         """

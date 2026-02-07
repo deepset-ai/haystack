@@ -3,25 +3,65 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections.abc
+from enum import Enum
 from types import NoneType, UnionType
-from typing import Any, TypeVar, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
-T = TypeVar("T")
+from haystack.dataclasses import ChatMessage
 
 
-def _types_are_compatible(sender: type | UnionType, receiver: type | UnionType, type_validation: bool = True) -> bool:
+class ConversionStrategy(Enum):
     """
-    Determines if two types are compatible based on the specified validation mode.
-
-    :param sender: The sender type.
-    :param receiver: The receiver type.
-    :param type_validation: Whether to perform strict type validation.
-    :return: True if the types are compatible, False otherwise.
+    Strategies for converting values between compatible types in pipeline connections.
     """
-    if type_validation:
-        return _strict_types_are_compatible(sender, receiver)
-    else:
-        return True
+
+    CHAT_MESSAGE_TO_STR = "chat_message_to_str"
+    STR_TO_CHAT_MESSAGE = "str_to_chat_message"
+    WRAP = "wrap"
+    WRAP_CHAT_MESSAGE_TO_STR = "wrap_chat_message_to_str"
+    WRAP_STR_TO_CHAT_MESSAGE = "wrap_str_to_chat_message"
+    UNWRAP = "unwrap"
+    UNWRAP_STR_TO_CHAT_MESSAGE = "unwrap_str_to_chat_message"
+    UNWRAP_CHAT_MESSAGE_TO_STR = "unwrap_chat_message_to_str"
+
+
+ConversionStrategyType = ConversionStrategy | None
+
+
+def _type_name(type_: Any) -> str:
+    """
+    Util methods to get a nice readable representation of a type.
+
+    Handles Optional and Literal in a special way to make it more readable.
+    """
+    # Literal args are strings, so we wrap them in quotes to make it clear
+    if isinstance(type_, str):
+        return f"'{type_}'"
+
+    if type_ is NoneType:
+        return "None"
+
+    args = get_args(type_)
+
+    if isinstance(type_, UnionType):
+        return " | ".join([_type_name(a) for a in args])
+
+    name = getattr(type_, "__name__", str(type_))
+    if name.startswith("typing."):
+        name = name[7:]
+    if "[" in name:
+        name = name.split("[")[0]
+
+    if name == "Union" and NoneType in args and len(args) == 2:
+        # Optional is technically a Union of type and None
+        # but we want to display it as Optional
+        name = "Optional"
+
+    if args:
+        args_str = ", ".join([_type_name(a) for a in args if a is not NoneType])
+        return f"{name}[{args_str}]"
+
+    return f"{name}"
 
 
 def _safe_get_origin(_type: type | UnionType) -> type | None:
@@ -43,13 +83,18 @@ def _safe_get_origin(_type: type | UnionType) -> type | None:
     return origin
 
 
-def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
+def _contains_type(container: Any, target: Any) -> bool:
+    """Checks if the container type includes the target type"""
+    if container == target:
+        return True
+    return _safe_get_origin(container) is Union and target in get_args(container)
+
+
+def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
-    Note: this method has no pretense to perform proper type matching. It especially does not deal with aliasing of
-    typing classes such as `List` or `Dict` to their runtime counterparts `list` and `dict`. It also does not deal well
-    with "bare" types, so `List` is treated differently from `List[Any]`, even though they should be the same.
+    Note: this method has no pretense to perform complete type matching.
     Consider simplifying the typing of your components if you observe unexpected errors during component connection.
 
     :param sender: The sender type.
@@ -115,37 +160,115 @@ def _check_callable_compatibility(sender_args, receiver_args):
     return all(_strict_types_are_compatible(sender_args[0][i], receiver_args[0][i]) for i in range(len(sender_args[0])))
 
 
-def _type_name(type_: Any) -> str:
+def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyType:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
-    Util methods to get a nice readable representation of a type.
+    Determines whether a conversion exists from sender to receiver.
 
-    Handles Optional and Literal in a special way to make it more readable.
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+
+    :returns: The ConversionStrategy if conversion is required and supported, otherwise None.
     """
-    # Literal args are strings, so we wrap them in quotes to make it clear
-    if isinstance(type_, str):
-        return f"'{type_}'"
+    # If sender is a Union, it's only compatible if ALL its types are compatible with the same strategy
+    if _safe_get_origin(sender) is Union:
+        strategies = {_get_conversion_strategy(arg, receiver) for arg in get_args(sender)}
+        if len(strategies) == 1:
+            return strategies.pop()
+        return None
 
-    if type_ is NoneType:
-        return "None"
+    # ChatMessage -> str
+    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+        return ConversionStrategy.CHAT_MESSAGE_TO_STR
 
-    args = get_args(type_)
+    # str -> ChatMessage
+    if _contains_type(sender, str) and _contains_type(receiver, ChatMessage):
+        return ConversionStrategy.STR_TO_CHAT_MESSAGE
 
-    if isinstance(type_, UnionType):
-        return " | ".join([_type_name(a) for a in args])
+    # Wrap: T -> List[T]
+    if _safe_get_origin(receiver) is list and (args := get_args(receiver)):
+        inner = args[0]
+        if _strict_types_are_compatible(sender, inner):
+            return ConversionStrategy.WRAP
+        # Wrap + conversion
+        if _contains_type(sender, ChatMessage) and _contains_type(inner, str):
+            return ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        if _contains_type(sender, str) and _contains_type(inner, ChatMessage):
+            return ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
 
-    name = getattr(type_, "__name__", str(type_))
-    if name.startswith("typing."):
-        name = name[7:]
-    if "[" in name:
-        name = name.split("[")[0]
+    # Unwrap: List[T] -> T - for str and ChatMessage only
+    if _safe_get_origin(sender) is list and (args := get_args(sender)):
+        inner = args[0]
+        if (_contains_type(inner, ChatMessage) and _contains_type(receiver, ChatMessage)) or (
+            _contains_type(inner, str) and _contains_type(receiver, str)
+        ):
+            return ConversionStrategy.UNWRAP
+        # Unwrap + conversion
+        if _contains_type(inner, str) and _contains_type(receiver, ChatMessage):
+            return ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
+        if _contains_type(inner, ChatMessage) and _contains_type(receiver, str):
+            return ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR
 
-    if name == "Union" and NoneType in args and len(args) == 2:
-        # Optional is technically a Union of type and None
-        # but we want to display it as Optional
-        name = "Optional"
+    return None
 
-    if args:
-        args_str = ", ".join([_type_name(a) for a in args if a is not NoneType])
-        return f"{name}[{args_str}]"
 
-    return f"{name}"
+def _types_are_compatible(
+    sender: Any, receiver: Any, type_validation: bool = True
+) -> tuple[bool, ConversionStrategyType]:
+    """
+    Determines whether two types are compatible, optionally allowing conversion.
+
+    :param sender: The sender type.
+    :param receiver: The receiver type.
+    :param type_validation: If False, all types are considered compatible.
+
+    :returns: A tuple of (is_compatible, conversion_strategy) where:
+        - is_compatible is True if the types are strictly compatible or can be converted.
+        - conversion_strategy is a ConversionStrategy if conversion is required, otherwise None
+          (including when types are strictly compatible, incompatible, or type validation is disabled).
+    """
+    if not type_validation:
+        return True, None
+
+    if _strict_types_are_compatible(sender, receiver):
+        return True, None
+
+    conversion_strategy = _get_conversion_strategy(sender, receiver)
+    if conversion_strategy:
+        return True, conversion_strategy
+
+    return False, None
+
+
+def _chat_message_to_str(value: Any) -> str:
+    if value.text is None:
+        raise ValueError("Cannot convert `ChatMessage` to `str` because it has no text. ")
+    return value.text
+
+
+def _get_first_item(value: list[Any]) -> Any:
+    if not value:
+        raise ValueError("Cannot get first item of an empty list. ")
+    return value[0]
+
+
+def _convert_value(value: Any, conversion_strategy: ConversionStrategy) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+    """
+    Converts a value using the specified conversion strategy.
+    """
+    match conversion_strategy:
+        case ConversionStrategy.CHAT_MESSAGE_TO_STR:
+            return _chat_message_to_str(value)
+        case ConversionStrategy.STR_TO_CHAT_MESSAGE:
+            return ChatMessage.from_user(value)
+        case ConversionStrategy.WRAP:
+            return [value]
+        case ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR:
+            return [_chat_message_to_str(value)]
+        case ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE:
+            return [ChatMessage.from_user(value)]
+        case ConversionStrategy.UNWRAP:
+            return _get_first_item(value)
+        case ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE:
+            return ChatMessage.from_user(_get_first_item(value))
+        case ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR:
+            return _chat_message_to_str(_get_first_item(value))

@@ -4944,3 +4944,75 @@ def pipeline_that_has_an_auto_joiner_that_takes_in_user_inputs(pipeline_class):
             )
         ],
     )
+
+
+@given(
+    "a pipeline that performs automatic conversion between list of ChatMessage and str", target_fixture="pipeline_data"
+)
+def pipeline_that_performs_automatic_conversion_between_list_of_ChatMessage_and_str(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeChatGenerator:
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+            return {"replies": [ChatMessage.from_assistant("Pisa tower height")]}
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
+            return {"documents": [Document(content="Pisa tower height is 55 meters")]}
+
+    pipe.add_component("chat_generator", FakeChatGenerator())
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.connect("chat_generator", "retriever")
+
+    user_query = "Rephrase the following question for a search engine: how tall is the tower of Pisa?"
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"chat_generator": {"messages": [ChatMessage.from_user(user_query)]}},
+                expected_outputs={"retriever": {"documents": [Document(content="Pisa tower height is 55 meters")]}},
+                expected_component_calls={
+                    ("chat_generator", 1): {"messages": [ChatMessage.from_user(user_query)]},
+                    ("retriever", 1): {"query": "Pisa tower height"},
+                },
+            )
+        ],
+    )
+
+
+@given("a pipeline that fails automatic conversion between list of ChatMessage and str", target_fixture="pipeline_data")
+def pipeline_that_fails_automatic_conversion_between_list_of_ChatMessage_and_str(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeChatGenerator:
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+            return {"replies": [ChatMessage.from_assistant()]}
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
+            return {"documents": [Document(content="A relevant document")]}
+
+    pipe.add_component("chat_generator", FakeChatGenerator())
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.connect("chat_generator", "retriever")
+
+    user_query = "Find info on Milano Cortina Olympic Winter Games"
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"chat_generator": {"messages": [ChatMessage.from_user(user_query)]}},
+                expected_component_calls={("chat_generator", 1): {"messages": [ChatMessage.from_user(user_query)]}},
+            )
+        ],
+    )
