@@ -314,7 +314,7 @@ async def _process_confirmation_strategies_async(
 
     Run the confirmation strategies and return modified tool call messages and updated chat history.
 
-    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies.
+    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
     :param execution_context: The current execution context of the agent
     :returns:
@@ -354,7 +354,7 @@ def _run_confirmation_strategies(
     """
     Run confirmation strategies for tool calls in the provided chat messages.
 
-    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies.
+    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param execution_context: The current execution context containing state and inputs
     :returns:
@@ -424,7 +424,7 @@ async def _run_confirmation_strategies_async(
 
     Run confirmation strategies for tool calls in the provided chat messages.
 
-    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies.
+    :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
         String keys map individual tools, tuple keys map multiple tools to the same strategy.
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param execution_context: The current execution context containing state and inputs
