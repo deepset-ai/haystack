@@ -164,26 +164,6 @@ class TestBlockingConfirmationStrategy:
 
 
 class TestRunConfirmationStrategies:
-    @pytest.fixture
-    def multi_tool_execution_context(self, execution_context):
-        """Fixture for execution context with multiple tools."""
-        # Ensure the execution context contains a multiplication tool, but avoid duplicating it
-        existing_tools = execution_context.tool_invoker_inputs["tools"]
-        if any(t.name == "multiplication_tool" for t in existing_tools):
-            return execution_context
-
-        def multiplication_tool_func(a: int, b: int) -> int:
-            return a * b
-
-        mult_tool = create_tool_from_function(
-            function=multiplication_tool_func,
-            name="multiplication_tool",
-            description="A tool that multiplies two integers.",
-        )
-
-        all_tools = existing_tools + [mult_tool]
-        return replace(execution_context, tool_invoker_inputs={"tools": all_tools})
-
     def test_run_confirmation_strategies_no_strategy(self, tools, execution_context):
         teds = _run_confirmation_strategies(
             confirmation_strategies={},
@@ -238,27 +218,25 @@ class TestRunConfirmationStrategies:
             )
         ]
 
-    def test_run_confirmation_strategies_with_multi_tool_tuple_key(self, tools, multi_tool_execution_context):
-        all_tools = multi_tool_execution_context.tool_invoker_inputs["tools"]
-        mult_tool = all_tools[1]
+    def test_run_confirmation_strategies_with_multi_tool_tuple_key(self, tools, execution_context):
+        add_tool, mult_tool = tools[0], tools[1]
 
         strategy = BlockingConfirmationStrategy(confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI())
 
         teds = _run_confirmation_strategies(
-            confirmation_strategies={(tools[0].name, mult_tool.name): strategy},
+            confirmation_strategies={(add_tool.name, mult_tool.name): strategy},
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(
-                    tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2}), ToolCall(mult_tool.name, {"a": 3, "b": 4})]
+                    tool_calls=[ToolCall(add_tool.name, {"a": 1, "b": 2}), ToolCall(mult_tool.name, {"a": 3, "b": 4})]
                 )
             ],
-            execution_context=multi_tool_execution_context,
+            execution_context=execution_context,
         )
 
         assert len(teds) == 2
-        assert teds[0].tool_name == tools[0].name
+        assert teds[0].tool_name == add_tool.name
         assert teds[0].execute is True
         assert teds[1].tool_name == mult_tool.name
-        assert teds[1].execute is True
         assert teds[1].execute is True
 
 
