@@ -178,7 +178,7 @@ class Agent:
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
         tool_invoker_kwargs: dict[str, Any] | None = None,
-        confirmation_strategies: dict[str, ConfirmationStrategy] | None = None,
+        confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -296,7 +296,10 @@ class Agent:
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_invoker_kwargs=self.tool_invoker_kwargs,
             confirmation_strategies={
-                name: strategy.to_dict() for name, strategy in self._confirmation_strategies.items()
+                (list(key) if isinstance(key, tuple) else key): component_to_dict(
+                    obj=strategy, name="confirmation_strategy"
+                )
+                for key, strategy in self._confirmation_strategies.items()
             }
             if self._confirmation_strategies
             else None,
@@ -322,9 +325,20 @@ class Agent:
 
         deserialize_tools_or_toolset_inplace(init_params, key="tools")
 
-        if "confirmation_strategies" in init_params and init_params["confirmation_strategies"] is not None:
-            for name in init_params["confirmation_strategies"]:
-                deserialize_component_inplace(init_params["confirmation_strategies"], key=name)
+        if init_params.get("confirmation_strategies") is not None:
+            restored: dict[str | tuple[str, ...], Any] = {}
+
+            for raw_key in init_params["confirmation_strategies"].keys():
+                deserialize_component_inplace(init_params["confirmation_strategies"], key=raw_key)
+                strategy = init_params["confirmation_strategies"][raw_key]
+
+                if isinstance(raw_key, list):
+                    key = tuple(raw_key)
+                else:
+                    key = raw_key
+                restored[key] = strategy
+
+            init_params["confirmation_strategies"] = restored
 
         return default_from_dict(cls, data)
 
