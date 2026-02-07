@@ -1,0 +1,13 @@
+---
+security:
+  - |
+    Added SSRF (Server-Side Request Forgery) protection to LinkContentFetcher component. The component now validates
+    URLs before making HTTP requests to prevent access to private/internal resources including:
+    - Private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16)
+    - Loopback addresses (127.0.0.1, localhost, ::1)
+    - Link-local addresses (169.254.0.0/16) which prevents cloud metadata endpoint access
+    - Reserved IP addresses
+features:
+  - |
+    Added `allow_private_urls` parameter to LinkContentFetcher (default: False) to allow internal URL access in
+    trusted environments. Introduced SSRFError exception for clearer error handling of blocked URLs.

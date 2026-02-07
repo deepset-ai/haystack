@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import ipaddress
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
 from typing import Callable, cast
+from urllib.parse import urlparse
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -30,6 +32,68 @@ REQUEST_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
     "referer": "https://www.google.com/",
 }
+
+
+class SSRFError(Exception):
+    """Raised when a URL is blocked due to SSRF protection."""
+
+
+def _is_private_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """
+    Checks if an IP address is private, loopback, or link-local.
+
+    :param ip: The IP address to check.
+    :returns: True if the IP is private, loopback, or link-local, False otherwise.
+    """
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+
+
+def _validate_url_safety(url: str, allow_private_urls: bool = False) -> None:
+    """
+    Validates that a URL is safe to fetch and doesn't point to private/internal resources.
+
+    This function protects against Server-Side Request Forgery (SSRF) attacks by blocking
+    access to private IP ranges, loopback addresses, and link-local addresses.
+
+    :param url: The URL to validate.
+    :param allow_private_urls: If True, allows access to private/internal URLs. Default is False.
+    :raises SSRFError: If the URL points to a private/internal resource and allow_private_urls is False.
+    :raises ValueError: If the URL is malformed or invalid.
+    """
+    if allow_private_urls:
+        return
+
+    try:
+        parsed = urlparse(url)
+
+        # Extract hostname
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError(f"Invalid URL: {url}")
+
+        # Check for localhost variations
+        localhost_names = {"localhost", "0.0.0.0"}
+        if hostname.lower() in localhost_names:
+            raise SSRFError(f"Access to localhost is not allowed: {url}")
+
+        # Try to parse as IP address
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if _is_private_ip(ip):
+                raise SSRFError(f"Access to private IP addresses is not allowed: {url}")
+        except ValueError:
+            # Not a direct IP address, it's a hostname - need to resolve it
+            # Note: We're not doing DNS resolution here as it could be expensive and have timing issues
+            # with DNS rebinding attacks. Instead, we rely on blocking known patterns.
+            # In a production environment, you might want to add DNS resolution checks.
+            pass
+
+    except SSRFError:
+        # Re-raise SSRF errors
+        raise
+    except Exception as e:
+        # Catch any other parsing errors
+        raise ValueError(f"Invalid URL: {url}") from e
 
 
 def _merge_headers(*args: dict[str, str]) -> dict[str, str]:
@@ -119,6 +183,7 @@ class LinkContentFetcher:
         http2: bool = False,
         client_kwargs: dict | None = None,
         request_headers: dict[str, str] | None = None,
+        allow_private_urls: bool = False,
     ):
         """
         Initializes the component.
@@ -133,6 +198,9 @@ class LinkContentFetcher:
                      Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
+        :param allow_private_urls: If `True`, allows fetching from private/internal IP addresses and localhost.
+                     Set to `True` only in trusted environments where SSRF protection is not needed.
+                     Defaults to False for security.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -142,6 +210,7 @@ class LinkContentFetcher:
         self.http2 = http2
         self.client_kwargs = client_kwargs or {}
         self.request_headers = request_headers or {}
+        self.allow_private_urls = allow_private_urls
 
         # Configure default client settings
         self.client_kwargs.setdefault("timeout", timeout)
@@ -324,6 +393,9 @@ class LinkContentFetcher:
         content_type: str = "text/html"
         stream: ByteStream = ByteStream(data=b"")
         try:
+            # Validate URL safety before fetching
+            _validate_url_safety(url, self.allow_private_urls)
+
             response = self._get_response(url)
             content_type = self._get_content_type(response)
             handler: Callable = self._resolve_handler(content_type)
@@ -354,6 +426,9 @@ class LinkContentFetcher:
         metadata: dict[str, str] | None = None
 
         try:
+            # Validate URL safety before fetching
+            _validate_url_safety(url, self.allow_private_urls)
+
             response = await self._get_response_async(url, client)
             content_type = self._get_content_type(response)
             handler: Callable = self._resolve_handler(content_type)

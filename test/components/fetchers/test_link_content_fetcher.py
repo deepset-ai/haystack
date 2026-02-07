@@ -10,8 +10,10 @@ import pytest
 from haystack.components.fetchers.link_content import (
     DEFAULT_USER_AGENT,
     LinkContentFetcher,
+    SSRFError,
     _binary_content_handler,
     _text_content_handler,
+    _validate_url_safety,
 )
 
 HTML_URL = "https://docs.haystack.deepset.ai/docs/intro"
@@ -181,6 +183,125 @@ class TestLinkContentFetcher:
             assert sent_headers["X-Test"] == "1"
             assert sent_headers["Accept-Language"] == "fr-FR"
             assert sent_headers["User-Agent"] == "ua-sync-1"  # rotating UA wins
+
+    def test_ssrf_protection_private_ipv4(self):
+        """Test that private IPv4 addresses are blocked by default"""
+        fetcher = LinkContentFetcher()
+        private_ips = [
+            "http://10.0.0.1/admin",
+            "http://172.16.0.1/config",
+            "http://192.168.1.1/settings",
+            "http://127.0.0.1:8080/api",
+            "http://localhost/internal",
+            "http://0.0.0.0/secret",
+        ]
+
+        for url in private_ips:
+            with pytest.raises(SSRFError):
+                fetcher.run(urls=[url])
+
+    def test_ssrf_protection_link_local(self):
+        """Test that link-local addresses (cloud metadata) are blocked"""
+        fetcher = LinkContentFetcher()
+        # AWS/GCP/Azure metadata endpoint
+        with pytest.raises(SSRFError):
+            fetcher.run(urls=["http://169.254.169.254/latest/meta-data/"])
+
+    def test_ssrf_protection_private_ipv6(self):
+        """Test that private IPv6 addresses are blocked"""
+        fetcher = LinkContentFetcher()
+        ipv6_urls = [
+            "http://[::1]/admin",  # IPv6 loopback
+            "http://[fc00::1]/internal",  # IPv6 unique local address
+            "http://[fe80::1]/config",  # IPv6 link-local
+        ]
+
+        for url in ipv6_urls:
+            with pytest.raises(SSRFError):
+                fetcher.run(urls=[url])
+
+    def test_ssrf_protection_allow_private_urls(self):
+        """Test that private URLs can be allowed with allow_private_urls=True"""
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_response = Mock(status_code=200, text="Internal data", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(allow_private_urls=True)
+            streams = fetcher.run(urls=["http://192.168.1.1/admin"])["streams"]
+
+            assert len(streams) == 1
+            assert streams[0].data == b"Internal data"
+
+    def test_ssrf_protection_public_urls_allowed(self):
+        """Test that public URLs are not blocked"""
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_response = Mock(status_code=200, text="Public data", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher()
+            public_urls = [
+                "https://www.google.com",
+                "https://8.8.8.8",  # Google DNS
+                "https://1.1.1.1",  # Cloudflare DNS
+            ]
+
+            for url in public_urls:
+                streams = fetcher.run(urls=[url])["streams"]
+                assert len(streams) == 1
+                assert streams[0].data == b"Public data"
+
+    def test_ssrf_protection_multiple_urls_mixed(self):
+        """Test that SSRF protection works correctly with a mix of valid and invalid URLs"""
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_response = Mock(status_code=200, text="Public data", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(raise_on_failure=False)
+            urls = [
+                "https://www.google.com",  # Valid public URL
+                "http://192.168.1.1/admin",  # Private IP (should be blocked)
+                "https://example.com",  # Valid public URL
+            ]
+
+            streams = fetcher.run(urls=urls)["streams"]
+
+            # All 3 URLs return a stream, but the blocked one has empty data
+            assert len(streams) == 3
+            assert streams[0].data == b"Public data"
+            assert streams[1].data == b""  # Blocked URL returns empty stream
+            assert streams[2].data == b"Public data"
+
+    def test_validate_url_safety_function(self):
+        """Test the _validate_url_safety helper function directly"""
+        # Test private IPs
+        with pytest.raises(SSRFError):
+            _validate_url_safety("http://10.0.0.1")
+
+        with pytest.raises(SSRFError):
+            _validate_url_safety("http://127.0.0.1")
+
+        with pytest.raises(SSRFError):
+            _validate_url_safety("http://localhost")
+
+        with pytest.raises(SSRFError):
+            _validate_url_safety("http://169.254.169.254")
+
+        # Test that allow_private_urls=True bypasses checks
+        _validate_url_safety("http://192.168.1.1", allow_private_urls=True)
+        _validate_url_safety("http://localhost", allow_private_urls=True)
+
+        # Test public IPs are allowed
+        _validate_url_safety("https://8.8.8.8")
+        _validate_url_safety("https://www.google.com")
+
+    def test_ssrf_protection_with_raise_on_failure_false(self):
+        """Test that SSRF errors are handled correctly when raise_on_failure=False"""
+        fetcher = LinkContentFetcher(raise_on_failure=False)
+        streams = fetcher.run(urls=["http://127.0.0.1/admin"])["streams"]
+
+        # Should return an empty stream instead of raising
+        assert len(streams) == 1
+        assert streams[0].data == b""
 
 
 @pytest.mark.flaky(reruns=3, reruns_delay=5)
@@ -405,6 +526,53 @@ class TestLinkContentFetcherAsync:
 
             assert "x-test-header" in existing_keys
             assert existing_keys["x-test-header"] == "X-TeSt-HeAdEr"
+
+    async def test_ssrf_protection_async_private_ips(self):
+        """Test that private IPs are blocked in async mode"""
+        fetcher = LinkContentFetcher()
+        private_urls = [
+            "http://10.0.0.1/admin",
+            "http://192.168.1.1/config",
+            "http://127.0.0.1:8080/api",
+            "http://localhost/internal",
+        ]
+
+        for url in private_urls:
+            with pytest.raises(SSRFError):
+                await fetcher.run_async(urls=[url])
+
+    async def test_ssrf_protection_async_allow_private(self):
+        """Test that private URLs can be allowed in async mode with allow_private_urls=True"""
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            mock_response = Mock(status_code=200, text="Internal data", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(allow_private_urls=True)
+            streams = (await fetcher.run_async(urls=["http://192.168.1.1/admin"]))["streams"]
+
+            assert len(streams) == 1
+            assert streams[0].data == b"Internal data"
+
+    async def test_ssrf_protection_async_multiple_mixed(self):
+        """Test SSRF protection with mixed URLs in async mode"""
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            mock_response = Mock(status_code=200, text="Public data", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(raise_on_failure=False)
+            urls = [
+                "https://www.google.com",  # Valid public URL
+                "http://192.168.1.1/admin",  # Private IP (should be blocked)
+                "https://example.com",  # Valid public URL
+            ]
+
+            streams = (await fetcher.run_async(urls=urls))["streams"]
+
+            # Only 2 URLs should succeed (the public ones), 1 should be empty due to SSRF block
+            assert len(streams) == 3  # All URLs return a result
+            # Two should have data, one should be empty
+            non_empty_streams = [s for s in streams if s.data != b""]
+            assert len(non_empty_streams) == 2
 
 
 @pytest.mark.flaky(reruns=3, reruns_delay=5)
