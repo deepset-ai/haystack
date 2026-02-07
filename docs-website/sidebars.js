@@ -120,11 +120,6 @@ export default {
         },
         {
           type: 'link',
-          label: 'MarqoDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/marqo-document-store/',
-        },
-        {
-          type: 'link',
           label: 'MilvusDocumentStore',
           href: 'https://haystack.deepset.ai/integrations/milvus-document-store',
         },
