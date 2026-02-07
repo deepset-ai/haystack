@@ -33,12 +33,21 @@ def addition_tool(a: int, b: int) -> int:
     return a + b
 
 
+def multiplication_tool(a: int, b: int) -> int:
+    return a * b
+
+
 @pytest.fixture
 def tools() -> list[Tool]:
-    tool = create_tool_from_function(
+    add_tool = create_tool_from_function(
         function=addition_tool, name="addition_tool", description="A tool that adds two integers together."
     )
-    return [tool]
+
+    mult_tool = create_tool_from_function(
+        function=multiplication_tool, name="multiplication_tool", description="A tool that multiplies two integers."
+    )
+
+    return [add_tool, mult_tool]
 
 
 @pytest.fixture
@@ -158,6 +167,10 @@ class TestRunConfirmationStrategies:
     @pytest.fixture
     def multi_tool_execution_context(self, execution_context):
         """Fixture for execution context with multiple tools."""
+        # Ensure the execution context contains a multiplication tool, but avoid duplicating it
+        existing_tools = execution_context.tool_invoker_inputs["tools"]
+        if any(t.name == "multiplication_tool" for t in existing_tools):
+            return execution_context
 
         def multiplication_tool_func(a: int, b: int) -> int:
             return a * b
@@ -168,7 +181,7 @@ class TestRunConfirmationStrategies:
             description="A tool that multiplies two integers.",
         )
 
-        all_tools = execution_context.tool_invoker_inputs["tools"] + [mult_tool]
+        all_tools = existing_tools + [mult_tool]
         return replace(execution_context, tool_invoker_inputs={"tools": all_tools})
 
     def test_run_confirmation_strategies_no_strategy(self, tools, execution_context):
