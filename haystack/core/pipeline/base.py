@@ -1543,6 +1543,48 @@ class PipelineBase:  # noqa: PLW1641
         expected_outputs = self.outputs()
         return bool(expected_outputs) and not any(k in current_pipeline_outputs for k in expected_outputs)
 
+    def _find_most_upstream_blocked_component(self, priority_queue: "FIFOPriorityQueue") -> tuple[str, dict[str, Any]] | None:  # noqa: F821
+        """
+        Finds the most upstream (earliest in topological order) blocked component in the priority queue.
+
+        This helps provide more accurate error messages by identifying the root cause of a blockage
+        rather than reporting a downstream component that is blocked as a consequence.
+
+        :param priority_queue: The priority queue containing all components to be processed.
+        :returns: A tuple of (component_name, component) for the most upstream blocked component,
+            or None if no blocked components are found.
+        """
+        # Collect all blocked components from the queue
+        blocked_components = []
+        for item in priority_queue.queue:
+            if item[0] == ComponentPriority.BLOCKED:
+                component_name = item[1]
+                blocked_components.append(component_name)
+
+        if not blocked_components:
+            return None
+
+        # If there's only one blocked component, return it
+        if len(blocked_components) == 1:
+            component_name = blocked_components[0]
+            return component_name, self.graph.nodes[component_name]
+
+        # Use topological sort to find the most upstream blocked component
+        try:
+            topological_order = list(networkx.topological_sort(self.graph))
+            # Find the blocked component that appears first in topological order
+            for comp_name in topological_order:
+                if comp_name in blocked_components:
+                    return comp_name, self.graph.nodes[comp_name]
+        except networkx.NetworkXError:
+            # If topological sort fails (e.g., due to cycles), fall back to the first blocked component
+            component_name = blocked_components[0]
+            return component_name, self.graph.nodes[component_name]
+
+        # Should not reach here, but return first blocked component as fallback
+        component_name = blocked_components[0]
+        return component_name, self.graph.nodes[component_name]
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: list[OutputSocket], receiver_sockets: list[InputSocket]
