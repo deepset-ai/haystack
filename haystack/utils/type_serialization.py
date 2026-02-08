@@ -18,13 +18,16 @@ _import_lock = Lock()
 
 def _is_union_type(target: Any) -> bool:
     """
-    Check if target is a Union type.
+    Check if target is a parameterized Union type.
 
     This handles both `typing.Union[X, Y]` and `X | Y` syntax from PEP 604,
     including parameterized types like `Optional[str]`.
+
+    Note: Bare Union/UnionType (without parameters) are NOT considered valid union types.
     """
+    # Bare Union/UnionType are not valid parameterized types
     if target is Union or target is UnionType:
-        return True
+        return False
     origin = typing.get_origin(target)
     return origin is Union or origin is UnionType
 
@@ -55,7 +58,16 @@ def serialize_type(target: Any) -> str:
     args = get_args(target)
 
     if isinstance(target, UnionType):
-        return " | ".join([serialize_type(a) for a in args])
+        # In Python 3.10+, PEP 604 introduced the | syntax for unions (UnionType).
+        # In Python 3.14+, typing.Optional and typing.Union are represented as UnionType internally.
+        # We normalize UnionType back to typing.Optional/Union syntax for consistency across Python versions.
+        if NoneType in args and len(args) == 2:
+            # This is an Optional type
+            non_none_arg = next(a for a in args if a is not NoneType)
+            return f"typing.Optional[{serialize_type(non_none_arg)}]"
+        else:
+            # This is a Union type
+            return f"typing.Union[{', '.join([serialize_type(a) for a in args])}]"
 
     name = getattr(target, "__name__", str(target))
     if name.startswith("typing."):

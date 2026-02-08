@@ -44,7 +44,16 @@ def _type_name(type_: Any) -> str:
     args = get_args(type_)
 
     if isinstance(type_, UnionType):
-        return " | ".join([_type_name(a) for a in args])
+        # In Python 3.10+, PEP 604 introduced the | syntax for unions (UnionType).
+        # In Python 3.14+, typing.Optional and typing.Union are represented as UnionType internally.
+        # We normalize UnionType back to Optional/Union syntax for consistency across Python versions.
+        if NoneType in args and len(args) == 2:
+            # This is an Optional type
+            non_none_arg = next(a for a in args if a is not NoneType)
+            return f"Optional[{_type_name(non_none_arg)}]"
+        else:
+            # This is a Union type
+            return f"Union[{', '.join([_type_name(a) for a in args])}]"
 
     name = getattr(type_, "__name__", str(type_))
     if name.startswith("typing."):
