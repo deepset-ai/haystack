@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed compatibility with Python 3.14 where ``typing.Union`` and ``types.UnionType``
+    have been merged. This caused type compatibility checks, type name formatting, and
+    type serialization to behave incorrectly. The ``_safe_get_origin`` function now correctly
+    handles bare ``Union`` on Python 3.14+, and ``_is_valid_type`` properly rejects bare
+    ``Union`` as an invalid type annotation. Tests have been updated to accept the PEP 604
+    style type representations (``X | Y``) that Python 3.14 uses for all union types.

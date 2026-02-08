@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed Python 3.14 compatibility issues with type hint representation.
+    In Python 3.14, typing.Optional and typing.Union are internally represented
+    as UnionType, causing type serialization and comparison tests to fail.
+    Updated _type_name() and serialize_type() functions to normalize UnionType
+    representations to Optional/Union format for consistency across Python versions.
+    This fixes 29 failing unit tests related to type hint representation.

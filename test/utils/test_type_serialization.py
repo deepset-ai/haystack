@@ -290,19 +290,20 @@ def test_output_type_deserialization_haystack_dataclasses():
 
 def test_output_type_serialization_pep_604():
     # PEP 604 allows for union types to be defined with the `|` operator
-    assert serialize_type(str | int) == "str | int"
+    # In Python 3.14+, these are normalized to typing.Union/Optional for consistency
+    assert serialize_type(str | int) == "typing.Union[str, int]"
     assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
     assert (
         serialize_type(Dict[str, int] | Dict[int, str]) == "typing.Union[typing.Dict[str, int], typing.Dict[int, str]]"
     )
-    assert serialize_type(str | None) == "str | None"
-    assert serialize_type(list[str] | None) == "list[str] | None"
-    assert serialize_type(int | float | str) == "int | float | str"
-    assert serialize_type(dict[str, int] | None) == "dict[str, int] | None"
-    assert serialize_type(set[int] | None) == "set[int] | None"
-    assert serialize_type(tuple[int, str] | None) == "tuple[int, str] | None"
-    assert serialize_type(list[int] | list[str]) == "list[int] | list[str]"
-    assert serialize_type(dict[str, int] | dict[int, str]) == "dict[str, int] | dict[int, str]"
+    assert serialize_type(str | None) == "typing.Optional[str]"
+    assert serialize_type(list[str] | None) == "typing.Optional[list[str]]"
+    assert serialize_type(int | float | str) == "typing.Union[int, float, str]"
+    assert serialize_type(dict[str, int] | None) == "typing.Optional[dict[str, int]]"
+    assert serialize_type(set[int] | None) == "typing.Optional[set[int]]"
+    assert serialize_type(tuple[int, str] | None) == "typing.Optional[tuple[int, str]]"
+    assert serialize_type(list[int] | list[str]) == "typing.Union[list[int], list[str]]"
+    assert serialize_type(dict[str, int] | dict[int, str]) == "typing.Union[dict[str, int], dict[int, str]]"
 
 
 def test_output_type_deserialization_pep_604():
