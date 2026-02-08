@@ -1,0 +1,9 @@
+---
+improvements:
+  - |
+    Improved pipeline "possibly blocked" error messages to point to the most upstream
+    blocked component instead of a downstream component. When a pipeline is blocked,
+    the error message now uses topological sorting to identify the root cause component
+    that is actually blocked, rather than reporting a component that is blocked as a
+    consequence of an upstream blockage. This makes debugging pipeline configuration
+    issues much easier by directing users to the actual source of the problem.
