@@ -294,6 +294,9 @@ class LLMDocumentContentExtractor:
         all_messages: list[ChatMessage | None] = []
         for image_content in image_contents:
             if image_content is None:
+                # If the image content is None, it means the document could not be converted to an image.
+                # We skip this document.
+                # We don't log a warning here since it is already logged in the DocumentToImageContent component.
                 all_messages.append(None)
                 continue
             message = ChatMessage.from_user(content_parts=[TextContent(text=prompt), image_content])
@@ -310,6 +313,7 @@ class LLMDocumentContentExtractor:
                 failed_documents.append(replace(document, meta=new_meta))
                 continue
 
+            # Remove content_extraction_error if present from previous runs
             new_meta = {**document.meta}
             new_meta.pop("content_extraction_error", None)
             new_meta.pop("metadata_extraction_error", None)
