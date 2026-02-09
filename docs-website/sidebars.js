@@ -66,6 +66,7 @@ export default {
             'concepts/pipelines/pipeline-loops',
             'concepts/pipelines/pipeline-templates',
             'concepts/pipelines/asyncpipeline',
+            'concepts/pipelines/smart-pipeline-connections',
           ],
         },
         {
@@ -117,11 +118,6 @@ export default {
           type: 'link',
           label: 'LanceDBDocumentStore',
           href: 'https://haystack.deepset.ai/integrations/lancedb/',
-        },
-        {
-          type: 'link',
-          label: 'MarqoDocumentStore',
-          href: 'https://haystack.deepset.ai/integrations/marqo-document-store/',
         },
         {
           type: 'link',

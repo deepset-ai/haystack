@@ -88,15 +88,21 @@ class _ExecutionContext:
 @component
 class Agent:
     """
-    A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
+    A tool-using Agent powered by a large language model.
 
-    The component processes messages and executes tools until an exit condition is met.
-    The exit condition can be triggered either by a direct text response or by invoking a specific designated tool.
-    Multiple exit conditions can be specified.
+    The Agent processes messages and calls tools until it meets an exit condition.
+    You can set one or more exit conditions to control when it stops.
+    For example, it can stop after generating a response or after calling a tool.
 
-    When you call an Agent without tools, it acts as a ChatGenerator, produces one response, then exits.
+    Without tools, the Agent works like a standard LLM that generates text. It produces one response and then stops.
 
-    ### Usage example
+    ### Usage examples
+
+    This is an example agent that:
+    1. Searches for tipping customs in France.
+    2. Uses a calculator to compute tips based on its findings.
+    3. Returns the final answer with its context.
+
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -157,10 +163,6 @@ class Agent:
         messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
     )
 
-    # The agent will:
-    # 1. Search for tipping customs in France
-    # 2. Use calculator to compute tip based on findings
-    # 3. Return the final answer with context
     print(result["messages"][-1].text)
     ```
 
