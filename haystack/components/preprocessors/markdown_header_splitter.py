@@ -93,7 +93,7 @@ class MarkdownHeaderSplitter:
 
         # process headers and build chunks
         chunks: list[dict] = []
-        header_stack: list[Optional[str]] = [None] * 6
+        header_stack: list[str | None] = [None] * 6
         active_parents: list[str] = []  # track active parent headers
         pending_headers: list[str] = []  # store empty headers to prepend to next content
         has_content = False  # flag to track if any header has content
