@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Literal, Optional
+from typing import Literal
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors import DocumentSplitter
