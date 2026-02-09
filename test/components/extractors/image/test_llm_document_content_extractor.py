@@ -39,7 +39,7 @@ class TestLLMDocumentContentExtractor:
         # Not testing specific model name, just that it's set
         assert extractor._chat_generator.model is not None
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
-        assert extractor.content_prompt == "Extract content from this image"
+        assert extractor.prompt == "Extract content from this image"
         assert extractor.file_path_meta_field == "file_path"
         assert extractor.root_path == "/test/path"
         assert extractor.detail == "high"
@@ -54,7 +54,7 @@ class TestLLMDocumentContentExtractor:
         chat_generator = OpenAIChatGenerator()
         extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
         assert extractor.extraction_mode == "content"
-        assert extractor.content_prompt.startswith("\nYou are part of an information extraction pipeline")
+        assert extractor.prompt.startswith("\nYou are part of an information extraction pipeline")
         assert extractor.metadata_prompt == DEFAULT_METADATA_PROMPT_TEMPLATE
         assert extractor.metadata_key == "extracted_metadata"
         assert extractor.file_path_meta_field == "file_path"
@@ -132,7 +132,7 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
 
         assert extractor.extraction_mode == "content"
-        assert extractor.content_prompt == "Custom extraction prompt"
+        assert extractor.prompt == "Custom extraction prompt"
         assert extractor.metadata_prompt == DEFAULT_METADATA_PROMPT_TEMPLATE
         assert extractor.metadata_key == "extracted_metadata"
         assert extractor.file_path_meta_field == "custom_path"
@@ -163,7 +163,7 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
         assert extractor.extraction_mode == "content"
         assert extractor.metadata_key == "extracted_metadata"
-        assert extractor.content_prompt == "Custom extraction prompt"
+        assert extractor.prompt == "Custom extraction prompt"
 
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
@@ -438,3 +438,26 @@ class TestLLMDocumentContentExtractor:
         doc_store_docs = doc_store.filter_documents()
         assert len(doc_store_docs) >= 1
         assert len(doc_store_docs[0].content) > 0
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    def test_live_run_metadata_extraction(self):
+        docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
+        doc_store = InMemoryDocumentStore()
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), extraction_mode="metadata"
+        )
+        writer = DocumentWriter(document_store=doc_store)
+        pipeline = Pipeline()
+        pipeline.add_component("extractor", extractor)
+        pipeline.add_component("doc_writer", writer)
+        pipeline.connect("extractor.documents", "doc_writer.documents")
+        pipeline.run(data={"documents": docs})
+
+        doc_store_docs = doc_store.filter_documents()
+        assert len(doc_store_docs) >= 1
+        assert "extracted_metadata" in doc_store_docs[0].meta
+        assert len(doc_store_docs[0].meta["extracted_metadata"]) > 0

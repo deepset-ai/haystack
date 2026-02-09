@@ -178,7 +178,7 @@ class LLMDocumentContentExtractor:
         """
         self._chat_generator = chat_generator
         self.extraction_mode = extraction_mode
-        self.content_prompt = prompt
+        self.prompt = prompt
         self.metadata_prompt = metadata_prompt
         self.metadata_key = metadata_key
         self.file_path_meta_field = file_path_meta_field
@@ -214,7 +214,7 @@ class LLMDocumentContentExtractor:
             self,
             chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             extraction_mode=self.extraction_mode,
-            prompt=self.content_prompt,
+            prompt=self.prompt,
             metadata_prompt=self.metadata_prompt,
             metadata_key=self.metadata_key,
             file_path_meta_field=self.file_path_meta_field,
@@ -287,7 +287,7 @@ class LLMDocumentContentExtractor:
             self.warm_up()
 
         mode: ExtractionMode = extraction_mode if extraction_mode is not None else self.extraction_mode
-        prompt = self.content_prompt if mode == "content" else self.metadata_prompt
+        prompt = self.prompt if mode == "content" else self.metadata_prompt
         error_meta_key = "content_extraction_error" if mode == "content" else "metadata_extraction_error"
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
