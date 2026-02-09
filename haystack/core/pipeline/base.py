@@ -385,7 +385,6 @@ class PipelineBase:  # noqa: PLW1641
             instance=instance,
             input_sockets=instance.__haystack_input__._sockets_dict,  # type: ignore[attr-defined]
             output_sockets=instance.__haystack_output__._sockets_dict,  # type: ignore[attr-defined]
-            visits=0,
         )
 
     def remove_component(self, name: str) -> Component:
@@ -1197,9 +1196,14 @@ class PipelineBase:  # noqa: PLW1641
 
         :param component_name: The name of the component.
         :param visits: Number of visits for the component.
-        :returns: Dict including component instance, input/output-sockets and visits.
+        :returns: dict with keys:
+            - instance: the component instance
+            - input_sockets: the component input sockets metadata from the graph
+            - output_sockets: the component output sockets metadata from the graph
         """
         comp_dict = self.graph.nodes[component_name]
+        # We inject the visits into the component dict here to avoid storing it in the graph, which would prevent
+        # thread-safe execution
         comp_dict = {**comp_dict, "visits": visits}
         return comp_dict
 
@@ -1317,7 +1321,7 @@ class PipelineBase:  # noqa: PLW1641
         return component_name, topological_sort
 
     def _find_component_blocking_pipeline(
-        self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int]
+        self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int], inputs: InputsType
     ) -> tuple[str, dict]:
         """
         Finds the component that is most likely blocking the pipeline execution.
@@ -1327,30 +1331,47 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             The name of the component that is blocking the pipeline or None if no component is blocking.
         """
+        # TODO Figure out where this check would go best. Probably when writing outputs to inputs.
+        # - SIDE NOTE: There is an opportunity to check that all keys in comp_inputs are actually accepted by
+        #   the receiving component. This would have better caught misconfigurations in the pipeline that Jul had
+
         # 1. Go through all components in priority queue (should all be blocked at this point)
-        # components_and_priorities = [(c, p) for c, _, p in priority_queue._queue]
+        components_and_priorities: list[tuple[int, str]] = [
+            (prio, comp_name) for prio, _, comp_name in priority_queue._queue
+        ]
 
-        # 2. Two options:
-        # 2a. - Collect all components that have been executed.
-        #       - Can be done with analysis of component visits.
-        #         I don't fully like this b/c handling loops is not straightforward.
-        #     - Drop them from the list of blocked components.
-        #     - Remaining components check if their predecessors have all been executed.
-        #     - We should be left with the component(s) that are blocked even though all their predecessors have been
-        #       executed, which means they are blocking the pipeline.
-        #       - Edge case: ConditionalRouter will have executed but produced _NO_OUTPUT_PRODUCED so double check that
-        #         the existing utility method for checking predecessors accounts for this.
-        # 2b. - Iterate through all components in the priority queue and find which component(s) are most likely to
-        #       execute next based on how many of their predecessors have executed.
-        #        - This will be determined if the components comp_inputs is not empty.
-        #          - This still isn't perfect b/c user inputs aren't consumed so earlier components would pass this
-        #            check even though they were executed. So let's use component_visits to order the components
-        #            in ascending order. Then for all components with the same lowest component visits we tie-break
-        #            based on topological order.
-        #        - SIDE NOTE: There is an opportunity to check that all keys in comp_inputs are actually accepted by
-        #          the receiving component. This would have better caught misconfigurations in the pipeline that Jul had
+        # 2. Check which components have non-empty inputs.
+        components_with_inputs = []
+        for _, comp_name in components_and_priorities:
+            comp = self._get_component_with_graph_metadata_and_visits(comp_name, component_visits[comp_name])
+            comp_inputs = inputs.get(comp_name, {})
+            # If comp_inputs is not empty it means that the component is waiting for some inputs to run, so it could
+            # be blocking the pipeline.
+            if comp_inputs:
+                components_with_inputs.append((comp_name, comp, comp_inputs))
 
-        return "", {}
+        # TODO Handle edge case that possible_blocking_components is empty
+        if not components_with_inputs:
+            return "", {}
+
+        # 3. Order by component visits to prioritize components that haven't been executed yet
+        ordered_components_with_inputs = sorted(components_with_inputs, key=lambda x: component_visits[x[0]])
+        lowest_component_visit = component_visits[ordered_components_with_inputs[0][0]]
+        possible_blocking_components = [
+            comp for comp in ordered_components_with_inputs if component_visits[comp[0]] == lowest_component_visit
+        ]
+
+        # If there is only one component with the lowest visits, return it as the most likely blocking component.
+        if len(possible_blocking_components) == 1:
+            return possible_blocking_components[0][0], possible_blocking_components[0][1]
+
+        # 4. Then for all components with the same lowest component visits we tie-break based on topological order.
+        topological_sort = self._topological_sort()
+        possible_blocking_components = sorted(
+            possible_blocking_components, key=lambda x: (topological_sort[x[0]], x[0].lower())
+        )
+
+        return possible_blocking_components[0][0], possible_blocking_components[0][1]
 
     def _write_component_outputs(
         self,
