@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The ``LLMDocumentExtractor`` now also supports metadata extraction. This component can now run in two modes, chosen at init and optionally overridden at runtime.
