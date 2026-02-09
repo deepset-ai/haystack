@@ -93,7 +93,7 @@ class LLMDocumentContentExtractor:
 
     This component converts each input document into an image using the DocumentToImageContent component,
 
-    This component can run in two modes (chosen at init and optionally overridden at runtime):
+    This component can run in two modes, chosen at init and optionally overridden at runtime:
     - **content**: the LLM output is written to the document's content (default, backward compatible).
     - **metadata**: the LLM output is stored in the document's metadata under a configurable key.
 
@@ -178,7 +178,7 @@ class LLMDocumentContentExtractor:
         """
         self._chat_generator = chat_generator
         self.extraction_mode = extraction_mode
-        self.prompt = prompt
+        self.content_prompt = prompt
         self.metadata_prompt = metadata_prompt
         self.metadata_key = metadata_key
         self.file_path_meta_field = file_path_meta_field
@@ -203,13 +203,6 @@ class LLMDocumentContentExtractor:
                 self._chat_generator.warm_up()
             self._is_warmed_up = True
 
-    def _get_prompt(self, mode: ExtractionMode) -> str:
-        return self.prompt if mode == "content" else self.metadata_prompt
-
-    @staticmethod
-    def _error_meta_key(mode: ExtractionMode) -> str:
-        return "content_extraction_error" if mode == "content" else "metadata_extraction_error"
-
     def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
@@ -221,7 +214,7 @@ class LLMDocumentContentExtractor:
             self,
             chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             extraction_mode=self.extraction_mode,
-            prompt=self.prompt,
+            prompt=self.content_prompt,
             metadata_prompt=self.metadata_prompt,
             metadata_key=self.metadata_key,
             file_path_meta_field=self.file_path_meta_field,
@@ -293,9 +286,9 @@ class LLMDocumentContentExtractor:
         if not self._is_warmed_up:
             self.warm_up()
 
-        effective_mode: ExtractionMode = extraction_mode if extraction_mode is not None else self.extraction_mode
-        prompt = self._get_prompt(effective_mode)
-        error_meta_key = LLMDocumentContentExtractor._error_meta_key(effective_mode)
+        mode: ExtractionMode = extraction_mode if extraction_mode is not None else self.extraction_mode
+        prompt = self.content_prompt if mode == "content" else self.metadata_prompt
+        error_meta_key = "content_extraction_error" if mode == "content" else "metadata_extraction_error"
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
         all_messages: list[ChatMessage | None] = []
@@ -322,7 +315,7 @@ class LLMDocumentContentExtractor:
             new_meta.pop("metadata_extraction_error", None)
             extracted_text = result["replies"][0].text
 
-            if effective_mode == "content":
+            if mode == "content":
                 successful_documents.append(replace(document, content=extracted_text, meta=new_meta))
             else:
                 new_meta[self.metadata_key] = extracted_text
