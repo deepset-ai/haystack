@@ -286,11 +286,6 @@ class TestSentenceTransformersDocumentEmbedder:
         ):
             embedder.run(documents=list_integers_input)
 
-    def test_run_no_warmup(self):
-        embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
-        with pytest.raises(RuntimeError, match="The embedding model has not been loaded."):
-            embedder.run(documents=[Document(content="test")])
-
     def test_embed_metadata(self):
         embedder = SentenceTransformersSparseDocumentEmbedder(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
@@ -435,7 +430,6 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator=" | ",
             device=ComponentDevice.from_str("cpu"),
         )
-        embedder.warm_up()
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
 

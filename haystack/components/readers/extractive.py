@@ -4,15 +4,15 @@
 
 import math
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
+    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -52,19 +52,19 @@ class ExtractiveReader:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        model: Path | str = "deepset/roberta-base-squad2-distilled",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 20,
-        score_threshold: Optional[float] = None,
+        score_threshold: float | None = None,
         max_seq_length: int = 384,
         stride: int = 128,
-        max_batch_size: Optional[int] = None,
-        answers_per_seq: Optional[int] = None,
+        max_batch_size: int | None = None,
+        answers_per_seq: int | None = None,
         no_answer: bool = True,
         calibration_factor: float = 0.1,
-        overlap_threshold: Optional[float] = 0.01,
-        model_kwargs: Optional[dict[str, Any]] = None,
+        overlap_threshold: float | None = 0.01,
+        model_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
         Creates an instance of ExtractiveReader.
@@ -111,7 +111,7 @@ class ExtractiveReader:
         self.model_name_or_path = str(model)
         self.model = None
         self.tokenizer = None
-        self.device: Optional[ComponentDevice] = None
+        self.device: ComponentDevice | None = None
         self.token = token
         self.max_seq_length = max_seq_length
         self.top_k = top_k
@@ -143,7 +143,7 @@ class ExtractiveReader:
             self,
             model=self.model_name_or_path,
             device=None,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             max_seq_length=self.max_seq_length,
             top_k=self.top_k,
             score_threshold=self.score_threshold,
@@ -169,9 +169,6 @@ class ExtractiveReader:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        deserialize_secrets_inplace(init_params, keys=["token"])
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
 
@@ -225,7 +222,8 @@ class ExtractiveReader:
             document_ids.append(i)
             document_contents.append(doc.content)
 
-        encodings_pt = self.tokenizer(  # type: ignore
+        # mypy doesn't know this is set in warm_up
+        encodings_pt = self.tokenizer(  # type: ignore[misc]
             queries,
             document_contents,
             padding=True,
@@ -236,12 +234,9 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        # To make mypy happy even though self.device is set in warm_up()
-        assert self.device is not None
-        assert self.device.first_device is not None
-
         # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-        first_device = self.device.first_device.to_torch()
+        # mypy doesn't know this is set in warm_up
+        first_device = self.device.first_device.to_torch()  # type: ignore[union-attr]
 
         input_ids = encodings_pt.input_ids.to(first_device)
         attention_mask = encodings_pt.attention_mask.to(first_device)
@@ -353,12 +348,12 @@ class ExtractiveReader:
         flattened_documents: list[Document],
         queries: list[str],
         answers_per_seq: int,
-        top_k: Optional[int],
-        score_threshold: Optional[float],
+        top_k: int | None,
+        score_threshold: float | None,
         query_ids: list[int],
         document_ids: list[int],
         no_answer: bool,
-        overlap_threshold: Optional[float],
+        overlap_threshold: float | None,
     ) -> list[list[ExtractedAnswer]]:
         """
         Reconstructs the nested structure that existed before flattening.
@@ -493,7 +488,7 @@ class ExtractiveReader:
         return keep
 
     def deduplicate_by_overlap(
-        self, answers: list[ExtractedAnswer], overlap_threshold: Optional[float]
+        self, answers: list[ExtractedAnswer], overlap_threshold: float | None
     ) -> list[ExtractedAnswer]:
         """
         De-duplicates overlapping Extractive Answers.
@@ -534,14 +529,14 @@ class ExtractiveReader:
         self,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        score_threshold: Optional[float] = None,
-        max_seq_length: Optional[int] = None,
-        stride: Optional[int] = None,
-        max_batch_size: Optional[int] = None,
-        answers_per_seq: Optional[int] = None,
-        no_answer: Optional[bool] = None,
-        overlap_threshold: Optional[float] = None,
+        top_k: int | None = None,
+        score_threshold: float | None = None,
+        max_seq_length: int | None = None,
+        stride: int | None = None,
+        max_batch_size: int | None = None,
+        answers_per_seq: int | None = None,
+        no_answer: bool | None = None,
+        overlap_threshold: float | None = None,
     ):
         """
         Locates and extracts answers from the given Documents using the given query.
@@ -575,14 +570,9 @@ class ExtractiveReader:
             If None is provided then all answers are kept.
         :returns:
             List of answers sorted by (desc.) answer score.
-
-        :raises RuntimeError:
-            If the component was not warmed up by calling 'warm_up()' before.
         """
         if self.model is None:
-            raise RuntimeError(
-                "The component ExtractiveReader was not warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"answers": []}
@@ -622,7 +612,8 @@ class ExtractiveReader:
             cur_attention_mask = attention_mask[start_index:end_index]
 
             with torch.inference_mode():
-                output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
+                # mypy doesn't know this is set in warm_up
+                output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)  # type: ignore[misc]
             cur_start_logits = output.start_logits
             cur_end_logits = output.end_logits
             if num_batches != 1:

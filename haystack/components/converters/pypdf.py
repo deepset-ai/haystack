@@ -6,7 +6,7 @@ import io
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -71,7 +71,7 @@ class PyPDFToDocument:
     def __init__(
         self,
         *,
-        extraction_mode: Union[str, PyPDFExtractionMode] = PyPDFExtractionMode.PLAIN,
+        extraction_mode: str | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
         plain_mode_orientations: tuple = (0, 90, 180, 270),
         plain_mode_space_width: float = 200.0,
         layout_mode_space_vertically: bool = True,
@@ -172,11 +172,7 @@ class PyPDFToDocument:
         return text
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts PDF files to documents.
 

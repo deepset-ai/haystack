@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal
 
 from dateutil.parser import parse as date_parse
 
 from haystack import Document, component, logging
+from haystack.utils.misc import _deduplicate_documents
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +43,11 @@ class MetaFieldRanker:
         self,
         meta_field: str,
         weight: float = 1.0,
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
         sort_order: Literal["ascending", "descending"] = "descending",
         missing_meta: Literal["drop", "top", "bottom"] = "bottom",
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
+        meta_value_type: Literal["float", "int", "date"] | None = None,
     ):
         """
         Creates an instance of MetaFieldRanker.
@@ -108,11 +109,11 @@ class MetaFieldRanker:
         self,
         *,
         weight: float,
-        top_k: Optional[int],
+        top_k: int | None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
         sort_order: Literal["ascending", "descending"],
         missing_meta: Literal["drop", "top", "bottom"],
-        meta_value_type: Optional[Literal["float", "int", "date"]],
+        meta_value_type: Literal["float", "int", "date"] | None,
     ):
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be > 0, but got %s" % top_k)
@@ -160,12 +161,12 @@ class MetaFieldRanker:
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        weight: Optional[float] = None,
-        ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
-        sort_order: Optional[Literal["ascending", "descending"]] = None,
-        missing_meta: Optional[Literal["drop", "top", "bottom"]] = None,
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
+        top_k: int | None = None,
+        weight: float | None = None,
+        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] | None = None,
+        sort_order: Literal["ascending", "descending"] | None = None,
+        missing_meta: Literal["drop", "top", "bottom"] | None = None,
+        meta_value_type: Literal["float", "int", "date"] | None = None,
     ):
         """
         Ranks a list of Documents based on the selected meta field by:
@@ -174,6 +175,9 @@ class MetaFieldRanker:
         2. Merging the rankings from the previous component and based on the meta field according to ranking mode and
         weight.
         3. Returning the top-k documents.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param documents:
             Documents to be ranked.
@@ -243,12 +247,13 @@ class MetaFieldRanker:
             meta_value_type=meta_value_type,
         )
 
+        deduplicated_documents = _deduplicate_documents(documents)
         # If the weight is 0 then ranking by meta field is disabled and the original documents should be returned
         if weight == 0:
-            return {"documents": documents[:top_k]}
+            return {"documents": deduplicated_documents[:top_k]}
 
-        docs_with_meta_field = [doc for doc in documents if self.meta_field in doc.meta]
-        docs_missing_meta_field = [doc for doc in documents if self.meta_field not in doc.meta]
+        docs_with_meta_field = [doc for doc in deduplicated_documents if self.meta_field in doc.meta]
+        docs_missing_meta_field = [doc for doc in deduplicated_documents if self.meta_field not in doc.meta]
 
         # If all docs are missing self.meta_field return original documents
         if len(docs_with_meta_field) == 0:
@@ -258,9 +263,9 @@ class MetaFieldRanker:
                 "Set <meta_field> to the name of a field that is present within the provided Documents.\n"
                 "Returning the <top_k> of the original Documents since there are no values to rank.",
                 meta_field=self.meta_field,
-                document_ids=",".join([doc.id for doc in documents]),
+                document_ids=",".join([doc.id for doc in deduplicated_documents]),
             )
-            return {"documents": documents[:top_k]}
+            return {"documents": deduplicated_documents[:top_k]}
 
         if len(docs_missing_meta_field) > 0:
             warning_start = (
@@ -303,16 +308,16 @@ class MetaFieldRanker:
                 document_ids=",".join([doc.id for doc in docs_with_meta_field]),
                 error=error,
             )
-            return {"documents": documents[:top_k]}
+            return {"documents": deduplicated_documents[:top_k]}
 
         # Merge rankings and handle missing meta fields as specified in the missing_meta parameter
         sorted_by_meta = [doc for meta, doc in tuple_sorted_by_meta]
         if missing_meta == "bottom":
             sorted_documents = sorted_by_meta + docs_missing_meta_field
-            sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+            sorted_documents = self._merge_rankings(deduplicated_documents, sorted_documents, weight, ranking_mode)
         elif missing_meta == "top":
             sorted_documents = docs_missing_meta_field + sorted_by_meta
-            sorted_documents = self._merge_rankings(documents, sorted_documents, weight, ranking_mode)
+            sorted_documents = self._merge_rankings(deduplicated_documents, sorted_documents, weight, ranking_mode)
         else:
             sorted_documents = sorted_by_meta
             sorted_documents = self._merge_rankings(docs_with_meta_field, sorted_documents, weight, ranking_mode)
@@ -320,7 +325,7 @@ class MetaFieldRanker:
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
-        self, docs_with_meta_field: list[Document], meta_value_type: Optional[Literal["float", "int", "date"]]
+        self, docs_with_meta_field: list[Document], meta_value_type: Literal["float", "int", "date"] | None
     ) -> list[Any]:
         """
         Parse the meta values stored under `self.meta_field` for the Documents provided in `docs_with_meta_field`.

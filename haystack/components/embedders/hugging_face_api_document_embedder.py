@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Optional, Union
+from typing import Any
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
@@ -11,7 +11,7 @@ from tqdm.asyncio import tqdm as async_tqdm
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
@@ -92,16 +92,16 @@ class HuggingFaceAPIDocumentEmbedder:
 
     def __init__(
         self,
-        api_type: Union[HFEmbeddingAPIType, str],
+        api_type: HFEmbeddingAPIType | str,
         api_params: dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
-        truncate: Optional[bool] = True,
-        normalize: Optional[bool] = False,
+        truncate: bool | None = True,
+        normalize: bool | None = False,
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
     ):  # pylint: disable=too-many-positional-arguments
         """
@@ -198,7 +198,7 @@ class HuggingFaceAPIDocumentEmbedder:
             api_params=self.api_params,
             prefix=self.prefix,
             suffix=self.suffix,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             truncate=self.truncate,
             normalize=self.normalize,
             batch_size=self.batch_size,
@@ -217,7 +217,6 @@ class HuggingFaceAPIDocumentEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: list[Document]) -> list[str]:
@@ -239,8 +238,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
     @staticmethod
     def _adjust_api_parameters(
-        truncate: Optional[bool], normalize: Optional[bool], api_type: HFEmbeddingAPIType
-    ) -> tuple[Optional[bool], Optional[bool]]:
+        truncate: bool | None, normalize: bool | None, api_type: HFEmbeddingAPIType
+    ) -> tuple[bool | None, bool | None]:
         """
         Adjust the truncate and normalize parameters based on the API type.
         """

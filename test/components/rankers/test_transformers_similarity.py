@@ -338,16 +338,31 @@ class TestSimilarityRanker:
 
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TransformersSimilarityRanker()
+        # Mock all attributes that are set during warm_up
         sampler.model = MagicMock()
+        sampler.tokenizer = MagicMock()
+        sampler.device = MagicMock()
 
         output = sampler.run(query="City in Germany", documents=[])
         assert not output["documents"]
 
-    #  Raises ComponentError if model is not warmed up
-    def test_raises_component_error_if_model_not_warmed_up(self):
-        sampler = TransformersSimilarityRanker()
-        with pytest.raises(RuntimeError):
-            sampler.run(query="query", documents=[Document(content="document")])
+    @patch("torch.stack")
+    def test_run_deduplicates_documents(self, mocked_stack):
+        mocked_stack.return_value = torch.tensor([0.42, 0.12])
+        ranker = TransformersSimilarityRanker()
+        ranker.model = MagicMock()
+        ranker.tokenizer = MagicMock()
+        ranker.device = MagicMock()
+
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
 
     @pytest.mark.integration
     @pytest.mark.slow

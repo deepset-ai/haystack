@@ -2,19 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Annotated, Any, Optional, TypeVar, Union, cast, get_args, get_origin
+from types import UnionType
+from typing import Annotated, Any, get_args, get_origin
 
 from haystack.core.component.types import HAYSTACK_GREEDY_VARIADIC_ANNOTATION, HAYSTACK_VARIADIC_ANNOTATION
+from haystack.utils.type_serialization import _build_pep604_union_type, _is_union_type
 
 
 class _delegate_default:
     """Custom object for delegating filling of default values to the underlying components."""
 
 
-T = TypeVar("T")
-
-
-def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool, Optional[T]]:
+def _is_compatible(
+    type1: type | UnionType, type2: type | UnionType, unwrap_nested: bool = True
+) -> tuple[bool, type | UnionType | None]:
     """
     Check if two types are compatible (bidirectional/symmetric check).
 
@@ -30,7 +31,7 @@ def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool
     return _types_are_compatible(type1_unwrapped, type2_unwrapped)
 
 
-def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
+def _types_are_compatible(type1: type | UnionType, type2: type | UnionType) -> tuple[bool, type | UnionType | None]:
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -51,17 +52,19 @@ def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
     type1_origin = get_origin(type1)
     type2_origin = get_origin(type2)
 
-    # Handle Union types
-    if type1_origin is Union or type2_origin is Union:
+    # Handle Union types (including X | Y syntax)
+    if _is_union_type(type1_origin) or _is_union_type(type2_origin):
         return _check_union_compatibility(type1, type2, type1_origin, type2_origin)
 
     # Handle non-Union types
     return _check_non_union_compatibility(type1, type2, type1_origin, type2_origin)
 
 
-def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> tuple[bool, Optional[T]]:
-    """Handle all Union type compatibility cases."""
-    if type1_origin is Union and type2_origin is not Union:
+def _check_union_compatibility(
+    type1: type | UnionType, type2: type | UnionType, type1_origin: Any, type2_origin: Any
+) -> tuple[bool, type | UnionType | None]:
+    """Handle all Union type compatibility cases (including X | Y syntax)."""
+    if _is_union_type(type1_origin) and not _is_union_type(type2_origin):
         # Find all compatible types from the union
         compatible_types = []
         for union_arg in get_args(type1):
@@ -69,13 +72,11 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
             if is_compat and common is not None:
                 compatible_types.append(common)
         if compatible_types:
-            # The constructed Union or single type must be cast to Optional[T]
-            # to satisfy mypy, as T is specific to this function's call context.
-            result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
-            return True, cast(Optional[T], result_type)
+            result_type = _build_pep604_union_type(compatible_types)
+            return True, result_type
         return False, None
 
-    if type2_origin is Union and type1_origin is not Union:
+    if _is_union_type(type2_origin) and not _is_union_type(type1_origin):
         # Find all compatible types from the union
         compatible_types = []
         for union_arg in get_args(type2):
@@ -83,10 +84,8 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
             if is_compat and common is not None:
                 compatible_types.append(common)
         if compatible_types:
-            # The constructed Union or single type must be cast to Optional[T]
-            # to satisfy mypy, as T is specific to this function's call context.
-            result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
-            return True, cast(Optional[T], result_type)
+            result_type = _build_pep604_union_type(compatible_types)
+            return True, result_type
         return False, None
 
     # Both are Union types
@@ -98,16 +97,14 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
                 compatible_types.append(common)
 
     if compatible_types:
-        # The constructed Union or single type must be cast to Optional[T]
-        # to satisfy mypy, as T is specific to this function's call context.
-        result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
-        return True, cast(Optional[T], result_type)
+        result_type = _build_pep604_union_type(compatible_types)
+        return True, result_type
     return False, None
 
 
 def _check_non_union_compatibility(
-    type1: T, type2: T, type1_origin: Any, type2_origin: Any
-) -> tuple[bool, Optional[T]]:
+    type1: type | UnionType, type2: type | UnionType, type1_origin: Any, type2_origin: Any
+) -> tuple[bool, type | UnionType | None]:
     """Handle non-Union type compatibility cases."""
     # If no origin, compare types directly
     if not type1_origin and not type2_origin:
@@ -135,10 +132,10 @@ def _check_non_union_compatibility(
         common_args.append(common)
 
     # Reconstruct the type with common arguments
-    return True, cast(Optional[T], type1_origin[tuple(common_args)])
+    return True, type1_origin[tuple(common_args)]
 
 
-def _unwrap_all(t: T, recursive: bool) -> T:
+def _unwrap_all(t: type | UnionType, recursive: bool) -> type | UnionType:
     """
     Unwrap a type until no more unwrapping is possible.
 
@@ -154,16 +151,16 @@ def _unwrap_all(t: T, recursive: bool) -> T:
         origin = get_origin(t)
         if recursive and origin is not None and (args := get_args(t)):
             unwrapped_args = tuple(_unwrap_all(arg, recursive) for arg in args)
-            t = origin[unwrapped_args]
-
-    # Then handle top-level Optional
-    if _is_optional_type(t):
-        t = _unwrap_optionals(t, recursive=recursive)
+            # types.UnionType (PEP 604 X | Y) is not subscriptable, so we use _build_pep604_union_type
+            if origin is UnionType:
+                t = _build_pep604_union_type(list(unwrapped_args))
+            else:
+                t = origin[unwrapped_args]
 
     return t
 
 
-def _is_variadic_type(t: T) -> bool:
+def _is_variadic_type(t: type | UnionType) -> bool:
     """Check if type is a Variadic or GreedyVariadic type."""
     origin = get_origin(t)
     if origin is Annotated:
@@ -172,16 +169,7 @@ def _is_variadic_type(t: T) -> bool:
     return False
 
 
-def _is_optional_type(t: T) -> bool:
-    """Check if type is an Optional type."""
-    origin = get_origin(t)
-    if origin is Union:
-        args = get_args(t)
-        return type(None) in args
-    return False
-
-
-def _unwrap_variadics(t: T, recursive: bool) -> T:
+def _unwrap_variadics(t: type | UnionType, recursive: bool) -> type | UnionType:
     """
     Unwrap Variadic or GreedyVariadic annotated types.
 
@@ -201,24 +189,3 @@ def _unwrap_variadics(t: T, recursive: bool) -> T:
     if recursive:
         return _unwrap_all(inner_type, recursive)
     return inner_type
-
-
-def _unwrap_optionals(t: T, recursive: bool) -> T:
-    """
-    Unwrap Optional[...] types (Union[X, None]).
-
-    :param t: Type to unwrap
-    :param recursive: If True, recursively unwraps nested types
-    :return: Unwrapped type if it was an Optional, original type otherwise
-    """
-    if not _is_optional_type(t):
-        return t
-
-    args = list(get_args(t))
-    args.remove(type(None))
-    result = args[0] if len(args) == 1 else Union[tuple(args)]
-
-    # Only recursively unwrap if requested
-    if recursive:
-        return _unwrap_all(result, recursive)  # type: ignore
-    return result  # type: ignore

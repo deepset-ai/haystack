@@ -93,7 +93,9 @@ class TestSentenceTransformersSimilarityRanker:
                 "top_k": 10,
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
+                "query_suffix": "",
                 "document_prefix": "",
+                "document_suffix": "",
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
@@ -115,7 +117,9 @@ class TestSentenceTransformersSimilarityRanker:
             token=Secret.from_env_var("ENV_VAR", strict=False),
             top_k=5,
             query_prefix="query_instruction: ",
+            query_suffix="\n",
             document_prefix="document_instruction: ",
+            document_suffix="\n",
             scale_score=False,
             score_threshold=0.01,
             trust_remote_code=True,
@@ -132,7 +136,9 @@ class TestSentenceTransformersSimilarityRanker:
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "top_k": 5,
                 "query_prefix": "query_instruction: ",
+                "query_suffix": "\n",
                 "document_prefix": "document_instruction: ",
+                "document_suffix": "\n",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": False,
@@ -162,7 +168,9 @@ class TestSentenceTransformersSimilarityRanker:
                 "device": ComponentDevice.resolve_device(None).to_dict(),
                 "top_k": 10,
                 "query_prefix": "",
+                "query_suffix": "",
                 "document_prefix": "",
+                "document_suffix": "",
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
@@ -270,11 +278,6 @@ class TestSentenceTransformersSimilarityRanker:
         output = ranker.run(query="City in Germany", documents=[])
         assert not output["documents"]
 
-    def test_raises_component_error_if_model_not_warmed_up(self):
-        ranker = SentenceTransformersSimilarityRanker()
-        with pytest.raises(RuntimeError):
-            ranker.run(query="query", documents=[Document(content="document")])
-
     def test_embed_meta(self):
         ranker = SentenceTransformersSimilarityRanker(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
@@ -319,6 +322,30 @@ class TestSentenceTransformersSimilarityRanker:
             "document_instruction: document number 2",
             "document_instruction: document number 3",
             "document_instruction: document number 4",
+        ]
+        assert kwargs["batch_size"] == 16
+        assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
+        assert kwargs["convert_to_numpy"] is True
+
+    def test_suffix(self):
+        ranker = SentenceTransformersSimilarityRanker(
+            model="model", query_suffix="\nquery_suffix", document_suffix="\ndocument_suffix"
+        )
+        mock_cross_encoder = MagicMock()
+        ranker._cross_encoder = mock_cross_encoder
+
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
+
+        ranker.run(query="test", documents=documents)
+
+        _, kwargs = mock_cross_encoder.rank.call_args
+        assert kwargs["query"] == "test\nquery_suffix"
+        assert kwargs["documents"] == [
+            "document number 0\ndocument_suffix",
+            "document number 1\ndocument_suffix",
+            "document number 2\ndocument_suffix",
+            "document number 3\ndocument_suffix",
+            "document number 4\ndocument_suffix",
         ]
         assert kwargs["batch_size"] == 16
         assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
@@ -369,11 +396,25 @@ class TestSentenceTransformersSimilarityRanker:
         for d in out["documents"]:
             assert isinstance(d.score, float)
 
+    def test_run_deduplicates_documents(self):
+        ranker = SentenceTransformersSimilarityRanker()
+        ranker._cross_encoder = MagicMock()
+        ranker._cross_encoder.rank.return_value = [{"score": 0.42, "corpus_id": 0}, {"score": 0.12, "corpus_id": 1}]
+
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run(self):
         ranker = SentenceTransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -401,7 +442,6 @@ class TestSentenceTransformersSimilarityRanker:
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2
         )
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -426,7 +466,6 @@ class TestSentenceTransformersSimilarityRanker:
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None
         )
-        ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]

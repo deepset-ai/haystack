@@ -46,9 +46,9 @@ def __init__(api_key: Secret = Secret.from_env_var(
              timeout: float = 120.0,
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             embedding_type: Optional[EmbeddingTypes] = None)
+             embedding_type: EmbeddingTypes | None = None)
 ```
 
 **Arguments**:
@@ -82,7 +82,7 @@ Note that int8, uint8, binary, and ubinary are only valid for v3 models.
 #### CohereDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -97,7 +97,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereDocumentEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "CohereDocumentEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -115,10 +115,9 @@ Deserialized component.
 #### CohereDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
-def run(
-    documents: List[Document]
-) -> Dict[str, Union[List[Document], Dict[str, Any]]]
+@component.output_types(documents=list[Document], meta=dict[str, Any])
+def run(documents: list[Document]
+        ) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embed a list of `Documents`.
@@ -142,10 +141,10 @@ A dictionary with the following keys:
 #### CohereDocumentEmbedder.run\_async
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
+@component.output_types(documents=list[Document], meta=dict[str, Any])
 async def run_async(
-    documents: List[Document]
-) -> Dict[str, Union[List[Document], Dict[str, Any]]]
+        documents: list[Document]
+) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embed a list of `Documents` asynchronously.
@@ -207,14 +206,14 @@ print(documents_with_embeddings)
 ```python
 def __init__(*,
              file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
-             image_size: Optional[Tuple[int, int]] = None,
+             root_path: str | None = None,
+             image_size: tuple[int, int] | None = None,
              api_key: Secret = Secret.from_env_var(
                  ["COHERE_API_KEY", "CO_API_KEY"]),
              model: str = "embed-v4.0",
              api_base_url: str = "https://api.cohere.com",
              timeout: float = 120.0,
-             embedding_dimension: Optional[int] = None,
+             embedding_dimension: int | None = None,
              embedding_type: EmbeddingTypes = EmbeddingTypes.FLOAT,
              progress_bar: bool = True) -> None
 ```
@@ -351,7 +350,7 @@ def __init__(api_key: Secret = Secret.from_env_var(
              api_base_url: str = "https://api.cohere.com",
              truncate: str = "END",
              timeout: float = 120.0,
-             embedding_type: Optional[EmbeddingTypes] = None)
+             embedding_type: EmbeddingTypes | None = None)
 ```
 
 **Arguments**:
@@ -380,7 +379,7 @@ Note that int8, uint8, binary, and ubinary are only valid for v3 models.
 #### CohereTextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -395,7 +394,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereTextEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "CohereTextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -413,8 +412,8 @@ Deserialized component.
 #### CohereTextEmbedder.run
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
-def run(text: str) -> Dict[str, Union[List[float], Dict[str, Any]]]
+@component.output_types(embedding=list[float], meta=dict[str, Any])
+def run(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Embed text.
@@ -438,9 +437,8 @@ A dictionary with the following keys:
 #### CohereTextEmbedder.run\_async
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
-async def run_async(
-        text: str) -> Dict[str, Union[List[float], Dict[str, Any]]]
+@component.output_types(embedding=list[float], meta=dict[str, Any])
+async def run_async(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Asynchronously embed text.
@@ -472,12 +470,12 @@ A dictionary with the following keys:
 ```python
 async def get_async_response(
     cohere_async_client: AsyncClientV2,
-    texts: List[str],
+    texts: list[str],
     model_name: str,
     input_type: str,
     truncate: str,
-    embedding_type: Optional[EmbeddingTypes] = None
-) -> Tuple[List[List[float]], Dict[str, Any]]
+    embedding_type: EmbeddingTypes | None = None
+) -> tuple[list[list[float]], dict[str, Any]]
 ```
 
 Embeds a list of texts asynchronously using the Cohere API.
@@ -507,14 +505,14 @@ A tuple of the embeddings and metadata.
 ```python
 def get_response(
     cohere_client: ClientV2,
-    texts: List[str],
+    texts: list[str],
     model_name: str,
     input_type: str,
     truncate: str,
     batch_size: int = 32,
     progress_bar: bool = False,
-    embedding_type: Optional[EmbeddingTypes] = None
-) -> Tuple[List[List[float]], Dict[str, Any]]
+    embedding_type: EmbeddingTypes | None = None
+) -> tuple[list[list[float]], dict[str, Any]]
 ```
 
 Embeds a list of texts using the Cohere API.
@@ -538,97 +536,6 @@ The type of input text provided to embed.
 **Returns**:
 
 A tuple of the embeddings and metadata.
-
-<a id="haystack_integrations.components.generators.cohere.generator"></a>
-
-## Module haystack\_integrations.components.generators.cohere.generator
-
-<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator"></a>
-
-### CohereGenerator
-
-Generates text using Cohere's models through Cohere's `generate` endpoint.
-
-NOTE: Cohere discontinued the `generate` API, so this generator is a mere wrapper
-around `CohereChatGenerator` provided for backward compatibility.
-
-### Usage example
-
-```python
-from haystack_integrations.components.generators.cohere import CohereGenerator
-
-generator = CohereGenerator(api_key="test-api-key")
-generator.run(prompt="What's the capital of France?")
-```
-
-<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator.__init__"></a>
-
-#### CohereGenerator.\_\_init\_\_
-
-```python
-def __init__(api_key: Secret = Secret.from_env_var(
-    ["COHERE_API_KEY", "CO_API_KEY"]),
-             model: str = "command-r-08-2024",
-             streaming_callback: Optional[Callable] = None,
-             api_base_url: Optional[str] = None,
-             **kwargs: Any)
-```
-
-Instantiates a `CohereGenerator` component.
-
-**Arguments**:
-
-- `api_key`: Cohere API key.
-- `model`: Cohere model to use for generation.
-- `streaming_callback`: Callback function that is called when a new token is received from the stream.
-The callback function accepts [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk)
-as an argument.
-- `api_base_url`: Cohere base URL.
-- `**kwargs`: Additional arguments passed to the model. These arguments are specific to the model.
-You can check them in model's documentation.
-
-<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator.run"></a>
-
-#### CohereGenerator.run
-
-```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-def run(prompt: str) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
-```
-
-Queries the LLM with the prompts to produce replies.
-
-**Arguments**:
-
-- `prompt`: the prompt to be sent to the generative model.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `replies`: A list of replies generated by the model.
-- `meta`: Information about the request.
-
-<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator.run_async"></a>
-
-#### CohereGenerator.run\_async
-
-```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-async def run_async(
-        prompt: str) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
-```
-
-Queries the LLM asynchronously with the prompts to produce replies.
-
-**Arguments**:
-
-- `prompt`: the prompt to be sent to the generative model.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `replies`: A list of replies generated by the model.
-- `meta`: Information about the request.
 
 <a id="haystack_integrations.components.generators.cohere.chat.chat_generator"></a>
 
@@ -660,7 +567,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from haystack_integrations.components.generators.cohere import CohereChatGenerator
 
-client = CohereChatGenerator(model="command-r-08-2024", api_key=Secret.from_env_var("COHERE_API_KEY"))
+client = CohereChatGenerator(api_key=Secret.from_env_var("COHERE_API_KEY"))
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client.run(messages)
 
@@ -720,7 +627,7 @@ weather_tool = Tool(
 
 # Create and set up the pipeline
 pipeline = Pipeline()
-pipeline.add_component("generator", CohereChatGenerator(model="command-r-08-2024", tools=[weather_tool]))
+pipeline.add_component("generator", CohereChatGenerator(tools=[weather_tool]))
 pipeline.add_component("tool_invoker", ToolInvoker(tools=[weather_tool]))
 pipeline.connect("generator", "tool_invoker")
 
@@ -741,11 +648,11 @@ print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
 ```python
 def __init__(api_key: Secret = Secret.from_env_var(
     ["COHERE_API_KEY", "CO_API_KEY"]),
-             model: str = "command-r-08-2024",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[ToolsType] = None,
+             model: str = "command-a-03-2025",
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             tools: ToolsType | None = None,
              **kwargs: Any)
 ```
 
@@ -778,7 +685,7 @@ Each tool should have a unique name.
 #### CohereChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -793,7 +700,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "CohereChatGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -811,13 +718,13 @@ Deserialized component.
 #### CohereChatGenerator.run
 
 ```python
-@component.output_types(replies=List[ChatMessage])
+@component.output_types(replies=list[ChatMessage])
 def run(
-    messages: List[ChatMessage],
-    generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None
-) -> Dict[str, List[ChatMessage]]
+    messages: list[ChatMessage],
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> dict[str, list[ChatMessage]]
 ```
 
 Invoke the chat endpoint based on the provided messages and generation parameters.
@@ -844,13 +751,13 @@ A dictionary with the following keys:
 #### CohereChatGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[ChatMessage])
+@component.output_types(replies=list[ChatMessage])
 async def run_async(
-    messages: List[ChatMessage],
-    generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None
-) -> Dict[str, List[ChatMessage]]
+    messages: list[ChatMessage],
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invoke the chat endpoint based on the provided messages and generation parameters.
@@ -870,6 +777,97 @@ If set, it will override the `tools` parameter set during component initializati
 
 A dictionary with the following keys:
 - `replies`: a list of `ChatMessage` instances representing the generated responses.
+
+<a id="haystack_integrations.components.generators.cohere.generator"></a>
+
+## Module haystack\_integrations.components.generators.cohere.generator
+
+<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator"></a>
+
+### CohereGenerator
+
+Generates text using Cohere's models through Cohere's `generate` endpoint.
+
+NOTE: Cohere discontinued the `generate` API, so this generator is a mere wrapper
+around `CohereChatGenerator` provided for backward compatibility.
+
+### Usage example
+
+```python
+from haystack_integrations.components.generators.cohere import CohereGenerator
+
+generator = CohereGenerator(api_key="test-api-key")
+generator.run(prompt="What's the capital of France?")
+```
+
+<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator.__init__"></a>
+
+#### CohereGenerator.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var(
+    ["COHERE_API_KEY", "CO_API_KEY"]),
+             model: str = "command-a-03-2025",
+             streaming_callback: Callable | None = None,
+             api_base_url: str | None = None,
+             **kwargs: Any)
+```
+
+Instantiates a `CohereGenerator` component.
+
+**Arguments**:
+
+- `api_key`: Cohere API key.
+- `model`: Cohere model to use for generation.
+- `streaming_callback`: Callback function that is called when a new token is received from the stream.
+The callback function accepts [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk)
+as an argument.
+- `api_base_url`: Cohere base URL.
+- `**kwargs`: Additional arguments passed to the model. These arguments are specific to the model.
+You can check them in model's documentation.
+
+<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator.run"></a>
+
+#### CohereGenerator.run
+
+```python
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+def run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
+```
+
+Queries the LLM with the prompts to produce replies.
+
+**Arguments**:
+
+- `prompt`: the prompt to be sent to the generative model.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `replies`: A list of replies generated by the model.
+- `meta`: Information about the request.
+
+<a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator.run_async"></a>
+
+#### CohereGenerator.run\_async
+
+```python
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+async def run_async(
+        prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
+```
+
+Queries the LLM asynchronously with the prompts to produce replies.
+
+**Arguments**:
+
+- `prompt`: the prompt to be sent to the generative model.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `replies`: A list of replies generated by the model.
+- `meta`: Information about the request.
 
 <a id="haystack_integrations.components.rankers.cohere.ranker"></a>
 
@@ -906,7 +904,7 @@ def __init__(model: str = "rerank-v3.5",
              api_key: Secret = Secret.from_env_var(
                  ["COHERE_API_KEY", "CO_API_KEY"]),
              api_base_url: str = "https://api.cohere.com",
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              meta_data_separator: str = "\n",
              max_tokens_per_doc: int = 4096)
 ```
@@ -930,7 +928,7 @@ to the Document content.
 #### CohereRanker.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -945,7 +943,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereRanker"
+def from_dict(cls, data: dict[str, Any]) -> "CohereRanker"
 ```
 
 Deserializes the component from a dictionary.
@@ -963,10 +961,10 @@ The deserialized component.
 #### CohereRanker.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+        documents: list[Document],
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Use the Cohere Reranker to re-rank the list of documents based on the query.
@@ -985,3 +983,4 @@ Use the Cohere Reranker to re-rank the list of documents based on the query.
 
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
+

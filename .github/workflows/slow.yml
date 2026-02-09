@@ -13,7 +13,7 @@ name: Slow Integration Tests
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.14.2"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
@@ -40,14 +40,14 @@ jobs:
   # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
   # This ensures the "Slow Integration Tests completed" job always runs, which is required by Branch Protection rules.
     name: Check if changed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: read
     # Specifying outputs is not needed to make the job work, but only to comply with actionlint
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Check for changed code
         id: changes
         uses: dorny/paths-filter@v3
@@ -125,7 +125,7 @@ jobs:
             install_cmd: "echo 'No additional dependencies needed'"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v6
         with:
@@ -172,7 +172,7 @@ jobs:
   slow-integration-tests-completed:
     # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
     name: Slow Integration Tests completed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     if: ${{ always() }}
     needs: slow-integration-tests
 

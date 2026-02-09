@@ -1,0 +1,108 @@
+---
+title: "Pipeline Templates"
+id: pipeline-templates
+slug: "/pipeline-templates"
+---
+
+# Pipeline Templates
+
+Haystack provides templates to create ready-made pipelines for common use cases.
+
+To create a pipeline, the method `from_template`of the `Pipeline` class can be called passing a template identifier in the form `PredefinedPipeline.TEMPLATE_IDENTIFIER`.
+
+For example, to create and run a pipeline using the `INDEXING` template you would use `Pipeline.from_template(PredefinedPipeline.INDEXING)`
+
+In this section we detail the available templates and how they can be used.
+
+### Chat with website
+
+Generates a pipeline to read a web page and ask questions about its content.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| Template identifier | `CHAT_WITH_WEBSITE` |
+| Template params | \- |
+| Inputs (**\*** means mandatory) | `'converter': {'meta': {}} `  <br />`'fetcher': {'urls': ["https://example.com"]}`**\***  <br />`'llm': {'generation_kwargs': {}}`  <br />`'prompt': {'query': 'the question to ask'}` |
+
+</div>
+
+Example code:
+
+```python
+from haystack import Pipeline, PredefinedPipeline
+
+pipeline = Pipeline.from_template(PredefinedPipeline.CHAT_WITH_WEBSITE)
+pipeline.run({"fetcher": {"urls": ["https://haystack.deepset.ai:"]}, "prompt": {"query": "what is Haystack?"}})
+
+```
+
+### Generative QA
+
+Generates a simple pipeline to ask a generic query using an `OpenAIGenerator`.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| Template identifier | `CHAT_WITH_WEBSITE` |
+| Template params | \- |
+| Inputs (**\*** means mandatory) | `'converter': {'meta': {}} `  <br />`'fetcher': {'urls': ["https://example.com"]}`**\***  <br />`'llm': {'generation_kwargs': {}}`  <br />`'prompt': {'query': 'the question to ask'}` |
+
+</div>
+
+Example code:
+
+```python
+from haystack import Pipeline, PredefinedPipeline
+
+pipeline = Pipeline.from_template(PredefinedPipeline.GENERATIVE_QA)
+pipeline.run({"prompt_builder":{"question":"Where is Rome?"}})
+```
+
+### Indexing
+
+Generates a pipeline that imports documents from one or more text files, creates the embeddings for each of them, and finally stores them in an [`InMemoryDocumentStore`](../../document-stores/inmemorydocumentstore.mdx).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| Template identifier | `CHAT_WITH_WEBSITE` |
+| Template params | \- |
+| Inputs (**\*** means mandatory) | `'converter': {'meta': {}} `  <br />`'fetcher': {'urls': ["https://example.com"]}`**\***  <br />`'llm': {'generation_kwargs': {}}`  <br />`'prompt': {'query': 'the question to ask'}` |
+
+</div>
+
+Example code:
+
+```python
+from haystack import Pipeline, PredefinedPipeline
+
+pipeline = Pipeline.from_template(PredefinedPipeline.INDEXING)
+result = pipeline.run({"converter": {"sources": ["some_file.txt"]}})
+```
+
+### RAG
+
+Generates a RAG pipeline using data that was previously indexed (you can use the Indexing template).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| Template identifier | `CHAT_WITH_WEBSITE` |
+| Template params | \- |
+| Inputs (**\*** means mandatory) | `'converter': {'meta': {}} `  <br />`'fetcher': {'urls': ["https://example.com"]}`**\***  <br />`'llm': {'generation_kwargs': {}}`  <br />`'prompt': {'query': 'the question to ask'}` |
+
+</div>
+
+Example code:
+
+```python
+from haystack import Pipeline, PredefinedPipeline
+
+pipeline = Pipeline.from_template(PredefinedPipeline.RAG)
+pipeline.run({"text_embedder": {"text": "A question about your documents"}})
+```

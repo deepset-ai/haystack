@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from itertools import chain
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
@@ -39,8 +39,8 @@ class ListJoiner:
 
     prompt_builder = ChatPromptBuilder(template=user_message)
     feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-    llm = OpenAIChatGenerator(model="gpt-4o-mini")
-    feedback_llm = OpenAIChatGenerator(model="gpt-4o-mini")
+    llm = OpenAIChatGenerator()
+    feedback_llm = OpenAIChatGenerator()
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -64,7 +64,7 @@ class ListJoiner:
     ```
     """
 
-    def __init__(self, list_type_: Optional[type] = None):
+    def __init__(self, list_type_: type | None = None):
         """
         Creates a ListJoiner component.
 

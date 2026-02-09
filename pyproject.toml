@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -34,7 +34,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -52,7 +51,7 @@ dependencies = [
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
-  "typing_extensions>=4.7", # typing support for Python 3.9
+  "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "requests",
   "numpy",
   "python-dateutil",
@@ -73,12 +72,14 @@ dependencies = [
   # We pin it here to avoid taking too much time.
   # https://opendev.org/openstack/reno/src/branch/master/requirements.txt#L7
   "dulwich>=0.21.0,<1.0.0",
+  "haystack-pydoc-tools",
 ]
 
 [tool.hatch.envs.default.scripts]
 release-note = "reno new {args}"
-fmt = "ruff check --fix {args} && ruff format {args}"
+fmt = "ruff check --fix {args}; ruff format {args}"
 fmt-check = "ruff check {args} && ruff format --check {args}"
+docs = "./.github/utils/pydoc-markdown.sh"
 
 [tool.hatch.envs.test]
 
@@ -90,7 +91,7 @@ dependencies = [
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                       # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch, sentencepiece]>=4.55.4,<4.57",  # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "transformers[torch, sentencepiece]>=4.57,<5",      # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
   "sentence-transformers>=5.0.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
@@ -117,6 +118,9 @@ dependencies = [
 
   "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
   "tiktoken", # RecursiveDocumentSplitter
+
+  # Human in the Loop
+  "rich",                 # Console rendering for HITL
 
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
@@ -147,7 +151,8 @@ dependencies = [
   "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
   "ipython",
-  "colorama==0.4.6",         # Pipeline checkpoints test - ToDo: rewrite the test without this lib
+  "colorama==0.4.6",         # Pipeline checkpoints test
+  "anyio",                   # needed for asynchronous Path testing
 ]
 
 [tool.hatch.envs.test.scripts]
@@ -158,7 +163,7 @@ integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test
 all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/pipeline/features/test_run.py}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/}"
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]
@@ -167,22 +172,10 @@ extra-dependencies = [
   # NamedEntityExtractor
   "spacy>=3.8,<3.9",
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
-  # spacy requires thinc, which depends on blis. We pin blis because version 1.2.1 does not have wheels for python 3.9
-  # and compiling it from source takes much time.
-  "blis<1.2.1; python_version < '3.10'",
 ]
 
 [tool.hatch.envs.e2e.scripts]
 test = "pytest {args:e2e}"
-
-[tool.hatch.envs.readme]
-installer = "uv"
-detached = true                         # To avoid installing the dependencies from the default environment
-dependencies = ["haystack-pydoc-tools"]
-
-[tool.hatch.envs.readme.scripts]
-sync = "./.github/utils/pydoc-markdown.sh {args}"
-delete-outdated = "python ./.github/utils/delete_outdated_docs.py {args}"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -205,7 +198,7 @@ include = ["/haystack", "/VERSION.txt"]
 packages = ["haystack"]
 
 [tool.codespell]
-ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus"
+ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME"
 quiet-level = 3
 skip = "./test,./e2e"
 
@@ -275,7 +268,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
@@ -304,12 +297,22 @@ skip-magic-trailing-comma = true
   "SIM105", # try-except-pass instead of contextlib-suppress
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
 ]
-# in the following files, we still allow type hints like typing.List because we want to test both old and new types
-"test/core/test_type_utils.py" = ["UP006"]
-"test/utils/test_type_serialization.py" = ["UP006"]
-"test/components/agents/test_state_class.py" = ["UP006"]
+# in the following files, we still allow old type hints to handle and test them
+# UP006: generics like typing.List, typing.Dict
+# UP007: Union[X, Y] syntax
+# UP045: Optional[X] syntax
+"haystack/components/agents/state/state_utils.py" = ["UP007"]
+"haystack/core/super_component/utils.py" = ["UP007"]
+"haystack/core/type_utils.py" = ["UP007"]
+"haystack/tools/parameters_schema_utils.py" = ["UP007"]
+"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP045"]
 "test/components/converters/test_output_adapter.py" = ["UP006"]
 "test/components/joiners/test_list_joiner.py" = ["UP006"]
+"test/core/test_type_utils.py" = ["UP006", "UP007", "UP045"]
+"test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
+"test/core/super_component/test_utils.py" = ["UP007", "UP045"]
+"test/tools/test_parameters_schema_utils.py" = ["UP007"]
+"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045"]
 
 
 [tool.ruff.lint]
@@ -329,7 +332,9 @@ select = [
   "SIM",   # flake8-simplify
   "SLOT",  # flake8-slots
   "T10",   # flake8-debugger
-  "UP006", # non-pep585-annotation
+  "UP006", # non-pep585-annotation (enforce list, dict, etc.)
+  "UP007", # non-pep604-annotation-union (enforce X | Y syntax)
+  "UP045", # non-pep604-annotation-optional (enforce X | None syntax)
   "W",     # pycodestyle
   "YTT",   # flake8-2020
   "I",     # isort
@@ -348,7 +353,6 @@ select = [
 ]
 
 ignore = [
-  "F401",    # unused-import
   "PERF203", # `try`-`except` within a loop incurs performance overhead
   "PERF401", # Use a list comprehension to create a transformed list
   "PLR1714", # repeated-equality-comparison

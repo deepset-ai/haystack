@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from haystack.utils.misc import _guess_mime_type
 
@@ -21,7 +21,7 @@ class ByteStream:
 
     data: bytes
     meta: dict[str, Any] = field(default_factory=dict, hash=False)
-    mime_type: Optional[str] = field(default=None)
+    mime_type: str | None = field(default=None)
 
     def to_file(self, destination_path: Path) -> None:
         """
@@ -36,8 +36,8 @@ class ByteStream:
     def from_file_path(
         cls,
         filepath: Path,
-        mime_type: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
+        mime_type: str | None = None,
+        meta: dict[str, Any] | None = None,
         guess_mime_type: bool = False,
     ) -> "ByteStream":
         """
@@ -55,7 +55,7 @@ class ByteStream:
 
     @classmethod
     def from_string(
-        cls, text: str, encoding: str = "utf-8", mime_type: Optional[str] = None, meta: Optional[dict[str, Any]] = None
+        cls, text: str, encoding: str = "utf-8", mime_type: str | None = None, meta: dict[str, Any] | None = None
     ) -> "ByteStream":
         """
         Create a ByteStream encoding a string.
@@ -98,6 +98,17 @@ class ByteStream:
         # Note: The data is converted to a list of integers for serialization since JSON does not support bytes
         # directly.
         return {"data": list(self.data), "meta": self.meta, "mime_type": self.mime_type}
+
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the ByteStream to a dictionary representation for tracing.
+
+        Binary data is replaced with a placeholder string to avoid sending large payloads to the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+        return {"data": f"Binary data ({len(self.data)} bytes)", "meta": self.meta, "mime_type": self.mime_type}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ByteStream":

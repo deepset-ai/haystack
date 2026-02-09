@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/banner.png" alt="Green logo of a stylized white 'H' with the text 'Haystack, by deepset.' Abstract green and yellow diagrams in the background."></a>
+  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/images/banner.png" alt="Blue banner with the Haystack logo and the text ‘haystack by deepset – The Open Source AI Framework for Production Ready RAG & Agents’ surrounded by abstract icons representing search, documents, agents, pipelines, and cloud systems."></a>
 
 |         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -21,8 +21,7 @@ and LLMs into pipelines to build end-to-end NLP applications and solve your use 
 - [Features](#features)
 - [Use Cases](#features)
 - [Hayhooks (REST API Deployment)](#-tip-1)
-- [Haystack Enterprise](#haystack-enterprise-best-practices-and-expert-support)
-- [deepset Studio](#-deepset-studio-your-development-environment-for-haystack)
+- [Haystack Enterprise Starter](#haystack-enterprise-best-practices-and-expert-support)
 - [Telemetry](#telemetry)
 - [🖖 Community](#-community)
 - [Contributing to Haystack](#contributing-to-haystack)
@@ -76,24 +75,14 @@ Some examples of what you can do with Haystack:
 >
 > Would you like to deploy and serve Haystack pipelines as REST APIs yourself? [Hayhooks](https://github.com/deepset-ai/hayhooks) provides a simple way to wrap your pipelines with custom logic and expose them via HTTP endpoints, including OpenAI-compatible chat completion endpoints and compatibility with fully-featured chat interfaces like [open-webui](https://openwebui.com/).
 
-## Haystack Enterprise: Best Practices and Expert Support
+## Haystack Enterprise Starter: Best Practices and Expert Support
 
-Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
+Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise Starter**. Read more about it the [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
 
-👉 [Get Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise) 
+👉 [Get Haystack Enterprise Starter](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise)
 
-## deepset Studio: Your Development Environment for Haystack
-
-Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in our [announcement post](https://haystack.deepset.ai/blog/announcing-studio).
-
-![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
-
-👉 [Sign up](https://landing.deepset.ai/deepset-studio-signup)!
-
-> [!TIP]
-><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=20%>
 >
-> Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
+> Are you looking for a managed solution that benefits from Haystack? [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is a fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
 ## Telemetry
 
@@ -112,6 +101,7 @@ We are very open to the community's contributions - be it a quick fix of a typo,
 There are several ways you can contribute to Haystack:
 - Contribute to the main Haystack project
 - Contribute an integration on [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations)
+- Contribute to the documentation in [haystack/docs-website](https://github.com/deepset-ai/haystack/tree/main/docs-website)
 
 > [!TIP]
 >👉 **[Check out the full list of issues that are open to contributions](https://github.com/orgs/deepset-ai/projects/14)**

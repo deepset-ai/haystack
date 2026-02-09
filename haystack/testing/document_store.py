@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 import random
 from datetime import datetime
 
@@ -30,7 +31,8 @@ TEST_EMBEDDING_2 = _random_embeddings(768)
 
 
 class AssertDocumentsEqualMixin:
-    def assert_documents_are_equal(self, received: list[Document], expected: list[Document]):
+    @staticmethod
+    def assert_documents_are_equal(received: list[Document], expected: list[Document]):
         """
         Assert that two lists of Documents are equal.
 
@@ -57,11 +59,13 @@ class CountDocumentsTest:
     ```
     """
 
-    def test_count_empty(self, document_store: DocumentStore):
+    @staticmethod
+    def test_count_empty(document_store: DocumentStore):
         """Test count is zero for an empty document store"""
         assert document_store.count_documents() == 0
 
-    def test_count_not_empty(self, document_store: DocumentStore):
+    @staticmethod
+    def test_count_not_empty(document_store: DocumentStore):
         """Test count is greater than zero if the document store contains documents"""
         document_store.write_documents(
             [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
@@ -105,7 +109,8 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
             document_store.write_documents(documents=[doc], policy=DuplicatePolicy.FAIL)
         self.assert_documents_are_equal(document_store.filter_documents(), [doc])
 
-    def test_write_documents_duplicate_skip(self, document_store: DocumentStore):
+    @staticmethod
+    def test_write_documents_duplicate_skip(document_store: DocumentStore):
         """Test write_documents() skips writing when using DuplicatePolicy.SKIP."""
         doc = Document(content="test doc")
         assert document_store.write_documents([doc], policy=DuplicatePolicy.SKIP) == 1
@@ -121,7 +126,8 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
         assert document_store.write_documents(documents=[doc1], policy=DuplicatePolicy.OVERWRITE) == 1
         self.assert_documents_are_equal(document_store.filter_documents(), [doc1])
 
-    def test_write_documents_invalid_input(self, document_store: DocumentStore):
+    @staticmethod
+    def test_write_documents_invalid_input(document_store: DocumentStore):
         """Test write_documents() fails when providing unexpected input."""
         with pytest.raises(ValueError):
             document_store.write_documents(["not a document for sure"])  # type: ignore
@@ -146,7 +152,8 @@ class DeleteDocumentsTest:
     ```
     """
 
-    def test_delete_documents(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_documents(document_store: DocumentStore):
         """Test delete_documents() normal behaviour."""
         doc = Document(content="test doc")
         document_store.write_documents([doc])
@@ -155,12 +162,14 @@ class DeleteDocumentsTest:
         document_store.delete_documents([doc.id])
         assert document_store.count_documents() == 0
 
-    def test_delete_documents_empty_document_store(self, document_store: DocumentStore):
+    @staticmethod
+    def test_delete_documents_empty_document_store(document_store: DocumentStore):
         """Test delete_documents() doesn't fail when called using an empty Document Store."""
         document_store.delete_documents(["non_existing_id"])
 
-    def test_delete_documents_non_existing_document(self, document_store: DocumentStore):
-        """Test delete_documents() doesn't delete any Document when called with non existing id."""
+    @staticmethod
+    def test_delete_documents_non_existing_document(document_store: DocumentStore):
+        """Test delete_documents() doesn't delete any Document when called with non-existing id."""
         doc = Document(content="test doc")
         document_store.write_documents([doc])
         assert document_store.count_documents() == 1
@@ -318,13 +327,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_greater_than_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_with_string(document_store, filterable_docs):
         """Test filter_documents() with > comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": ">", "value": "1"})
 
-    def test_comparison_greater_than_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_with_list(document_store, filterable_docs):
         """Test filter_documents() with > comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -361,13 +372,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_greater_than_equal_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_equal_with_string(document_store, filterable_docs):
         """Test filter_documents() with >= comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": ">=", "value": "1"})
 
-    def test_comparison_greater_than_equal_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_greater_than_equal_with_list(document_store, filterable_docs):
         """Test filter_documents() with >= comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -404,13 +417,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_less_than_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_with_string(document_store, filterable_docs):
         """Test filter_documents() with < comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": "<", "value": "1"})
 
-    def test_comparison_less_than_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_with_list(document_store, filterable_docs):
         """Test filter_documents() with < comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -447,13 +462,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             ],
         )
 
-    def test_comparison_less_than_equal_with_string(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_equal_with_string(document_store, filterable_docs):
         """Test filter_documents() with <= comparator and string"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents(filters={"field": "meta.number", "operator": "<=", "value": "1"})
 
-    def test_comparison_less_than_equal_with_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_less_than_equal_with_list(document_store, filterable_docs):
         """Test filter_documents() with <= comparator and list"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -474,13 +491,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         expected = [d for d in filterable_docs if d.meta.get("number") is not None and d.meta["number"] in [10, -10]]
         self.assert_documents_are_equal(result, expected)
 
-    def test_comparison_in_with_with_non_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_in_with_with_non_list(document_store, filterable_docs):
         """Test filter_documents() with 'in' comparator and non-iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents({"field": "meta.number", "operator": "in", "value": 9})
 
-    def test_comparison_in_with_with_non_list_iterable(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_in_with_with_non_list_iterable(document_store, filterable_docs):
         """Test filter_documents() with 'in' comparator and iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -493,13 +512,15 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
         result = document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": [9, 10]})
         self.assert_documents_are_equal(result, [d for d in filterable_docs if d.meta.get("number") not in [9, 10]])
 
-    def test_comparison_not_in_with_with_non_list(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_not_in_with_with_non_list(document_store, filterable_docs):
         """Test filter_documents() with 'not in' comparator and non-iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
             document_store.filter_documents({"field": "meta.number", "operator": "not in", "value": 9})
 
-    def test_comparison_not_in_with_with_non_list_iterable(self, document_store, filterable_docs):
+    @staticmethod
+    def test_comparison_not_in_with_with_non_list_iterable(document_store, filterable_docs):
         """Test filter_documents() with 'not in' comparator and iterable"""
         document_store.write_documents(filterable_docs)
         with pytest.raises(FilterError):
@@ -594,7 +615,341 @@ class FilterDocumentsTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin)
             )
 
 
-class DocumentStoreBaseTests(CountDocumentsTest, WriteDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest):
+class DeleteAllTest:
+    """
+    Tests for Document Store delete_all_documents().
+
+    To use it create a custom test class and override the `document_store` fixture.
+    Only mix in for stores that implement delete_all_documents.
+    """
+
+    @staticmethod
+    def test_delete_all_documents(document_store: DocumentStore):
+        """
+        Test delete_all_documents() normal behaviour.
+
+        This test verifies that delete_all_documents() removes all documents from the store
+        and that the store remains functional after deletion.
+        """
+        docs = [Document(content="first doc", id="1"), Document(content="second doc", id="2")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        document_store.delete_all_documents()  # type:ignore[attr-defined]
+        assert document_store.count_documents() == 0
+
+        new_doc = Document(content="new doc after delete all", id="3")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+    @staticmethod
+    def test_delete_all_documents_empty_store(document_store: DocumentStore):
+        """
+        Test delete_all_documents() on an empty store.
+
+        This should not raise an error and should leave the store empty.
+        """
+        assert document_store.count_documents() == 0
+        document_store.delete_all_documents()  # type:ignore[attr-defined]
+        assert document_store.count_documents() == 0
+
+    @staticmethod
+    def _delete_all_supports_recreate(document_store: DocumentStore) -> tuple[bool, str | None]:
+        """
+        Return (True, param_name) if delete_all_documents has recreate_index or recreate_collection, else (False, None).
+        """
+        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
+        if "recreate_index" in sig.parameters:
+            return True, "recreate_index"
+        if "recreate_collection" in sig.parameters:
+            return True, "recreate_collection"
+        return False, None
+
+    @staticmethod
+    def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
+        """
+        Test delete_all_documents() with recreate_index/recreate_collection=False when supported.
+
+        Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
+        """
+        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if not supports:
+            pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
+
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        document_store.delete_all_documents(**{param_name: False})  # type:ignore[attr-defined]
+        assert document_store.count_documents() == 0
+
+        new_doc = Document(id="3", content="New document after delete all")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+    @staticmethod
+    def test_delete_all_documents_with_recreate_index(document_store: DocumentStore):
+        """
+        Test delete_all_documents() with recreate_index/recreate_collection=True when supported.
+
+        Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
+        """
+        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if not supports:
+            pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
+
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        document_store.delete_all_documents(**{param_name: True})  # type:ignore[attr-defined]
+        assert document_store.count_documents() == 0
+
+        new_doc = Document(id="3", content="New document after delete all with recreate")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+        retrieved = document_store.filter_documents()
+        assert len(retrieved) == 1
+        assert retrieved[0].content == "New document after delete all with recreate"
+
+
+class DeleteByFilterTest:
+    """
+    Tests for Document Store delete_by_filter().
+    """
+
+    @staticmethod
+    def test_delete_by_filter(document_store: DocumentStore):
+        """Delete documents matching a filter and verify count and remaining docs."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha"}),
+            Document(content="Doc 2", meta={"category": "Beta"}),
+            Document(content="Doc 3", meta={"category": "Alpha"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        # `delete_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "Alpha"}, **params
+        )
+        assert deleted_count == 2
+        assert document_store.count_documents() == 1
+
+        remaining_docs = document_store.filter_documents()
+        assert len(remaining_docs) == 1
+        assert remaining_docs[0].meta["category"] == "Beta"
+
+    @staticmethod
+    def test_delete_by_filter_no_matches(document_store: DocumentStore):
+        """Delete with a filter that matches no documents returns 0 and leaves store unchanged."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha"}),
+            Document(content="Doc 2", meta={"category": "Beta"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "Gamma"}
+        )
+        assert deleted_count == 0
+        assert document_store.count_documents() == 2
+
+    @staticmethod
+    def test_delete_by_filter_advanced_filters(document_store: DocumentStore):
+        """Delete with AND/OR filter combinations and verify remaining documents."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "published"}),
+            Document(content="Doc 3", meta={"category": "Beta", "year": 2023, "status": "draft"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        # `delete_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.delete_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            },
+            **params,
+        )
+        assert deleted_count == 1
+        assert document_store.count_documents() == 2
+
+        deleted_count = document_store.delete_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Beta"},
+                    {"field": "meta.status", "operator": "==", "value": "published"},
+                ],
+            },
+            **params,
+        )
+        assert deleted_count == 2
+        assert document_store.count_documents() == 0
+
+
+class UpdateByFilterTest:
+    """
+    Tests for Document Store update_by_filter().
+    """
+
+    @staticmethod
+    def test_update_by_filter(document_store: DocumentStore, filterable_docs: list[Document]):
+        """Update documents matching a filter and verify count and meta changes."""
+        document_store.write_documents(filterable_docs)
+        expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
+        assert document_store.count_documents() == len(filterable_docs)
+
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}, **params
+        )
+        assert updated_count == expected_count
+
+        updated_docs = document_store.filter_documents(
+            filters={"field": "meta.updated", "operator": "==", "value": True}
+        )
+        assert len(updated_docs) == expected_count
+        for doc in updated_docs:
+            assert doc.meta["chapter"] == "intro"
+            assert doc.meta["updated"] is True
+
+        not_updated_docs = document_store.filter_documents(
+            filters={"field": "meta.chapter", "operator": "==", "value": "abstract"}
+        )
+        for doc in not_updated_docs:
+            assert doc.meta.get("updated") is not True
+
+    @staticmethod
+    def test_update_by_filter_no_matches(document_store: DocumentStore, filterable_docs: list[Document]):
+        """Update with a filter that matches no documents returns 0 and leaves store unchanged."""
+        document_store.write_documents(filterable_docs)
+        initial_count = len(filterable_docs)
+        assert document_store.count_documents() == initial_count
+
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.chapter", "operator": "==", "value": "nonexistent_chapter"}, meta={"updated": True}
+        )
+        assert updated_count == 0
+        assert document_store.count_documents() == initial_count
+
+    @staticmethod
+    def test_update_by_filter_multiple_fields(document_store: DocumentStore, filterable_docs: list[Document]):
+        """Update matching documents with multiple meta fields and verify all are set."""
+        document_store.write_documents(filterable_docs)
+        expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
+        assert document_store.count_documents() == len(filterable_docs)
+
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
+            meta={"updated": True, "extra_field": "set"},
+            **params,
+        )
+        assert updated_count == expected_count
+
+        updated_docs = document_store.filter_documents(
+            filters={"field": "meta.extra_field", "operator": "==", "value": "set"}
+        )
+        assert len(updated_docs) == expected_count
+        for doc in updated_docs:
+            assert doc.meta["updated"] is True
+            assert doc.meta["extra_field"] == "set"
+            assert doc.meta["chapter"] == "intro"
+            assert doc.meta.get("number") == 2
+
+        not_updated_docs = document_store.filter_documents(
+            filters={"field": "meta.chapter", "operator": "==", "value": "abstract"}
+        )
+        for doc in not_updated_docs:
+            assert doc.meta.get("extra_field") != "set"
+
+    @staticmethod
+    def test_update_by_filter_advanced_filters(document_store: DocumentStore):
+        """Update with AND/OR filter combinations and verify updated documents."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "Alpha", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "Alpha", "year": 2024, "status": "draft"}),
+            Document(content="Doc 3", meta={"category": "Beta", "year": 2023, "status": "draft"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        # `update_by_filter` is not part of the DocumentStore protocol
+        sig = inspect.signature(document_store.update_by_filter)  # type:ignore[attr-defined]
+        params = {"refresh": True} if "refresh" in sig.parameters else {}
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Alpha"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            },
+            meta={"status": "published"},
+            **params,
+        )
+        assert updated_count == 1
+
+        published_docs = document_store.filter_documents(
+            filters={"field": "meta.status", "operator": "==", "value": "published"}
+        )
+        assert len(published_docs) == 1
+        assert published_docs[0].meta["category"] == "Alpha"
+        assert published_docs[0].meta["year"] == 2023
+
+        updated_count = document_store.update_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "OR",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "Beta"},
+                    {"field": "meta.year", "operator": "==", "value": 2024},
+                ],
+            },
+            meta={"featured": True},
+            **params,
+        )
+        assert updated_count == 2
+
+        featured_docs = document_store.filter_documents(
+            filters={"field": "meta.featured", "operator": "==", "value": True}
+        )
+        assert len(featured_docs) == 2
+
+
+class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):
+    @pytest.fixture
+    def document_store(self) -> DocumentStore:
+        """Base fixture, to be reimplemented when deriving from DocumentStoreBaseTests"""
+        raise NotImplementedError()
+
+
+class DocumentStoreBaseExtendedTests(DocumentStoreBaseTests, DeleteAllTest, DeleteByFilterTest, UpdateByFilterTest):  # pylint: disable=too-many-ancestors
+    """
+    Extended tests for Document Stores.
+
+    Besides the base tests, it also tests for:
+    - delete_all_documents()
+    - delete_by_filter()
+    - update_by_filter()
+    """
+
     @pytest.fixture
     def document_store(self) -> DocumentStore:
         """Base fixture, to be reimplemented when deriving from DocumentStoreBaseTests"""

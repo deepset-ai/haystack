@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.converters.image.image_utils import (
@@ -16,7 +16,7 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
     _SentenceTransformersEmbeddingBackendFactory,
 )
 from haystack.lazy_imports import LazyImport
-from haystack.utils.auth import Secret, deserialize_secrets_inplace
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
@@ -61,20 +61,20 @@ class SentenceTransformersDocumentImageEmbedder:
         self,
         *,
         file_path_meta_field: str = "file_path",
-        root_path: Optional[str] = None,
+        root_path: str | None = None,
         model: str = "sentence-transformers/clip-ViT-B-32",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
-        encode_kwargs: Optional[dict[str, Any]] = None,
+        encode_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
         """
@@ -150,7 +150,7 @@ class SentenceTransformersDocumentImageEmbedder:
         self.encode_kwargs = encode_kwargs
         self.precision = precision
         self.backend = backend
-        self._embedding_backend: Optional[_SentenceTransformersEmbeddingBackend] = None
+        self._embedding_backend: _SentenceTransformersEmbeddingBackend | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -164,8 +164,8 @@ class SentenceTransformersDocumentImageEmbedder:
             file_path_meta_field=self.file_path_meta_field,
             root_path=self.root_path,
             model=self.model,
-            device=self.device.to_dict(),
-            token=self.token.to_dict() if self.token else None,
+            device=self.device,
+            token=self.token,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
@@ -193,9 +193,6 @@ class SentenceTransformersDocumentImageEmbedder:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
@@ -237,7 +234,7 @@ class SentenceTransformersDocumentImageEmbedder:
                 "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
             )
         if self._embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         images_source_info = _extract_image_sources_info(
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
@@ -270,7 +267,8 @@ class SentenceTransformersDocumentImageEmbedder:
         if none_images_doc_ids:
             raise RuntimeError(f"Conversion failed for some documents. Document IDs: {none_images_doc_ids}.")
 
-        embeddings = self._embedding_backend.embed(
+        # mypy doesn't know this is set in warm_up
+        embeddings = self._embedding_backend.embed(  # type: ignore[union-attr]
             data=images_to_embed,
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,

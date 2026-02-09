@@ -4,7 +4,8 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
+from warnings import warn
 
 from jinja2 import PackageLoader, TemplateSyntaxError, meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -75,6 +76,12 @@ class PipelineTemplate:
 
         :param template_content: The raw template source to use in the template.
         """
+        msg = (
+            "`PipelineTemplate` and `PredefinedPipeline` are deprecated. "
+            "They will be removed in Haystack version 2.25. "
+            "Pipeline YAML files should be used instead."
+        )
+        warn(msg, DeprecationWarning, stacklevel=4)
         env = SandboxedEnvironment(
             loader=PackageLoader("haystack.core.pipeline", "predefined"), trim_blocks=True, lstrip_blocks=True
         )
@@ -87,7 +94,7 @@ class PipelineTemplate:
         self.template_variables = meta.find_undeclared_variables(env.parse(template_content))
         self._template_content = template_content
 
-    def render(self, template_params: Optional[dict[str, Any]] = None) -> str:
+    def render(self, template_params: dict[str, Any] | None = None) -> str:
         """
         Constructs a `Pipeline` instance based on the template.
 
@@ -99,7 +106,7 @@ class PipelineTemplate:
         return self._template.render(**template_params)
 
     @classmethod
-    def from_file(cls, file_path: Union[Path, str]) -> "PipelineTemplate":
+    def from_file(cls, file_path: Path | str) -> "PipelineTemplate":
         """
         Create a PipelineTemplate from a file.
 

@@ -14,7 +14,7 @@ from haystack.components.fetchers.link_content import (
     _text_content_handler,
 )
 
-HTML_URL = "https://docs.haystack.deepset.ai/docs"
+HTML_URL = "https://docs.haystack.deepset.ai/docs/intro"
 TEXT_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/README.md"
 PDF_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/b5987a6d8d0714eb2f3011183ab40093d2e4a41a/e2e/samples/pipelines/sample_pdf_1.pdf"
 
@@ -182,7 +182,10 @@ class TestLinkContentFetcher:
             assert sent_headers["Accept-Language"] == "fr-FR"
             assert sent_headers["User-Agent"] == "ua-sync-1"  # rotating UA wins
 
-    @pytest.mark.integration
+
+@pytest.mark.flaky(reruns=3, reruns_delay=5)
+@pytest.mark.integration
+class TestLinkContentFetcherIntegration:
     def test_link_content_fetcher_html(self):
         """
         Test fetching HTML content from a real URL.
@@ -195,7 +198,6 @@ class TestLinkContentFetcher:
         assert "url" in first_stream.meta and first_stream.meta["url"] == HTML_URL
         assert first_stream.mime_type == "text/html"
 
-    @pytest.mark.integration
     def test_link_content_fetcher_text(self):
         """
         Test fetching text content from a real URL.
@@ -208,7 +210,6 @@ class TestLinkContentFetcher:
         assert "url" in first_stream.meta and first_stream.meta["url"] == TEXT_URL
         assert first_stream.mime_type == "text/plain"
 
-    @pytest.mark.integration
     def test_link_content_fetcher_multiple_different_content_types(self):
         """
         This test is to ensure that the fetcher can handle a list of URLs that contain different content types.
@@ -225,7 +226,6 @@ class TestLinkContentFetcher:
                 assert len(stream.data) > 0
                 assert stream.mime_type == "application/pdf"
 
-    @pytest.mark.integration
     def test_link_content_fetcher_multiple_html_streams(self):
         """
         This test is to ensure that the fetcher can handle a list of URLs that contain different content types,
@@ -244,7 +244,6 @@ class TestLinkContentFetcher:
                 assert len(stream.data) > 0
                 assert stream.mime_type == "application/pdf"
 
-    @pytest.mark.integration
     def test_mix_of_good_and_failed_requests(self):
         """
         This test is to ensure that the fetcher can handle a list of URLs that contain URLs that fail to be fetched.
@@ -259,8 +258,8 @@ class TestLinkContentFetcher:
         assert first_stream.mime_type == "text/html"
 
 
+@pytest.mark.asyncio
 class TestLinkContentFetcherAsync:
-    @pytest.mark.asyncio
     async def test_run_async(self):
         """Test basic async fetching with a mocked response"""
         with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
@@ -276,7 +275,6 @@ class TestLinkContentFetcherAsync:
             assert first_stream.meta["content_type"] == "text/plain"
             assert first_stream.mime_type == "text/plain"
 
-    @pytest.mark.asyncio
     async def test_run_async_multiple(self):
         """Test async fetching of multiple URLs with mocked responses"""
         with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
@@ -295,14 +293,12 @@ class TestLinkContentFetcherAsync:
                 assert stream.meta["content_type"] == "text/plain"
                 assert stream.mime_type == "text/plain"
 
-    @pytest.mark.asyncio
     async def test_run_async_empty_urls(self):
         """Test async fetching with empty URL list"""
         fetcher = LinkContentFetcher()
         streams = (await fetcher.run_async(urls=[]))["streams"]
         assert len(streams) == 0
 
-    @pytest.mark.asyncio
     async def test_run_async_error_handling(self):
         """Test error handling for async fetching"""
         with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
@@ -322,7 +318,6 @@ class TestLinkContentFetcherAsync:
             with pytest.raises(httpx.HTTPStatusError):
                 await fetcher.run_async(urls=["https://www.example.com"])
 
-    @pytest.mark.asyncio
     async def test_run_async_user_agent_rotation(self):
         """Test user agent rotation in async fetching"""
         with (
@@ -355,34 +350,6 @@ class TestLinkContentFetcherAsync:
 
             mock_sleep.assert_called_once()
 
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_run_async_multiple_integration(self):
-        """Test async fetching of multiple URLs with real HTTP requests"""
-        fetcher = LinkContentFetcher()
-        streams = (await fetcher.run_async([HTML_URL, TEXT_URL]))["streams"]
-        assert len(streams) == 2
-
-        for stream in streams:
-            assert "Haystack" in stream.data.decode("utf-8")
-
-            if stream.meta["url"] == HTML_URL:
-                assert stream.meta["content_type"] == "text/html"
-                assert stream.mime_type == "text/html"
-            elif stream.meta["url"] == TEXT_URL:
-                assert stream.meta["content_type"] == "text/plain"
-                assert stream.mime_type == "text/plain"
-
-    @pytest.mark.asyncio
-    @pytest.mark.integration
-    async def test_run_async_with_client_kwargs(self):
-        """Test async fetching with custom client kwargs"""
-        fetcher = LinkContentFetcher(client_kwargs={"follow_redirects": True, "timeout": 10.0})
-        streams = (await fetcher.run_async([HTML_URL]))["streams"]
-        assert len(streams) == 1
-        assert "Haystack" in streams[0].data.decode("utf-8")
-
-    @pytest.mark.asyncio
     async def test_request_headers_merging_and_ua_override(self):
         # Patch the AsyncClient class to control the instance created by LinkContentFetcher
         with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
@@ -404,3 +371,65 @@ class TestLinkContentFetcherAsync:
             assert sent_headers["X-Async"] == "true"
             assert sent_headers["Accept-Language"] == "de-DE"
             assert sent_headers["User-Agent"] == "ua-async-1"  # rotating UA wins
+
+    async def test_duplicated_request_headers_merging(self):
+        # Patch the AsyncClient class to control the instance created by LinkContentFetcher
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+            aclient = AsyncClientMock.return_value
+            aclient.headers = {}  # base headers used in the merge
+
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            aclient.get = AsyncMock(return_value=mock_response)
+
+            fetcher = LinkContentFetcher(
+                request_headers={
+                    "x-test-header": "header-1",
+                    "X-Test-Header": "agent-2",
+                    "X-TEST-HEADER": "agent-3",
+                    "X-TeSt-HeAdEr": "good-one",
+                }
+            )
+
+            _ = (await fetcher.run_async(urls=["https://example.com"]))["streams"]
+
+            assert aclient.get.await_count == 1
+            sent_headers = aclient.get.call_args.kwargs["headers"]
+            existing_keys = {}
+            for key, value in sent_headers.items():
+                lower_key = key.lower()
+                if lower_key in existing_keys:
+                    assert False
+                elif lower_key == "x-test-header":
+                    assert value == "good-one"
+                existing_keys[lower_key] = key
+
+            assert "x-test-header" in existing_keys
+            assert existing_keys["x-test-header"] == "X-TeSt-HeAdEr"
+
+
+@pytest.mark.flaky(reruns=3, reruns_delay=5)
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestLinkContentFetcherAsyncIntegration:
+    async def test_run_async_multiple_integration(self):
+        """Test async fetching of multiple URLs with real HTTP requests"""
+        fetcher = LinkContentFetcher()
+        streams = (await fetcher.run_async([HTML_URL, TEXT_URL]))["streams"]
+        assert len(streams) == 2
+
+        for stream in streams:
+            assert "Haystack" in stream.data.decode("utf-8")
+
+            if stream.meta["url"] == HTML_URL:
+                assert stream.meta["content_type"] == "text/html"
+                assert stream.mime_type == "text/html"
+            elif stream.meta["url"] == TEXT_URL:
+                assert stream.meta["content_type"] == "text/plain"
+                assert stream.mime_type == "text/plain"
+
+    async def test_run_async_with_client_kwargs(self):
+        """Test async fetching with custom client kwargs"""
+        fetcher = LinkContentFetcher(client_kwargs={"follow_redirects": True, "timeout": 10.0})
+        streams = (await fetcher.run_async([HTML_URL]))["streams"]
+        assert len(streams) == 1
+        assert "Haystack" in streams[0].data.decode("utf-8")

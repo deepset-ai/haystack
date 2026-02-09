@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +26,7 @@ from haystack.utils.auth import Secret
 def mock_openai_generator(monkeypatch):
     """Create a mock OpenAI Generator for testing."""
 
-    def mock_run(self, prompt: str, **kwargs):
+    def mock_run(self: Any, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
         return {"replies": ["This is a test response about capitals."]}
 
     monkeypatch.setattr(OpenAIGenerator, "run", mock_run)
@@ -58,7 +58,7 @@ def rag_pipeline(document_store):
     @component
     class FakeGenerator:
         @component.output_types(replies=list[str])
-        def run(self, prompt: str, **kwargs):
+        def run(self, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
             return {"replies": ["This is a test response about capitals."]}
 
     pipeline = Pipeline()
@@ -89,7 +89,7 @@ def async_rag_pipeline(document_store):
     @component
     class FakeGenerator:
         @component.output_types(replies=list[str])
-        def run(self, prompt: str, **kwargs):
+        def run(self, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
             return {"replies": ["This is a test response about capitals."]}
 
     pipeline = AsyncPipeline()
@@ -148,7 +148,7 @@ class TestSuperComponent:
     def test_invalid_input_mapping_type(self, rag_pipeline):
         input_mapping = {"search_query": "not_a_list"}  # Should be a list
         with pytest.raises(InvalidMappingTypeError):
-            SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping)
+            SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping)  # type: ignore[arg-type]
 
     def test_invalid_input_mapping_value(self, rag_pipeline):
         input_mapping = {"search_query": ["nonexistent_component.query"]}
@@ -158,7 +158,7 @@ class TestSuperComponent:
     def test_invalid_output_mapping_type(self, rag_pipeline):
         output_mapping = {"answer_builder.answers": 123}  # Should be a string
         with pytest.raises(InvalidMappingTypeError):
-            SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
+            SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)  # type: ignore[arg-type]
 
     def test_invalid_output_mapping_value(self, rag_pipeline):
         output_mapping = {"nonexistent_component.answers": "final_answers"}
@@ -176,20 +176,20 @@ class TestSuperComponent:
     def test_explicit_input_mapping(self, rag_pipeline):
         input_mapping = {"search_query": ["retriever.query", "prompt_builder.query", "answer_builder.query"]}
         wrapper = SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping)
-        input_sockets = wrapper.__haystack_input__._sockets_dict
+        input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {"search_query"}
         assert input_sockets["search_query"].type == str
 
     def test_explicit_output_mapping(self, rag_pipeline):
         output_mapping = {"answer_builder.answers": "final_answers"}
         wrapper = SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
-        output_sockets = wrapper.__haystack_output__._sockets_dict
+        output_sockets = wrapper.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(output_sockets.keys()) == {"final_answers"}
         assert output_sockets["final_answers"].type == list[GeneratedAnswer]
 
     def test_auto_input_mapping(self, rag_pipeline):
         wrapper = SuperComponent(pipeline=rag_pipeline)
-        input_sockets = wrapper.__haystack_input__._sockets_dict
+        input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {
             "documents",
             "filters",
@@ -205,17 +205,17 @@ class TestSuperComponent:
 
     def test_auto_output_mapping(self, rag_pipeline):
         wrapper = SuperComponent(pipeline=rag_pipeline)
-        output_sockets = wrapper.__haystack_output__._sockets_dict
+        output_sockets = wrapper.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(output_sockets.keys()) == {"answers", "documents"}
 
     def test_auto_mapping_sockets(self, rag_pipeline):
         wrapper = SuperComponent(pipeline=rag_pipeline)
 
-        output_sockets = wrapper.__haystack_output__._sockets_dict
+        output_sockets = wrapper.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(output_sockets.keys()) == {"answers", "documents"}
         assert output_sockets["answers"].type == list[GeneratedAnswer]
 
-        input_sockets = wrapper.__haystack_input__._sockets_dict
+        input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {
             "documents",
             "filters",
@@ -376,7 +376,7 @@ class TestSuperComponent:
         @component
         class TypeTestComponent:
             @component.output_types(result_int=int, result_any=Any)
-            def run(self, input_int: int, input_any: Any):
+            def run(self, input_int: int, input_any: Any) -> dict[str, Any]:
                 return {"result_int": input_int, "result_any": input_any}
 
         pipeline = Pipeline()
@@ -387,7 +387,7 @@ class TestSuperComponent:
         output_mapping = {"test2.result_int": "result_int"}
         wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
 
-        input_sockets = wrapper.__haystack_input__._sockets_dict
+        input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert "number" in input_sockets
         assert input_sockets["number"].type == int
 
@@ -396,14 +396,14 @@ class TestSuperComponent:
 
         @component
         class UnionTypeComponent1:
-            @component.output_types(result=Union[int, str])
-            def run(self, inp: Union[int, str]):
+            @component.output_types(result=int | str)
+            def run(self, inp: int | str) -> dict[str, int | str]:
                 return {"result": inp}
 
         @component
         class UnionTypeComponent2:
-            @component.output_types(result=Union[float, str])
-            def run(self, inp: Union[float, str]):
+            @component.output_types(result=float | str)
+            def run(self, inp: float | str) -> dict[str, float | str]:
                 return {"result": inp}
 
         pipeline = Pipeline()
@@ -414,9 +414,9 @@ class TestSuperComponent:
         output_mapping = {"test2.result": "result"}
         wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
 
-        input_sockets = wrapper.__haystack_input__._sockets_dict
+        input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert "data" in input_sockets
-        assert input_sockets["data"].type == Union[str]
+        assert input_sockets["data"].type == str
 
     def test_input_types_with_any(self):
         """Test that Any type is properly handled when reconciling types."""
@@ -424,7 +424,7 @@ class TestSuperComponent:
         @component
         class AnyTypeComponent:
             @component.output_types(result=str)
-            def run(self, specific: str, generic: Any):
+            def run(self, specific: str, generic: Any) -> dict[str, str]:
                 return {"result": specific}
 
         pipeline = Pipeline()
@@ -433,7 +433,7 @@ class TestSuperComponent:
         input_mapping = {"text": ["test.specific", "test.generic"]}
         wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping)
 
-        input_sockets = wrapper.__haystack_input__._sockets_dict
+        input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert "text" in input_sockets
         assert input_sockets["text"].type == str
 

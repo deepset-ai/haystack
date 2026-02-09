@@ -25,16 +25,16 @@ def setup_document_store():
 @component
 class InvalidOutputEmbeddingRetriever:
     @component.output_types(documents=list[Document])
-    def run(self, query_embedding: list[float]):
+    def run(self, query_embedding: list[float]) -> dict[str, list[Document]]:
         # Return an int instead of the expected dict with 'documents' key
         # This will cause the pipeline to crash when trying to pass it to the next component
-        return 42
+        return 42  # type: ignore[return-value]
 
 
 @component
 class MockTextEmbedder:
     @component.output_types(embedding=list[float])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, list[float]]:
         embedding = np.ones(384).tolist()  # Mock embedding of size 384
         return {"embedding": embedding}
 
@@ -84,17 +84,23 @@ class TestPipelineOutputsRaisedInException:
         assert "Component name: 'embedding_retriever'" in str(exc_info.value)
         assert exc_info.value.component_name == "embedding_retriever"
         assert exc_info.value.component_type == InvalidOutputEmbeddingRetriever
-        assert "embedding_retriever" in exc_info.value.pipeline_snapshot_file_path
+        # File saving is disabled by default, so pipeline_snapshot_file_path is None
+        assert exc_info.value.pipeline_snapshot_file_path is None
 
         pipeline_snapshot = exc_info.value.pipeline_snapshot
+        assert pipeline_snapshot is not None
         pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
 
         # verify that bm25_retriever and text_embedder ran successfully before the crash
-        assert "bm25_retriever" in pipeline_outputs, "BM25 retriever output not captured"
-        assert "documents" in pipeline_outputs["bm25_retriever"], "BM25 retriever should have produced documents"
-        assert "text_embedder" in pipeline_outputs, "Text embedder output not captured"
-        assert "embedding" in pipeline_outputs["text_embedder"], "Text embedder should have produced embeddings"
+        assert "bm25_retriever" in pipeline_outputs["serialized_data"], "BM25 retriever output not captured"
+        assert "documents" in (pipeline_outputs["serialized_data"]["bm25_retriever"]), (
+            "BM25 retriever should have produced documents"
+        )
+        assert "text_embedder" in (pipeline_outputs["serialized_data"]), "Text embedder output not captured"
+        assert "embedding" in (pipeline_outputs["serialized_data"]["text_embedder"]), (
+            "Text embedder should have produced embeddings"
+        )
 
         # components after the crash point are not in the outputs
         assert "document_joiner" not in pipeline_outputs, "Document joiner should not have run due to crash"

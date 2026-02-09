@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from typing import Union
+
 import pytest
 from pydantic import Field, create_model
 
@@ -125,7 +127,16 @@ TOOL_CALL_SCHEMA = {
 TOOL_CALL_RESULT_SCHEMA = {
     "type": "object",
     "properties": {
-        "result": {"type": "string", "description": "The result of the Tool invocation."},
+        "result": {
+            "anyOf": [
+                {"type": "string"},
+                {
+                    "items": {"anyOf": [{"$ref": "#/$defs/TextContent"}, {"$ref": "#/$defs/ImageContent"}]},
+                    "type": "array",
+                },
+            ],
+            "description": "The result of the Tool invocation.",
+        },
         "origin": {"$ref": "#/$defs/ToolCall", "description": "The Tool call that produced this result."},
         "error": {"type": "boolean", "description": "Whether the Tool invocation resulted in an error."},
     },
@@ -257,7 +268,12 @@ CHAT_MESSAGE_SCHEMA = {
             ToolCallResult,
             "A tool call result",
             {"$ref": "#/$defs/ToolCallResult", "description": "A tool call result"},
-            {"ToolCallResult": TOOL_CALL_RESULT_SCHEMA, "ToolCall": TOOL_CALL_SCHEMA},
+            {
+                "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
+                "ToolCall": TOOL_CALL_SCHEMA,
+                "TextContent": TEXT_CONTENT_SCHEMA,
+                "ImageContent": IMAGE_CONTENT_SCHEMA,
+            },
         ),
         (
             ChatMessage,
@@ -293,6 +309,13 @@ CHAT_MESSAGE_SCHEMA = {
                 "ReasoningContent": REASONING_CONTENT_SCHEMA,
             },
         ),
+        # PEP 604 union types (X | None syntax)
+        (
+            Document | None,
+            "An optional document",
+            {"anyOf": [{"$ref": "#/$defs/Document"}, {"type": "null"}], "description": "An optional document"},
+            {"Document": DOCUMENT_SCHEMA, "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA, "ByteStream": BYTE_STREAM_SCHEMA},
+        ),
     ],
 )
 def test_create_parameters_schema_haystack_dataclasses(python_type, description, expected_schema, expected_defs_schema):
@@ -308,3 +331,20 @@ def test_create_parameters_schema_haystack_dataclasses(python_type, description,
 
     property_schema = parameters_schema["properties"]["input_name"]
     assert property_schema == expected_schema
+
+
+def test_resolve_type_pep_604():
+    resolved = _resolve_type(str | int)
+    assert resolved == Union[str, int]
+
+    resolved = _resolve_type(str | None)
+    assert resolved == Union[str, None]
+
+    resolved = _resolve_type(str | int | float)
+    assert resolved == Union[str, int, float]
+
+    resolved = _resolve_type(list[str] | None)
+    assert resolved == Union[list[str], None]
+
+    resolved = _resolve_type(dict[str, int] | list[str])
+    assert resolved == Union[dict[str, int], list[str]]

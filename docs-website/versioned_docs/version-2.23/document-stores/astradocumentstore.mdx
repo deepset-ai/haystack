@@ -1,0 +1,83 @@
+---
+title: "AstraDocumentStore"
+id: astradocumentstore
+slug: "/astradocumentstore"
+---
+
+# AstraDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [Astra](/reference/integrations-astra)                                                         |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/astra |
+
+</div>
+
+DataStax Astra DB is a serverless vector database built on Apache Cassandra, and it supports vector-based search and auto-scaling. You can deploy it on AWS, GCP, or Azure and easily expand to one or more regions within those clouds for multi-region availability, low latency data access, data sovereignty, and to avoid cloud vendor lock-in. For more information, see the [DataStax documentation](https://docs.datastax.com/en/home/docs/index.html).
+
+### Initialization
+
+Once you have an AstraDB account and have created a database, install the `astra-haystack` integration:
+
+```shell
+pip install astra-haystack
+```
+
+From the configuration in AstraDB’s web UI, you need the database ID and a generated token.
+
+You will additionally need a collection name and a namespace. When you create the collection name, you also need to set the embedding dimensions and the similarity metric. The namespace organizes data in a database and is called a keyspace in Apache Cassandra.
+
+Then, in Haystack, initialize an `AstraDocumentStore` object that’s connected to the AstraDB instance, and write documents to it.
+
+We strongly encourage passing authentication data through environment variables: make sure to populate the environment variables `ASTRA_DB_API_ENDPOINT` and  `ASTRA_DB_APPLICATION_TOKEN`  before running the following example.
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.astra import AstraDocumentStore
+
+document_store = AstraDocumentStore()
+
+document_store.write_documents([
+    Document(content="This is first"),
+    Document(content="This is second")
+    ])
+print(document_store.count_documents())
+```
+
+### Supported Retrievers
+
+[AstraEmbeddingRetriever](../pipeline-components/retrievers/astraretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding provided to the Retriever.
+
+### Indexing Warnings
+
+When you create an Astra DB Document Store, you might see one of these warnings:
+
+> Astra DB collection `...` is detected as having indexing turned on for all fields (either created manually or by older versions of this plugin). This implies stricter limitations on the amount of text each string in a document can store. Consider indexing anew on a fresh collection to be able to store longer texts.
+
+Or:
+
+> Astra DB collection `...` is detected as having the following indexing policy: `{...}`. This does not match the requested indexing policy for this object: `{...}`. In particular, there may be stricter limitations on the amount of text each string in a document can store. Consider indexing anew on a fresh collection to be able to store longer texts.
+
+#### Why You See This Warning
+
+The collection already exists and is configured to [index all fields for search](https://docs.datastax.com/en/astra-db-serverless/api-reference/collections.html#the-indexing-option), possibly because you created it earlier or an older plugin did. When Haystack tries to create the collection, it applies an indexing policy optimized for your intended use. This policy lets you store longer texts and avoids indexing fields you won’t filter on, which also reduces write overhead.
+
+#### Common Causes
+
+1. You created the collection outside Haystack (for example, in the Astra UI or with AstraPy’s `Database.create_collection()`).
+2. You created the collection with an older version of the plugin.
+
+#### Impact
+
+This is only a warning. Your application keeps running unless you try to store very long text fields. If you do, Astra DB returns an indexing error.
+
+#### Solutions
+
+- **Recommended:** _Drop and recreate the collection_ if you can repopulate it. Then rerun your Haystack application so it creates the collection with the optimized indexing policy.
+- _Ignore the warning_ if you’re sure you won’t store very long text fields.
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Using AstraDB as a data store in your Haystack pipelines](https://haystack.deepset.ai/cookbook/astradb_haystack_integration)

@@ -400,17 +400,11 @@ class TestSentenceTransformersTextEmbedder:
         checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
         text = "a nice text to embed"
 
-        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint)
-        embedder_def.warm_up()
-        result_def = embedder_def.run(text=text)
-        embedding_def = result_def["embedding"]
-
         embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=64)
-        embedder_trunc.warm_up()
         result_trunc = embedder_trunc.run(text=text)
         embedding_trunc = result_trunc["embedding"]
 
-        assert len(embedding_def) == 128
+        # without truncation, the embedding has 128 length
         assert len(embedding_trunc) == 64
 
     @pytest.mark.integration

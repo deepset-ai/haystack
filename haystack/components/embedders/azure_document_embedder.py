@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from openai.lib.azure import AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.embedders import OpenAIDocumentEmbedder
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -40,25 +40,25 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
     # pylint: disable=super-init-not-called
     def __init__(  # noqa: PLR0913 (too-many-arguments) # pylint: disable=too-many-positional-arguments
         self,
-        azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2023-05-15",
+        azure_endpoint: str | None = None,
+        api_version: str | None = "2023-05-15",
         azure_deployment: str = "text-embedding-ada-002",
-        dimensions: Optional[int] = None,
-        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
-        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
-        organization: Optional[str] = None,
+        dimensions: int | None = None,
+        api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
+        organization: str | None = None,
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
         *,
-        default_headers: Optional[dict[str, str]] = None,
-        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        default_headers: dict[str, str] | None = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
         raise_on_failure: bool = False,
     ):
         """
@@ -189,8 +189,8 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
-            api_key=self.api_key.to_dict() if self.api_key is not None else None,
-            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            api_key=self.api_key,
+            azure_ad_token=self.azure_ad_token,
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
@@ -209,7 +209,6 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         serialized_azure_ad_token_provider = data["init_parameters"].get("azure_ad_token_provider")
         if serialized_azure_ad_token_provider:
             data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(

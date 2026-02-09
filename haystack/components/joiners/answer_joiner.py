@@ -5,13 +5,13 @@
 import itertools
 from enum import Enum
 from math import inf
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
 from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 
-AnswerType = Union[GeneratedAnswer, ExtractedAnswer]
+AnswerType = GeneratedAnswer | ExtractedAnswer
 
 
 class JoinMode(Enum):
@@ -65,29 +65,26 @@ class AnswerJoiner:
                 ChatMessage.from_user(query)]
 
     pipe = Pipeline()
-    pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
-    pipe.add_component("gpt-4o-mini", OpenAIChatGenerator(model="gpt-4o-mini"))
+    pipe.add_component("llm_1", OpenAIChatGenerator()
+    pipe.add_component("llm_2", OpenAIChatGenerator()
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())
 
-    pipe.connect("gpt-4o.replies", "aba")
-    pipe.connect("gpt-4o-mini.replies", "abb")
+    pipe.connect("llm_1.replies", "aba")
+    pipe.connect("llm_2.replies", "abb")
     pipe.connect("aba.answers", "joiner")
     pipe.connect("abb.answers", "joiner")
 
-    results = pipe.run(data={"gpt-4o": {"messages": messages},
-                                "gpt-4o-mini": {"messages": messages},
+    results = pipe.run(data={"llm_1": {"messages": messages},
+                                "llm_2": {"messages": messages},
                                 "aba": {"query": query},
                                 "abb": {"query": query}})
     ```
     """
 
     def __init__(
-        self,
-        join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-        top_k: Optional[int] = None,
-        sort_by_score: bool = False,
+        self, join_mode: str | JoinMode = JoinMode.CONCATENATE, top_k: int | None = None, sort_by_score: bool = False
     ):
         """
         Creates an AnswerJoiner component.
@@ -112,7 +109,7 @@ class AnswerJoiner:
         self.sort_by_score = sort_by_score
 
     @component.output_types(answers=list[AnswerType])
-    def run(self, answers: Variadic[list[AnswerType]], top_k: Optional[int] = None):
+    def run(self, answers: Variadic[list[AnswerType]], top_k: int | None = None):
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 

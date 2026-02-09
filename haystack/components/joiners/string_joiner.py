@@ -40,7 +40,7 @@ class StringJoiner:
     """
 
     @component.output_types(strings=list[str])
-    def run(self, strings: Variadic[str]):
+    def run(self, strings: Variadic[str]) -> dict[str, list[str]]:
         """
         Joins strings into a list of strings
 

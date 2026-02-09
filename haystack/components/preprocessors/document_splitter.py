@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal
 
 from more_itertools import windowed
 
@@ -57,7 +57,7 @@ class DocumentSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
-        splitting_function: Optional[Callable[[str], list[str]]] = None,
+        splitting_function: Callable[[str], list[str]] | None = None,
         respect_sentence_boundary: bool = False,
         language: Language = "en",
         use_split_rules: bool = True,
@@ -115,7 +115,7 @@ class DocumentSplitter:
         self._use_sentence_splitter = split_by == "sentence" or (respect_sentence_boundary and split_by == "word")
         if self._use_sentence_splitter:
             nltk_imports.check()
-            self.sentence_splitter: Optional[SentenceSplitter] = None
+            self.sentence_splitter: SentenceSplitter | None = None
 
     def _init_checks(
         self,
@@ -123,7 +123,7 @@ class DocumentSplitter:
         split_by: str,
         split_length: int,
         split_overlap: int,
-        splitting_function: Optional[Callable],
+        splitting_function: Callable | None,
         respect_sentence_boundary: bool,
     ) -> None:
         """
@@ -187,9 +187,7 @@ class DocumentSplitter:
         :raises ValueError: if the content of a document is None.
         """
         if self._use_sentence_splitter and self.sentence_splitter is None:
-            raise RuntimeError(
-                "The component DocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")

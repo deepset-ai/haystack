@@ -2,12 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
-import requests
+import httpx
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,10 @@ class SearchApiWebSearch:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
-        top_k: Optional[int] = 10,
-        allowed_domains: Optional[list[str]] = None,
-        search_params: Optional[dict[str, Any]] = None,
-    ):
+        top_k: int | None = 10,
+        allowed_domains: list[str] | None = None,
+        search_params: dict[str, Any] | None = None,
+    ) -> None:
         """
         Initialize the SearchApiWebSearch component.
 
@@ -79,7 +79,7 @@ class SearchApiWebSearch:
             top_k=self.top_k,
             allowed_domains=self.allowed_domains,
             search_params=self.search_params,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
         )
 
     @classmethod
@@ -90,13 +90,12 @@ class SearchApiWebSearch:
         :param data:
             The dictionary to deserialize from.
         :returns:
-                The deserialized component.
+            The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document], links=list[str])
-    def run(self, query: str) -> dict[str, Union[list[Document], list[str]]]:
+    def run(self, query: str) -> dict[str, list[Document] | list[str]]:
         """
         Uses [SearchApi](https://www.searchapi.io/) to search the web.
 
@@ -107,18 +106,68 @@ class SearchApiWebSearch:
         :raises TimeoutError: If the request to the SearchApi API times out.
         :raises SearchApiError: If an error occurs while querying the SearchApi API.
         """
+        payload, headers = self._prepare_request(query)
+        try:
+            response = httpx.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)
+            response.raise_for_status()  # Will raise an HTTPError for bad responses
+        except httpx.ConnectTimeout as error:
+            raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+
+        except httpx.HTTPError as e:
+            raise SearchApiError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
+
+        documents, links = self._parse_response(response)
+
+        logger.debug(
+            "SearchApi returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
+        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}
+
+    @component.output_types(documents=list[Document], links=list[str])
+    async def run_async(self, query: str) -> dict[str, list[Document] | list[str]]:
+        """
+        Asynchronously uses [SearchApi](https://www.searchapi.io/) to search the web.
+
+        This is the asynchronous version of the `run` method with the same parameters and return values.
+
+
+        :param query: Search query.
+        :returns: A dictionary with the following keys:
+            - "documents": List of documents returned by the search engine.
+            - "links": List of links returned by the search engine.
+        :raises TimeoutError: If the request to the SearchApi API times out.
+        :raises SearchApiError: If an error occurs while querying the SearchApi API.
+        """
+        payload, headers = self._prepare_request(query)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)
+                response.raise_for_status()  # Will raise an HTTPError for bad responses
+        except httpx.ConnectTimeout as error:
+            raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+
+        except httpx.HTTPError as e:
+            raise SearchApiError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
+
+        documents, links = self._parse_response(response)
+
+        logger.debug(
+            "SearchApi returned {number_documents} documents for the query '{query}'",
+            number_documents=len(documents),
+            query=query,
+        )
+        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}
+
+    def _prepare_request(self, query: str) -> tuple[httpx._types.QueryParamTypes, httpx._types.HeaderTypes]:
         query_prepend = "OR ".join(f"site:{domain} " for domain in self.allowed_domains) if self.allowed_domains else ""
         payload = {"q": query_prepend + " " + query, **self.search_params}
         headers = {"Authorization": f"Bearer {self.api_key.resolve_value()}", "X-SearchApi-Source": "Haystack"}
-        try:
-            response = requests.get(SEARCHAPI_BASE_URL, headers=headers, params=payload, timeout=90)
-            response.raise_for_status()  # Will raise an HTTPError for bad responses
-        except requests.Timeout as error:
-            raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+        return payload, headers
 
-        except requests.RequestException as e:
-            raise SearchApiError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
-
+    @staticmethod
+    def _parse_response(response: httpx.Response) -> tuple[list[Document], list[str]]:
         # Request succeeded
         json_result = response.json()
 
@@ -170,10 +219,4 @@ class SearchApiWebSearch:
         documents = answer_box + knowledge_graph + organic_results + related_questions
 
         links = [result["link"] for result in json_result["organic_results"]]
-
-        logger.debug(
-            "SearchApi returned {number_documents} documents for the query '{query}'",
-            number_documents=len(documents),
-            query=query,
-        )
-        return {"documents": documents[: self.top_k], "links": links[: self.top_k]}
+        return documents, links

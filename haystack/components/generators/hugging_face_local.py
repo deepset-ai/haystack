@@ -2,18 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
-from haystack.utils import (
-    ComponentDevice,
-    Secret,
-    deserialize_callable,
-    deserialize_secrets_inplace,
-    serialize_callable,
-)
+from haystack.utils import ComponentDevice, Secret, deserialize_callable, serialize_callable
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
@@ -58,13 +52,13 @@ class HuggingFaceLocalGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str = "google/flan-t5-base",
-        task: Optional[Literal["text-generation", "text2text-generation"]] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-        stop_words: Optional[list[str]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        task: Literal["text-generation", "text2text-generation"] | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        generation_kwargs: dict[str, Any] | None = None,
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+        stop_words: list[str] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ):
         """
         Creates an instance of a HuggingFaceLocalGenerator.
@@ -127,8 +121,8 @@ class HuggingFaceLocalGenerator:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
-        self.pipeline: Optional[HfPipeline] = None
-        self.stopping_criteria_list: Optional[StoppingCriteriaList] = None
+        self.pipeline: HfPipeline | None = None
+        self.stopping_criteria_list: StoppingCriteriaList | None = None
         self.streaming_callback = streaming_callback
 
     def _get_telemetry_data(self) -> dict[str, Any]:
@@ -178,7 +172,7 @@ class HuggingFaceLocalGenerator:
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
             stop_words=self.stop_words,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -197,7 +191,6 @@ class HuggingFaceLocalGenerator:
         :returns:
             The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
@@ -211,8 +204,8 @@ class HuggingFaceLocalGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ):
         """
         Run the text generation model on the given prompt.
@@ -229,9 +222,7 @@ class HuggingFaceLocalGenerator:
             - replies: A list of strings representing the generated replies.
         """
         if not self._warmed_up:
-            raise RuntimeError(
-                "The component HuggingFaceLocalGenerator was not warmed up. Please call warm_up() before running."
-            )
+            self.warm_up()
 
         # at this point, we know that the pipeline has been initialized
         assert self.pipeline is not None

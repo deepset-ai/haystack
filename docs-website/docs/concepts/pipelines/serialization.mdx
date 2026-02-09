@@ -11,10 +11,7 @@ Save your pipelines into a custom format and explore the serialization options.
 
 Serialization means converting a pipeline to a format that you can save on your disk and load later.
 
-:::info Serialization formats
-
-Haystack 2.0 only supports YAML format at this time. We will be rolling out more formats gradually.
-:::
+Haystack supports YAML format for pipeline serialization.
 
 ## Converting a Pipeline to YAML
 
@@ -30,7 +27,7 @@ print(pipe.dumps())
 ##
 ## components: {}
 ## connections: []
-## max_loops_allowed: 100
+## max_runs_per_component: 100
 ## metadata: {}
 ```
 
@@ -72,7 +69,7 @@ components:
 connections:
 - receiver: cleaner.documents
   sender: converter.documents
-max_loops_allowed: 100
+max_runs_per_component: 100
 metadata: {}
 """
 
@@ -89,6 +86,43 @@ def component_pre_init_callback(component_name: str, component_cls: Type, init_p
 
 pipe = Pipeline.loads(pipeline_yaml, callbacks=DeserializationCallbacks(component_pre_init_callback))
 ```
+
+## Default Serialization Behavior
+
+The serialization system uses `default_to_dict` and `default_from_dict` to handle many object types automatically. You typically do **not** need to implement custom `to_dict`/`from_dict` for:
+
+- **Secrets**: serialized and deserialized automatically so that sensitive values aren't stored in plain text.
+- **ComponentDevice**: device configuration is detected and restored automatically.
+- **Objects with their own `to_dict`/`from_dict`**: any init parameter whose type defines `to_dict()` is serialized by calling it; any dict in `init_parameters` with a `type` key pointing to a class with `from_dict()` is deserialized automatically.
+
+To serialize or deserialize a single component, you can use `component_to_dict` and `component_from_dict` from `haystack.core.serialization`. They use the default behavior above as a fallback when the component doesn't define custom `to_dict`/`from_dict`:
+
+```python
+from haystack import component
+from haystack.core.serialization import component_from_dict, component_to_dict
+
+@component
+class Greeter:
+    def __init__(self, message: str = "Hello"):
+        self.message = message
+
+    @component.output_types(greeting=str)
+    def run(self, name: str):
+        return {"greeting": f"{self.message}, {name}!"}
+
+# Serialize a component instance to a dictionary
+greeter = Greeter(message="Hi")
+data = component_to_dict(greeter, "my_greeter")
+
+# Deserialize back to a component instance
+restored = component_from_dict(Greeter, data, "my_greeter")
+assert restored.message == greeter.message
+```
+
+:::caution Init parameters must be stored as instance attributes
+
+Default serialization only works when there is a **1:1 mapping** between init parameter names and instance attributes. For every argument in `__init__`, the component must assign it to an attribute with the same name. For example, if you have `def __init__(self, prompt: str)`, you must have `self.prompt = prompt` in the class. Otherwise the serialization logic can't find the value to serialize and raises an error or uses the default value if the parameter has one.
+:::
 
 ## Performing Custom Serialization
 
@@ -128,11 +162,11 @@ In such cases, you can provide your own implementation  `from_dict` and `to_dict
 from haystack import component, default_from_dict, default_to_dict
 
 class SetIntersector:
-		def __init__(self, intersect_with: set):
-	      self.intersect_with = intersect_with
+    def __init__(self, intersect_with: set):
+        self.intersect_with = intersect_with
 
     @component.output_types(result=set)
-	  def run(self, data: set):
+    def run(self, data: set):
         return data.intersect(self.intersect_with)
 
     def to_dict(self):
@@ -176,7 +210,7 @@ from my_custom_marshallers import TomlMarshaller
 pipe = Pipeline()
 pipe.dumps(TomlMarshaller())
 ## prints:
-## 'max_loops_allowed = 100\nconnections = []\n\n[metadata]\n\n[components]\n'
+## 'max_runs_per_component = 100\nconnections = []\n\n[metadata]\n\n[components]\n'
 ```
 
 ## Additional References

@@ -1,0 +1,40 @@
+loaders:
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
+    search_path: [../haystack/components/generators]
+    modules:
+      [
+        "azure",
+        "hugging_face_local",
+        "hugging_face_api",
+        "openai",
+        "openai_dalle",
+        "chat/azure",
+        "chat/azure_responses",
+        "chat/hugging_face_local",
+        "chat/hugging_face_api",
+        "chat/openai",
+        "chat/openai_responses",
+        "chat/fallback",
+        "utils",
+      ]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
+  description: Enables text generation using LLMs.
+  title: Generators
+  id: generators-api
+  markdown:
+    descriptive_class_title: false
+    classdef_code_block: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: generators_api.md

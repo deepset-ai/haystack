@@ -6,6 +6,7 @@ import copy
 from unittest import mock
 
 import pytest
+from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
@@ -38,6 +39,47 @@ class TestRouter:
         routes = [{"condition": "{{streams|length < 2", "output": "query", "output_type": str, "output_name": "test"}]
         with pytest.raises(ValueError, match="Invalid template"):
             ConditionalRouter(routes)
+
+    def test_invalid_output_template_non_string(self):
+        """
+        ConditionalRouter init raises a ValueError with helpful error message when output is not a string
+        """
+        # output is an int instead of a string template
+        routes = [
+            {
+                "condition": '{{ flag == "double" }}',
+                "output": 2,
+                "output_name": "num_additional_outputs",
+                "output_type": int,
+            }
+        ]
+        with pytest.raises(ValueError) as exc_info:
+            ConditionalRouter(routes)
+        error_message = str(exc_info.value)
+        assert "Invalid template for output" in error_message
+        assert "string" in error_message
+        assert "Jinja2 template" in error_message
+        assert "2" in error_message
+
+    def test_invalid_output_template_non_string_list(self):
+        """
+        ConditionalRouter init raises a ValueError with helpful error message when output in list is not a string
+        """
+        # output list contains an int instead of a string template
+        routes = [
+            {
+                "condition": '{{ flag == "double" }}',
+                "output": ["{{streams}}", 2],
+                "output_name": ["streams", "num"],
+                "output_type": [list[int], int],
+            }
+        ]
+        with pytest.raises(ValueError) as exc_info:
+            ConditionalRouter(routes)
+        error_message = str(exc_info.value)
+        assert "Invalid template for output" in error_message
+        assert "string" in error_message
+        assert "Jinja2 template" in error_message
 
     def test_no_vars_in_output_route_but_with_output_name(self):
         """
@@ -399,6 +441,29 @@ class TestRouter:
         with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
             router.run(streams=streams, message=message)
 
+    def test_validate_output_type_with_pep604(self):
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "{{value}}",
+                "output_type": list[str] | dict[str, int] | None,
+                "output_name": "result",
+            }
+        ]
+        router = ConditionalRouter(routes, validate_output_type=True)
+
+        result = router.run(value=["a", "b"])
+        assert result == {"result": ["a", "b"]}
+
+        result = router.run(value={"key": 1})
+        assert result == {"result": {"key": 1}}
+
+        result = router.run(value=None)
+        assert result == {"result": None}
+
+        with pytest.raises(ValueError, match="Route 'result' type doesn't match expected type"):
+            router.run(value=42)
+
     def test_router_with_optional_parameters(self):
         """
         Test that the router works with optional parameters, particularly testing the default/fallback route
@@ -636,3 +701,15 @@ class TestRouter:
         reloaded_router = ConditionalRouter.from_dict(router.to_dict())
         assert reloaded_router.custom_filters == router.custom_filters
         assert reloaded_router.routes == router.routes
+
+    def test_extract_variables_correct_with_assignment(self):
+        condition = """{%- if control == 'something' -%}
+{% set streams = 1 %}
+{%- else -%}
+{% set streams = 2 %}
+{%- endif -%}
+{{streams == 1}}
+"""
+        templates = [condition, "{{query}}"]
+        extracted_variables = ConditionalRouter._extract_variables(env=NativeEnvironment(), templates=templates)
+        assert extracted_variables == {"control", "query"}

@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock, patch
+from typing import Generator
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from requests import HTTPError, RequestException, Timeout
+from httpx import ConnectTimeout, HTTPStatusError, Request, RequestError, Response
 
 from haystack import Document
 from haystack.components.websearch.serper_dev import SerperDevError, SerperDevWebSearch
@@ -115,18 +116,40 @@ EXAMPLE_SERPERDEV_RESPONSE = {
 
 
 @pytest.fixture
-def mock_serper_dev_search_result():
-    with patch("haystack.components.websearch.serper_dev.requests") as mock_run:
+def mock_serper_dev_search_result() -> Generator[MagicMock, None, None]:
+    with patch("haystack.components.websearch.serper_dev.httpx") as mock_run:
         mock_run.post.return_value = Mock(status_code=200, json=lambda: EXAMPLE_SERPERDEV_RESPONSE)
         yield mock_run
 
 
 @pytest.fixture
-def mock_serper_dev_search_result_no_snippet():
+def mock_serper_dev_search_result_async() -> Generator[MagicMock, None, None]:
+    with patch("haystack.components.websearch.serper_dev.httpx.AsyncClient") as mock_run:
+        mock_client = AsyncMock()
+        mock_client.post.return_value = Mock(status_code=200, json=lambda: EXAMPLE_SERPERDEV_RESPONSE)
+        mock_client.__aenter__.return_value = mock_client
+        mock_run.return_value = mock_client
+        yield mock_run
+
+
+@pytest.fixture
+def mock_serper_dev_search_result_no_snippet() -> Generator[MagicMock, None, None]:
     resp = {**EXAMPLE_SERPERDEV_RESPONSE}
     del resp["organic"][0]["snippet"]
-    with patch("haystack.components.websearch.serper_dev.requests") as mock_run:
+    with patch("haystack.components.websearch.serper_dev.httpx") as mock_run:
         mock_run.post.return_value = Mock(status_code=200, json=lambda: resp)
+        yield mock_run
+
+
+@pytest.fixture
+def mock_serper_dev_search_result_no_snippet_async() -> Generator[MagicMock, None, None]:
+    resp = {**EXAMPLE_SERPERDEV_RESPONSE}
+    resp["organic"][0].pop("snippet", None)
+    with patch("haystack.components.websearch.serper_dev.httpx.AsyncClient") as mock_run:
+        mock_client = AsyncMock()
+        mock_client.post.return_value = Mock(status_code=200, json=lambda: resp)
+        mock_client.__aenter__.return_value = mock_client
+        mock_run.return_value = mock_client
         yield mock_run
 
 
@@ -152,7 +175,7 @@ class TestSerperDevSearchAPI:
         }
 
     @pytest.mark.parametrize("top_k", [1, 5, 7])
-    def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
+    def test_web_search_top_k(self, mock_serper_dev_search_result: MagicMock, top_k: int) -> None:
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=top_k)
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
@@ -162,44 +185,117 @@ class TestSerperDevSearchAPI:
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
 
-    def test_no_snippet(self, mock_serper_dev_search_result_no_snippet):
+    @pytest.mark.parametrize("top_k", [1, 5, 7])
+    @pytest.mark.asyncio
+    async def test_web_search_top_k_async(self, mock_serper_dev_search_result_async: MagicMock, top_k: int) -> None:
+        ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=top_k)
+        results = await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
+        documents = results["documents"]
+        links = results["links"]
+        assert len(documents) == len(links) == top_k
+        assert all(isinstance(doc, Document) for doc in documents)
+        assert all(isinstance(link, str) for link in links)
+        assert all(link.startswith("http") for link in links)
+
+    def test_no_snippet(self, mock_serper_dev_search_result_no_snippet: MagicMock) -> None:
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=1)
         ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @patch("requests.post")
-    def test_timeout_error(self, mock_post):
-        mock_post.side_effect = Timeout
+    @pytest.mark.asyncio
+    async def test_no_snippet_async(self, mock_serper_dev_search_result_no_snippet_async: MagicMock) -> None:
+        ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=1)
+        await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
+
+    @patch("httpx.post")
+    def test_timeout_error(self, mock_post: MagicMock) -> None:
+        mock_post.side_effect = ConnectTimeout("Request has timed out.")
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(TimeoutError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @patch("requests.post")
-    def test_request_exception(self, mock_post):
-        mock_post.side_effect = RequestException
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_timeout_error_async(self, mock_post: AsyncMock) -> None:
+        mock_post.side_effect = ConnectTimeout("Request has timed out.")
+        ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
+
+        with pytest.raises(TimeoutError):
+            await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
+
+    @patch("httpx.post")
+    def test_request_exception(self, mock_post: MagicMock) -> None:
+        mock_post.side_effect = RequestError("An errors has occurred in the request.")
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(SerperDevError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
 
-    @patch("requests.post")
-    def test_bad_response_code(self, mock_post):
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient.post")
+    async def test_request_exception_async(self, mock_post: MagicMock) -> None:
+        mock_post.side_effect = RequestError("An errors has occurred in the request.")
+        ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
+
+        with pytest.raises(SerperDevError):
+            await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
+
+    @patch("httpx.post")
+    def test_bad_response_code(self, mock_post: MagicMock) -> None:
         mock_response = mock_post.return_value
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = HTTPError
+        mock_error_request = Request("POST", "https://example.com")
+        mock_error_response = Response(404)
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "404 Not Found.", request=mock_error_request, response=mock_error_response
+        )
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
 
         with pytest.raises(SerperDevError):
             ws.run(query="Who is the boyfriend of Olivia Wilde?")
+
+    @pytest.mark.asyncio
+    @patch("httpx.AsyncClient")
+    async def test_bad_response_code_async(self, mock_run: MagicMock) -> None:
+        mock_client = AsyncMock()
+        mock_response = Mock(status_code=404)
+        mock_error_request = Request("POST", "https://example.com")
+        mock_error_response = Response(404)
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "404 Not Found.", request=mock_error_request, response=mock_error_response
+        )
+        mock_client.post.return_value = mock_response
+        mock_client.__aenter__.return_value = mock_client
+        mock_run.return_value = mock_client
+        ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"))
+
+        with pytest.raises(SerperDevError):
+            await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
 
     @pytest.mark.skipif(
         not os.environ.get("SERPERDEV_API_KEY", None),
         reason="Export an env var called SERPERDEV_API_KEY containing the SerperDev API key to run this test.",
     )
     @pytest.mark.integration
-    def test_web_search(self):
+    def test_web_search(self) -> None:
         ws = SerperDevWebSearch(top_k=10)
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
+        documents = results["documents"]
+        links = results["links"]
+        assert len(documents) == len(links) == 10
+        assert all(isinstance(doc, Document) for doc in documents)
+        assert all(isinstance(link, str) for link in links)
+        assert all(link.startswith("http") for link in links)
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("SERPERDEV_API_KEY", None),
+        reason="Export an env var called SERPERDEV_API_KEY containing the SerperDev API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_web_search_async(self) -> None:
+        ws = SerperDevWebSearch(top_k=10)
+        results = await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
         links = results["links"]
         assert len(documents) == len(links) == 10
@@ -237,7 +333,7 @@ class TestSerperDevSearchAPI:
             ]
         }
 
-        with patch("haystack.components.websearch.serper_dev.requests") as mock_requests:
+        with patch("haystack.components.websearch.serper_dev.httpx") as mock_requests:
             mock_requests.post.return_value = Mock(status_code=200, json=lambda: mock_response)
 
             # Test with exclude_subdomains=False (default behavior)

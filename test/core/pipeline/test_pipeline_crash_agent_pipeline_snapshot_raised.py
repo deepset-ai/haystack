@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional, Union
+from typing import Any
 
 import pytest
 
@@ -13,6 +13,7 @@ from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
 from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses.breakpoints import AgentBreakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
@@ -49,7 +50,7 @@ class MockChatGenerator:
         self.fail_on_call = fail_on_call
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs) -> dict:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any) -> dict:
         if self.fail_on_call:
             # Simulate a crash in the chat generator
             raise Exception("Error in chat generator component")
@@ -68,7 +69,7 @@ class ExtractResults:
         return {"documents": [Document(content=resp.text) for resp in responses]}
 
 
-def build_pipeline(agent: Agent):
+def build_pipeline(agent: Agent) -> Pipeline:
     """Build a pipeline with the given agent, extractor, and document writer."""
     doc_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
@@ -102,7 +103,8 @@ def test_pipeline_with_chat_generator_crash():
     assert "Error in chat generator component" in str(exception_info.value)
     assert exception_info.value.component_name == "chat_generator"
     assert exception_info.value.component_type == MockChatGenerator
-    assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
+    # File saving is disabled by default, so pipeline_snapshot_file_path is None
+    assert exception_info.value.pipeline_snapshot_file_path is None
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
@@ -112,11 +114,13 @@ def test_pipeline_with_chat_generator_crash():
     assert pipeline_snapshot.pipeline_state.component_visits == {"doc_writer": 0, "extractor": 0, "math_agent": 0}
 
     # AgentBreakpoint is correctly set for chat_generator crash
+    assert isinstance(pipeline_snapshot.break_point, AgentBreakpoint)
     assert pipeline_snapshot.break_point.agent_name == "math_agent"
     assert pipeline_snapshot.break_point.break_point.component_name == "chat_generator"
     assert pipeline_snapshot.break_point.break_point.visit_count == 0
 
     # AgentSnapshot is correctly set
+    assert pipeline_snapshot.agent_snapshot is not None
     assert pipeline_snapshot.agent_snapshot.component_inputs.keys() == {"chat_generator", "tool_invoker"}
     assert pipeline_snapshot.agent_snapshot.component_visits == {"chat_generator": 0, "tool_invoker": 0}
     assert pipeline_snapshot.agent_snapshot.break_point.agent_name == "math_agent"
@@ -153,7 +157,8 @@ def test_pipeline_with_tool_call_crash():
     assert "Error in factorial tool" in str(exception_info.value), "Exception message should contain tool error"
     assert exception_info.value.component_name == "tool_invoker"
     assert exception_info.value.component_type == ToolInvoker
-    assert "math_agent_tool_invoker" in exception_info.value.pipeline_snapshot_file_path
+    # File saving is disabled by default, so pipeline_snapshot_file_path is None
+    assert exception_info.value.pipeline_snapshot_file_path is None
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
@@ -163,17 +168,21 @@ def test_pipeline_with_tool_call_crash():
     assert pipeline_snapshot.pipeline_state.component_visits == {"doc_writer": 0, "extractor": 0, "math_agent": 0}
 
     # AgentBreakpoint is correctly set
+    assert isinstance(pipeline_snapshot.break_point, AgentBreakpoint)
     assert pipeline_snapshot.break_point.agent_name == "math_agent"
     assert pipeline_snapshot.break_point.break_point.component_name == "tool_invoker"
     assert pipeline_snapshot.break_point.break_point.visit_count == 0
+    assert isinstance(pipeline_snapshot.break_point.break_point, ToolBreakpoint)
     assert pipeline_snapshot.break_point.break_point.tool_name == "factorial"
 
     # AgentSnapshot is correctly set
+    assert pipeline_snapshot.agent_snapshot is not None
     assert pipeline_snapshot.agent_snapshot.component_inputs.keys() == {"chat_generator", "tool_invoker"}
     assert pipeline_snapshot.agent_snapshot.component_visits == {"chat_generator": 1, "tool_invoker": 0}
     assert pipeline_snapshot.agent_snapshot.break_point.agent_name == "math_agent"
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.component_name == "tool_invoker"
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.visit_count == 0
+    assert isinstance(pipeline_snapshot.agent_snapshot.break_point.break_point, ToolBreakpoint)
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.tool_name == "factorial"
 
     # Test if the pipeline can be resumed from the generated snapshot. Note that, the pipeline should fail again with

@@ -5,7 +5,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.lib._pydantic import to_strict_json_schema
@@ -36,7 +36,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -78,15 +78,15 @@ class OpenAIResponsesChatGenerator:
         *,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
@@ -236,7 +236,7 @@ class OpenAIResponsesChatGenerator:
             generation_kwargs["text"] = json_schema
 
         # OpenAI/MCP tools are passed as list of dictionaries
-        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None]
+        serialized_tools: dict[str, Any] | list[dict[str, Any]] | None
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
             # mypy can't infer that self.tools is list[dict] here
             serialized_tools = self.tools  # type: ignore[assignment]
@@ -250,7 +250,7 @@ class OpenAIResponsesChatGenerator:
             api_base_url=self.api_base_url,
             organization=self.organization,
             generation_kwargs=generation_kwargs,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
             tools=serialized_tools,
@@ -267,11 +267,8 @@ class OpenAIResponsesChatGenerator:
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
-
         tools = data["init_parameters"].get("tools")
         if tools and (
             isinstance(tools, dict)
@@ -293,11 +290,11 @@ class OpenAIResponsesChatGenerator:
         self,
         messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None,
-    ):
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None,
+    ) -> dict[str, list[ChatMessage]]:
         """
         Invokes response generation based on the provided messages and generation parameters.
 
@@ -326,13 +323,16 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         if len(messages) == 0:
             return {"replies": []}
 
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
-        responses: Union[Stream[ResponseStreamEvent], Response]
+        responses: Stream[ResponseStreamEvent] | Response
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -360,11 +360,11 @@ class OpenAIResponsesChatGenerator:
         self,
         messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None,
-    ):
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None,
+    ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes response generation based on the provided messages and generation parameters.
 
@@ -395,11 +395,14 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
-        responses: Union[AsyncStream[ResponseStreamEvent], Response]
+        responses: AsyncStream[ResponseStreamEvent] | Response
 
         if len(messages) == 0:
             return {"replies": []}
@@ -431,13 +434,14 @@ class OpenAIResponsesChatGenerator:
         self,
         *,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+        generation_kwargs = self._resolve_flattened_kwargs(generation_kwargs)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages: list[dict[str, Any]] = []
@@ -471,13 +475,34 @@ class OpenAIResponsesChatGenerator:
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 
-        # if both `text_format` and `text` are provided, `text_format` takes precedence
-        # and json schema passed to `text` is ignored
-        if generation_kwargs.get("text_format") or generation_kwargs.get("text"):
+        # if `text_format` is provided, we use the `parse` endpoint for response type parsing
+        if generation_kwargs.get("text_format"):
+            # if both `text_format` and `text` are provided, `text_format` takes precedence
+            # and json schema passed to `text` is ignored
             return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "parse"}
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
         # this key will be removed before the API call is made
         return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "create"}
+
+    def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
+        generation_kwargs = generation_kwargs.copy()
+
+        reasoning_effort = generation_kwargs.pop("reasoning_effort", None)
+        if reasoning_effort is not None:
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["effort"] = reasoning_effort
+
+        reasoning_summary = generation_kwargs.pop("reasoning_summary", None)
+        if reasoning_summary is not None:
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["summary"] = reasoning_summary
+
+        verbosity = generation_kwargs.pop("verbosity", None)
+        if verbosity is not None:
+            text = generation_kwargs.setdefault("text", {})
+            text["verbosity"] = verbosity
+
+        return generation_kwargs
 
     def _handle_stream_response(self, responses: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
@@ -507,7 +532,7 @@ class OpenAIResponsesChatGenerator:
         return [chat_message]
 
 
-def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]) -> ChatMessage:
+def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
 
@@ -577,7 +602,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
 
 def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
-    chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
+    chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI Responses API to a StreamingChunk.
@@ -755,9 +780,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         final_response["logprobs"] = logprobs
 
-    # Add reasoning content if both id and text are available
+    # Add reasoning content if id is available
+    # Note: the API expects a reasoning id even if there is no reasoning text
+    # function calls without reasoning ids are not supported by the API
     reasoning = None
-    if reasoning_id and reasoning_text:
+    if reasoning_id:
         reasoning = ReasoningContent(reasoning_text=reasoning_text, extra={"id": reasoning_id, "type": "reasoning"})
 
     return ChatMessage.from_assistant(
@@ -776,6 +803,18 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     :raises ValueError:
         If the message format is invalid.
     """
+
+    def serialize_part(part) -> dict[str, str]:
+        if isinstance(part, TextContent):
+            return {"type": "input_text", "text": part.text}
+        elif isinstance(part, ImageContent):
+            return {
+                "type": "input_image",
+                # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
+                "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
+            }
+        raise ValueError(f"Unsupported content type: {type(part)}")
+
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
@@ -799,27 +838,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
 
     # user message
     if message._role.value == "user":
-        if len(message._content) == 1 and isinstance(message._content[0], TextContent):
-            openai_msg["content"] = message.text
-            return [openai_msg]
-
-        # if the user message contains a list of text and images, OpenAI expects a list of dictionaries
-        content = []
-        for part in message._content:
-            if isinstance(part, TextContent):
-                text_type = "input_text"
-                content.append({"type": text_type, "text": part.text})
-            elif isinstance(part, ImageContent):
-                image_item: dict[str, Any]
-                image_item = {
-                    "type": "input_image",
-                    # If no MIME type is provided, default to JPEG.
-                    # OpenAI API appears to tolerate MIME type mismatches.
-                    "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
-                }
-
-                content.append(image_item)
-
+        content = [serialize_part(part) for part in message._content]
         openai_msg["content"] = content
         return [openai_msg]
 
@@ -828,10 +847,17 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_tool_results = []
         for result in tool_call_results:
             if result.origin.id is not None:
+                # Handle multimodal tool results (list of TextContent/ImageContent)
+                if isinstance(result.result, list):
+                    output_content = [serialize_part(part) for part in result.result]
+                elif isinstance(result.result, str):
+                    output_content = [{"type": "input_text", "text": result.result}]
+                else:
+                    raise ValueError(f"Unsupported tool result: {result.result}")
                 tool_result = {
                     "type": "function_call_output",
                     "call_id": result.origin.extra.get("call_id") if result.origin.extra else "",
-                    "output": result.result,
+                    "output": output_content,
                 }
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)
@@ -841,10 +867,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
-            reasoning_item = {
-                **(reasoning.extra),
-                "summary": [{"text": reasoning.reasoning_text, "type": "summary_text"}],
-            }
+            reasoning_item = {"summary": [], **(reasoning.extra)}
+            if reasoning.reasoning_text:
+                reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)
 
@@ -864,7 +889,6 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_messages.extend(formatted_tool_calls)
 
     # system and assistant messages
-
     if text_contents:
         openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)

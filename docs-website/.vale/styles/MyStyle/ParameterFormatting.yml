@@ -1,8 +1,8 @@
 extends: existence
 message: "Wrap parameter, class, or method names like '%s' in backticks."
-level: warning
+level: suggestion
 scope: text
 raw:
-  - '\b[a-zA-Z_][a-zA-Z0-9_]*\(\)'      # Methods like pipeline()
-  - '\b[A-Z][a-zA-Z0-9]*\b'             # Class names like MyClass
+  - '\b[a-zA-Z_][a-zA-Z0-9_]*\(\)'      # Methods like pipeline(), run()
+  - '\b[a-z]+_[a-z_]+\b'                # snake_case like max_length
   - '\b[a-z]+[A-Z][a-zA-Z0-9]*\b'       # camelCase like maxDepth

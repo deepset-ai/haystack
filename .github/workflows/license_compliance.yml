@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -48,7 +48,7 @@ jobs:
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
-        uses: fossas/fossa-action@v1.7.0
+        uses: fossas/fossa-action@v1.8.0
         continue-on-error: true # not critical
         with:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}

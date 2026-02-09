@@ -68,16 +68,18 @@ assert "messages" in result  # Contains conversation history
 ```python
 def __init__(*,
              chat_generator: ChatGenerator,
-             tools: Optional[ToolsType] = None,
-             system_prompt: Optional[str] = None,
-             exit_conditions: Optional[list[str]] = None,
-             state_schema: Optional[dict[str, Any]] = None,
+             tools: ToolsType | None = None,
+             system_prompt: str | None = None,
+             exit_conditions: list[str] | None = None,
+             state_schema: dict[str, Any] | None = None,
              max_agent_steps: int = 100,
-             streaming_callback: Optional[StreamingCallbackT] = None,
+             streaming_callback: StreamingCallbackT | None = None,
              raise_on_tool_invocation_failure: bool = False,
-             confirmation_strategies: Optional[dict[
-                 str, ConfirmationStrategy]] = None,
-             tool_invoker_kwargs: Optional[dict[str, Any]] = None) -> None
+             confirmation_strategies: dict[str, ConfirmationStrategy]
+             | None = None,
+             tool_invoker_kwargs: dict[str, Any] | None = None,
+             chat_message_store: ChatMessageStore | None = None,
+             memory_store: MemoryStore | None = None) -> None
 ```
 
 Initialize the agent component.
@@ -98,6 +100,9 @@ The same callback can be configured to emit tool results when a tool is called.
 - `raise_on_tool_invocation_failure`: Should the agent raise an exception when a tool invocation fails?
 If set to False, the exception will be turned into a chat message and passed to the LLM.
 - `tool_invoker_kwargs`: Additional keyword arguments to pass to the ToolInvoker.
+- `chat_message_store`: The ChatMessageStore that the agent can use to store
+and retrieve chat messages history.
+- `memory_store`: The memory store that the agent can use to store and retrieve memories.
 
 **Raises**:
 
@@ -110,12 +115,16 @@ If set to False, the exception will be turned into a chat message and passed to 
 
 ```python
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
+        chat_message_store_kwargs: dict[str, Any] | None = None,
+        memory_store_kwargs: dict[str, Any] | None = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -126,6 +135,8 @@ Process messages and execute tools until an exit condition is met.
 - `messages`: List of Haystack ChatMessage objects to process.
 - `streaming_callback`: A callback that will be invoked when a response is streamed from the LLM.
 The same callback can be configured to emit tool results when a tool is called.
+- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
+override the parameters passed during component initialization.
 - `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
 for "tool_invoker".
 - `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -133,6 +144,25 @@ the relevant information to restart the Agent execution from where it left off.
 - `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
 - `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
 When passing tool names, tools are selected from the Agent's originally configured tools.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
+to confirmation strategies. Useful in web/server environments to provide per-request
+objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+can use for non-blocking user interaction.
+- `chat_message_store_kwargs`: Optional dictionary of keyword arguments to pass to the ChatMessageStore.
+For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
+- `memory_store_kwargs`: Optional dictionary of keyword arguments to pass to the MemoryStore.
+It can include:
+- `user_id`: The user ID to search and add memories from.
+- `run_id`: The run ID to search and add memories from.
+- `agent_id`: The agent ID to search and add memories from.
+- `search_criteria`: A dictionary of containing kwargs for the `search_memories` method.
+    This can include:
+    - `filters`: A dictionary of filters to search for memories.
+    - `query`: The query to search for memories.
+        Note: If you pass this, the user query passed to the agent will be
+        ignored for memory retrieval.
+    - `top_k`: The number of memories to return.
+    - `include_memory_metadata`: Whether to include the memory metadata in the ChatMessage.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -154,12 +184,17 @@ A dictionary with the following keys:
 
 ```python
 async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
+                    streaming_callback: StreamingCallbackT | None = None,
                     *,
-                    break_point: Optional[AgentBreakpoint] = None,
-                    snapshot: Optional[AgentSnapshot] = None,
-                    system_prompt: Optional[str] = None,
-                    tools: Optional[Union[ToolsType, list[str]]] = None,
+                    generation_kwargs: dict[str, Any] | None = None,
+                    break_point: AgentBreakpoint | None = None,
+                    snapshot: AgentSnapshot | None = None,
+                    system_prompt: str | None = None,
+                    tools: ToolsType | list[str] | None = None,
+                    confirmation_strategy_context: dict[str, Any]
+                    | None = None,
+                    chat_message_store_kwargs: dict[str, Any] | None = None,
+                    memory_store_kwargs: dict[str, Any] | None = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -174,12 +209,34 @@ if available.
 - `messages`: List of Haystack ChatMessage objects to process.
 - `streaming_callback`: An asynchronous callback that will be invoked when a response is streamed from the
 LLM. The same callback can be configured to emit tool results when a tool is called.
+- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
+override the parameters passed during component initialization.
 - `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
 for "tool_invoker".
 - `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
 the relevant information to restart the Agent execution from where it left off.
 - `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
 - `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
+to confirmation strategies. Useful in web/server environments to provide per-request
+objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+can use for non-blocking user interaction.
+- `chat_message_store_kwargs`: Optional dictionary of keyword arguments to pass to the ChatMessageStore.
+For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
+- `kwargs`: Additional data to pass to the State schema used by the Agent.
+- `memory_store_kwargs`: Optional dictionary of keyword arguments to pass to the MemoryStore.
+It can include:
+- `user_id`: The user ID to search and add memories from.
+- `run_id`: The run ID to search and add memories from.
+- `agent_id`: The agent ID to search and add memories from.
+- `search_criteria`: A dictionary of containing kwargs for the `search_memories` method.
+    This can include:
+    - `filters`: A dictionary of filters to search for memories.
+    - `query`: The query to search for memories.
+        Note: If you pass this, the user query passed to the agent will be
+        ignored for memory retrieval.
+    - `top_k`: The number of memories to return.
+    - `include_memory_metadata`: Whether to include the memory metadata in the ChatMessage.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -259,81 +316,6 @@ calls are returned.
 
 A tuple containing a list of tool call dictionaries and a dictionary of tool descriptions
 
-<a id="haystack_experimental.components.agents.human_in_the_loop.dataclasses"></a>
-
-## Module haystack\_experimental.components.agents.human\_in\_the\_loop.dataclasses
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.dataclasses.ConfirmationUIResult"></a>
-
-### ConfirmationUIResult
-
-Result of the confirmation UI interaction.
-
-**Arguments**:
-
-- `action`: The action taken by the user such as "confirm", "reject", or "modify".
-This action type is not enforced to allow for custom actions to be implemented.
-- `feedback`: Optional feedback message from the user. For example, if the user rejects the tool execution,
-they might provide a reason for the rejection.
-- `new_tool_params`: Optional set of new parameters for the tool. For example, if the user chooses to modify the tool parameters,
-they can provide a new set of parameters here.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.dataclasses.ConfirmationUIResult.action"></a>
-
-#### action
-
-"confirm", "reject", "modify"
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.dataclasses.ToolExecutionDecision"></a>
-
-### ToolExecutionDecision
-
-Decision made regarding tool execution.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `execute`: A boolean indicating whether to execute the tool with the provided parameters.
-- `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate the decision with a
-specific tool invocation.
-- `feedback`: Optional feedback message.
-For example, if the tool execution is rejected, this can contain the reason. Or if the tool parameters were
-modified, this can contain the modification details.
-- `final_tool_params`: Optional final parameters for the tool if execution is confirmed or modified.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.dataclasses.ToolExecutionDecision.to_dict"></a>
-
-#### ToolExecutionDecision.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Convert the ToolExecutionDecision to a dictionary representation.
-
-**Returns**:
-
-A dictionary containing the tool execution decision details.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.dataclasses.ToolExecutionDecision.from_dict"></a>
-
-#### ToolExecutionDecision.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ToolExecutionDecision"
-```
-
-Populate the ToolExecutionDecision from a dictionary representation.
-
-**Arguments**:
-
-- `data`: A dictionary containing the tool execution decision details.
-
-**Returns**:
-
-An instance of ToolExecutionDecision.
-
 <a id="haystack_experimental.components.agents.human_in_the_loop.errors"></a>
 
 ## Module haystack\_experimental.components.agents.human\_in\_the\_loop.errors
@@ -352,7 +334,7 @@ Exception raised when a tool execution is paused by a ConfirmationStrategy (e.g.
 def __init__(message: str,
              tool_name: str,
              snapshot_file_path: str,
-             tool_call_id: Optional[str] = None) -> None
+             tool_call_id: str | None = None) -> None
 ```
 
 Initialize the HITLBreakpointException.
@@ -365,197 +347,9 @@ Initialize the HITLBreakpointException.
 - `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate
 the decision with a specific tool invocation.
 
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies"></a>
-
-## Module haystack\_experimental.components.agents.human\_in\_the\_loop.policies
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.AlwaysAskPolicy"></a>
-
-### AlwaysAskPolicy
-
-Always ask for confirmation.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.AlwaysAskPolicy.should_ask"></a>
-
-#### AlwaysAskPolicy.should\_ask
-
-```python
-def should_ask(tool_name: str, tool_description: str,
-               tool_params: dict[str, Any]) -> bool
-```
-
-Always ask for confirmation before executing the tool.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
-
-**Returns**:
-
-Always returns True, indicating confirmation is needed.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.NeverAskPolicy"></a>
-
-### NeverAskPolicy
-
-Never ask for confirmation.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.NeverAskPolicy.should_ask"></a>
-
-#### NeverAskPolicy.should\_ask
-
-```python
-def should_ask(tool_name: str, tool_description: str,
-               tool_params: dict[str, Any]) -> bool
-```
-
-Never ask for confirmation, always proceed with tool execution.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
-
-**Returns**:
-
-Always returns False, indicating no confirmation is needed.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.AskOncePolicy"></a>
-
-### AskOncePolicy
-
-Ask only once per tool with specific parameters.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.AskOncePolicy.should_ask"></a>
-
-#### AskOncePolicy.should\_ask
-
-```python
-def should_ask(tool_name: str, tool_description: str,
-               tool_params: dict[str, Any]) -> bool
-```
-
-Ask for confirmation only once per tool with specific parameters.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
-
-**Returns**:
-
-True if confirmation is needed, False if already asked with the same parameters.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.policies.AskOncePolicy.update_after_confirmation"></a>
-
-#### AskOncePolicy.update\_after\_confirmation
-
-```python
-def update_after_confirmation(
-        tool_name: str, tool_description: str, tool_params: dict[str, Any],
-        confirmation_result: ConfirmationUIResult) -> None
-```
-
-Store the tool and parameters if the action was "confirm" to avoid asking again.
-
-This method updates the internal state to remember that the user has already confirmed the execution of the
-tool with the given parameters.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool that was executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters that were passed to the tool.
-- `confirmation_result`: The result from the confirmation UI.
-
 <a id="haystack_experimental.components.agents.human_in_the_loop.strategies"></a>
 
 ## Module haystack\_experimental.components.agents.human\_in\_the\_loop.strategies
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy"></a>
-
-### BlockingConfirmationStrategy
-
-Confirmation strategy that blocks execution to gather user feedback.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy.__init__"></a>
-
-#### BlockingConfirmationStrategy.\_\_init\_\_
-
-```python
-def __init__(confirmation_policy: ConfirmationPolicy,
-             confirmation_ui: ConfirmationUI) -> None
-```
-
-Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
-
-**Arguments**:
-
-- `confirmation_policy`: The confirmation policy to determine when to ask for user confirmation.
-- `confirmation_ui`: The user interface to interact with the user for confirmation.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy.run"></a>
-
-#### BlockingConfirmationStrategy.run
-
-```python
-def run(tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None) -> ToolExecutionDecision
-```
-
-Run the human-in-the-loop strategy for a given tool and its parameters.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
-- `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate the decision with a
-specific tool invocation.
-
-**Returns**:
-
-A ToolExecutionDecision indicating whether to execute the tool with the given parameters, or a
-feedback message if rejected.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy.to_dict"></a>
-
-#### BlockingConfirmationStrategy.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serializes the BlockingConfirmationStrategy to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy.from_dict"></a>
-
-#### BlockingConfirmationStrategy.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "BlockingConfirmationStrategy"
-```
-
-Deserializes the BlockingConfirmationStrategy from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized BlockingConfirmationStrategy.
 
 <a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BreakpointConfirmationStrategy"></a>
 
@@ -587,10 +381,14 @@ Initialize the BreakpointConfirmationStrategy.
 #### BreakpointConfirmationStrategy.run
 
 ```python
-def run(tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None) -> ToolExecutionDecision
+def run(
+    *,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None
+) -> ToolExecutionDecision
 ```
 
 Run the breakpoint confirmation strategy for a given tool and its parameters.
@@ -602,6 +400,41 @@ Run the breakpoint confirmation strategy for a given tool and its parameters.
 - `tool_params`: The parameters to be passed to the tool.
 - `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate the decision with a
 specific tool invocation.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources. Not used by this strategy but included for
+interface compatibility.
+
+**Raises**:
+
+- `HITLBreakpointException`: Always raises an `HITLBreakpointException` exception to signal that user confirmation is required.
+
+**Returns**:
+
+This method does not return; it always raises an exception.
+
+<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BreakpointConfirmationStrategy.run_async"></a>
+
+#### BreakpointConfirmationStrategy.run\_async
+
+```python
+async def run_async(
+    *,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None
+) -> ToolExecutionDecision
+```
+
+Async version of run. Calls the sync run() method.
+
+**Arguments**:
+
+- `tool_name`: The name of the tool to be executed.
+- `tool_description`: The description of the tool.
+- `tool_params`: The parameters to be passed to the tool.
+- `tool_call_id`: Optional unique identifier for the tool call.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources.
 
 **Raises**:
 
@@ -639,214 +472,4 @@ Deserializes the BreakpointConfirmationStrategy from a dictionary.
 **Returns**:
 
 Deserialized BreakpointConfirmationStrategy.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types"></a>
-
-## Module haystack\_experimental.components.agents.human\_in\_the\_loop.types
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationUI"></a>
-
-### ConfirmationUI
-
-Base class for confirmation UIs.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationUI.get_user_confirmation"></a>
-
-#### ConfirmationUI.get\_user\_confirmation
-
-```python
-def get_user_confirmation(tool_name: str, tool_description: str,
-                          tool_params: dict[str, Any]) -> ConfirmationUIResult
-```
-
-Get user confirmation for tool execution.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationUI.to_dict"></a>
-
-#### ConfirmationUI.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize the UI to a dictionary.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationUI.from_dict"></a>
-
-#### ConfirmationUI.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ConfirmationUI"
-```
-
-Deserialize the ConfirmationUI from a dictionary.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationPolicy"></a>
-
-### ConfirmationPolicy
-
-Base class for confirmation policies.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationPolicy.should_ask"></a>
-
-#### ConfirmationPolicy.should\_ask
-
-```python
-def should_ask(tool_name: str, tool_description: str,
-               tool_params: dict[str, Any]) -> bool
-```
-
-Determine whether to ask for confirmation.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationPolicy.update_after_confirmation"></a>
-
-#### ConfirmationPolicy.update\_after\_confirmation
-
-```python
-def update_after_confirmation(
-        tool_name: str, tool_description: str, tool_params: dict[str, Any],
-        confirmation_result: ConfirmationUIResult) -> None
-```
-
-Update the policy based on the confirmation UI result.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationPolicy.to_dict"></a>
-
-#### ConfirmationPolicy.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize the policy to a dictionary.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationPolicy.from_dict"></a>
-
-#### ConfirmationPolicy.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ConfirmationPolicy"
-```
-
-Deserialize the policy from a dictionary.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationStrategy"></a>
-
-### ConfirmationStrategy
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationStrategy.run"></a>
-
-#### ConfirmationStrategy.run
-
-```python
-def run(tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None) -> ToolExecutionDecision
-```
-
-Run the confirmation strategy for a given tool and its parameters.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
-- `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate
-the decision with a specific tool invocation.
-
-**Returns**:
-
-The result of the confirmation strategy (e.g., tool output, rejection message, etc.).
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationStrategy.to_dict"></a>
-
-#### ConfirmationStrategy.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize the strategy to a dictionary.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationStrategy.from_dict"></a>
-
-#### ConfirmationStrategy.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ConfirmationStrategy"
-```
-
-Deserialize the strategy from a dictionary.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.user_interfaces"></a>
-
-## Module haystack\_experimental.components.agents.human\_in\_the\_loop.user\_interfaces
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.user_interfaces.RichConsoleUI"></a>
-
-### RichConsoleUI
-
-Rich console interface for user interaction.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.user_interfaces.RichConsoleUI.get_user_confirmation"></a>
-
-#### RichConsoleUI.get\_user\_confirmation
-
-```python
-def get_user_confirmation(tool_name: str, tool_description: str,
-                          tool_params: dict[str, Any]) -> ConfirmationUIResult
-```
-
-Get user confirmation for tool execution via rich console prompts.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
-
-**Returns**:
-
-ConfirmationUIResult based on user input.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.user_interfaces.RichConsoleUI.to_dict"></a>
-
-#### RichConsoleUI.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serializes the RichConsoleConfirmationUI to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.user_interfaces.SimpleConsoleUI"></a>
-
-### SimpleConsoleUI
-
-Simple console interface using standard input/output.
-
-<a id="haystack_experimental.components.agents.human_in_the_loop.user_interfaces.SimpleConsoleUI.get_user_confirmation"></a>
-
-#### SimpleConsoleUI.get\_user\_confirmation
-
-```python
-def get_user_confirmation(tool_name: str, tool_description: str,
-                          tool_params: dict[str, Any]) -> ConfirmationUIResult
-```
-
-Get user confirmation for tool execution via simple console prompts.
-
-**Arguments**:
-
-- `tool_name`: The name of the tool to be executed.
-- `tool_description`: The description of the tool.
-- `tool_params`: The parameters to be passed to the tool.
 

@@ -22,6 +22,11 @@ const config = {
   onBrokenAnchors: 'throw',
   onDuplicateRoutes: 'throw',
 
+  future: {
+    experimental_faster: true,
+    v4: true,
+  },
+
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'throw',
@@ -48,15 +53,19 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.21-unstable',
+              label: '2.24-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.19',
+          lastVersion: '2.23',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
+        },
+        gtag: {
+          trackingID: 'G-XLR9NC5CBS',
+          anonymizeIP: true,
         },
       }),
     ],
@@ -88,12 +97,80 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.21-unstable',
+            label: '2.24-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.19',
+        lastVersion: '2.23',
+      },
+    ],
+    [
+      'docusaurus-plugin-generate-llms-txt',
+      {
+        // defaults to "llms.txt", but set explicitly for clarity
+        outputFile: 'llms.txt',
+      },
+    ],
+    // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
+    require.resolve('./plugins/txtLoaderPlugin'),
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: '/docs',
+            to: '/docs/intro',
+          },
+          {
+            from: '/docs/get_started',
+            to: '/docs/get-started',
+          },
+          {
+            from: '/docs/document_store',
+            to: '/docs/document-store',
+          },
+          {
+            from: '/docs/components_overview',
+            to: '/docs/components',
+          },
+          {
+            from: '/docs/nodes_overview',
+            to: '/docs/components',
+          },
+          {
+            from: '/docs/retriever',
+            to: '/docs/retrievers',
+          },
+          {
+            from: '/docs/ranker',
+            to: '/docs/rankers',
+          },
+          {
+            from: '/docs/pipeline',
+            to: '/docs/pipelines',
+          },
+          {
+            from: '/docs/prompt_node',
+            to: '/docs/promptbuilder',
+          },
+          {
+            from: '/docs/ready_made_pipelines',
+            to: '/docs/pipeline-templates',
+          },
+          {
+            from: '/docs/join_documents',
+            to: '/docs/documentjoiner',
+          },
+          {
+            from: '/docs/dynamicchatpromptbuilder',
+            to: '/docs/chatpromptbuilder',
+          },
+          {
+            from: '/docs/dynamicpromptbuilder',
+            to: '/docs/promptbuilder',
+          },
+        ],
       },
     ],
   ],
@@ -101,6 +178,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      image: 'img/haystack-ogimage.png',
       docs: {
         sidebar: {
           autoCollapseCategories: true,
@@ -117,6 +195,20 @@ const config = {
             type: 'docsVersionDropdown',
             position: 'left',
             dropdownActiveClassDisabled: true,
+            dropdownItemsAfter: [
+              {
+                type: 'html',
+                value: '<hr style="margin: 0.3rem 0;">',
+              },
+              {
+                href: '/docs/faq#where-can-i-find-tutorials-and-documentation-for-haystack-1x',
+                label: '1.x archived documentation',
+              },
+              {
+                href: '/docs/faq#where-is-the-documentation-for-haystack-217-and-older',
+                label: '2.x archived documentation',
+              },
+            ],
           },
           {
             type: 'doc',
@@ -124,13 +216,18 @@ const config = {
             label: 'Docs',
             position: 'left',
           },
-            {
-              type: 'doc',
-              docsPluginId: 'reference',
-              docId: 'api-index',
-              label: 'API Reference',
-              position: 'left',
-            },
+          {
+            type: 'doc',
+            docsPluginId: 'reference',
+            docId: 'api-index',
+            label: 'API Reference',
+            position: 'left',
+          },
+          {
+            href: 'https://github.com/deepset-ai/haystack/blob/main/docs-website/CONTRIBUTING.md',
+            label: 'Contribute',
+            position: 'right',
+          },
           {
             href: 'https://github.com/deepset-ai/haystack/tree/main/docs-website',
             label: 'GitHub',
@@ -144,9 +241,9 @@ const config = {
           {
             title: 'Community',
             items: [
-              { label: 'Discord',   href: 'https://discord.com/invite/haystack' },
-              { label: 'GitHub',    href: 'https://github.com/deepset-ai/haystack' },
-              { label: 'Twitter',   href: 'https://twitter.com/haystack_ai' },
+              {
+                html: '<div class="footer-social-icons-container"><div class="footer-social-row"><a href="https://discord.com/invite/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="Discord"><img src="/img/discord.svg" alt="Discord" class="footer-social-icon" /></a><a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="GitHub"><img src="/img/github.svg" alt="GitHub" class="footer-social-icon" /></a><a href="https://x.com/haystack_ai" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="X"><img src="/img/x.svg" alt="X" class="footer-social-icon" /></a></div><div class="footer-social-row"><a href="https://www.linkedin.com/company/deepset-ai/" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="LinkedIn"><img src="/img/linkedin.svg" alt="LinkedIn" class="footer-social-icon" /></a><a href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="YouTube"><img src="/img/youtube.svg" alt="YouTube" class="footer-social-icon" /></a></div></div>'
+              },
             ],
           },
           {
@@ -160,7 +257,8 @@ const config = {
             title: 'More',
             items: [
               { label: 'Integrations',   href: 'https://haystack.deepset.ai/integrations' },
-              { label: 'Studio', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Platform - Try Free', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Enterprise Support', href: 'https://landing.deepset.ai/deepset-studio-signup' },
             ],
           },
           {
@@ -169,6 +267,13 @@ const config = {
               { label: 'About',   href: 'https://deepset.ai/about' },
               { label: 'Careers', href: 'https://deepset.ai/careers' },
               { label: 'Blog',    href: 'https://deepset.ai/blog' },
+            ],
+          },
+          {
+            title: 'Legal',
+            items: [
+              { label: 'Privacy Policy', href: 'https://www.deepset.ai/privacy-policy' },
+              { label: 'Imprint', href: 'https://www.deepset.ai/imprint' },
             ],
           },
         ],

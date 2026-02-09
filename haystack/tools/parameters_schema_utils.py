@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
+import types
+from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Sequence, Union, get_args, get_origin
@@ -12,8 +14,32 @@ from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
+
+
+def _contains_callable_type(type_hint: Any) -> bool:
+    """
+    Check if a type hint contains a Callable type, including within Union types.
+
+    The purpose of this function is to help identify Callable types so they can
+    be skipped during schema generation.
+
+    :param type_hint: The type hint to check.
+    :returns: True if the type contains a Callable, False otherwise.
+    """
+    origin = get_origin(type_hint)
+
+    # Check if it's a Callable type (direct or parameterized)
+    if type_hint in (Callable, ABCCallable) or origin in (Callable, ABCCallable):
+        return True
+
+    # Recursively check Union types (both typing.Union and types.UnionType for `X | Y` syntax)
+    if origin in (Union, types.UnionType):
+        return any(_contains_callable_type(arg) for arg in get_args(type_hint))
+
+    return False
 
 
 # Schema placeholder models for Tool and Toolset
@@ -187,7 +213,7 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911  # pylint: disable=too-ma
     if origin is collections.abc.Sequence:
         return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
-    if origin is Union:
+    if _is_union_type(origin):
         return Union[tuple(_resolve_type(a) for a in args)]
 
     if origin is dict:

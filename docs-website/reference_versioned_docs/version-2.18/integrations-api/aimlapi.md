@@ -59,14 +59,14 @@ print(response)
 def __init__(*,
              api_key: Secret = Secret.from_env_var("AIMLAPI_API_KEY"),
              model: str = "openai/gpt-5-chat-latest",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = "https://api.aimlapi.com/v1",
-             generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[ToolsType] = None,
-             timeout: Optional[float] = None,
-             extra_headers: Optional[Dict[str, Any]] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[Dict[str, Any]] = None)
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = "https://api.aimlapi.com/v1",
+             generation_kwargs: dict[str, Any] | None = None,
+             tools: ToolsType | None = None,
+             timeout: float | None = None,
+             extra_headers: dict[str, Any] | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an instance of AIMLAPIChatGenerator. Unless specified otherwise,
@@ -108,7 +108,7 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 #### AIMLAPIChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.

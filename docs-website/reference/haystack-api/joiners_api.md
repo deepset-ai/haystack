@@ -55,19 +55,19 @@ messages = [ChatMessage.from_system("You are a helpful, respectful and honest as
             ChatMessage.from_user(query)]
 
 pipe = Pipeline()
-pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
-pipe.add_component("gpt-4o-mini", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.add_component("llm_1", OpenAIChatGenerator()
+pipe.add_component("llm_2", OpenAIChatGenerator()
 pipe.add_component("aba", AnswerBuilder())
 pipe.add_component("abb", AnswerBuilder())
 pipe.add_component("joiner", AnswerJoiner())
 
-pipe.connect("gpt-4o.replies", "aba")
-pipe.connect("gpt-4o-mini.replies", "abb")
+pipe.connect("llm_1.replies", "aba")
+pipe.connect("llm_2.replies", "abb")
 pipe.connect("aba.answers", "joiner")
 pipe.connect("abb.answers", "joiner")
 
-results = pipe.run(data={"gpt-4o": {"messages": messages},
-                            "gpt-4o-mini": {"messages": messages},
+results = pipe.run(data={"llm_1": {"messages": messages},
+                            "llm_2": {"messages": messages},
                             "aba": {"query": query},
                             "abb": {"query": query}})
 ```
@@ -77,8 +77,8 @@ results = pipe.run(data={"gpt-4o": {"messages": messages},
 #### AnswerJoiner.\_\_init\_\_
 
 ```python
-def __init__(join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-             top_k: Optional[int] = None,
+def __init__(join_mode: str | JoinMode = JoinMode.CONCATENATE,
+             top_k: int | None = None,
              sort_by_score: bool = False)
 ```
 
@@ -98,7 +98,7 @@ If a document has no score, it is handled as if its score is -infinity.
 
 ```python
 @component.output_types(answers=list[AnswerType])
-def run(answers: Variadic[list[AnswerType]], top_k: Optional[int] = None)
+def run(answers: Variadic[list[AnswerType]], top_k: int | None = None)
 ```
 
 Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
@@ -197,7 +197,7 @@ pipe = Pipeline()
 
 # Add components to the pipeline
 pipe.add_component('joiner', BranchJoiner(list[ChatMessage]))
-pipe.add_component('generator', OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.add_component('generator', OpenAIChatGenerator())
 pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
 pipe.add_component('adapter', OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 
@@ -364,9 +364,9 @@ p.run(data={"query": query, "text": query, "top_k": 1})
 #### DocumentJoiner.\_\_init\_\_
 
 ```python
-def __init__(join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-             weights: Optional[list[float]] = None,
-             top_k: Optional[int] = None,
+def __init__(join_mode: str | JoinMode = JoinMode.CONCATENATE,
+             weights: list[float] | None = None,
+             top_k: int | None = None,
              sort_by_score: bool = True)
 ```
 
@@ -394,7 +394,7 @@ If a document has no score, it is handled as if its score is -infinity.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(documents: Variadic[list[Document]], top_k: Optional[int] = None)
+def run(documents: Variadic[list[Document]], top_k: int | None = None)
 ```
 
 Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
@@ -476,8 +476,8 @@ feedback_message = [ChatMessage.from_system(feedback_prompt)]
 
 prompt_builder = ChatPromptBuilder(template=user_message)
 feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-llm = OpenAIChatGenerator(model="gpt-4o-mini")
-feedback_llm = OpenAIChatGenerator(model="gpt-4o-mini")
+llm = OpenAIChatGenerator()
+feedback_llm = OpenAIChatGenerator()
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
@@ -505,7 +505,7 @@ print(ans["list_joiner"]["values"])
 #### ListJoiner.\_\_init\_\_
 
 ```python
-def __init__(list_type_: Optional[type] = None)
+def __init__(list_type_: type | None = None)
 ```
 
 Creates a ListJoiner component.
@@ -609,7 +609,7 @@ print(pipeline.run(data={"prompt_builder_1": {"query": string_1}, "prompt_builde
 
 ```python
 @component.output_types(strings=list[str])
-def run(strings: Variadic[str])
+def run(strings: Variadic[str]) -> dict[str, list[str]]
 ```
 
 Joins strings into a list of strings

@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
-from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
 @component
@@ -57,7 +56,7 @@ class DocumentWriter:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_store=self.document_store.to_dict(), policy=self.policy.name)
+        return default_to_dict(self, document_store=self.document_store, policy=self.policy.name)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "DocumentWriter":
@@ -72,15 +71,13 @@ class DocumentWriter:
         :raises DeserializationError:
             If the document store is not properly specified in the serialization data or its type cannot be imported.
         """
-        # deserialize the document store
-        deserialize_document_store_in_init_params_inplace(data)
-
-        data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
-
+        init_params = data.get("init_parameters", {})
+        if "policy" in init_params:
+            init_params["policy"] = DuplicatePolicy[init_params["policy"]]
         return default_from_dict(cls, data)
 
     @component.output_types(documents_written=int)
-    def run(self, documents: list[Document], policy: Optional[DuplicatePolicy] = None):
+    def run(self, documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]:
         """
         Run the DocumentWriter on the given input data.
 
@@ -101,7 +98,7 @@ class DocumentWriter:
         return {"documents_written": documents_written}
 
     @component.output_types(documents_written=int)
-    async def run_async(self, documents: list[Document], policy: Optional[DuplicatePolicy] = None):
+    async def run_async(self, documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]:
         """
         Asynchronously run the DocumentWriter on the given input data.
 

@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 
 from haystack import Document, component
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -37,7 +37,7 @@ class LostInTheMiddleRanker:
     ```
     """
 
-    def __init__(self, word_count_threshold: Optional[int] = None, top_k: Optional[int] = None):
+    def __init__(self, word_count_threshold: int | None = None, top_k: int | None = None):
         """
         Initialize the LostInTheMiddleRanker.
 
@@ -61,10 +61,13 @@ class LostInTheMiddleRanker:
 
     @component.output_types(documents=list[Document])
     def run(
-        self, documents: list[Document], top_k: Optional[int] = None, word_count_threshold: Optional[int] = None
+        self, documents: list[Document], top_k: int | None = None, word_count_threshold: int | None = None
     ) -> dict[str, list[Document]]:
         """
         Reranks documents based on the "lost in the middle" order.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
@@ -89,7 +92,8 @@ class LostInTheMiddleRanker:
         top_k = top_k or self.top_k
         word_count_threshold = word_count_threshold or self.word_count_threshold
 
-        documents_to_reorder = documents[:top_k] if top_k else documents
+        deduplicated_documents = _deduplicate_documents(documents)
+        documents_to_reorder = deduplicated_documents[:top_k] if top_k else deduplicated_documents
 
         # If there's only one document, return it as is
         if len(documents_to_reorder) == 1:

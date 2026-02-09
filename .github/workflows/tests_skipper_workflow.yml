@@ -14,7 +14,7 @@ jobs:
   catch-all:
     # Don't run this check if the PR contains both code and non-code changes (e.g. release notes)
     name: Mark tests as completed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Skip tests
         if: ${{ github.event.inputs.tests_were_skipped }}

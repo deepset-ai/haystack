@@ -4,7 +4,7 @@
 
 import tempfile
 from pathlib import Path
-from typing import Any, Literal, Optional, Union, get_args
+from typing import Any, Literal, get_args
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
@@ -46,15 +46,15 @@ class LocalWhisperTranscriber:
 
     whisper = LocalWhisperTranscriber(model="small")
     whisper.warm_up()
-    transcription = whisper.run(sources=["path/to/audio/file"])
+    transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
     ```
     """
 
     def __init__(
         self,
         model: WhisperLocalModel = "large",
-        device: Optional[ComponentDevice] = None,
-        whisper_params: Optional[dict[str, Any]] = None,
+        device: ComponentDevice | None = None,
+        whisper_params: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of the LocalWhisperTranscriber component.
@@ -91,7 +91,7 @@ class LocalWhisperTranscriber:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, model=self.model, device=self.device.to_dict(), whisper_params=self.whisper_params)
+        return default_to_dict(self, model=self.model, device=self.device, whisper_params=self.whisper_params)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LocalWhisperTranscriber":
@@ -103,13 +103,10 @@ class LocalWhisperTranscriber:
         :returns:
             The deserialized component.
         """
-        init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[Union[str, Path, ByteStream]], whisper_params: Optional[dict[str, Any]] = None):
+    def run(self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None):
         """
         Transcribes a list of audio files into a list of documents.
 
@@ -127,9 +124,7 @@ class LocalWhisperTranscriber:
                 for the transcription.
         """
         if self._model is None:
-            raise RuntimeError(
-                "The component LocalWhisperTranscriber was not warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if whisper_params is None:
             whisper_params = self.whisper_params
@@ -137,7 +132,7 @@ class LocalWhisperTranscriber:
         documents = self.transcribe(sources, **whisper_params)
         return {"documents": documents}
 
-    def transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> list[Document]:
+    def transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> list[Document]:
         """
         Transcribes the audio files into a list of Documents, one for each input file.
 
@@ -158,7 +153,20 @@ class LocalWhisperTranscriber:
             documents.append(doc)
         return documents
 
-    def _raw_transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> dict[Path, Any]:
+    def _get_path(self, source: str | Path | ByteStream) -> Path:
+        if isinstance(source, (Path, str)):
+            return Path(source)
+
+        potential_path = source.meta.get("file_path")
+        if potential_path is not None:
+            return Path(potential_path)
+        else:
+            with tempfile.NamedTemporaryFile(delete=False) as fp:
+                path = Path(fp.name)
+                source.to_file(path)
+            return path
+
+    def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> dict[Path, Any]:
         """
         Transcribes the given audio files. Returns the output of the model, a dictionary, for each input file.
 
@@ -172,20 +180,16 @@ class LocalWhisperTranscriber:
             A dictionary mapping 'file_path' to 'transcription'.
         """
         if self._model is None:
-            raise RuntimeError("Model is not loaded, please run 'warm_up()' before calling 'run()'")
+            self.warm_up()
 
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = {}
 
         for source in sources:
-            path = Path(source) if not isinstance(source, ByteStream) else source.meta.get("file_path")
+            path = self._get_path(source)
 
-            if isinstance(source, ByteStream) and path is None:
-                with tempfile.NamedTemporaryFile(delete=False) as fp:
-                    path = Path(fp.name)
-                    source.to_file(path)
-
-            transcription = self._model.transcribe(str(path), **kwargs)
+            # mypy doesn't know this is set in warm_up
+            transcription = self._model.transcribe(str(path), **kwargs)  # type: ignore[attr-defined]
 
             if not return_segments:
                 transcription.pop("segments", None)

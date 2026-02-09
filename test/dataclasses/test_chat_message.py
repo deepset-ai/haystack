@@ -57,6 +57,17 @@ class TestContentParts:
         assert tcr.origin == ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
         assert tcr.error
 
+    def test_tool_call_result_init_mixed_content(self, base64_image_string):
+        text_content = TextContent(text="Here is an image:")
+        image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+        tool_call = ToolCall(tool_name="test_tool", arguments={})
+        result = ToolCallResult(result=[text_content, image_content], origin=tool_call, error=False)
+
+        assert isinstance(result.result, list)
+        assert len(result.result) == 2
+        assert isinstance(result.result[0], TextContent)
+        assert isinstance(result.result[1], ImageContent)
+
     def test_tool_call_result_to_dict(self):
         tcr = ToolCallResult(
             result="result", origin=ToolCall(id="123", tool_name="mytool", arguments={"a": 1}), error=True
@@ -65,6 +76,29 @@ class TestContentParts:
             "result": "result",
             "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}, "extra": None},
             "error": True,
+        }
+
+    def test_tool_call_result_to_dict_mixed_content(self, base64_image_string):
+        text_content = TextContent(text="Here is an image:")
+        image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+        tool_call = ToolCall(tool_name="test_tool", arguments={})
+        result = ToolCallResult(result=[text_content, image_content], origin=tool_call, error=False)
+
+        assert result.to_dict() == {
+            "result": [
+                {"text": "Here is an image:"},
+                {
+                    "image": {
+                        "base64_image": base64_image_string,
+                        "mime_type": "image/png",
+                        "detail": None,
+                        "meta": {},
+                        "validation": True,
+                    }
+                },
+            ],
+            "origin": {"tool_name": "test_tool", "arguments": {}, "id": None, "extra": None},
+            "error": False,
         }
 
     def test_tool_call_result_from_dict(self):
@@ -77,6 +111,31 @@ class TestContentParts:
 
         with pytest.raises(ValueError):
             ToolCallResult.from_dict({"result": "result", "error": False})
+
+    def test_tool_call_result_from_dict_mixed_content(self, base64_image_string):
+        data = {
+            "result": [
+                {"text": "Caption"},
+                {
+                    "image": {
+                        "base64_image": base64_image_string,
+                        "mime_type": "image/png",
+                        "detail": None,
+                        "meta": {},
+                        "validation": True,
+                    }
+                },
+            ],
+            "origin": {"tool_name": "test_tool", "arguments": {}, "id": "call_123", "extra": None},
+            "error": False,
+        }
+
+        result = ToolCallResult.from_dict(data)
+        assert isinstance(result.result, list)
+        assert len(result.result) == 2
+        assert isinstance(result.result[0], TextContent)
+        assert isinstance(result.result[1], ImageContent)
+        assert result.result[0].text == "Caption"
 
     def test_text_content_init(self):
         tc = TextContent(text="Hello")
@@ -312,6 +371,29 @@ class TestChatMessage:
         assert not message.reasonings
         assert not message.reasoning
 
+    def test_from_tool_with_valid_mixed_content(self, base64_image_string):
+        tool_result = [TextContent(text="Hello"), ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}), error=False
+        )
+
+        tcr = ToolCallResult(result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}), error=False)
+
+        assert message._content == [tcr]
+        assert message.role == ChatRole.TOOL
+
+        assert message.tool_call_result == tcr
+        assert message.tool_call_results == [tcr]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.texts
+        assert not message.text
+        assert not message.images
+        assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
+
     def test_multiple_text_segments(self):
         texts = [TextContent(text="Hello"), TextContent(text="World")]
         message = ChatMessage(_role=ChatRole.USER, _content=texts)
@@ -335,6 +417,17 @@ class TestChatMessage:
         with pytest.raises(AttributeError):
             ChatMessage.from_function("Result of function invocation", "my_function")
 
+    def test_chat_message_content_attribute_removed(self):
+        message = ChatMessage.from_user(text="This is a message")
+        with pytest.raises(AttributeError):
+            message.content
+
+    def test_chat_message_init_parameters_removed(self):
+        with pytest.raises(TypeError):
+            ChatMessage(role="irrelevant", content="This is a message")
+
+
+class TestChatMessageSerde:
     def test_serde(self, base64_image_string):
         # the following message is created just for testing purposes and does not make sense in a real use case
 
@@ -488,14 +581,39 @@ class TestChatMessage:
         with pytest.raises(ValueError):
             ChatMessage.from_dict(serialized_msg)
 
-    def test_chat_message_content_attribute_removed(self):
-        message = ChatMessage.from_user(text="This is a message")
-        with pytest.raises(AttributeError):
-            message.content
+    def test_to_trace_dict(self):
+        message = ChatMessage.from_user(text="This is a message", name="John", meta={"foo": "bar"})
+        trace_dict = message._to_trace_dict()
 
-    def test_chat_message_init_parameters_removed(self):
-        with pytest.raises(TypeError):
-            ChatMessage(role="irrelevant", content="This is a message")
+        assert trace_dict == {
+            "role": "user",
+            "content": [{"text": "This is a message"}],
+            "name": "John",
+            "meta": {"foo": "bar"},
+        }
+
+    def test_to_trace_dict_with_image_content(self, base64_image_string):
+        message = ChatMessage.from_user(
+            content_parts=[ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})]
+        )
+        trace_dict = message._to_trace_dict()
+
+        assert trace_dict == {
+            "role": "user",
+            "content": [
+                {
+                    "image": {
+                        "base64_image": "Base64 string (92 characters)",
+                        "mime_type": "image/png",
+                        "detail": "auto",
+                        "meta": {"foo": "bar"},
+                        "validation": True,
+                    }
+                }
+            ],
+            "name": None,
+            "meta": {},
+        }
 
 
 class TestToOpenaiDictFormat:
@@ -558,6 +676,17 @@ class TestToOpenaiDictFormat:
         )
         assert message.to_openai_dict_format() == {"role": "tool", "content": tool_result, "tool_call_id": "123"}
 
+    def test_to_openai_dict_format_tool_message_list(self):
+        tool_result = [TextContent(text="first result"), TextContent(text="second result")]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}, id="123"), error=False
+        )
+        assert message.to_openai_dict_format() == {
+            "role": "tool",
+            "content": [{"text": "first result", "type": "text"}, {"text": "second result", "type": "text"}],
+            "tool_call_id": "123",
+        }
+
     def test_to_openai_dict_format_with_name(self):
         message = ChatMessage.from_user(text="I have a question", name="John")
         assert message.to_openai_dict_format() == {"role": "user", "content": "I have a question", "name": "John"}
@@ -612,6 +741,17 @@ class TestToOpenaiDictFormat:
         openai_msg = message.to_openai_dict_format(require_tool_call_ids=False)
         assert openai_msg == {"role": "tool", "content": "result"}
 
+    def test_to_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
+        tool_result = [
+            TextContent(text="first result"),
+            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+        ]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}, id="123"), error=False
+        )
+        with pytest.raises(ValueError):
+            message.to_openai_dict_format()
+
 
 class TestFromOpenaiDictFormat:
     def test_from_openai_dict_format_user_message(self):
@@ -657,6 +797,17 @@ class TestFromOpenaiDictFormat:
         assert message.tool_call_result.result == "The weather is sunny"
         assert message.tool_call_result.origin.id == "call_123"
 
+    def test_from_openai_dict_format_tool_message_list(self):
+        openai_msg = {
+            "role": "tool",
+            "content": [{"text": "first result", "type": "text"}, {"text": "second result", "type": "text"}],
+            "tool_call_id": "call_123",
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "tool"
+        assert message.tool_call_result.result == [TextContent(text="first result"), TextContent(text="second result")]
+        assert message.tool_call_result.origin.id == "call_123"
+
     def test_from_openai_dict_format_tool_without_id(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
@@ -684,3 +835,23 @@ class TestFromOpenaiDictFormat:
     def test_from_openai_dict_format_assistant_missing_content_and_tool_calls(self):
         with pytest.raises(ValueError):
             ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
+
+    def test_from_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
+        openai_msg = {
+            "role": "tool",
+            "content": [
+                {"text": "first result", "type": "text"},
+                {
+                    "image": {
+                        "base64_image": base64_image_string,
+                        "mime_type": "image/png",
+                        "detail": None,
+                        "meta": {},
+                        "validation": True,
+                    }
+                },
+            ],
+            "tool_call_id": "call_123",
+        }
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format(openai_msg)

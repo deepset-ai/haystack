@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, Literal, Optional
+from typing import Generator, Literal
 from unicodedata import normalize
 
 from haystack import Document, component, logging
@@ -44,10 +44,12 @@ class DocumentCleaner:
         remove_extra_whitespaces: bool = True,
         remove_repeated_substrings: bool = False,
         keep_id: bool = False,
-        remove_substrings: Optional[list[str]] = None,
-        remove_regex: Optional[str] = None,
-        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        remove_substrings: list[str] | None = None,
+        remove_regex: str | None = None,
+        unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         ascii_only: bool = False,
+        strip_whitespaces: bool = False,
+        replace_regexes: dict[str, str] | None = None,
     ):
         """
         Initialize DocumentCleaner.
@@ -66,6 +68,12 @@ class DocumentCleaner:
             Will remove accents from characters and replace them with ASCII characters.
             Other non-ASCII characters will be removed.
             Note: This will run before any pattern matching or removal.
+        :param strip_whitespaces: If `True`, removes leading and trailing whitespace from the document content
+            using Python's `str.strip()`. Unlike `remove_extra_whitespaces`, this only affects the beginning
+            and end of the text, preserving internal whitespace (useful for markdown formatting).
+        :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
+            For example, `{r'\\n\\n+': '\\n'}` replaces multiple consecutive newlines with a single newline.
+            This is applied after `remove_regex` and allows custom replacements instead of just removal.
         """
 
         self._validate_params(unicode_normalization=unicode_normalization)
@@ -78,8 +86,10 @@ class DocumentCleaner:
         self.keep_id = keep_id
         self.unicode_normalization = unicode_normalization
         self.ascii_only = ascii_only
+        self.strip_whitespaces = strip_whitespaces
+        self.replace_regexes = replace_regexes
 
-    def _validate_params(self, unicode_normalization: Optional[str]):
+    def _validate_params(self, unicode_normalization: str | None):
         """
         Validate the parameters of the DocumentCleaner.
 
@@ -128,8 +138,12 @@ class DocumentCleaner:
                 text = self._remove_substrings(text, self.remove_substrings)
             if self.remove_regex:
                 text = self._remove_regex(text, self.remove_regex)
+            if self.replace_regexes:
+                text = self._replace_regexes(text, self.replace_regexes)
             if self.remove_repeated_substrings:
                 text = self._remove_repeated_substrings(text)
+            if self.strip_whitespaces:
+                text = text.strip()
 
             clean_doc = Document(
                 id=doc.id if self.keep_id else "",
@@ -203,6 +217,22 @@ class DocumentCleaner:
         texts = text.split("\f")
         cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
         return "\f".join(cleaned_text)
+
+    def _replace_regexes(self, text: str, replace_regexes: dict[str, str]) -> str:
+        """
+        Replace substrings that match the specified regex patterns with custom replacement strings.
+
+        :param text: Text to clean.
+        :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
+        :returns: The text with the regex matches replaced by the specified strings.
+        """
+        pages = text.split("\f")
+        cleaned_pages = []
+        for page in pages:
+            for pattern, replacement in replace_regexes.items():
+                page = re.sub(pattern, replacement, page)
+            cleaned_pages.append(page)
+        return "\f".join(cleaned_pages)
 
     def _remove_substrings(self, text: str, substrings: list[str]) -> str:
         """

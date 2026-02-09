@@ -4,7 +4,7 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Iterable, Optional, Union, cast
+from typing import Any, Iterable, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (
@@ -16,7 +16,7 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
@@ -94,12 +94,12 @@ class HuggingFaceAPIGenerator:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        api_type: Union[HFGenerationAPIType, str],
+        api_type: HFGenerationAPIType | str,
         api_params: dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        stop_words: Optional[list[str]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        generation_kwargs: dict[str, Any] | None = None,
+        stop_words: list[str] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ):
         """
         Initialize the HuggingFaceAPIGenerator instance.
@@ -190,7 +190,7 @@ class HuggingFaceAPIGenerator:
             self,
             api_type=str(self.api_type),
             api_params=self.api_params,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
         )
@@ -200,7 +200,6 @@ class HuggingFaceAPIGenerator:
         """
         Deserialize this component from a dictionary.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data["init_parameters"]
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
@@ -211,8 +210,8 @@ class HuggingFaceAPIGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ):
         """
         Invoke the text generation inference for the given prompt and generation parameters.

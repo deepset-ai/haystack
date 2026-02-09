@@ -36,6 +36,9 @@ A pipeline can have multiple branches that process data concurrently. For exampl
 ### Loops
 
 Components in a pipeline can work in iterative loops, which you can cap at a desired number. This can be handy for scenarios like self-correcting loops, where you have a generator producing some output and then a validator component to check if the output is correct. If the generator's output has errors, the validator component can loop back to the generator for a corrected output. The loop goes on until the output passes the validation and can be sent further down the pipeline.
+
+See [Pipeline Loops](pipelines/pipeline-loops.mdx) for a deeper explanation of how loops are executed, how they terminate, and how to use them safely.
+
 <ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="Pipeline architecture diagram illustrating a feedback loop where output from later components loops back to earlier components" size="large" />
 
 ### Async Pipelines
@@ -53,6 +56,16 @@ To simplify your code, we have introduced [SuperComponents](components/supercomp
 While the data (the initial query) flows through the entire pipeline, individual values are only passed from one component to another when they are connected. Therefore, not all components have access to all the data. This approach offers the benefits of speed and ease of debugging.
 
 To connect components and integrations in a pipeline, you must know the names of their inputs and outputs. The output of one component must be accepted as input by the following component. When you connect components in a pipeline with `Pipeline.connect()`, it validates if the input and output types match.
+
+### Smart Pipeline Connections
+
+Pipelines support smarter connection semantics that simplify how components are wired together.
+Compatible outputs can be implicitly combined when connected to a single input.
+
+This behavior reduces the need for glue components like `Joiners`, keeping pipelines concise and easier to read.
+
+See [Smart Pipeline Connections](pipelines/smart-connections.mdx) for details and examples.
+
 
 <iframe
   width="560"

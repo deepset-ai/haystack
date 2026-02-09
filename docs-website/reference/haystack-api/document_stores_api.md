@@ -34,11 +34,11 @@ Stores data in-memory. It's ephemeral and cannot be saved to disk.
 def __init__(bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
              bm25_algorithm: Literal["BM25Okapi", "BM25L",
                                      "BM25Plus"] = "BM25L",
-             bm25_parameters: Optional[dict] = None,
+             bm25_parameters: dict | None = None,
              embedding_similarity_function: Literal["dot_product",
                                                     "cosine"] = "dot_product",
-             index: Optional[str] = None,
-             async_executor: Optional[ThreadPoolExecutor] = None,
+             index: str | None = None,
+             async_executor: ThreadPoolExecutor | None = None,
              return_embedding: bool = True)
 ```
 
@@ -172,8 +172,7 @@ Returns the number of how many documents are present in the DocumentStore.
 #### InMemoryDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -216,13 +215,70 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - `document_ids`: The object_ids to delete.
 
+<a id="document_store.InMemoryDocumentStore.delete_all_documents"></a>
+
+#### InMemoryDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents() -> None
+```
+
+Deletes all documents in the document store.
+
+<a id="document_store.InMemoryDocumentStore.update_by_filter"></a>
+
+#### InMemoryDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see filter_documents.
+- `meta`: The metadata fields to update. These will be merged with existing metadata.
+
+**Raises**:
+
+- `None`: ValueError if filters have invalid syntax.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="document_store.InMemoryDocumentStore.delete_by_filter"></a>
+
+#### InMemoryDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see filter_documents.
+
+**Raises**:
+
+- `None`: ValueError if filters have invalid syntax.
+
+**Returns**:
+
+The number of documents deleted.
+
 <a id="document_store.InMemoryDocumentStore.bm25_retrieval"></a>
 
 #### InMemoryDocumentStore.bm25\_retrieval
 
 ```python
 def bm25_retrieval(query: str,
-                   filters: Optional[dict[str, Any]] = None,
+                   filters: dict[str, Any] | None = None,
                    top_k: int = 10,
                    scale_score: bool = False) -> list[Document]
 ```
@@ -247,10 +303,10 @@ A list of the top_k documents most relevant to the query.
 ```python
 def embedding_retrieval(
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: Optional[bool] = False) -> list[Document]
+        return_embedding: bool | None = False) -> list[Document]
 ```
 
 Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -264,6 +320,10 @@ Retrieves documents that are most similar to the query embedding using a vector 
 - `return_embedding`: Whether to return the embedding of the retrieved Documents.
 If not provided, the value of the `return_embedding` parameter set at component
 initialization will be used. Default is False.
+
+**Raises**:
+
+- `None`: ValueError if filters have invalid syntax.
 
 **Returns**:
 
@@ -285,7 +345,7 @@ Returns the number of how many documents are present in the DocumentStore.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -335,7 +395,7 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 ```python
 async def bm25_retrieval_async(query: str,
-                               filters: Optional[dict[str, Any]] = None,
+                               filters: dict[str, Any] | None = None,
                                top_k: int = 10,
                                scale_score: bool = False) -> list[Document]
 ```
@@ -360,7 +420,7 @@ A list of the top_k documents most relevant to the query.
 ```python
 async def embedding_retrieval_async(
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
         return_embedding: bool = False) -> list[Document]

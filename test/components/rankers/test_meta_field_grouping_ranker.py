@@ -149,22 +149,23 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][1].meta["group"] == 42
         assert result["documents"][2].meta["group"] is True
 
-    def test_run_duplicate_documents(self) -> None:
+    def test_run_deduplicates_documents(self) -> None:
         """
-        Test the behavior of the MetaFieldGroupingRanker component when the input contains duplicate documents.
+        Test that duplicate documents are removed before grouping.
         """
         docs_with_duplicates = [
-            Document(content="Duplicate 1", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
-            Document(content="Duplicate 1", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
-            Document(content="Unique document", meta={"group": "42", "split_id": 2, "subgroup": "subB"}),
+            Document(id="duplicate", content="keep me", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
+            Document(id="duplicate", content="drop me", meta={"group": "42", "split_id": 1, "subgroup": "subA"}),
+            Document(id="unique", content="unique", meta={"group": "42", "split_id": 2, "subgroup": "subB"}),
+            Document(id="unique2", content="unique2", meta={"group": "42", "split_id": 2, "subgroup": "subA"}),
         ]
         sample_ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
         result = sample_ranker.run(documents=docs_with_duplicates)
         assert "documents" in result
         assert len(result["documents"]) == 3
-        assert result["documents"][0].content == "Duplicate 1"
-        assert result["documents"][1].content == "Duplicate 1"
-        assert result["documents"][2].content == "Unique document"
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique2"
+        assert result["documents"][2].content == "unique"
 
     def test_run_in_pipeline_dumps_and_loads(self) -> None:
         """

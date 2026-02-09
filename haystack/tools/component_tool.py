@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Optional, Union, get_args, get_origin
+from typing import Any, Callable, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -17,9 +17,17 @@ from haystack.core.serialization import (
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
-from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
-from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
-from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+from haystack.tools.parameters_schema_utils import (
+    _contains_callable_type,
+    _get_component_param_descriptions,
+    _resolve_type,
+)
+from haystack.tools.tool import (
+    _deserialize_outputs_to_state,
+    _deserialize_outputs_to_string,
+    _serialize_outputs_to_state,
+    _serialize_outputs_to_string,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +78,7 @@ class ComponentTool(Tool):
 
     # Create pipeline with OpenAIChatGenerator and ToolInvoker
     pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+    pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
     pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
     # Connect components
@@ -89,13 +97,13 @@ class ComponentTool(Tool):
     def __init__(
         self,
         component: Component,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        parameters: Optional[dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        parameters: dict[str, Any] | None = None,
         *,
-        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
+        outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+        inputs_from_state: dict[str, str] | None = None,
+        outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack component.
@@ -107,15 +115,34 @@ class ComponentTool(Tool):
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
-            Optional dictionary defining how a tool outputs should be converted into a string.
-            If the source is provided only the specified output key is sent to the handler.
-            If the source is omitted the whole tool result is sent to the handler.
-            Example:
-            ```python
-            {
-                "source": "docs", "handler": format_documents
-            }
-            ```
+            Optional dictionary defining how tool outputs should be converted into string(s) or results.
+            If not provided, the tool result is converted to a string using a default handler.
+
+            `outputs_to_string` supports two formats:
+
+            1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
+                ```python
+                {
+                    "source": "docs", "handler": format_documents, "raw_result": False
+                }
+                ```
+                - `source`: If provided, only the specified output key is sent to the handler.
+                - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+                  final result.
+                - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+                   `handler` if provided. This is intended for tools that return images. In this mode, the Tool
+                   function or the `handler` function must return a list of `TextContent`/`ImageContent` objects to
+                   ensure compatibility with Chat Generators.
+
+            2. Multiple output format - map keys to individual configurations:
+                ```python
+                {
+                    "formatted_docs": {"source": "docs", "handler": format_documents},
+                    "summary": {"source": "summary_text", "handler": str.upper}
+                }
+                ```
+                Each key maps to a dictionary that can contain "source" and/or "handler".
+                Note that `raw_result` is not supported in the multiple output format.
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -200,6 +227,10 @@ class ComponentTool(Tool):
 
         description = description or component.__doc__ or name
 
+        # Store component before calling super().__init__() so _get_valid_outputs() can access it
+        self._component = component
+        self._is_warmed_up = False
+
         # Create the Tool instance with the component invoker as the function to be called and the schema
         super().__init__(
             name=name,
@@ -210,8 +241,28 @@ class ComponentTool(Tool):
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
         )
-        self._component = component
-        self._is_warmed_up = False
+
+    def _get_valid_inputs(self) -> set[str]:
+        """
+        Return valid input parameter names from the component's input sockets.
+
+        Used to validate `inputs_from_state` against the component's actual inputs.
+        This ensures users don't reference non-existent component inputs.
+
+        :returns: Set of component input socket names.
+        """
+        return set(self._component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
+
+    def _get_valid_outputs(self) -> set[str]:
+        """
+        Return valid output names from the component's output sockets.
+
+        Used to validate `outputs_to_state` against the component's actual outputs.
+        This ensures users don't reference non-existent component outputs.
+
+        :returns: Set of component output socket names.
+        """
+        return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def warm_up(self):
         """
@@ -233,14 +284,10 @@ class ComponentTool(Tool):
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
             "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
+            "outputs_to_string": _serialize_outputs_to_string(self.outputs_to_string)
+            if self.outputs_to_string
+            else None,
         }
-
-        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
-            # This is soft-copied as to not modify the attributes in place
-            serialized["outputs_to_string"] = self.outputs_to_string.copy()
-            serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
-        else:
-            serialized["outputs_to_string"] = None
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
@@ -256,13 +303,8 @@ class ComponentTool(Tool):
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
             inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
 
-        if (
-            inner_data.get("outputs_to_string") is not None
-            and inner_data["outputs_to_string"].get("handler") is not None
-        ):
-            inner_data["outputs_to_string"]["handler"] = deserialize_callable(
-                inner_data["outputs_to_string"]["handler"]
-            )
+        if inner_data.get("outputs_to_string") is not None:
+            inner_data["outputs_to_string"] = _deserialize_outputs_to_string(inner_data["outputs_to_string"])
 
         return cls(
             component=component,
@@ -291,6 +333,11 @@ class ComponentTool(Tool):
             if inputs_from_state is not None and input_name in list(inputs_from_state.values()):
                 continue
             input_type = socket.type
+
+            # Skip Callable types since Pydantic cannot generate JSON schemas for them
+            if _contains_callable_type(input_type):
+                continue
+
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
             # if the parameter has not a default value, Pydantic requires an Ellipsis (...)

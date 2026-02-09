@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed usage info extraction in streaming responses for OpenAI-compatible chat generators.
+    Previously, usage was only extracted from the last chunk, which failed for providers
+    like Qwen3 that return usage in a different chunk. Now all chunks are searched to
+    find the usage information.
