@@ -39,7 +39,7 @@ class TestLLMDocumentContentExtractor:
         # Not testing specific model name, just that it's set
         assert extractor._chat_generator.model is not None
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
-        assert extractor.prompt == "Extract content from this image"
+        assert extractor.content_prompt == "Extract content from this image"
         assert extractor.file_path_meta_field == "file_path"
         assert extractor.root_path == "/test/path"
         assert extractor.detail == "high"
@@ -54,7 +54,7 @@ class TestLLMDocumentContentExtractor:
         chat_generator = OpenAIChatGenerator()
         extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
         assert extractor.extraction_mode == "content"
-        assert extractor.prompt.startswith("\nYou are part of an information extraction pipeline")
+        assert extractor.content_prompt.startswith("\nYou are part of an information extraction pipeline")
         assert extractor.metadata_prompt == DEFAULT_METADATA_PROMPT_TEMPLATE
         assert extractor.metadata_key == "extracted_metadata"
         assert extractor.file_path_meta_field == "file_path"
@@ -132,7 +132,7 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
 
         assert extractor.extraction_mode == "content"
-        assert extractor.prompt == "Custom extraction prompt"
+        assert extractor.content_prompt == "Custom extraction prompt"
         assert extractor.metadata_prompt == DEFAULT_METADATA_PROMPT_TEMPLATE
         assert extractor.metadata_key == "extracted_metadata"
         assert extractor.file_path_meta_field == "custom_path"
@@ -163,7 +163,7 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
         assert extractor.extraction_mode == "content"
         assert extractor.metadata_key == "extracted_metadata"
-        assert extractor.prompt == "Custom extraction prompt"
+        assert extractor.content_prompt == "Custom extraction prompt"
 
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
