@@ -2,12 +2,12 @@
 title: "Installation"
 id: installation
 slug: "/installation"
-description: "See how to quickly install Haystack with pip or conda."
+description: "See how to quickly install Haystack with pip, uv, or conda."
 ---
 
 # Installation
 
-See how to quickly install Haystack with pip or conda.
+See how to quickly install Haystack with pip, uv, or conda.
 
 ## Package Installation
 
@@ -17,7 +17,19 @@ Use [pip](https://github.com/pypa/pip) to install only the Haystack code:
 pip install haystack-ai
 ```
 
-Alternatively, you can use [conda](https://docs.conda.io/projects/conda/en/stable/):
+Alternatively, you can use [uv](https://docs.astral.sh/uv/) to install Haystack:
+
+```shell
+uv pip install haystack-ai
+```
+
+Or add it as a dependency to your project:
+
+```shell
+uv add haystack-ai
+```
+
+You can also use [conda](https://docs.conda.io/projects/conda/en/stable/):
 
 ```shell
 conda config --add channels conda-forge/label/haystack-ai_rc
