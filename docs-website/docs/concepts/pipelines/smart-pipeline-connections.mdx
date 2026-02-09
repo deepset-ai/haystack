@@ -81,6 +81,9 @@ This makes pipeline connections more flexible and reduces the need for `OutputAd
 
 All adaptations are checked at connection time to ensure type safety, but applied at runtime during pipeline execution.
 
+When multiple connections are possible, strict type matching is prioritized over implicit conversion.
+This preserves backward compatibility with earlier versions of Haystack, where flexible type connections were not supported.
+
 ### Example
 
 Pipeline connecting the Chat Generator `messages` output (`list[ChatMessage]`) to the retriever `query` input (`str`)
