@@ -1336,42 +1336,38 @@ class PipelineBase:  # noqa: PLW1641
         #   the receiving component. This would have better caught misconfigurations in the pipeline that Jul had
 
         # 1. Go through all components in priority queue (should all be blocked at this point)
-        components_and_priorities: list[tuple[int, str]] = [
-            (prio, comp_name) for prio, _, comp_name in priority_queue._queue
-        ]
+        comps_in_queue: list[str] = [comp_name for _, _, comp_name in priority_queue._queue]
 
         # 2. Check which components have non-empty inputs.
-        components_with_inputs = []
-        for _, comp_name in components_and_priorities:
-            comp = self._get_component_with_graph_metadata_and_visits(comp_name, component_visits[comp_name])
-            comp_inputs = inputs.get(comp_name, {})
-            # If comp_inputs is not empty it means that the component is waiting for some inputs to run, so it could
-            # be blocking the pipeline.
-            if comp_inputs:
-                components_with_inputs.append((comp_name, comp, comp_inputs))
+        comps_with_inputs = []
+        for comp_name in comps_in_queue:
+            # comp = self._get_component_with_graph_metadata_and_visits(comp_name, component_visits[comp_name])
+            # comp_inputs = inputs.get(comp_name, {})
+            # If components inputs is not empty it means that the component is waiting for some inputs to run, so it
+            # could be blocking the pipeline.
+            if inputs.get(comp_name, {}):
+                comps_with_inputs.append(comp_name)
 
         # TODO Handle edge case that possible_blocking_components is empty
-        if not components_with_inputs:
+        if not comps_with_inputs:
             return "", {}
 
         # 3. Order by component visits to prioritize components that haven't been executed yet
-        ordered_components_with_inputs = sorted(components_with_inputs, key=lambda x: component_visits[x[0]])
-        lowest_component_visit = component_visits[ordered_components_with_inputs[0][0]]
-        possible_blocking_components = [
-            comp for comp in ordered_components_with_inputs if component_visits[comp[0]] == lowest_component_visit
+        ordered_comps_with_inputs = sorted(comps_with_inputs, key=lambda x: component_visits[x])
+        lowest_component_visit = component_visits[ordered_comps_with_inputs[0]]
+        possible_blocking_comps = [
+            comp for comp in ordered_comps_with_inputs if component_visits[comp] == lowest_component_visit
         ]
 
         # If there is only one component with the lowest visits, return it as the most likely blocking component.
-        if len(possible_blocking_components) == 1:
-            return possible_blocking_components[0][0], possible_blocking_components[0][1]
+        if len(possible_blocking_comps) == 1:
+            return possible_blocking_comps[0], self.graph.nodes[possible_blocking_comps[0]]
 
         # 4. Then for all components with the same lowest component visits we tie-break based on topological order.
         topological_sort = self._topological_sort()
-        possible_blocking_components = sorted(
-            possible_blocking_components, key=lambda x: (topological_sort[x[0]], x[0].lower())
-        )
+        possible_blocking_comps = sorted(possible_blocking_comps, key=lambda x: (topological_sort[x], x.lower()))
 
-        return possible_blocking_components[0][0], possible_blocking_components[0][1]
+        return possible_blocking_comps[0], self.graph.nodes[possible_blocking_comps[0]]
 
     def _write_component_outputs(
         self,
