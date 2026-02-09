@@ -202,3 +202,4 @@ class TestPipeline:
 
         pp.run({"first": {"required_input": "test"}})
         assert "Cannot run pipeline - the next component that is meant to run is blocked." in caplog.text
+        assert "Component name: 'second'\nComponent type: 'SimpleComponentTwoInputs'" in caplog.text

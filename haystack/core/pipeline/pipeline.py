@@ -308,9 +308,8 @@ class Pipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
-                        # TODO Finish
                         blocking_comp_name, blocking_comp = self._find_component_blocking_pipeline(
-                            priority_queue, component_visits
+                            priority_queue=priority_queue, component_visits=component_visits, inputs=inputs
                         )
                         logger.warning(
                             "Cannot run pipeline - the next component that is meant to run is blocked.\n"
