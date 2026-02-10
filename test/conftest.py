@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import base64
 import time
 from pathlib import Path
 from typing import Generator
@@ -85,3 +86,9 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
 @pytest.fixture()
 def base64_image_string():
     return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+
+
+@pytest.fixture()
+def base64_pdf_string(test_files_path):
+    with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
