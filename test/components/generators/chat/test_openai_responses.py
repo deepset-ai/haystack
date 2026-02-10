@@ -15,7 +15,7 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, TextContent, ToolCall
+from haystack.dataclasses import ChatMessage, ChatRole, FileContent, ImageContent, StreamingChunk, TextContent, ToolCall
 from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
 from haystack.utils import Secret
 
@@ -767,6 +767,28 @@ class TestIntegration:
         assert message.is_from(ChatRole.ASSISTANT)
         assert not message.tool_calls
         assert not message.tool_call_results
+
+    def test_live_run_with_file_content(self, test_files_path):
+        pdf_path = test_files_path / "pdf" / "sample_pdf_3.pdf"
+
+        file_content = FileContent.from_file_path(file_path=pdf_path)
+
+        chat_messages = [
+            ChatMessage.from_user(
+                content_parts=[file_content, "Is this document a paper about LLMs? Respond with 'yes' or 'no' only."]
+            )
+        ]
+
+        generator = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        results = generator.run(chat_messages)
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+
+        assert message.is_from(ChatRole.ASSISTANT)
+
+        assert message.text
+        assert "no" in message.text.lower()
 
     @pytest.mark.skip(reason="The tool calls time out resulting in failing")
     def test_live_run_with_openai_tools(self):
