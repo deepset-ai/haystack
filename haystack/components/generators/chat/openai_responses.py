@@ -829,7 +829,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     reasonings = message.reasonings
     files = message.files
 
-    if not text_contents and not tool_calls and not tool_call_results and not images and not reasonings and not files:
+    if not any([text_contents, tool_calls, tool_call_results, images, reasonings, files]):
         raise ValueError(
             """A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`,
               `ImageContent`, `FileContent`, or `ReasoningContent`."""
