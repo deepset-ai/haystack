@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import Any, Literal
@@ -13,13 +14,17 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
-from haystack.dataclasses import TextContent
+from haystack.dataclasses import ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
 
 logger = logging.getLogger(__name__)
 
-ExtractionMode = Literal["content", "metadata"]
+
+ExtractionMode = Literal["content", "metadata", "both"]
+
+# Reserved key in the LLM JSON response that holds the main document text (used in content and both modes).
+DOCUMENT_CONTENT_KEY = "document_content"
 
 
 DEFAULT_PROMPT_TEMPLATE = """
@@ -46,7 +51,8 @@ The caption must be placed below the extracted table.
 **Forms**
 Reproduce checkbox selections with markdown.
 
-Go ahead and extract!
+Return a single JSON object. It must contain the key "document_content" with the extracted text as value.
+You may include other keys for metadata. No markdown, no code fence, only raw JSON.
 
 Document:"""
 
@@ -54,7 +60,7 @@ Document:"""
 DEFAULT_METADATA_PROMPT_TEMPLATE = """
 You are part of an information extraction pipeline that extracts metadata from image-based documents.
 
-Look at the provided image and extract metadata that describes the document. Return only the extracted metadata.
+Look at the provided image and extract metadata that describes the document. Return only a JSON object.
 
 Extract whatever is visible and relevant, such as:
 - title: document or page title if visible
@@ -62,17 +68,30 @@ Extract whatever is visible and relevant, such as:
 - date: publication date, creation date, or any date shown
 - document_type: letter, invoice, form, report, receipt, etc.
 - summary: one or two sentences describing what the document is about
-- keywords: important topics or entities (e.g. names, organizations, amounts)
+- keywords: list of important topics or entities (e.g. names, organizations, amounts, dates)
 
-Format your response as a flat list of key-value pairs, one per line, e.g.:
-title: Example Document
-author: John Doe
-date: 2024-01-15
-document_type: invoice
+Return a single JSON object with string values, e.g.:
+{"title": "Example Document", "author": "John Doe", "date": "2024-01-15", "document_type": "invoice"}
 
-If a field is not visible or not applicable, omit it. Be concise.
+If a field is not visible or not applicable, omit it. Be concise. No markdown, no code fence, only raw JSON.
 
 Document:"""
+
+
+def _parse_json_response(llm_answer: str) -> tuple[dict[str, Any] | None, str | None]:
+    """
+    Parse LLM response as JSON.
+
+    Returns (parsed_dict, None) on success, or (None, error_message) on parse failure. Assumes the ChatGenerator is
+    configured for JSON output.
+    """
+    try:
+        parsed = json.loads(llm_answer)
+    except json.JSONDecodeError as e:
+        return None, "Response is not valid JSON. Received JSONDecodeError: " + str(e)
+    if not isinstance(parsed, dict):
+        return None, "Response must be a JSON object, not an array or primitive."
+    return parsed, None
 
 
 def _validate_prompt_no_variables(prompt: str, context: str) -> None:
@@ -86,27 +105,76 @@ def _validate_prompt_no_variables(prompt: str, context: str) -> None:
         )
 
 
+def _build_messages(prompt: str, image_contents: list[ImageContent | None]) -> list[ChatMessage | None]:
+    """Build a list of ChatMessages (prompt + image) per image_content; None image yields None message."""
+    messages: list[ChatMessage | None] = []
+    for image_content in image_contents:
+        if image_content is None:
+            # If the image content is None, it means the document could not be converted to an image.
+            # We skip this document.
+            # We don't log a warning here since it is already logged in the DocumentToImageContent component.
+            messages.append(None)
+            continue
+        messages.append(ChatMessage.from_user(content_parts=[TextContent(text=prompt), image_content]))
+    return messages
+
+
+def _cleaned_document_meta(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of meta with extraction-error keys removed (for a fresh run)."""
+    out = {**metadata}
+    out.pop("content_extraction_error", None)
+    out.pop("metadata_extraction_error", None)
+    out.pop("metadata_extraction_response", None)
+    return out
+
+
+def _process_content_response(response_text: str) -> tuple[str | None, dict[str, Any], str | None]:
+    """
+    Parse content-mode JSON response. Returns (content, meta_updates, error).
+
+    On success: error is None, content is the document_content value, meta_updates are remaining keys.
+    On failure: error is set, content is None, meta_updates is empty.
+    """
+    parsed, parse_error = _parse_json_response(response_text)
+    if parse_error:
+        return None, {}, parse_error
+    if parsed is None:
+        return None, {}, "Invalid response"
+    if DOCUMENT_CONTENT_KEY not in parsed:
+        return None, {}, f"JSON response must contain the key '{DOCUMENT_CONTENT_KEY}'."
+    content = parsed.pop(DOCUMENT_CONTENT_KEY)
+    return content, parsed, None
+
+
 @component
 class LLMDocumentContentExtractor:
     """
     Extracts textual content or metadata from image-based documents using a vision-enabled Large-Language Model (LLM).
 
-    This component converts each input document into an image using the DocumentToImageContent component,
+    The ChatGenerator must be configured to return JSON (e.g. ``response_format={"type": "json_object"}``
+    in ``generation_kwargs``). All three modes expect a JSON object from the LLM.
 
-    This component can run in two modes, chosen at init and optionally overridden at runtime:
-    - **content**: the LLM output is written to the document's content (default, backward compatible).
-    - **metadata**: the LLM output is stored in the document's metadata under a configurable key.
+    - **content**: The LLM returns a JSON object that must contain the reserved key ``document_content``
+      with the extracted text. That value is written to the document's content. Any other keys in the
+      JSON are merged into the document's metadata.
 
-    One LLM call is made per document. The component converts each document to an image via
-    DocumentToImageContent, sends it with a prompt to the ChatGenerator, and writes the response
-    to content or metadata according to the effective extraction mode.
+    - **metadata**: The LLM returns a JSON object; every key is merged into the document's metadata.
+      When ``expected_keys`` is set, a warning is logged if the response is missing any of those keys.
 
-    Prompts must not contain Jinja variables,they should only include instructions for the LLM. Image data
-    and the instructions for the LLM.
+    - **both**: Two LLM calls per document. The first response must be JSON with ``document_content``
+      (used for document content) and may include other keys (merged into metadata). The second
+      response is JSON whose keys are merged into metadata.
 
-    Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list. These
-    failed documents will have either a `content_extraction_error` or `metadata_extraction_error` entry in their
-    metadata. This metadata can be used for debugging or for reprocessing the documents later.
+    One LLM call is made per document in "content" or "metadata" mode; two in "both" mode. The
+    component converts each document to an image via DocumentToImageContent and sends it to the
+    ChatGenerator.
+
+    Prompts must not contain Jinja variables; they should only include instructions for the LLM.
+
+    Documents for which the LLM fails to extract content or metadata are returned in a separate `failed_documents`
+    list. Failed documents will have `content_extraction_error` and/or `metadata_extraction_error` in their metadata;
+    when metadata extraction fails (e.g. invalid JSON), `metadata_extraction_response` is also set with the raw LLM
+    reply for debugging or reprocessing.
 
     ### Usage example (content mode, default)
     ```python
@@ -131,10 +199,17 @@ class LLMDocumentContentExtractor:
     ```python
     extractor = LLMDocumentContentExtractor(chat_generator=chat_generator, extraction_mode="metadata")
     result = extractor.run(documents=documents)
-    # result["documents"][0].meta["extracted_metadata"] contains the extraction
+    # result["documents"][0].meta is updated with extracted keys (e.g. title, author, document_type)
 
     # Override to content for this run only
     result = extractor.run(documents=documents, extraction_mode="content")
+    ```
+
+    ### Usage example (both modes)
+    ```python
+    extractor = LLMDocumentContentExtractor(chat_generator=chat_generator, extraction_mode="both")
+    result = extractor.run(documents=documents)
+    # result["documents"][0].content has extracted text, result["documents"][0].meta has merged metadata
     ```
     """
 
@@ -145,7 +220,7 @@ class LLMDocumentContentExtractor:
         extraction_mode: ExtractionMode = "content",
         prompt: str = DEFAULT_PROMPT_TEMPLATE,
         metadata_prompt: str = DEFAULT_METADATA_PROMPT_TEMPLATE,
-        metadata_key: str = "extracted_metadata",
+        expected_keys: list[str] | None = None,
         file_path_meta_field: str = "file_path",
         root_path: str | None = None,
         detail: Literal["auto", "high", "low"] | None = None,
@@ -156,13 +231,17 @@ class LLMDocumentContentExtractor:
         """
         Initialize the LLMDocumentContentExtractor component.
 
-        :param chat_generator: A ChatGenerator instance representing the LLM used to extract text. This generator must
-            support vision-based input and return a plain text response.
-        :param extraction_mode: Where to write the LLM output: "content" (default) or "metadata". Can be overridden
-            in run().
+        :param chat_generator: A ChatGenerator instance that supports vision input and is configured to return JSON
+            (e.g. ``response_format={"type": "json_object"}`` in ``generation_kwargs``). Content mode expects a key
+            ``document_content`` in the JSON; metadata mode merges all keys into document metadata.
+        :param extraction_mode: Where to write the LLM output: "content" (default), "metadata", or "both". Can be
+            overridden in run().
         :param prompt: Prompt used when extraction_mode is "content". Must not contain Jinja variables.
-        :param metadata_prompt: Prompt used when extraction_mode is "metadata". Must not contain Jinja variables.
-        :param metadata_key: Metadata key used when extraction_mode is "metadata". Ignored in content mode.
+        :param metadata_prompt: Prompt used when extraction_mode is "metadata" or "both". Must not contain Jinja
+            variables. The LLM returns a JSON object; its keys are merged into the document's metadata.
+        :param expected_keys: The keys expected in the JSON output from the LLM when extracting metadata (used in
+            "metadata" and "both" modes). If provided and the LLM response is missing any of these keys, a warning
+            is logged but extraction continues with the received output.
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
             document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
@@ -180,7 +259,7 @@ class LLMDocumentContentExtractor:
         self.extraction_mode = extraction_mode
         self.prompt = prompt
         self.metadata_prompt = metadata_prompt
-        self.metadata_key = metadata_key
+        self.expected_keys = expected_keys or []
         self.file_path_meta_field = file_path_meta_field
         self.root_path = root_path or ""
         self.detail = detail
@@ -216,7 +295,7 @@ class LLMDocumentContentExtractor:
             extraction_mode=self.extraction_mode,
             prompt=self.prompt,
             metadata_prompt=self.metadata_prompt,
-            metadata_key=self.metadata_key,
+            expected_keys=self.expected_keys,
             file_path_meta_field=self.file_path_meta_field,
             root_path=self.root_path,
             detail=self.detail,
@@ -235,8 +314,55 @@ class LLMDocumentContentExtractor:
         :returns:
             An instance of the component.
         """
-        deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+        init_params = data.get("init_parameters", data)
+        deserialize_chatgenerator_inplace(init_params, key="chat_generator")
+        init_params.pop("metadata_key", None)
         return default_from_dict(cls, data)
+
+    def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
+        """
+        Parse LLM metadata response as JSON.
+
+        Returns parsed dict (all keys merged into document meta), or dict with "error" key on failure. Assumes
+        ChatGenerator is configured for JSON output.
+        """
+        parsed_metadata, parse_error = _parse_json_response(llm_answer)
+        if parse_error:
+            logger.warning(
+                "Response from the LLM is not valid JSON. Skipping metadata extraction. Received output: {response}",
+                response=llm_answer,
+            )
+            if self.raise_on_failure:
+                raise ValueError(parse_error)
+            return {"error": parse_error}
+
+        if parsed_metadata is None:
+            return {}
+
+        if not all(key in parsed_metadata for key in self.expected_keys):
+            logger.warning(
+                "Expected response from LLM to be a JSON with keys {expected_keys}, got {parsed_json}. "
+                "Continuing extraction with received output.",
+                expected_keys=self.expected_keys,
+                parsed_json=parsed_metadata,
+            )
+
+        return parsed_metadata
+
+    def _apply_metadata_response(self, response_text: str, new_meta: dict[str, Any], reply: ChatMessage) -> bool:
+        """
+        Parse metadata JSON and merge into new_meta, or set error keys on failure.
+
+        Returns True if merged successfully, False if parse failed (new_meta updated with error).
+        """
+        parsed = self._extract_metadata(response_text)
+        if "error" in parsed:
+            new_meta["metadata_extraction_error"] = parsed["error"]
+            new_meta["metadata_extraction_response"] = reply
+            return False
+        for key in parsed:
+            new_meta[key] = parsed[key]
+        return True
 
     def _run_on_thread(self, message: ChatMessage | None) -> dict[str, Any]:
         """
@@ -263,14 +389,77 @@ class LLMDocumentContentExtractor:
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 
+    def _process_single_mode_document(
+        self, document: Document, result: dict[str, Any], mode: Literal["content", "metadata"]
+    ) -> tuple[Document, bool]:
+        """
+        Process one document's LLM result in content or metadata mode.
+
+        Returns (updated_document, True if success else False).
+        """
+        error_meta_key = "content_extraction_error" if mode == "content" else "metadata_extraction_error"
+        if "error" in result:
+            return replace(document, meta={**document.meta, error_meta_key: result["error"]}), False
+
+        new_meta = _cleaned_document_meta(document.meta)
+        response_text = result["replies"][0].text
+        reply = result["replies"][0]
+
+        if mode == "content":
+            content, meta_updates, content_error = _process_content_response(response_text)
+            if content_error:
+                new_meta["content_extraction_error"] = content_error
+                return replace(document, meta=new_meta), False
+            new_meta.update(meta_updates)
+            return replace(document, content=content, meta=new_meta), True
+
+        if self._apply_metadata_response(response_text, new_meta, reply):
+            return replace(document, meta=new_meta), True
+        return replace(document, meta=new_meta), False
+
+    def _process_both_mode_document(
+        self, document: Document, content_result: dict[str, Any], metadata_result: dict[str, Any]
+    ) -> tuple[Document, bool]:
+        """
+        Process one document's content + metadata LLM results in "both" mode.
+
+        Returns (updated_document, True if at least one extraction succeeded).
+        """
+        new_meta = _cleaned_document_meta(document.meta)
+        content_error = content_result.get("error")
+        metadata_error = metadata_result.get("error")
+
+        if content_error:
+            new_meta["content_extraction_error"] = content_error
+        if metadata_error:
+            new_meta["metadata_extraction_error"] = metadata_error
+
+        if content_error and metadata_error:
+            return replace(document, meta=new_meta), False
+
+        final_content = document.content
+        if not content_error:
+            content, meta_updates, content_err = _process_content_response(content_result["replies"][0].text)
+            if content_err:
+                new_meta["content_extraction_error"] = content_err
+            else:
+                final_content = content
+                new_meta.update(meta_updates)
+
+        if not metadata_error:
+            self._apply_metadata_response(metadata_result["replies"][0].text, new_meta, metadata_result["replies"][0])
+
+        return replace(document, content=final_content, meta=new_meta), True
+
     @component.output_types(documents=list[Document], failed_documents=list[Document])
     def run(
         self, documents: list[Document], extraction_mode: ExtractionMode | None = None
     ) -> dict[str, list[Document]]:
         """
-        Run extraction on image-based documents. One LLM call per document;
+        Run extraction on image-based documents.
 
-        Note that the output goes to content or metadata according to the extraction mode.
+        One LLM call per document in "content" or "metadata" mode; two LLM calls per document in "both" mode.
+        Note that the output goes to content and/or metadata according to the extraction mode.
 
         :param documents: A list of image-based documents to process. Each must have a valid file path in its metadata.
         :param extraction_mode: If set, overrides the instance extraction_mode for this run only.
@@ -287,20 +476,24 @@ class LLMDocumentContentExtractor:
             self.warm_up()
 
         mode: ExtractionMode = extraction_mode if extraction_mode is not None else self.extraction_mode
-        prompt = self.prompt if mode == "content" else self.metadata_prompt
-        error_meta_key = "content_extraction_error" if mode == "content" else "metadata_extraction_error"
-
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
-        all_messages: list[ChatMessage | None] = []
-        for image_content in image_contents:
-            if image_content is None:
-                # If the image content is None, it means the document could not be converted to an image.
-                # We skip this document.
-                # We don't log a warning here since it is already logged in the DocumentToImageContent component.
-                all_messages.append(None)
-                continue
-            message = ChatMessage.from_user(content_parts=[TextContent(text=prompt), image_content])
-            all_messages.append(message)
+
+        if mode == "both":
+            return self._run_both(documents=documents, image_contents=image_contents)
+        # mode here can only be "content" or "metadata"
+        return self._run_single(
+            documents=documents,
+            image_contents=image_contents,
+            # mode=cast(Literal["content", "metadata"], mode),
+            mode=mode,
+        )
+
+    def _run_single(
+        self, documents: list[Document], image_contents: list[ImageContent | None], mode: Literal["content", "metadata"]
+    ) -> dict[str, list[Document]]:
+        """Run extraction in content-only or metadata-only mode (one LLM call per document)."""
+        prompt = self.prompt if mode == "content" else self.metadata_prompt
+        all_messages = _build_messages(prompt, image_contents)
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = executor.map(self._run_on_thread, all_messages)
@@ -308,21 +501,32 @@ class LLMDocumentContentExtractor:
         successful_documents = []
         failed_documents = []
         for document, result in zip(documents, results):
-            if "error" in result:
-                new_meta = {**document.meta, error_meta_key: result["error"]}
-                failed_documents.append(replace(document, meta=new_meta))
-                continue
-
-            # Remove content_extraction_error if present from previous runs
-            new_meta = {**document.meta}
-            new_meta.pop("content_extraction_error", None)
-            new_meta.pop("metadata_extraction_error", None)
-            extracted_text = result["replies"][0].text
-
-            if mode == "content":
-                successful_documents.append(replace(document, content=extracted_text, meta=new_meta))
+            doc, success = self._process_single_mode_document(document, result, mode)
+            if success:
+                successful_documents.append(doc)
             else:
-                new_meta[self.metadata_key] = extracted_text
-                successful_documents.append(replace(document, meta=new_meta))
+                failed_documents.append(doc)
+
+        return {"documents": successful_documents, "failed_documents": failed_documents}
+
+    def _run_both(
+        self, documents: list[Document], image_contents: list[ImageContent | None]
+    ) -> dict[str, list[Document]]:
+        """Run content and metadata extraction (two LLM calls per document), then merge results."""
+        content_messages = _build_messages(self.prompt, image_contents)
+        metadata_messages = _build_messages(self.metadata_prompt, image_contents)
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            content_results = list(executor.map(self._run_on_thread, content_messages))
+            metadata_results = list(executor.map(self._run_on_thread, metadata_messages))
+
+        successful_documents = []
+        failed_documents = []
+        for document, content_result, metadata_result in zip(documents, content_results, metadata_results):
+            doc, success = self._process_both_mode_document(document, content_result, metadata_result)
+            if success:
+                successful_documents.append(doc)
+            else:
+                failed_documents.append(doc)
 
         return {"documents": successful_documents, "failed_documents": failed_documents}
