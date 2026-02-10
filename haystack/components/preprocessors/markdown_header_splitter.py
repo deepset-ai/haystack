@@ -141,10 +141,7 @@ class MarkdownHeaderSplitter:
                     chunk_content += "\n".join(pending_headers) + "\n"
                 chunk_content += f"{header_line}{content}"
                 chunks.append(
-                    {
-                        "content": chunk_content,
-                        "meta": {"header": header_text, "parent_headers": parent_headers},
-                    }
+                    {"content": chunk_content, "meta": {"header": header_text, "parent_headers": parent_headers}}
                 )
                 pending_headers = []  # reset pending headers
             else:
