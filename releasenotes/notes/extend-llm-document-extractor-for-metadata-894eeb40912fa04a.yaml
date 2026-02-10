@@ -1,4 +1,5 @@
 ---
 enhancements:
   - |
-    The ``LLMDocumentContentExtractor`` now also supports metadata extraction. It can run in two modes (content or metadata), chosen at init and optionally overridden at runtime via ``run(..., extraction_mode=...)``.
+    The ``LLMDocumentContentExtractor`` now also supports metadata extraction. It can run in three modes: "content", "metadata", or "both". Extracting only content, metadata, or both for a given Document.
+    The three modes are chosen at init and optionally overridden at runtime via ``run(..., extraction_mode=...)``.
