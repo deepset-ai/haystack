@@ -110,16 +110,18 @@ The example below shows how filters can be passed to Retrievers within a pipelin
 
 ```python
 pipeline.run(
-  data={"retriever": {
-    		"query": "Why did the revenue increase?",
-    		"filters": { "operator": "AND",
-      			"conditions": [
-        			{"field": "meta.years", "operator": "==", "value": "2019"},
-        			{"field": "meta.companies", "operator": "in", "value": ["BMW", "Mercedes"]},
-      					]
-    			   }
-  		      }
-       }
+    data={
+        "retriever": {
+            "query": "Why did the revenue increase?",
+            "filters": {
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.years", "operator": "==", "value": "2019"},
+                    {"field": "meta.companies", "operator": "in", "value": ["BMW", "Mercedes"]},
+                ],
+            },
+        },
+    },
 )
 ```
 

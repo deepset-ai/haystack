@@ -27,9 +27,9 @@ from haystack.core.errors import BreakpointException
 
 ## Create a breakpoint that triggers on the first visit to the "llm" component
 break_point = Breakpoint(
-    component_name="llm", 
+    component_name="llm",
     visit_count=0,  # 0 = first visit, 1 = second visit, etc.
-    snapshot_file_path="/path/to/snapshots"  # Optional: save snapshot to file
+    snapshot_file_path="/path/to/snapshots",  # Optional: save snapshot to file
 )
 
 ## Run pipeline with breakpoint
@@ -51,7 +51,7 @@ To access the pipeline state during the breakpoint we can both catch the excepti
 
 To resume the execution of a pipeline from the breakpoint, pass the path to the generated JSON file at the run time of the pipeline, using the `pipeline_snapshot`.
 
-Use the `load_pipeline_snapshot()` to first load the JSON and then pass it to the pipeline. 
+Use the `load_pipeline_snapshot()` to first load the JSON and then pass it to the pipeline.
 
 ```python
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
@@ -78,10 +78,7 @@ from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBr
 
 ## Break at chat generator (LLM calls)
 chat_bp = Breakpoint(component_name="chat_generator", visit_count=0)
-agent_breakpoint = AgentBreakpoint(
-    break_point=chat_bp, 
-    agent_name="my_agent"
-)
+agent_breakpoint = AgentBreakpoint(break_point=chat_bp, agent_name="my_agent")
 ```
 
 To set a breakpoint on a Tool in an Agent, do the following:
@@ -95,14 +92,11 @@ from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBr
 
 ## Break at tool invoker (tool calls)
 tool_bp = ToolBreakpoint(
-    component_name="tool_invoker", 
-    visit_count=0, 
-    tool_name="weather_tool"  # Specific tool, or None for any tool
+    component_name="tool_invoker",
+    visit_count=0,
+    tool_name="weather_tool",  # Specific tool, or None for any tool
 )
-agent_breakpoint = AgentBreakpoint(
-    break_point=tool_bp, 
-    agent_name="my_agent"
-)
+agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="my_agent")
 ```
 
 ### Resuming Agent Execution
@@ -115,7 +109,7 @@ from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 ## Load the snapshot
 snapshot_file = "./agent_debug/agent_chat_generator_2025_07_11_23_23.json"
 snapshot = load_pipeline_snapshot(snapshot_file)
-    
+
 ## Resume pipeline execution
 result = pipeline.run(data={}, pipeline_snapshot=snapshot)
 print("Pipeline resumed successfully")

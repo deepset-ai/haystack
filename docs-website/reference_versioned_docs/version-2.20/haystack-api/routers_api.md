@@ -144,18 +144,13 @@ from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
 
 routes = [
-    {
-        "condition": '{{ path == "rag" }}',
-        "output": "{{ question }}",
-        "output_name": "rag_route",
-        "output_type": str
-    },
+    {"condition": '{{ path == "rag" }}', "output": "{{ question }}", "output_name": "rag_route", "output_type": str},
     {
         "condition": "{{ True }}",  # fallback route
         "output": "{{ question }}",
         "output_name": "default_route",
-        "output_type": str
-    }
+        "output_type": str,
+    },
 ]
 
 router = ConditionalRouter(routes, optional_variables=["path"])
@@ -261,7 +256,7 @@ from haystack.dataclasses import Document
 
 docs = [
     Document(content="Short"),
-    Document(content="Long document "*20),
+    Document(content="Long document " * 20),
 ]
 
 router = DocumentLengthRouter(threshold=10)
@@ -340,13 +335,13 @@ from haystack.dataclasses import Document
 docs = [
     Document(content="Example text", meta={"file_path": "example.txt"}),
     Document(content="Another document", meta={"mime_type": "application/pdf"}),
-    Document(content="Unknown type")
+    Document(content="Unknown type"),
 ]
 
 router = DocumentTypeRouter(
     mime_type_meta_field="mime_type",
     file_path_meta_field="file_path",
-    mime_types=["text/plain", "application/pdf"]
+    mime_types=["text/plain", "application/pdf"],
 )
 
 result = router.run(documents=docs)
@@ -355,11 +350,7 @@ print(result)
 
 Expected output:
 ```python
-{
-    "text/plain": [Document(...)],
-    "application/pdf": [Document(...)],
-    "unclassified": [Document(...)]
-}
+{"text/plain": [Document(...)], "application/pdf": [Document(...)], "unclassified": [Document(...)]}
 ```
 
 <a id="document_type_router.DocumentTypeRouter.__init__"></a>
@@ -701,8 +692,10 @@ If a document or byte stream does not match any of the rules, it's routed to a c
 from haystack import Document
 from haystack.components.routers import MetadataRouter
 
-docs = [Document(content="Paris is the capital of France.", meta={"language": "en"}),
-        Document(content="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})]
+docs = [
+    Document(content="Paris is the capital of France.", meta={"language": "en"}),
+    Document(content="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"}),
+]
 
 router = MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}})
 
@@ -718,12 +711,12 @@ from haystack.components.routers import MetadataRouter
 
 streams = [
     ByteStream.from_string("Hello world", meta={"language": "en"}),
-    ByteStream.from_string("Bonjour le monde", meta={"language": "fr"})
+    ByteStream.from_string("Bonjour le monde", meta={"language": "fr"}),
 ]
 
 router = MetadataRouter(
     rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}},
-    output_type=list[ByteStream]
+    output_type=list[ByteStream],
 )
 
 result = router.run(documents=streams)
@@ -749,34 +742,34 @@ metadata. Keys are output connection names, and values are dictionaries of
 For example:
 ```python
 {
-"edge_1": {
-    "operator": "AND",
-    "conditions": [
-        {"field": "meta.created_at", "operator": ">=", "value": "2023-01-01"},
-        {"field": "meta.created_at", "operator": "<", "value": "2023-04-01"},
-    ],
-},
-"edge_2": {
-    "operator": "AND",
-    "conditions": [
-        {"field": "meta.created_at", "operator": ">=", "value": "2023-04-01"},
-        {"field": "meta.created_at", "operator": "<", "value": "2023-07-01"},
-    ],
-},
-"edge_3": {
-    "operator": "AND",
-    "conditions": [
-        {"field": "meta.created_at", "operator": ">=", "value": "2023-07-01"},
-        {"field": "meta.created_at", "operator": "<", "value": "2023-10-01"},
-    ],
-},
-"edge_4": {
-    "operator": "AND",
-    "conditions": [
-        {"field": "meta.created_at", "operator": ">=", "value": "2023-10-01"},
-        {"field": "meta.created_at", "operator": "<", "value": "2024-01-01"},
-    ],
-},
+    "edge_1": {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.created_at", "operator": ">=", "value": "2023-01-01"},
+            {"field": "meta.created_at", "operator": "<", "value": "2023-04-01"},
+        ],
+    },
+    "edge_2": {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.created_at", "operator": ">=", "value": "2023-04-01"},
+            {"field": "meta.created_at", "operator": "<", "value": "2023-07-01"},
+        ],
+    },
+    "edge_3": {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.created_at", "operator": ">=", "value": "2023-07-01"},
+            {"field": "meta.created_at", "operator": "<", "value": "2023-10-01"},
+        ],
+    },
+    "edge_4": {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.created_at", "operator": ">=", "value": "2023-10-01"},
+            {"field": "meta.created_at", "operator": "<", "value": "2024-01-01"},
+        ],
+    },
 }
 ```
 :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
@@ -937,25 +930,22 @@ from haystack.components.generators import HuggingFaceLocalGenerator
 p = Pipeline()
 p.add_component(
     instance=TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection"),
-    name="text_router"
+    name="text_router",
 )
 p.add_component(
     instance=PromptBuilder(template="Answer the question: {{query}}\nAnswer:"),
-    name="english_prompt_builder"
+    name="english_prompt_builder",
 )
 p.add_component(
     instance=PromptBuilder(template="Beantworte die Frage: {{query}}\nAntwort:"),
-    name="german_prompt_builder"
+    name="german_prompt_builder",
 )
 
 p.add_component(
     instance=HuggingFaceLocalGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
-    name="german_llm"
+    name="german_llm",
 )
-p.add_component(
-    instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
-    name="english_llm"
-)
+p.add_component(instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"), name="english_llm")
 
 p.connect("text_router.en", "english_prompt_builder.query")
 p.connect("text_router.de", "german_prompt_builder.query")
@@ -1093,14 +1083,14 @@ docs = [
     Document(
         content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
         "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
-        "is Frankfurt; the largest urban area is the Ruhr."
+        "is Frankfurt; the largest urban area is the Ruhr.",
     ),
     Document(
         content="France, officially the French Republic, is a country located primarily in Western Europe. "
         "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
         "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
-        "Lille, Bordeaux, Strasbourg, Nantes and Nice."
-    )
+        "Lille, Bordeaux, Strasbourg, Nantes and Nice.",
+    ),
 ]
 docs_with_embeddings = doc_embedder.run(docs)
 document_store.write_documents(docs_with_embeddings["documents"])
@@ -1109,20 +1099,14 @@ p = Pipeline()
 p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
 p.add_component(
     instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="passage: "),
-    name="passage_embedder"
+    name="passage_embedder",
 )
 p.add_component(
     instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="query: "),
-    name="query_embedder"
+    name="query_embedder",
 )
-p.add_component(
-    instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="query_retriever"
-)
-p.add_component(
-    instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="passage_retriever"
-)
+p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="query_retriever")
+p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="passage_retriever")
 
 p.connect("text_router.passage", "passage_embedder.text")
 p.connect("passage_embedder.embedding", "passage_retriever.query_embedding")
@@ -1133,11 +1117,15 @@ p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 p.run({"text_router": {"text": "What is the capital of Germany?"}})
 
 # Passage Example
-p.run({
-    "text_router":{
-        "text": "The United Kingdom of Great Britain and Northern Ireland, commonly known as the "            "United Kingdom (UK) or Britain, is a country in Northwestern Europe, off the north-western coast of "            "the continental mainland."
-    }
-})
+p.run(
+    {
+        "text_router": {
+            "text": "The United Kingdom of Great Britain and Northern Ireland, commonly known as the "
+            "United Kingdom (UK) or Britain, is a country in Northwestern Europe, off the north-western coast of "
+            "the continental mainland.",
+        },
+    },
+)
 ```
 
 <a id="zero_shot_text_router.TransformersZeroShotTextRouter.__init__"></a>
@@ -1238,4 +1226,3 @@ Routes the text strings to different connections based on a category label.
 **Returns**:
 
 A dictionary with the label as key and the text as value.
-

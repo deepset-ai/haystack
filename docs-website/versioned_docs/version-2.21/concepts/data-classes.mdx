@@ -152,7 +152,7 @@ class Document(metaclass=_BackwardCompatible):
 ```python
 from haystack import Document
 
-documents = Document(content="Here are the contents of your document", embedding=[0.1]*768)
+documents = Document(content="Here are the contents of your document", embedding=[0.1] * 768)
 ```
 
 ### StreamingChunk
@@ -191,11 +191,7 @@ class StreamingChunk:
 from haystack.dataclasses import StreamingChunk, ToolCallDelta, ReasoningContent
 
 ## Basic text chunk
-chunk = StreamingChunk(
-    content="Hello world",
-    start=True,
-    meta={"model": "gpt-3.5-turbo"}
-)
+chunk = StreamingChunk(content="Hello world", start=True, meta={"model": "gpt-3.5-turbo"})
 
 ## Tool call chunk
 tool_chunk = StreamingChunk(
@@ -203,7 +199,7 @@ tool_chunk = StreamingChunk(
     tool_calls=[ToolCallDelta(index=0, tool_name="calculator", arguments='{"operation": "add", "a": 2, "b": 3}')],
     index=0,
     start=False,
-    finish_reason="tool_calls"
+    finish_reason="tool_calls",
 )
 
 ## Reasoning chunk
@@ -212,7 +208,7 @@ reasoning_chunk = StreamingChunk(
     reasoning=ReasoningContent(reasoning_text="Thinking step by step about the answer."),
     index=0,
     start=True,
-    meta={"model": "gpt-4.1-mini"}
+    meta={"model": "gpt-4.1-mini"},
 )
 ```
 
@@ -255,8 +251,7 @@ class ComponentInfo:
     name: Optional[str] = field(default=None)
 
     @classmethod
-    def from_component(cls, component: Component) -> "ComponentInfo":
-        ...
+    def from_component(cls, component: Component) -> "ComponentInfo": ...
 ```
 
 #### Example
@@ -265,8 +260,9 @@ class ComponentInfo:
 from haystack.dataclasses.streaming_chunk import ComponentInfo
 from haystack.core.component import Component
 
-class MyComponent(Component):
-    ...
+
+class MyComponent(Component): ...
+
 
 component = MyComponent()
 info = ComponentInfo.from_component(component)

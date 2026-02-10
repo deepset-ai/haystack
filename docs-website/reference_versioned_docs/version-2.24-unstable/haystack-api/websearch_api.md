@@ -167,7 +167,7 @@ websearch_filtered = SerperDevWebSearch(
     top_k=10,
     allowed_domains=["example.com"],
     exclude_subdomains=True,  # Only results from example.com, not blog.example.com
-    api_key=Secret.from_token("test-api-key")
+    api_key=Secret.from_token("test-api-key"),
 )
 results_filtered = websearch_filtered.run(query="search query")
 ```
@@ -285,4 +285,3 @@ This is the asynchronous version of the `run` method with the same parameters an
 A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
-

@@ -134,7 +134,7 @@ document_embedder = JinaDocumentEmbedder(task="retrieval.query")
 doc = Document(content="I love pizza!")
 
 result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -596,4 +596,3 @@ Returns a list of Documents ranked by their similarity to the given query.
 
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
-

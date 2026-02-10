@@ -31,10 +31,10 @@ output = evaluator.run(
             "Football is undoubtedly the world's most popular sport with"
             "major events like the FIFA World Cup and sports personalities"
             "like Ronaldo and Messi, drawing a followership of more than 4"
-            "billion people."
-        ]
+            "billion people.",
+        ],
     ],
-    responses=["Football is the most popular sport with around 4 billion" "followers worldwide"],
+    responses=["Football is the most popular sport with around 4 billionfollowers worldwide"],
 )
 print(output["results"])
 ```
@@ -190,4 +190,3 @@ Create a metric type from a string.
 **Returns**:
 
 The metric.
-

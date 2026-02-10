@@ -34,9 +34,7 @@ If the source is provided only the specified output key is sent to the handler.
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "source": "docs", "handler": format_documents
-}
+{"source": "docs", "handler": format_documents}
 ```
 - `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
 Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -44,16 +42,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 
 <a id="tool.Tool.tool_spec"></a>
@@ -195,7 +189,7 @@ Example:
 ```python
 {
     "documents": {"source": "docs", "handler": custom_handler},
-    "message": {"source": "summary", "handler": format_summary}
+    "message": {"source": "summary", "handler": format_summary},
 }
 ```
 
@@ -320,7 +314,7 @@ search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), to
 tool = ComponentTool(
     component=search,
     name="web_search",  # Optional: defaults to "serper_dev_web_search"
-    description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+    description="Search the web for current information on any topic",  # Optional: defaults to component docstring
 )
 
 # Create pipeline with OpenAIChatGenerator and ToolInvoker
@@ -372,9 +366,7 @@ If the source is provided only the specified output key is sent to the handler.
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "source": "docs", "handler": format_documents
-}
+{"source": "docs", "handler": format_documents}
 ```
 - `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
 Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -382,16 +374,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 
 **Raises**:
@@ -514,11 +502,11 @@ to manage and use them as a unit in Haystack pipelines.
    # Use the toolset with a ToolInvoker or ChatGenerator component
    invoker = ToolInvoker(tools=math_toolset)
    ```
-  
+
   2. Base class for dynamic tool loading:
   By subclassing Toolset, you can create implementations that dynamically load tools
   from external sources like OpenAPI URLs, MCP servers, or other resources.
-  
+
 
 **Example**:
 
@@ -579,11 +567,11 @@ to manage and use them as a unit in Haystack pipelines.
    calculator_toolset = CalculatorToolset()
    invoker = ToolInvoker(tools=calculator_toolset)
    ```
-  
+
   Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
   making it behave like a list of Tools. This makes it compatible with components that expect
   iterable tools, such as ToolInvoker or Haystack chat generators.
-  
+
   When implementing a custom Toolset subclass for dynamic tool loading:
   - Perform the dynamic loading in the __init__ method
   - Override to_dict() and from_dict() methods if your tools are defined dynamically
@@ -930,4 +918,3 @@ Deserialize a Toolset from a dictionary.
 **Returns**:
 
 A new Toolset instance
-

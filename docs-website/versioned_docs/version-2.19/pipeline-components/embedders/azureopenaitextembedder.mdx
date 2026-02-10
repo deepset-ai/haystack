@@ -35,9 +35,11 @@ To work with Azure components, you will need an Azure OpenAI API key, as well as
 The component uses `AZURE_OPENAI_API_KEY` or `AZURE_OPENAI_AD_TOKEN` environment variables by default. Otherwise, you can pass `api_key` or `azure_ad_token` at initialization:
 
 ```python
-client = AzureOpenAITextEmbedder(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-                        api_key=Secret.from_token("<your-api-key>"),
-                        azure_deployment="<a model name>")
+client = AzureOpenAITextEmbedder(
+    azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+    api_key=Secret.from_token("<your-api-key>"),
+    azure_deployment="<a model name>",
+)
 ```
 
 :::note
@@ -76,12 +78,14 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 document_embedder = AzureOpenAIDocumentEmbedder()
-documents_with_embeddings = document_embedder.run(documents)['documents']
+documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
@@ -91,9 +95,9 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., mimetype: 'text/plain',
 ##  text: 'My name is Wolfgang and I live in Berlin')

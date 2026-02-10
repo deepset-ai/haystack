@@ -46,7 +46,6 @@ docs = [
 ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
 result = ranker.run(documents=docs)
 print(result["documents"])
-
 ```
 
 ### In a pipeline
@@ -60,32 +59,14 @@ from haystack.components.rankers import MetaFieldGroupingRanker
 from haystack.dataclasses import Document, ChatMessage
 
 docs = [
-    Document(
-        content="Chapter 1: Introduction to Python",
-        meta={"chapter": "1", "section": "intro", "page": 1}
-    ),
-    Document(
-        content="Chapter 2: Basic Data Types",
-        meta={"chapter": "2", "section": "basics", "page": 15}
-    ),
-    Document(
-        content="Chapter 1: Python Installation",
-        meta={"chapter": "1", "section": "setup", "page": 5}
-    ),
+    Document(content="Chapter 1: Introduction to Python", meta={"chapter": "1", "section": "intro", "page": 1}),
+    Document(content="Chapter 2: Basic Data Types", meta={"chapter": "2", "section": "basics", "page": 15}),
+    Document(content="Chapter 1: Python Installation", meta={"chapter": "1", "section": "setup", "page": 5}),
 ]
 
-ranker = MetaFieldGroupingRanker(
-    group_by="chapter",
-    subgroup_by="section",
-    sort_docs_by="page"
-)
+ranker = MetaFieldGroupingRanker(group_by="chapter", subgroup_by="section", sort_docs_by="page")
 
-chat_generator = OpenAIChatGenerator(
-    generation_kwargs={
-        "temperature": 0.7,
-        "max_tokens": 500
-    }
-)
+chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.7, "max_tokens": 500})
 
 ## First run the ranker
 ranked_result = ranker.run(documents=docs)
@@ -95,23 +76,17 @@ ranked_docs = ranked_result["documents"]
 messages = [
     ChatMessage.from_system("You are a helpful programming tutor."),
     ChatMessage.from_user(
-        f"Here are the course documents in order:\n" +
-        "\n".join([f"- {doc.content}" for doc in ranked_docs]) +
-        "\n\nBased on these documents, explain the structure of this Python course."
-    )
+        f"Here are the course documents in order:\n"
+        + "\n".join([f"- {doc.content}" for doc in ranked_docs])
+        + "\n\nBased on these documents, explain the structure of this Python course.",
+    ),
 ]
 
 ## Create and run pipeline for just the chat generator
 pipeline = Pipeline()
 pipeline.add_component("chat_generator", chat_generator)
 
-result = pipeline.run(
-    data={
-        "chat_generator": {
-            "messages": messages
-        }
-    }
-)
+result = pipeline.run(data={"chat_generator": {"messages": messages}})
 
 print(result["chat_generator"]["replies"][0])
 ```

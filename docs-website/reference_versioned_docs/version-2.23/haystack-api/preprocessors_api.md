@@ -173,7 +173,7 @@ from haystack.components.preprocessors import DocumentCleaner
 
 doc = Document(content="This   is  a  document  to  clean\n\n\nsubstring to remove")
 
-cleaner = DocumentCleaner(remove_substrings = ["substring to remove"])
+cleaner = DocumentCleaner(remove_substrings=["substring to remove"])
 result = cleaner.run(documents=[doc])
 
 assert result["documents"][0].content == "This is a document to clean "
@@ -526,7 +526,7 @@ from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 # Create a document with content that has a clear topic shift
 doc = Document(
     content="This is a first sentence. This is a second sentence. This is a third sentence. "
-    "Completely different topic. The same completely different topic."
+    "Completely different topic. The same completely different topic.",
 )
 
 # Initialize the embedder to calculate semantic similarities
@@ -535,10 +535,10 @@ embedder = SentenceTransformersDocumentEmbedder()
 # Configure the splitter with parameters that control splitting behavior
 splitter = EmbeddingBasedDocumentSplitter(
     document_embedder=embedder,
-    sentences_per_group=2,      # Group 2 sentences before calculating embeddings
-    percentile=0.95,            # Split when cosine distance exceeds 95th percentile
-    min_length=50,              # Merge splits shorter than 50 characters
-    max_length=1000             # Further split chunks longer than 1000 characters
+    sentences_per_group=2,  # Group 2 sentences before calculating embeddings
+    percentile=0.95,  # Split when cosine distance exceeds 95th percentile
+    min_length=50,  # Merge splits shorter than 50 characters
+    max_length=1000,  # Further split chunks longer than 1000 characters
 )
 splitter.warm_up()
 result = splitter.run(documents=[doc])
@@ -546,7 +546,7 @@ result = splitter.run(documents=[doc])
 # The result contains a list of Document objects, each representing a semantic chunk
 # Each split document includes metadata: source_id, split_id, and page_number
 print(f"Original document split into {len(result['documents'])} chunks")
-for i, split_doc in enumerate(result['documents']):
+for i, split_doc in enumerate(result["documents"]):
     print(f"Chunk {i}: {split_doc.content[:50]}...")
 ```
 
@@ -802,7 +802,7 @@ This is done until all chunks are smaller than the split_length parameter.
 
 **Example**:
 
-  
+
 ```python
 from haystack import Document
 from haystack.components.preprocessors import RecursiveDocumentSplitter
@@ -953,4 +953,3 @@ Cleans up the given list of strings.
 
 A dictionary with the following key:
 - `texts`:  the cleaned list of strings.
-

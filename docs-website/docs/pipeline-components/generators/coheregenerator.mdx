@@ -88,7 +88,9 @@ from haystack_integrations.components.generators.cohere import CohereGenerator
 from haystack import Document
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
+docstore.write_documents(
+    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+)
 
 query = "What is the capital of France?"
 
@@ -110,14 +112,7 @@ pipe.add_component("llm", CohereGenerator())
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-res=pipe.run({
-    "prompt_builder": {
-        "query": query
-    },
-    "retriever": {
-        "query": query
-    }
-})
+res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
 
 print(res)
 ```

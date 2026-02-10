@@ -65,10 +65,9 @@ Basic usage:
 from haystack_integrations.components.generators.google_vertex import VertexAIGeminiGenerator
 
 gemini = VertexAIGeminiGenerator()
-result = gemini.run(parts = ["What is the most interesting thing you know?"])
+result = gemini.run(parts=["What is the most interesting thing you know?"])
 for answer in result["replies"]:
     print(answer)
-
 ```
 
 Advanced usage, multi-modal prompting:
@@ -82,15 +81,12 @@ URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot1.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot2.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot3.jpg",
-    "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg"
+    "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg",
 ]
-images = [
-    ByteStream(data=requests.get(url).content, mime_type="image/jpeg")
-    for url in URLS
-]
+images = [ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS]
 
 gemini = VertexAIGeminiGenerator()
-result = gemini.run(parts = ["What can you tell me about this robots?", *images])
+result = gemini.run(parts=["What can you tell me about this robots?", *images])
 for answer in result["replies"]:
     print(answer)
 ```
@@ -107,7 +103,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.generators.google_vertex import VertexAIGeminiGenerator
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
+docstore.write_documents(
+    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+)
 
 query = "What is the capital of France?"
 
@@ -129,14 +127,7 @@ pipe.add_component("gemini", VertexAIGeminiGenerator())
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "gemini")
 
-res=pipe.run({
-    "prompt_builder": {
-        "query": query
-    },
-    "retriever": {
-        "query": query
-    }
-})
+res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
 
 print(res)
 ```

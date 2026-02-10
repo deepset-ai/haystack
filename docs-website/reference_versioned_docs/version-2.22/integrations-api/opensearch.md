@@ -1141,7 +1141,7 @@ document_store.write_documents(
     [
         Document(content="My first document", id="1"),
         Document(content="My second document", id="2"),
-    ]
+    ],
 )
 
 print(document_store.count_documents())
@@ -1850,4 +1850,3 @@ def normalize_filters(filters: dict[str, Any]) -> dict[str, Any]
 ```
 
 Converts Haystack filters in OpenSearch compatible filters.
-

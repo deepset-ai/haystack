@@ -444,14 +444,20 @@ from haystack.dataclasses import Document
 
 
 docs = [
-    Document(content="Javascript is a popular programming language", meta={"group": "42", "split_id": 7, "subgroup": "subB"}),
-    Document(content="Python is a popular programming language",meta={"group": "42", "split_id": 4, "subgroup": "subB"}),
+    Document(
+        content="Javascript is a popular programming language",
+        meta={"group": "42", "split_id": 7, "subgroup": "subB"},
+    ),
+    Document(
+        content="Python is a popular programming language",
+        meta={"group": "42", "split_id": 4, "subgroup": "subB"},
+    ),
     Document(content="A chromosome is a package of DNA", meta={"group": "314", "split_id": 2, "subgroup": "subC"}),
     Document(content="An octopus has three hearts", meta={"group": "11", "split_id": 2, "subgroup": "subD"}),
-    Document(content="Java is a popular programming language", meta={"group": "42", "split_id": 3, "subgroup": "subB"})
+    Document(content="Java is a popular programming language", meta={"group": "42", "split_id": 3, "subgroup": "subB"}),
 ]
 
-ranker = MetaFieldGroupingRanker(group_by="group",subgroup_by="subgroup", sort_docs_by="split_id")
+ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
 result = ranker.run(documents=docs)
 print(result["documents"])
 
@@ -601,7 +607,11 @@ Applies a document ranking algorithm based on one of the two strategies:
 from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
 
-ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
+ranker = SentenceTransformersDiversityRanker(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+    similarity="cosine",
+    strategy="greedy_diversity_order",
+)
 ranker.warm_up()
 
 docs = [Document(content="Paris"), Document(content="Berlin")]
@@ -936,9 +946,9 @@ It uses a pre-trained cross-encoder model from Hugging Face to embed the query a
   with removal following after a deprecation period.
   Consider using SentenceTransformersSimilarityRanker instead, which provides the same functionality along with
   additional features.
-  
+
   ### Usage example
-  
+
 ```python
 from haystack import Document
 from haystack.components.rankers import TransformersSimilarityRanker
@@ -1084,4 +1094,3 @@ If `scale_score` is True and `calibration_factor` is not provided.
 
 A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
-

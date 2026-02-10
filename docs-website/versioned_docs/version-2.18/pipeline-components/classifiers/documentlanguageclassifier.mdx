@@ -52,8 +52,8 @@ documents = [
     Document(content="My name is Alessia and I live in Rome."),
 ]
 
-document_classifier = DocumentLanguageClassifier(languages = ["en", "de"])
-document_classifier.run(documents = documents)
+document_classifier = DocumentLanguageClassifier(languages=["en", "de"])
+document_classifier.run(documents=documents)
 ```
 
 ### In a pipeline
@@ -72,12 +72,12 @@ from haystack.components.routers import MetadataRouter
 document_store_en = InMemoryDocumentStore()
 document_store_de = InMemoryDocumentStore()
 
-document_classifier = DocumentLanguageClassifier(languages = ["en", "de"])
+document_classifier = DocumentLanguageClassifier(languages=["en", "de"])
 metadata_router = MetadataRouter(rules={"en": {"language": {"$eq": "en"}}, "de": {"language": {"$eq": "de"}}})
 english_embedder = SentenceTransformersDocumentEmbedder()
 german_embedder = SentenceTransformersDocumentEmbedder(model="PM-AI/bi-encoder_msmarco_bert-base_german")
-en_writer = DocumentWriter(document_store = document_store_en)
-de_writer = DocumentWriter(document_store = document_store_de)
+en_writer = DocumentWriter(document_store=document_store_en)
+de_writer = DocumentWriter(document_store=document_store_de)
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component(instance=document_classifier, name="document_classifier")
@@ -93,5 +93,14 @@ indexing_pipeline.connect("metadata_router.de", "german_embedder.documents")
 indexing_pipeline.connect("english_embedder", "en_writer")
 indexing_pipeline.connect("german_embedder", "de_writer")
 
-indexing_pipeline.run({"document_classifier": {"documents": [Document(content="This is an English sentence."), Document(content="Dies ist ein deutscher Satz.")]}})
+indexing_pipeline.run(
+    {
+        "document_classifier": {
+            "documents": [
+                Document(content="This is an English sentence."),
+                Document(content="Dies ist ein deutscher Satz."),
+            ],
+        },
+    },
+)
 ```

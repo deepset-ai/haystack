@@ -39,7 +39,7 @@ You can also use `dump()` method to save the YAML representation of a pipeline i
 
 ```python
 with open("/content/test.yml", "w") as file:
-  pipe.dump(file)
+    pipe.dump(file)
 ```
 
 ## Converting a Pipeline Back to Python
@@ -77,16 +77,18 @@ max_loops_allowed: 100
 metadata: {}
 """
 
+
 def component_pre_init_callback(component_name: str, component_cls: Type, init_params: Dict[str, Any]):
-   # This function gets called every time a component is deserialized.
-   if component_name == "cleaner":
-      assert "DocumentCleaner" in component_cls.__name__
-      # Modify the init parameters. The modified parameters are passed to
-      # the init method of the component during deserialization.
-      init_params["remove_empty_lines"] = False
-      print("Modified 'remove_empty_lines' to False in 'cleaner' component")
-   else:
-      print(f"Not modifying component {component_name} of class {component_cls}")
+    # This function gets called every time a component is deserialized.
+    if component_name == "cleaner":
+        assert "DocumentCleaner" in component_cls.__name__
+        # Modify the init parameters. The modified parameters are passed to
+        # the init method of the component during deserialization.
+        init_params["remove_empty_lines"] = False
+        print("Modified 'remove_empty_lines' to False in 'cleaner' component")
+    else:
+        print(f"Not modifying component {component_name} of class {component_cls}")
+
 
 pipe = Pipeline.loads(pipeline_yaml, callbacks=DeserializationCallbacks(component_pre_init_callback))
 ```
@@ -97,6 +99,7 @@ Pipelines and components in Haystack can serialize simple components, including 
 
 ```python
 from haystack import component
+
 
 @component
 class RepeatWordComponent:
@@ -112,6 +115,7 @@ On the other hand, this code doesn't work if the final format is JSON, as the `s
 
 ```python
 from haystack import component
+
 
 @component
 class SetIntersector:
@@ -159,6 +163,7 @@ This is the code for a custom TOML marshaller that relies on the `rtoml` library
 ## This code requires a `pip install rtoml`
 from typing import Dict, Any, Union
 import rtoml
+
 
 class TomlMarshaller:
     def marshal(self, dict_: Dict[str, Any]) -> str:

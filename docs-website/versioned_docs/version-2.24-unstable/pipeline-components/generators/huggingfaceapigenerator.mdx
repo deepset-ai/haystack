@@ -64,9 +64,11 @@ The Generator expects the `url` of your endpoint in `api_params`.
 from haystack.components.generators import HuggingFaceAPIGenerator
 from haystack.utils import Secret
 
-generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
-                                    api_params={"url": "<your-inference-endpoint-url>"},
-                                    token=Secret.from_token("<your-api-key>"))
+generator = HuggingFaceAPIGenerator(
+    api_type="inference_endpoints",
+    api_params={"url": "<your-inference-endpoint-url>"},
+    token=Secret.from_token("<your-api-key>"),
+)
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -94,8 +96,7 @@ The Generator expects the `url` of your TGI instance in `api_params`.
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
 
-generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
-                                    api_params={"url": "http://localhost:8080"})
+generator = HuggingFaceAPIGenerator(api_type="text_generation_inference", api_params={"url": "http://localhost:8080"})
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -117,9 +118,11 @@ The Generator expects the `model` in `api_params`.
 from haystack.components.generators import HuggingFaceAPIGenerator
 from haystack.utils import Secret
 
-generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                    api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-                                    token=Secret.from_token("<your-api-key>"))
+generator = HuggingFaceAPIGenerator(
+    api_type="serverless_inference_api",
+    api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+    token=Secret.from_token("<your-api-key>"),
+)
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -136,7 +139,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack import Document
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
+docstore.write_documents(
+    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+)
 
 query = "What is the capital of France?"
 
@@ -151,9 +156,11 @@ Context:
 Question: {{ query }}?
 """
 
-generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
-                                    api_params={"url": "<your-inference-endpoint-url>"},
-                                    token=Secret.from_token("<your-api-key>"))
+generator = HuggingFaceAPIGenerator(
+    api_type="inference_endpoints",
+    api_params={"url": "<your-inference-endpoint-url>"},
+    token=Secret.from_token("<your-api-key>"),
+)
 
 pipe = Pipeline()
 
@@ -163,14 +170,7 @@ pipe.add_component("llm", generator)
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-res=pipe.run({
-    "prompt_builder": {
-        "query": query
-    },
-    "retriever": {
-        "query": query
-    }
-})
+res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
 
 print(res)
 ```

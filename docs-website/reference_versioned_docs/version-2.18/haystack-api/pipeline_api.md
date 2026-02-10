@@ -46,15 +46,17 @@ import asyncio
 
 # Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_user(
-        '''
+        """
         Given these documents, answer the question.
         Documents:
         {% for doc in documents %}
@@ -62,7 +64,8 @@ prompt_template = [
         {% endfor %}
         Question: {{question}}
         Answer:
-        ''')
+        """,
+    ),
 ]
 
 # Create and connect pipeline components
@@ -87,10 +90,7 @@ data = {
 
 # Process results as they become available
 async def process_results():
-    async for partial_output in rag_pipeline.run_async_generator(
-            data=data,
-            include_outputs_from={"retriever", "llm"}
-    ):
+    async for partial_output in rag_pipeline.run_async_generator(data=data, include_outputs_from={"retriever", "llm"}):
         # Each partial_output contains the results from a completed component
         if "retriever" in partial_output:
             print("Retrieved documents:", len(partial_output["retriever"]["documents"]))
@@ -151,15 +151,17 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 # Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_user(
-        '''
+        """
         Given these documents, answer the question.
         Documents:
         {% for doc in documents %}
@@ -167,7 +169,8 @@ prompt_template = [
         {% endfor %}
         Question: {{question}}
         Answer:
-        ''')
+        """,
+    ),
 ]
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
@@ -184,8 +187,10 @@ rag_pipeline.connect("prompt_builder", "llm")
 # Ask a question
 question = "Who lives in Paris?"
 
+
 async def run_inner(data, include_outputs_from):
     return await rag_pipeline.run_async(data=data, include_outputs_from=include_outputs_from)
+
 
 data = {
     "retriever": {"query": question},
@@ -268,15 +273,17 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 # Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_user(
-        '''
+        """
         Given these documents, answer the question.
         Documents:
         {% for doc in documents %}
@@ -284,7 +291,8 @@ prompt_template = [
         {% endfor %}
         Question: {{question}}
         Answer:
-        ''')
+        """,
+    ),
 ]
 
 
@@ -921,11 +929,13 @@ from haystack.components.builders.prompt_builder import PromptBuilder
 
 # Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = """
 Given these documents, answer the question.
@@ -954,7 +964,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])

@@ -29,22 +29,19 @@ from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.routers import MetadataRouter
 from haystack.components.writers import DocumentWriter
 
-docs = [Document(id="1", content="This is an English document"),
-        Document(id="2", content="Este es un documento en español")]
+docs = [
+    Document(id="1", content="This is an English document"),
+    Document(id="2", content="Este es un documento en español"),
+]
 
 document_store = InMemoryDocumentStore()
 
 p = Pipeline()
 p.add_component(instance=DocumentLanguageClassifier(languages=["en"]), name="language_classifier")
 p.add_component(
-instance=MetadataRouter(rules={
-    "en": {
-        "field": "meta.language",
-        "operator": "==",
-        "value": "en"
-    }
-}),
-name="router")
+    instance=MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}),
+    name="router",
+)
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 p.connect("language_classifier.documents", "router.documents")
 p.connect("router.en", "writer.documents")
@@ -133,8 +130,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.core.pipeline import Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
 
-documents = [Document(id="0", content="Today was a nice day!"),
-             Document(id="1", content="Yesterday was a bad day!")]
+documents = [Document(id="0", content="Today was a nice day!"), Document(id="1", content="Yesterday was a bad day!")]
 
 document_store = InMemoryDocumentStore()
 retriever = InMemoryBM25Retriever(document_store=document_store)
@@ -156,8 +152,9 @@ expected_predictions = ["positive", "negative"]
 for idx, query in enumerate(queries):
     result = pipeline.run({"retriever": {"query": query, "top_k": 1}})
     assert result["document_classifier"]["documents"][0].to_dict()["id"] == str(idx)
-    assert (result["document_classifier"]["documents"][0].to_dict()["classification"]["label"]
-            == expected_predictions[idx])
+    assert (
+        result["document_classifier"]["documents"][0].to_dict()["classification"]["label"] == expected_predictions[idx]
+    )
 ```
 
 <a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier.__init__"></a>
@@ -267,4 +264,3 @@ the `details` key within the `classification` dictionary.
 
 A dictionary with the following key:
 - `documents`: A list of documents with an added metadata field called `classification`.
-

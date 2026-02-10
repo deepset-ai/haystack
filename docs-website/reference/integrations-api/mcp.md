@@ -624,7 +624,7 @@ server_info = StdioServerInfo(
     env={
         "WORKSPACE_PATH": "/path/to/workspace",  # Plain string
         "API_KEY": Secret.from_env_var("API_KEY"),  # Secret object
-    }
+    },
 )
 ```
 
@@ -671,10 +671,7 @@ import json
 from haystack_integrations.tools.mcp import MCPTool, StreamableHttpServerInfo
 
 # Create tool instance
-tool = MCPTool(
-    name="multiply",
-    server_info=StreamableHttpServerInfo(url="http://localhost:8000/mcp")
-)
+tool = MCPTool(name="multiply", server_info=StreamableHttpServerInfo(url="http://localhost:8000/mcp"))
 
 # Use the tool and parse result
 result_json = tool.invoke(a=5, b=3)
@@ -687,10 +684,7 @@ import json
 from haystack.tools import MCPTool, SSEServerInfo
 
 # Create tool instance
-tool = MCPTool(
-    name="add",
-    server_info=SSEServerInfo(url="http://localhost:8000/sse")
-)
+tool = MCPTool(name="add", server_info=SSEServerInfo(url="http://localhost:8000/sse"))
 
 # Use the tool and parse result
 result_json = tool.invoke(a=5, b=3)
@@ -703,10 +697,7 @@ import json
 from haystack.tools import MCPTool, StdioServerInfo
 
 # Create tool instance
-tool = MCPTool(
-    name="get_current_time",
-    server_info=StdioServerInfo(command="python", args=["path/to/server.py"])
-)
+tool = MCPTool(name="get_current_time", server_info=StdioServerInfo(command="python", args=["path/to/server.py"]))
 
 # Use the tool and parse result
 result_json = tool.invoke(timezone="America/New_York")
@@ -933,7 +924,7 @@ server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-t
 # You can optionally specify which tools to include
 mcp_toolset = MCPToolset(
     server_info=server_info,
-    tool_names=["get_current_time"]  # Only include the get_current_time tool
+    tool_names=["get_current_time"],  # Only include the get_current_time tool
 )
 
 # Create a pipeline with the toolset
@@ -969,7 +960,7 @@ from haystack_integrations.tools.mcp import MCPToolset, StreamableHttpServerInfo
 # Create the toolset with streamable HTTP connection
 toolset = MCPToolset(
     server_info=StreamableHttpServerInfo(url="http://localhost:8000/mcp"),
-    tool_names=["multiply"]  # Optional: only include specific tools
+    tool_names=["multiply"],  # Optional: only include specific tools
 )
 # Use the toolset as shown in the pipeline example above
 ```
@@ -983,7 +974,6 @@ from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 toolset = MCPToolset(
     server_info=StdioServerInfo(command="uvx", args=["mcp-server-git"]),
     tool_names=["git_status", "git_diff", "git_log"],
-
     # Maps the state key "repository" to the tool parameter "repo_path" for each tool
     inputs_from_state={
         "git_status": {"repository": "repo_path"},
@@ -1006,7 +996,7 @@ from haystack.components.tools import ToolInvoker
 # Create the toolset with an SSE connection
 sse_toolset = MCPToolset(
     server_info=SSEServerInfo(url="http://some-remote-server.com:8000/sse"),
-    tool_names=["add", "subtract"]  # Only include specific tools
+    tool_names=["add", "subtract"],  # Only include specific tools
 )
 
 # Use the toolset as shown in the pipeline example above
@@ -1118,4 +1108,3 @@ def close()
 ```
 
 Close the underlying MCP client safely.
-

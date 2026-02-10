@@ -109,7 +109,7 @@ documents = [
 
 document_store.write_documents(documents)
 
-template ="""{% message role="user" %}
+template = """{% message role="user" %}
 Rewrite the following query to be used for keyword search.
 {{ query }}
 {% endmessage %}

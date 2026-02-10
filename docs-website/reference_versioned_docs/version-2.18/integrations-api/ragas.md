@@ -26,23 +26,19 @@ from ragas.llms import HaystackLLMWrapper
 llm = OpenAIGenerator(model="gpt-4o-mini")
 evaluator_llm = HaystackLLMWrapper(llm)
 
-evaluator = RagasEvaluator(
-    ragas_metrics=[ContextPrecision()],
-    evaluator_llm=evaluator_llm
-)
+evaluator = RagasEvaluator(ragas_metrics=[ContextPrecision()], evaluator_llm=evaluator_llm)
 output = evaluator.run(
     query="Which is the most popular global sport?",
     documents=[
         "Football is undoubtedly the world's most popular sport with"
         " major events like the FIFA World Cup and sports personalities"
         " like Ronaldo and Messi, drawing a followership of more than 4"
-        " billion people."
+        " billion people.",
     ],
-    reference="Football is the most popular sport with around 4 billion"
-              " followers worldwide",
+    reference="Football is the most popular sport with around 4 billion followers worldwide",
 )
 
-output['result']
+output["result"]
 ```
 
 <a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator.__init__"></a>
@@ -94,4 +90,3 @@ and the values represent the corresponding evaluation criteria.
 **Returns**:
 
 A dictionary containing the evaluation result.
-

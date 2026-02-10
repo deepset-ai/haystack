@@ -134,12 +134,14 @@ You can also easily use function calls. First, define the function locally and c
 from typing import Annotated
 from haystack.tools import create_tool_from_function
 
+
 ## example function to get the current weather
 def get_current_weather(
     location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
+
 
 tool = create_tool_from_function(get_current_weather)
 ```
@@ -184,13 +186,13 @@ from haystack.dataclasses.chat_message import ChatMessage
 from haystack.dataclasses import StreamingChunk
 from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
 
+
 def streaming_callback(chunk: StreamingChunk):
-    print(chunk.content, end='', flush=True)
+    print(chunk.content, end="", flush=True)
+
 
 ## Initialize with streaming callback
-chat_generator = GoogleGenAIChatGenerator(
-    streaming_callback=streaming_callback
-)
+chat_generator = GoogleGenAIChatGenerator(streaming_callback=streaming_callback)
 
 ## Generate a streaming response
 messages = [ChatMessage.from_user("Write a short story")]
@@ -220,7 +222,7 @@ pipe.connect("prompt_builder.prompt", "genai.messages")
 
 location = "Rome"
 messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
-res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
 
 print(res)
 ```

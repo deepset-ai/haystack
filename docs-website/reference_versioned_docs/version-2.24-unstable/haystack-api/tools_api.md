@@ -52,7 +52,7 @@ search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), to
 tool = ComponentTool(
     component=search,
     name="web_search",  # Optional: defaults to "serper_dev_web_search"
-    description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+    description="Search the web for current information on any topic",  # Optional: defaults to component docstring
 )
 
 # Create pipeline with OpenAIChatGenerator and ToolInvoker
@@ -131,16 +131,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 
 **Raises**:
@@ -269,16 +265,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 - `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
 If not provided, the tool result is converted to a string using a default handler.
@@ -384,16 +376,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 - `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
 If not provided, the tool result is converted to a string using a default handler.
@@ -456,9 +444,7 @@ from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
-from haystack.components.embedders.sentence_transformers_document_embedder import (
-    SentenceTransformersDocumentEmbedder
-)
+from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.agents import Agent
@@ -471,7 +457,7 @@ documents = [
     Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
     Document(
         content="He is best known for his contributions to the design of the modern alternating current (AC) "
-                "electricity supply system."
+        "electricity supply system.",
     ),
 ]
 document_embedder.warm_up()
@@ -481,7 +467,8 @@ document_store.write_documents(docs_with_embeddings)
 # Build a simple retrieval pipeline
 retrieval_pipeline = Pipeline()
 retrieval_pipeline.add_component(
-    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    "embedder",
+    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
 )
 retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 
@@ -497,10 +484,7 @@ retriever_tool = PipelineTool(
 )
 
 # Create an Agent with the tool
-agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
-    tools=[retriever_tool]
-)
+agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"), tools=[retriever_tool])
 
 # Let the Agent handle a query
 result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
@@ -545,7 +529,7 @@ Create a Tool instance from a Haystack pipeline.
 If not provided, a default input mapping will be created based on all pipeline inputs.
 Example:
 ```python
-input_mapping={
+input_mapping = {
     "query": ["retriever.query", "prompt_builder.query"],
 }
 ```
@@ -553,7 +537,7 @@ input_mapping={
 If not provided, a default output mapping will be created based on all pipeline outputs.
 Example:
 ```python
-output_mapping={
+output_mapping = {
     "retriever.documents": "documents",
     "generator.replies": "replies",
 }
@@ -594,16 +578,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 
 **Raises**:
@@ -734,16 +714,12 @@ Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" par
 If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
+{"documents": {"source": "docs", "handler": custom_handler}}
 ```
 If the source is omitted the whole tool result is sent to the handler.
 Example:
 ```python
-{
-    "documents": {"handler": custom_handler}
-}
+{"documents": {"handler": custom_handler}}
 ```
 
 <a id="tool.Tool.tool_spec"></a>
@@ -878,11 +854,11 @@ to manage and use them as a unit in Haystack pipelines.
    # Use the toolset with a ToolInvoker or ChatGenerator component
    invoker = ToolInvoker(tools=math_toolset)
    ```
-  
+
   2. Base class for dynamic tool loading:
   By subclassing Toolset, you can create implementations that dynamically load tools
   from external sources like OpenAPI URLs, MCP servers, or other resources.
-  
+
 
 **Example**:
 
@@ -943,11 +919,11 @@ to manage and use them as a unit in Haystack pipelines.
    calculator_toolset = CalculatorToolset()
    invoker = ToolInvoker(tools=calculator_toolset)
    ```
-  
+
   Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
   making it behave like a list of Tools. This makes it compatible with components that expect
   iterable tools, such as ToolInvoker or Haystack chat generators.
-  
+
   When implementing a custom Toolset subclass for dynamic tool loading:
   - Perform the dynamic loading in the __init__ method
   - Override to_dict() and from_dict() methods if your tools are defined dynamically
@@ -1294,4 +1270,3 @@ Deserialize a Toolset from a dictionary.
 **Returns**:
 
 A new Toolset instance
-

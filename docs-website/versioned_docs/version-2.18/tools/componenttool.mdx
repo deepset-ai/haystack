@@ -61,7 +61,7 @@ search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), to
 tool = ComponentTool(
     component=search,
     name="web_search",  # Optional: defaults to "serper_dev_web_search"
-    description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+    description="Search the web for current information on any topic",  # Optional: defaults to component docstring
 )
 
 ## Create pipeline with OpenAIChatGenerator and ToolInvoker
@@ -99,15 +99,11 @@ search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), to
 search_tool = ComponentTool(
     component=search,
     name="web_search",  # Optional: defaults to "serper_dev_web_search"
-    description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+    description="Search the web for current information on any topic",  # Optional: defaults to component docstring
 )
 
 ## Agent Setup
-agent = Agent(
-    chat_generator=OpenAIChatGenerator(),
-    tools=[search_tool],
-    exit_conditions=["text"]
-)
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[search_tool], exit_conditions=["text"])
 
 ## Run the Agent
 agent.warm_up()

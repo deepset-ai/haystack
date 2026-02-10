@@ -28,9 +28,11 @@ from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 os.environ["PINECONE_API_KEY"] = "YOUR_PINECONE_API_KEY"
 document_store = PineconeDocumentStore(index="my_index", namespace="my_namespace", dimension=768)
 
-documents = [Document(content="There are over 7,000 languages spoken around the world today."),
-             Document(content="Elephants have been observed to behave in a way that indicates..."),
-             Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(content="Elephants have been observed to behave in a way that indicates..."),
+    Document(content="In certain places, you can witness the phenomenon of bioluminescent waves."),
+]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
 document_embedder.warm_up()
@@ -46,7 +48,7 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 query = "How many languages are there?"
 
 res = query_pipeline.run({"text_embedder": {"text": query}})
-assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
+assert res["retriever"]["documents"][0].content == "There are over 7,000 languages spoken around the world today."
 ```
 
 <a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever.__init__"></a>
@@ -616,9 +618,9 @@ Dictionary mapping field names to type information.
 Example:
 ```python
 {
-    'content': {'type': 'text'},
-    'category': {'type': 'keyword'},
-    'priority': {'type': 'long'},
+    "content": {"type": "text"},
+    "category": {"type": "keyword"},
+    "priority": {"type": "long"},
 }
 ```
 
@@ -647,9 +649,9 @@ Dictionary mapping field names to type information.
 Example:
 ```python
 {
-    'content': {'type': 'text'},
-    'category': {'type': 'keyword'},
-    'priority': {'type': 'long'},
+    "content": {"type": "text"},
+    "category": {"type": "keyword"},
+    "priority": {"type": "long"},
 }
 ```
 
@@ -768,4 +770,3 @@ Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 **Returns**:
 
 Tuple of (list of unique values, total count of matching values).
-

@@ -908,7 +908,7 @@ Hello! I am {{user_name}}. Please describe the images.
 {% endfor %}
 {% endmessage %}
 ```
-  
+
   ### How it works
   1. The `{% message %}` tag is used to define a chat message.
   2. The message can contain text and other structured content parts.
@@ -1087,11 +1087,13 @@ res = request_with_retry(method="GET", url="https://example.com", status_codes_t
 # Sending an HTTP request with custom timeout in seconds
 res = request_with_retry(method="GET", url="https://example.com", timeout=5)
 
+
 # Sending an HTTP request with custom authorization handling
 class CustomAuth(requests.auth.AuthBase):
     def __call__(self, r):
         r.headers["authorization"] = "Basic <my_token_here>"
         return r
+
 
 res = request_with_retry(method="GET", url="https://example.com", auth=CustomAuth())
 
@@ -1102,7 +1104,7 @@ res = request_with_retry(
     auth=CustomAuth(),
     attempts=10,
     status_codes_to_retry=[408, 503],
-    timeout=5
+    timeout=5,
 )
 
 # Sending a POST request
@@ -1141,31 +1143,37 @@ Usage example:
 import asyncio
 from haystack.utils import async_request_with_retry
 
+
 # Sending an async HTTP request with default retry configs
 async def example():
     res = await async_request_with_retry(method="GET", url="https://example.com")
     return res
+
 
 # Sending an async HTTP request with custom number of attempts
 async def example_with_attempts():
     res = await async_request_with_retry(method="GET", url="https://example.com", attempts=10)
     return res
 
+
 # Sending an async HTTP request with custom HTTP codes to retry
 async def example_with_status_codes():
     res = await async_request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=[408, 503])
     return res
+
 
 # Sending an async HTTP request with custom timeout in seconds
 async def example_with_timeout():
     res = await async_request_with_retry(method="GET", url="https://example.com", timeout=5)
     return res
 
+
 # Sending an async HTTP request with custom headers
 async def example_with_headers():
     headers = {"Authorization": "Bearer <my_token_here>"}
     res = await async_request_with_retry(method="GET", url="https://example.com", headers=headers)
     return res
+
 
 # All of the above combined
 async def example_combined():
@@ -1176,26 +1184,23 @@ async def example_combined():
         headers=headers,
         attempts=10,
         status_codes_to_retry=[408, 503],
-        timeout=5
+        timeout=5,
     )
     return res
 
+
 # Sending an async POST request
 async def example_post():
-    res = await async_request_with_retry(
-        method="POST",
-        url="https://example.com",
-        json={"key": "value"},
-        attempts=10
-    )
+    res = await async_request_with_retry(method="POST", url="https://example.com", json={"key": "value"}, attempts=10)
     return res
+
 
 # Retry all 5xx status codes
 async def example_5xx():
     res = await async_request_with_retry(
         method="GET",
         url="https://example.com",
-        status_codes_to_retry=list(range(500, 600))
+        status_codes_to_retry=list(range(500, 600)),
     )
     return res
 ```
@@ -1293,4 +1298,3 @@ def is_valid_http_url(url: str) -> bool
 ```
 
 Check if a URL is a valid HTTP/HTTPS URL.
-

@@ -81,7 +81,7 @@ doc = Document(content="I love pizza!")
 embedder = CohereDocumentEmbedder()
 
 result = embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 ## [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
 ```
 
@@ -98,9 +98,11 @@ from haystack_integrations.components.embedders.cohere.text_embedder import Cohe
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("embedder", CohereDocumentEmbedder())
@@ -116,9 +118,9 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., text: 'My name is Wolfgang and I live in Berlin')
 ```

@@ -201,7 +201,7 @@ embedder = OptimumDocumentEmbedder(
         "provider_options": {
             "trt_engine_cache_enable": True,
             "trt_engine_cache_path": "tmp/trt_cache",
-        }
+        },
     },
 )
 ```
@@ -363,7 +363,7 @@ embedder = OptimumDocumentEmbedder(
         "provider_options": {
             "trt_engine_cache_enable": True,
             "trt_engine_cache_path": "tmp/trt_cache",
-        }
+        },
     },
 )
 ```
@@ -626,4 +626,3 @@ Create a configuration from a dictionary.
 **Returns**:
 
 Quantization configuration.
-

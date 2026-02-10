@@ -88,7 +88,9 @@ from haystack.dataclasses import ChatMessage
 generation_kwargs = {"extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}}
 
 claude_llm = AnthropicVertexChatGenerator(
-    region="your_region", project_id="test_id", generation_kwargs=generation_kwargs
+    region="your_region",
+    project_id="test_id",
+    generation_kwargs=generation_kwargs,
 )
 
 system_message = ChatMessage.from_system("Replace with some long text documents, code or instructions")
@@ -123,8 +125,9 @@ from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AnthropicVertexChatGenerator(
-  model="claude-3-sonnet@20240229",
-  project_id="your-project-id", region="us-central1"
+    model="claude-3-sonnet@20240229",
+    project_id="your-project-id",
+    region="us-central1",
 )
 
 response = client.run(messages)
@@ -153,5 +156,4 @@ messages = [system_message, ChatMessage.from_user("What's the official language 
 
 res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
 print(res)
-
 ```

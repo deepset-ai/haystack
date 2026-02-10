@@ -57,7 +57,7 @@ from haystack.components.preprocessors import CSVDocumentCleaner
 
 cleaner = CSVDocumentCleaner(ignore_rows=1, ignore_columns=0)
 
-documents = [Document(content="""col1,col2,col3\n,,\na,b,c\n,,""" )]
+documents = [Document(content="""col1,col2,col3\n,,\na,b,c\n,,""")]
 cleaned_docs = cleaner.run(documents=documents)
 ```
 

@@ -46,9 +46,7 @@ generator = AnthropicChatGenerator(
 )
 
 messages = [
-    ChatMessage.from_system(
-        "You are a helpful, respectful and honest assistant"
-    ),
+    ChatMessage.from_system("You are a helpful, respectful and honest assistant"),
     ChatMessage.from_user("What's Natural Language Processing?"),
 ]
 print(generator.run(messages=messages))
@@ -59,11 +57,7 @@ Usage example with images:
 from haystack.dataclasses import ChatMessage, ImageContent
 
 image_content = ImageContent.from_file_path("path/to/image.jpg")
-messages = [
-    ChatMessage.from_user(
-        content_parts=["What's in this image?", image_content]
-    )
-]
+messages = [ChatMessage.from_user(content_parts=["What's in this image?", image_content])]
 generator = AnthropicChatGenerator()
 result = generator.run(messages)
 ```
@@ -462,4 +456,3 @@ Generate replies using the Anthropic API.
 A dictionary containing:
 - `replies`: A list of generated replies.
 - `meta`: A list of metadata dictionaries for each reply.
-

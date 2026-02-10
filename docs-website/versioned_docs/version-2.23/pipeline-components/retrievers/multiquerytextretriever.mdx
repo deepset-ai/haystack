@@ -48,10 +48,7 @@ If you need semantic search where meaning matters more than exact keyword matche
 You can pass additional parameters to the underlying Retriever using `retriever_kwargs`:
 
 ```python
-result = multiquery_retriever.run(
-    queries=["renewable energy", "sustainable power"],
-    retriever_kwargs={"top_k": 5}
-)
+result = multiquery_retriever.run(queries=["renewable energy", "sustainable power"], retriever_kwargs={"top_k": 5})
 ```
 
 ## Usage
@@ -76,9 +73,7 @@ documents = [
 document_store = InMemoryDocumentStore()
 document_store.write_documents(documents)
 
-retriever = MultiQueryTextRetriever(
-    retriever=InMemoryBM25Retriever(document_store=document_store, top_k=2)
-)
+retriever = MultiQueryTextRetriever(retriever=InMemoryBM25Retriever(document_store=document_store, top_k=2))
 
 results = retriever.run(queries=["renewable energy", "geothermal", "hydropower"])
 
@@ -114,9 +109,7 @@ pipeline = Pipeline()
 pipeline.add_component("query_expander", QueryExpander(n_expansions=3))
 pipeline.add_component(
     "retriever",
-    MultiQueryTextRetriever(
-        retriever=InMemoryBM25Retriever(document_store=document_store, top_k=2)
-    )
+    MultiQueryTextRetriever(retriever=InMemoryBM25Retriever(document_store=document_store, top_k=2)),
 )
 pipeline.connect("query_expander.queries", "retriever.queries")
 
@@ -194,8 +187,8 @@ prompt_template = [
         "{% for doc in documents %}"
         "{{ doc.content }}\n"
         "{% endfor %}\n"
-        "Question: {{ question }}"
-    )
+        "Question: {{ question }}",
+    ),
 ]
 
 # Note: This assumes OPENAI_API_KEY environment variable is set
@@ -203,13 +196,11 @@ rag_pipeline = Pipeline()
 rag_pipeline.add_component("query_expander", QueryExpander(n_expansions=2))
 rag_pipeline.add_component(
     "retriever",
-    MultiQueryTextRetriever(
-        retriever=InMemoryBM25Retriever(document_store=document_store, top_k=2)
-    )
+    MultiQueryTextRetriever(retriever=InMemoryBM25Retriever(document_store=document_store, top_k=2)),
 )
 rag_pipeline.add_component(
     "prompt_builder",
-    ChatPromptBuilder(template=prompt_template, required_variables=["documents", "question"])
+    ChatPromptBuilder(template=prompt_template, required_variables=["documents", "question"]),
 )
 rag_pipeline.add_component("llm", OpenAIChatGenerator())
 
@@ -218,10 +209,7 @@ rag_pipeline.connect("retriever.documents", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 
 question = "What types of energy come from natural sources?"
-result = rag_pipeline.run({
-    "query_expander": {"query": question},
-    "prompt_builder": {"question": question}
-})
+result = rag_pipeline.run({"query_expander": {"query": question}, "prompt_builder": {"question": question}})
 
 print(result["llm"]["replies"][0].text)
 ```

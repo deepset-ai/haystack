@@ -252,8 +252,10 @@ Hello! I am {{user_name}}. What's the difference between the following images?
 {% endmessage %}
 """
 
-images = [ImageContent.from_file_path("test/test_files/images/apple.jpg"),
-          ImageContent.from_file_path("test/test_files/images/haystack-logo.png")]
+images = [
+    ImageContent.from_file_path("test/test_files/images/apple.jpg"),
+    ImageContent.from_file_path("test/test_files/images/haystack-logo.png"),
+]
 
 builder = ChatPromptBuilder(template=template)
 builder.run(user_name="John", images=images)
@@ -434,13 +436,15 @@ new_template = """
     Question: {{ query }}
     Answer:
     """
-p.run({
-    "prompt_builder": {
-        "documents": documents,
-        "query": question,
-        "template": new_template,
+p.run(
+    {
+        "prompt_builder": {
+            "documents": documents,
+            "query": question,
+            "template": new_template,
+        },
     },
-})
+)
 ```
 To replace the variables in the default template when testing your prompt,
 pass the new variables in the `variables` parameter.
@@ -463,14 +467,16 @@ Question: {{ query }}
 Please provide your answer in {{ answer_language | default('English') }}
 Answer:
 """
-p.run({
-    "prompt_builder": {
-        "documents": documents,
-        "query": question,
-        "template": language_template,
-        "template_variables": {"answer_language": "German"},
+p.run(
+    {
+        "prompt_builder": {
+            "documents": documents,
+            "query": question,
+            "template": language_template,
+            "template_variables": {"answer_language": "German"},
+        },
     },
-})
+)
 ```
 Note that `language_template` introduces variable `answer_language` which is not bound to any pipeline variable.
 If not set otherwise, it will use its default value 'English'.
@@ -550,4 +556,3 @@ provided at initialization is used.
 
 A dictionary with the following keys:
 - `prompt`: The updated prompt text after rendering the prompt template.
-

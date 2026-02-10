@@ -26,7 +26,7 @@ doc = Document(content="I love pizza!")
 document_embedder = STACKITDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -254,4 +254,3 @@ Serialize this component to a dictionary.
 **Returns**:
 
 The serialized component as a dictionary.
-

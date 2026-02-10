@@ -62,10 +62,16 @@ from haystack_integrations.components.retrievers.elasticsearch import Elasticsea
 from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
 from elasticsearch import Elasticsearch
 
-document_store = ElasticsearchDocumentStore(hosts= "http://localhost:9200/")
-documents = [Document(content="There are over 7,000 languages spoken around the world today."),
-			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
-			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/")
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
 document_store.write_documents(documents=documents)
 
 retriever = ElasticsearchBM25Retriever(document_store=document_store)
@@ -91,7 +97,8 @@ from haystack.components.generators import OpenAIGenerator
 from haystack.document_stores.types import DuplicatePolicy
 
 import os
-api_key = os.environ['OPENAI_API_KEY']
+
+api_key = os.environ["OPENAI_API_KEY"]
 
 ## Create a RAG query pipeline
 prompt_template = """
@@ -104,13 +111,19 @@ prompt_template = """
     \nAnswer:
     """
 
-document_store = ElasticsearchDocumentStore(hosts= "http://localhost:9200/")
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/")
 
 ## Add Documents
 
-documents = [Document(content="There are over 7,000 languages spoken around the world today."),
-			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
-			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
 
 ## DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
 document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
@@ -129,14 +142,13 @@ rag_pipeline.connect("retriever", "answer_builder.documents")
 
 question = "How many languages are spoken around the world today?"
 result = rag_pipeline.run(
-            {
-                "retriever": {"query": question},
-                "prompt_builder": {"question": question},
-                "answer_builder": {"query": question},
-            }
-        )
-print(result['answer_builder']['answers'][0].data)
-
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+        "answer_builder": {"query": question},
+    },
+)
+print(result["answer_builder"]["answers"][0].data)
 ```
 
 Here’s an example output you might get:

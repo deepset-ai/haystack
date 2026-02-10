@@ -149,14 +149,9 @@ Each field can be defined either as:
 These fields are automatically added when creating the search index.
 Example:
 ```python
-metadata_fields={
-    "Title": SearchField(
-        name="Title",
-        type="Edm.String",
-        searchable=True,
-        filterable=True
-    ),
-    "Pages": int
+metadata_fields = {
+    "Title": SearchField(name="Title", type="Edm.String", searchable=True, filterable=True),
+    "Pages": int,
 }
 ```
 - `vector_search_configuration`: Configuration option related to vector search.
@@ -363,4 +358,3 @@ filters, see the [metadata filtering documentation](https://docs.haystack.deepse
 **Returns**:
 
 A list of Documents that match the given filters.
-

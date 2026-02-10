@@ -37,11 +37,7 @@ from haystack_integrations.components.connectors.github import Command, GitHubFi
 from haystack.utils import Secret
 
 # Initialize with default repo and branch
-editor = GitHubFileEditor(
-    github_token=Secret.from_env_var("GITHUB_TOKEN"),
-    repo="owner/repo",
-    branch="main"
-)
+editor = GitHubFileEditor(github_token=Secret.from_env_var("GITHUB_TOKEN"), repo="owner/repo", branch="main")
 
 # Edit a file using default repo and branch
 result = editor.run(
@@ -50,8 +46,8 @@ result = editor.run(
         "path": "path/to/file.py",
         "original": "def old_function():",
         "replacement": "def new_function():",
-        "message": "Renamed function for clarity"
-    }
+        "message": "Renamed function for clarity",
+    },
 )
 
 # Edit a file in a different repo/branch
@@ -63,8 +59,8 @@ result = editor.run(
         "path": "path/to/file.py",
         "original": "def old_function():",
         "replacement": "def new_function():",
-        "message": "Renamed function for clarity"
-    }
+        "message": "Renamed function for clarity",
+    },
 )
 ```
 
@@ -164,7 +160,7 @@ from haystack.utils import Secret
 commenter = GitHubIssueCommenter(github_token=Secret.from_env_var("GITHUB_TOKEN"))
 result = commenter.run(
     url="https://github.com/owner/repo/issues/123",
-    comment="Thanks for reporting this issue! We'll look into it."
+    comment="Thanks for reporting this issue! We'll look into it.",
 )
 
 print(result["success"])
@@ -261,9 +257,7 @@ The component takes a GitHub issue URL and returns a list of documents where:
 from haystack_integrations.components.connectors.github import GitHubIssueViewer
 
 viewer = GitHubIssueViewer()
-docs = viewer.run(
-    url="https://github.com/owner/repo/issues/123"
-)["documents"]
+docs = viewer.run(url="https://github.com/owner/repo/issues/123")["documents"]
 
 print(docs)
 ```
@@ -357,7 +351,7 @@ from haystack_integrations.components.connectors.github import GitHubPRCreator
 from haystack.utils import Secret
 
 pr_creator = GitHubPRCreator(
-    github_token=Secret.from_env_var("GITHUB_TOKEN")  # Token from the fork owner
+    github_token=Secret.from_env_var("GITHUB_TOKEN"),  # Token from the fork owner
 )
 
 # Create a PR from your fork
@@ -365,8 +359,8 @@ result = pr_creator.run(
     issue_url="https://github.com/owner/repo/issues/123",
     title="Fix issue `123`",
     body="This PR addresses issue `123`",
-    branch="feature-branch",     # The branch in your fork with the changes
-    base="main"                  # The branch in the original repo to merge into
+    branch="feature-branch",  # The branch in your fork with the changes
+    base="main",  # The branch in the original repo to merge into
 )
 ```
 
@@ -456,11 +450,7 @@ from haystack_integrations.components.connectors.github import GitHubRepoForker
 from haystack.utils import Secret
 
 # Using direct token with auto-sync and branch creation
-forker = GitHubRepoForker(
-    github_token=Secret.from_env_var("GITHUB_TOKEN"),
-    auto_sync=True,
-    create_branch=True
-)
+forker = GitHubRepoForker(github_token=Secret.from_env_var("GITHUB_TOKEN"), auto_sync=True, create_branch=True)
 
 result = forker.run(url="https://github.com/owner/repo/issues/123")
 print(result)
@@ -590,19 +580,11 @@ from haystack_integrations.components.connectors.github import GitHubRepoViewer
 viewer = GitHubRepoViewer()
 
 # List directory contents - returns multiple documents
-result = viewer.run(
-    repo="owner/repository",
-    path="docs/",
-    branch="main"
-)
+result = viewer.run(repo="owner/repository", path="docs/", branch="main")
 print(result)
 
 # Get specific file - returns single document
-result = viewer.run(
-    repo="owner/repository",
-    path="README.md",
-    branch="main"
-)
+result = viewer.run(repo="owner/repository", path="README.md", branch="main")
 print(result)
 ```
 
@@ -684,4 +666,3 @@ Process a GitHub repository path and return documents.
 **Returns**:
 
 Dictionary containing list of documents
-

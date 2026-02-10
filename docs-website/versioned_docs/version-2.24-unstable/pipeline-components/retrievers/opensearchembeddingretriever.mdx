@@ -62,7 +62,7 @@ pip install opensearch-haystack
 Use this Retriever in a query Pipeline like this:
 
 ```python
-from haystack_integrations.components.retrievers.opensearch  import OpenSearchEmbeddingRetriever
+from haystack_integrations.components.retrievers.opensearch import OpenSearchEmbeddingRetriever
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 
 from haystack.document_stores.types import DuplicatePolicy
@@ -70,14 +70,24 @@ from haystack import Document
 from haystack import Pipeline
 from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 
-document_store = OpenSearchDocumentStore(hosts="http://localhost:9200", use_ssl=True,
-verify_certs=False, http_auth=("admin", "admin"))
+document_store = OpenSearchDocumentStore(
+    hosts="http://localhost:9200",
+    use_ssl=True,
+    verify_certs=False,
+    http_auth=("admin", "admin"),
+)
 
 model = "sentence-transformers/all-mpnet-base-v2"
 
-documents = [Document(content="There are over 7,000 languages spoken around the world today."),
-						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
-						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
 
 document_embedder = SentenceTransformersDocumentEmbedder(model=model)
 document_embedder.warm_up()
@@ -94,7 +104,7 @@ query = "How many languages are there?"
 
 result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 ```
 
 The example output would be:

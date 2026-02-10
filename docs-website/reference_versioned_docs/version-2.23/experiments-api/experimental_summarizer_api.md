@@ -23,16 +23,18 @@ from haystack_experimental.components.summarizers.summarizer import Summarizer
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack import Document
 
-text = ("Machine learning is a subset of artificial intelligence that provides systems "
-        "the ability to automatically learn and improve from experience without being "
-        "explicitly programmed. The process of learning begins with observations or data. "
-        "Supervised learning algorithms build a mathematical model of sample data, known as "
-        "training data, in order to make predictions or decisions. Unsupervised learning "
-        "algorithms take a set of data that contains only inputs and find structure in the data. "
-        "Reinforcement learning is an area of machine learning where an agent learns to behave "
-        "in an environment by performing actions and seeing the results. Deep learning uses "
-        "artificial neural networks to model complex patterns in data. Neural networks consist "
-        "of layers of connected nodes, each performing a simple computation.")
+text = (
+    "Machine learning is a subset of artificial intelligence that provides systems "
+    "the ability to automatically learn and improve from experience without being "
+    "explicitly programmed. The process of learning begins with observations or data. "
+    "Supervised learning algorithms build a mathematical model of sample data, known as "
+    "training data, in order to make predictions or decisions. Unsupervised learning "
+    "algorithms take a set of data that contains only inputs and find structure in the data. "
+    "Reinforcement learning is an area of machine learning where an agent learns to behave "
+    "in an environment by performing actions and seeing the results. Deep learning uses "
+    "artificial neural networks to model complex patterns in data. Neural networks consist "
+    "of layers of connected nodes, each performing a simple computation."
+)
 
 doc = Document(content=text)
 chat_generator = OpenAIChatGenerator(model="gpt-4")
@@ -195,4 +197,3 @@ component's default.
 **Raises**:
 
 - `RuntimeError`: If the component wasn't warmed up.
-

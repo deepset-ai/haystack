@@ -70,12 +70,14 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore()
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 document_embedder = STACKITDocumentEmbedder(model="intfloat/e5-mistral-7b-instruct")
-documents_with_embeddings = document_embedder.run(documents)['documents']
+documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 
 text_embedder = STACKITTextEmbedder(model="intfloat/e5-mistral-7b-instruct")
@@ -87,9 +89,9 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Where does Wolfgang live?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

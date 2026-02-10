@@ -137,10 +137,12 @@ Usage example:
 ```python
 from haystack_integrations.components.generators.togetherai import TogetherAIGenerator
 
-generator = TogetherAIGenerator(model="deepseek-ai/DeepSeek-R1",
-                            generation_kwargs={
-                            "temperature": 0.9,
-                            })
+generator = TogetherAIGenerator(
+    model="deepseek-ai/DeepSeek-R1",
+    generation_kwargs={
+        "temperature": 0.9,
+    },
+)
 
 print(generator.run("Who is the best Italian actor?"))
 ```
@@ -291,4 +293,3 @@ A dictionary with the following keys:
 - `replies`: A list of generated text completions as strings.
 - `meta`: A list of metadata dictionaries containing information about each generation,
 including model name, finish reason, and token usage statistics.
-
