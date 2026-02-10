@@ -190,6 +190,8 @@ class TestChatMessage:
         assert not message.image
         assert not message.reasonings
         assert not message.reasoning
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_tool_calls(self):
         tool_calls = [
@@ -213,6 +215,8 @@ class TestChatMessage:
         assert not message.image
         assert not message.reasoning
         assert not message.reasonings
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_reasoning_object(self):
         reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
@@ -233,6 +237,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_reasoning_string(self):
         reasoning = "Let me think about it..."
@@ -254,6 +260,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_invalid_reasoning(self):
         with pytest.raises(TypeError):
@@ -278,6 +286,8 @@ class TestChatMessage:
         assert not message.image
         assert not message.reasonings
         assert not message.reasoning
+        assert not message.files
+        assert not message.file
 
     def test_from_user_with_name(self):
         text = "I have a question."
@@ -302,24 +312,42 @@ class TestChatMessage:
         assert message.text == ""
         assert message.texts == [""]
 
-    def test_from_user_with_content_parts(self, base64_image_string):
-        content_parts = [TextContent(text="text"), ImageContent(base64_image=base64_image_string)]
+    def test_from_user_with_content_parts(self, base64_image_string, base64_pdf_string):
+        content_parts = [
+            TextContent(text="text"),
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
         message = ChatMessage.from_user(content_parts=content_parts)
 
         assert message.role == ChatRole.USER
         assert message._content == content_parts
 
-        content_parts = ["text", ImageContent(base64_image=base64_image_string)]
+        content_parts = [
+            "text",
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
         message = ChatMessage.from_user(content_parts=content_parts)
 
         assert message.role == ChatRole.USER
-        assert message._content == [TextContent(text="text"), ImageContent(base64_image=base64_image_string)]
+        assert message._content == [
+            TextContent(text="text"),
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
 
         content_parts = [ImageContent(base64_image=base64_image_string)]
         message = ChatMessage.from_user(content_parts=content_parts)
 
         assert message.role == ChatRole.USER
         assert message._content == [ImageContent(base64_image=base64_image_string)]
+
+        content_parts = [FileContent(base64_data=base64_pdf_string)]
+        message = ChatMessage.from_user(content_parts=content_parts)
+
+        assert message.role == ChatRole.USER
+        assert message._content == [FileContent(base64_data=base64_pdf_string)]
 
     def test_from_user_with_content_parts_fails_unsupported_parts(self):
         with pytest.raises(ValueError):

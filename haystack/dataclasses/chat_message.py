@@ -398,6 +398,22 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return None
 
     @property
+    def files(self) -> list[FileContent]:
+        """
+        Returns the list of all files contained in the message.
+        """
+        return [content for content in self._content if isinstance(content, FileContent)]
+
+    @property
+    def file(self) -> FileContent | None:
+        """
+        Returns the first file contained in the message.
+        """
+        if files := self.files:
+            return files[0]
+        return None
+
+    @property
     def reasonings(self) -> list[ReasoningContent]:
         """
         Returns the list of all reasoning contents contained in the message.
@@ -641,90 +657,94 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
             `id` attribute.
         """
-        text_contents = self.texts
-        tool_calls = self.tool_calls
-        tool_call_results = self.tool_call_results
-        images = self.images
-
-        if not text_contents and not tool_calls and not tool_call_results and not images:
+        if not self.texts and not self.tool_calls and not self.tool_call_results and not self.images and not self.files:
             raise ValueError(
                 "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
-                "`ToolCallResult`, or `ImageContent`."
+                "`ToolCallResult`, `ImageContent`, or `FileContent`."
             )
-        if len(tool_call_results) > 0 and len(self._content) > 1:
+        if len(self.tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
                 "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
             )
 
         openai_msg: dict[str, Any] = {"role": self._role.value}
 
-        # Add name field if present
         if self._name is not None:
             openai_msg["name"] = self._name
 
-        # user message
         if openai_msg["role"] == "user":
-            if len(self._content) == 1 and isinstance(self._content[0], TextContent):
-                openai_msg["content"] = self.text
-                return openai_msg
+            return self._user_message_to_openai(openai_msg)
 
-            # if the user message contains a list of text and images, OpenAI expects a list of dictionaries
-            content = []
-            for part in self._content:
-                if isinstance(part, TextContent):
-                    content.append({"type": "text", "text": part.text})
-                elif isinstance(part, ImageContent):
-                    image_item: dict[str, Any] = {
-                        "type": "image_url",
-                        # If no MIME type is provided, default to JPEG.
-                        # OpenAI API appears to tolerate MIME type mismatches.
-                        "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
-                    }
-                    if part.detail:
-                        image_item["image_url"]["detail"] = part.detail
-                    content.append(image_item)
-                elif isinstance(part, FileContent):
-                    file_item: dict[str, Any] = {
-                        "type": "file",
-                        "file": {
-                            "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
-                            "filename": part.filename,
-                        },
-                    }
-                    if file_id := part.extra.get("file_id"):
-                        file_item["file"]["file_id"] = file_id
-                    content.append(file_item)
-            openai_msg["content"] = content
+        if self.tool_call_results:
+            return self._tool_result_message_to_openai(openai_msg, require_tool_call_ids)
+
+        return self._system_assistant_message_to_openai(openai_msg, require_tool_call_ids)
+
+    def _user_message_to_openai(self, openai_msg: dict[str, Any]) -> dict[str, Any]:
+        """Build OpenAI dict for a user message."""
+        if len(self._content) == 1 and isinstance(self._content[0], TextContent):
+            openai_msg["content"] = self.text
             return openai_msg
 
-        # tool message
-        if tool_call_results:
-            result = tool_call_results[0]
-            if isinstance(result.result, str):
-                openai_msg["content"] = result.result
-            # OpenAI Chat Completions API does not support multimodal tool results
-            elif isinstance(result.result, list) and all(isinstance(part, TextContent) for part in result.result):
-                openai_msg["content"] = [{"type": "text", "text": part.text} for part in result.result]
-            else:
-                raise ValueError(
-                    f"Unsupported tool result: {result}. If you need to pass images in tool results, "
-                    "use OpenAI Responses API instead."
-                )
+        content = []
+        for part in self._content:
+            if isinstance(part, TextContent):
+                content.append({"type": "text", "text": part.text})
+            elif isinstance(part, ImageContent):
+                image_item: dict[str, Any] = {
+                    "type": "image_url",
+                    # If no MIME type is provided, default to JPEG.
+                    # OpenAI API appears to tolerate MIME type mismatches.
+                    "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
+                }
+                if part.detail:
+                    image_item["image_url"]["detail"] = part.detail
+                content.append(image_item)
+            elif isinstance(part, FileContent):
+                file_item: dict[str, Any] = {
+                    "type": "file",
+                    "file": {
+                        "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
+                        "filename": part.filename,
+                    },
+                }
+                if file_id := part.extra.get("file_id"):
+                    file_item["file"]["file_id"] = file_id
+                content.append(file_item)
+        openai_msg["content"] = content
+        return openai_msg
 
-            if result.origin.id is not None:
-                openai_msg["tool_call_id"] = result.origin.id
-            elif require_tool_call_ids:
-                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-            # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
-            return openai_msg
+    def _tool_result_message_to_openai(self, openai_msg: dict[str, Any], require_tool_call_ids: bool) -> dict[str, Any]:
+        """Build OpenAI dict for a tool result message."""
+        result = self.tool_call_results[0]
+        if isinstance(result.result, str):
+            openai_msg["content"] = result.result
+        # OpenAI Chat Completions API does not support multimodal tool results
+        elif isinstance(result.result, list) and all(isinstance(part, TextContent) for part in result.result):
+            openai_msg["content"] = [{"type": "text", "text": part.text} for part in result.result]
+        else:
+            raise ValueError(
+                f"Unsupported tool result: {result}. If you need to pass images in tool results, "
+                "use OpenAI Responses API instead."
+            )
 
-        # system and assistant messages
+        if result.origin.id is not None:
+            openai_msg["tool_call_id"] = result.origin.id
+        elif require_tool_call_ids:
+            raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+        # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
+        return openai_msg
+
+    def _system_assistant_message_to_openai(
+        self, openai_msg: dict[str, Any], require_tool_call_ids: bool
+    ) -> dict[str, Any]:
+        """Build OpenAI dict for system and assistant messages."""
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
-        if text_contents:
-            openai_msg["content"] = text_contents[0]
-        if tool_calls:
+        if self.texts:
+            openai_msg["content"] = self.texts[0]
+        if self.tool_calls:
             openai_tool_calls = []
-            for tc in tool_calls:
+            for tc in self.tool_calls:
                 openai_tool_call = {
                     "type": "function",
                     # We disable ensure_ascii so special chars like emojis are not converted
