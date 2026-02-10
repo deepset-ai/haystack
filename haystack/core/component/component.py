@@ -74,6 +74,7 @@ method decorated with `@component.input`. This dataclass contains:
 """
 
 import inspect
+import typing
 from collections.abc import Callable, Coroutine
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -233,12 +234,14 @@ class ComponentMeta(type):
             from inspect import Parameter
 
             run_signature = inspect.signature(method)
+            run_hints = typing.get_type_hints(method)
 
             for param_name, param_info in run_signature.parameters.items():
                 if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
                     continue
 
-                socket_kwargs = {"name": param_name, "type": param_info.annotation}
+                annotation = run_hints.get(param_name, param_info.annotation)
+                socket_kwargs = {"name": param_name, "type": annotation}
                 if param_info.default != Parameter.empty:
                     socket_kwargs["default_value"] = param_info.default
 
