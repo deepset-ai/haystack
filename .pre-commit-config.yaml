@@ -29,7 +29,7 @@ repos:
         name: ruff-format-docs
         language: python
         entry: python scripts/ruff_format_docs.py
-        files: ^docs-website/.*\.mdx?$
+        files: ^docs-website/.*\.mdx$
         types: [text]
         additional_dependencies:
           - ruff
