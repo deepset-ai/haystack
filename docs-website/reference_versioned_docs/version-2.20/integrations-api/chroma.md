@@ -710,6 +710,280 @@ Asynchronous methods are only supported for HTTP connections.
 
 a list of lists of documents that match the given filters.
 
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents_by_filter"></a>
+
+#### ChromaDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents_by_filter_async"></a>
+
+#### ChromaDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the number of documents that match the provided filters.
+
+Asynchronous methods are only supported for HTTP connections.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### ChromaDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Returns the number of unique values for each specified metadata field
+
+of the documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of field names to calculate unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of
+its unique values among the filtered documents.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### ChromaDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously returns the number of unique values for each specified metadata field
+
+of the documents that match the provided filters.
+
+Asynchronous methods are only supported for HTTP connections.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of field names to calculate unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of
+its unique values among the filtered documents.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_fields_info"></a>
+
+#### ChromaDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns information about the metadata fields in the collection.
+
+Since ChromaDB doesn't maintain a schema, this method samples documents
+to infer field types.
+
+If we populated the collection with documents like:
+
+```python
+Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})
+Document(content="Doc 2", meta={"category": "B", "status": "inactive"})
+```
+
+This method would return:
+
+```python
+{
+    'category': {'type': 'keyword'},
+    'status': {'type': 'keyword'},
+    'priority': {'type': 'long'},
+}
+```
+
+**Returns**:
+
+Dictionary mapping field names to their type information.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_fields_info_async"></a>
+
+#### ChromaDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Asynchronously returns information about the metadata fields in the collection.
+
+Asynchronous methods are only supported for HTTP connections.
+
+Since ChromaDB doesn't maintain a schema, this method samples documents
+to infer field types.
+
+If we populated the collection with documents like:
+
+```python
+Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})
+Document(content="Doc 2", meta={"category": "B", "status": "inactive"})
+```
+
+This method would return:
+
+```python
+{
+    'category': {'type': 'keyword'},
+    'status': {'type': 'keyword'},
+    'priority': {'type': 'long'},
+}
+```
+
+**Returns**:
+
+Dictionary mapping field names to their type information.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_min_max"></a>
+
+#### ChromaDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+Returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the minimum and maximum values for.
+Can include or omit the "meta." prefix.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is
+the minimum or maximum value of the metadata field across all documents.
+Returns:
+```python
+  {"min": None, "max": None}
+```
+if field doesn't exist or has no values.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### ChromaDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, Any]
+```
+
+Asynchronously returns the minimum and maximum values for the given metadata field.
+
+Asynchronous methods are only supported for HTTP connections.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the minimum and maximum values for.
+Can include or omit the "meta." prefix.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is
+the minimum or maximum value of the metadata field across all documents.
+Returns:
+```python
+  {"min": None, "max": None}
+```
+if field doesn't exist or has no values.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_unique_values"></a>
+
+#### ChromaDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(metadata_field: str,
+                                     search_term: str | None = None,
+                                     from_: int = 0,
+                                     size: int = 10) -> tuple[list[str], int]
+```
+
+Returns unique values for a metadata field, optionally filtered by
+
+a search term in the content field, with pagination support.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get unique values for.
+Can include or omit the "meta." prefix.
+- `search_term`: Optional search term to filter documents by matching
+in the content field.
+- `from_`: The offset to start returning values from (for pagination).
+- `size`: The maximum number of unique values to return.
+
+**Returns**:
+
+A tuple containing list of unique values and total count of unique values.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### ChromaDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10) -> tuple[list[str], int]
+```
+
+Asynchronously returns unique values for a metadata field, optionally filtered by
+
+a search term in the content field, with pagination support.
+
+Asynchronous methods are only supported for HTTP connections.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get unique values for.
+Can include or omit the "meta." prefix.
+- `search_term`: Optional search term to filter documents by matching
+in the content field.
+- `from_`: The offset to start returning values from (for pagination).
+- `size`: The maximum number of unique values to return.
+
+**Returns**:
+
+A tuple containing list of unique values and total count of unique values.
+
 <a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.from_dict"></a>
 
 #### ChromaDocumentStore.from\_dict
