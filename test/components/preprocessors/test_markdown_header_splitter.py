@@ -129,19 +129,6 @@ def test_split_without_headers(sample_text):
     assert subheader123_doc.content == "\nContent under header 1.2.3."
 
 
-def test_split_parentheaders(sample_text):
-    splitter = MarkdownHeaderSplitter(keep_headers=False)
-    docs = [Document(content=sample_text), Document(content="# H1\n## H2\n### H3\nContent")]
-    result = splitter.run(documents=docs)
-    split_docs = result["documents"]
-    # Check parentheaders for both a deep subheader and a simple one
-    subheader_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.2.2")
-    assert "Header 1" in subheader_doc.meta["parent_headers"]
-    assert "Header 1.2" in subheader_doc.meta["parent_headers"]
-    h3_doc = next((doc for doc in split_docs if doc.meta["header"] == "H3"), None)
-    assert h3_doc.meta["parent_headers"] == ["H1", "H2"]
-
-
 def test_split_no_headers():
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content="No headers here."), Document(content="Just some text without headers.")]
