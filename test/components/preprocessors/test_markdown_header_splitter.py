@@ -310,20 +310,52 @@ def test_secondary_split_with_overlap():
         "This subsection contains additional information and should also be split with overlap."
     )
     # keep_headers=False
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2, keep_headers=False)
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=8, split_overlap=3, keep_headers=False)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    assert len(split_docs) == 21
+    assert len(split_docs) == 9
 
-    for i in range(1, len(split_docs)):
-        prev_doc = split_docs[i - 1]
-        curr_doc = split_docs[i]
-        if prev_doc.meta["header"] == curr_doc.meta["header"]:  # only check overlap within same header
-            prev_words = prev_doc.content.split()
-            curr_words = curr_doc.content.split()
-            assert prev_words[-2:] == curr_words[:2]
-    # keep_headers=True
+    # Verify exact content and metadata of each split
+    # intro (4 docs)
+    assert split_docs[0].content == "\nThis is the introduction section with some words "
+    assert split_docs[0].meta["header"] == "Introduction"
+    assert split_docs[1].content == "with some words for testing overlap splitting. It "
+    assert split_docs[1].meta["header"] == "Introduction"
+    assert split_docs[2].content == "overlap splitting. It should be split into chunks "
+    assert split_docs[2].meta["header"] == "Introduction"
+    assert split_docs[3].content == "split into chunks with overlap.\n"
+    assert split_docs[3].meta["header"] == "Introduction"
+
+    # details (3 docs)
+    assert split_docs[4].content == "\nHere are more details about the topic. Splitting "
+    assert split_docs[4].meta["header"] == "Details"
+    assert split_docs[5].content == "the topic. Splitting should work across multiple headers "
+    assert split_docs[5].meta["header"] == "Details"
+    assert split_docs[6].content == "across multiple headers and content blocks.\n"
+    assert split_docs[6].meta["header"] == "Details"
+
+    # subsection (2 docs)
+    assert split_docs[7].content == "\nThis subsection contains additional information and should also "
+    assert split_docs[7].meta["header"] == "Subsection"
+    assert split_docs[8].content == "and should also be split with overlap."
+    assert split_docs[8].meta["header"] == "Subsection"
+
+    # verify 3-word overlap behavior (split_overlap=3)
+    # consecutive pairs within a header should share the 3 words at their boundary
+    # intro
+    assert split_docs[0].content.split()[-3:] == split_docs[1].content.split()[:3]
+    assert split_docs[1].content.split()[-3:] == split_docs[2].content.split()[:3]
+    assert split_docs[2].content.split()[-3:] == split_docs[3].content.split()[:3]
+
+    # details
+    assert split_docs[4].content.split()[-3:] == split_docs[5].content.split()[:3]
+    assert split_docs[5].content.split()[-3:] == split_docs[6].content.split()[:3]
+
+    # subsection
+    assert split_docs[7].content.split()[-3:] == split_docs[8].content.split()[:3]
+
+    # re-run with keep_headers=True, change split_length and split_overlap
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
