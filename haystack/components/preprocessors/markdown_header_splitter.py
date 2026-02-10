@@ -253,11 +253,13 @@ class MarkdownHeaderSplitter:
             docs = []
 
             current_page = doc.meta.get("page_number", 1) if doc.meta else 1
-            total_pages = doc.content.count(self.page_break_character) + 1
+            total_page_breaks = doc.content.count(self.page_break_character)
             logger.debug(
-                "Processing page number: {current_page} out of {total_pages}",
-                current_page=current_page,
-                total_pages=total_pages,
+                "Processing document with id={doc_id}: starting at page {start_page}, "
+                "contains {page_breaks} page breaks in total",
+                doc_id=doc.id,
+                start_page=current_page,
+                page_breaks=total_page_breaks,
             )
             for split_idx, split in enumerate(splits):
                 meta = doc.meta.copy() if doc.meta else {}
