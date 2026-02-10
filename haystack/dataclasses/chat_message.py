@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any, Sequence
 
 from haystack import logging
+from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import ImageContent
 
 logger = logging.getLogger(__name__)
@@ -195,7 +196,7 @@ class ReasoningContent:
         return ReasoningContent(**data)
 
 
-ChatMessageContentT = TextContent | ToolCall | ToolCallResult | ImageContent | ReasoningContent
+ChatMessageContentT = TextContent | ToolCall | ToolCallResult | ImageContent | ReasoningContent | FileContent
 
 _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str] = {
     TextContent: "text",
@@ -203,6 +204,7 @@ _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str
     ToolCallResult: "tool_call_result",
     ImageContent: "image",
     ReasoningContent: "reasoning",
+    FileContent: "file",
 }
 
 
@@ -228,8 +230,8 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
     # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
     msg = (
         f"Unsupported content part in the serialized ChatMessage: {part}. "
-        "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each "
-        "dictionary contains one of these keys: 'text', 'image', 'reasoning', 'tool_call', or 'tool_call_result'. "
+        "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each dictionary "
+        "contains one of these keys: 'text', 'image', 'file', 'reasoning', 'tool_call', or 'tool_call_result'. "
         "Valid formats: [{'text': 'Hello'}, {'image': {'base64_image': '...', ...}}, "
         "{'reasoning': {'reasoning_text': 'I think...', 'extra': {...}}}, "
         "{'tool_call': {'tool_name': 'search', 'arguments': {}, 'id': 'call_123'}}, "
@@ -429,7 +431,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         meta: dict[str, Any] | None = None,
         name: str | None = None,
         *,
-        content_parts: Sequence[TextContent | str | ImageContent] | None = None,
+        content_parts: Sequence[TextContent | str | ImageContent | FileContent] | None = None,
     ) -> "ChatMessage":
         """
         Create a message from the user.
@@ -445,7 +447,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
-        content: list[TextContent | ImageContent] = []
+        content: list[TextContent | ImageContent | FileContent] = []
 
         if text is not None:
             content = [TextContent(text=text)]
@@ -453,14 +455,14 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             for part in content_parts:
                 if isinstance(part, str):
                     content.append(TextContent(text=part))
-                elif isinstance(part, (TextContent, ImageContent)):
+                elif isinstance(part, (TextContent, ImageContent, FileContent)):
                     content.append(part)
                 else:
                     raise ValueError(
                         f"The user message must contain only text or image parts. Unsupported part: {part}"
                     )
             if len(content) == 0:
-                raise ValueError("The user message must contain at least one textual or image part.")
+                raise ValueError("The user message must contain at least one content part (text, image, file).")
 
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
@@ -571,6 +573,8 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             serialized_part = _serialize_content_part(part)
             if isinstance(part, ImageContent):
                 serialized_part["image"]["base64_image"] = f"Base64 string ({len(part.base64_image)} characters)"
+            elif isinstance(part, FileContent):
+                serialized_part["file"]["base64_data"] = f"Base64 string ({len(part.base64_data)} characters)"
             serialized["content"].append(serialized_part)
 
         return serialized
@@ -679,6 +683,17 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                     if part.detail:
                         image_item["image_url"]["detail"] = part.detail
                     content.append(image_item)
+                elif isinstance(part, FileContent):
+                    file_item: dict[str, Any] = {
+                        "type": "file",
+                        "file": {
+                            "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
+                            "filename": part.filename,
+                        },
+                    }
+                    if file_id := part.extra.get("file_id"):
+                        file_item["file"]["file_id"] = file_id
+                    content.append(file_item)
             openai_msg["content"] = content
             return openai_msg
 

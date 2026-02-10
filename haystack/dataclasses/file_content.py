@@ -4,9 +4,11 @@
 
 import base64
 import mimetypes
+import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 import filetype
 
@@ -97,8 +99,8 @@ class FileContent:
         :param file_path:
             The path to the file.
         :param filename:
-            Optional filename of the file. Some LLM providers use this information. If not provided, the filename is
-            extracted from the file path.
+            Optional file name. Some LLM providers use this information. If not provided, the filename is extracted
+            from the file path.
         :param extra:
             Dictionary of extra information about the file. Can be used to store provider-specific information.
             To avoid serialization issues, values should be JSON serializable.
@@ -158,8 +160,10 @@ class FileContent:
         bytestream = fetcher.run(urls=[url])["streams"][0]
 
         mime_type = bytestream.mime_type
-        filename = filename or bytestream.meta.get("filename", None) or url.rsplit("/", maxsplit=1)[-1]
         data = bytestream.data
+
+        if not filename:
+            filename = os.path.basename(unquote(urlparse(url).path))
 
         return cls(
             base64_data=base64.b64encode(data).decode("utf-8"),

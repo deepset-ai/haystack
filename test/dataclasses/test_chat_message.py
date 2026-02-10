@@ -9,6 +9,7 @@ import pytest
 from haystack.dataclasses.chat_message import (
     ChatMessage,
     ChatRole,
+    FileContent,
     ReasoningContent,
     TextContent,
     ToolCall,
@@ -615,6 +616,36 @@ class TestChatMessageSerde:
             "meta": {},
         }
 
+    def test_to_trace_dict_with_file_content(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                FileContent(
+                    base64_data=base64_pdf_string,
+                    mime_type="application/pdf",
+                    filename="test.pdf",
+                    extra={"foo": "bar"},
+                )
+            ]
+        )
+        trace_dict = message._to_trace_dict()
+
+        assert trace_dict == {
+            "role": "user",
+            "content": [
+                {
+                    "file": {
+                        "base64_data": "Base64 string (25388 characters)",
+                        "filename": "test.pdf",
+                        "extra": {"foo": "bar"},
+                        "validation": True,
+                        "mime_type": "application/pdf",
+                    }
+                }
+            ],
+            "name": None,
+            "meta": {},
+        }
+
 
 class TestToOpenaiDictFormat:
     def test_to_openai_dict_format_system_message(self):
@@ -652,6 +683,33 @@ class TestToOpenaiDictFormat:
                     "type": "image_url",
                     "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
                 }
+            ],
+        }
+
+    def test_to_openai_dict_format_user_message_with_file_content(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                FileContent(
+                    base64_data=base64_pdf_string,
+                    mime_type="application/pdf",
+                    filename="test.pdf",
+                    extra={"file_id": "123"},
+                ),
+                TextContent("Is this document a paper about LLMs?"),
+            ]
+        )
+        assert message.to_openai_dict_format() == {
+            "role": "user",
+            "content": [
+                {
+                    "type": "file",
+                    "file": {
+                        "file_data": f"data:application/pdf;base64,{base64_pdf_string}",
+                        "filename": "test.pdf",
+                        "file_id": "123",
+                    },
+                },
+                {"type": "text", "text": "Is this document a paper about LLMs?"},
             ],
         }
 
