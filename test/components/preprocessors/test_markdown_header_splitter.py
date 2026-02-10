@@ -156,8 +156,10 @@ def test_split_multiple_documents(sample_text):
 
     assert len(split_docs) == 8
 
-    headers = {doc.meta["header"] for doc in split_docs}
-    assert {"Another Header", "H1", "H2"}.issubset(headers)
+    # First 5 splits are from sample_text
+    assert split_docs[5].meta["header"] == "Another Header"
+    assert split_docs[6].meta["header"] == "H1"
+    assert split_docs[7].meta["header"] == "H2"
 
     # Verify that split_ids are per-parent-document
     splits_by_source = defaultdict(list)
