@@ -1,0 +1,24 @@
+---
+features:
+  - |
+    User Chat Messages can now include files using the new ``FileContent`` dataclass.
+
+    Most API-based LLMs support file inputs such as PDFs (and, for some models, additional file types).
+
+    For now, this feature is implemented for ``OpenAIChatGenerator`` and ``AzureOpenAIChatGenerator``,
+    with support for more model providers coming soon.
+
+    For advanced PDF handling, such as reducing image size or selecting specific page ranges, we recommend
+    using the ``PDFToImageContent`` component instead.
+
+    ``FileContent`` example:
+
+    .. code:: python
+      from haystack.components.generators.chat.openai import OpenAIChatGenerator
+      from haystack.dataclasses.chat_message import ChatMessage
+      from haystack.dataclasses.file_content import FileContent
+
+      file_content = FileContent.from_url("https://arxiv.org/pdf/2309.08632")
+      chat_message = ChatMessage.from_user(content_parts=[file_content, "Summarize this paper in 100 words."])
+      llm = OpenAIChatGenerator(model="gpt-4.1-mini")
+      response = llm.run(messages=[chat_message])

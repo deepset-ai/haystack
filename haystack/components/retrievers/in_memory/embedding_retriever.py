@@ -142,7 +142,7 @@ class InMemoryEmbeddingRetriever:
         top_k: int | None = None,
         scale_score: bool | None = None,
         return_embedding: bool | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Run the InMemoryEmbeddingRetriever on the given input data.
 
@@ -193,7 +193,7 @@ class InMemoryEmbeddingRetriever:
         top_k: int | None = None,
         scale_score: bool | None = None,
         return_embedding: bool | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Run the InMemoryEmbeddingRetriever on the given input data.
 

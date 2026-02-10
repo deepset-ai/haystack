@@ -10,6 +10,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
     from sentence_transformers import CrossEncoder
@@ -223,6 +224,9 @@ class SentenceTransformersSimilarityRanker:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param query:
             The input query to compare the documents to.
         :param documents:
@@ -256,9 +260,10 @@ class SentenceTransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
+        deduplicated_documents = _deduplicate_documents(documents)
         prepared_query = self.query_prefix + query + self.query_suffix
         prepared_documents = []
-        for doc in documents:
+        for doc in deduplicated_documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
@@ -284,7 +289,7 @@ class SentenceTransformersSimilarityRanker:
         for el in ranking_result:
             index = el["corpus_id"]
             score = float(el["score"])
-            document = copy(documents[index])
+            document = copy(deduplicated_documents[index])
             document.score = score
             ranked_docs.append(document)
 

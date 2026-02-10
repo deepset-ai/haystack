@@ -8,7 +8,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types import TextRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -88,7 +88,6 @@ class MultiQueryTextRetriever:
                 `documents`: List of retrieved documents sorted by relevance score.
         """
         docs: list[Document] = []
-        seen_contents = set()
         retriever_kwargs = retriever_kwargs or {}
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -96,12 +95,10 @@ class MultiQueryTextRetriever:
             for result in queries_results:
                 if not result:
                     continue
-                # deduplicate based on content
-                for doc in result:
-                    if doc.content not in seen_contents:
-                        docs.append(doc)
-                        seen_contents.add(doc.content)
+                docs.extend(result)
 
+        # de-duplicate and sort
+        docs = _deduplicate_documents(docs)
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 
@@ -139,5 +136,4 @@ class MultiQueryTextRetriever:
         :returns:
             The deserialized component.
         """
-        deserialize_component_inplace(data["init_parameters"], key="retriever")
         return default_from_dict(cls, data)

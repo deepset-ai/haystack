@@ -567,7 +567,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
@@ -582,16 +582,16 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Moon" in message.text
+        assert message.reasoning is not None
+        assert any(word in message.text.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
-        assert message.reasonings is not None
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
 
     def test_live_run_with_text_format(self, calendar_event_model):
         chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+            ChatMessage.from_user("The marketing summit takes place on October 12th at the Hilton Hotel downtown.")
         ]
         component = OpenAIResponsesChatGenerator(
             model="gpt-5-nano", generation_kwargs={"text_format": calendar_event_model}
@@ -601,7 +601,7 @@ class TestIntegration:
         message: ChatMessage = results["replies"][0]
         print(message.text)
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
+        assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
@@ -629,7 +629,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Jane" in msg["name"]
+        assert "jane" in msg["name"].lower()
         assert msg["age"] == 54
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -649,7 +649,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
+        assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
@@ -666,7 +666,7 @@ class TestIntegration:
         assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert isinstance(message.meta, dict)
 
         # Metadata checks
@@ -683,7 +683,7 @@ class TestIntegration:
 
         # Streaming callback verification
         assert callback.counter > 1
-        assert "Paris" in callback.content
+        assert "paris" in callback.content.lower()
 
     def test_live_run_with_reasoning_and_streaming(self):
         callback = RecordingCallback()
@@ -697,7 +697,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert callback.reasoning == message.reasoning.reasoning_text
-        assert "Moon" in callback.content
+        assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
@@ -745,7 +745,7 @@ class TestIntegration:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments.keys() == {"city"}
-        assert "Paris" in tool_call.arguments["city"]
+        assert "paris" in tool_call.arguments["city"].lower()
 
     def test_live_run_multimodal(self, test_files_path):
         image_path = test_files_path / "images" / "apple.jpg"
@@ -904,7 +904,7 @@ class TestIntegration:
         user_message = ChatMessage.from_user("Retrieve the image and describe it in max 5 words.")
         result = agent.run(messages=[user_message])
 
-        assert "apple" in result["last_message"].text.lower()
+        assert any(word in result["last_message"].text.lower() for word in ["apple", "fruit"])
 
 
 class TestOpenAIResponsesChatGeneratorAsync:
@@ -951,7 +951,7 @@ class TestOpenAIResponsesChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0

@@ -9,6 +9,7 @@ import pytest
 from haystack.dataclasses.chat_message import (
     ChatMessage,
     ChatRole,
+    FileContent,
     ReasoningContent,
     TextContent,
     ToolCall,
@@ -189,6 +190,8 @@ class TestChatMessage:
         assert not message.image
         assert not message.reasonings
         assert not message.reasoning
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_tool_calls(self):
         tool_calls = [
@@ -212,6 +215,8 @@ class TestChatMessage:
         assert not message.image
         assert not message.reasoning
         assert not message.reasonings
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_reasoning_object(self):
         reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
@@ -232,6 +237,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_reasoning_string(self):
         reasoning = "Let me think about it..."
@@ -253,6 +260,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.files
+        assert not message.file
 
     def test_from_assistant_with_invalid_reasoning(self):
         with pytest.raises(TypeError):
@@ -277,6 +286,8 @@ class TestChatMessage:
         assert not message.image
         assert not message.reasonings
         assert not message.reasoning
+        assert not message.files
+        assert not message.file
 
     def test_from_user_with_name(self):
         text = "I have a question."
@@ -301,24 +312,42 @@ class TestChatMessage:
         assert message.text == ""
         assert message.texts == [""]
 
-    def test_from_user_with_content_parts(self, base64_image_string):
-        content_parts = [TextContent(text="text"), ImageContent(base64_image=base64_image_string)]
+    def test_from_user_with_content_parts(self, base64_image_string, base64_pdf_string):
+        content_parts = [
+            TextContent(text="text"),
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
         message = ChatMessage.from_user(content_parts=content_parts)
 
         assert message.role == ChatRole.USER
         assert message._content == content_parts
 
-        content_parts = ["text", ImageContent(base64_image=base64_image_string)]
+        content_parts = [
+            "text",
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
         message = ChatMessage.from_user(content_parts=content_parts)
 
         assert message.role == ChatRole.USER
-        assert message._content == [TextContent(text="text"), ImageContent(base64_image=base64_image_string)]
+        assert message._content == [
+            TextContent(text="text"),
+            ImageContent(base64_image=base64_image_string),
+            FileContent(base64_data=base64_pdf_string),
+        ]
 
         content_parts = [ImageContent(base64_image=base64_image_string)]
         message = ChatMessage.from_user(content_parts=content_parts)
 
         assert message.role == ChatRole.USER
         assert message._content == [ImageContent(base64_image=base64_image_string)]
+
+        content_parts = [FileContent(base64_data=base64_pdf_string)]
+        message = ChatMessage.from_user(content_parts=content_parts)
+
+        assert message.role == ChatRole.USER
+        assert message._content == [FileContent(base64_data=base64_pdf_string)]
 
     def test_from_user_with_content_parts_fails_unsupported_parts(self):
         with pytest.raises(ValueError):
@@ -615,6 +644,36 @@ class TestChatMessageSerde:
             "meta": {},
         }
 
+    def test_to_trace_dict_with_file_content(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                FileContent(
+                    base64_data=base64_pdf_string,
+                    mime_type="application/pdf",
+                    filename="test.pdf",
+                    extra={"foo": "bar"},
+                )
+            ]
+        )
+        trace_dict = message._to_trace_dict()
+
+        assert trace_dict == {
+            "role": "user",
+            "content": [
+                {
+                    "file": {
+                        "base64_data": "Base64 string (25388 characters)",
+                        "filename": "test.pdf",
+                        "extra": {"foo": "bar"},
+                        "validation": True,
+                        "mime_type": "application/pdf",
+                    }
+                }
+            ],
+            "name": None,
+            "meta": {},
+        }
+
 
 class TestToOpenaiDictFormat:
     def test_to_openai_dict_format_system_message(self):
@@ -652,6 +711,24 @@ class TestToOpenaiDictFormat:
                     "type": "image_url",
                     "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
                 }
+            ],
+        }
+
+    def test_to_openai_dict_format_user_message_with_file_content(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
+                TextContent("Is this document a paper about LLMs?"),
+            ]
+        )
+        assert message.to_openai_dict_format() == {
+            "role": "user",
+            "content": [
+                {
+                    "type": "file",
+                    "file": {"file_data": f"data:application/pdf;base64,{base64_pdf_string}", "filename": "test.pdf"},
+                },
+                {"type": "text", "text": "Is this document a paper about LLMs?"},
             ],
         }
 

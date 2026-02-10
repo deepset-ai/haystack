@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import Secret
+from haystack.utils.misc import _deduplicate_documents
 from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
 
 
@@ -172,6 +173,9 @@ class HuggingFaceTEIRanker:
         """
         Reranks the provided documents by relevance to the query using the TEI API.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
         :param top_k: Optional override for the maximum number of documents to return.
@@ -191,7 +195,8 @@ class HuggingFaceTEIRanker:
             return {"documents": []}
 
         # Prepare the payload
-        texts = [doc.content for doc in documents]
+        deduplicated_documents = _deduplicate_documents(documents)
+        texts = [doc.content for doc in deduplicated_documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
@@ -213,7 +218,7 @@ class HuggingFaceTEIRanker:
 
         result: dict[str, str] | list[dict[str, Any]] = response.json()
 
-        return self._compose_response(result, top_k, documents)
+        return self._compose_response(result, top_k, deduplicated_documents)
 
     @component.output_types(documents=list[Document])
     async def run_async(
@@ -225,6 +230,9 @@ class HuggingFaceTEIRanker:
     ) -> dict[str, list[Document]]:
         """
         Asynchronously reranks the provided documents by relevance to the query using the TEI API.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
@@ -244,7 +252,8 @@ class HuggingFaceTEIRanker:
             return {"documents": []}
 
         # Prepare the payload
-        texts = [doc.content for doc in documents]
+        deduplicated_documents = _deduplicate_documents(documents)
+        texts = [doc.content for doc in deduplicated_documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
@@ -266,4 +275,4 @@ class HuggingFaceTEIRanker:
 
         result: dict[str, str] | list[dict[str, Any]] = response.json()
 
-        return self._compose_response(result, top_k, documents)
+        return self._compose_response(result, top_k, deduplicated_documents)
