@@ -94,7 +94,7 @@ def test_split_without_headers(sample_text):
     assert header1_doc.meta["split_id"] == 0
     assert header1_doc.meta["page_number"] == 1
     assert header1_doc.meta["parent_headers"] == []
-    assert header1_doc.content == "Content under header 1.\n"
+    assert header1_doc.content == "\nContent under header 1.\n"
 
     # Test second split
     subheader111_doc = split_docs[1]
@@ -102,7 +102,7 @@ def test_split_without_headers(sample_text):
     assert subheader111_doc.meta["split_id"] == 1
     assert subheader111_doc.meta["page_number"] == 1
     assert subheader111_doc.meta["parent_headers"] == ["Header 1", "Header 1.1"]
-    assert subheader111_doc.content == "Content under sub-header 1.1.1\n"
+    assert subheader111_doc.content == "\nContent under sub-header 1.1.1\n"
 
     # Test third split
     subheader121_doc = split_docs[2]
@@ -110,7 +110,7 @@ def test_split_without_headers(sample_text):
     assert subheader121_doc.meta["split_id"] == 2
     assert subheader121_doc.meta["page_number"] == 1
     assert subheader121_doc.meta["parent_headers"] == ["Header 1", "Header 1.2"]
-    assert subheader121_doc.content == "Content under header 1.2.1.\n"
+    assert subheader121_doc.content == "\nContent under header 1.2.1.\n"
 
     # Test fourth split
     subheader122_doc = split_docs[3]
@@ -118,7 +118,7 @@ def test_split_without_headers(sample_text):
     assert subheader122_doc.meta["split_id"] == 3
     assert subheader122_doc.meta["page_number"] == 1
     assert subheader122_doc.meta["parent_headers"] == ["Header 1", "Header 1.2"]
-    assert subheader122_doc.content == "Content under header 1.2.2.\n"
+    assert subheader122_doc.content == "\nContent under header 1.2.2.\n"
 
     # Test fifth split
     subheader123_doc = split_docs[4]
@@ -126,7 +126,7 @@ def test_split_without_headers(sample_text):
     assert subheader123_doc.meta["split_id"] == 4
     assert subheader123_doc.meta["page_number"] == 1
     assert subheader123_doc.meta["parent_headers"] == ["Header 1", "Header 1.2"]
-    assert subheader123_doc.content == "Content under header 1.2.3."
+    assert subheader123_doc.content == "\nContent under header 1.2.3."
 
 
 def test_split_parentheaders(sample_text):
@@ -212,6 +212,7 @@ def test_preserve_document_metadata():
     assert split_docs[0].meta["header"] == "Header"
     assert "split_id" in split_docs[0].meta
     assert split_docs[0].meta["split_id"] == 0
+    assert split_docs[0].content == "\nContent"
 
 
 # Error and edge case handling
@@ -366,8 +367,9 @@ def test_secondary_split_with_threshold():
     split_docs = result["documents"]
 
     # Explicitly test each split
+    # Note: The leading newline doesn't count as a word when split by word
     assert len(split_docs) == 3
-    assert len(split_docs[0].content.split()) == 3  # 3 words
+    assert len(split_docs[0].content.split()) == 3  # 3 words (leading newline is preserved but not counted)
     assert len(split_docs[1].content.split()) == 3  # 3 words
     assert len(split_docs[2].content.split()) == 4  # 4 words (due to threshold, not possible to split 3-1)
 
