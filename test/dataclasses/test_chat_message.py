@@ -717,12 +717,7 @@ class TestToOpenaiDictFormat:
     def test_to_openai_dict_format_user_message_with_file_content(self, base64_pdf_string):
         message = ChatMessage.from_user(
             content_parts=[
-                FileContent(
-                    base64_data=base64_pdf_string,
-                    mime_type="application/pdf",
-                    filename="test.pdf",
-                    extra={"file_id": "123"},
-                ),
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
                 TextContent("Is this document a paper about LLMs?"),
             ]
         )
@@ -731,11 +726,7 @@ class TestToOpenaiDictFormat:
             "content": [
                 {
                     "type": "file",
-                    "file": {
-                        "file_data": f"data:application/pdf;base64,{base64_pdf_string}",
-                        "filename": "test.pdf",
-                        "file_id": "123",
-                    },
+                    "file": {"file_data": f"data:application/pdf;base64,{base64_pdf_string}", "filename": "test.pdf"},
                 },
                 {"type": "text", "text": "Is this document a paper about LLMs?"},
             ],
