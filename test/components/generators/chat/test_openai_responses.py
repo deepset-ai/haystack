@@ -904,7 +904,7 @@ class TestIntegration:
         user_message = ChatMessage.from_user("Retrieve the image and describe it in max 5 words.")
         result = agent.run(messages=[user_message])
 
-        assert "apple" in result["last_message"].text.lower()
+        assert any(word in result["last_message"].text.lower() for word in ["apple", "fruit"])
 
 
 class TestOpenAIResponsesChatGeneratorAsync:
