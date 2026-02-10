@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The FallbackChatGenerator was unable to be connected to due to the ``from __future__ import annotations`` import that it used.
+    This import was removed so connections can be made to the FallbackChatGenerator as expected.
