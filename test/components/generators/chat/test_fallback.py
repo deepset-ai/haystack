@@ -9,7 +9,8 @@ from urllib.error import HTTPError as URLLibHTTPError
 
 import pytest
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import Pipeline, component, default_from_dict, default_to_dict
+from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.fallback import FallbackChatGenerator
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
@@ -422,3 +423,16 @@ def test_warm_up_mixed_generators():
     # Verify the fallback still works correctly
     result = fallback.run([ChatMessage.from_user("test")])
     assert result["replies"][0].text == "A"
+
+
+def test_pipeline_connection():
+    prompt_builder = ChatPromptBuilder(template=[ChatMessage.from_user("{{question}}")], required_variables="*")
+    fallback_generator = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="response")])
+
+    pipeline = Pipeline()
+    pipeline.add_component("prompt_builder", prompt_builder)
+    pipeline.add_component("llm", fallback_generator)
+    pipeline.connect("prompt_builder", "llm")
+
+    result = pipeline.run({"question": "What is the answer?"})
+    assert result["llm"]["replies"][0].text == "response"

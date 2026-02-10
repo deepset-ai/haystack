@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
-
 import asyncio
 from typing import Any
 
@@ -67,7 +65,7 @@ class FallbackChatGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator:
+    def from_dict(cls, data: dict[str, Any]) -> "FallbackChatGenerator":
         """Rebuild the component from a serialized representation, restoring nested chat generators."""
         # Reconstruct nested chat generators from their serialized dicts
         init_params = data.get("init_parameters", {})
