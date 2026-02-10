@@ -107,7 +107,8 @@ def __init__(
     streaming_callback: StreamingCallbackT | None = None,
     raise_on_tool_invocation_failure: bool = False,
     tool_invoker_kwargs: dict[str, Any] | None = None,
-    confirmation_strategies: dict[str, ConfirmationStrategy] | None = None
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]
+    | None = None
 ) -> None
 ```
 
