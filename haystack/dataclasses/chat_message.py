@@ -708,8 +708,6 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                         "filename": part.filename,
                     },
                 }
-                if file_id := part.extra.get("file_id"):
-                    file_item["file"]["file_id"] = file_id
                 content.append(file_item)
         openai_msg["content"] = content
         return openai_msg
