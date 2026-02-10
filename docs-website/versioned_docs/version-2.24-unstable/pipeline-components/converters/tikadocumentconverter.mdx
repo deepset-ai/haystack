@@ -1,0 +1,76 @@
+---
+title: "TikaDocumentConverter"
+id: tikadocumentconverter
+slug: "/tikadocumentconverter"
+description: "An integration for converting files of different types (PDF, DOCX, HTML, and more) to documents."
+---
+
+# TikaDocumentConverter
+
+An integration for converting files of different types (PDF, DOCX, HTML, and more) to documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `sources`: File paths                                                                           |
+| **Output variables**                   | `documents`: A list of documents                                                                |
+| **API reference**                      | [Converters](/reference/converters-api)                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/tika.py       |
+
+</div>
+
+## Overview
+
+The `TikaDocumentConverter` component converts files of different types (pdf, docx, html, and others) into documents. You can use it in an indexing pipeline to index the contents of files into a Document Store. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+This integration uses [Apache Tika](https://tika.apache.org/) to parse the files and requires a running Tika server.
+
+The easiest way to run Tika is by using Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
+For more options on running Tika on Docker, see the [Tika documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
+
+When you initialize the `TikaDocumentConverter` component, you can specify a custom URL of the Tika server you are using through the parameter `tika_url`. The default URL is `"http://localhost:9998/tika"`.
+
+## Usage
+
+You need to install `tika` package to use the `TikaDocumentConverter` component:
+
+```shell
+pip install tika
+```
+
+### On its own
+
+```python
+from haystack.components.converters import TikaDocumentConverter
+from pathlib import Path
+
+converter = TikaDocumentConverter()
+
+converter.run(sources=[Path("my_file.pdf")])
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TikaDocumentConverter
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", TikaDocumentConverter())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_paths}})
+```
