@@ -23,6 +23,18 @@ repos:
       args: [ --fix ]
     - id: ruff-format
 
+  - repo: local
+    hooks:
+      - id: ruff-format-docs
+        name: ruff-format-docs
+        language: python
+        entry: python scripts/ruff_format_docs.py
+        files: ^docs-website/.*\.mdx?$
+        types: [text]
+        additional_dependencies:
+          - ruff
+          - add-trailing-comma
+
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
