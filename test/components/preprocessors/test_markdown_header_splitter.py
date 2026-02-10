@@ -320,26 +320,35 @@ def test_secondary_split_with_overlap():
     # intro (4 docs)
     assert split_docs[0].content == "\nThis is the introduction section with some words "
     assert split_docs[0].meta["header"] == "Introduction"
+    assert split_docs[0].meta["split_id"] == 0
     assert split_docs[1].content == "with some words for testing overlap splitting. It "
     assert split_docs[1].meta["header"] == "Introduction"
+    assert split_docs[1].meta["split_id"] == 1
     assert split_docs[2].content == "overlap splitting. It should be split into chunks "
     assert split_docs[2].meta["header"] == "Introduction"
+    assert split_docs[2].meta["split_id"] == 2
     assert split_docs[3].content == "split into chunks with overlap.\n"
     assert split_docs[3].meta["header"] == "Introduction"
+    assert split_docs[3].meta["split_id"] == 3
 
     # details (3 docs)
     assert split_docs[4].content == "\nHere are more details about the topic. Splitting "
     assert split_docs[4].meta["header"] == "Details"
+    assert split_docs[4].meta["split_id"] == 4
     assert split_docs[5].content == "the topic. Splitting should work across multiple headers "
     assert split_docs[5].meta["header"] == "Details"
+    assert split_docs[5].meta["split_id"] == 5
     assert split_docs[6].content == "across multiple headers and content blocks.\n"
     assert split_docs[6].meta["header"] == "Details"
+    assert split_docs[6].meta["split_id"] == 6
 
     # subsection (2 docs)
     assert split_docs[7].content == "\nThis subsection contains additional information and should also "
     assert split_docs[7].meta["header"] == "Subsection"
+    assert split_docs[7].meta["split_id"] == 7
     assert split_docs[8].content == "and should also be split with overlap."
     assert split_docs[8].meta["header"] == "Subsection"
+    assert split_docs[8].meta["split_id"] == 8
 
     # verify 3-word overlap behavior (split_overlap=3)
     # consecutive pairs within a header should share the 3 words at their boundary
@@ -376,10 +385,14 @@ def test_secondary_split_with_threshold():
 
     # Explicitly test each split
     assert len(split_docs) == 4
-    assert len(split_docs[0].content.split()) == 4  # "# Header" + 2 words
-    assert len(split_docs[1].content.split()) == 3  # 3 words (split_length)
-    assert len(split_docs[2].content.split()) == 3  # 3 words (split_length)
-    assert len(split_docs[3].content.split()) == 2  # 2 words (meets threshold)
+    assert split_docs[0].content == "# Header\nword1 word2 "
+    assert split_docs[0].meta["split_id"] == 0
+    assert split_docs[1].content == "word3 word4 word5 "
+    assert split_docs[1].meta["split_id"] == 1
+    assert split_docs[2].content == "word6 word7 word8 "
+    assert split_docs[2].meta["split_id"] == 2
+    assert split_docs[3].content == "word9 word10"
+    assert split_docs[3].meta["split_id"] == 3
 
     # keep_headers=False
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, split_threshold=2, keep_headers=False)
@@ -388,11 +401,13 @@ def test_secondary_split_with_threshold():
     split_docs = result["documents"]
 
     # Explicitly test each split
-    # Note: The leading newline doesn't count as a word when split by word
     assert len(split_docs) == 3
-    assert len(split_docs[0].content.split()) == 3  # 3 words (leading newline is preserved but not counted)
-    assert len(split_docs[1].content.split()) == 3  # 3 words
-    assert len(split_docs[2].content.split()) == 4  # 4 words (due to threshold, not possible to split 3-1)
+    assert split_docs[0].content == "\nword1 word2 word3 "
+    assert split_docs[0].meta["split_id"] == 0
+    assert split_docs[1].content == "word4 word5 word6 "
+    assert split_docs[1].meta["split_id"] == 1
+    assert split_docs[2].content == "word7 word8 word9 word10"  # 4 words (due to threshold, not possible to split 3-1)
+    assert split_docs[2].meta["split_id"] == 2
 
 
 def test_page_break_handling_in_secondary_split():
