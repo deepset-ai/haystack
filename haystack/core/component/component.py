@@ -234,7 +234,11 @@ class ComponentMeta(type):
             from inspect import Parameter
 
             run_signature = inspect.signature(method)
-            run_hints = typing.get_type_hints(method)
+            try:
+                # TypeError is raised if the argument is not of a type that can contain annotations
+                run_hints = typing.get_type_hints(method)
+            except TypeError:
+                run_hints = None
 
             for param_name, param_info in run_signature.parameters.items():
                 if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
@@ -244,7 +248,7 @@ class ComponentMeta(type):
                 # using the hints. The type annotation can be a string if the component is using postponed evaluation
                 # of annotations.
                 annotation = param_info.annotation
-                if isinstance(annotation, str):
+                if isinstance(annotation, str) and run_hints is not None:
                     annotation = run_hints.get(param_name, annotation)
 
                 socket_kwargs = {"name": param_name, "type": annotation}
