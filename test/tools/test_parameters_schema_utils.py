@@ -198,6 +198,45 @@ IMAGE_CONTENT_SCHEMA = {
     "required": ["base64_image"],
 }
 
+FILE_CONTENT_SCHEMA = {
+    "properties": {
+        "base64_data": {"description": "Field 'base64_data' of 'FileContent'.", "type": "string"},
+        "extra": {
+            "additionalProperties": True,
+            "default": {},
+            "description": "Dictionary of extra information about the file. Can be used "
+            "to store provider-specific information.\n"
+            "To avoid serialization issues, values should be JSON "
+            "serializable.",
+            "type": "object",
+        },
+        "filename": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": "Optional filename of the file. Some LLM providers use this information.",
+        },
+        "mime_type": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": 'The MIME type of the file (e.g. "application/pdf").\n'
+            "Providing this value is recommended, as most LLM providers "
+            "require it.\n"
+            "If not provided, the MIME type is guessed from the base64 "
+            "string, which can be slow and not always reliable.",
+        },
+        "validation": {
+            "default": True,
+            "description": "If True (default), a validation process is performed:\n"
+            "- Check whether the base64 string is valid;\n"
+            "- Guess the MIME type if not provided.\n"
+            "Set to False to skip validation and speed up initialization.",
+            "type": "boolean",
+        },
+    },
+    "required": ["base64_data"],
+    "type": "object",
+}
+
 CHAT_ROLE_SCHEMA = {
     "description": "Enumeration representing the roles within a chat.",
     "enum": ["user", "system", "assistant", "tool"],
@@ -218,6 +257,7 @@ CHAT_MESSAGE_SCHEMA = {
                     {"$ref": "#/$defs/ToolCallResult"},
                     {"$ref": "#/$defs/ImageContent"},
                     {"$ref": "#/$defs/ReasoningContent"},
+                    {"$ref": "#/$defs/FileContent"},
                 ]
             },
         },
@@ -287,6 +327,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ChatRole": CHAT_ROLE_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
                 "ReasoningContent": REASONING_CONTENT_SCHEMA,
+                "FileContent": FILE_CONTENT_SCHEMA,
             },
         ),
         (
@@ -307,6 +348,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ChatRole": CHAT_ROLE_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
                 "ReasoningContent": REASONING_CONTENT_SCHEMA,
+                "FileContent": FILE_CONTENT_SCHEMA,
             },
         ),
         # PEP 604 union types (X | None syntax)
