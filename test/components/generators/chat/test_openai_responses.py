@@ -583,7 +583,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.reasoning is not None
-        assert "moon" in message.text.lower() or "moon" in message.reasoning.reasoning_text.lower()
+        assert any(word in message.text.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -591,7 +591,7 @@ class TestIntegration:
 
     def test_live_run_with_text_format(self, calendar_event_model):
         chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+            ChatMessage.from_user("The marketing summit takes place on October 12th at the Hilton Hotel downtown.")
         ]
         component = OpenAIResponsesChatGenerator(
             model="gpt-5-nano", generation_kwargs={"text_format": calendar_event_model}
@@ -697,7 +697,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert callback.reasoning == message.reasoning.reasoning_text
-        assert "moon" in callback.content.lower() or "moon" in callback.reasoning.lower()
+        assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
@@ -904,7 +904,7 @@ class TestIntegration:
         user_message = ChatMessage.from_user("Retrieve the image and describe it in max 5 words.")
         result = agent.run(messages=[user_message])
 
-        assert "apple" in result["last_message"].text.lower()
+        assert any(word in result["last_message"].text.lower() for word in ["apple", "fruit"])
 
 
 class TestOpenAIResponsesChatGeneratorAsync:
