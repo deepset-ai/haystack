@@ -1,2 +1,19 @@
 enhancements:
-  - Support multi-tool blocking confirmation strategy in Agent component
+  - |
+    Agent components allow grouping multiple tools under a single confirmation strategy.
+
+    Here is an example of how three tools can be grouped under a BlockingConfirmationStrategy:
+
+    .. code:: python
+        confirmation_strategies = {
+            ("tool1", "tool2", "tool3"): BlockingConfirmationStrategy()
+        }
+
+    instead of previously needing
+
+    .. code:: python
+        confirmation_strategies = {
+            "tool1": BlockingConfirmationStrategy(),
+            "tool2": BlockingConfirmationStrategy(),
+            "tool3": BlockingConfirmationStrategy()
+        }
