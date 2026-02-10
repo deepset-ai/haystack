@@ -5,8 +5,8 @@ features:
 
     Most API-based LLMs support file inputs such as PDFs (and, for some models, additional file types).
 
-    For now, this feature is implemented for ``OpenAIChatGenerator``, with support for more model providers
-    coming soon.
+    For now, this feature is implemented for ``OpenAIChatGenerator`` and ``AzureOpenAIChatGenerator``,
+    with support for more model providers coming soon.
 
     For advanced PDF handling, such as reducing image size or selecting specific page ranges, we recommend
     using the ``PDFToImageContent`` component instead.
