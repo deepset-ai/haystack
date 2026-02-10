@@ -233,7 +233,7 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
         "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each dictionary "
         "contains one of these keys: 'text', 'image', 'file', 'reasoning', 'tool_call', or 'tool_call_result'. "
         "Valid formats: [{'text': 'Hello'}, {'image': {'base64_image': '...', ...}}, "
-        "{'reasoning': {'reasoning_text': 'I think...', 'extra': {...}}}, "
+        "{'file': {'base64_data': '...', ...}}, {'reasoning': {'reasoning_text': 'I think...', 'extra': {...}}}, "
         "{'tool_call': {'tool_name': 'search', 'arguments': {}, 'id': 'call_123'}}, "
         "{'tool_call_result': {'result': 'data', 'origin': {...}, 'error': false}}]"
     )
