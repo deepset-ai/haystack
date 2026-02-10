@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
@@ -10,7 +9,15 @@ from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Option
 import pytest
 
 from haystack.core.component.types import Variadic
-from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    ConversionStrategy,
+    _chat_message_to_str,
+    _contains_type,
+    _convert_value,
+    _get_first_item,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
 
 
@@ -450,17 +457,17 @@ def test_type_name(type_, repr_):
 
 @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases)
 def test_same_types_are_compatible_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, True)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_compatible_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type, True)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases)
 def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(receiver_type, sender_type, True)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 incompatible_type_cases = [
@@ -573,7 +580,7 @@ incompatible_type_cases = [
 
 @pytest.mark.parametrize("sender_type, receiver_type", incompatible_type_cases)
 def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -586,7 +593,7 @@ def test_types_are_always_not_compatible_strict(sender_type, receiver_type):
     ],
 )
 def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -604,9 +611,9 @@ def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, rec
     ],
 )
 def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
     # Bare container types should not be compatible with their typed counterparts
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -625,8 +632,8 @@ def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_t
 )
 def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
     # Both are compatible
-    assert _types_are_compatible(sender_type, receiver_type)
-    assert _types_are_compatible(receiver_type, sender_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+    assert _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -641,8 +648,8 @@ def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
 )
 def test_always_incompatible_bare_types(sender_type, receiver_type):
     # Neither are compatible
-    assert not _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -691,9 +698,9 @@ def test_always_incompatible_bare_types(sender_type, receiver_type):
     ],
 )
 def test_nested_container_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
     # Bare container types should not be compatible with their typed counterparts
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -705,8 +712,8 @@ def test_nested_container_compatibility(sender_type, receiver_type):
     ],
 )
 def test_callable_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -728,9 +735,9 @@ def test_callable_compatibility(sender_type, receiver_type):
     ],
 )
 def test_nested_callable_compatibility(sender_type, receiver_type):
-    assert _types_are_compatible(sender_type, receiver_type)
+    assert _types_are_compatible(sender_type, receiver_type)[0]
     # Bare callable container types should not be compatible with their typed counterparts
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
 @pytest.mark.parametrize(
@@ -749,117 +756,275 @@ def test_nested_callable_compatibility(sender_type, receiver_type):
     ],
 )
 def test_always_incompatible_callable_types(sender_type, receiver_type):
-    assert not _types_are_compatible(sender_type, receiver_type)
-    assert not _types_are_compatible(receiver_type, sender_type)
+    assert not _types_are_compatible(sender_type, receiver_type)[0]
+    assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
-if sys.version_info >= (3, 10):
-    nested_container_types = [tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]]
-    extras = [int | str]
+nested_container_types = [tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]]
+extras = [int | str]
 
-    def generate_symmetric_cases_pep_604():
-        return [pytest.param(t, t, id=generate_id(t, t)) for t in nested_container_types + extras]
 
-    def generate_strict_asymmetric_cases_pep_604():
-        cases = []
+def generate_symmetric_cases_pep_604():
+    return [pytest.param(t, t, id=generate_id(t, t)) for t in nested_container_types + extras]
 
-        # Primitives: UnionType
-        for t in (
-            primitive_types
-            + class_types
-            + container_types
-            + literals
-            + haystack_types
-            + nested_container_types
-            + extras
-        ):
-            cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))  # type: ignore[operator]
-            cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
 
-        # Classes: UnionType
-        for cls in class_types:
-            cases.append(pytest.param(cls, cls | None, id=generate_id(cls, cls | None)))
-            cases.append(pytest.param(cls, cls | complex, id=generate_id(cls, cls | complex)))
+def generate_strict_asymmetric_cases_pep_604():
+    cases = []
 
-        # Subclass → Superclass
-        cases.extend(
-            [
-                # Subclass → Union of Superclass and other type
-                pytest.param(Class3, int | Class1, id=generate_id(Class3, int | Class1))
-            ]
-        )
+    # Primitives: UnionType
+    for t in (
+        primitive_types + class_types + container_types + literals + haystack_types + nested_container_types + extras
+    ):
+        cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))  # type: ignore[operator]
+        cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
 
-        # Containers: Optional, Union, and Any compatibility
-        for container in container_types:
-            cases.append(
-                pytest.param(
-                    container,
-                    container | None,  # type: ignore[operator]
-                    id=generate_id(container, container | None),  # type: ignore[operator]
-                )
-            )
-            cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
+    # Classes: UnionType
+    for cls in class_types:
+        cases.append(pytest.param(cls, cls | None, id=generate_id(cls, cls | None)))
+        cases.append(pytest.param(cls, cls | complex, id=generate_id(cls, cls | complex)))
 
-        # builtins Extra container cases
-        cases.extend(
-            [
-                pytest.param(
-                    (tuple[Literal["a", "b", "c"], Path | dict[int, Class1]]),
-                    (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
-                    id="deeply-nested-complex-type",
-                )
-            ]
-        )
-
-        # mixing typing and builtins extra container cases
-        cases.extend(
-            [
-                pytest.param(
-                    (tuple[Literal["a", "b", "c"], Path | dict[int, Class1]]),
-                    (Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]]),
-                    id="deeply-nested-complex-type",
-                )
-            ]
-        )
-
-        return cases
-
-    # Precompute test cases for reuse
-    symmetric_cases_pep_604 = generate_symmetric_cases_pep_604()
-    asymmetric_cases_pep_604 = generate_strict_asymmetric_cases_pep_604()
-
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
-    @pytest.mark.parametrize(
-        "type_,repr_",
+    # Subclass → Superclass
+    cases.extend(
         [
-            pytest.param((bool | Class1), "bool | Class1", id="shallow-union"),
-            pytest.param(list[str] | None, "list[str] | None", id="shallow-optional-with-sequence-of-primitives"),
-            pytest.param(
-                (list[set[Sequence[str]]] | None),
-                "list[set[Sequence[str]]] | None",
-                id="optional-nested-sequence-of-primitives",
-            ),
-            pytest.param(
-                (list[set[Sequence[str | None]]]),
-                "list[set[Sequence[Optional[str]]]]",
-                id="nested-optional-sequence-of-primitives",
-            ),
-            pytest.param(
-                (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
-                "tuple[Optional[Literal['a', 'b', 'c']], Path | dict[int, Class1]]",
-                id="deeply-nested-complex-type",
-            ),
-        ],
+            # Subclass → Union of Superclass and other type
+            pytest.param(Class3, int | Class1, id=generate_id(Class3, int | Class1))
+        ]
     )
-    def test_type_name_pep_604(type_, repr_):
-        assert _type_name(type_) == repr_
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
-    @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases_pep_604)
-    def test_same_types_are_compatible_strict_pep_604(sender_type, receiver_type):
-        assert _types_are_compatible(sender_type, receiver_type, True)
+    # Containers: Optional, Union, and Any compatibility
+    for container in container_types:
+        cases.append(
+            pytest.param(
+                container,
+                container | None,  # type: ignore[operator]
+                id=generate_id(container, container | None),  # type: ignore[operator]
+            )
+        )
+        cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
 
-    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
-    @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases_pep_604)
-    def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_type):
-        assert _types_are_compatible(sender_type, receiver_type, True)
+    # builtins Extra container cases
+    cases.extend(
+        [
+            pytest.param(
+                (tuple[Literal["a", "b", "c"], Path | dict[int, Class1]]),
+                (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
+                id="deeply-nested-complex-type",
+            )
+        ]
+    )
+
+    # mixing typing and builtins extra container cases
+    cases.extend(
+        [
+            pytest.param(
+                (tuple[Literal["a", "b", "c"], Path | dict[int, Class1]]),
+                (Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]]),
+                id="deeply-nested-complex-type",
+            )
+        ]
+    )
+
+    return cases
+
+
+# Precompute test cases for reuse
+symmetric_cases_pep_604 = generate_symmetric_cases_pep_604()
+asymmetric_cases_pep_604 = generate_strict_asymmetric_cases_pep_604()
+
+
+@pytest.mark.parametrize(
+    "type_,repr_",
+    [
+        pytest.param((bool | Class1), "bool | Class1", id="shallow-union"),
+        pytest.param(list[str] | None, "list[str] | None", id="shallow-optional-with-sequence-of-primitives"),
+        pytest.param(
+            (list[set[Sequence[str]]] | None),
+            "list[set[Sequence[str]]] | None",
+            id="optional-nested-sequence-of-primitives",
+        ),
+        pytest.param(
+            (list[set[Sequence[str | None]]]),
+            "list[set[Sequence[Optional[str]]]]",
+            id="nested-optional-sequence-of-primitives",
+        ),
+        pytest.param(
+            (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
+            "tuple[Optional[Literal['a', 'b', 'c']], Path | dict[int, Class1]]",
+            id="deeply-nested-complex-type",
+        ),
+    ],
+)
+def test_type_name_pep_604(type_, repr_):
+    assert _type_name(type_) == repr_
+
+
+@pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases_pep_604)
+def test_same_types_are_compatible_strict_pep_604(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+
+
+@pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases_pep_604)
+def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type)[0]
+
+
+def test_contains_type():
+    assert _contains_type(container=str, target=str) is True
+
+    assert _contains_type(container=Union[bool, str], target=str) is True
+    assert _contains_type(container=bool | str, target=str) is True
+
+    assert _contains_type(container=Union[bool, str], target=bool) is True
+    assert _contains_type(container=bool | str, target=bool) is True
+
+    assert _contains_type(container=Union[bool, str], target=Union[bool, str]) is True
+    assert _contains_type(container=bool | str, target=bool | str) is True
+
+    assert _contains_type(container=Union[bool, str], target=int) is False
+    assert _contains_type(container=bool | str, target=int) is False
+
+    assert _contains_type(container=Optional[str], target=str) is True
+    assert _contains_type(container=str | None, target=str) is True
+
+
+class TestConversion:
+    def test_chat_message_to_str(self):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+            _chat_message_to_str(value=ChatMessage.from_assistant())
+
+        assert _chat_message_to_str(value=ChatMessage.from_assistant("Hello")) == "Hello"
+
+    def test_get_first_item(self):
+        with pytest.raises(ValueError, match="Cannot get first item of an empty list. "):
+            _get_first_item(value=[])
+
+        assert _get_first_item(value=["Hello"]) == "Hello"
+        assert _get_first_item(value=[ChatMessage.from_assistant("Hello")]) == ChatMessage.from_assistant("Hello")
+
+    def test_types_are_compatible_with_conversion(self):
+        assert _types_are_compatible(sender=Optional[str], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str | None, receiver=str) == (False, None)
+
+        assert _types_are_compatible(sender=int, receiver=str) == (False, None)
+
+        assert _types_are_compatible(sender=str, receiver=Optional[str]) == (True, None)
+        assert _types_are_compatible(sender=str, receiver=str | None) == (True, None)
+
+        assert _types_are_compatible(sender=str, receiver=Union[str, int]) == (True, None)
+        assert _types_are_compatible(sender=str, receiver=str | int) == (True, None)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=str) == (True, ConversionStrategy.CHAT_MESSAGE_TO_STR)
+        assert _types_are_compatible(sender=str, receiver=ChatMessage) == (True, ConversionStrategy.STR_TO_CHAT_MESSAGE)
+
+        assert _types_are_compatible(sender=str, receiver=List[str]) == (True, ConversionStrategy.WRAP)
+        assert _types_are_compatible(sender=str, receiver=list[str]) == (True, ConversionStrategy.WRAP)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=List[str]) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str]) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
+
+        assert _types_are_compatible(sender=str, receiver=List[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=str, receiver=list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=List[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=list[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
+
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+
+        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=str | ChatMessage, receiver=str) == (False, None)
+        assert _types_are_compatible(sender=str | int, receiver=int) == (False, None)
+
+        # multi-level unwrap not supported
+        assert _types_are_compatible(sender=List[List[str]], receiver=List[str]) == (False, None)
+        assert _types_are_compatible(sender=list[list[str]], receiver=list[str]) == (False, None)
+
+        # multi-level wrap not supported
+        assert _types_are_compatible(sender=str, receiver=List[List[str]]) == (False, None)
+
+    def test_convert_value(self):
+        with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
+            _convert_value(
+                value=ChatMessage.from_assistant(), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR
+            )
+
+        assert (
+            _convert_value(
+                value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.CHAT_MESSAGE_TO_STR
+            )
+            == "Hello"
+        )
+        assert _convert_value(
+            value="Hello", conversion_strategy=ConversionStrategy.STR_TO_CHAT_MESSAGE
+        ) == ChatMessage.from_user("Hello")
+
+        assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP) == ["Hello"]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP
+        ) == [ChatMessage.from_assistant("Hello")]
+        assert _convert_value(
+            value=ChatMessage.from_assistant("Hello"), conversion_strategy=ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        ) == ["Hello"]
+        assert _convert_value(value="Hello", conversion_strategy=ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE) == [
+            ChatMessage.from_user("Hello")
+        ]
+
+        assert _convert_value(value=["Hello"], conversion_strategy=ConversionStrategy.UNWRAP) == "Hello"
+        assert _convert_value(
+            value=[ChatMessage.from_assistant("Hello")], conversion_strategy=ConversionStrategy.UNWRAP
+        ) == ChatMessage.from_assistant("Hello")
+
+        assert _convert_value(
+            value=["Hello"], conversion_strategy=ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
+        ) == ChatMessage.from_user("Hello")
+        assert (
+            _convert_value(
+                value=[ChatMessage.from_assistant("Hello")],
+                conversion_strategy=ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+            )
+            == "Hello"
+        )
+
+    def test_union_in_sender_problem(self):
+        # Case 1: sender is a union that includes the type that can be converted
+        # If sender is `str | ChatMessage` and receiver is `str`, it is NOT compatible
+        # because the `str` part of the sender doesn't need conversion, while the `ChatMessage` part does.
+        # Allowing this would lead to runtime errors if a `str` is actually sent.
+        is_compatible, strategy = _types_are_compatible(sender=str | ChatMessage, receiver=str)
+        assert not is_compatible
+        assert strategy is None

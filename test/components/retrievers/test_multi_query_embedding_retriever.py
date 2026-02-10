@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import ANY
 
 import numpy as np
 import pytest
 
-from haystack import Document, Pipeline
+from haystack import Document, Pipeline, component
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -17,6 +18,13 @@ from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQuer
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
+
+
+@component
+class MockQueryEmbedder:
+    @component.output_types(embedding=list[float])
+    def run(self, text: str) -> dict[str, list[float]]:
+        return {"embedding": np.ones(384).tolist()}
 
 
 class TestMultiQueryEmbeddingRetriever:
@@ -59,74 +67,43 @@ class TestMultiQueryEmbeddingRetriever:
         """Create a document store populated with embedded documents."""
         document_store = InMemoryDocumentStore()
         doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-        doc_embedder.warm_up()
         doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 
         embedded_docs = doc_embedder.run(sample_documents)["documents"]
         doc_writer.run(documents=embedded_docs)
         return document_store
 
-    @pytest.fixture
-    def mock_query_embedder(self):
-        with patch(
-            "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
-        ) as mock_text_embedder:
-            mock_model = MagicMock()
-            mock_text_embedder.return_value = mock_model
-
-            def mock_encode(
-                texts, batch_size=None, show_progress_bar=None, normalize_embeddings=None, precision=None, **kwargs
-            ):  # noqa E501
-                return [np.ones(384).tolist() for _ in texts]
-
-            mock_model.encode = mock_encode
-            embedder = SentenceTransformersTextEmbedder(model="mock-model", progress_bar=False)
-
-            def mock_run(text):
-                embedding = np.ones(384).tolist()
-                return {"embedding": embedding}
-
-            embedder.run = mock_run
-            embedder.warm_up()
-            return embedder
-
-    def test_init_with_default_parameters(self, mock_query_embedder):
+    def test_init_with_default_parameters(self):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
-        query_embedder = mock_query_embedder
-
+        query_embedder = MockQueryEmbedder()
         retriever = MultiQueryEmbeddingRetriever(retriever=embedding_retriever, query_embedder=query_embedder)
-
         assert retriever.retriever == embedding_retriever
-        assert retriever.query_embedder == mock_query_embedder
+        assert retriever.query_embedder == query_embedder
         assert retriever.max_workers == 3
 
-    def test_init_with_custom_parameters(self, mock_query_embedder):
+    def test_init_with_custom_parameters(self):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
-        query_embedder = mock_query_embedder
+        query_embedder = MockQueryEmbedder()
         retriever = MultiQueryEmbeddingRetriever(
             retriever=embedding_retriever, query_embedder=query_embedder, max_workers=2
         )
-
         assert retriever.retriever == embedding_retriever
-        assert retriever.query_embedder == mock_query_embedder
+        assert retriever.query_embedder == query_embedder
         assert retriever.max_workers == 2
 
-    def test_run_with_empty_queries(self, mock_query_embedder):
+    def test_run_with_empty_queries(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=mock_query_embedder,
+            query_embedder=MockQueryEmbedder(),
         )
-
         result = multi_retriever.run(queries=[])
-
         assert "documents" in result
         assert result["documents"] == []
 
-    def test_run_with_empty_results(self, mock_query_embedder):
-        mock_query_embedder.run.return_value = {"embedding": [0.1, 0.2, 0.3]}
+    def test_run_with_empty_results(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=mock_query_embedder,
+            query_embedder=MockQueryEmbedder(),
         )
         result = multi_retriever.run(queries=["query"])
         assert "documents" in result
@@ -135,17 +112,41 @@ class TestMultiQueryEmbeddingRetriever:
     def test_to_dict(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            query_embedder=MockQueryEmbedder(),
             max_workers=2,
         )
-
         result = multi_retriever.to_dict()
-
-        assert "type" in result
-        assert "init_parameters" in result
-        assert result["init_parameters"]["max_workers"] == 2
-        assert "retriever" in result["init_parameters"]
-        assert "query_embedder" in result["init_parameters"]
+        assert result == {
+            "type": "haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever",
+            "init_parameters": {
+                "retriever": {
+                    "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
+                    "init_parameters": {
+                        "document_store": {
+                            "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                            "init_parameters": {
+                                "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                                "bm25_algorithm": "BM25L",
+                                "bm25_parameters": {},
+                                "embedding_similarity_function": "dot_product",
+                                "index": ANY,
+                                "return_embedding": True,
+                            },
+                        },
+                        "filters": None,
+                        "top_k": 10,
+                        "scale_score": False,
+                        "return_embedding": False,
+                        "filter_policy": "replace",
+                    },
+                },
+                "query_embedder": {
+                    "type": "retrievers.test_multi_query_embedding_retriever.MockQueryEmbedder",
+                    "init_parameters": {},
+                },
+                "max_workers": 2,
+            },
+        }
 
     def test_from_dict(self):
         data = {
@@ -162,7 +163,7 @@ class TestMultiQueryEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
-                                # 'return_embedding': True  # ToDo: investigate why this fails
+                                "return_embedding": True,
                             },
                         },
                         "filters": None,
@@ -196,36 +197,36 @@ class TestMultiQueryEmbeddingRetriever:
                 "max_workers": 2,
             },
         }
-
         result = MultiQueryEmbeddingRetriever.from_dict(data)
-
         assert isinstance(result, MultiQueryEmbeddingRetriever)
         assert result.max_workers == 2
 
-    def test_deduplication_with_overlapping_results(self, mock_query_embedder):
-        doc1 = Document(content="Solar energy is renewable", id="doc1")
-        doc1.score = 0.9
-        doc2 = Document(content="Wind energy is clean", id="doc2")
-        doc2.score = 0.8
-        # same content as doc1 w/ different score
-        doc3 = Document(content="Solar energy is renewable", id="doc3")
-        doc3.score = 0.7
+    def test_deduplication_with_overlapping_results(self):
+        doc1 = Document(content="Solar energy is renewable", id="doc1", score=0.9)
+        doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
+        # same as doc1 w/ different score
+        doc3 = Document(content="Solar energy is renewable", id="doc1", score=0.7)
 
-        # mocked retriever
-        mock_retriever = MagicMock()
         call_count = 0
 
-        def mock_retriever_run(query_embedding, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return {"documents": [doc1, doc2]}
-            else:
-                return {"documents": [doc3, doc2]}
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self,
+                query_embedding: list[float],
+                filters: dict[str, Any] | None = None,
+                top_k: int | None = None,
+                **kwargs: Any,
+            ) -> dict[str, list[Document]]:
+                nonlocal call_count
+                if call_count == 1:
+                    return {"documents": [doc1, doc2]}
+                else:
+                    return {"documents": [doc3, doc2]}
 
-        mock_retriever.run = mock_retriever_run
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=mock_retriever, query_embedder=mock_query_embedder, max_workers=1
+            retriever=MockRetriever(), query_embedder=MockQueryEmbedder(), max_workers=1
         )
         result = multi_retriever.run(queries=["query1", "query2"])
 
@@ -241,9 +242,7 @@ class TestMultiQueryEmbeddingRetriever:
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
         query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
-        multi_retriever.warm_up()
-        kwargs = {"filters": {"field": "category", "operator": "==", "value": "solar"}}
-        result = multi_retriever.run(["energy"], kwargs)
+        result = multi_retriever.run(["energy"], {"filters": {"field": "category", "operator": "==", "value": "solar"}})
         assert "documents" in result
         assert all(doc.meta.get("category") == "solar" for doc in result["documents"])
 
@@ -285,5 +284,5 @@ class TestMultiQueryEmbeddingRetriever:
         assert scores == sorted(scores, reverse=True)
 
         # assert there are not duplicates
-        contents = [doc.content for doc in results["multiquery_retriever"]["documents"]]
-        assert len(contents) == len(set(contents))
+        ids = [doc.id for doc in results["multiquery_retriever"]["documents"]]
+        assert len(ids) == len(set(ids))

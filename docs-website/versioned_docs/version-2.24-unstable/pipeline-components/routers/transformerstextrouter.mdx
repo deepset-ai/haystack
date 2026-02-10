@@ -1,0 +1,95 @@
+---
+title: "TransformersTextRouter"
+id: transformerstextrouter
+slug: "/transformerstextrouter"
+description: "Use this component to route text input to various output connections based on a model-defined categorization label."
+---
+
+# TransformersTextRouter
+
+Use this component to route text input to various output connections based on a model-defined categorization label.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory init variables** | `model`: The name or path of a Hugging Face model for text classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
+| **Output variables** | `documents`: A dictionary with the label as key and the text as value |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/transformers_text_router.py |
+
+</div>
+
+## Overview
+
+`TransformersTextRouter` routes text input to various output connections based on its categorization label. This is useful for routing queries to different models in a pipeline depending on their categorization.
+
+First, you need to set a selected model with a `model` parameter when initializing the component. The selected model then provides the set of labels for categorization.
+
+You can additionally provide the `labels` parameter – a list of strings of possible class labels to classify each sequence into. If not provided, the component fetches the labels from the model configuration file hosted on the HuggingFace Hub using `transformers.AutoConfig.from_pretrained`.
+
+To see the full list of parameters, check out our [API reference](/reference/routers-api#transformerstextrouter).
+
+## Usage
+
+### On its own
+
+The `TransformersTextRouter` isn’t very effective on its own, as its main strength lies in working within a pipeline. The component's true potential is unlocked when it is integrated into a pipeline, where it can efficiently route text to the most appropriate components. Please see the following section for a complete example of usage.
+
+### In a pipeline
+
+Below is an example of a simple pipeline that routes English queries to a Text Generator optimized for English text and German queries to a Text Generator optimized for German text.
+
+```python
+from haystack import Pipeline
+from haystack.components.routers import TransformersTextRouter
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.huggingface import HuggingFaceLocalGenerator
+from haystack.dataclasses import ChatMessage
+
+p = Pipeline()
+
+p.add_component(
+    instance=TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection"),
+    name="text_router"
+)
+p.add_component(
+    instance=ChatPromptBuilder(
+        template=[ChatMessage.from_user("Answer the question: {{query}}\nAnswer:")],
+        required_variables={"query"}
+    ),
+    name="english_prompt_builder"
+)
+p.add_component(
+    instance=ChatPromptBuilder(
+        template=[ChatMessage.from_user("Beantworte die Frage: {{query}}\nAntwort:")],
+        required_variables={"query"}
+    ),
+    name="german_prompt_builder"
+)
+p.add_component(
+    instance=HuggingFaceLocalGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
+    name="german_llm"
+)
+p.add_component(
+    instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
+    name="english_llm"
+)
+
+p.connect("text_router.en", "english_prompt_builder.query")
+p.connect("text_router.de", "german_prompt_builder.query")
+p.connect("english_prompt_builder.messages", "english_llm.messages")
+p.connect("german_prompt_builder.messages", "german_llm.messages")
+
+## English Example
+print(p.run({"text_router": {"text": "What is the capital of Germany?"}}))
+
+## German Example
+print(p.run({"text_router": {"text": "Was ist die Hauptstadt von Deutschland?"}}))
+```
+
+## Additional References
+
+:notebook: Tutorial: [Query Classification with TransformersTextRouter and TransformersZeroShotTextRouter](https://haystack.deepset.ai/tutorials/41_query_classification_with_transformerstextrouter_and_transformerszeroshottextrouter)

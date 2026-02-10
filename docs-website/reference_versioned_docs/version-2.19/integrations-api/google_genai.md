@@ -22,7 +22,7 @@ Computes document embeddings using Google AI models.
 from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-document_embedder = GoogleGenAIDocumentEmbedder(model="text-embedding-004")
+document_embedder = GoogleGenAIDocumentEmbedder(model="gemini-embedding-001")
 
 **2. Vertex AI (Application Default Credentials)**
 ```python
@@ -34,7 +34,7 @@ document_embedder = GoogleGenAIDocumentEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
-    model="text-embedding-004"
+    model="gemini-embedding-001"
 )
 ```
 
@@ -46,7 +46,7 @@ __export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)__
 
 document_embedder = GoogleGenAIDocumentEmbedder(
     api="vertex",
-    model="text-embedding-004"
+    model="gemini-embedding-001"
 )
 ```
 
@@ -78,7 +78,7 @@ def __init__(*,
              api: Literal["gemini", "vertex"] = "gemini",
              vertex_ai_project: str | None = None,
              vertex_ai_location: str | None = None,
-             model: str = "text-embedding-004",
+             model: str = "gemini-embedding-001",
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
@@ -210,7 +210,7 @@ You can use it to embed user query and send it to an embedding Retriever.
 from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
 
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-text_embedder = GoogleGenAITextEmbedder(model="text-embedding-004")
+text_embedder = GoogleGenAITextEmbedder(model="gemini-embedding-001")
 
 **2. Vertex AI (Application Default Credentials)**
 ```python
@@ -222,7 +222,7 @@ text_embedder = GoogleGenAITextEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
-    model="text-embedding-004"
+    model="gemini-embedding-001"
 )
 ```
 
@@ -234,7 +234,7 @@ __export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)__
 
 text_embedder = GoogleGenAITextEmbedder(
     api="vertex",
-    model="text-embedding-004"
+    model="gemini-embedding-001"
 )
 ```
 
@@ -252,7 +252,7 @@ print(text_embedder.run(text_to_embed))
 
 __{'embedding': [0.017020374536514282, -0.023255806416273117, ...],__
 
-__'meta': {'model': 'text-embedding-004-v2',__
+__'meta': {'model': 'gemini-embedding-001-v2',__
 
 __         'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}__
 
@@ -269,7 +269,7 @@ def __init__(*,
              api: Literal["gemini", "vertex"] = "gemini",
              vertex_ai_project: str | None = None,
              vertex_ai_location: str | None = None,
-             model: str = "text-embedding-004",
+             model: str = "gemini-embedding-001",
              prefix: str = "",
              suffix: str = "",
              config: dict[str, Any] | None = None) -> None
@@ -289,7 +289,7 @@ Application Default Credentials.
 - `vertex_ai_location`: Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
 Required when using Vertex AI with Application Default Credentials.
 - `model`: The name of the model to use for calculating embeddings.
-The default model is `text-embedding-004`.
+The default model is `gemini-embedding-001`.
 - `prefix`: A string to add at the beginning of each text to embed.
 - `suffix`: A string to add at the end of each text to embed.
 - `config`: A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.

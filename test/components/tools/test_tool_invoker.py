@@ -819,7 +819,7 @@ class TestToolInvokerErrorHandling:
             parameters=weather_parameters,
             function=weather_function,
             # Pass custom handler that will throw an error when trying to convert tool_result
-            outputs_to_string={"handler": lambda x: json.dumps(x)},
+            outputs_to_string={"handler": json.dumps},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
 
@@ -836,7 +836,7 @@ class TestToolInvokerErrorHandling:
             parameters=weather_parameters,
             function=weather_function,
             # Pass custom handler that will throw an error when trying to convert tool_result
-            outputs_to_string={"handler": lambda x: json.dumps(x)},
+            outputs_to_string={"handler": json.dumps},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
 

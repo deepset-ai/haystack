@@ -123,7 +123,7 @@ class InMemoryBM25Retriever:
         filters: dict[str, Any] | None = None,
         top_k: int | None = None,
         scale_score: bool | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Run the InMemoryBM25Retriever on the given input data.
 
@@ -161,7 +161,7 @@ class InMemoryBM25Retriever:
         filters: dict[str, Any] | None = None,
         top_k: int | None = None,
         scale_score: bool | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Run the InMemoryBM25Retriever on the given input data.
 
