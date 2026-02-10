@@ -240,7 +240,13 @@ class ComponentMeta(type):
                 if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
                     continue
 
-                annotation = run_hints.get(param_name, param_info.annotation)
+                # We prefer the type annotation from inspect.signature, but if it's a string we need to resolve it
+                # using the hints. The type annotation can be a string if the component is using postponed evaluation
+                # of annotations.
+                annotation = param_info.annotation
+                if isinstance(annotation, str):
+                    annotation = run_hints.get(param_name, annotation)
+
                 socket_kwargs = {"name": param_name, "type": annotation}
                 if param_info.default != Parameter.empty:
                     socket_kwargs["default_value"] = param_info.default
