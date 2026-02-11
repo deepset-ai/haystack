@@ -185,13 +185,13 @@ class LLMDocumentContentExtractor:
         return default_from_dict(cls, data)
 
     @staticmethod
-    def _validate_prompt_no_variables(prompt: str, context: str) -> None:
+    def _validate_prompt_no_variables(prompt: str) -> None:
         ast = SandboxedEnvironment().parse(prompt)
         template_variables = meta.find_undeclared_variables(ast)
         variables = list(template_variables)
         if variables:
             raise ValueError(
-                f"The prompt must not have any variables, only instructions on how to {context} "
+                f"The prompt must not have any variables, only instructions on how to extract the content of the "
                 f"the image-based document. Found {','.join(variables)} in the prompt."
             )
 
