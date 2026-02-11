@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added support for Chat Messages that include files using the ``FileContent`` dataclass
+    to ``OpenAIResponsesChatGenerator`` and ``AzureOpenAIResponsesChatGenerator``.
+
+    Users can now pass files such as PDFs when using Haystack Chat Generators based on the Responses API.

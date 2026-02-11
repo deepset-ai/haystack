@@ -9,7 +9,14 @@ import pytest
 from jinja2 import TemplateSyntaxError
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack.dataclasses.chat_message import ImageContent, ReasoningContent, TextContent, ToolCall, ToolCallResult
+from haystack.dataclasses.chat_message import (
+    FileContent,
+    ImageContent,
+    ReasoningContent,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
+)
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
 
 
@@ -346,6 +353,37 @@ class TestChatMessageExtension:
             "name": None,
             "meta": {},
         }
+        assert output == expected
+
+    def test_user_message_with_file_content(self, jinja_env, base64_pdf_string):
+        template = """
+        {% message role="user" %}
+        Please describe this document:
+        {{ file | templatize_part }}
+        {% endmessage %}
+        """
+        file = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="my_document.pdf")
+        rendered = jinja_env.from_string(template).render(file=file)
+        output = json.loads(rendered.strip())
+
+        expected = {
+            "role": "user",
+            "content": [
+                {"text": "Please describe this document:"},
+                {
+                    "file": {
+                        "base64_data": base64_pdf_string,
+                        "mime_type": "application/pdf",
+                        "validation": True,
+                        "filename": "my_document.pdf",
+                        "extra": {},
+                    }
+                },
+            ],
+            "name": None,
+            "meta": {},
+        }
+
         assert output == expected
 
     def test_user_message_multiple_lines(self, jinja_env):

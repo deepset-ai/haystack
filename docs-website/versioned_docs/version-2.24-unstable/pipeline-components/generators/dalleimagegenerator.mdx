@@ -1,0 +1,97 @@
+---
+title: "DALLEImageGenerator"
+id: dalleimagegenerator
+slug: "/dalleimagegenerator"
+description: "Generate images using OpenAI's DALL-E model."
+---
+
+# DALLEImageGenerator
+
+Generate images using OpenAI's DALL-E model.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [`PromptBuilder`](../builders/promptbuilder.mdx), flexible |
+| **Mandatory init variables** | `api_key`: An OpenAI API key. Can be set with `OPENAI_API_KEY` env var. |
+| **Mandatory run variables** | `prompt`: A string containing the prompt for the model |
+| **Output variables** | `images`: A list of generated images  <br /> <br />`revised_prompt`: A string containing the prompt that was used to generate the image, if there was any revision to the prompt made by OpenAI |
+| **API reference** | [Generators](/reference/generators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/openai_dalle.py |
+
+</div>
+
+## Overview
+
+The `DALLEImageGenerator` component generates images using OpenAI's DALL-E model.
+
+By default, the component uses `dall-e-3` model, standard picture quality, and 1024x1024 resolution. You can change these parameters using `model` (during component initialization), `quality`, and `size` (during component initialization or run) parameters.
+
+`DALLEImageGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```
+image_generator = DALLEImageGenerator(api_key=Secret.from_token("<your-api-key>"))
+```
+
+Check our [API reference](/reference/generators-api#dalleimagegenerator) for the detailed component parameters description, or the [OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create) for the details on OpenAI API parameters.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.generators import DALLEImageGenerator
+
+image_generator = DALLEImageGenerator()
+response = image_generator.run("Show me a picture of a black cat.")
+
+print(response)
+```
+
+### In a pipeline
+
+In the following pipeline, we first set up a `PromptBuilder` that will structure the image description with a detailed template describing various artistic elements. The pipeline then passes this structured prompt into a `DALLEImageGenerator` to generate the image based on this detailed description.
+
+```python
+from haystack import Pipeline
+from haystack.components.generators import DALLEImageGenerator
+from haystack.components.builders import PromptBuilder
+
+prompt_builder = PromptBuilder(
+    template="""Create a {style} image with the following details:
+
+                Main subject: {prompt}
+                Artistic style: {art_style}
+                Lighting: {lighting}
+                Color palette: {colors}
+                Composition: {composition}
+                Additional details: {details}"""
+)
+
+image_generator = DALLEImageGenerator()
+
+pipeline = Pipeline()
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("image_generator", image_generator)
+
+pipeline.connect("prompt_builder.prompt", "image_generator.prompt")
+
+results = pipeline.run(
+    {
+        "prompt": "a mystical treehouse library",
+        "style": "photorealistic",
+        "art_style": "fantasy concept art with intricate details",
+        "lighting": "dusk with warm lantern light glowing from within",
+        "colors": "rich earth tones, deep greens, and golden accents",
+        "composition": "wide angle view showing the entire structure nestled in an ancient oak tree",
+        "details": "spiral staircases wrapping around branches, stained glass windows, floating books, and magical fireflies providing ambient illumination"
+    }
+)
+
+generated_images = results["image_generator"]["images"]
+revised_prompt = results["image_generator"]["revised_prompt"]
+
+print(f"Generated image URL: {generated_images[0]}")
+print(f"Revised prompt: {revised_prompt}")
+```

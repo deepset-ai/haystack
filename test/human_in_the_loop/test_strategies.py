@@ -33,12 +33,21 @@ def addition_tool(a: int, b: int) -> int:
     return a + b
 
 
+def multiplication_tool(a: int, b: int) -> int:
+    return a * b
+
+
 @pytest.fixture
 def tools() -> list[Tool]:
-    tool = create_tool_from_function(
+    add_tool = create_tool_from_function(
         function=addition_tool, name="addition_tool", description="A tool that adds two integers together."
     )
-    return [tool]
+
+    mult_tool = create_tool_from_function(
+        function=multiplication_tool, name="multiplication_tool", description="A tool that multiplies two integers."
+    )
+
+    return [add_tool, mult_tool]
 
 
 @pytest.fixture
@@ -208,6 +217,27 @@ class TestRunConfirmationStrategies:
                 tool_name=tools[0].name, execute=True, tool_call_id="123", final_tool_params={"param1": "new_value"}
             )
         ]
+
+    def test_run_confirmation_strategies_with_multi_tool_tuple_key(self, tools, execution_context):
+        add_tool, mult_tool = tools[0], tools[1]
+
+        strategy = BlockingConfirmationStrategy(confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI())
+
+        teds = _run_confirmation_strategies(
+            confirmation_strategies={(add_tool.name, mult_tool.name): strategy},
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(add_tool.name, {"a": 1, "b": 2}), ToolCall(mult_tool.name, {"a": 3, "b": 4})]
+                )
+            ],
+            execution_context=execution_context,
+        )
+
+        assert len(teds) == 2
+        assert teds[0].tool_name == add_tool.name
+        assert teds[0].execute is True
+        assert teds[1].tool_name == mult_tool.name
+        assert teds[1].execute is True
 
 
 class TestApplyToolExecutionDecisions:
