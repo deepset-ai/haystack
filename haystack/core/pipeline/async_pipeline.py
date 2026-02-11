@@ -83,7 +83,7 @@ class AsyncPipeline(PipelineBase):
                 ctx = contextvars.copy_context()
                 try:
                     outputs = await loop.run_in_executor(
-                        None, lambda: ctx.run(lambda: instance.run(**component_inputs))
+                        None, lambda: ctx.run(lambda: instance.run(**_deepcopy_with_exceptions(component_inputs)))
                     )
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
