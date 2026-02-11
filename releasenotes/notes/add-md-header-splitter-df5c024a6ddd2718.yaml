@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Introduced the ``MarkdownHeaderSplitter`` component:
+      - Splits documents into chunks at Markdown headers (``#``, ``##``, etc.), preserving header hierarchy as metadata.
+      - Supports secondary splitting (by word, passage, period, or line) for further chunking after header-based splitting using Haystack's ``DocumentSplitter``.
+      - Preserves and propagates metadata such as parent headers and page numbers.
+      - Handles edge cases such as documents with no headers, empty content, and non-text documents.
