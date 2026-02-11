@@ -59,7 +59,7 @@ from haystack_integrations.components.connectors.github import GitHubIssueCommen
 commenter = GitHubIssueCommenter()
 result = commenter.run(
     url="https://github.com/owner/repo/issues/123",
-    comment="Thanks for reporting this issue! We'll look into it.",
+    comment="Thanks for reporting this issue! We'll look into it."
 )
 
 print(result)
@@ -85,9 +85,7 @@ issue_viewer = GitHubIssueViewer()
 issue_commenter = GitHubIssueCommenter()
 
 prompt_template = [
-    ChatMessage.from_system(
-        "You are a helpful assistant that analyzes GitHub issues and creates appropriate responses.",
-    ),
+    ChatMessage.from_system("You are a helpful assistant that analyzes GitHub issues and creates appropriate responses."),
     ChatMessage.from_user(
         "Based on the following GitHub issue:\n"
         "{% for document in documents %}"
@@ -96,8 +94,8 @@ prompt_template = [
         "**Issue Description:** {{ document.content }}\n"
         "{% endif %}"
         "{% endfor %}\n"
-        "Generate a helpful response comment for this issue. Keep it professional and concise.",
-    ),
+        "Generate a helpful response comment for this issue. Keep it professional and concise."
+    )
 ]
 
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
@@ -117,7 +115,10 @@ pipeline.connect("llm.replies", "adapter.replies")
 pipeline.connect("adapter", "issue_commenter.comment")
 
 issue_url = "https://github.com/owner/repo/issues/123"
-result = pipeline.run(data={"issue_viewer": {"url": issue_url}, "issue_commenter": {"url": issue_url}})
+result = pipeline.run(data={
+    "issue_viewer": {"url": issue_url},
+    "issue_commenter": {"url": issue_url}
+})
 
 print(f"Comment posted successfully: {result['issue_commenter']['success']}")
 ```

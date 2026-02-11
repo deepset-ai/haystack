@@ -68,7 +68,7 @@ import os
 from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
 
 converter = UnstructuredFileConverter()
-documents = converter.run(paths=["a/file/path.pdf", "a/directory/path"])["documents"]
+documents = converter.run(paths = ["a/file/path.pdf", "a/directory/path"])["documents"]
 ```
 
 ### In a pipeline

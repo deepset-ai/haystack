@@ -35,11 +35,9 @@ from haystack_integrations.document_stores.valkey import ValkeyDocumentStore
 
 document_store = ValkeyDocumentStore(index_name="my_index", embedding_dim=768)
 
-documents = [
-    Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(content="Elephants have been observed to behave in a way that indicates..."),
-    Document(content="In certain places, you can witness the phenomenon of bioluminescent waves."),
-]
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+             Document(content="Elephants have been observed to behave in a way that indicates..."),
+             Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
 document_embedder.warm_up()
@@ -55,7 +53,7 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 query = "How many languages are there?"
 
 res = query_pipeline.run({"text_embedder": {"text": query}})
-assert res["retriever"]["documents"][0].content == "There are over 7,000 languages spoken around the world today."
+assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
 ```
 
 <a id="haystack_integrations.components.retrievers.valkey.embedding_retriever.ValkeyEmbeddingRetriever.__init__"></a>
@@ -203,7 +201,7 @@ document_store = ValkeyDocumentStore(
     nodes_list=[("localhost", 6379)],
     index_name="my_documents",
     embedding_dim=768,
-    distance_metric="cosine",
+    distance_metric="cosine"
 )
 
 # Store documents with embeddings
@@ -211,8 +209,8 @@ documents = [
     Document(
         content="Valkey is a Redis-compatible database",
         embedding=[0.1, 0.2, ...],  # 768-dim vector
-        meta={"category": "database", "priority": 1},
-    ),
+        meta={"category": "database", "priority": 1}
+    )
 ]
 document_store.write_documents(documents)
 
@@ -220,7 +218,7 @@ document_store.write_documents(documents)
 results = document_store._embedding_retrival(
     embedding=[0.1, 0.15, ...],
     filters={"field": "meta.category", "operator": "==", "value": "database"},
-    limit=10,
+    limit=10
 )
 ```
 
@@ -377,10 +375,14 @@ the similarity scores from results.
 Example:
 ```python
 # Filter by category
-docs = document_store.filter_documents(filters={"field": "meta.category", "operator": "==", "value": "news"})
+docs = document_store.filter_documents(
+    filters={"field": "meta.category", "operator": "==", "value": "news"}
+)
 
 # Filter by numeric range
-docs = document_store.filter_documents(filters={"field": "meta.priority", "operator": ">=", "value": 5})
+docs = document_store.filter_documents(
+    filters={"field": "meta.priority", "operator": ">=", "value": 5}
+)
 ```
 
 **Returns**:
@@ -418,11 +420,13 @@ Example:
 ```python
 # Filter by category
 docs = await document_store.filter_documents_async(
-    filters={"field": "meta.category", "operator": "==", "value": "news"},
+    filters={"field": "meta.category", "operator": "==", "value": "news"}
 )
 
 # Filter by numeric range
-docs = await document_store.filter_documents_async(filters={"field": "meta.priority", "operator": ">=", "value": 5})
+docs = await document_store.filter_documents_async(
+    filters={"field": "meta.priority", "operator": ">=", "value": 5}
+)
 ```
 
 **Returns**:
@@ -460,8 +464,16 @@ Defaults to DuplicatePolicy.NONE.
 Example:
 ```python
 documents = [
-    Document(content="First document", embedding=[0.1, 0.2, 0.3], meta={"category": "news", "priority": 1}),
-    Document(content="Second document", embedding=[0.4, 0.5, 0.6], meta={"category": "blog", "priority": 2}),
+    Document(
+        content="First document",
+        embedding=[0.1, 0.2, 0.3],
+        meta={"category": "news", "priority": 1}
+    ),
+    Document(
+        content="Second document",
+        embedding=[0.4, 0.5, 0.6],
+        meta={"category": "blog", "priority": 2}
+    )
 ]
 count = document_store.write_documents(documents)
 print(f"Wrote {count} documents")
@@ -503,8 +515,16 @@ Defaults to DuplicatePolicy.NONE.
 Example:
 ```python
 documents = [
-    Document(content="First document", embedding=[0.1, 0.2, 0.3], meta={"category": "news", "priority": 1}),
-    Document(content="Second document", embedding=[0.4, 0.5, 0.6], meta={"category": "blog", "priority": 2}),
+    Document(
+        content="First document",
+        embedding=[0.1, 0.2, 0.3],
+        meta={"category": "news", "priority": 1}
+    ),
+    Document(
+        content="Second document",
+        embedding=[0.4, 0.5, 0.6],
+        meta={"category": "blog", "priority": 2}
+    )
 ]
 count = await document_store.write_documents_async(documents)
 print(f"Wrote {count} documents")
@@ -632,3 +652,4 @@ await document_store.delete_all_documents_async()
 # The index will be automatically recreated on next write operation
 await document_store.write_documents_async(new_documents)
 ```
+

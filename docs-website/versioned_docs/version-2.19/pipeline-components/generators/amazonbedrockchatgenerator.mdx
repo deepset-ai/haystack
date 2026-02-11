@@ -92,10 +92,7 @@ from haystack_integrations.components.generators.amazon_bedrock import AmazonBed
 from haystack.dataclasses import ChatMessage
 
 generator = AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1")
-messages = [
-    ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"),
-    ChatMessage.from_user("What's Natural Language Processing? Be brief."),
-]
+messages = [ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"), ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 
 response = generator.run(messages)
 print(response)

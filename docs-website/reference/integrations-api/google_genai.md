@@ -449,7 +449,7 @@ from haystack_integrations.components.generators.google_genai import GoogleGenAI
 # Initialize the chat generator with thinking support
 chat_generator = GoogleGenAIChatGenerator(
     model="gemini-2.5-flash",
-    generation_kwargs={"thinking_budget": 1024},  # Enable thinking with 1024 token budget
+    generation_kwargs={"thinking_budget": 1024}  # Enable thinking with 1024 token budget
 )
 
 # Generate a response
@@ -463,24 +463,22 @@ if message.reasonings:
     for reasoning in message.reasonings:
         print("Reasoning:", reasoning.reasoning_text)
 
-
 # Tool usage example with thinking
 def weather_function(city: str):
     return f"The weather in {city} is sunny and 25°C"
-
 
 weather_tool = Tool(
     name="weather",
     description="Get weather information for a city",
     parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
-    function=weather_function,
+    function=weather_function
 )
 
 # Can use either List[Tool] or Toolset
 chat_generator_with_tools = GoogleGenAIChatGenerator(
     model="gemini-2.5-flash",
     tools=[weather_tool],  # or tools=Toolset([weather_tool])
-    generation_kwargs={"thinking_budget": -1},  # Dynamic thinking allocation
+    generation_kwargs={"thinking_budget": -1}  # Dynamic thinking allocation
 )
 
 messages = [ChatMessage.from_user("What's the weather in Paris?")]
@@ -648,3 +646,4 @@ ToolCallResult or if the role in ChatMessage is different from User, System, Ass
 
 A dictionary with the following keys:
 - `replies`: A list containing the generated ChatMessage responses.
+

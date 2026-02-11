@@ -457,7 +457,6 @@ debugging or for reprocessing the documents later.
 from haystack import Document
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.extractors.image import LLMDocumentContentExtractor
-
 chat_generator = OpenAIChatGenerator()
 extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
 documents = [
@@ -646,3 +645,4 @@ Extracts text from input using the configured regex pattern.
 
 - If match found: `{"captured_text": "matched text"}`
 - If no match and `return_empty_on_no_match=True`: `{}`
+

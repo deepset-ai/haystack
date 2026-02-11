@@ -62,9 +62,10 @@ from haystack_integrations.components.generators.google_ai import GoogleAIGemini
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
 gemini = GoogleAIGeminiGenerator(model="gemini-1.5-pro")
-res = gemini.run(parts=["What is the most interesting thing you know?"])
+res = gemini.run(parts = ["What is the most interesting thing you know?"])
 for answer in res["replies"]:
     print(answer)
+
 ```
 
 This is a more advanced usage that also uses text and images as input:
@@ -79,16 +80,20 @@ URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot1.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot2.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot3.jpg",
-    "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg",
+    "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg"
 ]
-images = [ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS]
+images = [
+    ByteStream(data=requests.get(url).content, mime_type="image/jpeg")
+    for url in URLS
+]
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
 gemini = GoogleAIGeminiGenerator(model="gemini-1.5-pro")
-result = gemini.run(parts=["What can you tell me about this robots?", *images])
+result = gemini.run(parts = ["What can you tell me about this robots?", *images])
 for answer in result["replies"]:
     print(answer)
+
 ```
 
 ### In a pipeline
@@ -125,5 +130,9 @@ pipe.add_component("gemini", GoogleAIGeminiGenerator(model="gemini-pro"))
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "gemini")
 
-pipe.run({"prompt_builder": {"country": "France"}})
+pipe.run({
+    "prompt_builder": {
+        "country": "France"
+    }
+})
 ```

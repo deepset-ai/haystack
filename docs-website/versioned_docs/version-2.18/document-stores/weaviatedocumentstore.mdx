@@ -84,7 +84,10 @@ from haystack_integrations.document_stores.weaviate.document_store import Weavia
 from haystack import Document
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
-document_store.write_documents([Document(content="This is first"), Document(content="This is second")])
+document_store.write_documents([
+    Document(content="This is first"),
+    Document(content="This is second")
+])
 print(document_store.count_documents())
 ```
 
@@ -99,12 +102,12 @@ from haystack_integrations.document_stores.weaviate import WeaviateDocumentStore
 from haystack import Document
 
 import os
-
 os.environ["WEAVIATE_API_KEY"] = "YOUR-API-KEY"
 
 auth_client_secret = AuthApiKey()
 
-document_store = WeaviateDocumentStore(url="YOUR-WEAVIATE-URL", auth_client_secret=auth_client_secret)
+document_store = WeaviateDocumentStore(url="YOUR-WEAVIATE-URL",
+    auth_client_secret=auth_client_secret)
 ```
 
 ## Authorization

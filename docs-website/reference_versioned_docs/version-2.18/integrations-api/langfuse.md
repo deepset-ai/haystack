@@ -43,7 +43,6 @@ from haystack.tracing import tracer
 
 # ...
 
-
 @app.on_event("shutdown")
 async def shutdown_event():
     tracer.actual_tracer.flush()
@@ -72,7 +71,9 @@ pipe.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
 messages = [
-    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages."
+    ),
     ChatMessage.from_user("Tell me about {{location}}"),
 ]
 
@@ -81,8 +82,8 @@ response = pipe.run(
         "prompt_builder": {
             "template_variables": {"location": "Berlin"},
             "template": messages,
-        },
-    },
+        }
+    }
 )
 print(response["llm"]["replies"][0])
 print(response["tracer"]["trace_url"])
@@ -97,13 +98,12 @@ Langfuse traces:
 from haystack_integrations.tracing.langfuse import DefaultSpanHandler, LangfuseSpan
 from typing import Optional
 
-
 class CustomSpanHandler(DefaultSpanHandler):
+
     def handle(self, span: LangfuseSpan, component_type: Optional[str]) -> None:
         # Custom span handling logic, customize Langfuse spans however it fits you
         # see DefaultSpanHandler for how we create and process spans by default
         pass
-
 
 connector = LangfuseConnector(span_handler=CustomSpanHandler())
 ```
@@ -482,3 +482,4 @@ Return the trace ID.
 **Returns**:
 
 The trace ID.
+

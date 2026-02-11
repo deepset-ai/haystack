@@ -332,7 +332,7 @@ embedder = AmazonBedrockDocumentEmbedder(
 doc = Document(content="I love Paris in the winter.", meta={"name": "doc1"})
 
 result = embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 
 # [0.002, 0.032, 0.504, ...]
 ```
@@ -1056,16 +1056,12 @@ from haystack_integrations.components.generators.amazon_bedrock import AmazonBed
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.utils import print_streaming_chunk
 
-messages = [
-    ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant, answer in German only"),
-    ChatMessage.from_user("What's Natural Language Processing?"),
-]
+messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant, answer in German only"),
+            ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-client = AmazonBedrockChatGenerator(
-    model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-    streaming_callback=print_streaming_chunk,
-)
+client = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                                    streaming_callback=print_streaming_chunk)
 client.run(messages, generation_kwargs={"max_tokens": 512})
 ```
 
@@ -1376,7 +1372,10 @@ Provide AWS credentials either through the local AWS profile or directly through
 ```python
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockGenerator
 
-generator = AmazonBedrockGenerator(model="anthropic.claude-v2", max_length=99)
+generator = AmazonBedrockGenerator(
+        model="anthropic.claude-v2",
+        max_length=99
+)
 
 print(generator.run("Who is the best American actor?"))
 ```
@@ -1564,7 +1563,11 @@ from haystack import Document
 from haystack.utils import Secret
 from haystack_integrations.components.rankers.amazon_bedrock import AmazonBedrockRanker
 
-ranker = AmazonBedrockRanker(model="cohere.rerank-v3-5:0", top_k=2, aws_region_name=Secret.from_token("eu-central-1"))
+ranker = AmazonBedrockRanker(
+    model="cohere.rerank-v3-5:0",
+    top_k=2,
+    aws_region_name=Secret.from_token("eu-central-1")
+)
 
 docs = [Document(content="Paris"), Document(content="Berlin")]
 query = "What is the capital of germany?"
@@ -1643,3 +1646,4 @@ Use the Amazon Bedrock Reranker to re-rank the list of documents based on the qu
 
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
+

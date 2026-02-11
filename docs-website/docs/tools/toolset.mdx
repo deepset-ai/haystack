@@ -32,15 +32,12 @@ Here’s how to initialize `Toolset` with [Tool](tool.mdx). Alternatively, you c
 ```python
 from haystack.tools import Tool, Toolset
 
-
 ## Define math functions
 def add_numbers(a: int, b: int) -> int:
     return a + b
 
-
 def subtract_numbers(a: int, b: int) -> int:
     return a - b
-
 
 ## Create tools with proper schemas
 add_tool = Tool(
@@ -48,10 +45,13 @@ add_tool = Tool(
     description="Add two numbers",
     parameters={
         "type": "object",
-        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-        "required": ["a", "b"],
+        "properties": {
+            "a": {"type": "integer"},
+            "b": {"type": "integer"}
+        },
+        "required": ["a", "b"]
     },
-    function=add_numbers,
+    function=add_numbers
 )
 
 subtract_tool = Tool(
@@ -59,10 +59,13 @@ subtract_tool = Tool(
     description="Subtract b from a",
     parameters={
         "type": "object",
-        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-        "required": ["a", "b"],
+        "properties": {
+            "a": {"type": "integer"},
+            "b": {"type": "integer"}
+        },
+        "required": ["a", "b"]
     },
-    function=subtract_numbers,
+    function=subtract_numbers
 )
 
 ## Create a toolset with the math tools
@@ -75,16 +78,18 @@ math_toolset = Toolset([add_tool, subtract_tool])
 def multiply_numbers(a: int, b: int) -> int:
     return a * b
 
-
 multiply_tool = Tool(
     name="multiply",
     description="Multiply two numbers",
     parameters={
         "type": "object",
-        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-        "required": ["a", "b"],
+        "properties": {
+            "a": {"type": "integer"},
+            "b": {"type": "integer"}
+        },
+        "required": ["a", "b"]
     },
-    function=multiply_numbers,
+    function=multiply_numbers
 )
 
 math_toolset.add(multiply_tool)
@@ -179,7 +184,10 @@ from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import OpenAIChatGenerator
 
-agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=math_toolset)
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=math_toolset
+)
 
 response = agent.run(messages=[ChatMessage.from_user("What is 4 + 2?")])
 

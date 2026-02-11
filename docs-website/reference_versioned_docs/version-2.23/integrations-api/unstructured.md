@@ -30,7 +30,7 @@ from haystack_integrations.components.converters.unstructured import Unstructure
 converter = UnstructuredFileConverter(
     # api_url="http://localhost:8000/general/v0/general"  # <-- Uncomment this if running Unstructured locally
 )
-documents = converter.run(paths=["a/file/path.pdf", "a/directory/path"])["documents"]
+documents = converter.run(paths = ["a/file/path.pdf", "a/directory/path"])["documents"]
 ```
 
 <a id="haystack_integrations.components.converters.unstructured.converter.UnstructuredFileConverter.__init__"></a>
@@ -133,3 +133,4 @@ Please note that if the paths contain directories, `meta` can only be a single d
 
 A dictionary with the following key:
 - `documents`: List of Haystack Documents.
+

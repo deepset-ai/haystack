@@ -55,7 +55,7 @@ doc = Document(content="I love pizza!")
 embedder = MistralDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
 
 result = embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 ## [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
 ```
 

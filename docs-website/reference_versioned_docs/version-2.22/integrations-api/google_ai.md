@@ -22,7 +22,7 @@ from haystack.utils import Secret
 from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
 
 gemini = GoogleAIGeminiGenerator(model="gemini-2.0-flash", api_key=Secret.from_token("<MY_API_KEY>"))
-res = gemini.run(parts=["What is the most interesting thing you know?"])
+res = gemini.run(parts = ["What is the most interesting thing you know?"])
 for answer in res["replies"]:
     print(answer)
 ```
@@ -36,14 +36,23 @@ from haystack.dataclasses.byte_stream import ByteStream
 from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
 
 BASE_URL = (
-    "https://raw.githubusercontent.com/deepset-ai/haystack-core-integrations/main/integrations/google_ai/example_assets"
+    "https://raw.githubusercontent.com/deepset-ai/haystack-core-integrations"
+    "/main/integrations/google_ai/example_assets"
 )
 
-URLS = [f"{BASE_URL}/robot1.jpg", f"{BASE_URL}/robot2.jpg", f"{BASE_URL}/robot3.jpg", f"{BASE_URL}/robot4.jpg"]
-images = [ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS]
+URLS = [
+    f"{BASE_URL}/robot1.jpg",
+    f"{BASE_URL}/robot2.jpg",
+    f"{BASE_URL}/robot3.jpg",
+    f"{BASE_URL}/robot4.jpg"
+]
+images = [
+    ByteStream(data=requests.get(url).content, mime_type="image/jpeg")
+    for url in URLS
+]
 
 gemini = GoogleAIGeminiGenerator(model="gemini-2.0-flash", api_key=Secret.from_token("<MY_API_KEY>"))
-result = gemini.run(parts=["What can you tell me about this robots?", *images])
+result = gemini.run(parts = ["What can you tell me about this robots?", *images])
 for answer in result["replies"]:
     print(answer)
 ```
@@ -183,14 +192,12 @@ from haystack.tools import create_tool_from_function
 
 from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
 
-
 # example function to get the current weather
 def get_current_weather(
     location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
-
 
 tool = create_tool_from_function(get_current_weather)
 tool_invoker = ToolInvoker(tools=[tool])
@@ -336,3 +343,4 @@ during component initialization.
 
 A dictionary containing the following key:
 - `replies`:  A list containing the generated responses as `ChatMessage` instances.
+

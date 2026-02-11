@@ -26,7 +26,7 @@ doc = Document(content="I love pizza!")
 document_embedder = AzureOpenAIDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -362,11 +362,9 @@ from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
 
-doc_embedder = HuggingFaceAPIDocumentEmbedder(
-    api_type="serverless_inference_api",
-    api_params={"model": "BAAI/bge-small-en-v1.5"},
-    token=Secret.from_token("<your-api-key>"),
-)
+doc_embedder = HuggingFaceAPIDocumentEmbedder(api_type="serverless_inference_api",
+                                              api_params={"model": "BAAI/bge-small-en-v1.5"},
+                                              token=Secret.from_token("<your-api-key>"))
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
@@ -383,11 +381,9 @@ from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
 
-doc_embedder = HuggingFaceAPIDocumentEmbedder(
-    api_type="inference_endpoints",
-    api_params={"url": "<your-inference-endpoint-url>"},
-    token=Secret.from_token("<your-api-key>"),
-)
+doc_embedder = HuggingFaceAPIDocumentEmbedder(api_type="inference_endpoints",
+                                              api_params={"url": "<your-inference-endpoint-url>"},
+                                              token=Secret.from_token("<your-api-key>"))
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
@@ -403,10 +399,8 @@ from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
 
-doc_embedder = HuggingFaceAPIDocumentEmbedder(
-    api_type="text_embeddings_inference",
-    api_params={"url": "http://localhost:8080"},
-)
+doc_embedder = HuggingFaceAPIDocumentEmbedder(api_type="text_embeddings_inference",
+                                              api_params={"url": "http://localhost:8080"})
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
@@ -555,11 +549,9 @@ Use it with the following Hugging Face APIs:
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
 
-text_embedder = HuggingFaceAPITextEmbedder(
-    api_type="serverless_inference_api",
-    api_params={"model": "BAAI/bge-small-en-v1.5"},
-    token=Secret.from_token("<your-api-key>"),
-)
+text_embedder = HuggingFaceAPITextEmbedder(api_type="serverless_inference_api",
+                                           api_params={"model": "BAAI/bge-small-en-v1.5"},
+                                           token=Secret.from_token("<your-api-key>"))
 
 print(text_embedder.run("I love pizza!"))
 
@@ -571,12 +563,9 @@ print(text_embedder.run("I love pizza!"))
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
-
-text_embedder = HuggingFaceAPITextEmbedder(
-    api_type="inference_endpoints",
-    api_params={"model": "BAAI/bge-small-en-v1.5"},
-    token=Secret.from_token("<your-api-key>"),
-)
+text_embedder = HuggingFaceAPITextEmbedder(api_type="inference_endpoints",
+                                           api_params={"model": "BAAI/bge-small-en-v1.5"},
+                                           token=Secret.from_token("<your-api-key>"))
 
 print(text_embedder.run("I love pizza!"))
 
@@ -589,10 +578,8 @@ print(text_embedder.run("I love pizza!"))
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
 
-text_embedder = HuggingFaceAPITextEmbedder(
-    api_type="text_embeddings_inference",
-    api_params={"url": "http://localhost:8080"},
-)
+text_embedder = HuggingFaceAPITextEmbedder(api_type="text_embeddings_inference",
+                                           api_params={"url": "http://localhost:8080"})
 
 print(text_embedder.run("I love pizza!"))
 
@@ -730,7 +717,7 @@ doc = Document(content="I love pizza!")
 document_embedder = OpenAIDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -1038,13 +1025,12 @@ and send them to DocumentWriter to write a into a Document Store.
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 
 # [-0.07804739475250244, 0.1498992145061493, ...]
 ```
@@ -1360,7 +1346,7 @@ doc_embedder = SentenceTransformersSparseDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
-print(result["documents"][0].sparse_embedding)
+print(result['documents'][0].sparse_embedding)
 
 # SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])
 ```

@@ -84,14 +84,12 @@ When chatting with Gemini Pro, you can also easily use function calls. First, de
 from typing import Annotated
 from haystack.tools import create_tool_from_function
 
-
 ## example function to get the current weather
 def get_current_weather(
     location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
-
 
 tool = create_tool_from_function(get_current_weather)
 ```
@@ -145,9 +143,10 @@ pipe.connect("prompt_builder.prompt", "gemini.messages")
 
 location = "Rome"
 messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
-res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
+res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
 
 print(res)
+
 ```
 
 ## Additional References

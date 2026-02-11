@@ -33,11 +33,9 @@ document_store = PgvectorDocumentStore(
     recreate_table=True,
 )
 
-documents = [
-    Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(content="Elephants have been observed to behave in a way that indicates..."),
-    Document(content="In certain places, you can witness the phenomenon of bioluminescent waves."),
-]
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+             Document(content="Elephants have been observed to behave in a way that indicates..."),
+             Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
 document_embedder.warm_up()
@@ -54,7 +52,7 @@ query = "How many languages are there?"
 
 res = query_pipeline.run({"text_embedder": {"text": query}})
 
-assert res["retriever"]["documents"][0].content == "There are over 7,000 languages spoken around the world today."
+assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
 ```
 
 <a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever.__init__"></a>
@@ -847,10 +845,10 @@ to infer field types.
 Example return:
 ```python
 {
-    "content": {"type": "text"},
-    "category": {"type": "text"},
-    "status": {"type": "text"},
-    "priority": {"type": "integer"},
+    'content': {'type': 'text'},
+    'category': {'type': 'text'},
+    'status': {'type': 'text'},
+    'priority': {'type': 'integer'},
 }
 ```
 
@@ -975,3 +973,4 @@ If None, all documents are considered.
 A tuple containing:
 - A list of unique values (as strings)
 - The total count of unique values
+

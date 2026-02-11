@@ -43,12 +43,14 @@ from haystack_integrations.components.retrievers.pinecone import PineconeEmbeddi
 from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 
 ## Make sure you have the PINECONE_API_KEY environment variable set
-document_store = PineconeDocumentStore(index="my_index_with_documents", namespace="my_namespace", dimension=768)
+document_store = PineconeDocumentStore(index="my_index_with_documents",
+																			 namespace="my_namespace",
+                                       dimension=768)
 
 retriever = PineconeEmbeddingRetriever(document_store=document_store)
 
 ## using an imaginary vector to keep the example simple, example run query:
-retriever.run(query_embedding=[0.1] * 768)
+retriever.run(query_embedding=[0.1]*768)
 ```
 
 ### In a pipeline
@@ -71,17 +73,13 @@ from haystack_integrations.components.retrievers.pinecone import PineconeEmbeddi
 from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 
 ## Make sure you have the PINECONE_API_KEY environment variable set
-document_store = PineconeDocumentStore(index="my_index", namespace="my_namespace", dimension=768)
+document_store = PineconeDocumentStore(index="my_index",
+																			 namespace="my_namespace",
+                                       dimension=768)
 
-documents = [
-    Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(
-        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
-    ),
-    Document(
-        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
-    ),
-]
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
 document_embedder.warm_up()
@@ -98,7 +96,7 @@ query = "How many languages are there?"
 
 result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result["retriever"]["documents"][0])
+print(result['retriever']['documents'][0])
 ```
 
 The example output would be:

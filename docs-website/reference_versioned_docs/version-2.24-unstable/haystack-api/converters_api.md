@@ -161,7 +161,6 @@ It can attach metadata to the resulting documents.
 
 ```python
 from haystack.components.converters.csv import CSVToDocument
-
 converter = CSVToDocument()
 results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
 documents = results["documents"]
@@ -549,9 +548,7 @@ data = {
 }
 source = ByteStream.from_string(json.dumps(data))
 converter = JSONConverter(
-    jq_schema=".laureates[]",
-    content_key="motivation",
-    extra_meta_fields={"firstname", "surname"},
+    jq_schema=".laureates[]", content_key="motivation", extra_meta_fields={"firstname", "surname"}
 )
 
 results = converter.run(sources=[source])
@@ -1435,7 +1432,7 @@ from haystack.components.converters.tika import TikaDocumentConverter
 converter = TikaDocumentConverter()
 results = converter.run(
     sources=["sample.docx", "my_document.rtf", "archive.zip"],
-    meta={"date_added": datetime.now().isoformat()},
+    meta={"date_added": datetime.now().isoformat()}
 )
 documents = results["documents"]
 print(documents[0].content)
@@ -1641,3 +1638,4 @@ If `sources` contains ByteStream objects, their `meta` will be added to the outp
 
 A dictionary with the following keys:
 - `documents`: Created documents
+

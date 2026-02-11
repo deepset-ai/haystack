@@ -35,7 +35,7 @@ The component uses `WATSONX_API_KEY` and `WATSONX_PROJECT_ID` environment variab
 ```python
 embedder = WatsonxDocumentEmbedder(
     api_key=Secret.from_token("<your-api-key>"),
-    project_id=Secret.from_token("<your-project-id>"),
+    project_id=Secret.from_token("<your-project-id>")
 )
 ```
 
@@ -57,7 +57,7 @@ doc = Document(content="some text", meta={"title": "relevant title", "page numbe
 embedder = WatsonxDocumentEmbedder(
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-    meta_fields_to_embed=["title"],
+    meta_fields_to_embed=["title"]
 )
 
 docs_w_embeddings = embedder.run(documents=[doc])["documents"]
@@ -86,7 +86,7 @@ doc = Document(content="I love pizza!")
 embedder = WatsonxDocumentEmbedder()
 
 result = embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 ## [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
 ```
 
@@ -103,11 +103,9 @@ from haystack_integrations.components.embedders.watsonx.text_embedder import Wat
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [
-    Document(content="My name is Wolfgang and I live in Berlin"),
-    Document(content="I saw a black horse running"),
-    Document(content="Germany has many big cities"),
-]
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("embedder", WatsonxDocumentEmbedder())
@@ -123,9 +121,9 @@ query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder": {"text": query}})
+result = query_pipeline.run({"text_embedder":{"text": query}})
 
-print(result["retriever"]["documents"][0])
+print(result['retriever']['documents'][0])
 
 ## Document(id=..., text: 'My name is Wolfgang and I live in Berlin')
 ```

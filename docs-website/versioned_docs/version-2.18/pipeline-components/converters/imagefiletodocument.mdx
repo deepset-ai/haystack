@@ -79,12 +79,16 @@ indexing_pipe.connect("image_converter.documents", "image_doc_embedder.documents
 indexing_pipe.connect("image_doc_embedder.documents", "document_writer.documents")
 
 indexing_result = indexing_pipe.run(
-    data={"image_converter": {"sources": ["apple.jpg", "kiwi.png"]}},
+    data={"image_converter": {"sources": [
+        "apple.jpg",
+        "kiwi.png"
+    ]}},
 )
 
 indexed_documents = doc_store.filter_documents()
 print(f"Indexed {len(indexed_documents)} documents")
 ## Indexed 2 documents
+
 ```
 
 ## Additional References

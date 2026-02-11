@@ -27,12 +27,12 @@ document_store = QdrantDocumentStore(
     return_embedding=True,
 )
 
-document_store.write_documents([Document(content="test", embedding=[0.5] * 768)])
+document_store.write_documents([Document(content="test", embedding=[0.5]*768)])
 
 retriever = QdrantEmbeddingRetriever(document_store=document_store)
 
 # using a fake vector to keep the example simple
-retriever.run(query_embedding=[0.1] * 768)
+retriever.run(query_embedding=[0.1]*768)
 ```
 
 <a id="haystack_integrations.components.retrievers.qdrant.retriever.QdrantEmbeddingRetriever.__init__"></a>
@@ -395,16 +395,14 @@ document_store = QdrantDocumentStore(
     wait_result_from_api=True,
 )
 
-doc = Document(
-    content="test",
-    embedding=[0.5] * 768,
-    sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]),
-)
+doc = Document(content="test",
+               embedding=[0.5]*768,
+               sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]))
 
 document_store.write_documents([doc])
 
 retriever = QdrantHybridRetriever(document_store=document_store)
-embedding = [0.1] * 768
+embedding = [0.1]*768
 sparse_embedding = SparseEmbedding(indices=[0, 1, 2, 3], values=[0.1, 0.8, 0.05, 0.33])
 retriever.run(query_embedding=embedding, query_sparse_embedding=sparse_embedding)
 ```
@@ -595,13 +593,15 @@ Usage example by creating an in-memory instance:
 from haystack.dataclasses.document import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
-document_store = QdrantDocumentStore(":memory:", recreate_index=True, embedding_dim=5)
-document_store.write_documents(
-    [
-        Document(content="This is first", embedding=[0.0] * 5),
-        Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5]),
-    ],
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    embedding_dim=5
 )
+document_store.write_documents([
+    Document(content="This is first", embedding=[0.0]*5),
+    Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
+])
 ```
 
 Usage example with Qdrant Cloud:
@@ -611,15 +611,13 @@ from haystack.dataclasses.document import Document
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 document_store = QdrantDocumentStore(
-    url="https://xxxxxx-xxxxx-xxxxx-xxxx-xxxxxxxxx.us-east.aws.cloud.qdrant.io:6333",
+        url="https://xxxxxx-xxxxx-xxxxx-xxxx-xxxxxxxxx.us-east.aws.cloud.qdrant.io:6333",
     api_key="<your-api-key>",
 )
-document_store.write_documents(
-    [
-        Document(content="This is first", embedding=[0.0] * 5),
-        Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5]),
-    ],
-)
+document_store.write_documents([
+    Document(content="This is first", embedding=[0.0]*5),
+    Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
+])
 ```
 
 <a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.__init__"></a>
@@ -1347,16 +1345,21 @@ Example usage:
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack_integrations.document_stores.qdrant import migrate_to_sparse_embeddings_support
 
-old_document_store = QdrantDocumentStore(url="http://localhost:6333", index="Document", use_sparse_embeddings=False)
+old_document_store = QdrantDocumentStore(url="http://localhost:6333",
+                                         index="Document",
+                                         use_sparse_embeddings=False)
 new_index = "Document_sparse"
 
 migrate_to_sparse_embeddings_support(old_document_store, new_index)
 
 # now you can use the new document store with sparse embeddings support
-new_document_store = QdrantDocumentStore(url="http://localhost:6333", index=new_index, use_sparse_embeddings=True)
+new_document_store = QdrantDocumentStore(url="http://localhost:6333",
+                                         index=new_index,
+                                         use_sparse_embeddings=True)
 ```
 
 **Arguments**:
 
 - `old_document_store`: The existing QdrantDocumentStore instance to migrate from.
 - `new_index`: The name of the new index/collection to create with sparse embeddings support.
+

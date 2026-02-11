@@ -57,10 +57,7 @@ pip install mcp-haystack
 from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
 server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
-toolset = MCPToolset(
-    server_info=server_info,
-    tool_names=["get_current_time"],
-)  # If tool_names is omitted, all tools on this MCP server will be loaded (can overwhelm LLM if too many)
+toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])  # If tool_names is omitted, all tools on this MCP server will be loaded (can overwhelm LLM if too many)
 ```
 
 ### With Streamable HTTP Transport
@@ -97,14 +94,11 @@ toolset = MCPToolset(server_info=server_info)
 pipeline = Pipeline()
 pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=toolset))
 pipeline.add_component("tool_invoker", ToolInvoker(tools=toolset))
-pipeline.add_component(
-    "adapter",
-    OutputAdapter(
-        template="{{ initial_msg + initial_tool_messages + tool_messages }}",
-        output_type=list[ChatMessage],
-        unsafe=True,
-    ),
-)
+pipeline.add_component("adapter", OutputAdapter(
+    template="{{ initial_msg + initial_tool_messages + tool_messages }}",
+    output_type=list[ChatMessage],
+    unsafe=True,
+))
 pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 
 pipeline.connect("llm.replies", "tool_invoker.messages")
@@ -113,7 +107,10 @@ pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
 pipeline.connect("adapter.output", "response_llm.messages")
 
 user_input = ChatMessage.from_user(text="What is the time in New York?")
-result = pipeline.run({"llm": {"messages": [user_input]}, "adapter": {"initial_msg": [user_input]}})
+result = pipeline.run({
+    "llm": {"messages": [user_input]},
+    "adapter": {"initial_msg": [user_input]}
+})
 
 print(result["response_llm"]["replies"][0].text)
 ```
@@ -128,7 +125,7 @@ from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
 toolset = MCPToolset(
     server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
-    tool_names=["get_current_time"],  # Omit to load all tools, but may overwhelm LLM if many
+    tool_names=["get_current_time"]  # Omit to load all tools, but may overwhelm LLM if many
 )
 
 agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, exit_conditions=["text"])

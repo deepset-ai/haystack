@@ -84,7 +84,6 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage
 
-
 def indexing(documents: List[Document]) -> Tuple[InMemoryDocumentStore, InMemoryDocumentStore]:
     splitter = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
     docs = splitter.run(documents)
@@ -99,16 +98,11 @@ def indexing(documents: List[Document]) -> Tuple[InMemoryDocumentStore, InMemory
 
     return leaf_doc_store, parent_doc_store
 
-
 ## Add documents
 docs = [
     Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(
-        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
-    ),
-    Document(
-        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
-    ),
+    Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+    Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")
 ]
 
 leaf_docs, parent_docs = indexing(docs)
@@ -118,17 +112,14 @@ prompt_template = [
     ChatMessage.from_user(
         "Given these documents, answer the question.\nDocuments:\n"
         "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
-        "Question: {{question}}\nAnswer:",
-    ),
+        "Question: {{question}}\nAnswer:"
+    )
 ]
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=leaf_docs), name="bm25_retriever")
 rag_pipeline.add_component(instance=AutoMergingRetriever(parent_docs, threshold=0.6), name="retriever")
-rag_pipeline.add_component(
-    instance=ChatPromptBuilder(template=prompt_template, required_variables={"question", "documents"}),
-    name="prompt_builder",
-)
+rag_pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template, required_variables={"question", "documents"}), name="prompt_builder")
 rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 
@@ -139,11 +130,9 @@ rag_pipeline.connect("llm.replies", "answer_builder.replies")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 question = "How many languages are there?"
-result = rag_pipeline.run(
-    {
-        "bm25_retriever": {"query": question},
-        "prompt_builder": {"question": question},
-        "answer_builder": {"query": question},
-    },
-)
+result = rag_pipeline.run({
+    "bm25_retriever": {"query": question},
+    "prompt_builder": {"question": question},
+    "answer_builder": {"query": question}
+})
 ```

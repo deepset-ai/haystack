@@ -55,7 +55,7 @@ Our [GitHub template](https://github.com/deepset-ai/document-store) ships a GitH
 
 ### Documentation
 
-We recommend thoroughly documenting your custom Document Store with a detailed README file and possibly generating API documentation using a static generator.
+We recommend thoroughly documenting your custom Document Store with a detailed README file and possibly generating API documentation using a static generator. 
 
 For inspiration, see the [neo4j-haystack](https://github.com/prosto/neo4j-haystack) repository and its [documentation](https://prosto.github.io/neo4j-haystack/) pages.
 
@@ -67,6 +67,7 @@ You can use any Python class as a Document Store, provided that it implements al
 
 ```python
 class DocumentStore(Protocol):
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes this store to a dictionary.
@@ -147,6 +148,6 @@ Haystack comes with some testing functionalities you can use in a custom Documen
 
 ## Get Featured on the Integrations Page
 
-The [Integrations web page](https://haystack.deepset.ai/integrations) makes Haystack integrations visible to the community, and it’s a great opportunity to showcase your work. Once your Document Store is usable and properly packaged, you can open a pull request in the [haystack-integrations](https://github.com/deepset-ai/haystack-integrations) GitHub repository to add an integration tile.
+The [Integrations web page](https://haystack.deepset.ai/integrations) makes Haystack integrations visible to the community, and it’s a great opportunity to showcase your work. Once your Document Store is usable and properly packaged, you can open a pull request in the [haystack-integrations](https://github.com/deepset-ai/haystack-integrations) GitHub repository to add an integration tile. 
 
 See the [integrations documentation page](../integrations.mdx#how-do-i-showcase-my-integration) for more details.

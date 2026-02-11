@@ -44,16 +44,17 @@ Here is an example of a simple minimal component setup:
 ```python
 from haystack import component
 
-
 @component
 class WelcomeTextGenerator:
-    """
-    A component generating personal welcome message and making it upper case
-    """
-
-    @component.output_types(welcome_text=str, note=str)
-    def run(self, name: str):
-        return {"welcome_text": f"Hello {name}, welcome to Haystack!".upper(), "note": "welcome message is ready"}
+  """
+  A component generating personal welcome message and making it upper case
+  """
+  @component.output_types(welcome_text=str, note=str)
+  def run(self, name:str):
+    return {
+        "welcome_text": f'Hello {name}, welcome to Haystack!'.upper(),
+        "note": "welcome message is ready"
+    }
 ```
 
 Here, the custom component `WelcomeTextGenerator` accepts one input: `name` string and returns two outputs: `welcome_text` and `note`.
@@ -66,32 +67,27 @@ Check out an example below on how to create two custom components and connect th
 # import necessary dependencies
 from haystack import component, Pipeline
 
-
 # Create two custom components. Note the mandatory @component decorator and @component.output_types, as well as the mandatory run method.
 @component
 class WelcomeTextGenerator:
-    """
-    A component generating personal welcome message and making it upper case
-    """
-
-    @component.output_types(welcome_text=str, note=str)
-    def run(self, name: str):
-        return {
-            "welcome_text": ("Hello {name}, welcome to Haystack!".format(name=name)).upper(),
-            "note": "welcome message is ready",
-        }
-
+  """
+  A component generating personal welcome message and making it upper case
+  """
+  @component.output_types(welcome_text=str, note=str)
+  def run(self, name: str):
+    return {
+        "welcome_text": ('Hello {name}, welcome to Haystack!'.format(name=name)).upper(),
+        "note": "welcome message is ready"
+    }
 
 @component
 class WhitespaceSplitter:
-    """
-    A component for splitting the text by whitespace
-    """
-
-    @component.output_types(split_text=list[str])
-    def run(self, text: str):
-        return {"split_text": text.split()}
-
+  """
+  A component for splitting the text by whitespace
+  """
+  @component.output_types(split_text=list[str])
+  def run(self, text: str):
+    return {"split_text": text.split()}
 
 # create a pipeline and add the custom components to it
 text_pipeline = Pipeline()
@@ -115,7 +111,6 @@ To extend already existing components in Haystack, subclass an existing componen
 class DerivedComponent(BaseComponent):
     def __init__(self):
         super(DerivedComponent, self).__init__()
-
 
 ## ...
 

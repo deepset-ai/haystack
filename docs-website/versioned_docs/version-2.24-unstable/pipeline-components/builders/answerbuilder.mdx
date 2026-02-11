@@ -41,7 +41,10 @@ Below is an example where we’re using the `AnswerBuilder` to parse a string th
 from haystack.components.builders import AnswerBuilder
 
 builder = AnswerBuilder(pattern="Answer: (.*)")
-builder.run(query="What's the answer?", replies=["This is an argument. Answer: This is the answer."])
+builder.run(
+    query="What's the answer?",
+    replies=["This is an argument. Answer: This is the answer."]
+)
 ```
 
 ### In a pipeline
@@ -64,21 +67,29 @@ prompt_template = [
     ChatMessage.from_user(
         "Given these documents, answer the question.\nDocuments:\n"
         "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
-        "Question: {{query}}\nAnswer:",
-    ),
+        "Question: {{query}}\nAnswer:"
+    )
 ]
 
-docs = [Document(content="The capital of France is Paris"), Document(content="The capital of England is London")]
+docs = [
+    Document(content="The capital of France is Paris"),
+    Document(content="The capital of England is London")
+]
 document_store = InMemoryDocumentStore()
 document_store.write_documents(docs)
 
 p = Pipeline()
-p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
+p.add_component(
+    instance=InMemoryBM25Retriever(document_store=document_store), name="retriever"
+)
 p.add_component(
     instance=ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"}),
-    name="prompt_builder",
+    name="prompt_builder"
 )
-p.add_component(instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.add_component(
+    instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
+    name="llm"
+)
 p.add_component(instance=AnswerBuilder(), name="answer_builder")
 p.connect("retriever", "prompt_builder.documents")
 p.connect("prompt_builder", "llm.messages")
@@ -91,7 +102,7 @@ result = p.run(
         "retriever": {"query": query},
         "prompt_builder": {"query": query},
         "answer_builder": {"query": query},
-    },
+    }
 )
 
 print(result)

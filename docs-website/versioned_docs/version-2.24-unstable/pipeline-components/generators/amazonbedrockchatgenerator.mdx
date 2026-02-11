@@ -89,9 +89,14 @@ For example, to cache a long user message to be reused across multiple requests:
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
 
-msg = ChatMessage.from_user("long message...", meta={"cachePoint": {"type": "default", "ttl": "5m"}})
+msg = ChatMessage.from_user(
+    "long message...",
+    meta={"cachePoint": {"type": "default", "ttl": "5m"}}
+)
 
-generator = AmazonBedrockChatGenerator(model="anthropic.claude-sonnet-4-5-20250929-v1:0")
+generator = AmazonBedrockChatGenerator(
+    model="anthropic.claude-sonnet-4-5-20250929-v1:0"
+)
 
 result = generator.run(messages=[msg])
 ```
@@ -115,7 +120,7 @@ from haystack_integrations.components.generators.amazon_bedrock import AmazonBed
 generator = AmazonBedrockChatGenerator(
     model="anthropic.claude-sonnet-4-5-20250929-v1:0",
     tools=my_tools,
-    tools_cachepoint_config={"type": "default", "ttl": "5m"},
+    tools_cachepoint_config={"type": "default", "ttl": "5m"}
 )
 
 # send a request to the Language Model
@@ -140,10 +145,7 @@ from haystack_integrations.components.generators.amazon_bedrock import AmazonBed
 from haystack.dataclasses import ChatMessage
 
 generator = AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1")
-messages = [
-    ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"),
-    ChatMessage.from_user("What's Natural Language Processing? Be brief."),
-]
+messages = [ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"), ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 
 response = generator.run(messages)
 print(response)
@@ -158,7 +160,10 @@ from haystack_integrations.components.generators.amazon_bedrock import AmazonBed
 llm = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
 
 response = llm.run([user_message])["replies"][0].text
 print(response)

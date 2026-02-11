@@ -48,11 +48,9 @@ from haystack.components.extractors import NamedEntityExtractor
 
 extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
 
-documents = [
-    Document(content="My name is Clara and I live in Berkeley, California."),
-    Document(content="I'm Merlin, the happy pig!"),
-    Document(content="New York State is home to the Empire State Building."),
-]
+documents = [Document(content="My name is Clara and I live in Berkeley, California."),
+	     Document(content="I'm Merlin, the happy pig!"),
+	     Document(content="New York State is home to the Empire State Building.")]
 
 extractor.warm_up()
 extractor.run(documents)
@@ -77,11 +75,9 @@ from haystack.components.extractors import NamedEntityExtractor
 
 extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
 
-documents = [
-    Document(content="My name is Clara and I live in Berkeley, California."),
-    Document(content="I'm Merlin, the happy pig!"),
-    Document(content="New York State is home to the Empire State Building."),
-]
+documents = [Document(content="My name is Clara and I live in Berkeley, California."),
+	     Document(content="I'm Merlin, the happy pig!"),
+	     Document(content="New York State is home to the Empire State Building.")]
 
 extractor.warm_up()
 extractor.run(documents)

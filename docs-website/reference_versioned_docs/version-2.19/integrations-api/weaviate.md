@@ -755,7 +755,12 @@ as they are not user metadata fields.
 A dictionary where keys are field names and values are dictionaries
 containing type information, e.g.:
 ```python
-{"number": {"type": "int"}, "date": {"type": "date"}, "category": {"type": "text"}, "status": {"type": "text"}}
+{
+    'number': {'type': 'int'},
+    'date': {'type': 'date'},
+    'category': {'type': 'text'},
+    'status': {'type': 'text'}
+}
 ```
 
 <a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_fields_info_async"></a>
@@ -776,7 +781,12 @@ as they are not user metadata fields.
 A dictionary where keys are field names and values are dictionaries
 containing type information, e.g.:
 ```python
-{"number": {"type": "int"}, "date": {"type": "date"}, "category": {"type": "text"}, "status": {"type": "text"}}
+{
+    'number': {'type': 'int'},
+    'date': {'type': 'date'},
+    'category': {'type': 'text'},
+    'status': {'type': 'text'}
+}
 ```
 
 <a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.get_metadata_field_min_max"></a>
@@ -1103,3 +1113,4 @@ For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deeps
 **Returns**:
 
 The number of documents updated.
+

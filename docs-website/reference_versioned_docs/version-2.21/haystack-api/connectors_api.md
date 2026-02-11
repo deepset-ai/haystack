@@ -171,9 +171,12 @@ from haystack.components.connectors.openapi import OpenAPIConnector
 connector = OpenAPIConnector(
     openapi_spec="https://bit.ly/serperdev_openapi",
     credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
-    service_kwargs={"config_factory": my_custom_config_factory},
+    service_kwargs={"config_factory": my_custom_config_factory}
 )
-response = connector.run(operation_id="search", arguments={"q": "Who was Nikola Tesla?"})
+response = connector.run(
+    operation_id="search",
+    arguments={"q": "Who was Nikola Tesla?"}
+)
 ```
 
 **Notes**:
@@ -241,3 +244,4 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 **Returns**:
 
 Dictionary containing the service response
+

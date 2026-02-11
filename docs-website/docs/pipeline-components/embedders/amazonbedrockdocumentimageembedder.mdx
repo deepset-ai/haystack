@@ -60,7 +60,7 @@ from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedr
 
 embedder = AmazonBedrockDocumentImageEmbedder(
     model="cohere.embed-english-v3",
-    embedding_types=["float"],  # single value only
+    embedding_types=["float"]  # single value only
 )
 ```
 
@@ -82,19 +82,17 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # example
 ## Point Documents to image/PDF files via metadata (default key: "file_path")
 documents = [
     Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
-    Document(
-        content="Invoice page",
-        meta={"file_path": "invoice.pdf", "mime_type": "application/pdf", "page_number": 1},
-    ),
+    Document(content="Invoice page", meta={"file_path": "invoice.pdf", "mime_type": "application/pdf", "page_number": 1}),
 ]
 
 embedder = AmazonBedrockDocumentImageEmbedder(
     model="amazon.titan-embed-image-v1",
-    image_size=(1024, 1024),  # optional downscaling
+    image_size=(1024, 1024),   # optional downscaling
 )
 
 result = embedder.run(documents=documents)
 embedded_docs = result["documents"]
+
 ```
 
 ### In a pipeline

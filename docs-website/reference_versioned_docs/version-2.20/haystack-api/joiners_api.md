@@ -51,10 +51,8 @@ from haystack.dataclasses import ChatMessage
 
 
 query = "What's Natural Language Processing?"
-messages = [
-    ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
-    ChatMessage.from_user(query),
-]
+messages = [ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+            ChatMessage.from_user(query)]
 
 pipe = Pipeline()
 pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
@@ -68,14 +66,10 @@ pipe.connect("gpt-4o-mini.replies", "abb")
 pipe.connect("aba.answers", "joiner")
 pipe.connect("abb.answers", "joiner")
 
-results = pipe.run(
-    data={
-        "gpt-4o": {"messages": messages},
-        "gpt-4o-mini": {"messages": messages},
-        "aba": {"query": query},
-        "abb": {"query": query},
-    },
-)
+results = pipe.run(data={"gpt-4o": {"messages": messages},
+                            "gpt-4o-mini": {"messages": messages},
+                            "aba": {"query": query},
+                            "abb": {"query": query}})
 ```
 
 <a id="answer_joiner.AnswerJoiner.__init__"></a>
@@ -348,14 +342,14 @@ docs = [Document(content="Paris"), Document(content="Berlin"), Document(content=
 embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 embedder.warm_up()
 docs_embeddings = embedder.run(docs)
-document_store.write_documents(docs_embeddings["documents"])
+document_store.write_documents(docs_embeddings['documents'])
 
 p = Pipeline()
 p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
 p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-    name="text_embedder",
-)
+        instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+        name="text_embedder",
+    )
 p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever")
 p.add_component(instance=DocumentJoiner(), name="joiner")
 p.connect("bm25_retriever", "joiner")
@@ -500,12 +494,8 @@ pipe.connect("feedback_prompt_builder.prompt", "feedback_llm.messages")
 pipe.connect("feedback_llm.replies", "list_joiner")
 
 query = "What is nuclear physics?"
-ans = pipe.run(
-    data={
-        "prompt_builder": {"template_variables": {"query": query}},
-        "feedback_prompt_builder": {"template_variables": {"query": query}},
-    },
-)
+ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
+    "feedback_prompt_builder": {"template_variables":{"query": query}}})
 
 print(ans["list_joiner"]["values"])
 ```
@@ -632,3 +622,4 @@ Joins strings into a list of strings
 
 A dictionary with the following keys:
 - `strings`: Merged list of strings
+

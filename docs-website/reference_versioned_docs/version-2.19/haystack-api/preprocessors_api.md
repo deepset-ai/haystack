@@ -173,7 +173,7 @@ from haystack.components.preprocessors import DocumentCleaner
 
 doc = Document(content="This   is  a  document  to  clean\n\n\nsubstring to remove")
 
-cleaner = DocumentCleaner(remove_substrings=["substring to remove"])
+cleaner = DocumentCleaner(remove_substrings = ["substring to remove"])
 result = cleaner.run(documents=[doc])
 
 assert result["documents"][0].content == "This is a document to clean "

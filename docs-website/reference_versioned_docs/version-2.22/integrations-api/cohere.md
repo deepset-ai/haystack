@@ -27,7 +27,7 @@ doc = Document(content="I love pizza!")
 document_embedder = CohereDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 
 # [-0.453125, 1.2236328, 2.0058594, ...]
 ```
@@ -605,11 +605,9 @@ from haystack.components.tools import ToolInvoker
 from haystack.tools import Tool
 from haystack_integrations.components.generators.cohere import CohereChatGenerator
 
-
 # Create a weather tool
 def weather(city: str) -> str:
     return f"The weather in {city} is sunny and 32°C"
-
 
 weather_tool = Tool(
     name="weather",
@@ -620,7 +618,7 @@ weather_tool = Tool(
             "city": {
                 "type": "string",
                 "description": "The name of the city to get weather for, e.g. Paris, London",
-            },
+            }
         },
         "required": ["city"],
     },
@@ -634,7 +632,9 @@ pipeline.add_component("tool_invoker", ToolInvoker(tools=[weather_tool]))
 pipeline.connect("generator", "tool_invoker")
 
 # Run the pipeline with a weather query
-results = pipeline.run(data={"generator": {"messages": [ChatMessage.from_user("What's the weather like in Paris?")]}})
+results = pipeline.run(
+    data={"generator": {"messages": [ChatMessage.from_user("What's the weather like in Paris?")]}}
+)
 
 # The tool result will be available in the pipeline output
 print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
@@ -983,3 +983,4 @@ Use the Cohere Reranker to re-rank the list of documents based on the query.
 
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
+

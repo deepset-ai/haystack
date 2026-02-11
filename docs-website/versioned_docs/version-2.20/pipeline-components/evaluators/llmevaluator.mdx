@@ -48,18 +48,15 @@ Each example must be a dictionary with keys `inputs` and `outputs`.
 Here is the expected format:
 
 ```python
-[
-    {
-        "inputs": {
-            "questions": "What is the capital of Italy?",
-            "contexts": ["Rome is the capital of Italy."],
-        },
-        "outputs": {
-            "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
-            "statement_scores": [1, 0],
-        },
-    },
-]
+[{
+	"inputs": {
+		"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+	},
+	"outputs": {
+		"statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+		"statement_scores": [1, 0],
+	},
+}]
 ```
 
 ## Usage
@@ -71,7 +68,6 @@ Below is an example where we use an `LLMEvaluator` component to evaluate a gener
 ```python
 from typing import List
 from haystack.components.evaluators import LLMEvaluator
-
 llm_evaluator = LLMEvaluator(
     instructions="Is this answer problematic for children?",
     inputs=[("responses", List[str])],
@@ -117,7 +113,11 @@ responses = [
     "Python language was created by Guido van Rossum.",
 ]
 
-result = pipeline.run({"llm_evaluator": {"responses": responses}})
+result = pipeline.run(
+		{
+	    "llm_evaluator": {"responses": responses}
+    }
+)
 
 for evaluator in result:
     print(result[evaluator]["results"])

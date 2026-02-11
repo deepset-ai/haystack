@@ -56,8 +56,8 @@ documents = [
     Document(content="My name is Alessia and I live in Rome."),
 ]
 
-document_classifier = DocumentLanguageClassifier(languages=["en", "de"])
-document_classifier.run(documents=documents)
+document_classifier = DocumentLanguageClassifier(languages = ["en", "de"])
+document_classifier.run(documents = documents)
 ```
 
 ### In a pipeline
@@ -76,10 +76,14 @@ from haystack.components.routers import MetadataRouter
 document_store_en = InMemoryDocumentStore()
 document_store_de = InMemoryDocumentStore()
 
-document_classifier = DocumentLanguageClassifier(languages=["en", "de"])
-metadata_router = MetadataRouter(rules={"en": {"language": {"$eq": "en"}}, "de": {"language": {"$eq": "de"}}})
+document_classifier = DocumentLanguageClassifier(languages = ["en", "de"])
+metadata_router = MetadataRouter(
+    rules={"en": {"language": {"$eq": "en"}}, "de": {"language": {"$eq": "de"}}}
+)
 english_embedder = SentenceTransformersDocumentEmbedder()
-german_embedder = SentenceTransformersDocumentEmbedder(model="PM-AI/bi-encoder_msmarco_bert-base_german")
+german_embedder = SentenceTransformersDocumentEmbedder(
+    model="PM-AI/bi-encoder_msmarco_bert-base_german"
+)
 en_writer = DocumentWriter(document_store=document_store_en)
 de_writer = DocumentWriter(document_store=document_store_de)
 
@@ -91,7 +95,9 @@ indexing_pipeline.add_component(german_embedder, name="german_embedder")
 indexing_pipeline.add_component(en_writer, name="en_writer")
 indexing_pipeline.add_component(de_writer, name="de_writer")
 
-indexing_pipeline.connect("document_classifier.documents", "metadata_router.documents")
+indexing_pipeline.connect(
+    "document_classifier.documents", "metadata_router.documents"
+)
 indexing_pipeline.connect("metadata_router.en", "english_embedder.documents")
 indexing_pipeline.connect("metadata_router.de", "german_embedder.documents")
 indexing_pipeline.connect("english_embedder", "en_writer")
@@ -102,9 +108,9 @@ indexing_pipeline.run(
         "document_classifier": {
             "documents": [
                 Document(content="This is an English sentence."),
-                Document(content="Dies ist ein deutscher Satz."),
-            ],
-        },
-    },
+                Document(content="Dies ist ein deutscher Satz.")
+            ]
+        }
+    }
 )
 ```

@@ -90,23 +90,32 @@ result = generator.run(messages=messages)
 print(result["replies"][0].text)
 print(f"Successful generator: {result['meta']['successful_chat_generator_class']}")
 print(f"Total attempts: {result['meta']['total_attempts']}")
+
 ```
 
 With multiple providers:
 
 ```python
-from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator, AzureOpenAIChatGenerator
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+    AzureOpenAIChatGenerator
+)
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
 ## Create generators from different providers
-openai_gen = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_env_var("OPENAI_API_KEY"), timeout=30)
+openai_gen = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    timeout=30
+)
 
 azure_gen = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint>",
     api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
     azure_deployment="gpt-4o-mini",
-    timeout=30,
+    timeout=30
 )
 
 ## Fallback will try OpenAI first, then Azure
@@ -127,10 +136,15 @@ from haystack.dataclasses import ChatMessage
 primary = OpenAIChatGenerator(model="gpt-4o")
 backup = OpenAIChatGenerator(model="gpt-4o-mini")
 
-generator = FallbackChatGenerator(chat_generators=[primary, backup])
+generator = FallbackChatGenerator(
+    chat_generators=[primary, backup]
+)
 
 messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
-result = generator.run(messages=messages, streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
+result = generator.run(
+    messages=messages,
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True)
+)
 
 print("\n", result["meta"])
 ```
@@ -161,10 +175,17 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 ## Run pipeline
 messages = [
     ChatMessage.from_system("You are a helpful assistant that provides concise answers."),
-    ChatMessage.from_user("Tell me about {{location}}"),
+    ChatMessage.from_user("Tell me about {{location}}")
 ]
 
-result = pipe.run(data={"prompt_builder": {"template": messages, "template_variables": {"location": "Paris"}}})
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template": messages,
+            "template_variables": {"location": "Paris"}
+        }
+    }
+)
 
 print(result["llm"]["replies"][0].text)
 print(f"Generator used: {result['llm']['meta']['successful_chat_generator_class']}")

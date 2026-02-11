@@ -48,7 +48,10 @@ If you need exact keyword matching and don't want to use embeddings, use [`Multi
 You can pass additional parameters to the underlying Retriever using `retriever_kwargs`:
 
 ```python
-result = multi_query_retriever.run(queries=["renewable energy", "sustainable power"], retriever_kwargs={"top_k": 5})
+result = multi_query_retriever.run(
+    queries=["renewable energy", "sustainable power"],
+    retriever_kwargs={"top_k": 5}
+)
 ```
 
 ## Usage
@@ -87,7 +90,7 @@ pipeline.add_component(
     MultiQueryEmbeddingRetriever(
         retriever=InMemoryEmbeddingRetriever(document_store=doc_store, top_k=2),
         query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-    ),
+    )
 )
 pipeline.connect("query_expander.queries", "retriever.queries")
 

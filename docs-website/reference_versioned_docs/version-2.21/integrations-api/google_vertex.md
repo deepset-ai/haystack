@@ -919,7 +919,7 @@ doc = Document(content="I love pizza!")
 document_embedder = VertexAIDocumentEmbedder(model="text-embedding-005")
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 # [-0.044606007635593414, 0.02857724390923977, -0.03549133986234665,
 ```
 
@@ -998,7 +998,7 @@ Converts a batch of Document objects into a list of TextEmbeddingInput objects.
 **Arguments**:
 
 - `batch` _List[Document]_ - A list of Document objects to be converted.
-
+  
 
 **Returns**:
 
@@ -1041,7 +1041,7 @@ Generate embeddings for a batch of text strings.
 **Arguments**:
 
 - `batch` _List[str]_ - A list of text strings to be embedded.
-
+  
 
 **Returns**:
 
@@ -1219,3 +1219,4 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 Deserialized component.
+

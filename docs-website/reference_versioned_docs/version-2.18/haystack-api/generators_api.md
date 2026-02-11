@@ -33,12 +33,10 @@ For details on OpenAI API parameters, see
 ```python
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.utils import Secret
-
 client = AzureOpenAIGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this a model name, e.g.  gpt-4o-mini>",
-)
+    azure_deployment="<this a model name, e.g.  gpt-4o-mini>")
 response = client.run("What's Natural Language Processing? Be brief.")
 print(response)
 ```
@@ -202,8 +200,7 @@ from haystack.components.generators import HuggingFaceLocalGenerator
 generator = HuggingFaceLocalGenerator(
     model="google/flan-t5-large",
     task="text2text-generation",
-    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9},
-)
+    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
 
 generator.warm_up()
 
@@ -363,11 +360,9 @@ Be aware that this example might not work as the Hugging Face Inference API no l
 from haystack.components.generators import HuggingFaceAPIGenerator
 from haystack.utils import Secret
 
-generator = HuggingFaceAPIGenerator(
-    api_type="inference_endpoints",
-    api_params={"url": "<your-inference-endpoint-url>"},
-    token=Secret.from_token("<your-api-key>"),
-)
+generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
+                                    api_params={"url": "<your-inference-endpoint-url>"},
+                                    token=Secret.from_token("<your-api-key>"))
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -375,7 +370,8 @@ print(result)
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
 
-generator = HuggingFaceAPIGenerator(api_type="text_generation_inference", api_params={"url": "http://localhost:8080"})
+generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
+                                    api_params={"url": "http://localhost:8080"})
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -384,11 +380,9 @@ print(result)
 from haystack.components.generators import HuggingFaceAPIGenerator
 from haystack.utils import Secret
 
-generator = HuggingFaceAPIGenerator(
-    api_type="serverless_inference_api",
-    api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-    token=Secret.from_token("<your-api-key>"),
-)
+generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
+                                    api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+                                    token=Secret.from_token("<your-api-key>"))
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -655,7 +649,6 @@ For details on OpenAI API parameters, see
 
 ```python
 from haystack.components.generators import DALLEImageGenerator
-
 image_generator = DALLEImageGenerator()
 response = image_generator.run("Show me a picture of a black cat.")
 print(response)
@@ -806,8 +799,7 @@ messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this a model name, e.g. gpt-4o-mini>",
-)
+    azure_deployment="<this a model name, e.g. gpt-4o-mini>")
 response = client.run(messages)
 print(response)
 ```
@@ -1321,20 +1313,17 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from haystack.utils.hf import HFGenerationAPIType
 
-messages = [
-    ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
-    ChatMessage.from_user("What's Natural Language Processing?"),
-]
+messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+            ChatMessage.from_user("What's Natural Language Processing?")]
 
 # the api_type can be expressed using the HFGenerationAPIType enum or as a string
 api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
-api_type = "serverless_inference_api"  # this is equivalent to the above
+api_type = "serverless_inference_api" # this is equivalent to the above
 
-generator = HuggingFaceAPIChatGenerator(
-    api_type=api_type,
-    api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
-    token=Secret.from_token("<your-api-key>"),
-)
+generator = HuggingFaceAPIChatGenerator(api_type=api_type,
+                                        api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
+                                                    "provider": "together"},
+                                        token=Secret.from_token("<your-api-key>"))
 
 result = generator.run(messages)
 print(result)
@@ -1358,9 +1347,9 @@ generator = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
     api_params={
         "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-        "provider": "hyperbolic",
+        "provider": "hyperbolic"
     },
-    token=Secret.from_token("<your-api-key>"),
+    token=Secret.from_token("<your-api-key>")
 )
 
 result = generator.run(messages)

@@ -37,7 +37,9 @@ agent = Agent(
 )
 
 # Run the agent
-result = agent.run(messages=[ChatMessage.from_user("Find information about Haystack")])
+result = agent.run(
+    messages=[ChatMessage.from_user("Find information about Haystack")]
+)
 
 assert "messages" in result  # Contains conversation history
 ```
@@ -252,7 +254,7 @@ from haystack.components.agents.state import State
 
 my_state = State(
     schema={"gh_repo_name": {"type": str}, "user_name": {"type": str}},
-    data={"gh_repo_name": "my_repo", "user_name": "my_user_name"},
+    data={"gh_repo_name": "my_repo", "user_name": "my_user_name"}
 )
 ```
 

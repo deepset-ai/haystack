@@ -104,8 +104,13 @@ document_store = InMemoryDocumentStore()
 ## Indexing pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("image_converter", ImageFileToDocument())
-indexing_pipeline.add_component("embedder", CohereDocumentImageEmbedder(model="embed-v4.0"))
-indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.add_component(
+    "embedder",
+    CohereDocumentImageEmbedder(model="embed-v4.0")
+)
+indexing_pipeline.add_component(
+    "writer", DocumentWriter(document_store=document_store)
+)
 indexing_pipeline.connect("image_converter", "embedder")
 indexing_pipeline.connect("embedder", "writer")
 
@@ -113,8 +118,14 @@ indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "hyena.jp
 
 ## Multimodal retrieval pipeline
 retrieval_pipeline = Pipeline()
-retrieval_pipeline.add_component("embedder", CohereTextEmbedder(model="embed-v4.0"))
-retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store, top_k=2))
+retrieval_pipeline.add_component(
+    "embedder",
+    CohereTextEmbedder(model="embed-v4.0")
+)
+retrieval_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
+)
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
 result = retrieval_pipeline.run(data={"text": "man's best friend"})

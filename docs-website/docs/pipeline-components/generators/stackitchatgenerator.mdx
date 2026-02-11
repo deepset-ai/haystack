@@ -72,7 +72,10 @@ from haystack_integrations.components.generators.stackit import STACKITChatGener
 llm = STACKITChatGenerator(model="meta-llama/Llama-3.2-11B-Vision-Instruct")
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
 
 response = llm.run([user_message])["replies"][0].text
 print(response)

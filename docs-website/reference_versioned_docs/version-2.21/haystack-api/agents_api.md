@@ -28,22 +28,19 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import Tool
 
-
 # Tool functions - in practice, these would have real implementations
 def search(query: str) -> str:
-    """Search for information on the web."""
+    '''Search for information on the web.'''
     # Placeholder: would call actual search API
     return "In France, a 15% service charge is typically included, but leaving 5-10% extra is appreciated."
 
-
 def calculator(operation: str, a: float, b: float) -> float:
-    """Perform mathematical calculations."""
+    '''Perform mathematical calculations.'''
     if operation == "multiply":
         return a * b
     elif operation == "percentage":
         return (a / 100) * b
     return 0
-
 
 # Define tools with JSON Schema
 tools = [
@@ -52,10 +49,12 @@ tools = [
         description="Searches for information on the web",
         parameters={
             "type": "object",
-            "properties": {"query": {"type": "string", "description": "The search query"}},
-            "required": ["query"],
+            "properties": {
+                "query": {"type": "string", "description": "The search query"}
+            },
+            "required": ["query"]
         },
-        function=search,
+        function=search
     ),
     Tool(
         name="calculator",
@@ -65,18 +64,23 @@ tools = [
             "properties": {
                 "operation": {"type": "string", "description": "Operation: multiply, percentage"},
                 "a": {"type": "number", "description": "First number"},
-                "b": {"type": "number", "description": "Second number"},
+                "b": {"type": "number", "description": "Second number"}
             },
-            "required": ["operation", "a", "b"],
+            "required": ["operation", "a", "b"]
         },
-        function=calculator,
-    ),
+        function=calculator
+    )
 ]
 
 # Create and run the agent
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=tools)
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=tools
+)
 
-result = agent.run(messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")])
+result = agent.run(
+    messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
+)
 
 # The agent will:
 # 1. Search for tipping customs in France
@@ -300,7 +304,7 @@ from haystack.components.agents.state import State
 
 my_state = State(
     schema={"gh_repo_name": {"type": str}, "user_name": {"type": str}},
-    data={"gh_repo_name": "my_repo", "user_name": "my_user_name"},
+    data={"gh_repo_name": "my_repo", "user_name": "my_user_name"}
 )
 ```
 
@@ -413,3 +417,4 @@ def from_dict(cls, data: dict[str, Any])
 ```
 
 Convert a dictionary back to a State object.
+

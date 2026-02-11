@@ -27,7 +27,10 @@ with the following structure:
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
 
-expander = QueryExpander(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"), n_expansions=3)
+expander = QueryExpander(
+    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    n_expansions=3
+)
 
 result = expander.run(query="green energy sources")
 print(result["queries"])
@@ -137,3 +140,4 @@ def warm_up()
 ```
 
 Warm up the LLM provider component.
+

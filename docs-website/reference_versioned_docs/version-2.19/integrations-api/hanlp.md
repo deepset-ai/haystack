@@ -29,13 +29,15 @@ not simply by single characters or spaces.
 
 ### Usage example
 ```python
-doc = Document(
-    content="这是第一句话，这是第二句话，这是第三句话。"
+doc = Document(content=
+    "这是第一句话，这是第二句话，这是第三句话。"
     "这是第四句话，这是第五句话，这是第六句话！"
-    "这是第七句话，这是第八句话，这是第九句话？",
+    "这是第七句话，这是第八句话，这是第九句话？"
 )
 
-splitter = ChineseDocumentSplitter(split_by="word", split_length=10, split_overlap=3, respect_sentence_boundary=True)
+splitter = ChineseDocumentSplitter(
+    split_by="word", split_length=10, split_overlap=3, respect_sentence_boundary=True
+)
 result = splitter.run(documents=[doc])
 print(result["documents"])
 ```
@@ -152,3 +154,4 @@ def from_dict(cls, data: dict[str, Any]) -> "ChineseDocumentSplitter"
 ```
 
 Deserializes the component from a dictionary.
+

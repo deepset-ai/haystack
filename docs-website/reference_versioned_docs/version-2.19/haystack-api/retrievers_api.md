@@ -323,7 +323,7 @@ doc_store = InMemoryDocumentStore()
 doc_store.write_documents(docs_with_embeddings)
 retriever = InMemoryEmbeddingRetriever(doc_store)
 
-query = "Programmiersprache"
+query="Programmiersprache"
 text_embedder = SentenceTransformersTextEmbedder()
 text_embedder.warm_up()
 query_embedding = text_embedder.run(query)["embedding"]

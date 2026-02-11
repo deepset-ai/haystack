@@ -65,7 +65,10 @@ from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
 # initialize the components
-web_search = SerperDevWebSearch(api_key=Secret.from_token("<your-api-key>"), top_k=10)
+web_search = SerperDevWebSearch(
+    api_key=Secret.from_token("<your-api-key>"),
+    top_k=10
+)
 
 lcf = LinkContentFetcher()
 html_converter = HTMLToDocument()
@@ -73,9 +76,7 @@ router = FileTypeRouter(["text/html", "application/pdf", "application/octet-stre
 
 # ChatPromptBuilder uses a different template format with ChatMessage
 template = [
-    ChatMessage.from_user(
-        "Given these paragraphs below: \n {% for doc in documents %}{{ doc.content }}{% endfor %}\n\nAnswer the question: {{ query }}",
-    ),
+    ChatMessage.from_user("Given these paragraphs below: \n {% for doc in documents %}{{ doc.content }}{% endfor %}\n\nAnswer the question: {{ query }}")
 ]
 # set required_variables to avoid warnings in multi-branch pipelines
 prompt_builder = ChatPromptBuilder(template=template, required_variables=["documents", "query"])

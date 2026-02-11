@@ -40,18 +40,15 @@ Each example must be a dictionary with keys `inputs` and `outputs`.
 Here is the expected format:
 
 ```python
-[
-    {
-        "inputs": {
-            "questions": "What is the capital of Italy?",
-            "contexts": ["Rome is the capital of Italy."],
-        },
-        "outputs": {
-            "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
-            "statement_scores": [1, 0],
-        },
-    },
-]
+[{
+	"inputs": {
+		"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+	},
+	"outputs": {
+		"statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+		"statement_scores": [1, 0],
+	},
+}]
 ```
 
 ## Usage
@@ -66,7 +63,7 @@ from haystack.components.evaluators import ContextRelevanceEvaluator
 questions = ["Who created the Python language?"]
 contexts = [
     [
-        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
     ],
 ]
 
@@ -78,6 +75,7 @@ print(result["individual_scores"])
 ## [1.0]
 print(result["results"])
 ## [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
+
 ```
 
 ### In a pipeline
@@ -97,16 +95,16 @@ pipeline.add_component("faithfulness_evaluator", faithfulness_evaluator)
 questions = ["Who created the Python language?"]
 contexts = [
     [
-        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
     ],
 ]
 responses = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
 
 result = pipeline.run(
-    {
-        "context_relevance_evaluator": {"questions": questions, "contexts": contexts},
-        "faithfulness_evaluator": {"questions": questions, "contexts": contexts, "responses": responses},
-    },
+		{
+			"context_relevance_evaluator": {"questions": questions, "contexts": contexts},
+	    "faithfulness_evaluator": {"questions": questions, "contexts": contexts, "responses": responses}
+    }
 )
 
 for evaluator in result:

@@ -53,7 +53,7 @@ from haystack.utils import Secret
 generator = WatsonxChatGenerator(
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-    model="ibm/granite-13b-instruct-v2",
+    model="ibm/granite-13b-instruct-v2"
 )
 
 message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
@@ -73,14 +73,11 @@ from haystack.utils import Secret
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
-pipe.add_component(
-    "llm",
-    WatsonxChatGenerator(
-        api_key=Secret.from_env_var("WATSONX_API_KEY"),
-        project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-        model="ibm/granite-13b-instruct-v2",
-    ),
-)
+pipe.add_component("llm", WatsonxChatGenerator(
+    api_key=Secret.from_env_var("WATSONX_API_KEY"),
+    project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
+    model="ibm/granite-13b-instruct-v2"
+))
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"

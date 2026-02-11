@@ -42,13 +42,13 @@ from haystack.dataclasses import Document
 docs = [
     Document(content="Example text", meta={"file_path": "example.txt"}),
     Document(content="Another document", meta={"mime_type": "application/pdf"}),
-    Document(content="Unknown type"),
+    Document(content="Unknown type")
 ]
 
 router = DocumentTypeRouter(
     mime_type_meta_field="mime_type",
     file_path_meta_field="file_path",
-    mime_types=["text/plain", "application/pdf"],
+    mime_types=["text/plain", "application/pdf"]
 )
 
 result = router.run(documents=docs)
@@ -58,7 +58,11 @@ print(result)
 Expected output:
 
 ```python
-{"text/plain": [Document(...)], "application/pdf": [Document(...)], "unclassified": [Document(...)]}
+{
+    "text/plain": [Document(...)],
+    "application/pdf": [Document(...)],
+    "unclassified": [Document(...)]
+}
 ```
 
 ### Using regex patterns
@@ -132,10 +136,7 @@ document_store = InMemoryDocumentStore()
 
 ## Create pipeline
 p = Pipeline()
-p.add_component(
-    instance=DocumentTypeRouter(mime_types=["text/plain", "application/pdf"], mime_type_meta_field="mime_type"),
-    name="document_type_router",
-)
+p.add_component(instance=DocumentTypeRouter(mime_types=["text/plain", "application/pdf"], mime_type_meta_field="mime_type"), name="document_type_router")
 p.add_component(instance=DocumentSplitter(), name="text_splitter")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="text_writer")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="pdf_writer")

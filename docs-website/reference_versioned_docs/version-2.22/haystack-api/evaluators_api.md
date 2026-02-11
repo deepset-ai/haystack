@@ -87,27 +87,21 @@ from haystack.components.evaluators import ContextRelevanceEvaluator
 
 questions = ["Who created the Python language?", "Why does Java needs a JVM?", "Is C++ better than Python?"]
 contexts = [
-    [
-        (
-            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
-            "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
-            "programmers write clear, logical code for both small and large-scale software projects."
-        ),
-    ],
-    [
-        (
-            "Java is a high-level, class-based, object-oriented programming language that is designed to have as few "
-            "implementation dependencies as possible. The JVM has two primary functions: to allow Java programs to run"
-            "on any device or operating system (known as the 'write once, run anywhere' principle), and to manage and"
-            "optimize program memory."
-        ),
-    ],
-    [
-        (
-            "C++ is a general-purpose programming language created by Bjarne Stroustrup as an extension of the C "
-            "programming language."
-        ),
-    ],
+    [(
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+        "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+        "programmers write clear, logical code for both small and large-scale software projects."
+    )],
+    [(
+        "Java is a high-level, class-based, object-oriented programming language that is designed to have as few "
+        "implementation dependencies as possible. The JVM has two primary functions: to allow Java programs to run"
+        "on any device or operating system (known as the 'write once, run anywhere' principle), and to manage and"
+        "optimize program memory."
+    )],
+    [(
+        "C++ is a general-purpose programming language created by Bjarne Stroustrup as an extension of the C "
+        "programming language."
+    )],
 ]
 
 evaluator = ContextRelevanceEvaluator()
@@ -157,17 +151,14 @@ Each example must be a dictionary with keys "inputs" and "outputs".
 "outputs" must be a dictionary with "relevant_statements".
 Expected format:
 ```python
-[
-    {
-        "inputs": {
-            "questions": "What is the capital of Italy?",
-            "contexts": ["Rome is the capital of Italy."],
-        },
-        "outputs": {
-            "relevant_statements": ["Rome is the capital of Italy."],
-        },
+[{
+    "inputs": {
+        "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
     },
-]
+    "outputs": {
+        "relevant_statements": ["Rome is the capital of Italy."],
+    },
+}]
 ```
 - `progress_bar`: Whether to show a progress bar during the evaluation.
 - `raise_on_failure`: Whether to raise an exception if the API call fails.
@@ -761,19 +752,16 @@ Each example must be a dictionary with keys "inputs" and "outputs".
 "outputs" must be a dictionary with "statements" and "statement_scores".
 Expected format:
 ```python
-[
-    {
-        "inputs": {
-            "questions": "What is the capital of Italy?",
-            "contexts": ["Rome is the capital of Italy."],
-            "predicted_answers": "Rome is the capital of Italy with more than 4 million inhabitants.",
-        },
-        "outputs": {
-            "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
-            "statement_scores": [1, 0],
-        },
+[{
+    "inputs": {
+        "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+        "predicted_answers": "Rome is the capital of Italy with more than 4 million inhabitants.",
     },
-]
+    "outputs": {
+        "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+        "statement_scores": [1, 0],
+    },
+}]
 ```
 - `progress_bar`: Whether to show a progress bar during the evaluation.
 - `raise_on_failure`: Whether to raise an exception if the API call fails.
@@ -972,7 +960,6 @@ Each result is a dictionary with user-defined keys and values of either 0 for FA
 Usage example:
 ```python
 from haystack.components.evaluators import LLMEvaluator
-
 evaluator = LLMEvaluator(
     instructions="Is this answer problematic for children?",
     inputs=[("predicted_answers", list[str])],
@@ -1233,7 +1220,9 @@ predictions = [
     "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
     "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
 ]
-result = evaluator.run(ground_truths_answers=ground_truths, predicted_answers=predictions)
+result = evaluator.run(
+    ground_truths_answers=ground_truths, predicted_answers=predictions
+)
 
 print(result["score"])
 # 0.9999673763910929
@@ -1334,3 +1323,4 @@ and a list of ground truth answers. Both must be list of strings of same length.
 A dictionary with the following outputs:
 - `score`: Mean SAS score over all the predictions/ground-truth pairs.
 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+

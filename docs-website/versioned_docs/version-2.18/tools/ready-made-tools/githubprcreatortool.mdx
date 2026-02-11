@@ -55,7 +55,7 @@ result = tool.invoke(
     title="Fix issue #123",
     body="This PR addresses issue #123 by implementing the requested changes.",
     branch="fix-123",  # Branch in your fork with the changes
-    base="main",  # Branch in original repo to merge into
+    base="main"        # Branch in original repo to merge into
 )
 
 print(result)
@@ -77,16 +77,16 @@ from haystack_integrations.tools.github import GitHubPRCreatorTool
 
 pr_tool = GitHubPRCreatorTool(name="github_pr_creator")
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[pr_tool], exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[pr_tool],
+    exit_conditions=["text"]
+)
 
 agent.warm_up()
-response = agent.run(
-    messages=[
-        ChatMessage.from_user(
-            "Create a pull request for issue https://github.com/owner/repo/issues/4 with title 'Fix authentication bug' and empty body using my fix-4 branch and main as target branch",
-        ),
-    ],
-)
+response = agent.run(messages=[
+    ChatMessage.from_user("Create a pull request for issue https://github.com/owner/repo/issues/4 with title 'Fix authentication bug' and empty body using my fix-4 branch and main as target branch")
+])
 
 print(response["last_message"].text)
 ```

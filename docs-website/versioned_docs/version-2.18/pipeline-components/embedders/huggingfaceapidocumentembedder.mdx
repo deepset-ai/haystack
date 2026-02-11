@@ -58,11 +58,9 @@ from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
 
-document_embedder = HuggingFaceAPIDocumentEmbedder(
-    api_type="serverless_inference_api",
-    api_params={"model": "BAAI/bge-small-en-v1.5"},
-    token=Secret.from_token("<your-api-key>"),
-)
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="serverless_inference_api",
+                                              api_params={"model": "BAAI/bge-small-en-v1.5"},
+                                              token=Secret.from_token("<your-api-key>"))
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
@@ -86,11 +84,9 @@ from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
 
-document_embedder = HuggingFaceAPIDocumentEmbedder(
-    api_type="inference_endpoints",
-    api_params={"url": "<your-inference-endpoint-url>"},
-    token=Secret.from_token("<your-api-key>"),
-)
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="inference_endpoints",
+                                              api_params={"url": "<your-inference-endpoint-url>"},
+                                              token=Secret.from_token("<your-api-key>"))
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
@@ -124,10 +120,8 @@ from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
 
-document_embedder = HuggingFaceAPIDocumentEmbedder(
-    api_type="text_embeddings_inference",
-    api_params={"url": "http://localhost:8080"},
-)
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="text_embeddings_inference",
+                                              api_params={"url": "http://localhost:8080"})
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)

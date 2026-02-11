@@ -20,7 +20,6 @@ Writes documents to a DocumentStore.
 from haystack import Document
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
 docs = [
     Document(content="Python is a popular programming language"),
 ]
@@ -139,3 +138,4 @@ but can be used with `await` in async code.
 **Returns**:
 
 Number of documents written to the document store.
+

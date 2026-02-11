@@ -49,6 +49,7 @@ from haystack.components.preprocessors import HierarchicalDocumentSplitter
 doc = Document(content="This is a simple test document")
 splitter = HierarchicalDocumentSplitter(block_sizes={3, 2}, split_overlap=0, split_by="word")
 splitter.run([doc])
+
 ```
 
 ### In a pipeline

@@ -30,7 +30,7 @@ fetcher = LinkContentFetcher()
 streams = fetcher.run(urls=["https://www.google.com"])["streams"]
 
 assert len(streams) == 1
-assert streams[0].meta == {"content_type": "text/html", "url": "https://www.google.com"}
+assert streams[0].meta == {'content_type': 'text/html', 'url': 'https://www.google.com'}
 assert streams[0].data
 ```
 
@@ -40,12 +40,10 @@ For async usage:
 import asyncio
 from haystack.components.fetchers import LinkContentFetcher
 
-
 async def fetch_async():
     fetcher = LinkContentFetcher()
     result = await fetcher.run_async(urls=["https://www.google.com"])
     return result["streams"]
-
 
 streams = asyncio.run(fetch_async())
 ```
@@ -143,3 +141,4 @@ This is the asynchronous version of the `run` method with the same parameters an
 **Returns**:
 
 `ByteStream` objects representing the extracted content.
+

@@ -48,8 +48,12 @@ pip install fastembed-haystack
 You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use:
 
 ```python
-cache_dir = "/your_cacheDirectory"
-embedder = FastembedSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v1", cache_dir=cache_dir, threads=2)
+cache_dir= "/your_cacheDirectory"
+embedder = FastembedSparseDocumentEmbedder(
+	model="prithivida/Splade_PP_en_v1",
+	cache_dir=cache_dir,
+	threads=2
+)
 ```
 
 If you want to use the data parallel encoding, you can set the parameters `parallel` and  `batch_size`.
@@ -73,9 +77,14 @@ You can do this easily by using the sparse Document Embedder:
 from haystack.preview import Document
 from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
 
-doc = Document(text="some text", metadata={"title": "relevant title", "page number": 18})
+doc = Document(text="some text",
+							 metadata={"title": "relevant title",
+												 "page number": 18})
 
-embedder = FastembedSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v1", metadata_fields_to_embed=["title"])
+embedder = FastembedSparseDocumentEmbedder(
+	model="prithivida/Splade_PP_en_v1",
+	metadata_fields_to_embed=["title"]
+)
 
 docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
 ```
@@ -87,18 +96,20 @@ docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
 ```python
 from haystack.dataclasses import Document
 from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
-
-document_list = [Document(content="I love pizza!"), Document(content="I like spaghetti")]
+document_list = [
+	Document(content="I love pizza!"),
+	Document(content="I like spaghetti")
+]
 
 doc_embedder = FastembedSparseDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run(document_list)
-print(result["documents"][0])
+print(result['documents'][0])
 
 ## Document(id=...,
 ## 				 content: 'I love pizza!',
-# sparse_embedding: vector with 24 non-zero elements)
+#					 sparse_embedding: vector with 24 non-zero elements)
 ```
 
 ### In a pipeline
@@ -120,7 +131,11 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder, FastembedTextEmbedder
 
-document_store = QdrantDocumentStore(":memory:", recreate_index=True, use_sparse_embeddings=True)
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True
+)
 
 documents = [
     Document(content="My name is Wolfgang and I live in Berlin"),

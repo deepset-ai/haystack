@@ -79,14 +79,12 @@ Here's how the `OllamaGenerator` would work just on its own:
 ```python
 from haystack_integrations.components.generators.ollama import OllamaGenerator
 
-generator = OllamaGenerator(
-    model="zephyr",
-    url="http://localhost:11434",
-    generation_kwargs={
-        "num_predict": 100,
-        "temperature": 0.9,
-    },
-)
+generator = OllamaGenerator(model="zephyr",
+                            url = "http://localhost:11434",
+                            generation_kwargs={
+                              "num_predict": 100,
+                              "temperature": 0.9,
+                              })
 
 print(generator.run("Who is the best American actor?"))
 
@@ -118,23 +116,17 @@ Question: {{ query }}?
 """
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents(
-    [
-        Document(content="I really like summer"),
-        Document(content="My favorite sport is soccer"),
-        Document(content="I don't like reading sci-fi books"),
-        Document(content="I don't like crowded places"),
-    ],
-)
+docstore.write_documents([Document(content="I really like summer"),
+                          Document(content="My favorite sport is soccer"),
+                          Document(content="I don't like reading sci-fi books"),
+                          Document(content="I don't like crowded places"),])
 
-generator = OllamaGenerator(
-    model="zephyr",
-    url="http://localhost:11434",
-    generation_kwargs={
-        "num_predict": 100,
-        "temperature": 0.9,
-    },
-)
+generator = OllamaGenerator(model="zephyr",
+                            url = "http://localhost:11434",
+                            generation_kwargs={
+                              "num_predict": 100,
+                              "temperature": 0.9,
+                              })
 
 pipe = Pipeline()
 pipe.add_component("retriever", InMemoryBM25Retriever(document_store=docstore))
@@ -143,7 +135,8 @@ pipe.add_component("llm", generator)
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-result = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
+result = pipe.run({"prompt_builder": {"query": query},
+									"retriever": {"query": query}})
 
 print(result)
 

@@ -34,22 +34,18 @@ doc_embedder.warm_up()
 # Text taken from PubMed QA Dataset (https://huggingface.co/datasets/pubmed_qa)
 document_list = [
     Document(
-        content=(
-            "Oxidative stress generated within inflammatory joints can produce autoimmune phenomena and joint "
-            "destruction. Radical species with oxidative activity, including reactive nitrogen species, "
-            "represent mediators of inflammation and cartilage damage."
-        ),
+        content=("Oxidative stress generated within inflammatory joints can produce autoimmune phenomena and joint "
+                 "destruction. Radical species with oxidative activity, including reactive nitrogen species, "
+                 "represent mediators of inflammation and cartilage damage."),
         meta={
             "pubid": "25,445,628",
             "long_answer": "yes",
         },
     ),
     Document(
-        content=(
-            "Plasma levels of pancreatic polypeptide (PP) rise upon food intake. Although other pancreatic "
-            "islet hormones, such as insulin and glucagon, have been extensively investigated, PP secretion "
-            "and actions are still poorly understood."
-        ),
+        content=("Plasma levels of pancreatic polypeptide (PP) rise upon food intake. Although other pancreatic "
+                 "islet hormones, such as insulin and glucagon, have been extensively investigated, PP secretion "
+                 "and actions are still poorly understood."),
         meta={
             "pubid": "25,445,712",
             "long_answer": "yes",
@@ -175,22 +171,18 @@ sparse_doc_embedder.warm_up()
 # Text taken from PubMed QA Dataset (https://huggingface.co/datasets/pubmed_qa)
 document_list = [
     Document(
-        content=(
-            "Oxidative stress generated within inflammatory joints can produce autoimmune phenomena and joint "
-            "destruction. Radical species with oxidative activity, including reactive nitrogen species, "
-            "represent mediators of inflammation and cartilage damage."
-        ),
+        content=("Oxidative stress generated within inflammatory joints can produce autoimmune phenomena and joint "
+                 "destruction. Radical species with oxidative activity, including reactive nitrogen species, "
+                 "represent mediators of inflammation and cartilage damage."),
         meta={
             "pubid": "25,445,628",
             "long_answer": "yes",
         },
     ),
     Document(
-        content=(
-            "Plasma levels of pancreatic polypeptide (PP) rise upon food intake. Although other pancreatic "
-            "islet hormones, such as insulin and glucagon, have been extensively investigated, PP secretion "
-            "and actions are still poorly understood."
-        ),
+        content=("Plasma levels of pancreatic polypeptide (PP) rise upon food intake. Although other pancreatic "
+                 "islet hormones, such as insulin and glucagon, have been extensively investigated, PP secretion "
+                 "and actions are still poorly understood."),
         meta={
             "pubid": "25,445,712",
             "long_answer": "yes",
@@ -304,12 +296,12 @@ Usage example:
 ```python
 from haystack_integrations.components.embedders.fastembed import FastembedSparseTextEmbedder
 
-text = (
-    "It clearly says online this will work on a Mac OS system. "
-    "The disk comes and it does not, only Windows. Do Not order this if you have a Mac!!"
-)
+text = ("It clearly says online this will work on a Mac OS system. "
+        "The disk comes and it does not, only Windows. Do Not order this if you have a Mac!!")
 
-sparse_text_embedder = FastembedSparseTextEmbedder(model="prithivida/Splade_PP_en_v1")
+sparse_text_embedder = FastembedSparseTextEmbedder(
+    model="prithivida/Splade_PP_en_v1"
+)
 sparse_text_embedder.warm_up()
 
 sparse_embedding = sparse_text_embedder.run(text)["sparse_embedding"]
@@ -407,12 +399,12 @@ Usage example:
 ```python
 from haystack_integrations.components.embedders.fastembed import FastembedTextEmbedder
 
-text = (
-    "It clearly says online this will work on a Mac OS system. "
-    "The disk comes and it does not, only Windows. Do Not order this if you have a Mac!!"
-)
+text = ("It clearly says online this will work on a Mac OS system. "
+        "The disk comes and it does not, only Windows. Do Not order this if you have a Mac!!")
 
-text_embedder = FastembedTextEmbedder(model="BAAI/bge-small-en-v1.5")
+text_embedder = FastembedTextEmbedder(
+    model="BAAI/bge-small-en-v1.5"
+)
 text_embedder.warm_up()
 
 embedding = text_embedder.run(text)["embedding"]
@@ -632,3 +624,4 @@ Returns a list of documents ranked by their similarity to the given query, using
 
 A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
+

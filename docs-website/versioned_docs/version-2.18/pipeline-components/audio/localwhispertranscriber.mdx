@@ -68,8 +68,7 @@ pipe.add_component("transcriber", LocalWhisperTranscriber(model="tiny"))
 
 pipe.connect("fetcher", "transcriber")
 result = pipe.run(
-    data={"fetcher": {"urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]}},
-)
+    data={"fetcher": {"urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]}})
 print(result["transcriber"]["documents"][0].content)
 ```
 

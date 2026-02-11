@@ -337,7 +337,9 @@ from haystack_integrations.components.retrievers.elasticsearch import Elasticsea
 document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200")
 retriever = ElasticsearchSQLRetriever(document_store=document_store)
 
-result = retriever.run(query="SELECT content, category FROM \"my_index\" WHERE category = 'A'")
+result = retriever.run(
+    query="SELECT content, category FROM \"my_index\" WHERE category = 'A'"
+)
 # result["result"] contains the raw Elasticsearch JSON response
 ```
 
@@ -485,7 +487,6 @@ Elasticsearch cluster.
 Usage example (Elastic Cloud):
 ```python
 from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
-
 document_store = ElasticsearchDocumentStore(
     api_key_id=Secret.from_env_var("ELASTIC_API_KEY_ID", strict=False),
     api_key=Secret.from_env_var("ELASTIC_API_KEY", strict=False),
@@ -495,7 +496,6 @@ document_store = ElasticsearchDocumentStore(
 Usage example (self-hosted Elasticsearch instance):
 ```python
 from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
-
 document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200")
 ```
 In the above example we connect with security disabled just to show the basic usage.
@@ -1193,3 +1193,4 @@ For subsequent pages, pass the `after_key` from the previous response.
 A tuple containing (list of unique values, after_key for pagination).
 The after_key is None when there are no more results. Use it in the `after` parameter
 for the next page.
+

@@ -144,5 +144,9 @@ pipe.add_component("gemini", GoogleAIGeminiGenerator(model="gemini-pro"))
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "gemini")
 
-pipe.run({"prompt_builder": {"country": "France"}})
+pipe.run({
+    "prompt_builder": {
+        "country": "France"
+    }
+})
 ```

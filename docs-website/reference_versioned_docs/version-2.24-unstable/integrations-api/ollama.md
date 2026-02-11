@@ -25,7 +25,7 @@ doc = Document(content="What do llamas say once you have thanked them? No probll
 document_embedder = OllamaDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 ```
 
 <a id="haystack_integrations.components.embedders.ollama.document_embedder.OllamaDocumentEmbedder.__init__"></a>
@@ -139,7 +139,7 @@ from haystack_integrations.components.embedders.ollama import OllamaTextEmbedder
 
 embedder = OllamaTextEmbedder()
 result = embedder.run(text="What do llamas say once you have thanked them? No probllama!")
-print(result["embedding"])
+print(result['embedding'])
 ```
 
 <a id="haystack_integrations.components.embedders.ollama.text_embedder.OllamaTextEmbedder.__init__"></a>
@@ -418,14 +418,12 @@ Usage example:
 ```python
 from haystack_integrations.components.generators.ollama import OllamaGenerator
 
-generator = OllamaGenerator(
-    model="zephyr",
-    url="http://localhost:11434",
-    generation_kwargs={
-        "num_predict": 100,
-        "temperature": 0.9,
-    },
-)
+generator = OllamaGenerator(model="zephyr",
+                            url = "http://localhost:11434",
+                            generation_kwargs={
+                            "num_predict": 100,
+                            "temperature": 0.9,
+                            })
 
 print(generator.run("Who is the best American actor?"))
 ```
@@ -531,3 +529,4 @@ top_p, and others. See the available arguments in
 A dictionary with the following keys:
 - `replies`: The responses from the model
 - `meta`: The metadata collected during the run
+

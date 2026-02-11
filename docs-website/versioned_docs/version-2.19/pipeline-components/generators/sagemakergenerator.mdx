@@ -42,8 +42,8 @@ One notable family of models that needs these custom parameters is Llama2, which
 
 ```python
 generator = SagemakerGenerator(
-    model="jumpstart-dft-meta-textgenerationneuron-llama-2-7b",
-    aws_custom_attributes={"accept_eula": True},
+	model="jumpstart-dft-meta-textgenerationneuron-llama-2-7b",
+	aws_custom_attributes={"accept_eula": True}
 )
 ```
 
@@ -98,5 +98,9 @@ pipe.add_component("llm", SagemakerGenerator(model="jumpstart-dft-hf-llm-falcon-
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-pipe.run({"prompt_builder": {"country": "France"}})
+pipe.run({
+    "prompt_builder": {
+        "country": "France"
+    }
+})
 ```

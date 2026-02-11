@@ -37,7 +37,10 @@ from haystack.utils import Secret
 from haystack_integrations.mistral import MistralOCRDocumentConverter
 from mistralai.models import DocumentURLChunk, ImageURLChunk, FileChunk
 
-converter = MistralOCRDocumentConverter(api_key=Secret.from_env_var("MISTRAL_API_KEY"), model="mistral-ocr-2505")
+converter = MistralOCRDocumentConverter(
+    api_key=Secret.from_env_var("MISTRAL_API_KEY"),
+    model="mistral-ocr-2505"
+)
 
 # Process multiple sources
 sources = [
@@ -54,20 +57,17 @@ raw_responses = result["raw_mistral_response"]  # List of 3 raw responses
 from pydantic import BaseModel, Field
 from haystack_integrations.mistral import MistralOCRDocumentConverter
 
-
 # Define schema for structured image annotations
 class ImageAnnotation(BaseModel):
     image_type: str = Field(..., description="The type of image content")
     short_description: str = Field(..., description="Short natural-language description")
     summary: str = Field(..., description="Detailed summary of the image content")
 
-
 # Define schema for structured document annotations
 class DocumentAnnotation(BaseModel):
     language: str = Field(..., description="Primary language of the document")
     chapter_titles: List[str] = Field(..., description="Detected chapter or section titles")
     urls: List[str] = Field(..., description="URLs found in the text")
-
 
 converter = MistralOCRDocumentConverter(
     model="mistral-ocr-2505",
@@ -220,7 +220,7 @@ doc = Document(content="I love pizza!")
 document_embedder = MistralDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -473,3 +473,4 @@ Serialize this component to a dictionary.
 **Returns**:
 
 The serialized component as a dictionary.
+

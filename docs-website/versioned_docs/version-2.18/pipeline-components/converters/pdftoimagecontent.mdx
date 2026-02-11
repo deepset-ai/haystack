@@ -81,8 +81,8 @@ Question: {{ question }}
 {{ img | templatize_part }}
 {% endfor %}
 {% endmessage %}
-""",
-    ),
+"""
+    )
 )
 pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 
@@ -93,9 +93,9 @@ sources = ["flan_paper.pdf"]
 
 result = pipeline.run(
     data={
-        "image_converter": {"sources": ["flan_paper.pdf"], "page_range": "9"},
-        "chat_prompt_builder": {"question": "What is the main takeaway of Figure 6?"},
-    },
+        "image_converter": {"sources": ["flan_paper.pdf"], "page_range":"9"},
+        "chat_prompt_builder": {"question": "What is the main takeaway of Figure 6?"}
+    }
 )
 print(result["replies"][0].text)
 
@@ -105,6 +105,7 @@ print(result["replies"][0].text)
 ## 'sizes compared to PaLM without finetuning. This highlights the importance of '
 ## 'instruction finetuning combined with CoT for enhancing reasoning '
 ## 'capabilities in models.')
+
 ```
 
 ## Additional References

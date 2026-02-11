@@ -49,6 +49,7 @@ result = captioner.run(image=image)
 
 for caption in result["captions"]:
     print(caption)
+
 ```
 
 You can also set the caption language and the number of results:
@@ -60,8 +61,8 @@ from haystack.dataclasses.byte_stream import ByteStream
 from haystack_integrations.components.generators.google_vertex import VertexAIImageCaptioner
 
 captioner = VertexAIImageCaptioner(
-    number_of_results=3,  # Can't be greater than 3
-    language="it",
+	number_of_results=3, # Can't be greater than 3
+	language="it",
 )
 
 image = ByteStream(data=requests.get("https://raw.githubusercontent.com/silvanocerza/robots/main/robot1.jpg").content)
@@ -69,4 +70,5 @@ result = captioner.run(image=image)
 
 for caption in result["captions"]:
     print(caption)
+
 ```

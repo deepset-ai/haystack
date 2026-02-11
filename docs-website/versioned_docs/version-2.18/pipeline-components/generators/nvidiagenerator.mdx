@@ -92,9 +92,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.generators.nvidia import NvidiaGenerator
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents(
-    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
-)
+docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
 
 query = "What is the capital of France?"
 
@@ -112,23 +110,27 @@ pipe = Pipeline()
 
 pipe.add_component("retriever", InMemoryBM25Retriever(document_store=docstore))
 pipe.add_component("prompt_builder", PromptBuilder(template=template))
-pipe.add_component(
-    "llm",
-    NvidiaGenerator(
-        model="meta/llama3-70b-instruct",
-        api_url="https://integrate.api.nvidia.com/v1",
-        api_key=Secret.from_token("<your-api-key>"),
-        model_arguments={
-            "temperature": 0.2,
-            "top_p": 0.7,
-            "max_tokens": 1024,
-        },
-    ),
-)
+pipe.add_component("llm", NvidiaGenerator(
+    model="meta/llama3-70b-instruct",
+    api_url="https://integrate.api.nvidia.com/v1",
+    api_key=Secret.from_token("<your-api-key>"),
+    model_arguments={
+        "temperature": 0.2,
+        "top_p": 0.7,
+        "max_tokens": 1024,
+    },
+))
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
+res=pipe.run({
+    "prompt_builder": {
+        "query": query
+    },
+    "retriever": {
+        "query": query
+    }
+})
 
 print(res)
 ```

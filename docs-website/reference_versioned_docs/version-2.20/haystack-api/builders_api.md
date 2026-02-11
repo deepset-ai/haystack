@@ -231,15 +231,13 @@ new_template = """
     Question: {{ query }}
     Answer:
     """
-p.run(
-    {
-        "prompt_builder": {
-            "documents": documents,
-            "query": question,
-            "template": new_template,
-        },
+p.run({
+    "prompt_builder": {
+        "documents": documents,
+        "query": question,
+        "template": new_template,
     },
-)
+})
 ```
 To replace the variables in the default template when testing your prompt,
 pass the new variables in the `variables` parameter.
@@ -262,16 +260,14 @@ Question: {{ query }}
 Please provide your answer in {{ answer_language | default('English') }}
 Answer:
 """
-p.run(
-    {
-        "prompt_builder": {
-            "documents": documents,
-            "query": question,
-            "template": language_template,
-            "template_variables": {"answer_language": "German"},
-        },
+p.run({
+    "prompt_builder": {
+        "documents": documents,
+        "query": question,
+        "template": language_template,
+        "template_variables": {"answer_language": "German"},
     },
-)
+})
 ```
 Note that `language_template` introduces variable `answer_language` which is not bound to any pipeline variable.
 If not set otherwise, it will use its default value 'English'.
@@ -557,3 +553,4 @@ Deserialize this component from a dictionary.
 **Returns**:
 
 The deserialized component.
+

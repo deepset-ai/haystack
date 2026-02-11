@@ -89,8 +89,11 @@ from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
 
 llm = MetaLlamaChatGenerator()
-response = llm.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+response = llm.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
 print(response["replies"][0].text)
+
 ```
 
 With streaming and model routing:
@@ -99,12 +102,12 @@ With streaming and model routing:
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
 
-llm = MetaLlamaChatGenerator(
-    model="Llama-3.3-8B-Instruct",
-    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
-)
+llm = MetaLlamaChatGenerator(model="Llama-3.3-8B-Instruct",
+streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
 
-response = llm.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+response = llm.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+    )
 
 ## check the model used for the response
 print("\n\n Model used: ", response["replies"][0].meta["model"])
@@ -132,7 +135,7 @@ document_store.write_documents(
         Document(content="My name is Jean and I live in Paris."),
         Document(content="My name is Mark and I live in Berlin."),
         Document(content="My name is Giorgio and I live in Rome."),
-    ],
+    ]
 )
 
 ## Build a RAG pipeline
@@ -141,8 +144,8 @@ prompt_template = [
         "Given these documents, answer the question.\n"
         "Documents:\n{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
         "Question: {{question}}\n"
-        "Answer:",
-    ),
+        "Answer:"
+    )
 ]
 
 ## Define required variables explicitly
@@ -167,6 +170,6 @@ rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    },
+    }
 )
 ```

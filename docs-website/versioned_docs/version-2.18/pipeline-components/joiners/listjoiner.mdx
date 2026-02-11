@@ -83,12 +83,8 @@ pipe.connect("feedback_prompt_builder.prompt", "feedback_llm.messages")
 pipe.connect("feedback_llm.replies", "list_joiner")
 
 query = "What is nuclear physics?"
-ans = pipe.run(
-    data={
-        "prompt_builder": {"template_variables": {"query": query}},
-        "feedback_prompt_builder": {"template_variables": {"query": query}},
-    },
-)
+ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
+    "feedback_prompt_builder": {"template_variables":{"query": query}}})
 
 print(ans["list_joiner"]["values"])
 ```

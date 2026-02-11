@@ -30,10 +30,11 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 from datasets import load_dataset
 
-
 @super_component
 class HybridRetriever:
-    def __init__(self, document_store: InMemoryDocumentStore, embedder_model: str = "BAAI/bge-small-en-v1.5"):
+    def __init__(
+        self, document_store: InMemoryDocumentStore, embedder_model: str = "BAAI/bge-small-en-v1.5"
+    ):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store)
         bm25_retriever = InMemoryBM25Retriever(document_store)
         text_embedder = SentenceTransformersTextEmbedder(embedder_model)
@@ -48,7 +49,6 @@ class HybridRetriever:
         self.pipeline.connect("text_embedder", "embedding_retriever")
         self.pipeline.connect("bm25_retriever", "document_joiner")
         self.pipeline.connect("embedding_retriever", "document_joiner")
-
 
 dataset = load_dataset("HaystackBot/medrag-pubmed-chunk-with-embeddings", split="train")
 docs = [Document(content=doc["contents"], embedding=doc["embedding"]) for doc in dataset]
@@ -66,7 +66,9 @@ print(result)
 You can optionally map the input names of your SuperComponent to the actual sockets inside the pipeline.
 
 ```python
-input_mapping = {"query": ["retriever.query", "prompt.query"]}
+input_mapping = {
+    "query": ["retriever.query", "prompt.query"]
+}
 ```
 
 ### Output Mapping
@@ -74,7 +76,9 @@ input_mapping = {"query": ["retriever.query", "prompt.query"]}
 You can also map the pipeline's output sockets that you want to expose to the SuperComponent's output names.
 
 ```python
-output_mapping = {"llm.replies": "replies"}
+output_mapping = {
+    "llm.replies": "replies"
+}
 ```
 
 If you don’t provide mappings, SuperComponent will try to auto-detect them. So, if multiple components have outputs with the same name, we recommend using `output_mapping` to avoid conflicts.
@@ -91,7 +95,7 @@ Here is a simple example of initializing a `SuperComponent` with a pipeline:
 from haystack import Pipeline, SuperComponent
 
 with open("pipeline.yaml", "r") as file:
-    pipeline = Pipeline.load(file)
+  pipeline = Pipeline.load(file)
 
 super_component = SuperComponent(pipeline)
 ```
@@ -163,8 +167,8 @@ Creating SuperComponents using the @super_component decorator can induce type or
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-
-    def run(self, *, documents: list[Document]) -> dict[str, list[Document]]: ...
+    def run(self, *, documents: list[Document]) -> dict[str, list[Document]]:
+        ...
     def warm_up(self) -> None:  # noqa: D102
         ...
 ```

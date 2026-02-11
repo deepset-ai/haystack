@@ -25,12 +25,10 @@ import numpy as np
 from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
 from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasEmbeddingRetriever
 
-store = MongoDBAtlasDocumentStore(
-    database_name="haystack_integration_test",
-    collection_name="test_embeddings_collection",
-    vector_search_index="cosine_index",
-    full_text_search_index="full_text_index",
-)
+store = MongoDBAtlasDocumentStore(database_name="haystack_integration_test",
+                                  collection_name="test_embeddings_collection",
+                                  vector_search_index="cosine_index",
+                                  full_text_search_index="full_text_index")
 retriever = MongoDBAtlasEmbeddingRetriever(document_store=store)
 
 results = retriever.run(query_embedding=np.random.random(768).tolist())
@@ -173,12 +171,10 @@ Usage example:
 from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
 from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasFullTextRetriever
 
-store = MongoDBAtlasDocumentStore(
-    database_name="your_existing_db",
-    collection_name="your_existing_collection",
-    vector_search_index="your_existing_index",
-    full_text_search_index="your_existing_index",
-)
+store = MongoDBAtlasDocumentStore(database_name="your_existing_db",
+                                  collection_name="your_existing_collection",
+                                  vector_search_index="your_existing_index",
+                                  full_text_search_index="your_existing_index")
 retriever = MongoDBAtlasFullTextRetriever(document_store=store)
 
 results = retriever.run(query="Lorem ipsum")
@@ -367,12 +363,10 @@ Usage example:
 ```python
 from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
 
-store = MongoDBAtlasDocumentStore(
-    database_name="your_existing_db",
-    collection_name="your_existing_collection",
-    vector_search_index="your_existing_index",
-    full_text_search_index="your_existing_index",
-)
+store = MongoDBAtlasDocumentStore(database_name="your_existing_db",
+                                  collection_name="your_existing_collection",
+                                  vector_search_index="your_existing_index",
+                                  full_text_search_index="your_existing_index")
 print(store.count_documents())
 ```
 
@@ -727,3 +721,4 @@ Asynchronously deletes all documents in the document store.
 - `recreate_collection`: If True, the collection will be dropped and recreated with the original
 configuration and indexes. If False, all documents will be deleted while preserving the collection.
 Recreating the collection is faster for very large collections.
+

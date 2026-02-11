@@ -42,7 +42,9 @@ from haystack import Document
 from haystack.components.rankers import LostInTheMiddleRanker
 
 ranker = LostInTheMiddleRanker()
-docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="Madrid")]
+docs = [Document(content="Paris"),
+		Document(content="Berlin"),
+		Document(content="Madrid")]
 result = ranker.run(documents=docs)
 
 for doc in result["documents"]:
@@ -68,15 +70,15 @@ prompt_template = [
     ChatMessage.from_user(
         "Given these documents, answer the question.\nDocuments:\n"
         "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
-        "Question: {{query}}\nAnswer:",
-    ),
+        "Question: {{query}}\nAnswer:"
+    )
 ]
 
 ## Define documents
 docs = [
     Document(content="Paris is in France..."),
     Document(content="Berlin is in Germany..."),
-    Document(content="Lyon is in France..."),
+    Document(content="Lyon is in France...")
 ]
 
 document_store = InMemoryDocumentStore()
@@ -97,10 +99,8 @@ p.connect("retriever.documents", "ranker.documents")
 p.connect("ranker.documents", "prompt_builder.documents")
 p.connect("prompt_builder.messages", "llm.messages")
 
-p.run(
-    {
-        "retriever": {"query": "What cities are in France?", "top_k": 3},
-        "prompt_builder": {"query": "What cities are in France?"},
-    },
-)
+p.run({
+    "retriever": {"query": "What cities are in France?", "top_k": 3},
+    "prompt_builder": {"query": "What cities are in France?"}
+})
 ```

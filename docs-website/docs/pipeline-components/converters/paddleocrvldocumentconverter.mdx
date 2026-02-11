@@ -78,7 +78,7 @@ pipeline.add_component(
     PaddleOCRVLDocumentConverter(
         api_url="<your-api-url>",
         access_token=Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
-    ),
+    )
 )
 pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
