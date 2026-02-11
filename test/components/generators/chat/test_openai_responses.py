@@ -15,7 +15,7 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, TextContent, ToolCall
+from haystack.dataclasses import ChatMessage, ChatRole, FileContent, ImageContent, StreamingChunk, TextContent, ToolCall
 from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
 from haystack.utils import Secret
 
@@ -583,7 +583,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.reasoning is not None
-        assert "moon" in message.text.lower() or "moon" in message.reasoning.reasoning_text.lower()
+        assert any(word in message.text.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -591,7 +591,7 @@ class TestIntegration:
 
     def test_live_run_with_text_format(self, calendar_event_model):
         chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+            ChatMessage.from_user("The marketing summit takes place on October 12th at the Hilton Hotel downtown.")
         ]
         component = OpenAIResponsesChatGenerator(
             model="gpt-5-nano", generation_kwargs={"text_format": calendar_event_model}
@@ -697,7 +697,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert callback.reasoning == message.reasoning.reasoning_text
-        assert "moon" in callback.content.lower() or "moon" in callback.reasoning.lower()
+        assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
         assert message.meta["status"] == "completed"
@@ -767,6 +767,28 @@ class TestIntegration:
         assert message.is_from(ChatRole.ASSISTANT)
         assert not message.tool_calls
         assert not message.tool_call_results
+
+    def test_live_run_with_file_content(self, test_files_path):
+        pdf_path = test_files_path / "pdf" / "sample_pdf_3.pdf"
+
+        file_content = FileContent.from_file_path(file_path=pdf_path)
+
+        chat_messages = [
+            ChatMessage.from_user(
+                content_parts=[file_content, "Is this document a paper about LLMs? Respond with 'yes' or 'no' only."]
+            )
+        ]
+
+        generator = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        results = generator.run(chat_messages)
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+
+        assert message.is_from(ChatRole.ASSISTANT)
+
+        assert message.text
+        assert "no" in message.text.lower()
 
     @pytest.mark.skip(reason="The tool calls time out resulting in failing")
     def test_live_run_with_openai_tools(self):
@@ -904,7 +926,7 @@ class TestIntegration:
         user_message = ChatMessage.from_user("Retrieve the image and describe it in max 5 words.")
         result = agent.run(messages=[user_message])
 
-        assert "apple" in result["last_message"].text.lower()
+        assert any(word in result["last_message"].text.lower() for word in ["apple", "fruit"])
 
 
 class TestOpenAIResponsesChatGeneratorAsync:

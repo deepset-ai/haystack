@@ -78,7 +78,7 @@ class Pipeline(PipelineBase):
             logger.info("Running component {component_name}", component_name=component_name)
 
             try:
-                component_output = instance.run(**inputs)
+                component_output = instance.run(**_deepcopy_with_exceptions(inputs))
             except BreakpointException as error:
                 # Re-raise BreakpointException to preserve the original exception context
                 # This is important when Agent components internally use Pipeline._run_component

@@ -20,6 +20,7 @@ _import_structure = {
     "byte_stream": ["ByteStream"],
     "chat_message": ["ChatMessage", "ChatRole", "ReasoningContent", "TextContent", "ToolCall", "ToolCallResult"],
     "image_content": ["ImageContent"],
+    "file_content": ["FileContent"],
     "document": ["Document"],
     "sparse_embedding": ["SparseEmbedding"],
     "state": ["State"],
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
     from .chat_message import ToolCall as ToolCall
     from .chat_message import ToolCallResult as ToolCallResult
     from .document import Document as Document
+    from .file_content import FileContent as FileContent
     from .image_content import ImageContent as ImageContent
     from .sparse_embedding import SparseEmbedding as SparseEmbedding
     from .streaming_chunk import AsyncStreamingCallbackT as AsyncStreamingCallbackT

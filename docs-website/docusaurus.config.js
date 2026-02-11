@@ -53,7 +53,7 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.24-unstable',
+              label: '2.25-unstable',
               path: 'next',
               banner: 'unreleased',
             },
@@ -97,7 +97,7 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.24-unstable',
+            label: '2.25-unstable',
             path: 'next',
             banner: 'unreleased',
           },

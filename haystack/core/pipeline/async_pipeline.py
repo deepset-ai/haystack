@@ -73,7 +73,7 @@ class AsyncPipeline(PipelineBase):
 
             if getattr(instance, "__haystack_supports_async__", False):
                 try:
-                    outputs = await instance.run_async(**component_inputs)  # type: ignore
+                    outputs = await instance.run_async(**_deepcopy_with_exceptions(component_inputs))  # type: ignore
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             else:
@@ -83,7 +83,7 @@ class AsyncPipeline(PipelineBase):
                 ctx = contextvars.copy_context()
                 try:
                     outputs = await loop.run_in_executor(
-                        None, lambda: ctx.run(lambda: instance.run(**component_inputs))
+                        None, lambda: ctx.run(lambda: instance.run(**_deepcopy_with_exceptions(component_inputs)))
                     )
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
