@@ -179,7 +179,7 @@ class LLMDocumentContentExtractor:
         :returns:
             An instance of the component.
         """
-        init_params = data.get("init_parameters", data)
+        init_params = data.get("init_parameters", {})
         deserialize_chatgenerator_inplace(init_params, key="chat_generator")
 
         return default_from_dict(cls, data)
