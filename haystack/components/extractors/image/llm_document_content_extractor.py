@@ -151,7 +151,7 @@ class LLMDocumentContentExtractor:
         :param prompt: Prompt for extraction. Must not contain Jinja variables.
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
-            document metadata will be resolved relative to this path. If None, file paths are treated as absolute.
+            document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
         :param detail: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
         :param size: If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
         :param raise_on_failure: If True, exceptions from the LLM are raised. If False, failed documents are returned.
