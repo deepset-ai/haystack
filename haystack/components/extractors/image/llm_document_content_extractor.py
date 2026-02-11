@@ -81,6 +81,15 @@ class LLMDocumentContentExtractor:
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.extractors.image import LLMDocumentContentExtractor
 
+    prompt = \"\"\"
+    Extract the content from the provided image.
+    Format everything as markdown. Return only the extracted content as a JSON object with the key 'document_content'.
+    No markdown, no code fence, only raw JSON.
+
+    Extract metadata about the image like source of the image, date of creation, etc. if you can.
+    Return this metadata as additional key-value pairs in the same JSON object.
+    \"\"\"
+
     chat_generator = OpenAIChatGenerator()
     extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
     documents = [
