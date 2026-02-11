@@ -786,6 +786,89 @@ Deserialize this component from a dictionary.
 
 The deserialized component.
 
+<a id="markdown_header_splitter"></a>
+
+## Module markdown\_header\_splitter
+
+<a id="markdown_header_splitter.MarkdownHeaderSplitter"></a>
+
+### MarkdownHeaderSplitter
+
+Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
+
+This component processes text documents by:
+- Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
+- Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+  (using haystack's DocumentSplitter).
+- Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
+
+<a id="markdown_header_splitter.MarkdownHeaderSplitter.__init__"></a>
+
+#### MarkdownHeaderSplitter.\_\_init\_\_
+
+```python
+def __init__(*,
+             page_break_character: str = "\f",
+             keep_headers: bool = True,
+             secondary_split: Literal["word", "passage", "period", "line"]
+             | None = None,
+             split_length: int = 200,
+             split_overlap: int = 0,
+             split_threshold: int = 0,
+             skip_empty_documents: bool = True)
+```
+
+Initialize the MarkdownHeaderSplitter.
+
+**Arguments**:
+
+- `page_break_character`: Character used to identify page breaks. Defaults to form feed ("").
+- `keep_headers`: If True, headers are kept in the content. If False, headers are moved to metadata.
+Defaults to True.
+- `secondary_split`: Optional secondary split condition after header splitting.
+Options are None, "word", "passage", "period", "line". Defaults to None.
+- `split_length`: The maximum number of units in each split when using secondary splitting. Defaults to 200.
+- `split_overlap`: The number of overlapping units for each split when using secondary splitting.
+Defaults to 0.
+- `split_threshold`: The minimum number of units per split when using secondary splitting. Defaults to 0.
+- `skip_empty_documents`: Choose whether to skip documents with empty content. Default is True.
+Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
+from non-textual documents.
+
+<a id="markdown_header_splitter.MarkdownHeaderSplitter.warm_up"></a>
+
+#### MarkdownHeaderSplitter.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the MarkdownHeaderSplitter.
+
+<a id="markdown_header_splitter.MarkdownHeaderSplitter.run"></a>
+
+#### MarkdownHeaderSplitter.run
+
+```python
+@component.output_types(documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Run the markdown header splitter with optional secondary splitting.
+
+**Arguments**:
+
+- `documents`: List of documents to split
+
+**Returns**:
+
+A dictionary with the following key:
+- `documents`: List of documents with the split texts. Each document includes:
+- A metadata field `source_id` to track the original document.
+- A metadata field `page_number` to track the original page number.
+- A metadata field `split_id` to identify the split chunk index within its parent document.
+- All other metadata copied from the original document.
+
 <a id="recursive_splitter"></a>
 
 ## Module recursive\_splitter
