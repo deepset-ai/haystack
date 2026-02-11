@@ -11,13 +11,13 @@ description: "`ChatMessage` is the central abstraction to represent a message fo
 
 To create a `ChatMessage` instance, use `from_user`, `from_system`, `from_assistant`, and `from_tool` class methods.
 
-The [content](#types-of-content) of the `ChatMessage` can then be inspected using the `text`, `texts`, `image`, `images`, `tool_call`, `tool_calls`, `tool_call_result`, `tool_call_results`, `reasoning`, and `reasonings` properties.
+The [content](#types-of-content) of the `ChatMessage` can then be inspected using the `text`, `texts`, `image`, `images`, `file`, `files`, `tool_call`, `tool_calls`, `tool_call_result`, `tool_call_results`, `reasoning`, and `reasonings` properties.
 
 If you are looking for the details of this data class methods and parameters, head over to our [API documentation](/reference/data-classes-api#chatmessage).
 
 ## Types of Content
 
-`ChatMessage` currently supports `TextContent`, `ImageContent`, `ToolCall`, `ToolCallResult`, and `ReasoningContent` types of content:
+`ChatMessage` currently supports `TextContent`, `ImageContent`, `FileContent`, `ToolCall`, `ToolCallResult`, and `ReasoningContent` types of content:
 
 ```python
 @dataclass
@@ -57,7 +57,7 @@ class ToolCallResult:
     :param error: Whether the Tool invocation resulted in an error.
     """
 
-    result: str
+    result: str | Sequence[TextContent | ImageContent]
     origin: ToolCall
     error: bool
 
@@ -86,6 +86,30 @@ class ImageContent:
     validation: bool = True
 
 @dataclass
+class FileContent:
+    """
+    The file content of a chat message.
+
+    :param base64_file: A base64 string representing the file.
+    :param mime_type: The MIME type of the file (e.g. "application/pdf").
+        Providing this value is recommended, as most LLM providers require it.
+        If not provided, the MIME type is guessed from the base64 string, which can be slow and not always reliable.
+    :param filename: Optional filename of the file. Some LLM providers use this information.
+    :param extra: Dictionary of extra information about the file. Can be used to store provider-specific information.
+        To avoid serialization issues, values should be JSON serializable.
+    :param validation: If True (default), a validation process is performed:
+        - Check whether the base64 string is valid;
+        - Guess the MIME type if not provided.
+        Set to False to skip validation and speed up initialization.
+    """
+
+    base64_data: str
+    mime_type: str | None = None
+    filename: str | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
+    validation: bool = True
+
+@dataclass
 class ReasoningContent:
     """
     Represents the optional reasoning content prepared by the model, usually contained in an assistant message.
@@ -100,7 +124,8 @@ class ReasoningContent:
 
 ```
 
-The `ImageContent` dataclass also provides two convenience class methods: `from_file_path` and `from_url`. For more details, refer to our [API documentation](/reference/data-classes-api#imagecontent).
+The `ImageContent` and `FileContent` dataclasses also provide two convenience class methods: `from_file_path` and `from_url`.
+For more details, refer to our [API documentation](/reference/data-classes-api).
 
 ## Working with a ChatMessage
 
@@ -180,6 +205,52 @@ print(user_message.image)
 >>>         'content_type': 'image/jpeg',
 >>>         'url': '...'
 >>>     }
+>>> )
+```
+
+### from_user with TextContent and FileContent
+
+```python
+from haystack.dataclasses import ChatMessage, FileContent
+
+paper_url = "https://arxiv.org/pdf/2309.08632"
+
+file_content = FileContent.from_url(paper_url)
+
+user_message = ChatMessage.from_user(
+	content_parts=[
+        file_content,
+        "Summarize this paper in 100 words."
+		])
+
+print(user_message)
+>>> ChatMessage(
+>>>     _role=<ChatRole.USER: 'user'>,
+>>>     _content=[
+>>>         FileContent(
+>>>             base64_datta='JVBERi0...',
+>>>             mime_type='application/pdf',
+>>>             filename='2309.08632',
+>>>             extra={}
+>>>         ),
+>>>         TextContent(text='Summarize this paper in 100 words.')
+>>>     ],
+>>>     _name=None,
+>>>     _meta={}
+>>> )
+
+print(user_message.text)
+>>> Summarize this paper in 100 words.
+
+print(user_message.texts)
+>>> ['Summarize this paper in 100 words.']
+
+print(user_message.file)
+>>> FileContent(
+>>>     base64_datta='JVBERi0...',
+>>>     mime_type='application/pdf',
+>>>     filename='2309.08632',
+>>>     extra={}
 >>> )
 ```
 
