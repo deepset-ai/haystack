@@ -105,7 +105,6 @@ from pathlib import Path
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.converters.txt import TextFileToDocument
-from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.preprocessors import MarkdownHeaderSplitter
 from haystack.components.writers import DocumentWriter
 
@@ -113,11 +112,9 @@ document_store = InMemoryDocumentStore()
 
 p = Pipeline()
 p.add_component("text_file_converter", TextFileToDocument())
-p.add_component("cleaner", DocumentCleaner())
 p.add_component("splitter", MarkdownHeaderSplitter(keep_headers=True))
 p.add_component("writer", DocumentWriter(document_store=document_store))
-p.connect("text_file_converter.documents", "cleaner.documents")
-p.connect("cleaner.documents", "splitter.documents")
+p.connect("text_file_converter.documents", "splitter.documents")
 p.connect("splitter.documents", "writer.documents")
 
 path = "path/to/your/files"
