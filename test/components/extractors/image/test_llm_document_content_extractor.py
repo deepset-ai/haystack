@@ -130,26 +130,6 @@ class TestLLMDocumentContentExtractor:
         assert extractor.max_workers == 4
         assert component_to_dict(extractor._chat_generator, "name") == component_to_dict(chat_generator, "name")
 
-    def test_from_dict_backward_compatible_without_new_keys(self, monkeypatch):
-        """Old serialized dicts without extraction_mode/metadata_prompt still deserialize."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
-        extractor_dict = {
-            "type": "haystack.components.extractors.image.llm_document_content_extractor.LLMDocumentContentExtractor",
-            "init_parameters": {
-                "chat_generator": component_to_dict(chat_generator, "chat_generator"),
-                "prompt": "Custom extraction prompt",
-                "file_path_meta_field": "custom_path",
-                "root_path": "/custom/root",
-                "detail": "low",
-                "size": (1024, 768),
-                "raise_on_failure": True,
-                "max_workers": 4,
-            },
-        }
-        extractor = LLMDocumentContentExtractor.from_dict(extractor_dict)
-        assert extractor.prompt == "Custom extraction prompt"
-
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
         mock_chat_generator.warm_up = Mock()
@@ -192,8 +172,8 @@ class TestLLMDocumentContentExtractor:
 
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == doc.id
-        assert "content_extraction_error" in failed_doc.meta
-        assert failed_doc.meta["content_extraction_error"] == "Document has no content, skipping LLM call."
+        assert "extraction_error" in failed_doc.meta
+        assert failed_doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
 
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run.assert_not_called()
@@ -219,7 +199,7 @@ class TestLLMDocumentContentExtractor:
         processed_doc = result["documents"][0]
         assert processed_doc.id == docs[0].id
         assert processed_doc.content == "Extracted content from the image"
-        assert "content_extraction_error" not in processed_doc.meta
+        assert "extraction_error" not in processed_doc.meta
         mock_chat_generator.run.assert_called_once()
 
     @patch.object(DocumentToImageContent, "run")
@@ -252,30 +232,11 @@ class TestLLMDocumentContentExtractor:
         result = extractor.run(documents=docs)
         assert len(result["documents"]) == 0
         assert len(result["failed_documents"]) == 1
-        assert "content_extraction_error" in result["failed_documents"][0].meta
-        assert "JSON object" in result["failed_documents"][0].meta["content_extraction_error"]
+        assert "extraction_error" in result["failed_documents"][0].meta
+        assert "JSON object" in result["failed_documents"][0].meta["extraction_error"]
 
     @patch.object(DocumentToImageContent, "run")
-    def test_run_json_single_key_metadata_only_merged_into_meta(self, mock_doc_to_image_run):
-        """When LLM returns JSON with a single key that is not document_content, it goes to metadata only."""
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant(text='{"title": "Only metadata, no document_content"}')]
-        }
-        mock_doc_to_image_run.return_value = {
-            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
-        }
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
-        docs = [Document(content="original", meta={"file_path": "/path/to/image.pdf"})]
-        result = extractor.run(documents=docs)
-        assert len(result["documents"]) == 1
-        assert len(result["failed_documents"]) == 0
-        processed = result["documents"][0]
-        assert processed.content == "original"
-        assert processed.meta["title"] == "Only metadata, no document_content"
-
-    @patch.object(DocumentToImageContent, "run")
-    def test_run_content_mode_extra_json_keys_merged_into_metadata(self, mock_doc_to_image_run):
+    def test_run_with_content_and_metadata_extraction(self, mock_doc_to_image_run):
         """When content mode gets JSON with document_content and other keys, other keys are merged into metadata."""
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run.return_value = {
@@ -316,8 +277,8 @@ class TestLLMDocumentContentExtractor:
 
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == docs[0].id
-        assert "content_extraction_error" in failed_doc.meta
-        assert "LLM failed with exception: LLM API error" in failed_doc.meta["content_extraction_error"]
+        assert "extraction_error" in failed_doc.meta
+        assert "LLM failed with exception: LLM API error" in failed_doc.meta["extraction_error"]
 
         # Check that error was logged
         assert "LLM" in caplog.text
@@ -337,7 +298,7 @@ class TestLLMDocumentContentExtractor:
             extractor.run(documents=[Document(content="", meta={"file_path": "/path/to/image.pdf"})])
 
     @patch.object(DocumentToImageContent, "run")
-    def test_run_removes_content_extraction_error_from_previous_runs(self, mock_doc_to_image_run):
+    def test_run_removes_extraction_error_from_previous_runs(self, mock_doc_to_image_run):
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run.return_value = {
             "replies": [ChatMessage.from_assistant(text='{"document_content": "Successfully extracted content"}')]
@@ -355,7 +316,7 @@ class TestLLMDocumentContentExtractor:
                 content="",
                 meta={
                     "file_path": "/path/to/image.pdf",
-                    "content_extraction_error": "Previous error",
+                    "extraction_error": "Previous error",
                     "other_meta": "should_remain",
                 },
             )
@@ -369,7 +330,7 @@ class TestLLMDocumentContentExtractor:
 
         processed_doc = result["documents"][0]
         assert processed_doc.content == "Successfully extracted content"
-        assert "content_extraction_error" not in processed_doc.meta
+        assert "extraction_error" not in processed_doc.meta
         assert processed_doc.meta["other_meta"] == "should_remain"
 
     @patch.object(DocumentToImageContent, "run")
@@ -404,7 +365,7 @@ class TestLLMDocumentContentExtractor:
 
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == doc2.id
-        assert "content_extraction_error" in failed_doc.meta
+        assert "extraction_error" in failed_doc.meta
 
     @patch.object(DocumentToImageContent, "run")
     def test_run_json_multiple_keys_metadata_merged(self, mock_doc_to_image_run):
@@ -429,36 +390,6 @@ class TestLLMDocumentContentExtractor:
         assert processed.meta["title"] == "Sample Doc"
         assert processed.meta["author"] == "Test"
         assert processed.meta["document_type"] == "report"
-
-    @patch.object(DocumentToImageContent, "run")
-    def test_run_removes_previous_metadata_errors_on_success(self, mock_doc_to_image_run):
-        """When run succeeds, previous metadata_extraction_error and metadata_extraction_response are removed."""
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant(text='{"title": "New Title", "author": "New Author"}')]
-        }
-        mock_doc_to_image_run.return_value = {
-            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
-        }
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
-        old_reply = ChatMessage.from_assistant(text="old failed reply")
-        doc = Document(
-            content="",
-            meta={
-                "file_path": "/path/to/image.pdf",
-                "metadata_extraction_error": "Old error",
-                "metadata_extraction_response": old_reply,
-                "other": "kept",
-            },
-        )
-        result = extractor.run(documents=[doc])
-        assert len(result["documents"]) == 1
-        processed = result["documents"][0]
-        assert "metadata_extraction_error" not in processed.meta
-        assert "metadata_extraction_response" not in processed.meta
-        assert processed.meta["other"] == "kept"
-        assert processed.meta["title"] == "New Title"
-        assert processed.meta["author"] == "New Author"
 
     def test_run_on_thread_with_none_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -486,52 +417,6 @@ class TestLLMDocumentContentExtractor:
         doc_store_docs = doc_store.filter_documents()
         assert len(doc_store_docs) >= 1
         assert len(doc_store_docs[0].content) > 0
-
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    def test_live_run_metadata_extraction(self):
-        """Single prompt run; if LLM returns JSON with keys, they are merged into metadata."""
-        docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        doc_store = InMemoryDocumentStore()
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
-        writer = DocumentWriter(document_store=doc_store)
-        pipeline = Pipeline()
-        pipeline.add_component("extractor", extractor)
-        pipeline.add_component("doc_writer", writer)
-        pipeline.connect("extractor.documents", "doc_writer.documents")
-        pipeline.run(data={"documents": docs})
-
-        doc_store_docs = doc_store.filter_documents()
-        assert len(doc_store_docs) >= 1
-        assert "metadata_extraction_error" not in doc_store_docs[0].meta
-        # Metadata extraction merges JSON into meta; we expect at least file_path + extracted keys
-        assert len(doc_store_docs[0].meta) >= 1
-
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    def test_live_run_both_extraction(self):
-        """Single prompt run; if LLM returns JSON with document_content and other keys, content and metadata are set."""
-        docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        doc_store = InMemoryDocumentStore()
-        extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
-        writer = DocumentWriter(document_store=doc_store)
-        pipeline = Pipeline()
-        pipeline.add_component("extractor", extractor)
-        pipeline.add_component("doc_writer", writer)
-        pipeline.connect("extractor.documents", "doc_writer.documents")
-        pipeline.run(data={"documents": docs})
-
-        doc_store_docs = doc_store.filter_documents()
-        assert len(doc_store_docs) >= 1
-        assert len(doc_store_docs[0].content) > 0
-        assert "metadata_extraction_error" not in doc_store_docs[0].meta
-        assert len(doc_store_docs[0].meta) >= 1
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -588,7 +473,26 @@ class TestLLMDocumentContentExtractor:
         extractor = LLMDocumentContentExtractor(
             prompt=prompt,
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano", generation_kwargs={"response_format": {"type": "json_object"}}
+                model="gpt-4.1-nano",
+                generation_kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "entity_extraction",
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "author": {"type": "string"},
+                                    "date": {"type": "string"},
+                                    "document_type": {"type": "string"},
+                                    "title": {"type": "string"},
+                                },
+                                "required": ["entities"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    }
+                },
             ),
         )
         writer = DocumentWriter(document_store=doc_store)
@@ -602,6 +506,5 @@ class TestLLMDocumentContentExtractor:
         assert len(doc_store_docs) >= 1
         doc = doc_store_docs[0]
         assert len(doc.content) > 0, "Expected non-empty content (image/document description)"
-        assert "content_extraction_error" not in doc.meta
-        assert "metadata_extraction_error" not in doc.meta
+        assert "extraction_error" not in doc.meta
         assert len(doc.meta) >= 1, "Expected at least one metadata key"

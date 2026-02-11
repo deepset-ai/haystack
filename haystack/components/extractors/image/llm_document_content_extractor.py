@@ -252,21 +252,19 @@ class LLMDocumentContentExtractor:
         Returns (updated_document, True if success else False).
         """
         if "error" in result:
-            new_meta = {**document.meta, "content_extraction_error": result["error"]}
+            new_meta = {**document.meta, "extraction_error": result["error"]}
             return replace(document, meta=new_meta), False
 
         # remove potentially existing error metadata from previous runs
         new_meta = {**document.meta}
-        new_meta.pop("content_extraction_error", None)
-        new_meta.pop("metadata_extraction_error", None)
-        new_meta.pop("metadata_extraction_response", None)
+        new_meta.pop("extraction_error", None)
 
         # process the LLM response considering the possible response formats
         response_text = result["replies"][0].text
-        content, meta_updates, content_error = LLMDocumentContentExtractor._process_response(response_text)
+        content, meta_updates, error = LLMDocumentContentExtractor._process_response(response_text)
 
-        if content_error:
-            new_meta["content_extraction_error"] = content_error
+        if error:
+            new_meta["extraction_error"] = error
             return replace(document, meta=new_meta), False
 
         new_meta.update(meta_updates)
