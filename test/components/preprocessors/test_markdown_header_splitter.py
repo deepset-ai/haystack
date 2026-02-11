@@ -30,6 +30,24 @@ def sample_text():
     )
 
 
+@pytest.fixture
+def sample_text_with_page_breaks():
+    return (
+        "# Header 1\n"
+        "Content under header 1.\n\f\n"
+        "## Header 1.1\n"
+        "### Subheader 1.1.1\n"
+        "Content under sub-header 1.1.1\n\f\n"
+        "## Header 1.2\n"
+        "### Subheader 1.2.1\n"
+        "Content under header 1.2.1.\n\f\n"
+        "### Subheader 1.2.2\n"
+        "Content under header 1.2.2.\n\f\n"
+        "### Subheader 1.2.3\n"
+        "Content under header 1.2.3."
+    )
+
+
 # Basic splitting and structure
 def test_basic_split(sample_text):
     splitter = MarkdownHeaderSplitter()
@@ -422,91 +440,133 @@ def test_page_break_handling_in_secondary_split():
     assert actual_page_numbers == expected_page_numbers
 
 
-def test_page_break_handling_with_multiple_headers():
-    text = "# Header\nFirst page\f Second page\f Third page"
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1)
-    docs = [Document(content=text)]
+def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks):
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3)
+    docs = [Document(content=sample_text_with_page_breaks)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    assert len(split_docs) == 7
+    assert len(split_docs) == 12
 
-    # Split 1
-    assert split_docs[0].content == "# "
+    assert split_docs[0].content == "# Header 1\nContent "
     assert split_docs[0].meta == {
         "source_id": ANY,
-        "page_number": 1,
         "split_id": 0,
+        "page_number": 1,
         "split_idx_start": 0,
-        "header": "Header",
+        "header": "Header 1",
         "parent_headers": [],
     }
 
-    # Split 2
-    assert split_docs[1].content == "Header\nFirst "
+    assert split_docs[1].content == "under header 1.\n\f\n"
     assert split_docs[1].meta == {
         "source_id": ANY,
-        "page_number": 1,
         "split_id": 1,
-        "split_idx_start": 2,
-        "header": "Header",
+        "page_number": 1,
+        "split_idx_start": 19,
+        "header": "Header 1",
         "parent_headers": [],
     }
 
-    # Split 3
-    assert split_docs[2].content == "page\f "
+    assert split_docs[2].content == "## Header 1.1\n### "
     assert split_docs[2].meta == {
         "source_id": ANY,
-        "page_number": 1,
         "split_id": 2,
-        "split_idx_start": 15,
-        "header": "Header",
-        "parent_headers": [],
+        "page_number": 2,
+        "split_idx_start": 0,
+        "header": "Subheader 1.1.1",
+        "parent_headers": ["Header 1", "Header 1.1"],
     }
 
-    # Split 4
-    assert split_docs[3].content == "Second "
+    assert split_docs[3].content == "Subheader 1.1.1\nContent under "
     assert split_docs[3].meta == {
         "source_id": ANY,
-        "page_number": 2,
         "split_id": 3,
-        "split_idx_start": 21,
-        "header": "Header",
-        "parent_headers": [],
+        "page_number": 2,
+        "split_idx_start": 18,
+        "header": "Subheader 1.1.1",
+        "parent_headers": ["Header 1", "Header 1.1"],
     }
 
-    # Split 5
-    assert split_docs[4].content == "page\f "
+    assert split_docs[4].content == "sub-header 1.1.1\n\f\n"
     assert split_docs[4].meta == {
         "source_id": ANY,
-        "page_number": 2,
         "split_id": 4,
-        "split_idx_start": 28,
-        "header": "Header",
-        "parent_headers": [],
+        "page_number": 2,
+        "split_idx_start": 48,
+        "header": "Subheader 1.1.1",
+        "parent_headers": ["Header 1", "Header 1.1"],
     }
 
-    # Split 6
-    assert split_docs[5].content == "Third "
+    assert split_docs[5].content == "## Header 1.2\n### "
     assert split_docs[5].meta == {
         "source_id": ANY,
-        "page_number": 3,
         "split_id": 5,
-        "split_idx_start": 34,
-        "header": "Header",
-        "parent_headers": [],
+        "page_number": 3,
+        "split_idx_start": 0,
+        "header": "Subheader 1.2.1",
+        "parent_headers": ["Header 1", "Header 1.2"],
     }
 
-    # Split 7
-    assert split_docs[6].content == "page"
+    assert split_docs[6].content == "Subheader 1.2.1\nContent under "
     assert split_docs[6].meta == {
         "source_id": ANY,
-        "page_number": 3,
         "split_id": 6,
-        "split_idx_start": 40,
-        "header": "Header",
-        "parent_headers": [],
+        "page_number": 3,
+        "split_idx_start": 18,
+        "header": "Subheader 1.2.1",
+        "parent_headers": ["Header 1", "Header 1.2"],
     }
 
-    # Reconstruct original text
+    assert split_docs[7].content == "header 1.2.1.\n\f\n"
+    assert split_docs[7].meta == {
+        "source_id": ANY,
+        "split_id": 7,
+        "page_number": 3,
+        "split_idx_start": 48,
+        "header": "Subheader 1.2.1",
+        "parent_headers": ["Header 1", "Header 1.2"],
+    }
+
+    assert split_docs[8].content == "### Subheader 1.2.2\nContent "
+    assert split_docs[8].meta == {
+        "source_id": ANY,
+        "split_id": 8,
+        "page_number": 4,
+        "split_idx_start": 0,
+        "header": "Subheader 1.2.2",
+        "parent_headers": ["Header 1", "Header 1.2"],
+    }
+
+    assert split_docs[9].content == "under header 1.2.2.\n\f\n"
+    assert split_docs[9].meta == {
+        "source_id": ANY,
+        "split_id": 9,
+        "page_number": 4,
+        "split_idx_start": 28,
+        "header": "Subheader 1.2.2",
+        "parent_headers": ["Header 1", "Header 1.2"],
+    }
+
+    assert split_docs[10].content == "### Subheader 1.2.3\nContent "
+    assert split_docs[10].meta == {
+        "source_id": ANY,
+        "split_id": 10,
+        "page_number": 5,
+        "split_idx_start": 0,
+        "header": "Subheader 1.2.3",
+        "parent_headers": ["Header 1", "Header 1.2"],
+    }
+
+    assert split_docs[11].content == "under header 1.2.3."
+    assert split_docs[11].meta == {
+        "source_id": ANY,
+        "split_id": 11,
+        "page_number": 5,
+        "split_idx_start": 28,
+        "header": "Subheader 1.2.3",
+        "parent_headers": ["Header 1", "Header 1.2"],
+    }
+
+    # reconstruct original
     reconstructed_text = "".join(doc.content for doc in split_docs)
-    assert reconstructed_text == text
+    assert reconstructed_text == sample_text_with_page_breaks
