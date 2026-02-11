@@ -265,7 +265,8 @@ def __init__(*,
              filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
              custom_query: dict[str, Any] | None = None,
              raise_on_failure: bool = True,
-             efficient_filtering: bool = False)
+             efficient_filtering: bool = False,
+             search_kwargs: dict[str, Any] | None = None)
 ```
 
 Create the OpenSearchEmbeddingRetriever component.
@@ -323,6 +324,18 @@ retriever.run(
 If `False`, logs a warning and returns an empty list.
 - `efficient_filtering`: If `True`, the filter will be applied during the approximate kNN search.
 This is only supported for knn engines "faiss" and "lucene" and does not work with the default "nmslib".
+- `search_kwargs`: Additional keyword arguments for finetuning the embedding search.
+E.g., to specify `k` and `ef_search`
+```python
+{
+    "k": 20, # See https://docs.opensearch.org/latest/vector-search/vector-search-techniques/approximate-knn/`the`-number-of-returned-results
+    "method_parameters": {
+        "ef_search": 512, # See https://docs.opensearch.org/latest/query-dsl/specialized/k-nn/index/`ef_search`
+    }
+}
+```
+For a full list of available parameters, see the OpenSearch documentation:
+https://docs.opensearch.org/latest/query-dsl/specialized/k-nn/index/`request`-body-fields
 
 **Raises**:
 
@@ -367,14 +380,14 @@ Deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(
-    query_embedding: list[float],
-    filters: dict[str, Any] | None = None,
-    top_k: int | None = None,
-    custom_query: dict[str, Any] | None = None,
-    efficient_filtering: bool | None = None,
-    document_store: OpenSearchDocumentStore | None = None
-) -> dict[str, list[Document]]
+def run(query_embedding: list[float],
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        custom_query: dict[str, Any] | None = None,
+        efficient_filtering: bool | None = None,
+        document_store: OpenSearchDocumentStore | None = None,
+        search_kwargs: dict[str, Any] | None = None
+        ) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using a vector similarity metric.
@@ -429,6 +442,19 @@ retriever.run(
 - `efficient_filtering`: If `True`, the filter will be applied during the approximate kNN search.
 This is only supported for knn engines "faiss" and "lucene" and does not work with the default "nmslib".
 - `document_store`: Optional instance of OpenSearchDocumentStore to use with the Retriever.
+- `search_kwargs`: Additional keyword arguments for finetuning the embedding search. If not provided,
+defaults to the parameter set at initialization (if any).
+E.g., to specify `k` and `ef_search`
+```python
+{
+    "k": 20, # See https://docs.opensearch.org/latest/vector-search/vector-search-techniques/approximate-knn/`the`-number-of-returned-results
+    "method_parameters": {
+        "ef_search": 512, # See https://docs.opensearch.org/latest/query-dsl/specialized/k-nn/index/`ef_search`
+    }
+}
+```
+For a full list of available parameters, see the OpenSearch documentation:
+https://docs.opensearch.org/latest/query-dsl/specialized/k-nn/index/`request`-body-fields
 
 **Returns**:
 
@@ -442,12 +468,13 @@ Dictionary with key "documents" containing the retrieved Documents.
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(
-    query_embedding: list[float],
-    filters: dict[str, Any] | None = None,
-    top_k: int | None = None,
-    custom_query: dict[str, Any] | None = None,
-    efficient_filtering: bool | None = None,
-    document_store: OpenSearchDocumentStore | None = None
+        query_embedding: list[float],
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        custom_query: dict[str, Any] | None = None,
+        efficient_filtering: bool | None = None,
+        document_store: OpenSearchDocumentStore | None = None,
+        search_kwargs: dict[str, Any] | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -503,6 +530,19 @@ retriever.run(
 - `efficient_filtering`: If `True`, the filter will be applied during the approximate kNN search.
 This is only supported for knn engines "faiss" and "lucene" and does not work with the default "nmslib".
 - `document_store`: Optional instance of OpenSearchDocumentStore to use with the Retriever.
+- `search_kwargs`: Additional keyword arguments for finetuning the embedding search. If not provided,
+defaults to the parameter set at initialization (if any).
+E.g., to specify `k` and `ef_search`
+```python
+{
+    "k": 20, # See https://docs.opensearch.org/latest/vector-search/vector-search-techniques/approximate-knn/`the`-number-of-returned-results
+    "method_parameters": {
+        "ef_search": 512, # See https://docs.opensearch.org/latest/query-dsl/specialized/k-nn/index/`ef_search`
+    }
+}
+```
+For a full list of available parameters, see the OpenSearch documentation:
+https://docs.opensearch.org/latest/query-dsl/specialized/k-nn/index/`request`-body-fields
 
 **Returns**:
 
@@ -911,6 +951,7 @@ def __init__(document_store: OpenSearchDocumentStore,
              filter_policy_embedding: str
              | FilterPolicy = FilterPolicy.REPLACE,
              custom_query_embedding: dict[str, Any] | None = None,
+             search_kwargs_embedding: dict[str, Any] | None = None,
              join_mode: str | JoinMode = JoinMode.RECIPROCAL_RANK_FUSION,
              weights: list[float] | None = None,
              top_k: int | None = None,
@@ -948,6 +989,7 @@ See `haystack.components.embedders.types.protocol.TextEmbedder` for more informa
 - `top_k_embedding`: The number of results to return from the embedding retriever.
 - `filter_policy_embedding`: The filter policy for the embedding retriever.
 - `custom_query_embedding`: A custom query for the embedding retriever.
+- `search_kwargs_embedding`: Additional search kwargs for the embedding retriever.
 - `join_mode`: The mode to use for joining the results from the BM25 and embedding retrievers.
 - `weights`: The weights for the joiner.
 - `top_k`: The number of results to return from the joiner.
