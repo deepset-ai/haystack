@@ -154,11 +154,7 @@ time_tool = MCPTool(
 )
 
 ## Agent Setup
-agent = Agent(
-    chat_generator=OpenAIChatGenerator(),
-    tools=[time_tool],
-    exit_conditions=["text"]
-)
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[time_tool], exit_conditions=["text"])
 
 ## Run the Agent
 agent.warm_up()

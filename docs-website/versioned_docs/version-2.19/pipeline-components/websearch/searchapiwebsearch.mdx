@@ -73,8 +73,8 @@ prompt_template = [
     ChatMessage.from_user(
         "Given the information below:\n"
         "{% for document in documents %}{{ document.content }}{% endfor %}\n"
-        "Answer question: {{ query }}.\nAnswer:"
-    )
+        "Answer question: {{ query }}.\nAnswer:",
+    ),
 ]
 
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})

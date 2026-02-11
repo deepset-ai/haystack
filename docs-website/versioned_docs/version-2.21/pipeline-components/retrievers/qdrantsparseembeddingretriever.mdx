@@ -93,11 +93,7 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder, FastembedTextEmbedder
 
-document_store = QdrantDocumentStore(
-    ":memory:",
-    recreate_index=True,
-    use_sparse_embeddings=True
-)
+document_store = QdrantDocumentStore(":memory:", recreate_index=True, use_sparse_embeddings=True)
 
 documents = [
     Document(content="My name is Wolfgang and I live in Berlin"),

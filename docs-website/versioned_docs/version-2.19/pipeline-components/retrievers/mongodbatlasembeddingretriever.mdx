@@ -53,7 +53,7 @@ document_store = MongoDBAtlasDocumentStore()
 retriever = MongoDBAtlasEmbeddingRetriever(document_store=document_store)
 
 ## example run query
-retriever.run(query_embedding=[0.1]*384)
+retriever.run(query_embedding=[0.1] * 384)
 ```
 
 ### In a Pipeline
@@ -117,7 +117,7 @@ result = rag_pipeline.run(
     {
         "query_embedder": {"text": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 ## For details, like which documents were used to generate the answer, look into the GeneratedAnswer object

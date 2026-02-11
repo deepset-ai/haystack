@@ -95,7 +95,7 @@ if __name__ == "__main__":
     ]
 
     response = pipe.run(
-        data={"prompt_builder": {"template_variables": {"location": "Berlin"}, "prompt_source": messages}}
+        data={"prompt_builder": {"template_variables": {"location": "Berlin"}, "prompt_source": messages}},
     )
     print(response["llm"]["replies"][0])
     print(response["tracer"]["trace_url"])
@@ -192,6 +192,7 @@ Here's an example:
 from haystack_integrations.tracing.langfuse import LangfuseConnector, DefaultSpanHandler, LangfuseSpan
 from typing import Optional
 
+
 class CustomSpanHandler(DefaultSpanHandler):
     def handle(self, span: LangfuseSpan, component_type: Optional[str]) -> None:
         # Custom logic to add metadata or modify span
@@ -199,6 +200,7 @@ class CustomSpanHandler(DefaultSpanHandler):
             output = span._data.get("haystack.component.output", {})
             if len(output.get("text", "")) < 10:
                 span._span.update(level="WARNING", status_message="Response too short")
+
 
 ## Add the custom handler to the LangfuseConnector
 connector = LangfuseConnector(span_handler=CustomSpanHandler())

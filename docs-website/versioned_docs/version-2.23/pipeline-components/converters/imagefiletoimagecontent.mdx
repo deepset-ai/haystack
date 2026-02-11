@@ -92,8 +92,8 @@ Question: {{ question }}
 {{ img | templatize_part }}
 {% endfor %}
 {% endmessage %}
-"""
-    )
+""",
+    ),
 )
 pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 
@@ -103,10 +103,7 @@ pipeline.connect("chat_prompt_builder", "llm")
 sources = ["apple.jpg", "haystack-logo.png"]
 
 result = pipeline.run(
-    data={
-        "image_converter": {"sources": sources},
-        "chat_prompt_builder": {"question": "Describe the Haystack logo."}
-    }
+    data={"image_converter": {"sources": sources}, "chat_prompt_builder": {"question": "Describe the Haystack logo."}},
 )
 print(result)
 
@@ -121,7 +118,6 @@ print(result)
 ## ]
 ## }
 ## }
-
 ```
 
 ## Additional References

@@ -292,11 +292,7 @@ cleaner = DocumentCleaner(
 indexing_pipeline.add_component("cleaner", cleaner)
 
 ## Pre-processes the text by performing splits and adding metadata to the text (DocumentSplitter component)
-preprocessor = DocumentSplitter(
-    split_by="passage",
-    split_length=100,
-    split_overlap=50
-)
+preprocessor = DocumentSplitter(split_by="passage", split_length=100, split_overlap=50)
 indexing_pipeline.add_component("preprocessor", preprocessor)
 
 ## - Writes the resulting documents into the document store
@@ -328,25 +324,21 @@ from haystack.nodes import BM25Retriever
 from haystack.nodes import FARMReader
 
 document_store = InMemoryDocumentStore(use_bm25=True)
-document_store.write_documents([
-    Document(content="Paris is the capital of France."),
-    Document(content="Berlin is the capital of Germany."),
-    Document(content="Rome is the capital of Italy."),
-    Document(content="Madrid is the capital of Spain."),
-])
+document_store.write_documents(
+    [
+        Document(content="Paris is the capital of France."),
+        Document(content="Berlin is the capital of Germany."),
+        Document(content="Rome is the capital of Italy."),
+        Document(content="Madrid is the capital of Spain."),
+    ],
+)
 
 retriever = BM25Retriever(document_store=document_store)
 reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
 extractive_qa_pipeline = ExtractiveQAPipeline(reader, retriever)
 
 query = "What is the capital of France?"
-result = extractive_qa_pipeline.run(
-	query=query,
-	params={
-		"Retriever": {"top_k": 10},
-		"Reader": {"top_k": 5}
-	}
-)
+result = extractive_qa_pipeline.run(query=query, params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
 ```
 
 </details>
@@ -362,12 +354,14 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.readers import ExtractiveReader
 
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="Paris is the capital of France."),
-    Document(content="Berlin is the capital of Germany."),
-    Document(content="Rome is the capital of Italy."),
-    Document(content="Madrid is the capital of Spain."),
-])
+document_store.write_documents(
+    [
+        Document(content="Paris is the capital of France."),
+        Document(content="Berlin is the capital of Germany."),
+        Document(content="Rome is the capital of Italy."),
+        Document(content="Madrid is the capital of Spain."),
+    ],
+)
 
 retriever = InMemoryBM25Retriever(document_store)
 reader = ExtractiveReader(model="deepset/roberta-base-squad2")
@@ -377,10 +371,9 @@ extractive_qa_pipeline.add_component("reader", reader)
 extractive_qa_pipeline.connect("retriever", "reader")
 
 query = "What is the capital of France?"
-result = extractive_qa_pipeline.run(data={
-	"retriever": {"query": query, "top_k": 3},
-	"reader": {"query": query, "top_k": 2}
-})
+result = extractive_qa_pipeline.run(
+    data={"retriever": {"query": query, "top_k": 3}, "reader": {"query": query, "top_k": 2}},
+)
 ```
 
 </details>
@@ -401,7 +394,11 @@ from haystack.nodes import EmbeddingRetriever, PromptNode, PromptTemplate, Answe
 document_store = InMemoryDocumentStore(embedding_dim=384)
 dataset = load_dataset("bilgeyucel/seven-wonders", split="train")
 document_store.write_documents(dataset)
-retriever = EmbeddingRetriever(embedding_model="sentence-transformers/all-MiniLM-L6-v2", document_store=document_store, top_k=2)
+retriever = EmbeddingRetriever(
+    embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+    document_store=document_store,
+    top_k=2,
+)
 document_store.update_embeddings(retriever)
 
 rag_prompt = PromptTemplate(

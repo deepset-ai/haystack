@@ -65,7 +65,6 @@ You can use any Python class as a Document Store, provided that it implements al
 
 ```python
 class DocumentStore(Protocol):
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Serializes this store to a dictionary.

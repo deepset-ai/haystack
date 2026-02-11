@@ -46,12 +46,12 @@ converter = DocumentToImageContent(
     file_path_meta_field="file_path",
     root_path="/data/documents",
     detail="high",
-    size=(800, 600)
+    size=(800, 600),
 )
 
 documents = [
     Document(content="Photo of a mountain", meta={"file_path": "mountain.jpg"}),
-    Document(content="First page of a report", meta={"file_path": "report.pdf", "page_number": 1})
+    Document(content="First page of a report", meta={"file_path": "report.pdf", "page_number": 1}),
 ]
 
 result = converter.run(documents)
@@ -87,7 +87,7 @@ pipeline.add_component(
     "chat_prompt_builder",
     ChatPromptBuilder(
         required_variables=["question"],
-		    template="""{% message role="system" %}
+        template="""{% message role="system" %}
 You are a friendly assistant that answers questions based on provided images.
 {% endmessage %}
 
@@ -102,7 +102,7 @@ Answer:
 {%- endfor -%}
 {%- endmessage -%}
 """,
-    )
+    ),
 )
 pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 
@@ -115,10 +115,7 @@ documents = [
 ]
 
 result = pipeline.run(
-    data={
-        "image_converter": {"documents": documents},
-        "chat_prompt_builder": {"question": "What color is the cat?"}
-    }
+    data={"image_converter": {"documents": documents}, "chat_prompt_builder": {"question": "What color is the cat?"}},
 )
 print(result)
 

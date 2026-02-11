@@ -54,16 +54,14 @@ Then, define some documents:
 ```python
 docs = [
     Document(content="deepset was founded in 2018 in Berlin, and is known for its Haystack framework"),
-    Document(content="Hugging Face is a company founded in New York, USA and is known for its Transformers library"
-    )
+    Document(content="Hugging Face is a company founded in New York, USA and is known for its Transformers library"),
 ]
-
 ```
 
 And now, a prompt that extracts named entities from the documents:
 
 ```python
-NER_PROMPT = '''
+NER_PROMPT = """
     -Goal-
     Given text and a list of entity types, identify all entities of those types from the text.
 
@@ -100,7 +98,7 @@ NER_PROMPT = '''
     text: {{ document.content }}
     ######################
     output:
-    '''
+    """
 ```
 
 Now, define a simple indexing pipeline that uses the `LLMMetadataExtractor` to extract named entities from the documents:

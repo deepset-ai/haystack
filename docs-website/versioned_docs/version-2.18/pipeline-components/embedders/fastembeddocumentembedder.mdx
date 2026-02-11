@@ -73,15 +73,9 @@ You can do this easily by using the Document Embedder:
 from haystack.preview import Document
 from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder
 
-doc = Document(text="some text",
-	       metadata={"title": "relevant title",
-			 "page number": 18})
+doc = Document(text="some text", metadata={"title": "relevant title", "page number": 18})
 
-embedder = FastembedDocumentEmbedder(
-	model="BAAI/bge-small-en-v1.5",
-        batch_size=256,
-	metadata_fields_to_embed=["title"]
-)
+embedder = FastembedDocumentEmbedder(model="BAAI/bge-small-en-v1.5", batch_size=256, metadata_fields_to_embed=["title"])
 
 docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 ```
@@ -93,16 +87,14 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 ```python
 from haystack.dataclasses import Document
 from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder
-document_list = [
-	Document(content="I love pizza!"),
-	Document(content="I like spaghetti")
-]
+
+document_list = [Document(content="I love pizza!"), Document(content="I like spaghetti")]
 
 doc_embedder = FastembedDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run(document_list)
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 
 ## [-0.04235665127635002, 0.021791068837046623, ...]
 ```

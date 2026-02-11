@@ -48,12 +48,8 @@ pip install fastembed-haystack
 You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use:
 
 ```python
-cache_dir= "/your_cacheDirectory"
-embedder = FastembedSparseTextEmbedder(
-	model="prithivida/Splade_PP_en_v1",
-	cache_dir=cache_dir,
-	threads=2
-)
+cache_dir = "/your_cacheDirectory"
+embedder = FastembedSparseTextEmbedder(model="prithivida/Splade_PP_en_v1", cache_dir=cache_dir, threads=2)
 ```
 
 If you want to use the data parallel encoding, you can set the `parallel` parameter.
@@ -98,13 +94,13 @@ Then, try out this pipeline:
 from haystack import Document, Pipeline
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
-from haystack_integrations.components.embedders.fastembed import FastembedSparseTextEmbedder, FastembedSparseDocumentEmbedder, FastembedTextEmbedder
-
-document_store = QdrantDocumentStore(
-    ":memory:",
-    recreate_index=True,
-    use_sparse_embeddings=True
+from haystack_integrations.components.embedders.fastembed import (
+    FastembedSparseTextEmbedder,
+    FastembedSparseDocumentEmbedder,
+    FastembedTextEmbedder,
 )
+
+document_store = QdrantDocumentStore(":memory:", recreate_index=True, use_sparse_embeddings=True)
 
 documents = [
     Document(content="My name is Wolfgang and I live in Berlin"),
@@ -113,9 +109,7 @@ documents = [
     Document(content="fastembed is supported by and maintained by Qdrant."),
 ]
 
-sparse_document_embedder = FastembedSparseDocumentEmbedder(
-		model="prithivida/Splade_PP_en_v1"
-)
+sparse_document_embedder = FastembedSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v1")
 
 sparse_document_embedder.warm_up()
 documents_with_sparse_embeddings = sparse_document_embedder.run(documents)["documents"]
@@ -124,8 +118,7 @@ document_store.write_documents(documents_with_sparse_embeddings)
 query_pipeline = Pipeline()
 query_pipeline.add_component("sparse_text_embedder", FastembedSparseTextEmbedder())
 query_pipeline.add_component("sparse_retriever", QdrantSparseEmbeddingRetriever(document_store=document_store))
-query_pipeline.connect("sparse_text_embedder.sparse_embedding",
-											"sparse_retriever.query_sparse_embedding")
+query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
 
 query = "Who supports fastembed?"
 

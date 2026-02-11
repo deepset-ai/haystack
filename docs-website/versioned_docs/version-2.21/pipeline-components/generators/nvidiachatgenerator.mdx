@@ -83,7 +83,7 @@ from haystack.dataclasses import ChatMessage
 
 generator = NvidiaChatGenerator(
     model="meta/llama-3.1-8b-instruct",  # or any supported NVIDIA model
-    api_key=Secret.from_env_var("NVIDIA_API_KEY")
+    api_key=Secret.from_env_var("NVIDIA_API_KEY"),
 )
 
 messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
@@ -101,10 +101,7 @@ from haystack_integrations.components.generators.nvidia import NvidiaChatGenerat
 llm = NvidiaChatGenerator(model="meta/llama-3.2-11b-vision-instruct")
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=[
-	"What does the image show? Max 5 words.",
-	image
-	])
+user_message = ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
@@ -123,10 +120,10 @@ from haystack.utils import Secret
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
-pipe.add_component("llm", NvidiaChatGenerator(
-    model="meta/llama-3.1-8b-instruct",
-    api_key=Secret.from_env_var("NVIDIA_API_KEY")
-))
+pipe.add_component(
+    "llm",
+    NvidiaChatGenerator(model="meta/llama-3.1-8b-instruct", api_key=Secret.from_env_var("NVIDIA_API_KEY")),
+)
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"

@@ -31,10 +31,7 @@ The component uses a chat-based LLM to generate expanded queries. By default, it
 from haystack.components.query import QueryExpander
 from haystack.components.generators.chat import AnthropicChatGenerator
 
-expander = QueryExpander(
-    chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-20250514"),
-    n_expansions=3
-)
+expander = QueryExpander(chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-20250514"), n_expansions=3)
 ```
 
 The generated queries:
@@ -60,10 +57,7 @@ Return a JSON object with a "queries" array containing the expanded queries.
 Focus on technical terminology and domain-specific variations.
 """
 
-expander = QueryExpander(
-    prompt_template=custom_template,
-    n_expansions=4
-)
+expander = QueryExpander(prompt_template=custom_template, n_expansions=4)
 
 result = expander.run(query="machine learning optimization")
 ```

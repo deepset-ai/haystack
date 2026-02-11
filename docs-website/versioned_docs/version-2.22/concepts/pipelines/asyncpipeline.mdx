@@ -93,7 +93,7 @@ prompt_template = [
         - list the documents that support your answer
 
         Answer the given question.
-        """
+        """,
     ),
     ChatMessage.from_user("{{query}}"),
     ChatMessage.from_system("Answer:"),
@@ -102,7 +102,8 @@ prompt_template = [
 hybrid_rag_retrieval = AsyncPipeline()
 hybrid_rag_retrieval.add_component("text_embedder", SentenceTransformersTextEmbedder())
 hybrid_rag_retrieval.add_component(
-    "embedding_retriever", InMemoryEmbeddingRetriever(document_store=document_store, top_k=3)
+    "embedding_retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=3),
 )
 hybrid_rag_retrieval.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store, top_k=3))
 hybrid_rag_retrieval.add_component("document_joiner", DocumentJoiner())
@@ -123,14 +124,17 @@ data = {
     "bm25_retriever": {"query": question},
 }
 
+
 async def process_results():
     async for partial_output in hybrid_rag_retrieval.run_async_generator(
-        data=data, include_outputs_from={"document_joiner", "llm"}
+        data=data,
+        include_outputs_from={"document_joiner", "llm"},
     ):
         if "document_joiner" in partial_output:
             print("Retrieved documents:", len(partial_output["document_joiner"]["documents"]))
         if "llm" in partial_output:
             print("Generated answer:", partial_output["llm"]["replies"][0])
+
 
 asyncio.run(process_results())
 ```

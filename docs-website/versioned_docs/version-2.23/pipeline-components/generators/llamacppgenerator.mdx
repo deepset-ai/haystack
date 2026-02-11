@@ -64,7 +64,7 @@ generator = LlamaCppGenerator(
     n_ctx=512,
     n_batch=128,
     model_kwargs={"n_gpu_layers": -1},
-		generation_kwargs={"max_tokens": 128, "temperature": 0.1},
+    generation_kwargs={"max_tokens": 128, "temperature": 0.1},
 )
 generator.warm_up()
 prompt = f"Who is the best American actor?"
@@ -88,7 +88,7 @@ generator = LlamaCppGenerator(
     model="/content/openchat-3.5-1210.Q3_K_S.gguf",
     n_ctx=512,
     n_batch=128,
-    model_kwargs={"n_gpu_layers": -1}
+    model_kwargs={"n_gpu_layers": -1},
 )
 generator.warm_up()
 prompt = f"Who is the best American actor?"
@@ -235,7 +235,7 @@ result = rag_pipeline.run(
         "prompt_builder": {"question": question},
         "llm": {"generation_kwargs": {"max_tokens": 128, "temperature": 0.1}},
         "answer_builder": {"query": question},
-    }
+    },
 )
 
 generated_answer = result["answer_builder"]["answers"][0]

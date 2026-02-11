@@ -48,16 +48,13 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.extractors.image import LLMDocumentContentExtractor
 
 ## Initialize the chat generator with vision capabilities
-chat_generator = OpenAIChatGenerator(
-    model="gpt-4o-mini",
-    generation_kwargs={"temperature": 0.0}
-)
+chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.0})
 
 ## Create the extractor
 extractor = LLMDocumentContentExtractor(
     chat_generator=chat_generator,
     file_path_meta_field="file_path",
-    raise_on_failure=False
+    raise_on_failure=False,
 )
 
 ## Create documents with image file paths
@@ -103,7 +100,7 @@ chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
 extractor = LLMDocumentContentExtractor(
     chat_generator=chat_generator,
     prompt=custom_prompt,
-    file_path_meta_field="file_path"
+    file_path_meta_field="file_path",
 )
 
 documents = [Document(content="", meta={"file_path": "scanned_document.pdf"})]
@@ -121,7 +118,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
 extractor = LLMDocumentContentExtractor(
     chat_generator=chat_generator,
-    raise_on_failure=False  # Don't raise exceptions, return failed documents
+    raise_on_failure=False,  # Don't raise exceptions, return failed documents
 )
 
 documents = [Document(content="", meta={"file_path": "problematic_image.jpg"})]
@@ -151,10 +148,13 @@ document_store = InMemoryDocumentStore()
 
 ## Create pipeline
 p = Pipeline()
-p.add_component(instance=LLMDocumentContentExtractor(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    file_path_meta_field="file_path"
-), name="content_extractor")
+p.add_component(
+    instance=LLMDocumentContentExtractor(
+        chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+        file_path_meta_field="file_path",
+    ),
+    name="content_extractor",
+)
 p.add_component(instance=DocumentSplitter(), name="splitter")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 

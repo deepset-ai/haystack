@@ -89,7 +89,9 @@ system_message = ChatMessage.from_system("You are an assistant helping tourists 
 
 user_message = ChatMessage.from_user("What are the best places to visit in {{ city }}?")
 
-assistant_message = ChatMessage.from_assistant("The best places to visit in {{ city }} include the Eiffel Tower, Louvre Museum, and Montmartre.")
+assistant_message = ChatMessage.from_assistant(
+    "The best places to visit in {{ city }} include the Eiffel Tower, Louvre Museum, and Montmartre.",
+)
 ```
 
 ### String Templates
@@ -261,7 +263,9 @@ template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: 
 builder = ChatPromptBuilder(template=template)
 builder.run(target_language="spanish", snippet="I can't speak spanish.")
 
-summary_template = [ChatMessage.from_user("Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:")]
+summary_template = [
+    ChatMessage.from_user("Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:"),
+]
 builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
 ```
 
@@ -290,9 +294,8 @@ result = builder.run(user_name="John", images=images)
 
 assert result["prompt"] == [
     ChatMessage.from_user(
-        content_parts=["Hello! I am John. What's the difference between the following images?",
-        *images]
-    )
+        content_parts=["Hello! I am John. What's the difference between the following images?", *images],
+    ),
 ]
 ```
 
@@ -319,8 +322,9 @@ language = "English"
 system_message = ChatMessage.from_system("You are an assistant giving information to tourists in {{language}}")
 messages = [system_message, ChatMessage.from_user("Tell me about {{location}}")]
 
-res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
-                                    "template": messages}})
+res = pipe.run(
+    data={"prompt_builder": {"template_variables": {"location": location, "language": language}, "template": messages}},
+)
 print(res)
 ```
 
@@ -344,9 +348,13 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 location = "Berlin"
 
-messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
-res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
-                                    "template": messages}})
+messages = [
+    system_message,
+    ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?"),
+]
+res = pipe.run(
+    data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"}, "template": messages}},
+)
 
 print(res)
 ```

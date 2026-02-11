@@ -53,7 +53,7 @@ from haystack_integrations.tools.github import GitHubIssueCommenterTool
 tool = GitHubIssueCommenterTool()
 result = tool.invoke(
     url="https://github.com/owner/repo/issues/123",
-    comment="Thanks for reporting this issue! We'll look into it."
+    comment="Thanks for reporting this issue! We'll look into it.",
 )
 
 print(result)
@@ -75,16 +75,16 @@ from haystack_integrations.tools.github import GitHubIssueCommenterTool
 
 comment_tool = GitHubIssueCommenterTool(name="github_issue_commenter")
 
-agent = Agent(
-    chat_generator=OpenAIChatGenerator(),
-    tools=[comment_tool],
-    exit_conditions=["text"]
-)
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[comment_tool], exit_conditions=["text"])
 
 agent.warm_up()
-response = agent.run(messages=[
-    ChatMessage.from_user("Please post a helpful comment on this GitHub issue: https://github.com/owner/repo/issues/123 acknowledging the bug report and mentioning that we're investigating")
-])
+response = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Please post a helpful comment on this GitHub issue: https://github.com/owner/repo/issues/123 acknowledging the bug report and mentioning that we're investigating",
+        ),
+    ],
+)
 
 print(response["last_message"].text)
 ```

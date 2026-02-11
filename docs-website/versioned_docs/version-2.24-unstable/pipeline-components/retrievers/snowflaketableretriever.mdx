@@ -76,5 +76,4 @@ pipeline.connect("snowflake.table", "builder.table")
 pipeline.connect("builder", "llm")
 
 pipeline.run(data={"query": "select employee, salary from table limit 10;"})
-
 ```

@@ -76,5 +76,4 @@ messages = [system_message, ChatMessage.from_user("What's the official language 
 
 res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
 print(res)
-
 ```

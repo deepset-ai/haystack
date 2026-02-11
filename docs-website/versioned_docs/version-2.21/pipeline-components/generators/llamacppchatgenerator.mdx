@@ -121,7 +121,7 @@ generator = LlamaCppChatGenerator(
     model="/content/openchat-3.5-1210.Q3_K_S.gguf",
     n_ctx=512,
     n_batch=128,
-    model_kwargs={"n_gpu_layers": -1}
+    model_kwargs={"n_gpu_layers": -1},
 )
 generator.warm_up()
 messages = [ChatMessage.from_user("Who is the best American actor?")]
@@ -166,15 +166,12 @@ llm = LlamaCppChatGenerator(
     model="llava-v1.5-7b-q4_0.gguf",
     chat_handler_name="Llava15ChatHandler",  # Use llava-1-5 handler
     model_clip_path="mmproj-model-f16.gguf",  # CLIP model
-    n_ctx=4096  # Larger context for image processing
+    n_ctx=4096,  # Larger context for image processing
 )
 llm.warm_up()
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=[
-	"What does the image show? Max 5 words.",
-	image
-	])
+user_message = ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
@@ -263,7 +260,7 @@ system_message = ChatMessage.from_system(
     {% for doc in documents %}
         {{ doc.content }}
     {% endfor %}
-    """
+    """,
 )
 user_message = ChatMessage.from_user("Question: {{question}}")
 assistent_message = ChatMessage.from_assistant("Answer: ")
@@ -304,7 +301,7 @@ result = rag_pipeline.run(
         "prompt_builder": {"question": question},
         "llm": {"generation_kwargs": {"max_tokens": 128, "temperature": 0.1}},
         "answer_builder": {"query": question},
-    }
+    },
 )
 
 generated_answer = result["answer_builder"]["answers"][0]

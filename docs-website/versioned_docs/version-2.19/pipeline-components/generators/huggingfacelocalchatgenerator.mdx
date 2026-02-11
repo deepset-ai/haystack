@@ -72,8 +72,9 @@ pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
-messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
-            ChatMessage.from_user("Tell me about {{location}}")]
-pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
-
+messages = [
+    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
 ```
