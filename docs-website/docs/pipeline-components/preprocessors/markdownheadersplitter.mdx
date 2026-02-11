@@ -1,0 +1,127 @@
+---
+title: "MarkdownHeaderSplitter"
+id: markdownheadersplitter
+slug: "/markdownheadersplitter"
+description: "Split documents at ATX-style Markdown headers (#), with optional secondary splitting. Preserves header hierarchy as metadata."
+---
+
+# MarkdownHeaderSplitter
+
+Split documents at ATX-style Markdown headers (`#`, `##`, etc.), with optional secondary splitting. Header hierarchy is preserved as metadata on each chunk.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) and [`DocumentCleaner`](documentcleaner.mdx) |
+| **Mandatory init variables**           | None; all parameters have defaults. |
+| **Mandatory run variables**            | `documents`: A list of text documents to split. |
+| **Output variables**                   | `documents`: A list of documents split at headers (and optionally by secondary split). |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api) |
+| **GitHub link**                        | [https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/markdown_header_splitter.py](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/markdown_header_splitter.py) |
+
+</div>
+
+## Overview
+
+The `MarkdownHeaderSplitter` processes text documents by:
+
+- Splitting them into chunks at ATX-style Markdown headers (`#`, `##`, …, `######`), preserving header hierarchy as metadata.
+- Optionally applying a secondary split (by word, passage, period, or line) to each chunk using Haystack’s [`DocumentSplitter`](documentsplitter.mdx).
+- Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
+
+Only ATX-style headers are recognized (e.g. `# Title`); Setext-style headers (`Underline with ===`) are not supported.
+
+Parameters you can set when initializing the component:
+
+- `page_break_character`: Character used to identify page breaks. Defaults to form feed (`\f`).
+- `keep_headers`: If `True`, headers remain in the chunk content; if `False`, headers are moved to metadata only. Defaults to `True`.
+- `secondary_split`: Optional secondary split after header splitting. Options: `None`, `"word"`, `"passage"`, `"period"`, `"line"`. Defaults to `None`.
+- `split_length`: Maximum number of units per split when using secondary splitting. Defaults to `200`.
+- `split_overlap`: Number of overlapping units between splits when using secondary splitting. Defaults to `0`.
+- `split_threshold`: Minimum number of units per split when using secondary splitting. Defaults to `0`.
+- `skip_empty_documents`: Whether to skip documents with empty content. Defaults to `True`.
+
+Each output document’s metadata includes:
+
+- `source_id`: ID of the original document.
+- `page_number`: Page number (updated when `page_break_character` is found).
+- `split_id`: Index of the chunk within its parent.
+- `header`: The header text for this chunk.
+- `parent_headers`: List of parent header texts in hierarchy order.
+
+The component only works with text documents (string content). Documents with `None` or non-string content will raise a `ValueError`.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import MarkdownHeaderSplitter
+
+text = (
+    "# Introduction\n"
+    "This is the intro section.\n"
+    "## Getting Started\n"
+    "Here is how to start.\n"
+    "## Advanced\n"
+    "Advanced content here."
+)
+doc = Document(content=text)
+splitter = MarkdownHeaderSplitter(keep_headers=True)
+result = splitter.run(documents=[doc])
+
+# result["documents"] contains one document per header section,
+# with meta["header"], meta["parent_headers"], meta["source_id"], etc.
+```
+
+### With secondary splitting
+
+When sections are long, you can add a secondary split (e.g. by word) so each chunk stays within a maximum size:
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import MarkdownHeaderSplitter
+
+text = "# Section\n" + "Some long body text. " * 50
+doc = Document(content=text)
+splitter = MarkdownHeaderSplitter(
+    keep_headers=True,
+    secondary_split="word",
+    split_length=20,
+    split_overlap=2,
+)
+splitter.warm_up()  # required when using secondary_split
+result = splitter.run(documents=[doc])
+```
+
+### In a pipeline
+
+This pipeline converts Markdown files to documents, cleans them, splits by headers, and writes to an in-memory document store:
+
+```python
+from pathlib import Path
+
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters.txt import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import MarkdownHeaderSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+p = Pipeline()
+p.add_component("text_file_converter", TextFileToDocument())
+p.add_component("cleaner", DocumentCleaner())
+p.add_component("splitter", MarkdownHeaderSplitter(keep_headers=True))
+p.add_component("writer", DocumentWriter(document_store=document_store))
+p.connect("text_file_converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+path = "path/to/your/files"
+files = list(Path(path).glob("*.md"))
+p.run({"text_file_converter": {"sources": files}})
+```
