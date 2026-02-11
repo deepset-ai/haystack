@@ -106,7 +106,7 @@ class LLMDocumentContentExtractor:
 
     Response handling:
     - If the LLM returns a **plain string** (non-JSON or not a JSON object), it is written to the document's content.
-    - If the LLM returns a **JSON object with only the key** ``document_content``, that value is written to content.
+    - If the LLM returns a **JSON object with only the key** `document_content`, that value is written to content.
     - If the LLM returns a **JSON object with multiple keys**, the value of ``document_content`` (if present) is
       written to content and all other keys are merged into the document's metadata.
 
