@@ -7,14 +7,13 @@ description: "Split documents at ATX-style Markdown headers (#), with optional s
 
 # MarkdownHeaderSplitter
 
-Split documents at ATX-style Markdown headers (`#`, `##`, etc.), with optional secondary splitting. Header hierarchy is preserved as metadata on each chunk.
+Split documents at ATX-style Markdown headers (`#`, `##`, and so on), with optional secondary splitting. Header hierarchy is preserved as metadata on each chunk.
 
 <div className="key-value-table">
 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) and [`DocumentCleaner`](documentcleaner.mdx) |
-| **Mandatory init variables**           | None; all parameters have defaults. |
 | **Mandatory run variables**            | `documents`: A list of text documents to split. |
 | **Output variables**                   | `documents`: A list of documents split at headers (and optionally by secondary split). |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api) |
@@ -27,30 +26,30 @@ Split documents at ATX-style Markdown headers (`#`, `##`, etc.), with optional s
 The `MarkdownHeaderSplitter` processes text documents by:
 
 - Splitting them into chunks at ATX-style Markdown headers (`#`, `##`, …, `######`), preserving header hierarchy as metadata.
-- Optionally applying a secondary split (by word, passage, period, or line) to each chunk using Haystack’s [`DocumentSplitter`](documentsplitter.mdx).
+- Optionally applying a secondary split (by word, passage, period, or line) to each chunk using Haystack's [`DocumentSplitter`](documentsplitter.mdx).
 - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
 
-Only ATX-style headers are recognized (e.g. `# Title`); Setext-style headers (`Underline with ===`) are not supported.
+Only ATX-style headers are recognized (e.g. `# Title`). Setext-style headers (`Underline with ===`) aren't supported.
 
 Parameters you can set when initializing the component:
 
-- `page_break_character`: Character used to identify page breaks. Defaults to form feed (`\f`).
-- `keep_headers`: If `True`, headers remain in the chunk content; if `False`, headers are moved to metadata only. Defaults to `True`.
+- `page_break_character`: Character used to identify page breaks. Defaults to form feed `\f`.
+- `keep_headers`: If `True`, headers remain in the chunk content. If `False`, headers are moved to metadata only. Defaults to `True`.
 - `secondary_split`: Optional secondary split after header splitting. Options: `None`, `"word"`, `"passage"`, `"period"`, `"line"`. Defaults to `None`.
 - `split_length`: Maximum number of units per split when using secondary splitting. Defaults to `200`.
 - `split_overlap`: Number of overlapping units between splits when using secondary splitting. Defaults to `0`.
 - `split_threshold`: Minimum number of units per split when using secondary splitting. Defaults to `0`.
 - `skip_empty_documents`: Whether to skip documents with empty content. Defaults to `True`.
 
-Each output document’s metadata includes:
+Each output document's metadata includes:
 
 - `source_id`: ID of the original document.
-- `page_number`: Page number (updated when `page_break_character` is found).
+- `page_number`: Page number. Updated when `page_break_character` is found.
 - `split_id`: Index of the chunk within its parent.
 - `header`: The header text for this chunk.
 - `parent_headers`: List of parent header texts in hierarchy order.
 
-The component only works with text documents (string content). Documents with `None` or non-string content will raise a `ValueError`.
+The component only works with text documents. Documents with `None` or non-string content raise a `ValueError`.
 
 ## Usage
 
@@ -73,12 +72,12 @@ splitter = MarkdownHeaderSplitter(keep_headers=True)
 result = splitter.run(documents=[doc])
 
 # result["documents"] contains one document per header section,
-# with meta["header"], meta["parent_headers"], meta["source_id"], etc.
+# with meta["header"], meta["parent_headers"], meta["source_id"], and so on
 ```
 
 ### With secondary splitting
 
-When sections are long, you can add a secondary split (e.g. by word) so each chunk stays within a maximum size:
+When sections are long, you can add a secondary split, for example by word, so each chunk stays within a maximum size:
 
 ```python
 from haystack import Document
