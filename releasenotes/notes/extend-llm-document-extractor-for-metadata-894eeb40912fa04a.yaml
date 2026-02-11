@@ -1,5 +1,5 @@
 ---
 enhancements:
   - |
-    The ``LLMDocumentContentExtractor`` now also supports metadata extraction. It can run in three modes: "content", "metadata", or "both". Extracting only content, metadata, or both for a given Document.
-    The three modes are chosen at init and optionally overridden at runtime via ``run(..., extraction_mode=...)``.
+    The ``LLMDocumentContentExtractor`` now extracts both content and metadata from image-based documents.
+    When the LLM returns JSON, ``document_content`` fills the document body and other keys are merged into metadata; plain text is still used as content.

@@ -543,13 +543,53 @@ class TestLLMDocumentContentExtractor:
         Live test using image_metadata.png: single prompt; LLM can return JSON with document_content
         and metadata keys (author, date, document_type, topic) in one response.
         """
+
+        prompt = """
+        You are part of an information extraction pipeline that extracts the content of image-based documents.
+
+        Extract the content from the provided image.
+        You need to extract the content exactly.
+        Format everything as markdown.
+        Make sure to retain the reading order of the document.
+
+        **Visual Elements**
+        Do not extract figures, drawings, maps, graphs or any other visual elements.
+        Instead, add a caption that describes briefly what you see in the visual element.
+        You must describe each visual element.
+        If you only see a visual element without other content, you must describe this visual element.
+        Enclose each image caption with [img-caption][/img-caption]
+
+        **Tables**
+        Make sure to format the table in markdown.
+        Add a short caption below the table that describes the table's content.
+        Enclose each table caption with [table-caption][/table-caption].
+        The caption must be placed below the extracted table.
+
+        **Forms**
+        Reproduce checkbox selections with markdown.
+
+        Return a single JSON object. It must contain the key "document_content" with the extracted text as value.
+
+        Include all other extracted information as keys for metadata. All metadata should be returned as separate keys
+        in the JSON object. For example, if you extract the document type and date, you should return:
+
+        {"title": "Example Document", "author": "John Doe", "date": "2024-01-15", "document_type": "invoice"}
+
+        Don't include any metadata in the "document_content" field. The "document_content" field should only contain the
+        image description and any possible text extracted from the image.
+
+        No markdown, no code fence, only raw JSON.
+
+        Document:"""
+
         image_path = "./test/test_files/images/image_metadata.png"
         docs = [Document(content="", meta={"file_path": image_path})]
         doc_store = InMemoryDocumentStore()
         extractor = LLMDocumentContentExtractor(
+            prompt=prompt,
             chat_generator=OpenAIChatGenerator(
-                model="gpt-4.1-nano", generation_kwargs={"temperature": 0.2, "response_format": {"type": "json_object"}}
-            )
+                model="gpt-4.1-nano", generation_kwargs={"response_format": {"type": "json_object"}}
+            ),
         )
         writer = DocumentWriter(document_store=doc_store)
         pipeline = Pipeline()

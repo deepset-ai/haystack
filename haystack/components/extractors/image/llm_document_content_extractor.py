@@ -51,49 +51,9 @@ Reproduce checkbox selections with markdown.
 
 Return a single JSON object. It must contain the key "document_content" with the extracted text as value.
 
-Include all other extracted information as keys for metadata. All metadata should be returned as separate keys in the
-JSON object. For example, if you extract the document type and date, you should return:
-
-{"title": "Example Document", "author": "John Doe", "date": "2024-01-15", "document_type": "invoice"}
-
-Don't include any metadata in the "document_content" field. The "document_content" field should only contain the
-image description and any possible text extracted from the image.
-
 No markdown, no code fence, only raw JSON.
 
 Document:"""
-
-
-def _validate_prompt_no_variables(prompt: str, context: str) -> None:
-    ast = SandboxedEnvironment().parse(prompt)
-    template_variables = meta.find_undeclared_variables(ast)
-    variables = list(template_variables)
-    if variables:
-        raise ValueError(
-            f"The prompt must not have any variables, only instructions on how to {context} "
-            f"the image-based document. Found {','.join(variables)} in the prompt."
-        )
-
-
-def _process_response(response_text: str) -> tuple[str | None, dict[str, Any], str | None]:
-    """
-    Parse LLM response. Returns (content, meta_updates, error).
-
-    - Plain string (non-JSON): use entire response as document content;
-    - Valid JSON object: use key ``document_content`` for Document.content and all other keys for Document.metadata;
-    - Valid JSON but not an object (e.g. array or primitive), report an error;
-    """
-    try:
-        parsed = json.loads(response_text)
-    except json.JSONDecodeError:
-        return response_text, {}, None
-
-    if not isinstance(parsed, dict):
-        return None, {}, "Response must be a JSON object, not an array or primitive."
-
-    content = parsed.get(DOCUMENT_CONTENT_KEY)
-    meta_updates = {k: v for k, v in parsed.items() if k != DOCUMENT_CONTENT_KEY}
-    return content, meta_updates, None
 
 
 @component
@@ -102,7 +62,7 @@ class LLMDocumentContentExtractor:
     Extracts textual content and optionally metadata from image-based documents using a vision-enabled LLM.
 
     One prompt and one LLM call per document. The component converts each document to an image via
-    DocumentToImageContent and sends it to the ChatGenerator.
+    DocumentToImageContent and sends it to the ChatGenerator. The prompt must not contain Jinja variables.
 
     Response handling:
     - If the LLM returns a **plain string** (non-JSON or not a JSON object), it is written to the document's content.
@@ -111,7 +71,7 @@ class LLMDocumentContentExtractor:
       written to content and all other keys are merged into the document's metadata.
 
     The ChatGenerator can be configured to return JSON (e.g. ``response_format={"type": "json_object"}``
-    in ``generation_kwargs``). The prompt must not contain Jinja variables.
+    in ``generation_kwargs``).
 
     Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
 
@@ -125,6 +85,7 @@ class LLMDocumentContentExtractor:
     extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
     documents = [
         Document(content="", meta={"file_path": "image.jpg"}),
+        Document(content="", meta={"file_path": "document.pdf", "page_number": 1})
     ]
     result = extractor.run(documents=documents)
     updated_documents = result["documents"]
@@ -163,7 +124,7 @@ class LLMDocumentContentExtractor:
         self.root_path = root_path or ""
         self.detail = detail
         self.size = size
-        _validate_prompt_no_variables(prompt, "extract the content of")
+        LLMDocumentContentExtractor._validate_prompt_no_variables(prompt, "extract the content of")
         self.raise_on_failure = raise_on_failure
         self.max_workers = max_workers
         self._document_to_image_content = DocumentToImageContent(
@@ -214,6 +175,38 @@ class LLMDocumentContentExtractor:
 
         return default_from_dict(cls, data)
 
+    @staticmethod
+    def _validate_prompt_no_variables(prompt: str, context: str) -> None:
+        ast = SandboxedEnvironment().parse(prompt)
+        template_variables = meta.find_undeclared_variables(ast)
+        variables = list(template_variables)
+        if variables:
+            raise ValueError(
+                f"The prompt must not have any variables, only instructions on how to {context} "
+                f"the image-based document. Found {','.join(variables)} in the prompt."
+            )
+
+    @staticmethod
+    def _process_response(response_text: str) -> tuple[str | None, dict[str, Any], str | None]:
+        """
+        Parse LLM response. Returns (content, meta_updates, error).
+
+        - Plain string (non-JSON): use entire response as document content;
+        - Valid JSON object: use key ``document_content`` for Document.content and all other keys for Document.metadata;
+        - Valid JSON but not an object (e.g. array or primitive), report an error;
+        """
+        try:
+            parsed = json.loads(response_text)
+        except json.JSONDecodeError:
+            return response_text, {}, None
+
+        if not isinstance(parsed, dict):
+            return None, {}, "Response must be a JSON object, not an array or primitive."
+
+        content = parsed.get(DOCUMENT_CONTENT_KEY)
+        meta_updates = {k: v for k, v in parsed.items() if k != DOCUMENT_CONTENT_KEY}
+        return content, meta_updates, None
+
     def _run_on_thread(self, image_content: ImageContent | None) -> dict[str, Any]:
         """
         Execute the LLM inference in a separate thread for each document.
@@ -243,7 +236,7 @@ class LLMDocumentContentExtractor:
         return result
 
     @staticmethod
-    def _process_document(document: Document, result: dict[str, Any]) -> tuple[Document, bool]:
+    def _process_llm_results(document: Document, result: dict[str, Any]) -> tuple[Document, bool]:
         """
         Process one document's LLM result using the unified response logic.
 
@@ -261,7 +254,7 @@ class LLMDocumentContentExtractor:
 
         # process the LLM response considering the possible response formats
         response_text = result["replies"][0].text
-        content, meta_updates, content_error = _process_response(response_text)
+        content, meta_updates, content_error = LLMDocumentContentExtractor._process_response(response_text)
 
         if content_error:
             new_meta["content_extraction_error"] = content_error
@@ -294,7 +287,7 @@ class LLMDocumentContentExtractor:
         successful_documents = []
         failed_documents = []
         for document, result in zip(documents, results):
-            doc, success = self._process_document(document, result)
+            doc, success = self._process_llm_results(document, result)
             if success:
                 successful_documents.append(doc)
             else:
