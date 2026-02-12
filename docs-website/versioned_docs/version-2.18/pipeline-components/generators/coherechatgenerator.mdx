@@ -71,10 +71,21 @@ pipe.add_component("llm", CohereChatGenerator())
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"
-system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
-messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+system_message = ChatMessage.from_system(
+    "You are an assistant giving out valuable information to language learners.",
+)
+messages = [
+    system_message,
+    ChatMessage.from_user("What's the official language of {{ country }}?"),
+]
 
-res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        },
+    },
+)
 print(res)
-
 ```

@@ -54,9 +54,11 @@ chat_generator = HuggingFaceAPIChatGenerator(
     api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
 )
 
-router = LLMMessagesRouter(chat_generator=chat_generator,
-                            output_names=["unsafe", "safe"],
-                            output_patterns=["unsafe", "safe"])
+router = LLMMessagesRouter(
+    chat_generator=chat_generator,
+    output_names=["unsafe", "safe"],
+    output_patterns=["unsafe", "safe"],
+)
 
 print(router.run([ChatMessage.from_user("How to rob a bank?")]))
 
@@ -129,9 +131,11 @@ from haystack.components.generators.chat import (
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers import LLMMessagesRouter
 
-docs = [Document(content="Mark lives in France"),
-        Document(content="Julia lives in Canada"),
-        Document(content="Tom lives in Sweden")]
+docs = [
+    Document(content="Mark lives in France"),
+    Document(content="Julia lives in Canada"),
+    Document(content="Tom lives in Sweden"),
+]
 document_store = InMemoryDocumentStore()
 document_store.write_documents(docs)
 
@@ -142,8 +146,8 @@ prompt_template = [
         "Given these documents, answer the question.\n"
         "Documents:\n{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
         "Question: {{question}}\n"
-        "Answer:"
-    )
+        "Answer:",
+    ),
 ]
 
 prompt_builder = ChatPromptBuilder(
@@ -152,13 +156,13 @@ prompt_builder = ChatPromptBuilder(
 )
 
 router = LLMMessagesRouter(
-        chat_generator=HuggingFaceAPIChatGenerator(
-            api_type="serverless_inference_api",
-            api_params={"model": "meta-llama/Llama-Guard-4-12B",
-						            "provider": "groq"}),
-        output_names=["unsafe", "safe"],
-        output_patterns=["unsafe", "safe"],
-    )
+    chat_generator=HuggingFaceAPIChatGenerator(
+        api_type="serverless_inference_api",
+        api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
+    ),
+    output_names=["unsafe", "safe"],
+    output_patterns=["unsafe", "safe"],
+)
 
 llm = OpenAIChatGenerator(model="gpt-4.1-mini")
 
@@ -177,7 +181,7 @@ results = pipe.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 print(results)
 ## {
@@ -190,7 +194,7 @@ results = pipe.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 print(results)
 ## Output:

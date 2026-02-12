@@ -44,23 +44,29 @@ from haystack.utils import Secret
 
 questions = ["Who created the Python language?"]
 contexts = [
-    [(
-        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
-        "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
-        "programmers write clear, logical code for both small and large-scale software projects."
-    )],
+    [
+        (
+            "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+            "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+            "programmers write clear, logical code for both small and large-scale software projects."
+        ),
+    ],
 ]
 predicted_answers = [
-    "Python is a high-level general-purpose programming language that was created by George Lucas."
+    "Python is a high-level general-purpose programming language that was created by George Lucas.",
 ]
 local_endpoint = "http://localhost:11434/v1"
 
 evaluator = FaithfulnessEvaluator(
-  api_key=Secret.from_token("just-a-placeholder"),
-  api_params={"api_base_url": local_endpoint, "model": "llama3"}
+    api_key=Secret.from_token("just-a-placeholder"),
+    api_params={"api_base_url": local_endpoint, "model": "llama3"},
 )
 
-result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+result = evaluator.run(
+    questions=questions,
+    contexts=contexts,
+    predicted_answers=predicted_answers,
+)
 ```
 
 ### Using Small Cross-Encoder Models for Evaluation

@@ -48,12 +48,13 @@ Components that use heavy resources, like LLMs or embedding models, additionally
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-doc = Document(content="I love pizza!")
-doc_embedder = SentenceTransformersDocumentEmbedder() # First, initialize the component
-doc_embedder.warm_up() # Then, warm it up to load the model
 
-result = doc_embedder.run([doc]) # And finally, run it
-print(result['documents'][0].embedding)
+doc = Document(content="I love pizza!")
+doc_embedder = SentenceTransformersDocumentEmbedder()  # First, initialize the component
+doc_embedder.warm_up()  # Then, warm it up to load the model
+
+result = doc_embedder.run([doc])  # And finally, run it
+print(result["documents"][0].embedding)
 ```
 
 If you're using a component that has the `warm_up()` method in a pipeline, you don't have to do anything additionally. The pipeline takes care of warming it up before running.

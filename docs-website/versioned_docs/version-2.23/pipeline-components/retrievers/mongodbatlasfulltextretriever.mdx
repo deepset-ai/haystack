@@ -45,13 +45,19 @@ pip install mongodb-atlas-haystack
 The Retriever needs an instance of `MongoDBAtlasDocumentStore` and indexed documents to run.
 
 ```python
-from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
-from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasFullTextRetriever
+from haystack_integrations.document_stores.mongodb_atlas import (
+    MongoDBAtlasDocumentStore,
+)
+from haystack_integrations.components.retrievers.mongodb_atlas import (
+    MongoDBAtlasFullTextRetriever,
+)
 
-store = MongoDBAtlasDocumentStore(database_name="your_existing_db",
-                                  collection_name="your_existing_collection",
-                                  vector_search_index="your_existing_index",
-                                  full_text_search_index="your_existing_index")
+store = MongoDBAtlasDocumentStore(
+    database_name="your_existing_db",
+    collection_name="your_existing_collection",
+    vector_search_index="your_existing_index",
+    full_text_search_index="your_existing_index",
+)
 retriever = MongoDBAtlasFullTextRetriever(document_store=store)
 
 results = retriever.run(query="Your search query")
@@ -72,7 +78,9 @@ from haystack.components.embedders import (
 )
 from haystack.components.joiners import DocumentJoiner
 
-from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+from haystack_integrations.document_stores.mongodb_atlas import (
+    MongoDBAtlasDocumentStore,
+)
 from haystack_integrations.components.retrievers.mongodb_atlas import (
     MongoDBAtlasEmbeddingRetriever,
     MongoDBAtlasFullTextRetriever,
@@ -83,7 +91,9 @@ documents = [
     Document(content="My name is Mark and I live in Berlin."),
     Document(content="My name is Giorgio and I live in Rome."),
     Document(content="Python is a programming language popular for data science."),
-    Document(content="MongoDB Atlas offers full-text search and vector search capabilities."),
+    Document(
+        content="MongoDB Atlas offers full-text search and vector search capabilities.",
+    ),
 ]
 
 document_store = MongoDBAtlasDocumentStore(
@@ -102,10 +112,7 @@ ingest_pipe = Pipeline()
 doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
 ingest_pipe.add_component(instance=doc_embedder, name="doc_embedder")
 
-doc_writer = DocumentWriter(
-    document_store=document_store,
-    policy=DuplicatePolicy.SKIP
-)
+doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 ingest_pipe.add_component(instance=doc_writer, name="doc_writer")
 ingest_pipe.connect("doc_embedder.documents", "doc_writer.documents")
 
@@ -117,18 +124,12 @@ query_pipe = Pipeline()
 text_embedder = SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2")
 query_pipe.add_component(instance=text_embedder, name="text_embedder")
 
-embed_retriever = MongoDBAtlasEmbeddingRetriever(
-    document_store=document_store,
-    top_k=3
-)
+embed_retriever = MongoDBAtlasEmbeddingRetriever(document_store=document_store, top_k=3)
 query_pipe.add_component(instance=embed_retriever, name="embedding_retriever")
 query_pipe.connect("text_embedder", "embedding_retriever")
 
 ## (c) full-text retriever
-ft_retriever = MongoDBAtlasFullTextRetriever(
-    document_store=document_store,
-    top_k=3
-)
+ft_retriever = MongoDBAtlasFullTextRetriever(document_store=document_store, top_k=3)
 query_pipe.add_component(instance=ft_retriever, name="full_text_retriever")
 
 joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion", top_k=3)
@@ -143,7 +144,7 @@ output = query_pipe.run(
     {
         "text_embedder": {"text": question},
         "full_text_retriever": {"query": question},
-    }
+    },
 )
 
 print("\nFinal fused documents:")

@@ -39,7 +39,10 @@ pip install mistral-haystack
 `MistralTextEmbedder` needs a Mistral API key to work. It uses a `MISTRAL_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```python
-embedder = MistralTextEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+embedder = MistralTextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
+)
 ```
 
 ## Usage
@@ -52,13 +55,18 @@ Here is how you can use the component on its own:
 
 ```python
 
-from haystack_integrations.components.embedders.mistral.text_embedder import MistralTextEmbedder
+from haystack_integrations.components.embedders.mistral.text_embedder import (
+    MistralTextEmbedder,
+)
 
-embedder = MistralTextEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+embedder = MistralTextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
+)
 
 result = embedder.run(text="How can I ise the Mistral embedding models with Haystack?")
 
-print(result['embedding'])
+print(result["embedding"])
 ## [-0.0015687942504882812, 0.052154541015625, 0.037109375...]
 ```
 
@@ -75,8 +83,12 @@ from haystack.components.converters import HTMLToDocument
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.mistral.document_embedder import MistralDocumentEmbedder
-from haystack_integrations.components.embedders.mistral.text_embedder import MistralTextEmbedder
+from haystack_integrations.components.embedders.mistral.document_embedder import (
+    MistralDocumentEmbedder,
+)
+from haystack_integrations.components.embedders.mistral.text_embedder import (
+    MistralTextEmbedder,
+)
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
@@ -99,8 +111,16 @@ indexing.connect("fetcher", "converter")
 indexing.connect("converter", "embedder")
 indexing.connect("embedder", "writer")
 
-indexing.run(data={"fetcher": {"urls": ["https://docs.mistral.ai/self-deployment/cloudflare/",
-                                        "https://docs.mistral.ai/platform/endpoints/"]}})
+indexing.run(
+    data={
+        "fetcher": {
+            "urls": [
+                "https://docs.mistral.ai/self-deployment/cloudflare/",
+                "https://docs.mistral.ai/platform/endpoints/",
+            ],
+        },
+    },
+)
 
 ## Retrieval components
 text_embedder = MistralTextEmbedder()
@@ -112,12 +132,18 @@ prompt_template = [
     ChatMessage.from_user(
         "Given the retrieved documents, answer the question.\nDocuments:\n"
         "{% for document in documents %}{{ document.content }}{% endfor %}\n"
-        "Question: {{ query }}\nAnswer:"
-    )
+        "Question: {{ query }}\nAnswer:",
+    ),
 ]
 
-prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
-llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("<your-api-key>"))
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+llm = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    api_key=Secret.from_token("<your-api-key>"),
+)
 
 doc_search = Pipeline()
 doc_search.add_component("text_embedder", text_embedder)
@@ -135,8 +161,8 @@ result = doc_search.run(
     {
         "text_embedder": {"text": query},
         "retriever": {"top_k": 1},
-        "prompt_builder": {"query": query}
-    }
+        "prompt_builder": {"query": query},
+    },
 )
 
 print(result["llm"]["replies"])

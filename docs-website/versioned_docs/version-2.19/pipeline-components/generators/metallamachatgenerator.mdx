@@ -86,28 +86,29 @@ pip install meta-llama-haystack
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+from haystack_integrations.components.generators.meta_llama import (
+    MetaLlamaChatGenerator,
+)
 
 llm = MetaLlamaChatGenerator()
-response = llm.run(
-    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
-)
+response = llm.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 print(response["replies"][0].text)
-
 ```
 
 With streaming and model routing:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+from haystack_integrations.components.generators.meta_llama import (
+    MetaLlamaChatGenerator,
+)
 
-llm = MetaLlamaChatGenerator(model="Llama-3.3-8B-Instruct",
-streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
+llm = MetaLlamaChatGenerator(
+    model="Llama-3.3-8B-Instruct",
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
 
-response = llm.run(
-    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
-    )
+response = llm.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 
 ## check the model used for the response
 print("\n\n Model used: ", response["replies"][0].meta["model"])
@@ -126,7 +127,9 @@ from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import Secret
 
-from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+from haystack_integrations.components.generators.meta_llama import (
+    MetaLlamaChatGenerator,
+)
 
 ## Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
@@ -135,7 +138,7 @@ document_store.write_documents(
         Document(content="My name is Jean and I live in Paris."),
         Document(content="My name is Mark and I live in Berlin."),
         Document(content="My name is Giorgio and I live in Rome."),
-    ]
+    ],
 )
 
 ## Build a RAG pipeline
@@ -144,12 +147,15 @@ prompt_template = [
         "Given these documents, answer the question.\n"
         "Documents:\n{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
         "Question: {{question}}\n"
-        "Answer:"
-    )
+        "Answer:",
+    ),
 ]
 
 ## Define required variables explicitly
-prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"question", "documents"})
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"question", "documents"},
+)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 llm = MetaLlamaChatGenerator(
@@ -170,6 +176,6 @@ rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 ```

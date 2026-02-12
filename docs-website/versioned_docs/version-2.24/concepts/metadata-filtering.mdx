@@ -92,7 +92,11 @@ filters = {
         {
             "operator": "OR",
             "conditions": [
-                {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
+                {
+                    "field": "meta.genre",
+                    "operator": "in",
+                    "value": ["economy", "politics"],
+                },
                 {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
             ],
         },
@@ -113,14 +117,19 @@ pipeline.run(
     data={
         "retriever": {
             "query": "Why did the revenue increase?",
-    		"filters": { "operator": "AND",
-      		    "conditions": [
-        		    {"field": "meta.years", "operator": "==", "value": "2019"},
-        		    {"field": "meta.companies", "operator": "in", "value": ["BMW", "Mercedes"]},
-      			]
-            }
-        }
-    }
+            "filters": {
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.years", "operator": "==", "value": "2019"},
+                    {
+                        "field": "meta.companies",
+                        "operator": "in",
+                        "value": ["BMW", "Mercedes"],
+                    },
+                ],
+            },
+        },
+    },
 )
 ```
 

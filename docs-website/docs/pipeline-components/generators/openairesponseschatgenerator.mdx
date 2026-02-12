@@ -54,10 +54,14 @@ from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 
 client = OpenAIResponsesChatGenerator(
-    generation_kwargs={"reasoning": {"effort": "medium", "summary": "auto"}}
+    generation_kwargs={"reasoning": {"effort": "medium", "summary": "auto"}},
 )
 
-messages = [ChatMessage.from_user("What's the most efficient sorting algorithm for nearly sorted data?")]
+messages = [
+    ChatMessage.from_user(
+        "What's the most efficient sorting algorithm for nearly sorted data?",
+    ),
+]
 response = client.run(messages)
 print(response)
 ```
@@ -104,22 +108,26 @@ from pydantic import BaseModel
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 
+
 class BookInfo(BaseModel):
     title: str
     author: str
     year: int
     genre: str
 
+
 client = OpenAIResponsesChatGenerator(
     model="gpt-4o",
-    generation_kwargs={"text_format": BookInfo}
+    generation_kwargs={"text_format": BookInfo},
 )
 
-response = client.run(messages=[
-    ChatMessage.from_user(
-        "Extract book information: '1984 by George Orwell, published in 1949, is a dystopian novel.'"
-    )
-])
+response = client.run(
+    messages=[
+        ChatMessage.from_user(
+            "Extract book information: '1984 by George Orwell, published in 1949, is a dystopian novel.'",
+        ),
+    ],
+)
 print(response["replies"][0].text)
 ```
 
@@ -140,24 +148,26 @@ json_schema = {
                 "title": {"type": "string"},
                 "author": {"type": "string"},
                 "year": {"type": "integer"},
-                "genre": {"type": "string"}
+                "genre": {"type": "string"},
             },
             "required": ["title", "author", "year", "genre"],
-            "additionalProperties": False
-        }
-    }
+            "additionalProperties": False,
+        },
+    },
 }
 
 client = OpenAIResponsesChatGenerator(
     model="gpt-4o",
-    generation_kwargs={"text": json_schema}
+    generation_kwargs={"text": json_schema},
 )
 
-response = client.run(messages=[
-    ChatMessage.from_user(
-        "Extract book information: '1984 by George Orwell, published in 1949, is a dystopian novel.'"
-    )
-])
+response = client.run(
+    messages=[
+        ChatMessage.from_user(
+            "Extract book information: '1984 by George Orwell, published in 1949, is a dystopian novel.'",
+        ),
+    ],
+)
 print(response["replies"][0].text)
 ```
 
@@ -183,15 +193,17 @@ from haystack.tools import Tool
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 
+
 def get_weather(city: str) -> str:
     """Get weather information for a city."""
     return f"Weather in {city}: Sunny, 22°C"
+
 
 weather_tool = Tool(
     name="get_weather",
     description="Get current weather for a city",
     function=get_weather,
-    parameters={"type": "object", "properties": {"city": {"type": "string"}}}
+    parameters={"type": "object", "properties": {"city": {"type": "string"}}},
 )
 
 generator = OpenAIResponsesChatGenerator(tools=[weather_tool])
@@ -242,10 +254,14 @@ from haystack.components.generators.utils import print_streaming_chunk
 
 client = OpenAIResponsesChatGenerator(
     streaming_callback=print_streaming_chunk,
-    generation_kwargs={"reasoning": {"effort": "high", "summary": "auto"}}
+    generation_kwargs={"reasoning": {"effort": "high", "summary": "auto"}},
 )
 response = client.run(
-    [ChatMessage.from_user("Solve this logic puzzle: If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?")]
+    [
+        ChatMessage.from_user(
+            "Solve this logic puzzle: If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?",
+        ),
+    ],
 )
 print(response["replies"][0].reasoning)  # Access reasoning summary if available
 ```
@@ -262,7 +278,7 @@ from haystack import Pipeline
 
 prompt_builder = ChatPromptBuilder()
 llm = OpenAIResponsesChatGenerator(
-    generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}}
+    generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}},
 )
 
 pipe = Pipeline()
@@ -272,15 +288,19 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 topic = "quantum computing"
 messages = [
-    ChatMessage.from_system("You are a helpful assistant that explains complex topics clearly."),
-    ChatMessage.from_user("Explain {{topic}} in simple terms")
+    ChatMessage.from_system(
+        "You are a helpful assistant that explains complex topics clearly.",
+    ),
+    ChatMessage.from_user("Explain {{topic}} in simple terms"),
 ]
-result = pipe.run(data={
-    "prompt_builder": {
-        "template_variables": {"topic": topic},
-        "template": messages
-    }
-})
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"topic": topic},
+            "template": messages,
+        },
+    },
+)
 
 print(result)
 ```

@@ -49,7 +49,7 @@ from haystack.components.classifiers import TransformersZeroShotDocumentClassifi
 
 documents = [
     Document(id="0", content="Cats don't get teeth cavities."),
-    Document(id="1", content="Cucumbers can be grown in water.")
+    Document(id="1", content="Cucumbers can be grown in water."),
 ]
 
 document_classifier = TransformersZeroShotDocumentClassifier(
@@ -58,7 +58,7 @@ document_classifier = TransformersZeroShotDocumentClassifier(
 )
 
 document_classifier.warm_up()
-document_classifier.run(documents = documents)
+document_classifier.run(documents=documents)
 ```
 
 ### In a pipeline
@@ -75,7 +75,7 @@ from haystack.components.classifiers import TransformersZeroShotDocumentClassifi
 
 documents = [
     Document(id="0", content="Today was a nice day!"),
-    Document(id="1", content="Yesterday was a bad day!")
+    Document(id="1", content="Yesterday was a bad day!"),
 ]
 
 document_store = InMemoryDocumentStore()
