@@ -5,11 +5,21 @@ Uses the ruff configuration from pyproject.toml automatically.
 """
 
 import argparse
+import logging
 import os
 import re
 import subprocess
 import sys
 import tempfile
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stderr)
+handler.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(handler)
+
+# ANSI color codes (disabled when stderr is not a terminal)
+_USE_COLOR = hasattr(sys.stderr, "isatty") and sys.stderr.isatty()
 
 PYTHON_FENCE_RE = re.compile(
     r"(?P<before>^```python\s*\n)"
@@ -17,6 +27,13 @@ PYTHON_FENCE_RE = re.compile(
     r"(?P<after>^```\s*$)",
     re.MULTILINE | re.DOTALL,
 )
+
+
+def _color(code: str, text: str) -> str:
+    """Colorize the text"""
+    if _USE_COLOR:
+        return f"\033[{code}m{text}\033[0m"
+    return text
 
 
 def _find_tool(name: str) -> str:
@@ -69,9 +86,13 @@ def _format_code_block(match: re.Match, *, line_length: int, path: str) -> str:
         preview = "\n".join(snippet[:5])
         if len(snippet) > 5:
             preview += f"\n... ({len(snippet) - 5} more lines)"
-        print(
-            f"WARNING: {path}: Failed to format code block:\n{preview}\nruff stderr: {exc.stderr.strip()}",
-            file=sys.stderr,
+        logger.warning(
+            "%s %s\n%s\n%s %s",
+            _color("33", "WARNING:"),
+            _color("1", path),
+            _color("2", preview),
+            _color("31", "ruff stderr:"),
+            exc.stderr.strip(),
         )
         return match.group(0)
     return match.group("before") + formatted + match.group("after")
@@ -92,7 +113,7 @@ def main() -> int:
         if new != original:
             with open(path, "w") as f:
                 f.write(new)
-            print(f"{path}: Rewriting...")
+            logger.debug("%s %s", _color("32", "Rewriting:"), _color("1", path))
             ret = 1
     return ret
 
