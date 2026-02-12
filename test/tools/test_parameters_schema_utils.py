@@ -200,7 +200,7 @@ IMAGE_CONTENT_SCHEMA = {
 
 FILE_CONTENT_SCHEMA = {
     "properties": {
-        "base64_data": {"description": "Field 'base64_data' of 'FileContent'.", "type": "string"},
+        "base64_data": {"description": "A base64 string representing the file.", "type": "string"},
         "extra": {
             "additionalProperties": True,
             "default": {},
