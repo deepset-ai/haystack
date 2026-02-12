@@ -60,11 +60,13 @@ Basic usage with a local file:
 ```python
 from pathlib import Path
 from haystack.utils import Secret
-from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from haystack_integrations.components.converters.mistral import (
+    MistralOCRDocumentConverter,
+)
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505"
+    model="mistral-ocr-2505",
 )
 
 result = converter.run(sources=[Path("my_document.pdf")])
@@ -76,12 +78,14 @@ Processing multiple sources with different types:
 ```python
 from pathlib import Path
 from haystack.utils import Secret
-from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from haystack_integrations.components.converters.mistral import (
+    MistralOCRDocumentConverter,
+)
 from mistralai.models import DocumentURLChunk, ImageURLChunk
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505"
+    model="mistral-ocr-2505",
 )
 
 sources = [
@@ -102,24 +106,35 @@ from pathlib import Path
 from typing import List
 from pydantic import BaseModel, Field
 from haystack.utils import Secret
-from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from haystack_integrations.components.converters.mistral import (
+    MistralOCRDocumentConverter,
+)
 from mistralai.models import DocumentURLChunk
+
 
 # Define schema for image region annotations
 class ImageAnnotation(BaseModel):
     image_type: str = Field(..., description="The type of image content")
-    short_description: str = Field(..., description="Short natural-language description")
+    short_description: str = Field(
+        ...,
+        description="Short natural-language description",
+    )
     summary: str = Field(..., description="Detailed summary of the image content")
+
 
 # Define schema for document-level annotations
 class DocumentAnnotation(BaseModel):
     language: str = Field(..., description="Primary language of the document")
-    chapter_titles: List[str] = Field(..., description="Detected chapter or section titles")
+    chapter_titles: List[str] = Field(
+        ...,
+        description="Detected chapter or section titles",
+    )
     urls: List[str] = Field(..., description="URLs found in the text")
+
 
 converter = MistralOCRDocumentConverter(
     api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    model="mistral-ocr-2505"
+    model="mistral-ocr-2505",
 )
 
 sources = [DocumentURLChunk(document_url="https://example.com/report.pdf")]
@@ -147,7 +162,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.utils import Secret
-from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from haystack_integrations.components.converters.mistral import (
+    MistralOCRDocumentConverter,
+)
 
 document_store = InMemoryDocumentStore()
 
@@ -156,8 +173,8 @@ pipeline.add_component(
     "converter",
     MistralOCRDocumentConverter(
         api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-        model="mistral-ocr-2505"
-    )
+        model="mistral-ocr-2505",
+    ),
 )
 pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))

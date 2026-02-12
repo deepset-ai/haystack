@@ -40,7 +40,7 @@ from haystack.components.converters import OutputAdapter
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 
 ## We need to ensure we have the OpenAI API key in our environment variables
-os.environ['OPENAI_API_KEY'] = 'YOUR_OPENAI_KEY'
+os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_KEY"
 
 ## Initializing standard Haystack components
 generator = OpenAIGenerator(
@@ -48,28 +48,31 @@ generator = OpenAIGenerator(
     generation_kwargs={"n": 5, "temperature": 0.75, "max_tokens": 400},
 )
 prompt_builder = PromptBuilder(
-    template="""Given a question, generate a paragraph of text that answers the question.    Question: {{question}}    Paragraph:""")
+    template="""Given a question, generate a paragraph of text that answers the question.    Question: {{question}}    Paragraph:""",
+)
 
 adapter = OutputAdapter(
     template="{{answers | build_doc}}",
     output_type=List[Document],
     custom_filters={"build_doc": lambda data: [Document(content=d) for d in data]},
-    unsafe=True
+    unsafe=True,
 )
 
-embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
 embedder.warm_up()
+
 
 ## Adding one custom component that returns one, "average" embedding from multiple (hypothetical) document embeddings
 @component
 class HypotheticalDocumentEmbedder:
-
-  @component.output_types(hypothetical_embedding=List[float])
-  def run(self, documents: List[Document]):
-    stacked_embeddings = array([doc.embedding for doc in documents])
-    avg_embeddings = mean(stacked_embeddings, axis=0)
-    hyde_vector = avg_embeddings.reshape((1, len(avg_embeddings)))
-    return {"hypothetical_embedding": hyde_vector[0].tolist()}
+    @component.output_types(hypothetical_embedding=List[float])
+    def run(self, documents: List[Document]):
+        stacked_embeddings = array([doc.embedding for doc in documents])
+        avg_embeddings = mean(stacked_embeddings, axis=0)
+        hyde_vector = avg_embeddings.reshape((1, len(avg_embeddings)))
+        return {"hypothetical_embedding": hyde_vector[0].tolist()}
 ```
 
 Then, assemble them all into a pipeline:

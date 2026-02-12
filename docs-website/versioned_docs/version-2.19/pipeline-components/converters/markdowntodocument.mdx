@@ -60,7 +60,10 @@ document_store = InMemoryDocumentStore()
 pipeline = Pipeline()
 pipeline.add_component("converter", MarkdownToDocument())
 pipeline.add_component("cleaner", DocumentCleaner())
-pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component(
+    "splitter",
+    DocumentSplitter(split_by="sentence", split_length=5),
+)
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 pipeline.connect("converter", "cleaner")
 pipeline.connect("cleaner", "splitter")

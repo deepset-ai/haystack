@@ -56,22 +56,23 @@ Here is how to initialize a Tool to work with a specific function:
 ```python
 from haystack.tools import Tool
 
+
 def add(a: int, b: int) -> int:
     return a + b
 
+
 parameters = {
     "type": "object",
-    "properties": {
-        "a": {"type": "integer"},
-        "b": {"type": "integer"}
-    },
-    "required": ["a", "b"]
+    "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+    "required": ["a", "b"],
 }
 
-add_tool = Tool(name="addition_tool",
-            description="This tool adds two numbers",
-            parameters=parameters,
-            function=add)
+add_tool = Tool(
+    name="addition_tool",
+    description="This tool adds two numbers",
+    parameters=parameters,
+    function=add,
+)
 
 print(add_tool.tool_spec)
 
@@ -131,12 +132,18 @@ The `@tool` decorator simplifies converting a function into a Tool. It infers To
 from typing import Annotated, Literal
 from haystack.tools import tool
 
+
 @tool
 def get_weather(
-  city: Annotated[str, "the city for which to get the weather"] = "Munich",
-  unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
-  '''A simple function to get the current weather for a location.'''
-  return f"Weather report for {city}: 20 {unit}, sunny"
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[
+        Literal["Celsius", "Fahrenheit"],
+        "the unit for the temperature",
+    ] = "Celsius",
+):
+    """A simple function to get the current weather for a location."""
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
 
 print(get_weather)
 ```
@@ -166,11 +173,17 @@ The `create_tool_from_function` method provides more flexibility than the`@tool`
 from typing import Annotated, Literal
 from haystack.tools import create_tool_from_function
 
+
 def get_weather(
-  city: Annotated[str, "the city for which to get the weather"] = "Munich",
-  unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
-  '''A simple function to get the current weather for a location.'''
-  return f"Weather report for {city}: 20 {unit}, sunny"
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[
+        Literal["Celsius", "Fahrenheit"],
+        "the unit for the temperature",
+    ] = "Celsius",
+):
+    """A simple function to get the current weather for a location."""
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
 
 tool = create_tool_from_function(get_weather)
 
@@ -229,11 +242,11 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[add_tool])
 
 ## here we expect the Tool to be invoked
-res=chat_generator.run([ChatMessage.from_user("10 + 238")])
+res = chat_generator.run([ChatMessage.from_user("10 + 238")])
 print(res)
 
 ## here the model can respond without using the Tool
-res=chat_generator.run([ChatMessage.from_user("What is the habitat of a lion?")])
+res = chat_generator.run([ChatMessage.from_user("What is the habitat of a lion?")])
 print(res)
 ```
 
@@ -259,7 +272,10 @@ The same result of the previous run can be achieved by passing tools at runtime:
 chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
 
 ## pass tools in the run method
-res_w_tool_call=chat_generator.run([ChatMessage.from_user("10 + 238")], tools=math_toolset)
+res_w_tool_call = chat_generator.run(
+    [ChatMessage.from_user("10 + 238")],
+    tools=math_toolset,
+)
 print(res_w_tool_call)
 ```
 
@@ -277,9 +293,13 @@ from haystack.tools import Tool
 
 ## Define a dummy weather toolimport random
 
+
 def dummy_weather(location: str):
-    return {"temp": f"{random.randint(-10,40)} °C",
-            "humidity": f"{random.randint(0,100)}%"}
+    return {
+        "temp": f"{random.randint(-10, 40)} °C",
+        "humidity": f"{random.randint(0, 100)}%",
+    }
+
 
 weather_tool = Tool(
     name="weather",
@@ -335,9 +355,13 @@ from haystack.tools import Tool
 
 ## Define a dummy weather toolimport random
 
+
 def dummy_weather(location: str):
-    return {"temp": f"{random.randint(-10,40)} °C",
-            "humidity": f"{random.randint(0,100)}%"}
+    return {
+        "temp": f"{random.randint(-10, 40)} °C",
+        "humidity": f"{random.randint(0, 100)}%",
+    }
+
 
 weather_tool = Tool(
     name="weather",
@@ -394,6 +418,7 @@ from haystack.tools.tool import Tool
 from haystack.components.agents import Agent
 from typing import List
 
+
 ## Tool Function
 def calculate(expression: str) -> dict:
     try:
@@ -402,6 +427,7 @@ def calculate(expression: str) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
+
 ## Tool Definition
 calculator_tool = Tool(
     name="calculator",
@@ -409,12 +435,15 @@ calculator_tool = Tool(
     parameters={
         "type": "object",
         "properties": {
-            "expression": {"type": "string", "description": "Math expression to evaluate"}
+            "expression": {
+                "type": "string",
+                "description": "Math expression to evaluate",
+            },
         },
-        "required": ["expression"]
+        "required": ["expression"],
     },
     function=calculate,
-    outputs_to_state={"calc_result": {"source": "result"}}
+    outputs_to_state={"calc_result": {"source": "result"}},
 )
 
 ## Agent Setup
@@ -424,7 +453,7 @@ agent = Agent(
     exit_conditions=["calculator"],
     state_schema={
         "calc_result": {"type": int},
-    }
+    },
 )
 
 ## Run the Agent

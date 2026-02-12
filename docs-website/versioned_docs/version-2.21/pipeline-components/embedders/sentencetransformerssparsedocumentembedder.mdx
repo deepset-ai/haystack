@@ -48,7 +48,7 @@ from haystack.utils import Secret
 from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
 
 document_embedder = SentenceTransformersSparseDocumentEmbedder(
-    token=Secret.from_token("<your-api-key>")
+    token=Secret.from_token("<your-api-key>"),
 )
 ```
 
@@ -65,7 +65,7 @@ You can specify the backend during initialization:
 ```python
 embedder = SentenceTransformersSparseDocumentEmbedder(
     model="prithivida/Splade_PP_en_v2",
-    backend="onnx"
+    backend="onnx",
 )
 ```
 
@@ -81,14 +81,9 @@ You can do this easily by using the Sparse Document Embedder:
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
 
-doc = Document(
-    content="some text",
-    meta={"title": "relevant title", "page number": 18}
-)
+doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
-embedder = SentenceTransformersSparseDocumentEmbedder(
-    meta_fields_to_embed=["title"]
-)
+embedder = SentenceTransformersSparseDocumentEmbedder(meta_fields_to_embed=["title"])
 embedder.warm_up()
 
 docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
@@ -107,7 +102,7 @@ doc_embedder = SentenceTransformersSparseDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
-print(result['documents'][0].sparse_embedding)
+print(result["documents"][0].sparse_embedding)
 
 ## SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])
 ```
@@ -128,17 +123,19 @@ Then, try out this pipeline:
 from haystack import Document, Pipeline
 from haystack.components.embedders import (
     SentenceTransformersSparseDocumentEmbedder,
-    SentenceTransformersSparseTextEmbedder
+    SentenceTransformersSparseTextEmbedder,
 )
 from haystack.components.writers import DocumentWriter
-from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 
 document_store = QdrantDocumentStore(
     ":memory:",
     recreate_index=True,
-    use_sparse_embeddings=True
+    use_sparse_embeddings=True,
 )
 
 documents = [
@@ -152,11 +149,11 @@ documents = [
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component(
     "sparse_document_embedder",
-    SentenceTransformersSparseDocumentEmbedder()
+    SentenceTransformersSparseDocumentEmbedder(),
 )
 indexing_pipeline.add_component(
     "writer",
-    DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE)
+    DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE),
 )
 indexing_pipeline.connect("sparse_document_embedder", "writer")
 
@@ -166,13 +163,16 @@ indexing_pipeline.run({"sparse_document_embedder": {"documents": documents}})
 query_pipeline = Pipeline()
 query_pipeline.add_component(
     "sparse_text_embedder",
-    SentenceTransformersSparseTextEmbedder()
+    SentenceTransformersSparseTextEmbedder(),
 )
 query_pipeline.add_component(
     "sparse_retriever",
-    QdrantSparseEmbeddingRetriever(document_store=document_store)
+    QdrantSparseEmbeddingRetriever(document_store=document_store),
 )
-query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
+query_pipeline.connect(
+    "sparse_text_embedder.sparse_embedding",
+    "sparse_retriever.query_sparse_embedding",
+)
 
 query = "Who provides sparse embedding models?"
 

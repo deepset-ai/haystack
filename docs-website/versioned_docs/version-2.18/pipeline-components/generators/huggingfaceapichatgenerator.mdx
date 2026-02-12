@@ -60,17 +60,20 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from haystack.utils.hf import HFGenerationAPIType
 
-messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
+messages = [
+    ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
+    ChatMessage.from_user("What's Natural Language Processing?"),
+]
 
 ## the api_type can be expressed using the HFGenerationAPIType enum or as a string
 api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
-api_type = "serverless_inference_api" # this is equivalent to the above
+api_type = "serverless_inference_api"  # this is equivalent to the above
 
-generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                        api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
-                                                    "provider": "together"},
-                                        token=Secret.from_env_var("HF_API_TOKEN"))
+generator = HuggingFaceAPIChatGenerator(
+    api_type=api_type,
+    api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
+    token=Secret.from_env_var("HF_API_TOKEN"),
+)
 
 result = generator.run(messages)
 print(result)
@@ -90,12 +93,16 @@ from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
-messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
+messages = [
+    ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
+    ChatMessage.from_user("What's Natural Language Processing?"),
+]
 
-generator = HuggingFaceAPIChatGenerator(api_type="inference_endpoints",
-                                        api_params={"url": "<your-inference-endpoint-url>"},
-                                        token=Secret.from_env_var("HF_API_TOKEN"))
+generator = HuggingFaceAPIChatGenerator(
+    api_type="inference_endpoints",
+    api_params={"url": "<your-inference-endpoint-url>"},
+    token=Secret.from_env_var("HF_API_TOKEN"),
+)
 
 result = generator.run(messages)
 print(result)
@@ -115,15 +122,17 @@ from haystack.utils.hf import HFGenerationAPIType
 image = ImageContent.from_file_path("path/to/your/image.jpg")
 
 ## Create a multimodal message with both text and image
-messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
+messages = [
+    ChatMessage.from_user(content_parts=["Describe this image in detail", image]),
+]
 
 generator = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
     api_params={
         "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-        "provider": "hyperbolic"
+        "provider": "hyperbolic",
     },
-    token=Secret.from_token("<your-api-key>")
+    token=Secret.from_token("<your-api-key>"),
 )
 
 result = generator.run(messages)
@@ -153,11 +162,15 @@ The Generator expects the `url` of your TGI instance in `api_params`.
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
 
-messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
+messages = [
+    ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
+    ChatMessage.from_user("What's Natural Language Processing?"),
+]
 
-generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
-                                        api_params={"url": "http://localhost:8080"})
+generator = HuggingFaceAPIChatGenerator(
+    api_type="text_generation_inference",
+    api_params={"url": "http://localhost:8080"},
+)
 
 result = generator.run(messages)
 print(result)
@@ -175,19 +188,31 @@ from haystack.utils.hf import HFGenerationAPIType
 
 ## no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
-llm = HuggingFaceAPIChatGenerator(api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-                                  api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
-                                             "provider": "together"},
-                                  token=Secret.from_env_var("HF_API_TOKEN"))
+llm = HuggingFaceAPIChatGenerator(
+    api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+    api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
+    token=Secret.from_env_var("HF_API_TOKEN"),
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
-messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
-ChatMessage.from_user("Tell me about {{location}}")]
-result = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 
 print(result)
 ```

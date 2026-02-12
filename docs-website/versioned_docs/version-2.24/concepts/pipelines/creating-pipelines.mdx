@@ -62,7 +62,10 @@ query_pipeline.add_component("retriever", retriever)
 
 ## You could also add components without initializing them before:
 query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 ```
 
 ### 5\. Connect components
@@ -100,7 +103,7 @@ You need to link all the components together, connecting them gradually in pairs
 ## Here's how you would connect them into a pipeline:
 
 query_pipeline.connect("text_embedder.embedding", "retriever")
-query_pipeline.connect("retriever","prompt_builder.documents")
+query_pipeline.connect("retriever", "prompt_builder.documents")
 query_pipeline.connect("prompt_builder", "llm")
 ```
 
@@ -118,7 +121,6 @@ results = pipeline.run({"input1_value": value1, "input2_value": value2})
 ## This is how you'd run the semantic document search pipeline we're using as an example:
 query = "Here comes the query text"
 results = query_pipeline.run({"text_embedder": {"text": query}})
-
 ```
 
 ## Pipeline Inputs
@@ -138,7 +140,7 @@ from haystack.components.writers import DocumentWriter
 document_store = InMemoryDocumentStore()
 fetcher = LinkContentFetcher()
 converter = HTMLToDocument()
-writer = DocumentWriter(document_store = document_store)
+writer = DocumentWriter(document_store=document_store)
 
 pipeline = Pipeline()
 pipeline.add_component(instance=fetcher, name="fetcher")
@@ -167,7 +169,7 @@ From the above response, you can see that the `urls` input is mandatory for `Lin
 
 ```python
 pipeline.run(
-    data={"fetcher": {"urls": ["https://docs.haystack.deepset.ai/docs/pipelines"]}}
+    data={"fetcher": {"urls": ["https://docs.haystack.deepset.ai/docs/pipelines"]}},
 )
 ```
 
@@ -187,11 +189,13 @@ from haystack.dataclasses import ChatMessage
 
 # create a document store and write documents to it
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 # A prompt corresponds to an NLP task and contains instructions for the model. Here, the pipeline will go through each Document to figure out the answer.
 prompt_template = [
@@ -203,18 +207,19 @@ prompt_template = [
             {{ doc.content }}
         {% endfor %}
         Question:
-        """
+        """,
     ),
-    ChatMessage.from_user(
-        "{{question}}"
-    ),
-    ChatMessage.from_system("Answer:")
+    ChatMessage.from_user("{{question}}"),
+    ChatMessage.from_system("Answer:"),
 ]
 
 # create the components adding the necessary parameters
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    model="gpt-4o-mini",
+)
 
 # Create the pipeline and add the components to it. The order doesn't matter.
 # At this stage, the Pipeline validates the components without running them yet.
@@ -233,7 +238,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])
