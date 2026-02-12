@@ -112,6 +112,15 @@ The `DocumentStore` interface supports the basic CRUD operations you would norma
 
 Usually, a Document Store comes with additional methods that can provide advanced search functionalities. These methods are not part of the `DocumentStore` protocol and don’t follow any particular convention. We designed it like this to provide maximum flexibility to the Document Store when using any specific features of the underlying database.
 
+Some additional methods that are not part of the `DocumentStore` protocol, but most of the Document Stores in Haystack have them implemented, are:
+
+```python
+def delete_all_documents(recreate_index: bool = False)
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any], refresh: bool = False) -> int:
+def delete_by_filter(filters: dict[str, Any]) -> int:
+```
+These methods are not part of the Protocol but highly recommended to implement in your custom Document Store, as users often expect them to be available.
+
 For example, Haystack wouldn’t get in the way when your Document Store defines a specific `search` method that takes a long list of parameters that only make sense in the context of a particular vector database. Normally, a [Retriever](../../pipeline-components/retrievers.mdx) component would then use this additional search method.
 
 ### Retrievers
@@ -144,13 +153,21 @@ Haystack comes with some testing functionalities you can use in a custom Documen
 
 - The best way to learn how to write a custom Document Store is to look at the existing ones: the `InMemoryDocumentStore`, which is part of Haystack, or the [`ElasticsearchDocumentStore`](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch), which is a Core Integration, are good places to start.
 - When starting from scratch, it might be easier to create the four CRUD methods of the `DocumentStore` protocol one at a time and test them one at a time as well. For example:
-  1. Implement the logic for `count_documents`.
-  2. In your `test_document_store.py` module, define the test class `TestDocumentStore(CountDocumentsTest)`. Note how we only inherit from the specific testing mix-in `CountDocumentsTest`.
+  1. Implement the logic for `count_documents`.
+  2. In your `test_document_store.py` module, define the test class `TestDocumentStore(CountDocumentsTest)`. Note how we only inherit from the specific testing mix-in `CountDocumentsTest`.
   3. Make the tests pass.
-  4. Implement the logic for `write_documents`.
-  5. Change `test_document_store.py` so that your class now also derives from the `WriteDocumentsTest` mix-in: `TestDocumentStore(CountDocumentsTest, WriteDocumentsTest)`.
+  4. Implement the logic for `write_documents`.
+  5. Change `test_document_store.py` so that your class now also derives from the `WriteDocumentsTest` mix-in: `TestDocumentStore(CountDocumentsTest, WriteDocumentsTest)`.
   6. Keep iterating with the remaining methods.
 - Having a notebook where users can try out your Document Store in a full pipeline can really help adoption, and it’s a great source of documentation. Our [haystack-cookbook](https://github.com/deepset-ai/haystack-cookbook) repository has good visibility, and we encourage contributors to create a PR and add their own.
+
+The [tests](https://github.com/deepset-ai/haystack/blob/main/haystack/testing/document_store.py) in `DocumentStoreBaseTests`give you a good idea of
+the overall expected behavior of a Document Store and the operations it should support, following it is a good way to make sure your implementation
+is consistent with the rest of the Haystack ecosystem.
+
+If the technology you are using for your Document Store supports asynchronous operations, we recommend implementing `async` versions of the methods
+in the `DocumentStore` protocol as well. This will allow users to take advantage of async features in their applications and pipelines,
+improving performance and scalability.
 
 ## Get Featured on the Integrations Page
 
