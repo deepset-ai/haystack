@@ -99,7 +99,10 @@ pipeline.connect("chat_prompt_builder", "llm")
 sources = ["apple.jpg", "haystack-logo.png"]
 
 result = pipeline.run(
-    data={"image_converter": {"sources": sources}, "chat_prompt_builder": {"question": "Describe the Haystack logo."}},
+    data={
+        "image_converter": {"sources": sources},
+        "chat_prompt_builder": {"question": "Describe the Haystack logo."},
+    },
 )
 print(result)
 

@@ -55,7 +55,10 @@ pip install mcp-haystack
 ```python
 from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
-server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
+server_info = StdioServerInfo(
+    command="uvx",
+    args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
+)
 toolset = MCPToolset(
     server_info=server_info,
     tool_names=["get_current_time"],
@@ -90,7 +93,10 @@ from haystack.components.converters import OutputAdapter
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
-server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
+server_info = StdioServerInfo(
+    command="uvx",
+    args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
+)
 toolset = MCPToolset(server_info=server_info)
 
 pipeline = Pipeline()
@@ -112,7 +118,9 @@ pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
 pipeline.connect("adapter.output", "response_llm.messages")
 
 user_input = ChatMessage.from_user(text="What is the time in New York?")
-result = pipeline.run({"llm": {"messages": [user_input]}, "adapter": {"initial_msg": [user_input]}})
+result = pipeline.run(
+    {"llm": {"messages": [user_input]}, "adapter": {"initial_msg": [user_input]}},
+)
 
 print(result["response_llm"]["replies"][0].text)
 ```
@@ -126,11 +134,20 @@ from haystack.dataclasses import ChatMessage
 from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
 toolset = MCPToolset(
-    server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
-    tool_names=["get_current_time"],  # Omit to load all tools, but may overwhelm LLM if many
+    server_info=StdioServerInfo(
+        command="uvx",
+        args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
+    ),
+    tool_names=[
+        "get_current_time",
+    ],  # Omit to load all tools, but may overwhelm LLM if many
 )
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=toolset,
+    exit_conditions=["text"],
+)
 
 response = agent.run(messages=[ChatMessage.from_user("What is the time in New York?")])
 print(response["messages"][-1].text)

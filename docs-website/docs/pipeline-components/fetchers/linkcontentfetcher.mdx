@@ -72,6 +72,12 @@ indexing_pipeline.connect("fetcher.streams", "converter.sources")
 indexing_pipeline.connect("converter.documents", "writer.documents")
 
 indexing_pipeline.run(
-    data={"fetcher": {"urls": ["https://haystack.deepset.ai/blog/guide-to-using-zephyr-with-haystack2"]}},
+    data={
+        "fetcher": {
+            "urls": [
+                "https://haystack.deepset.ai/blog/guide-to-using-zephyr-with-haystack2",
+            ],
+        },
+    },
 )
 ```

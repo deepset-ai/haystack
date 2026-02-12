@@ -62,7 +62,11 @@ print(result)
 Expected output:
 
 ```python
-{"text/plain": [Document(...)], "application/pdf": [Document(...)], "unclassified": [Document(...)]}
+{
+    "text/plain": [Document(...)],
+    "application/pdf": [Document(...)],
+    "unclassified": [Document(...)],
+}
 ```
 
 ### Using regex patterns
@@ -82,7 +86,10 @@ docs = [
     Document(content="PDF document", meta={"mime_type": "application/pdf"}),
 ]
 
-router = DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=[r"text/.*", r"image/.*"])
+router = DocumentTypeRouter(
+    mime_type_meta_field="mime_type",
+    mime_types=[r"text/.*", r"image/.*"],
+)
 
 result = router.run(documents=docs)
 
@@ -113,7 +120,9 @@ router = DocumentTypeRouter(
         "text/markdown",
         "application/vnd.ms-outlook",
     ],
-    additional_mimetypes={"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"},
+    additional_mimetypes={
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    },
 )
 
 result = router.run(documents=docs)
@@ -137,12 +146,21 @@ document_store = InMemoryDocumentStore()
 ## Create pipeline
 p = Pipeline()
 p.add_component(
-    instance=DocumentTypeRouter(mime_types=["text/plain", "application/pdf"], mime_type_meta_field="mime_type"),
+    instance=DocumentTypeRouter(
+        mime_types=["text/plain", "application/pdf"],
+        mime_type_meta_field="mime_type",
+    ),
     name="document_type_router",
 )
 p.add_component(instance=DocumentSplitter(), name="text_splitter")
-p.add_component(instance=DocumentWriter(document_store=document_store), name="text_writer")
-p.add_component(instance=DocumentWriter(document_store=document_store), name="pdf_writer")
+p.add_component(
+    instance=DocumentWriter(document_store=document_store),
+    name="text_writer",
+)
+p.add_component(
+    instance=DocumentWriter(document_store=document_store),
+    name="pdf_writer",
+)
 
 ## Connect components
 p.connect("document_type_router.text/plain", "text_splitter.documents")
@@ -151,9 +169,18 @@ p.connect("document_type_router.application/pdf", "pdf_writer.documents")
 
 ## Create test documents
 docs = [
-    Document(content="This is a text document that will be split and stored.", meta={"mime_type": "text/plain"}),
-    Document(content="This is a PDF document that will be stored directly.", meta={"mime_type": "application/pdf"}),
-    Document(content="This is an image document that will be unclassified.", meta={"mime_type": "image/jpeg"}),
+    Document(
+        content="This is a text document that will be split and stored.",
+        meta={"mime_type": "text/plain"},
+    ),
+    Document(
+        content="This is a PDF document that will be stored directly.",
+        meta={"mime_type": "application/pdf"},
+    ),
+    Document(
+        content="This is an image document that will be unclassified.",
+        meta={"mime_type": "image/jpeg"},
+    ),
 ]
 
 ## Run pipeline

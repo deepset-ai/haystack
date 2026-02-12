@@ -56,7 +56,11 @@ Create State by defining a schema that specifies what data can be stored and the
 from haystack.components.agents.state import State
 
 ## Define the schema
-schema = {"user_name": {"type": str}, "documents": {"type": list}, "count": {"type": int}}
+schema = {
+    "user_name": {"type": str},
+    "documents": {"type": list},
+    "count": {"type": int},
+}
 
 ## Create State with initial data
 state = State(schema=schema, data={"user_name": "Alice", "documents": [], "count": 0})
@@ -101,7 +105,9 @@ The schema defines what data can be stored and how values are updated. Each sche
 {
     "parameter_name": {
         "type": SomeType,  # Required: Expected Python type for this field
-        "handler": Optional[Callable[[Any, Any], Any]],  # Optional: Function to merge values
+        "handler": Optional[
+            Callable[[Any, Any], Any]
+        ],  # Optional: Function to merge values
     },
 }
 ```
@@ -194,7 +200,11 @@ def calculate(expression: str) -> dict:
 calculator_tool = Tool(
     name="calculator",
     description="Evaluate basic math expressions",
-    parameters={"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]},
+    parameters={
+        "type": "object",
+        "properties": {"expression": {"type": "string"}},
+        "required": ["expression"],
+    },
     function=calculate,
     outputs_to_state={"calc_result": {"source": "result"}},
 )
@@ -282,19 +292,33 @@ def retrieve_documents(query: str) -> dict:
 retrieval_tool = Tool(
     name="retrieve",
     description="Retrieve relevant documents",
-    parameters={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    parameters={
+        "type": "object",
+        "properties": {"query": {"type": "string"}},
+        "required": ["query"],
+    },
     function=retrieve_documents,
     outputs_to_state={
-        "documents": {"source": "documents"},  # Maps tool's "documents" output to state's "documents"
-        "result_count": {"source": "count"},  # Maps tool's "count" output to state's "result_count"
-        "last_query": {"source": "query"},  # Maps tool's "query" output to state's "last_query"
+        "documents": {
+            "source": "documents",
+        },  # Maps tool's "documents" output to state's "documents"
+        "result_count": {
+            "source": "count",
+        },  # Maps tool's "count" output to state's "result_count"
+        "last_query": {
+            "source": "query",
+        },  # Maps tool's "query" output to state's "last_query"
     },
 )
 
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[retrieval_tool],
-    state_schema={"documents": {"type": list}, "result_count": {"type": int}, "last_query": {"type": str}},
+    state_schema={
+        "documents": {"type": list},
+        "result_count": {"type": int},
+        "last_query": {"type": str},
+    },
 )
 
 result = agent.run(messages=[ChatMessage.from_user("Find information about Python")])
@@ -352,7 +376,9 @@ result = agent.run(messages=[ChatMessage.from_user("Get the user information")])
 
 ## Access the complete result from state
 user_info = result["user_info"]
-print(user_info)  # Output: {"name": "Alice", "email": "alice@example.com", "role": "admin"}
+print(
+    user_info,
+)  # Output: {"name": "Alice", "email": "alice@example.com", "role": "admin"}
 print(user_info["name"])  # Output: "Alice"
 print(user_info["email"])  # Output: "alice@example.com"
 ```
@@ -377,20 +403,33 @@ def process_documents(documents: list, max_results: int) -> dict:
 processing_tool = Tool(
     name="process",
     description="Process retrieved documents",
-    parameters={"type": "object", "properties": {"max_results": {"type": "integer"}}, "required": ["max_results"]},
+    parameters={
+        "type": "object",
+        "properties": {"max_results": {"type": "integer"}},
+        "required": ["max_results"],
+    },
     function=process_documents,
     inputs_from_state={"documents": "documents"},  # Reads documents from state
-    outputs_to_state={"final_docs": {"source": "processed_docs"}, "final_count": {"source": "processed_count"}},
+    outputs_to_state={
+        "final_docs": {"source": "processed_docs"},
+        "final_count": {"source": "processed_count"},
+    },
 )
 
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[retrieval_tool, processing_tool],  # Chain tools using state
-    state_schema={"documents": {"type": list}, "final_docs": {"type": list}, "final_count": {"type": int}},
+    state_schema={
+        "documents": {"type": list},
+        "final_docs": {"type": list},
+        "final_count": {"type": int},
+    },
 )
 
 ## Run the agent - tools will chain through state
-result = agent.run(messages=[ChatMessage.from_user("Find and process 3 documents about Python")])
+result = agent.run(
+    messages=[ChatMessage.from_user("Find and process 3 documents about Python")],
+)
 
 ## Access the final processed results
 final_docs = result["final_docs"]
@@ -421,7 +460,11 @@ def factorial(n: int) -> dict:
 factorial_tool = Tool(
     name="factorial",
     description="Calculate the factorial of a number",
-    parameters={"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"]},
+    parameters={
+        "type": "object",
+        "properties": {"n": {"type": "integer"}},
+        "required": ["n"],
+    },
     function=factorial,
     outputs_to_state={"factorial_result": {"source": "result"}},
 )
@@ -437,7 +480,11 @@ def calculate(expression: str) -> dict:
 calculator_tool = Tool(
     name="calculator",
     description="Evaluate basic math expressions",
-    parameters={"type": "object", "properties": {"expression": {"type": "string"}}, "required": ["expression"]},
+    parameters={
+        "type": "object",
+        "properties": {"expression": {"type": "string"}},
+        "required": ["expression"],
+    },
     function=calculate,
     outputs_to_state={"calc_result": {"source": "result"}},
 )
@@ -450,7 +497,11 @@ agent = Agent(
 )
 
 ## Run the agent
-result = agent.run(messages=[ChatMessage.from_user("Calculate the factorial of 5, then multiply it by 2")])
+result = agent.run(
+    messages=[
+        ChatMessage.from_user("Calculate the factorial of 5, then multiply it by 2"),
+    ],
+)
 
 ## Access state values from result
 factorial_result = result["factorial_result"]

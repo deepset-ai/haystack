@@ -53,7 +53,9 @@ from haystack import Pipeline
 from haystack.components.joiners import ListJoiner
 from typing import List
 
-user_message = [ChatMessage.from_user("Give a brief answer the following question: {{query}}")]
+user_message = [
+    ChatMessage.from_user("Give a brief answer the following question: {{query}}"),
+]
 
 feedback_prompt = """
     You are given a question and an answer.

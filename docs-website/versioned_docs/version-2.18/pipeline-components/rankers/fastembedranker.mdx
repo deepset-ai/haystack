@@ -44,7 +44,11 @@ You can set the path where the model is stored in a cache directory. You can als
 
 ```python
 cache_dir = "/your_cacheDirectory"
-ranker = FastembedRanker(model="Xenova/ms-marco-MiniLM-L-6-v2", cache_dir=cache_dir, threads=2)
+ranker = FastembedRanker(
+    model="Xenova/ms-marco-MiniLM-L-6-v2",
+    cache_dir=cache_dir,
+    threads=2,
+)
 ```
 
 If you want to use the data parallel encoding, you can set the parameters `parallel` and `batch_size`.
@@ -100,6 +104,9 @@ document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
 res = document_ranker_pipeline.run(
-    data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}},
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
 )
 ```

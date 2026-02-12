@@ -77,7 +77,11 @@ from haystack_integrations.tools.github import GitHubPRCreatorTool
 
 pr_tool = GitHubPRCreatorTool(name="github_pr_creator")
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[pr_tool], exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[pr_tool],
+    exit_conditions=["text"],
+)
 
 agent.warm_up()
 response = agent.run(

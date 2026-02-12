@@ -62,7 +62,10 @@ prompt_template = [
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    model="gpt-4o-mini",
+)
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
@@ -188,7 +191,10 @@ prompt_template = [
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = AnthropicChatGenerator(api_key=Secret.from_env_var("ANTHROPIC_API_KEY"), model="claude-sonnet-4-5-20250929")
+llm = AnthropicChatGenerator(
+    api_key=Secret.from_env_var("ANTHROPIC_API_KEY"),
+    model="claude-sonnet-4-5-20250929",
+)
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
@@ -222,7 +228,9 @@ See the [AmazonBedrockChatGenerator](../pipeline-components/generators/amazonbed
 ```python
 import os
 from haystack import Pipeline, Document
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.builders import ChatPromptBuilder
@@ -289,7 +297,9 @@ See the [GoogleGenAIChatGenerator](../pipeline-components/generators/googlegenai
 
 ```python
 from haystack import Pipeline, Document
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.builders import ChatPromptBuilder
@@ -320,7 +330,10 @@ prompt_template = [
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = GoogleGenAIChatGenerator(api_key=Secret.from_env_var("GOOGLE_API_KEY"), model="gemini-2.5-flash")
+llm = GoogleGenAIChatGenerator(
+    api_key=Secret.from_env_var("GOOGLE_API_KEY"),
+    model="gemini-2.5-flash",
+)
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
@@ -382,7 +395,10 @@ from haystack.utils import Secret
 search_tool = ComponentTool(component=SerperDevWebSearch())
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(
+        api_key=Secret.from_env_var("OPENAI_API_KEY"),
+        model="gpt-4o-mini",
+    ),
     tools=[search_tool],
     system_prompt="You are a helpful assistant that can search the web for information.",
 )
@@ -471,7 +487,9 @@ See the [AmazonBedrockChatGenerator](../pipeline-components/generators/amazonbed
 ```python
 import os
 from haystack.components.agents import Agent
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
 from haystack.components.websearch import SerperDevWebSearch
@@ -483,7 +501,9 @@ os.environ["AWS_DEFAULT_REGION"] = "YOUR_AWS_REGION"
 search_tool = ComponentTool(component=SerperDevWebSearch())
 
 agent = Agent(
-    chat_generator=AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0"),
+    chat_generator=AmazonBedrockChatGenerator(
+        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    ),
     tools=[search_tool],
     system_prompt="You are a helpful assistant that can search the web for information.",
 )
@@ -506,7 +526,9 @@ See the [GoogleGenAIChatGenerator](../pipeline-components/generators/googlegenai
 
 ```python
 from haystack.components.agents import Agent
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
 from haystack.components.websearch import SerperDevWebSearch
@@ -515,7 +537,10 @@ from haystack.utils import Secret
 search_tool = ComponentTool(component=SerperDevWebSearch())
 
 agent = Agent(
-    chat_generator=GoogleGenAIChatGenerator(api_key=Secret.from_env_var("GOOGLE_API_KEY"), model="gemini-2.5-flash"),
+    chat_generator=GoogleGenAIChatGenerator(
+        api_key=Secret.from_env_var("GOOGLE_API_KEY"),
+        model="gemini-2.5-flash",
+    ),
     tools=[search_tool],
     system_prompt="You are a helpful assistant that can search the web for information.",
 )

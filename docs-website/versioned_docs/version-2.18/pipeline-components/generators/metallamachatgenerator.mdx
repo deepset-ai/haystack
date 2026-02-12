@@ -55,7 +55,9 @@ pip install meta-llama-haystack
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+from haystack_integrations.components.generators.meta_llama import (
+    MetaLlamaChatGenerator,
+)
 
 llm = MetaLlamaChatGenerator()
 response = llm.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
@@ -66,7 +68,9 @@ With streaming and model routing:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+from haystack_integrations.components.generators.meta_llama import (
+    MetaLlamaChatGenerator,
+)
 
 llm = MetaLlamaChatGenerator(
     model="Llama-3.3-8B-Instruct",
@@ -92,7 +96,9 @@ from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import Secret
 
-from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+from haystack_integrations.components.generators.meta_llama import (
+    MetaLlamaChatGenerator,
+)
 
 ## Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
@@ -115,7 +121,10 @@ prompt_template = [
 ]
 
 ## Define required variables explicitly
-prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"question", "documents"})
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"question", "documents"},
+)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 llm = MetaLlamaChatGenerator(

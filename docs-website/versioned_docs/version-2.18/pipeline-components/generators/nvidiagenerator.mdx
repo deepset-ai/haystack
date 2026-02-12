@@ -93,7 +93,10 @@ from haystack_integrations.components.generators.nvidia import NvidiaGenerator
 
 docstore = InMemoryDocumentStore()
 docstore.write_documents(
-    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+    [
+        Document(content="Rome is the capital of Italy"),
+        Document(content="Paris is the capital of France"),
+    ],
 )
 
 query = "What is the capital of France?"

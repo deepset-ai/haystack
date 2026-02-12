@@ -85,7 +85,10 @@ class DocumentProducer:
 pipe = Pipeline()
 pipe.add_component(
     name="output_adapter",
-    instance=OutputAdapter(template="{{ documents[0].content | capitalize}}", output_type=str),
+    instance=OutputAdapter(
+        template="{{ documents[0].content | capitalize}}",
+        output_type=str,
+    ),
 )
 pipe.add_component(name="document_producer", instance=DocumentProducer())
 pipe.connect("document_producer", "output_adapter")

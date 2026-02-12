@@ -53,7 +53,10 @@ class WelcomeTextGenerator:
 
     @component.output_types(welcome_text=str, note=str)
     def run(self, name: str):
-        return {"welcome_text": f"Hello {name}, welcome to Haystack!".upper(), "note": "welcome message is ready"}
+        return {
+            "welcome_text": f"Hello {name}, welcome to Haystack!".upper(),
+            "note": "welcome message is ready",
+        }
 ```
 
 Here, the custom component `WelcomeTextGenerator` accepts one input: `name` string and returns two outputs: `welcome_text` and `note`.
@@ -77,7 +80,9 @@ class WelcomeTextGenerator:
     @component.output_types(welcome_text=str, note=str)
     def run(self, name: str):
         return {
-            "welcome_text": ("Hello {name}, welcome to Haystack!".format(name=name)).upper(),
+            "welcome_text": (
+                "Hello {name}, welcome to Haystack!".format(name=name)
+            ).upper(),
             "note": "welcome message is ready",
         }
 
@@ -95,11 +100,17 @@ class WhitespaceSplitter:
 
 # create a pipeline and add the custom components to it
 text_pipeline = Pipeline()
-text_pipeline.add_component(name="welcome_text_generator", instance=WelcomeTextGenerator())
+text_pipeline.add_component(
+    name="welcome_text_generator",
+    instance=WelcomeTextGenerator(),
+)
 text_pipeline.add_component(name="splitter", instance=WhitespaceSplitter())
 
 # connect the components
-text_pipeline.connect(sender="welcome_text_generator.welcome_text", receiver="splitter.text")
+text_pipeline.connect(
+    sender="welcome_text_generator.welcome_text",
+    receiver="splitter.text",
+)
 
 # define the result and run the pipeline
 result = text_pipeline.run({"welcome_text_generator": {"name": "Bilge"}})

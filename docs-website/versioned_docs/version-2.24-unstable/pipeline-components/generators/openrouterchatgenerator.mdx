@@ -82,7 +82,9 @@ pip install openrouter-haystack
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 client = OpenRouterChatGenerator()
 response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
@@ -93,7 +95,9 @@ With streaming and model routing:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 client = OpenRouterChatGenerator(
     model="openrouter/auto",
@@ -110,12 +114,16 @@ With multimodal inputs:
 
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 llm = OpenRouterChatGenerator(model="anthropic/claude-3-5-sonnet")
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])
+user_message = ChatMessage.from_user(
+    content_parts=["What does the image show? Max 5 words.", image],
+)
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
@@ -129,7 +137,9 @@ print(response)
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 prompt_builder = ChatPromptBuilder()
 llm = OpenRouterChatGenerator(model="openai/gpt-4o-mini")
@@ -139,8 +149,13 @@ pipe.add_component("builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("builder.prompt", "llm.messages")
 
-messages = [ChatMessage.from_system("Give brief answers."), ChatMessage.from_user("Tell me about {{city}}")]
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
 
-response = pipe.run(data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}})
+response = pipe.run(
+    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
+)
 print(response)
 ```

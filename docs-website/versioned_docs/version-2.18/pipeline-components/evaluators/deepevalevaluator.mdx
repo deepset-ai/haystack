@@ -60,7 +60,10 @@ To create a faithfulness evaluation pipeline:
 
 ```python
 from haystack import Pipeline
-from haystack_integrations.components.evaluators.deepeval import DeepEvalEvaluator, DeepEvalMetric
+from haystack_integrations.components.evaluators.deepeval import (
+    DeepEvalEvaluator,
+    DeepEvalMetric,
+)
 
 pipeline = Pipeline()
 evaluator = DeepEvalEvaluator(
@@ -76,7 +79,10 @@ To run the evaluation pipeline, you should have the _expected inputs_ for the me
 results = pipeline.run(
     {
         "evaluator": {
-            "questions": ["When was the Rhodes Statue built?", "Where is the Pyramid of Giza?"],
+            "questions": [
+                "When was the Rhodes Statue built?",
+                "Where is the Pyramid of Giza?",
+            ],
             "contexts": [["Context for question 1"], ["Context for question 2"]],
             "responses": ["Response for question 1", "Response for question 2"],
         },

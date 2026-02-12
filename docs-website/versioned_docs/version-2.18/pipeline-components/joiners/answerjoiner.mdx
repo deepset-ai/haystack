@@ -38,7 +38,9 @@ from haystack.dataclasses import ChatMessage
 
 query = "What's Natural Language Processing?"
 messages = [
-    ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+    ChatMessage.from_system(
+        "You are a helpful, respectful and honest assistant. Be super concise.",
+    ),
     ChatMessage.from_user(query),
 ]
 

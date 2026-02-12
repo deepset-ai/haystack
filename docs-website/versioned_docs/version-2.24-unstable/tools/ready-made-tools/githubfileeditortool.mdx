@@ -91,7 +91,11 @@ from haystack_integrations.tools.github import GitHubFileEditorTool
 
 editor_tool = GitHubFileEditorTool(repo="owner/repo")
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[editor_tool], exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[editor_tool],
+    exit_conditions=["text"],
+)
 
 response = agent.run(
     messages=[

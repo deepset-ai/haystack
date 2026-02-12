@@ -116,7 +116,10 @@ c = MyComponent(device=ComponentDevice.from_multiple(DeviceMap({
 If the component’s backend provides a more specialized API to manage devices, it could add an additional init parameter that acts as a conduit. For instance, `HuggingFaceLocalGenerator` exposes a `huggingface_pipeline_kwargs` parameter through which Hugging Face-specific `device_map`  arguments can be passed:
 
 ```python
-generator = HuggingFaceLocalGenerator(model="llama2", huggingface_pipeline_kwargs={"device_map": "balanced"})
+generator = HuggingFaceLocalGenerator(
+    model="llama2",
+    huggingface_pipeline_kwargs={"device_map": "balanced"},
+)
 ```
 
 In such cases, ensure that the parameter precedence and selection behavior is clearly documented. In the case of `HuggingFaceLocalGenerator`, the device map passed through the `huggingface_pipeline_kwargs` parameter overrides the explicit `device` parameter and is documented as such.

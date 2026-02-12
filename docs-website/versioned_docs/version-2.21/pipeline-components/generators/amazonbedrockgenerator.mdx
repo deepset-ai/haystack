@@ -56,7 +56,9 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 Basic usage:
 
 ```python
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockGenerator,
+)
 
 aws_access_key_id = "..."
 aws_secret_access_key = "..."
@@ -80,7 +82,9 @@ from haystack.components.builders import PromptBuilder
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack import Pipeline
 
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockGenerator,
+)
 
 template = """
 Given the following information, answer the question.

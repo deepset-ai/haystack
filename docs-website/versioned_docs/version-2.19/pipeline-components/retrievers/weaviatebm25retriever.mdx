@@ -50,7 +50,9 @@ pip install weaviate-haystack
 This Retriever needs an instance of `WeaviateDocumentStore` and indexed Documents to run.
 
 ```python
-from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
 from haystack_integrations.components.retrievers.weaviate import WeaviateBM25Retriever
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
@@ -105,8 +107,14 @@ documents = [
 document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 
 rag_pipeline = Pipeline()
-rag_pipeline.add_component(name="retriever", instance=WeaviateBM25Retriever(document_store=document_store))
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(
+    name="retriever",
+    instance=WeaviateBM25Retriever(document_store=document_store),
+)
+rag_pipeline.add_component(
+    instance=PromptBuilder(template=prompt_template),
+    name="prompt_builder",
+)
 rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")

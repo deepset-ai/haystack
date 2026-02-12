@@ -42,7 +42,11 @@ from haystack import Document
 from haystack.components.rankers import LostInTheMiddleRanker
 
 ranker = LostInTheMiddleRanker()
-docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="Madrid")]
+docs = [
+    Document(content="Paris"),
+    Document(content="Berlin"),
+    Document(content="Madrid"),
+]
 result = ranker.run(documents=docs)
 
 for doc in result["documents"]:
@@ -84,7 +88,10 @@ document_store.write_documents(docs)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 ranker = LostInTheMiddleRanker(word_count_threshold=1024)
-prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
 generator = OpenAIChatGenerator()
 
 p = Pipeline()

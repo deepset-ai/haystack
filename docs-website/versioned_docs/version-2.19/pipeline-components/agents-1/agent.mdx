@@ -109,7 +109,12 @@ calculator_tool = Tool(
     description="Evaluate basic math expressions.",
     parameters={
         "type": "object",
-        "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "Math expression to evaluate",
+            },
+        },
         "required": ["expression"],
     },
     function=calculate,
@@ -155,10 +160,20 @@ document_store = InMemoryDocumentStore()  # create a document store or an SQL da
 
 
 @tool
-def add_database_tool(name: str, surname: str, job_title: Optional[str], other: Optional[str]):
+def add_database_tool(
+    name: str,
+    surname: str,
+    job_title: Optional[str],
+    other: Optional[str],
+):
     """Use this tool to add names to the database with information about them"""
     document_store.write_documents(
-        [Document(content=name + " " + surname + " " + (job_title or ""), meta={"other": other})],
+        [
+            Document(
+                content=name + " " + surname + " " + (job_title or ""),
+                meta={"other": other},
+            ),
+        ],
     )
     return
 
@@ -199,7 +214,9 @@ extraction_agent.connect("fetcher.streams", "converter.sources")
 extraction_agent.connect("converter.documents", "builder.docs")
 extraction_agent.connect("builder", "database_agent")
 
-agent_output = extraction_agent.run({"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}})
+agent_output = extraction_agent.run(
+    {"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
+)
 
 print(agent_output["database_agent"]["messages"][-1].text)
 ```

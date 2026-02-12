@@ -53,12 +53,16 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 Basic usage:
 
 ```python
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 generator = AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1")
 messages = [
-    ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"),
+    ChatMessage.from_system(
+        "You are a helpful assistant that answers question in Spanish only",
+    ),
     ChatMessage.from_user("What's Natural Language Processing? Be brief."),
 ]
 
@@ -74,7 +78,9 @@ In a RAG pipeline:
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
@@ -82,9 +88,21 @@ pipe.add_component("llm", AmazonBedrockChatGenerator(model="meta.llama2-70b-chat
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"
-system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
-messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+system_message = ChatMessage.from_system(
+    "You are an assistant giving out valuable information to language learners.",
+)
+messages = [
+    system_message,
+    ChatMessage.from_user("What's the official language of {{ country }}?"),
+]
 
-res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        },
+    },
+)
 print(res)
 ```

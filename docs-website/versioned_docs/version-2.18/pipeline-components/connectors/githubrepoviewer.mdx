@@ -58,7 +58,11 @@ Viewing a directory listing:
 from haystack_integrations.components.connectors.github import GitHubRepoViewer
 
 viewer = GitHubRepoViewer()
-result = viewer.run(repo="deepset-ai/haystack", path="haystack/components", branch="main")
+result = viewer.run(
+    repo="deepset-ai/haystack",
+    path="haystack/components",
+    branch="main",
+)
 
 print(result)
 ```

@@ -50,7 +50,9 @@ pip install watsonx-haystack
 Here is how you can use the component on its own:
 
 ```python
-from haystack_integrations.components.embedders.watsonx.text_embedder import WatsonxTextEmbedder
+from haystack_integrations.components.embedders.watsonx.text_embedder import (
+    WatsonxTextEmbedder,
+)
 from haystack.utils import Secret
 
 text_to_embed = "I love pizza!"
@@ -78,8 +80,12 @@ We recommend setting WATSONX_API_KEY and WATSONX_PROJECT_ID as environment varia
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.watsonx.text_embedder import WatsonxTextEmbedder
-from haystack_integrations.components.embedders.watsonx.document_embedder import WatsonxDocumentEmbedder
+from haystack_integrations.components.embedders.watsonx.text_embedder import (
+    WatsonxTextEmbedder,
+)
+from haystack_integrations.components.embedders.watsonx.document_embedder import (
+    WatsonxDocumentEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
@@ -96,7 +102,10 @@ document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", WatsonxTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

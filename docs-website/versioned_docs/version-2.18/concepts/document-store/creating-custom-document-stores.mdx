@@ -83,12 +83,19 @@ class DocumentStore(Protocol):
         Returns the number of documents stored.
         """
 
-    def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
+    def filter_documents(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Document]:
         """
         Returns the documents that match the filters provided.
         """
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
+    def write_documents(
+        self,
+        documents: List[Document],
+        policy: DuplicatePolicy = DuplicatePolicy.FAIL,
+    ) -> int:
         """
         Writes (or overwrites) documents into the DocumentStore, return the number of documents that was written.
         """

@@ -64,7 +64,9 @@ This Retriever needs the `OpensearchDocumentStore` and indexed Documents to run.
 Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
 
 ```python
-from haystack_integrations.components.retrievers.opensearch import OpenSearchBM25Retriever
+from haystack_integrations.components.retrievers.opensearch import (
+    OpenSearchBM25Retriever,
+)
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 
 from haystack import Document
@@ -113,7 +115,10 @@ document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 retriever = OpenSearchBM25Retriever(document_store=document_store)
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(name="retriever", instance=retriever)
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(
+    instance=PromptBuilder(template=prompt_template),
+    name="prompt_builder",
+)
 rag_pipeline.add_component(instance=OpenAIGenerator(api_key=api_key), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")

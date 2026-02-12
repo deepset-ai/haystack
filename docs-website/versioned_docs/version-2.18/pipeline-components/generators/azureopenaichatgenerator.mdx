@@ -130,7 +130,9 @@ from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 
 client = AzureOpenAIChatGenerator()
-response = client.run([ChatMessage.from_user("What's Natural Language Processing? Be brief.")])
+response = client.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+)
 print(response)
 ```
 
@@ -140,8 +142,12 @@ With streaming:
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 
-client = AzureOpenAIChatGenerator(streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
-response = client.run([ChatMessage.from_user("What's Natural Language Processing? Be brief.")])
+client = AzureOpenAIChatGenerator(
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
+response = client.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+)
 print(response)
 ```
 
@@ -163,8 +169,17 @@ pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
 messages = [
-    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
     ChatMessage.from_user("Tell me about {{location}}"),
 ]
-pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
+pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 ```

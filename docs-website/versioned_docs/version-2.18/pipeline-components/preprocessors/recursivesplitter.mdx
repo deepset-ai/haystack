@@ -35,7 +35,11 @@ The separators are applied in the same order as they are defined in the list. Th
 from haystack import Document
 from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
+chunker = RecursiveDocumentSplitter(
+    split_length=260,
+    split_overlap=0,
+    separators=["\n\n", "\n", ".", " "],
+)
 text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -71,7 +75,11 @@ p.add_component(
         split_overlap=0,
         split_unit="char",
         separators=["\n\n", "\n", "sentence", " "],
-        sentence_splitter_params={"language": "en", "use_split_rules": True, "keep_white_spaces": False},
+        sentence_splitter_params={
+            "language": "en",
+            "use_split_rules": True,
+            "keep_white_spaces": False,
+        },
     ),
     name="recursive_splitter",
 )

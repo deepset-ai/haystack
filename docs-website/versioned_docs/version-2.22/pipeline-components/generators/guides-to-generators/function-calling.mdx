@@ -82,7 +82,10 @@ weather_response = [
     {
         "id": "response_uhGNifLfopt5JrCUxXw1L3zo",
         "status": "success",
-        "function": {"name": "get_current_weather", "arguments": {"location": "Berlin", "format": "celsius"}},
+        "function": {
+            "name": "get_current_weather",
+            "arguments": {"location": "Berlin", "format": "celsius"},
+        },
         "data": {
             "location": "Berlin",
             "temperature": 18,
@@ -98,7 +101,10 @@ weather_response = [
 We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) and add it to a list of messages:
 
 ```python
-fcm = ChatMessage.from_function(content=json.dumps(weather_response), name="get_current_weather")
+fcm = ChatMessage.from_function(
+    content=json.dumps(weather_response),
+    name="get_current_weather",
+)
 messages.append(fcm)
 ```
 

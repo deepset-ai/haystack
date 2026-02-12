@@ -47,7 +47,9 @@ The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you 
 from haystack.utils import Secret
 from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
 
-document_embedder = SentenceTransformersSparseDocumentEmbedder(token=Secret.from_token("<your-api-key>"))
+document_embedder = SentenceTransformersSparseDocumentEmbedder(
+    token=Secret.from_token("<your-api-key>"),
+)
 ```
 
 ### Backend Options
@@ -61,7 +63,10 @@ This component supports multiple backends for model execution:
 You can specify the backend during initialization:
 
 ```python
-embedder = SentenceTransformersSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v2", backend="onnx")
+embedder = SentenceTransformersSparseDocumentEmbedder(
+    model="prithivida/Splade_PP_en_v2",
+    backend="onnx",
+)
 ```
 
 For more information on acceleration and quantization options, refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html).
@@ -121,11 +126,17 @@ from haystack.components.embedders import (
     SentenceTransformersSparseTextEmbedder,
 )
 from haystack.components.writers import DocumentWriter
-from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 
-document_store = QdrantDocumentStore(":memory:", recreate_index=True, use_sparse_embeddings=True)
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True,
+)
 
 documents = [
     Document(content="My name is Wolfgang and I live in Berlin"),
@@ -136,7 +147,10 @@ documents = [
 
 ## Indexing pipeline
 indexing_pipeline = Pipeline()
-indexing_pipeline.add_component("sparse_document_embedder", SentenceTransformersSparseDocumentEmbedder())
+indexing_pipeline.add_component(
+    "sparse_document_embedder",
+    SentenceTransformersSparseDocumentEmbedder(),
+)
 indexing_pipeline.add_component(
     "writer",
     DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE),
@@ -147,9 +161,18 @@ indexing_pipeline.run({"sparse_document_embedder": {"documents": documents}})
 
 ## Query pipeline
 query_pipeline = Pipeline()
-query_pipeline.add_component("sparse_text_embedder", SentenceTransformersSparseTextEmbedder())
-query_pipeline.add_component("sparse_retriever", QdrantSparseEmbeddingRetriever(document_store=document_store))
-query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
+query_pipeline.add_component(
+    "sparse_text_embedder",
+    SentenceTransformersSparseTextEmbedder(),
+)
+query_pipeline.add_component(
+    "sparse_retriever",
+    QdrantSparseEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect(
+    "sparse_text_embedder.sparse_embedding",
+    "sparse_retriever.query_sparse_embedding",
+)
 
 query = "Who provides sparse embedding models?"
 

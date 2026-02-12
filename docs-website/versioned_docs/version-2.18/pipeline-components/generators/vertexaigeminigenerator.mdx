@@ -59,7 +59,9 @@ pip install google-vertex-haystack
 Basic usage:
 
 ```python
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiGenerator,
+)
 
 gemini = VertexAIGeminiGenerator()
 result = gemini.run(parts=["What is the most interesting thing you know?"])
@@ -72,7 +74,9 @@ Advanced usage, multi-modal prompting:
 ```python
 import requests
 from haystack.dataclasses.byte_stream import ByteStream
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiGenerator,
+)
 
 URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot1.jpg",
@@ -80,7 +84,9 @@ URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot3.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg",
 ]
-images = [ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS]
+images = [
+    ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS
+]
 
 gemini = VertexAIGeminiGenerator()
 result = gemini.run(parts=["What can you tell me about this robots?", *images])
@@ -97,11 +103,16 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiGenerator,
+)
 
 docstore = InMemoryDocumentStore()
 docstore.write_documents(
-    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+    [
+        Document(content="Rome is the capital of Italy"),
+        Document(content="Paris is the capital of France"),
+    ],
 )
 
 query = "What is the capital of France?"

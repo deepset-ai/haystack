@@ -43,8 +43,14 @@ result = builder.run(target_language="French", text="Hello, how are you?")
 Or you can also replace the template at runtime with a new one:
 
 ```python
-new_template = [ChatMessage.from_user("Summarize in {{ target_language }}: {{ content }}")]
-result = builder.run(template=new_template, target_language="English", content="A detailed paragraph.")
+new_template = [
+    ChatMessage.from_user("Summarize in {{ target_language }}: {{ content }}"),
+]
+result = builder.run(
+    template=new_template,
+    target_language="English",
+    content="A detailed paragraph.",
+)
 ```
 
 ### Variables
@@ -68,9 +74,15 @@ Use `required_variables` and `variables` to specify the input types and required
 In the example below, only _name_ is required to run the component, while _topic_ is only an optional variable:
 
 ```python
-template = [ChatMessage.from_user("Hello, {{ name }}. How can I assist you with {{ topic }}?")]
+template = [
+    ChatMessage.from_user("Hello, {{ name }}. How can I assist you with {{ topic }}?"),
+]
 
-builder = ChatPromptBuilder(template=template, required_variables=["name"], variables=["name", "topic"])
+builder = ChatPromptBuilder(
+    template=template,
+    required_variables=["name"],
+    variables=["name", "topic"],
+)
 
 result = builder.run(name="Alice")
 ## Output: "Hello, Alice. How can I assist you with ?"
@@ -85,7 +97,9 @@ A [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) represents a sing
 Here’s how the roles work together in a `ChatPromptBuilder`:
 
 ```python
-system_message = ChatMessage.from_system("You are an assistant helping tourists in {{ language }}.")
+system_message = ChatMessage.from_system(
+    "You are an assistant helping tourists in {{ language }}.",
+)
 
 user_message = ChatMessage.from_user("What are the best places to visit in {{ city }}?")
 
@@ -174,7 +188,9 @@ builder = ChatPromptBuilder(template=template)
 result = builder.run()["prompt"]
 
 now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
-yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+yesterday = (
+    f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+)
 ```
 
 ## Usage
@@ -187,7 +203,11 @@ yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 
-template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: {{ snippet }}; Translation:")]
+template = [
+    ChatMessage.from_user(
+        "Translate to {{ target_language }}. Context: {{ snippet }}; Translation:",
+    ),
+]
 builder = ChatPromptBuilder(template=template)
 builder.run(target_language="spanish", snippet="I can't speak spanish.")
 ```
@@ -224,7 +244,9 @@ Hello from {{country}}!
 
 builder = ChatPromptBuilder(template=template)
 result = builder.run(country="Italy")
-assert result["prompt"] == [ChatMessage.from_user("Hello from Italy!", name="John", meta={"key": "value"})]
+assert result["prompt"] == [
+    ChatMessage.from_user("Hello from Italy!", name="John", meta={"key": "value"}),
+]
 ```
 
 #### Multiple ChatMessages with different roles
@@ -262,14 +284,24 @@ assert result["prompt"] == [
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 
-template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: {{ snippet }}; Translation:")]
+template = [
+    ChatMessage.from_user(
+        "Translate to {{ target_language }}. Context: {{ snippet }}; Translation:",
+    ),
+]
 builder = ChatPromptBuilder(template=template)
 builder.run(target_language="spanish", snippet="I can't speak spanish.")
 
 summary_template = [
-    ChatMessage.from_user("Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:"),
+    ChatMessage.from_user(
+        "Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:",
+    ),
 ]
-builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
+builder.run(
+    target_language="spanish",
+    snippet="I can't speak spanish.",
+    template=summary_template,
+)
 ```
 
 #### Multimodal
@@ -297,7 +329,10 @@ result = builder.run(user_name="John", images=images)
 
 assert result["prompt"] == [
     ChatMessage.from_user(
-        content_parts=["Hello! I am John. What's the difference between the following images?", *images],
+        content_parts=[
+            "Hello! I am John. What's the difference between the following images?",
+            *images,
+        ],
     ),
 ]
 ```
@@ -322,11 +357,18 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 location = "Berlin"
 language = "English"
-system_message = ChatMessage.from_system("You are an assistant giving information to tourists in {{language}}")
+system_message = ChatMessage.from_system(
+    "You are an assistant giving information to tourists in {{language}}",
+)
 messages = [system_message, ChatMessage.from_user("Tell me about {{location}}")]
 
 res = pipe.run(
-    data={"prompt_builder": {"template_variables": {"location": location, "language": language}, "template": messages}},
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location, "language": language},
+            "template": messages,
+        },
+    },
 )
 print(res)
 ```
@@ -353,10 +395,17 @@ location = "Berlin"
 
 messages = [
     system_message,
-    ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?"),
+    ChatMessage.from_user(
+        "What's the weather forecast for {{location}} in the next {{day_count}} days?",
+    ),
 ]
 res = pipe.run(
-    data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"}, "template": messages}},
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location, "day_count": "5"},
+            "template": messages,
+        },
+    },
 )
 
 print(res)

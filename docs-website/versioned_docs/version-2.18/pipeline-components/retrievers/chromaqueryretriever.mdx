@@ -66,8 +66,14 @@ document_store = ChromaDocumentStore()
 
 documents = [
     Document(content="This contains variable declarations", meta={"title": "one"}),
-    Document(content="This contains another sort of variable declarations", meta={"title": "two"}),
-    Document(content="This has nothing to do with variable declarations", meta={"title": "three"}),
+    Document(
+        content="This contains another sort of variable declarations",
+        meta={"title": "two"},
+    ),
+    Document(
+        content="This has nothing to do with variable declarations",
+        meta={"title": "three"},
+    ),
     Document(content="A random doc", meta={"title": "four"}),
 ]
 

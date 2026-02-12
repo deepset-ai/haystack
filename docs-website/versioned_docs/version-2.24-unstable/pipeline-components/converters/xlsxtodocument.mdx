@@ -42,7 +42,10 @@ pip install tabulate
 from haystack.components.converters import XLSXToDocument
 
 converter = XLSXToDocument()
-results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["sample.xlsx"],
+    meta={"date_added": datetime.now().isoformat()},
+)
 documents = results["documents"]
 print(documents[0].content)
 ## ",A,B\n1,col_a,col_b\n2,1.5,test\n"
@@ -63,7 +66,10 @@ document_store = InMemoryDocumentStore()
 pipeline = Pipeline()
 pipeline.add_component("converter", XLSXToDocument())
 pipeline.add_component("cleaner", DocumentCleaner())
-pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component(
+    "splitter",
+    DocumentSplitter(split_by="sentence", split_length=5),
+)
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 pipeline.connect("converter", "cleaner")
 pipeline.connect("cleaner", "splitter")

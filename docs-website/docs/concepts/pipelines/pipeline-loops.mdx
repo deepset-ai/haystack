@@ -70,7 +70,9 @@ from haystack.components.routers import ConditionalRouter
 from haystack.dataclasses import ChatMessage
 
 template = [
-    ChatMessage.from_system("Answer the following question concisely with just the answer, no punctuation."),
+    ChatMessage.from_system(
+        "Answer the following question concisely with just the answer, no punctuation.",
+    ),
     ChatMessage.from_user(
         "{% if previous_replies %}"
         "Previously you replied incorrectly: {{ previous_replies[0].text }}\n"

@@ -83,7 +83,10 @@ print(result["documents"][0].embedding)
 ```python
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import AzureOpenAITextEmbedder, AzureOpenAIDocumentEmbedder
+from haystack.components.embedders import (
+    AzureOpenAITextEmbedder,
+    AzureOpenAIDocumentEmbedder,
+)
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
@@ -104,7 +107,10 @@ indexing_pipeline.run({"embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", AzureOpenAITextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

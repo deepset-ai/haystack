@@ -133,7 +133,9 @@ builder = PromptBuilder(template=template)
 result = builder.run()["prompt"]
 
 now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
-yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+yesterday = (
+    f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+)
 ```
 
 ## Usage
@@ -161,7 +163,10 @@ from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
 ## in a real world use case documents could come from a retriever, web, or any other source
-documents = [Document(content="Joe lives in Berlin"), Document(content="Joe is a software engineer")]
+documents = [
+    Document(content="Joe lives in Berlin"),
+    Document(content="Joe is a software engineer"),
+]
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -173,7 +178,10 @@ prompt_template = """
     """
 p = Pipeline()
 p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-p.add_component(instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.add_component(
+    instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
+    name="llm",
+)
 p.connect("prompt_builder", "llm")
 
 question = "Where does Joe live?"

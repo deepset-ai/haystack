@@ -77,7 +77,11 @@ metadata: {}
 """
 
 
-def component_pre_init_callback(component_name: str, component_cls: Type, init_params: Dict[str, Any]):
+def component_pre_init_callback(
+    component_name: str,
+    component_cls: Type,
+    init_params: Dict[str, Any],
+):
     # This function gets called every time a component is deserialized.
     if component_name == "cleaner":
         assert "DocumentCleaner" in component_cls.__name__
@@ -89,7 +93,10 @@ def component_pre_init_callback(component_name: str, component_cls: Type, init_p
         print(f"Not modifying component {component_name} of class {component_cls}")
 
 
-pipe = Pipeline.loads(pipeline_yaml, callbacks=DeserializationCallbacks(component_pre_init_callback))
+pipe = Pipeline.loads(
+    pipeline_yaml,
+    callbacks=DeserializationCallbacks(component_pre_init_callback),
+)
 ```
 
 ## Performing Custom Serialization

@@ -46,7 +46,10 @@ Here is the expected format:
             "predicted_answers": "Rome is the capital of Italy with more than 4 million inhabitants.",
         },
         "outputs": {
-            "statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+            "statements": [
+                "Rome is the capital of Italy.",
+                "Rome has more than 4 million inhabitants.",
+            ],
             "statement_scores": [1, 0],
         },
     },
@@ -68,9 +71,15 @@ contexts = [
         "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
     ],
 ]
-predicted_answers = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+predicted_answers = [
+    "Python is a high-level general-purpose programming language that was created by George Lucas.",
+]
 evaluator = FaithfulnessEvaluator()
-result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+result = evaluator.run(
+    questions=questions,
+    contexts=contexts,
+    predicted_answers=predicted_answers,
+)
 
 print(result["individual_scores"])
 ## [0.5]
@@ -87,7 +96,10 @@ Below is an example where we use a `FaithfulnessEvaluator` and a `ContextRelevan
 
 ```python
 from haystack import Pipeline
-from haystack.components.evaluators import ContextRelevanceEvaluator, FaithfulnessEvaluator
+from haystack.components.evaluators import (
+    ContextRelevanceEvaluator,
+    FaithfulnessEvaluator,
+)
 
 pipeline = Pipeline()
 context_relevance_evaluator = ContextRelevanceEvaluator()
@@ -101,7 +113,9 @@ contexts = [
         "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
     ],
 ]
-predicted_answers = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+predicted_answers = [
+    "Python is a high-level general-purpose programming language that was created by George Lucas.",
+]
 
 result = pipeline.run(
     {

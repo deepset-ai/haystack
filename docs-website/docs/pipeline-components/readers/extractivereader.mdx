@@ -56,7 +56,10 @@ Below is an example that uses the `ExtractiveReader` outside of a pipeline. The 
 from haystack import Document
 from haystack.components.readers import ExtractiveReader
 
-docs = [Document(content="Paris is the capital of France."), Document(content="Berlin is the capital of Germany.")]
+docs = [
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+]
 
 reader = ExtractiveReader()
 reader.warm_up()
@@ -96,5 +99,10 @@ extractive_qa_pipeline.add_component(instance=reader, name="reader")
 extractive_qa_pipeline.connect("retriever.documents", "reader.documents")
 
 query = "What is the capital of France?"
-extractive_qa_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "reader": {"query": query, "top_k": 2}})
+extractive_qa_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "reader": {"query": query, "top_k": 2},
+    },
+)
 ```

@@ -58,7 +58,9 @@ adapter = OutputAdapter(
     unsafe=True,
 )
 
-embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
 embedder.warm_up()
 
 

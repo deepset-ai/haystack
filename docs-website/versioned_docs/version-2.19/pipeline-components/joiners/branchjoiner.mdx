@@ -79,7 +79,10 @@ person_schema = {
     "properties": {
         "first_name": {"type": "string", "pattern": "^[A-Z][a-z]+$"},
         "last_name": {"type": "string", "pattern": "^[A-Z][a-z]+$"},
-        "nationality": {"type": "string", "enum": ["Italian", "Portuguese", "American"]},
+        "nationality": {
+            "type": "string",
+            "enum": ["Italian", "Portuguese", "American"],
+        },
     },
     "required": ["first_name", "last_name", "nationality"],
 }
@@ -91,7 +94,10 @@ pipe = Pipeline()
 pipe.add_component("joiner", BranchJoiner(List[ChatMessage]))
 pipe.add_component("fc_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
-pipe.add_component("adapter", OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True))
+pipe.add_component(
+    "adapter",
+    OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True),
+)
 
 ## Connect components
 pipe.connect("adapter", "joiner")
@@ -102,7 +108,11 @@ pipe.connect("validator.validation_error", "joiner")
 result = pipe.run(
     data={
         "fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-        "adapter": {"chat_message": [ChatMessage.from_user("Create json object from Peter Parker")]},
+        "adapter": {
+            "chat_message": [
+                ChatMessage.from_user("Create json object from Peter Parker"),
+            ],
+        },
     },
 )
 
@@ -167,12 +177,27 @@ fr_document_store = InMemoryDocumentStore()
 es_document_store = InMemoryDocumentStore()
 
 rag_pipeline = Pipeline()
-rag_pipeline.add_component(instance=TextLanguageRouter(["en", "fr", "es"]), name="router")
-rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=en_document_store), name="en_retriever")
-rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=fr_document_store), name="fr_retriever")
-rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=es_document_store), name="es_retriever")
+rag_pipeline.add_component(
+    instance=TextLanguageRouter(["en", "fr", "es"]),
+    name="router",
+)
+rag_pipeline.add_component(
+    instance=InMemoryBM25Retriever(document_store=en_document_store),
+    name="en_retriever",
+)
+rag_pipeline.add_component(
+    instance=InMemoryBM25Retriever(document_store=fr_document_store),
+    name="fr_retriever",
+)
+rag_pipeline.add_component(
+    instance=InMemoryBM25Retriever(document_store=es_document_store),
+    name="es_retriever",
+)
 rag_pipeline.add_component(instance=BranchJoiner(type_=list[Document]), name="joiner")
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(
+    instance=PromptBuilder(template=prompt_template),
+    name="prompt_builder",
+)
 rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
 
 rag_pipeline.connect("router.en", "en_retriever.query")
@@ -186,7 +211,9 @@ rag_pipeline.connect("prompt_builder", "llm")
 
 en_question = "Does this apartment has a noise problem?"
 
-result = rag_pipeline.run({"router": {"text": en_question}, "prompt_builder": {"query": en_question}})
+result = rag_pipeline.run(
+    {"router": {"text": en_question}, "prompt_builder": {"query": en_question}},
+)
 
 print(result["llm"]["replies"][0])
 ```

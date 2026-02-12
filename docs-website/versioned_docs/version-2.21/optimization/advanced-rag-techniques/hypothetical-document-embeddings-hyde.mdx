@@ -57,7 +57,9 @@ adapter = OutputAdapter(
     custom_filters={"build_doc": lambda data: [Document(content=d) for d in data]},
 )
 
-embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
 embedder.warm_up()
 
 

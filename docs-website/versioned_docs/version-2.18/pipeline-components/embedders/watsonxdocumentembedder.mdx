@@ -49,7 +49,9 @@ You can do this by using the Document Embedder:
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.watsonx.document_embedder import WatsonxDocumentEmbedder
+from haystack_integrations.components.embedders.watsonx.document_embedder import (
+    WatsonxDocumentEmbedder,
+)
 from haystack.utils import Secret
 
 doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
@@ -79,7 +81,9 @@ Here is how you can use the component on its own:
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.watsonx.document_embedder import WatsonxDocumentEmbedder
+from haystack_integrations.components.embedders.watsonx.document_embedder import (
+    WatsonxDocumentEmbedder,
+)
 
 doc = Document(content="I love pizza!")
 
@@ -98,8 +102,12 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
-from haystack_integrations.components.embedders.watsonx.document_embedder import WatsonxDocumentEmbedder
-from haystack_integrations.components.embedders.watsonx.text_embedder import WatsonxTextEmbedder
+from haystack_integrations.components.embedders.watsonx.document_embedder import (
+    WatsonxDocumentEmbedder,
+)
+from haystack_integrations.components.embedders.watsonx.text_embedder import (
+    WatsonxTextEmbedder,
+)
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
@@ -118,7 +126,10 @@ indexing_pipeline.run({"embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", WatsonxTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

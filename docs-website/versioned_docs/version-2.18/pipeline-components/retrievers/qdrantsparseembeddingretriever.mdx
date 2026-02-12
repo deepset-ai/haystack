@@ -51,7 +51,9 @@ pip install qdrant-haystack
 This Retriever needs the `QdrantDocumentStore` and indexed documents to run.
 
 ```python
-from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.dataclasses import Document, SparseEmbedding
 
@@ -62,7 +64,10 @@ document_store = QdrantDocumentStore(
     return_embedding=True,
 )
 
-doc = Document(content="test", sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]))
+doc = Document(
+    content="test",
+    sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]),
+)
 document_store.write_documents([doc])
 
 retriever = QdrantSparseEmbeddingRetriever(document_store=document_store)
@@ -85,12 +90,21 @@ Then, try out this pipeline:
 ```python
 from haystack import Document, Pipeline
 from haystack.components.writers import DocumentWriter
-from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder, FastembedTextEmbedder
+from haystack_integrations.components.embedders.fastembed import (
+    FastembedDocumentEmbedder,
+    FastembedTextEmbedder,
+)
 
-document_store = QdrantDocumentStore(":memory:", recreate_index=True, use_sparse_embeddings=True)
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True,
+)
 
 documents = [
     Document(content="My name is Wolfgang and I live in Berlin"),
@@ -111,8 +125,14 @@ indexing_pipeline.run({"sparse_document_embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("sparse_text_embedder", FastembedSparseTextEmbedder())
-query_pipeline.add_component("sparse_retriever", QdrantSparseEmbeddingRetriever(document_store=document_store))
-query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
+query_pipeline.add_component(
+    "sparse_retriever",
+    QdrantSparseEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect(
+    "sparse_text_embedder.sparse_embedding",
+    "sparse_retriever.query_sparse_embedding",
+)
 
 query = "Who supports fastembed?"
 

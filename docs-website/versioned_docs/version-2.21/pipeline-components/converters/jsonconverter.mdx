@@ -58,7 +58,9 @@ import json
 from haystack.components.converters import JSONConverter
 from haystack.dataclasses import ByteStream
 
-source = ByteStream.from_string(json.dumps({"text": "This is the content of my document"}))
+source = ByteStream.from_string(
+    json.dumps({"text": "This is the content of my document"}),
+)
 
 converter = JSONConverter(content_key="text")
 results = converter.run(sources=[source])

@@ -25,7 +25,10 @@ The custom HybridRetriever example SuperComponent below turns your query into em
 from haystack import Document, Pipeline, super_component
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.components.retrievers import (
+    InMemoryBM25Retriever,
+    InMemoryEmbeddingRetriever,
+)
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 from datasets import load_dataset
@@ -33,7 +36,11 @@ from datasets import load_dataset
 
 @super_component
 class HybridRetriever:
-    def __init__(self, document_store: InMemoryDocumentStore, embedder_model: str = "BAAI/bge-small-en-v1.5"):
+    def __init__(
+        self,
+        document_store: InMemoryDocumentStore,
+        embedder_model: str = "BAAI/bge-small-en-v1.5",
+    ):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store)
         bm25_retriever = InMemoryBM25Retriever(document_store)
         text_embedder = SentenceTransformersTextEmbedder(embedder_model)
@@ -51,7 +58,9 @@ class HybridRetriever:
 
 
 dataset = load_dataset("HaystackBot/medrag-pubmed-chunk-with-embeddings", split="train")
-docs = [Document(content=doc["contents"], embedding=doc["embedding"]) for doc in dataset]
+docs = [
+    Document(content=doc["contents"], embedding=doc["embedding"]) for doc in dataset
+]
 document_store = InMemoryDocumentStore()
 document_store.write_documents(docs)
 

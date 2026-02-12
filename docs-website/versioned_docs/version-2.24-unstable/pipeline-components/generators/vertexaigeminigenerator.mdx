@@ -117,11 +117,16 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiGenerator,
+)
 
 docstore = InMemoryDocumentStore()
 docstore.write_documents(
-    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+    [
+        Document(content="Rome is the capital of Italy"),
+        Document(content="Paris is the capital of France"),
+    ],
 )
 
 query = "What is the capital of France?"

@@ -87,12 +87,19 @@ if __name__ == "__main__":
     pipe.connect("prompt_builder.prompt", "llm.messages")
 
     messages = [
-        ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+        ChatMessage.from_system(
+            "Always respond in German even if some input data is in other languages.",
+        ),
         ChatMessage.from_user("Tell me about {{location}}"),
     ]
 
     response = pipe.run(
-        data={"prompt_builder": {"template_variables": {"location": "Berlin"}, "prompt_source": messages}},
+        data={
+            "prompt_builder": {
+                "template_variables": {"location": "Berlin"},
+                "prompt_source": messages,
+            },
+        },
     )
     print(response["llm"]["replies"][0])
     print(response["tracer"]["trace_url"])
@@ -186,7 +193,11 @@ By extending `SpanHandler` or its default implementation, `DefaultSpanHandler`, 
 Here's an example:
 
 ```python
-from haystack_integrations.tracing.langfuse import LangfuseConnector, DefaultSpanHandler, LangfuseSpan
+from haystack_integrations.tracing.langfuse import (
+    LangfuseConnector,
+    DefaultSpanHandler,
+    LangfuseSpan,
+)
 from typing import Optional
 
 

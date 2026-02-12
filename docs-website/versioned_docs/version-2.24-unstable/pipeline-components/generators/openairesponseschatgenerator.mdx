@@ -53,9 +53,15 @@ One of the key features of the Responses API is support for reasoning models. Yo
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 
-client = OpenAIResponsesChatGenerator(generation_kwargs={"reasoning": {"effort": "medium", "summary": "auto"}})
+client = OpenAIResponsesChatGenerator(
+    generation_kwargs={"reasoning": {"effort": "medium", "summary": "auto"}},
+)
 
-messages = [ChatMessage.from_user("What's the most efficient sorting algorithm for nearly sorted data?")]
+messages = [
+    ChatMessage.from_user(
+        "What's the most efficient sorting algorithm for nearly sorted data?",
+    ),
+]
 response = client.run(messages)
 print(response)
 ```
@@ -110,7 +116,10 @@ class BookInfo(BaseModel):
     genre: str
 
 
-client = OpenAIResponsesChatGenerator(model="gpt-4o", generation_kwargs={"text_format": BookInfo})
+client = OpenAIResponsesChatGenerator(
+    model="gpt-4o",
+    generation_kwargs={"text_format": BookInfo},
+)
 
 response = client.run(
     messages=[
@@ -147,7 +156,10 @@ json_schema = {
     },
 }
 
-client = OpenAIResponsesChatGenerator(model="gpt-4o", generation_kwargs={"text": json_schema})
+client = OpenAIResponsesChatGenerator(
+    model="gpt-4o",
+    generation_kwargs={"text": json_schema},
+)
 
 response = client.run(
     messages=[
@@ -265,7 +277,9 @@ from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 
 prompt_builder = ChatPromptBuilder()
-llm = OpenAIResponsesChatGenerator(generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}})
+llm = OpenAIResponsesChatGenerator(
+    generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}},
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
@@ -274,10 +288,19 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 topic = "quantum computing"
 messages = [
-    ChatMessage.from_system("You are a helpful assistant that explains complex topics clearly."),
+    ChatMessage.from_system(
+        "You are a helpful assistant that explains complex topics clearly.",
+    ),
     ChatMessage.from_user("Explain {{topic}} in simple terms"),
 ]
-result = pipe.run(data={"prompt_builder": {"template_variables": {"topic": topic}, "template": messages}})
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"topic": topic},
+            "template": messages,
+        },
+    },
+)
 
 print(result)
 ```

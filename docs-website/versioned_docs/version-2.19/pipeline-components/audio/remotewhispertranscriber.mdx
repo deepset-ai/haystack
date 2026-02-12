@@ -54,7 +54,9 @@ Here’s an example of how to use `RemoteWhisperTranscriber` to transcribe a loc
 import requests
 from haystack.components.audio import RemoteWhisperTranscriber
 
-response = requests.get("https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3")
+response = requests.get(
+    "https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3",
+)
 with open("kennedy_speech.mp3", "wb") as file:
     file.write(response.content)
 
@@ -79,7 +81,13 @@ pipe.add_component("transcriber", RemoteWhisperTranscriber())
 
 pipe.connect("fetcher", "transcriber")
 result = pipe.run(
-    data={"fetcher": {"urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]}},
+    data={
+        "fetcher": {
+            "urls": [
+                "https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3",
+            ],
+        },
+    },
 )
 print(result["transcriber"]["documents"][0].content)
 ```

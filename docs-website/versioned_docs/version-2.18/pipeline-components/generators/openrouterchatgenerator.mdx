@@ -51,7 +51,9 @@ pip install openrouter-haystack
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 client = OpenRouterChatGenerator()
 response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
@@ -62,7 +64,9 @@ With streaming and model routing:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 client = OpenRouterChatGenerator(
     model="openrouter/auto",
@@ -81,7 +85,9 @@ print("\n\n Model used: ", response["replies"][0].meta["model"])
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 prompt_builder = ChatPromptBuilder()
 llm = OpenRouterChatGenerator(model="openai/gpt-4o-mini")
@@ -91,8 +97,13 @@ pipe.add_component("builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("builder.prompt", "llm.messages")
 
-messages = [ChatMessage.from_system("Give brief answers."), ChatMessage.from_user("Tell me about {{city}}")]
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
 
-response = pipe.run(data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}})
+response = pipe.run(
+    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
+)
 print(response)
 ```

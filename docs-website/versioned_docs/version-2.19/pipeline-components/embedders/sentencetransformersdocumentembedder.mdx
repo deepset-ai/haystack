@@ -34,7 +34,9 @@ Authentication with a Hugging Face API Token is only required to access private 
 The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
 
 ```python
-document_embedder = SentenceTransformersDocumentEmbedder(token=Secret.from_token("<your-api-key>"))
+document_embedder = SentenceTransformersDocumentEmbedder(
+    token=Secret.from_token("<your-api-key>"),
+)
 ```
 
 ### Compatible Models
@@ -54,7 +56,10 @@ For example, if you use [intfloat/e5-large-v2](https://huggingface.co/BAAI/bge-l
 This is how it works with `SentenceTransformersDocumentEmbedder`:
 
 ```python
-embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-large-v2", prefix="passage")
+embedder = SentenceTransformersDocumentEmbedder(
+    model="intfloat/e5-large-v2",
+    prefix="passage",
+)
 ```
 
 ### Embedding Metadata
@@ -98,7 +103,10 @@ print(result["documents"][0].embedding)
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
@@ -117,7 +125,10 @@ indexing_pipeline.connect("embedder", "writer")
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

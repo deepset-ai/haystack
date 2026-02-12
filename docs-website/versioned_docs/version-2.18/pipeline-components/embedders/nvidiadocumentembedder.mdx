@@ -82,7 +82,10 @@ Here's an example of a RAG pipeline:
 ```python
 from haystack import Pipeline, Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.nvidia import NvidiaTextEmbedder, NvidiaDocumentEmbedder
+from haystack_integrations.components.embedders.nvidia import (
+    NvidiaTextEmbedder,
+    NvidiaDocumentEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
@@ -116,7 +119,10 @@ query_pipeline.add_component(
         api_key=Secret.from_token("<your-api-key>"),
     ),
 )
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

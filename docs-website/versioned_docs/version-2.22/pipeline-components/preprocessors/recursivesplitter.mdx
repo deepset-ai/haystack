@@ -81,7 +81,11 @@ p.add_component(
         split_overlap=0,
         split_unit="char",
         separators=["\n\n", "\n", "sentence", " "],
-        sentence_splitter_params={"language": "en", "use_split_rules": True, "keep_white_spaces": False},
+        sentence_splitter_params={
+            "language": "en",
+            "use_split_rules": True,
+            "keep_white_spaces": False,
+        },
     ),
     name="recursive_splitter",
 )

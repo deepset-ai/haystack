@@ -69,7 +69,10 @@ You can also use `STACKITDocumentEmbedder` in your pipeline in a following way.
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.stackit import STACKITTextEmbedder, STACKITDocumentEmbedder
+from haystack_integrations.components.embedders.stackit import (
+    STACKITTextEmbedder,
+    STACKITDocumentEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore()
@@ -88,7 +91,10 @@ text_embedder = STACKITTextEmbedder(model="intfloat/e5-mistral-7b-instruct")
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", text_embedder)
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Where does Wolfgang live?"

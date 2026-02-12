@@ -55,7 +55,11 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 ## create a hierarchical document structure with 3 levels, where the parent document has 3 children
 text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
 original_document = Document(content=text)
-builder = HierarchicalDocumentSplitter(block_sizes=[10, 3], split_overlap=0, split_by="word")
+builder = HierarchicalDocumentSplitter(
+    block_sizes=[10, 3],
+    split_overlap=0,
+    split_by="word",
+)
 docs = builder.run([original_document])["documents"]
 
 ## store level-1 parent documents and initialize the retriever
@@ -89,8 +93,14 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.dataclasses import ChatMessage
 
 
-def indexing(documents: List[Document]) -> Tuple[InMemoryDocumentStore, InMemoryDocumentStore]:
-    splitter = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
+def indexing(
+    documents: List[Document],
+) -> Tuple[InMemoryDocumentStore, InMemoryDocumentStore]:
+    splitter = HierarchicalDocumentSplitter(
+        block_sizes={10, 3},
+        split_overlap=0,
+        split_by="word",
+    )
     docs = splitter.run(documents)
 
     leaf_documents = [doc for doc in docs["documents"] if doc.meta["__level"] == 1]
@@ -127,10 +137,19 @@ prompt_template = [
 ]
 
 rag_pipeline = Pipeline()
-rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=leaf_docs), name="bm25_retriever")
-rag_pipeline.add_component(instance=AutoMergingRetriever(parent_docs, threshold=0.6), name="retriever")
 rag_pipeline.add_component(
-    instance=ChatPromptBuilder(template=prompt_template, required_variables={"question", "documents"}),
+    instance=InMemoryBM25Retriever(document_store=leaf_docs),
+    name="bm25_retriever",
+)
+rag_pipeline.add_component(
+    instance=AutoMergingRetriever(parent_docs, threshold=0.6),
+    name="retriever",
+)
+rag_pipeline.add_component(
+    instance=ChatPromptBuilder(
+        template=prompt_template,
+        required_variables={"question", "documents"},
+    ),
     name="prompt_builder",
 )
 rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")

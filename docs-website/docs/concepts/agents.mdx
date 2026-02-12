@@ -174,7 +174,10 @@ routes = [
 ## Create the pipeline
 tool_agent = Pipeline()
 tool_agent.add_component("message_collector", MessageCollector())
-tool_agent.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini", tools=[web_tool]))
+tool_agent.add_component(
+    "generator",
+    OpenAIChatGenerator(model="gpt-4o-mini", tools=[web_tool]),
+)
 tool_agent.add_component("router", ConditionalRouter(routes, unsafe=True))
 tool_agent.add_component("tool_invoker", ToolInvoker(tools=[web_tool]))
 
@@ -185,7 +188,9 @@ tool_agent.connect("tool_invoker.tool_messages", "message_collector")
 tool_agent.connect("message_collector", "generator.messages")
 
 messages = [
-    ChatMessage.from_system("You're a helpful agent choosing the right tool when necessary"),
+    ChatMessage.from_system(
+        "You're a helpful agent choosing the right tool when necessary",
+    ),
     ChatMessage.from_user("How is the weather in Berlin?"),
 ]
 result = tool_agent.run({"messages": messages})

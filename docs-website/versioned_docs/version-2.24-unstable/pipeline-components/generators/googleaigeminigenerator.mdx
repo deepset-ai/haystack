@@ -120,7 +120,9 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
+from haystack_integrations.components.generators.google_ai import (
+    GoogleAIGeminiGenerator,
+)
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 

@@ -51,7 +51,9 @@ The following examples show how to use the component with the Gemini Developer A
 #### Gemini Developer API (API Key Authentication)
 
 ```python
-from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+from haystack_integrations.components.embedders.google_genai import (
+    GoogleGenAITextEmbedder,
+)
 
 ## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAITextEmbedder()
@@ -60,7 +62,9 @@ chat_generator = GoogleGenAITextEmbedder()
 #### Vertex AI (Application Default Credentials)
 
 ```python
-from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+from haystack_integrations.components.embedders.google_genai import (
+    GoogleGenAITextEmbedder,
+)
 
 ## Using Application Default Credentials (requires gcloud auth setup)
 chat_generator = GoogleGenAITextEmbedder(
@@ -73,7 +77,9 @@ chat_generator = GoogleGenAITextEmbedder(
 #### Vertex AI (API Key Authentication)
 
 ```python
-from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+from haystack_integrations.components.embedders.google_genai import (
+    GoogleGenAITextEmbedder,
+)
 
 ## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAITextEmbedder(api="vertex")
@@ -86,7 +92,9 @@ chat_generator = GoogleGenAITextEmbedder(api="vertex")
 Here is how you can use the component on its own. You'll need to pass in your Google API key with a Secret or set it as an environment variable called `GOOGLE_API_KEY` or `GEMINI_API_KEY`. The examples below assume you've set the environment variable.
 
 ```python
-from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+from haystack_integrations.components.embedders.google_genai import (
+    GoogleGenAITextEmbedder,
+)
 
 text_to_embed = "I love pizza!"
 
@@ -104,8 +112,12 @@ print(text_embedder.run(text_to_embed))
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
-from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
+from haystack_integrations.components.embedders.google_genai import (
+    GoogleGenAITextEmbedder,
+)
+from haystack_integrations.components.embedders.google_genai import (
+    GoogleGenAIDocumentEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
@@ -122,7 +134,10 @@ document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", GoogleGenAITextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

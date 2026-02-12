@@ -60,7 +60,9 @@ from haystack_integrations.components.embedders.ollama import OllamaTextEmbedder
 
 embedder = OllamaTextEmbedder()
 
-result = embedder.run(text="What do llamas say once you have thanked them? No probllama!")
+result = embedder.run(
+    text="What do llamas say once you have thanked them? No probllama!",
+)
 
 print(result["embedding"])
 ```
@@ -89,7 +91,10 @@ document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", OllamaTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

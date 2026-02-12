@@ -86,9 +86,9 @@ web_tool = ComponentTool(
 ## Create the agent with the web tool
 tool_calling_agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    system_prompt="""You're a helpful agent. When asked about current information like weather, news, or facts, 
+    system_prompt="""You're a helpful agent. When asked about current information like weather, news, or facts,
                      use the web_search tool to find the information and then summarize the findings.
-                     When you get web search results, extract the relevant information and present it in a clear, 
+                     When you get web search results, extract the relevant information and present it in a clear,
                      concise manner.""",
     tools=[web_tool],
 )
@@ -104,7 +104,7 @@ print(result["messages"][-1].text)
 Resulting in:
 
 ```python
->>> The current weather in Berlin is approximately 60°F. The forecast for today includes clouds in the morning with some sunshine later. The high temperature is expected to be around 65°F, and the low tonight will drop to 40°F. 
+>>> The current weather in Berlin is approximately 60°F. The forecast for today includes clouds in the morning with some sunshine later. The high temperature is expected to be around 65°F, and the low tonight will drop to 40°F.
 
 - **Morning**: 49°F
 - **Afternoon**: 57°F
@@ -176,7 +176,10 @@ routes = [
 ## Create the pipeline
 tool_agent = Pipeline()
 tool_agent.add_component("message_collector", MessageCollector())
-tool_agent.add_component("generator", OpenAIChatGenerator(model="gpt-4o-mini", tools=[web_tool]))
+tool_agent.add_component(
+    "generator",
+    OpenAIChatGenerator(model="gpt-4o-mini", tools=[web_tool]),
+)
 tool_agent.add_component("router", ConditionalRouter(routes, unsafe=True))
 tool_agent.add_component("tool_invoker", ToolInvoker(tools=[web_tool]))
 
@@ -187,7 +190,9 @@ tool_agent.connect("tool_invoker.tool_messages", "message_collector")
 tool_agent.connect("message_collector", "generator.messages")
 
 messages = [
-    ChatMessage.from_system("You're a helpful agent choosing the right tool when necessary"),
+    ChatMessage.from_system(
+        "You're a helpful agent choosing the right tool when necessary",
+    ),
     ChatMessage.from_user("How is the weather in Berlin?"),
 ]
 result = tool_agent.run({"messages": messages})

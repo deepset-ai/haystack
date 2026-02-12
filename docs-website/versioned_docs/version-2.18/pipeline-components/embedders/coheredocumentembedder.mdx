@@ -70,7 +70,9 @@ Here is how you can use the component on its own:
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.cohere.document_embedder import CohereDocumentEmbedder
+from haystack_integrations.components.embedders.cohere.document_embedder import (
+    CohereDocumentEmbedder,
+)
 
 doc = Document(content="I love pizza!")
 
@@ -89,8 +91,12 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
-from haystack_integrations.components.embedders.cohere.document_embedder import CohereDocumentEmbedder
-from haystack_integrations.components.embedders.cohere.text_embedder import CohereTextEmbedder
+from haystack_integrations.components.embedders.cohere.document_embedder import (
+    CohereDocumentEmbedder,
+)
+from haystack_integrations.components.embedders.cohere.text_embedder import (
+    CohereTextEmbedder,
+)
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
@@ -109,7 +115,10 @@ indexing_pipeline.run({"embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", CohereTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

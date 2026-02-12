@@ -66,7 +66,9 @@ connector = WeaveConnector(pipeline_name="test_pipeline")
 pipe.add_component("weave", connector)
 
 messages = [
-    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
     ChatMessage.from_user("Tell me about {{location}}"),
 ]
 
@@ -104,13 +106,20 @@ from haystack_integrations.components.connectors.weave import WeaveConnector
 @tool
 def get_weather(city: Annotated[str, "The city to get weather for"]) -> str:
     """Get current weather information for a city."""
-    weather_data = {"Berlin": "18°C, partly cloudy", "New York": "22°C, sunny", "Tokyo": "25°C, clear skies"}
+    weather_data = {
+        "Berlin": "18°C, partly cloudy",
+        "New York": "22°C, sunny",
+        "Tokyo": "25°C, clear skies",
+    }
     return weather_data.get(city, f"Weather information for {city} not available")
 
 
 @tool
 def calculate(
-    operation: Annotated[str, "Mathematical operation: add, subtract, multiply, divide"],
+    operation: Annotated[
+        str,
+        "Mathematical operation: add, subtract, multiply, divide",
+    ],
     a: Annotated[float, "First number"],
     b: Annotated[float, "Second number"],
 ) -> str:
@@ -153,7 +162,13 @@ pipe.add_component("agent", agent)
 ## Run the pipeline
 response = pipe.run(
     data={
-        "agent": {"messages": [ChatMessage.from_user("What's the weather in Berlin and calculate 15 + 27?")]},
+        "agent": {
+            "messages": [
+                ChatMessage.from_user(
+                    "What's the weather in Berlin and calculate 15 + 27?",
+                ),
+            ],
+        },
         "tracer": {},
     },
 )
@@ -162,5 +177,7 @@ response = pipe.run(
 print("Agent Response:")
 print(response["agent"]["last_message"].text)
 print(f"\nPipeline Name: {response['tracer']['pipeline_name']}")
-print("\nCheck your Weights & Biases dashboard at https://wandb.ai/<user_name>/projects to see the traces!")
+print(
+    "\nCheck your Weights & Biases dashboard at https://wandb.ai/<user_name>/projects to see the traces!",
+)
 ```

@@ -78,7 +78,11 @@ from haystack_integrations.tools.github import GitHubIssueCommenterTool
 
 comment_tool = GitHubIssueCommenterTool(name="github_issue_commenter")
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[comment_tool], exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[comment_tool],
+    exit_conditions=["text"],
+)
 
 agent.warm_up()
 response = agent.run(

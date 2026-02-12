@@ -36,9 +36,15 @@ You can use it outside of a pipeline to clean up any texts:
 ```python
 from haystack.components.preprocessors import TextCleaner
 
-text_to_clean = "1Moonlight shimmered softly, 300 Wolves howled nearby, Night enveloped everything."
+text_to_clean = (
+    "1Moonlight shimmered softly, 300 Wolves howled nearby, Night enveloped everything."
+)
 
-cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=False, remove_numbers=True)
+cleaner = TextCleaner(
+    convert_to_lowercase=True,
+    remove_punctuation=False,
+    remove_numbers=True,
+)
 result = cleaner.run(texts=[text_to_clean])
 ```
 
@@ -78,7 +84,9 @@ class ExactMatchEvaluator:
 adapter = OutputAdapter(
     template="{{answers | extract_data}}",
     output_type=List[str],
-    custom_filters={"extract_data": lambda data: [answer.data for answer in data if answer.data]},
+    custom_filters={
+        "extract_data": lambda data: [answer.data for answer in data if answer.data],
+    },
 )
 
 p = Pipeline()
@@ -97,7 +105,11 @@ question = "What behavior indicates a high level of self-awareness of elephants?
 ground_truth_answer = "recognizing themselves in mirrors"
 
 result = p.run(
-    {"retriever": {"query": question}, "reader": {"query": question}, "evaluator": {"expected": ground_truth_answer}},
+    {
+        "retriever": {"query": question},
+        "reader": {"query": question},
+        "evaluator": {"expected": ground_truth_answer},
+    },
 )
 print(result)
 ```

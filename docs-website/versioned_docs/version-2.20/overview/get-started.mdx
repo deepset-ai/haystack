@@ -80,7 +80,10 @@ prompt_template = [
 # create the components adding the necessary parameters
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    model="gpt-4o-mini",
+)
 
 # Create the pipeline and add the components to it. The order doesn't matter.
 # At this stage, the Pipeline validates the components without running them yet.

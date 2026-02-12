@@ -82,7 +82,11 @@ client = AzureOpenAIResponsesChatGenerator(
     generation_kwargs={"reasoning": {"effort": "medium", "summary": "auto"}},
 )
 
-messages = [ChatMessage.from_user("What's the most efficient sorting algorithm for nearly sorted data?")]
+messages = [
+    ChatMessage.from_user(
+        "What's the most efficient sorting algorithm for nearly sorted data?",
+    ),
+]
 response = client.run(messages)
 print(response)
 ```
@@ -103,7 +107,9 @@ The Responses API supports multi-turn conversations using `previous_response_id`
 from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
 
-client = AzureOpenAIResponsesChatGenerator(azure_endpoint="https://your-resource.azure.openai.com/")
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+)
 
 # First turn
 messages = [ChatMessage.from_user("What's quantum computing?")]
@@ -144,7 +150,11 @@ client = AzureOpenAIResponsesChatGenerator(
 )
 
 response = client.run(
-    messages=[ChatMessage.from_user("Extract product info: 'Wireless Mouse, $29.99, Electronics, Available in stock'")],
+    messages=[
+        ChatMessage.from_user(
+            "Extract product info: 'Wireless Mouse, $29.99, Electronics, Available in stock'",
+        ),
+    ],
 )
 print(response["replies"][0].text)
 ```
@@ -181,7 +191,11 @@ client = AzureOpenAIResponsesChatGenerator(
 )
 
 response = client.run(
-    messages=[ChatMessage.from_user("Extract product info: 'Wireless Mouse, $29.99, Electronics, Available in stock'")],
+    messages=[
+        ChatMessage.from_user(
+            "Extract product info: 'Wireless Mouse, $29.99, Electronics, Available in stock'",
+        ),
+    ],
 )
 print(response["replies"][0].text)
 ```
@@ -308,9 +322,18 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 topic = "quantum computing"
 messages = [
-    ChatMessage.from_system("You are a helpful assistant that explains complex topics clearly."),
+    ChatMessage.from_system(
+        "You are a helpful assistant that explains complex topics clearly.",
+    ),
     ChatMessage.from_user("Explain {{topic}} in simple terms"),
 ]
-result = pipe.run(data={"prompt_builder": {"template_variables": {"topic": topic}, "template": messages}})
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"topic": topic},
+            "template": messages,
+        },
+    },
+)
 print(result)
 ```

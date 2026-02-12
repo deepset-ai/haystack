@@ -53,7 +53,11 @@ def dummy_weather_function(city: str):
     return f"The weather in {city} is 20 degrees."
 
 
-parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+parameters = {
+    "type": "object",
+    "properties": {"city": {"type": "string"}},
+    "required": ["city"],
+}
 tool = Tool(
     name="weather_tool",
     description="A tool to get the weather",
@@ -112,7 +116,10 @@ import random
 
 
 def dummy_weather(location: str):
-    return {"temp": f"{random.randint(-10, 40)} °C", "humidity": f"{random.randint(0, 100)}%"}
+    return {
+        "temp": f"{random.randint(-10, 40)} °C",
+        "humidity": f"{random.randint(0, 100)}%",
+    }
 
 
 weather_tool = Tool(
@@ -159,7 +166,10 @@ pipeline.add_component("tool_invoker", tool_invoker)
 
 ## Connect components
 pipeline.connect("generator.replies", "router")
-pipeline.connect("router.there_are_tool_calls", "tool_invoker.messages")  # Correct connection
+pipeline.connect(
+    "router.there_are_tool_calls",
+    "tool_invoker.messages",
+)  # Correct connection
 
 ## Example user message
 user_message = ChatMessage.from_user("What is the weather in Berlin?")

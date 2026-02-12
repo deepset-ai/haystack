@@ -47,7 +47,9 @@ Basic usage with a local file:
 ```python
 from pathlib import Path
 from haystack.utils import Secret
-from haystack_integrations.components.converters.paddleocr import PaddleOCRVLDocumentConverter
+from haystack_integrations.components.converters.paddleocr import (
+    PaddleOCRVLDocumentConverter,
+)
 
 converter = PaddleOCRVLDocumentConverter(
     api_url="<your-api-url>",
@@ -68,7 +70,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.utils import Secret
-from haystack_integrations.components.converters.paddleocr import PaddleOCRVLDocumentConverter
+from haystack_integrations.components.converters.paddleocr import (
+    PaddleOCRVLDocumentConverter,
+)
 
 document_store = InMemoryDocumentStore()
 

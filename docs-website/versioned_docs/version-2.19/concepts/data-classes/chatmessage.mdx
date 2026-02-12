@@ -119,7 +119,9 @@ capybara_image_url = (
 
 image_content = ImageContent.from_url(capybara_image_url, detail="low")
 
-user_message = ChatMessage.from_user(content_parts=["What does the image show?", image_content])
+user_message = ChatMessage.from_user(
+    content_parts=["What does the image show?", image_content],
+)
 
 print(user_message)
 
@@ -173,7 +175,11 @@ print(assistant_message_w_tool_call.tool_call_results)
 ```python
 from haystack.dataclasses import ChatMessage
 
-tool_message = ChatMessage.from_tool(tool_result="temperature: 25°C", origin=tool_call, error=False)
+tool_message = ChatMessage.from_tool(
+    tool_result="temperature: 25°C",
+    origin=tool_call,
+    error=False,
+)
 
 print(tool_message)
 

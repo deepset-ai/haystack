@@ -94,7 +94,10 @@ The Generator expects the `url` of your TGI instance in `api_params`.
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
 
-generator = HuggingFaceAPIGenerator(api_type="text_generation_inference", api_params={"url": "http://localhost:8080"})
+generator = HuggingFaceAPIGenerator(
+    api_type="text_generation_inference",
+    api_params={"url": "http://localhost:8080"},
+)
 
 result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
@@ -138,7 +141,10 @@ from haystack import Document
 
 docstore = InMemoryDocumentStore()
 docstore.write_documents(
-    [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")],
+    [
+        Document(content="Rome is the capital of Italy"),
+        Document(content="Paris is the capital of France"),
+    ],
 )
 
 query = "What is the capital of France?"

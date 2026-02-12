@@ -34,7 +34,12 @@ Example code:
 from haystack import Pipeline, PredefinedPipeline
 
 pipeline = Pipeline.from_template(PredefinedPipeline.CHAT_WITH_WEBSITE)
-pipeline.run({"fetcher": {"urls": ["https://haystack.deepset.ai:"]}, "prompt": {"query": "what is Haystack?"}})
+pipeline.run(
+    {
+        "fetcher": {"urls": ["https://haystack.deepset.ai:"]},
+        "prompt": {"query": "what is Haystack?"},
+    },
+)
 ```
 
 ### Generative QA

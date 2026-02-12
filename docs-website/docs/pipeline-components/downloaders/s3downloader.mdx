@@ -149,7 +149,10 @@ documents = [
     Document(meta={"file_name": "report.pdf", "folder": "reports/2025"}),
 ]
 
-downloader = S3Downloader(file_root_path="/tmp/s3_downloads", s3_key_generation_function=custom_s3_key_function)
+downloader = S3Downloader(
+    file_root_path="/tmp/s3_downloads",
+    s3_key_generation_function=custom_s3_key_function,
+)
 
 downloader.warm_up()
 result = downloader.run(documents=documents)
@@ -171,12 +174,18 @@ from haystack_integrations.components.downloaders.s3 import S3Downloader
 pipe = Pipeline()
 
 ## Add S3Downloader to download files from S3
-pipe.add_component("downloader", S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf", ".txt"]))
+pipe.add_component(
+    "downloader",
+    S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf", ".txt"]),
+)
 
 ## Route documents by file type
 pipe.add_component(
     "router",
-    DocumentTypeRouter(file_path_meta_field="file_path", mime_types=["application/pdf", "text/plain"]),
+    DocumentTypeRouter(
+        file_path_meta_field="file_path",
+        mime_types=["application/pdf", "text/plain"],
+    ),
 )
 
 ## Convert PDFs to documents
@@ -206,7 +215,9 @@ from haystack.components.routers import DocumentTypeRouter
 from haystack.dataclasses import Document
 
 from haystack_integrations.components.downloaders.s3 import S3Downloader
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 ## Create documents with file names
 documents = [
@@ -223,7 +234,10 @@ pipe.add_component("downloader", S3Downloader(file_root_path="/tmp/s3_downloads"
 ## Route by document type
 pipe.add_component(
     "router",
-    DocumentTypeRouter(file_path_meta_field="file_path", mime_types=["image/png", "application/pdf"]),
+    DocumentTypeRouter(
+        file_path_meta_field="file_path",
+        mime_types=["image/png", "application/pdf"],
+    ),
 )
 
 ## Convert images for LLM
@@ -243,7 +257,10 @@ Question: {{ question }}
 pipe.add_component("prompt_builder", ChatPromptBuilder(template=template))
 
 ## Generate response
-pipe.add_component("llm", AmazonBedrockChatGenerator(model="anthropic.claude-3-haiku-20240307-v1:0"))
+pipe.add_component(
+    "llm",
+    AmazonBedrockChatGenerator(model="anthropic.claude-3-haiku-20240307-v1:0"),
+)
 
 ## Connect components
 pipe.connect("downloader.documents", "router.documents")
@@ -253,6 +270,9 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 ## Run pipeline
 result = pipe.run(
-    {"downloader": {"documents": documents}, "prompt_builder": {"question": "What information is shown in the chart?"}},
+    {
+        "downloader": {"documents": documents},
+        "prompt_builder": {"question": "What information is shown in the chart?"},
+    },
 )
 ```

@@ -42,9 +42,15 @@ Even if Haystack provides a unified interface, each model offered by Bedrock can
 For example, the Cohere models support `input_type` and `truncate`, as seen in [Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
 
 ```python
-from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockTextEmbedder
+from haystack_integrations.components.embedders.amazon_bedrock import (
+    AmazonBedrockTextEmbedder,
+)
 
-embedder = AmazonBedrockTextEmbedder(model="cohere.embed-english-v3", input_type="search_query", truncate="LEFT")
+embedder = AmazonBedrockTextEmbedder(
+    model="cohere.embed-english-v3",
+    input_type="search_query",
+    truncate="LEFT",
+)
 ```
 
 ## Usage
@@ -63,7 +69,9 @@ Basic usage:
 
 ```python
 import os
-from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockTextEmbedder
+from haystack_integrations.components.embedders.amazon_bedrock import (
+    AmazonBedrockTextEmbedder,
+)
 
 os.environ["AWS_ACCESS_KEY_ID"] = "..."
 os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
@@ -71,7 +79,10 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # just an example
 
 text_to_embed = "I love pizza!"
 
-text_embedder = AmazonBedrockTextEmbedder(model="cohere.embed-english-v3", input_type="search_query")
+text_embedder = AmazonBedrockTextEmbedder(
+    model="cohere.embed-english-v3",
+    input_type="search_query",
+)
 
 print(text_embedder.run(text_to_embed))
 ## {'embedding': [-0.453125, 1.2236328, 2.0058594, 0.67871094...]}
@@ -104,8 +115,14 @@ documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
-query_pipeline.add_component("text_embedder", AmazonBedrockTextEmbedder(model="cohere.embed-english-v3"))
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "text_embedder",
+    AmazonBedrockTextEmbedder(model="cohere.embed-english-v3"),
+)
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

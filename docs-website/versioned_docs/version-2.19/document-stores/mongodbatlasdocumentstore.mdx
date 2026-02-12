@@ -41,7 +41,9 @@ export MONGO_CONNECTION_STRING="mongodb+srv://<username>:<password>@<cluster_nam
 At this point, you’re ready to initialize the store:
 
 ```python
-from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+from haystack_integrations.document_stores.mongodb_atlas import (
+    MongoDBAtlasDocumentStore,
+)
 
 ## Initialize the document store
 document_store = MongoDBAtlasDocumentStore(

@@ -76,7 +76,9 @@ pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 ## Connect components
 pipeline.connect("llm.replies", "tool_invoker.messages")
 
-message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
+message = ChatMessage.from_user(
+    "Use the web search tool to find information about Nikola Tesla",
+)
 
 ## Run pipeline
 result = pipeline.run({"llm": {"messages": [message]}})
@@ -107,11 +109,17 @@ search_tool = ComponentTool(
 )
 
 ## Agent Setup
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[search_tool], exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[search_tool],
+    exit_conditions=["text"],
+)
 
 ## Run the Agent
 agent.warm_up()
-response = agent.run(messages=[ChatMessage.from_user("Find information about Nikola Tesla")])
+response = agent.run(
+    messages=[ChatMessage.from_user("Find information about Nikola Tesla")],
+)
 
 ## Output
 print(response["messages"][-1].text)

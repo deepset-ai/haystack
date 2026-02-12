@@ -67,7 +67,12 @@ parameters = {
     "required": ["a", "b"],
 }
 
-add_tool = Tool(name="addition_tool", description="This tool adds two numbers", parameters=parameters, function=add)
+add_tool = Tool(
+    name="addition_tool",
+    description="This tool adds two numbers",
+    parameters=parameters,
+    function=add,
+)
 
 print(add_tool.tool_spec)
 
@@ -167,7 +172,10 @@ def retrieve_image():
     ]
 
 
-image_retriever_tool = create_tool_from_function(function=retrieve_image, outputs_to_string={"raw_result": True})
+image_retriever_tool = create_tool_from_function(
+    function=retrieve_image,
+    outputs_to_string={"raw_result": True},
+)
 
 agent = Agent(
     chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
@@ -175,7 +183,9 @@ agent = Agent(
     tools=[image_retriever_tool],
 )
 
-user_message = ChatMessage.from_user("Retrieve the image and describe it in max 10 words.")
+user_message = ChatMessage.from_user(
+    "Retrieve the image and describe it in max 10 words.",
+)
 result = agent.run(messages=[user_message])
 
 print(result["last_message"].text)
@@ -194,7 +204,10 @@ from haystack.tools import tool
 @tool
 def get_weather(
     city: Annotated[str, "the city for which to get the weather"] = "Munich",
-    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
+    unit: Annotated[
+        Literal["Celsius", "Fahrenheit"],
+        "the unit for the temperature",
+    ] = "Celsius",
 ):
     """A simple function to get the current weather for a location."""
     return f"Weather report for {city}: 20 {unit}, sunny"
@@ -231,7 +244,10 @@ from haystack.tools import create_tool_from_function
 
 def get_weather(
     city: Annotated[str, "the city for which to get the weather"] = "Munich",
-    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
+    unit: Annotated[
+        Literal["Celsius", "Fahrenheit"],
+        "the unit for the temperature",
+    ] = "Celsius",
 ):
     """A simple function to get the current weather for a location."""
     return f"Weather report for {city}: 20 {unit}, sunny"
@@ -324,7 +340,10 @@ The same result of the previous run can be achieved by passing tools at runtime:
 chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
 
 ## pass tools in the run method
-res_w_tool_call = chat_generator.run([ChatMessage.from_user("10 + 238")], tools=math_toolset)
+res_w_tool_call = chat_generator.run(
+    [ChatMessage.from_user("10 + 238")],
+    tools=math_toolset,
+)
 print(res_w_tool_call)
 ```
 
@@ -344,7 +363,10 @@ from haystack.tools import Tool
 
 
 def dummy_weather(location: str):
-    return {"temp": f"{random.randint(-10, 40)} °C", "humidity": f"{random.randint(0, 100)}%"}
+    return {
+        "temp": f"{random.randint(-10, 40)} °C",
+        "humidity": f"{random.randint(0, 100)}%",
+    }
 
 
 weather_tool = Tool(
@@ -403,7 +425,10 @@ from haystack.tools import Tool
 
 
 def dummy_weather(location: str):
-    return {"temp": f"{random.randint(-10, 40)} °C", "humidity": f"{random.randint(0, 100)}%"}
+    return {
+        "temp": f"{random.randint(-10, 40)} °C",
+        "humidity": f"{random.randint(0, 100)}%",
+    }
 
 
 weather_tool = Tool(
@@ -477,7 +502,12 @@ calculator_tool = Tool(
     description="Evaluate basic math expressions.",
     parameters={
         "type": "object",
-        "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "Math expression to evaluate",
+            },
+        },
         "required": ["expression"],
     },
     function=calculate,

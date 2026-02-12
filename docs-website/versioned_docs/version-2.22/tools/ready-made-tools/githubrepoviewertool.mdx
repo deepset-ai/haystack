@@ -60,7 +60,11 @@ Basic usage to view repository contents:
 from haystack_integrations.tools.github import GitHubRepoViewerTool
 
 tool = GitHubRepoViewerTool()
-result = tool.invoke(repo="deepset-ai/haystack", path="haystack/components", branch="main")
+result = tool.invoke(
+    repo="deepset-ai/haystack",
+    path="haystack/components",
+    branch="main",
+)
 
 print(result)
 ```

@@ -37,7 +37,12 @@ The `ConditionalRouter` lets you define which variables are optional in your rou
 from haystack.components.routers import ConditionalRouter
 
 routes = [
-    {"condition": '{{ path == "rag" }}', "output": "{{ question }}", "output_name": "rag_route", "output_type": str},
+    {
+        "condition": '{{ path == "rag" }}',
+        "output": "{{ question }}",
+        "output_name": "rag_route",
+        "output_type": str,
+    },
     {
         "condition": "{{ True }}",  # fallback route
         "output": "{{ question }}",

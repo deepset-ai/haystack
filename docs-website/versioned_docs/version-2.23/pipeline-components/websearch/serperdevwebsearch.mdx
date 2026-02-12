@@ -79,8 +79,14 @@ prompt_template = [
     ),
 ]
 
-prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
-llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-3.5-turbo")
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="gpt-3.5-turbo",
+)
 
 pipe = Pipeline()
 pipe.add_component("search", web_search)

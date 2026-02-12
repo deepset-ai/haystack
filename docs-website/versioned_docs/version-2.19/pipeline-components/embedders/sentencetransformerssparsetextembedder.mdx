@@ -47,7 +47,9 @@ The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you 
 from haystack.utils import Secret
 from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 
-text_embedder = SentenceTransformersSparseTextEmbedder(token=Secret.from_token("<your-api-key>"))
+text_embedder = SentenceTransformersSparseTextEmbedder(
+    token=Secret.from_token("<your-api-key>"),
+)
 ```
 
 ### Backend Options
@@ -61,7 +63,10 @@ This component supports multiple backends for model execution:
 You can specify the backend during initialization:
 
 ```python
-embedder = SentenceTransformersSparseTextEmbedder(model="prithivida/Splade_PP_en_v2", backend="onnx")
+embedder = SentenceTransformersSparseTextEmbedder(
+    model="prithivida/Splade_PP_en_v2",
+    backend="onnx",
+)
 ```
 
 For more information on acceleration and quantization options, refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html).
@@ -71,7 +76,11 @@ For more information on acceleration and quantization options, refer to the [Sen
 Some models may benefit from adding a prefix or suffix to the text before embedding. You can specify these during initialization:
 
 ```python
-embedder = SentenceTransformersSparseTextEmbedder(model="prithivida/Splade_PP_en_v2", prefix="query: ", suffix="")
+embedder = SentenceTransformersSparseTextEmbedder(
+    model="prithivida/Splade_PP_en_v2",
+    prefix="query: ",
+    suffix="",
+)
 ```
 
 :::tip
@@ -114,10 +123,16 @@ from haystack.components.embedders import (
     SentenceTransformersSparseDocumentEmbedder,
     SentenceTransformersSparseTextEmbedder,
 )
-from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
-document_store = QdrantDocumentStore(":memory:", recreate_index=True, use_sparse_embeddings=True)
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True,
+)
 
 documents = [
     Document(content="My name is Wolfgang and I live in Berlin"),
@@ -127,16 +142,27 @@ documents = [
 ]
 
 ## Embed and write documents
-sparse_document_embedder = SentenceTransformersSparseDocumentEmbedder(model="prithivida/Splade_PP_en_v2")
+sparse_document_embedder = SentenceTransformersSparseDocumentEmbedder(
+    model="prithivida/Splade_PP_en_v2",
+)
 sparse_document_embedder.warm_up()
 documents_with_sparse_embeddings = sparse_document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_sparse_embeddings)
 
 ## Query pipeline
 query_pipeline = Pipeline()
-query_pipeline.add_component("sparse_text_embedder", SentenceTransformersSparseTextEmbedder())
-query_pipeline.add_component("sparse_retriever", QdrantSparseEmbeddingRetriever(document_store=document_store))
-query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
+query_pipeline.add_component(
+    "sparse_text_embedder",
+    SentenceTransformersSparseTextEmbedder(),
+)
+query_pipeline.add_component(
+    "sparse_retriever",
+    QdrantSparseEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect(
+    "sparse_text_embedder.sparse_embedding",
+    "sparse_retriever.query_sparse_embedding",
+)
 
 query = "Who provides sparse embedding models?"
 

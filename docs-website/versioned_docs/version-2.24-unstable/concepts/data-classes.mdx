@@ -152,7 +152,10 @@ class Document(metaclass=_BackwardCompatible):
 ```python
 from haystack import Document
 
-documents = Document(content="Here are the contents of your document", embedding=[0.1] * 768)
+documents = Document(
+    content="Here are the contents of your document",
+    embedding=[0.1] * 768,
+)
 ```
 
 ### StreamingChunk
@@ -191,12 +194,22 @@ class StreamingChunk:
 from haystack.dataclasses import StreamingChunk, ToolCallDelta, ReasoningContent
 
 ## Basic text chunk
-chunk = StreamingChunk(content="Hello world", start=True, meta={"model": "gpt-3.5-turbo"})
+chunk = StreamingChunk(
+    content="Hello world",
+    start=True,
+    meta={"model": "gpt-3.5-turbo"},
+)
 
 ## Tool call chunk
 tool_chunk = StreamingChunk(
     content="",
-    tool_calls=[ToolCallDelta(index=0, tool_name="calculator", arguments='{"operation": "add", "a": 2, "b": 3}')],
+    tool_calls=[
+        ToolCallDelta(
+            index=0,
+            tool_name="calculator",
+            arguments='{"operation": "add", "a": 2, "b": 3}',
+        ),
+    ],
     index=0,
     start=False,
     finish_reason="tool_calls",
@@ -205,7 +218,9 @@ tool_chunk = StreamingChunk(
 ## Reasoning chunk
 reasoning_chunk = StreamingChunk(
     content="",
-    reasoning=ReasoningContent(reasoning_text="Thinking step by step about the answer."),
+    reasoning=ReasoningContent(
+        reasoning_text="Thinking step by step about the answer.",
+    ),
     index=0,
     start=True,
     meta={"model": "gpt-4.1-mini"},

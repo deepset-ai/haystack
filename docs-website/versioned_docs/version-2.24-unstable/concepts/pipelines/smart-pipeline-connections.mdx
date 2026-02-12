@@ -44,7 +44,10 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 sources = [
     ByteStream.from_string(text="Text file content", mime_type="text/plain"),
-    ByteStream.from_string(text="<html><body>Some content</body></html>", mime_type="text/html"),
+    ByteStream.from_string(
+        text="<html><body>Some content</body></html>",
+        mime_type="text/html",
+    ),
 ]
 
 doc_store = InMemoryDocumentStore()
@@ -118,7 +121,10 @@ Rewrite the following query to be used for keyword search.
 p = Pipeline()
 p.add_component("prompt_builder", ChatPromptBuilder(template=template))
 p.add_component("llm", OpenAIChatGenerator(model="gpt-4.1-mini"))
-p.add_component("retriever", InMemoryBM25Retriever(document_store=document_store, top_k=3))
+p.add_component(
+    "retriever",
+    InMemoryBM25Retriever(document_store=document_store, top_k=3),
+)
 
 p.connect("prompt_builder", "llm")
 # implicitly converts list[ChatMessage] -> str

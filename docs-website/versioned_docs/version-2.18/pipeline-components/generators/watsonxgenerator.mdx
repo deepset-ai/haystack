@@ -53,7 +53,9 @@ pip install watsonx-haystack
 ### On its own
 
 ```python
-from haystack_integrations.components.generators.watsonx.generator import WatsonxGenerator
+from haystack_integrations.components.generators.watsonx.generator import (
+    WatsonxGenerator,
+)
 from haystack.utils import Secret
 
 generator = WatsonxGenerator(
@@ -71,7 +73,9 @@ You can also use `WatsonxGenerator` with the IBM watsonx.ai models in your pipel
 ```python
 from haystack import Pipeline
 from haystack.components.builders import PromptBuilder
-from haystack_integrations.components.generators.watsonx.generator import WatsonxGenerator
+from haystack_integrations.components.generators.watsonx.generator import (
+    WatsonxGenerator,
+)
 from haystack.utils import Secret
 
 template = """

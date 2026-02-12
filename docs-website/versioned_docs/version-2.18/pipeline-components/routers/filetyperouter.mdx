@@ -52,12 +52,21 @@ from haystack.components.writers import DocumentWriter
 
 document_store = InMemoryDocumentStore()
 p = Pipeline()
-p.add_component(instance=FileTypeRouter(mime_types=["text/plain"]), name="file_type_router")
+p.add_component(
+    instance=FileTypeRouter(mime_types=["text/plain"]),
+    name="file_type_router",
+)
 p.add_component(instance=TextFileToDocument(), name="text_file_converter")
 p.add_component(instance=DocumentSplitter(), name="splitter")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 p.connect("file_type_router.text/plain", "text_file_converter.sources")
 p.connect("text_file_converter.documents", "splitter.documents")
 p.connect("splitter.documents", "writer.documents")
-p.run({"file_type_router": {"sources": ["text-file-will-be-added.txt", "pdf-will-not-be-added.pdf"]}})
+p.run(
+    {
+        "file_type_router": {
+            "sources": ["text-file-will-be-added.txt", "pdf-will-not-be-added.pdf"],
+        },
+    },
+)
 ```

@@ -142,7 +142,10 @@ from haystack.dataclasses import ChatMessage
 math_toolset = Toolset([add_tool, subtract_tool])
 
 pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=math_toolset))
+pipeline.add_component(
+    "llm",
+    OpenAIChatGenerator(model="gpt-4o-mini", tools=math_toolset),
+)
 pipeline.add_component("tool_invoker", ToolInvoker(tools=math_toolset))
 pipeline.add_component(
     "adapter",
@@ -161,7 +164,12 @@ pipeline.connect("adapter.output", "response_llm.messages")
 user_input = "What is 2+2?"
 user_input_msg = ChatMessage.from_user(text=user_input)
 
-result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
+result = pipeline.run(
+    {
+        "llm": {"messages": [user_input_msg]},
+        "adapter": {"initial_msg": [user_input_msg]},
+    },
+)
 
 print(result["response_llm"]["replies"][0].text)
 ```
@@ -179,7 +187,10 @@ from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import OpenAIChatGenerator
 
-agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=math_toolset)
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=math_toolset,
+)
 
 response = agent.run(messages=[ChatMessage.from_user("What is 4 + 2?")])
 

@@ -54,7 +54,9 @@ Basic usage:
 
 ```python
 import os
-from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
+from haystack_integrations.components.generators.google_ai import (
+    GoogleAIGeminiGenerator,
+)
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
@@ -70,7 +72,9 @@ This is a more advanced usage that also uses text and images as input:
 import requests
 import os
 from haystack.dataclasses.byte_stream import ByteStream
-from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
+from haystack_integrations.components.generators.google_ai import (
+    GoogleAIGeminiGenerator,
+)
 
 URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot1.jpg",
@@ -78,7 +82,9 @@ URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot3.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg",
 ]
-images = [ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS]
+images = [
+    ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS
+]
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
@@ -98,7 +104,9 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
+from haystack_integrations.components.generators.google_ai import (
+    GoogleAIGeminiGenerator,
+)
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 

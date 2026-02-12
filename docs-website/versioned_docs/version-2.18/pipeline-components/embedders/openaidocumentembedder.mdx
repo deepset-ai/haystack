@@ -99,7 +99,10 @@ indexing_pipeline.run({"embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", OpenAITextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

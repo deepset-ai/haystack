@@ -52,7 +52,9 @@ from haystack.dataclasses import ChatMessage
 p = Pipeline()
 
 p.add_component(
-    instance=TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection"),
+    instance=TransformersTextRouter(
+        model="papluca/xlm-roberta-base-language-detection",
+    ),
     name="text_router",
 )
 p.add_component(
@@ -70,10 +72,15 @@ p.add_component(
     name="german_prompt_builder",
 )
 p.add_component(
-    instance=HuggingFaceLocalGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
+    instance=HuggingFaceLocalGenerator(
+        model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1",
+    ),
     name="german_llm",
 )
-p.add_component(instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"), name="english_llm")
+p.add_component(
+    instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
+    name="english_llm",
+)
 
 p.connect("text_router.en", "english_prompt_builder.query")
 p.connect("text_router.de", "german_prompt_builder.query")

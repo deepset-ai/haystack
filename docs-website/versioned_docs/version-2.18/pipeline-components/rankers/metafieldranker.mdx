@@ -40,7 +40,10 @@ This example uses the `MetaFieldRanker` to rank two simple documents. When runni
 from haystack import Document
 from haystack.components.rankers import MetaFieldRanker
 
-docs = [Document(content="Paris", meta={"rating": 1.3}), Document(content="Berlin", meta={"rating": 0.7})]
+docs = [
+    Document(content="Paris", meta={"rating": 1.3}),
+    Document(content="Berlin", meta={"rating": 0.7}),
+]
 
 ranker = MetaFieldRanker(meta_field="rating")
 
@@ -75,5 +78,10 @@ document_ranker_pipeline.add_component(instance=ranker, name="ranker")
 document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+document_ranker_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
+)
 ```

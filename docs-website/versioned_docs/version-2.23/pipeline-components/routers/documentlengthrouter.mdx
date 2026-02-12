@@ -82,21 +82,31 @@ indexing_pipe.add_component(
 indexing_pipe.add_component("doc_length_router", DocumentLengthRouter(threshold=10))
 indexing_pipe.add_component(
     "content_extractor",
-    LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini")),
+    LLMDocumentContentExtractor(
+        chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    ),
 )
 indexing_pipe.add_component("doc_joiner", DocumentJoiner(sort_by_score=False))
-indexing_pipe.add_component("document_writer", DocumentWriter(document_store=document_store))
+indexing_pipe.add_component(
+    "document_writer",
+    DocumentWriter(document_store=document_store),
+)
 
 indexing_pipe.connect("pdf_converter.documents", "pdf_splitter.documents")
 indexing_pipe.connect("pdf_splitter.documents", "doc_length_router.documents")
 ## The short PDF pages will be enriched/captioned
-indexing_pipe.connect("doc_length_router.short_documents", "content_extractor.documents")
+indexing_pipe.connect(
+    "doc_length_router.short_documents",
+    "content_extractor.documents",
+)
 indexing_pipe.connect("doc_length_router.long_documents", "doc_joiner.documents")
 indexing_pipe.connect("content_extractor.documents", "doc_joiner.documents")
 indexing_pipe.connect("doc_joiner.documents", "document_writer.documents")
 
 ## Run the indexing pipeline with sources
-indexing_result = indexing_pipe.run(data={"sources": ["textual_pdf.pdf", "non_textual_pdf.pdf"]})
+indexing_result = indexing_pipe.run(
+    data={"sources": ["textual_pdf.pdf", "non_textual_pdf.pdf"]},
+)
 
 ## Inspect the documents
 indexed_documents = document_store.filter_documents()

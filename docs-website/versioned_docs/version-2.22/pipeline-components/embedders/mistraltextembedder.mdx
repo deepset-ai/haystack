@@ -39,7 +39,10 @@ pip install mistral-haystack
 `MistralTextEmbedder` needs a Mistral API key to work. It uses a `MISTRAL_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```python
-embedder = MistralTextEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+embedder = MistralTextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
+)
 ```
 
 ## Usage
@@ -52,9 +55,14 @@ Here is how you can use the component on its own:
 
 ```python
 
-from haystack_integrations.components.embedders.mistral.text_embedder import MistralTextEmbedder
+from haystack_integrations.components.embedders.mistral.text_embedder import (
+    MistralTextEmbedder,
+)
 
-embedder = MistralTextEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+embedder = MistralTextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
+)
 
 result = embedder.run(text="How can I ise the Mistral embedding models with Haystack?")
 
@@ -75,8 +83,12 @@ from haystack.components.converters import HTMLToDocument
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.mistral.document_embedder import MistralDocumentEmbedder
-from haystack_integrations.components.embedders.mistral.text_embedder import MistralTextEmbedder
+from haystack_integrations.components.embedders.mistral.document_embedder import (
+    MistralDocumentEmbedder,
+)
+from haystack_integrations.components.embedders.mistral.text_embedder import (
+    MistralTextEmbedder,
+)
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
@@ -124,8 +136,14 @@ prompt_template = [
     ),
 ]
 
-prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
-llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("<your-api-key>"))
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+llm = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    api_key=Secret.from_token("<your-api-key>"),
+)
 
 doc_search = Pipeline()
 doc_search.add_component("text_embedder", text_embedder)
@@ -140,7 +158,11 @@ doc_search.connect("prompt_builder.messages", "llm.messages")
 query = "How can I deploy Mistral models with Cloudflare?"
 
 result = doc_search.run(
-    {"text_embedder": {"text": query}, "retriever": {"top_k": 1}, "prompt_builder": {"query": query}},
+    {
+        "text_embedder": {"text": query},
+        "retriever": {"top_k": 1},
+        "prompt_builder": {"query": query},
+    },
 )
 
 print(result["llm"]["replies"])

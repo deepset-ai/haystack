@@ -35,12 +35,17 @@ During initialization the Document Store will either retrieve the existing searc
 It is recommended to pass authentication data through `AZURE_AI_SEARCH_API_KEY` and `AZURE_AI_SEARCH_ENDPOINT` before running the following example.
 
 ```python
-from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+from haystack_integrations.document_stores.azure_ai_search import (
+    AzureAISearchDocumentStore,
+)
 from haystack import Document
 
 document_store = AzureAISearchDocumentStore(index_name="haystack-docs")
 document_store.write_documents(
-    [Document(content="This is the first document."), Document(content="This is the second document.")],
+    [
+        Document(content="This is the first document."),
+        Document(content="This is the second document."),
+    ],
 )
 print(document_store.count_documents())
 ```

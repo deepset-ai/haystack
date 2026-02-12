@@ -51,7 +51,10 @@ reranker = HuggingFaceTEIRanker(
     token=Secret.from_token("my_api_token"),
 )
 
-docs = [Document(content="The capital of France is Paris"), Document(content="The capital of Germany is Berlin")]
+docs = [
+    Document(content="The capital of France is Paris"),
+    Document(content="The capital of Germany is Berlin"),
+]
 
 result = reranker.run(query="What is the capital of France?", documents=docs)
 
@@ -90,5 +93,10 @@ document_ranker_pipeline.add_component(instance=ranker, name="ranker")
 document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+document_ranker_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
+)
 ```

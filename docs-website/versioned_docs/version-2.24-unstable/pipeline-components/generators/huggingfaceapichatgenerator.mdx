@@ -125,7 +125,9 @@ from haystack.utils.hf import HFGenerationAPIType
 image = ImageContent.from_file_path("path/to/your/image.jpg")
 
 ## Create a multimodal message with both text and image
-messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
+messages = [
+    ChatMessage.from_user(content_parts=["Describe this image in detail", image]),
+]
 
 generator = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
@@ -201,10 +203,19 @@ pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
 messages = [
-    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
     ChatMessage.from_user("Tell me about {{location}}"),
 ]
-result = pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 
 print(result)
 ```

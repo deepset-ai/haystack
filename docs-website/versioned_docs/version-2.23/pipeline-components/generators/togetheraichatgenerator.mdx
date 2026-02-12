@@ -84,7 +84,9 @@ Basic usage:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+from haystack_integrations.components.generators.togetherai import (
+    TogetherAIChatGenerator,
+)
 
 client = TogetherAIChatGenerator()
 response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
@@ -95,7 +97,9 @@ With streaming:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+from haystack_integrations.components.generators.togetherai import (
+    TogetherAIChatGenerator,
+)
 
 client = TogetherAIChatGenerator(
     model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
@@ -114,7 +118,9 @@ print("\n\nModel used:", response["replies"][0].meta.get("model"))
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+from haystack_integrations.components.generators.togetherai import (
+    TogetherAIChatGenerator,
+)
 
 prompt_builder = ChatPromptBuilder()
 llm = TogetherAIChatGenerator(model="meta-llama/Llama-3.3-70B-Instruct-Turbo")
@@ -129,6 +135,8 @@ messages = [
     ChatMessage.from_user("Tell me about {{city}}"),
 ]
 
-response = pipe.run(data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}})
+response = pipe.run(
+    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
+)
 print(response)
 ```

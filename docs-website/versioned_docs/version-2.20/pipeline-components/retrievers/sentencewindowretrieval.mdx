@@ -72,7 +72,10 @@ doc_store.write_documents(docs["documents"])
 
 rag = Pipeline()
 rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
-rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=3))
+rag.add_component(
+    "sentence_window_retriever",
+    SentenceWindowRetriever(document_store=doc_store, window_size=3),
+)
 rag.connect("bm25_retriever", "sentence_window_retriever")
 
 rag.run({"bm25_retriever": {"query": "third"}})

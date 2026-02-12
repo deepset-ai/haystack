@@ -50,7 +50,9 @@ pip install watsonx-haystack
 #### On its own
 
 ```python
-from haystack_integrations.components.generators.watsonx.chat.chat_generator import WatsonxChatGenerator
+from haystack_integrations.components.generators.watsonx.chat.chat_generator import (
+    WatsonxChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
@@ -68,13 +70,17 @@ With multimodal inputs:
 
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
-from haystack_integrations.components.generators.watsonx.chat.chat_generator import WatsonxChatGenerator
+from haystack_integrations.components.generators.watsonx.chat.chat_generator import (
+    WatsonxChatGenerator,
+)
 
 # Use a multimodal model
 llm = WatsonxChatGenerator(model="meta-llama/llama-3-2-11b-vision-instruct")
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])
+user_message = ChatMessage.from_user(
+    content_parts=["What does the image show? Max 5 words.", image],
+)
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
@@ -90,7 +96,9 @@ You can also use `WatsonxChatGenerator` to use IBM watsonx.ai chat models in you
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.watsonx.chat.chat_generator import WatsonxChatGenerator
+from haystack_integrations.components.generators.watsonx.chat.chat_generator import (
+    WatsonxChatGenerator,
+)
 from haystack.utils import Secret
 
 pipe = Pipeline()
@@ -106,9 +114,21 @@ pipe.add_component(
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"
-system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
-messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+system_message = ChatMessage.from_system(
+    "You are an assistant giving out valuable information to language learners.",
+)
+messages = [
+    system_message,
+    ChatMessage.from_user("What's the official language of {{ country }}?"),
+]
 
-res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        },
+    },
+)
 print(res)
 ```

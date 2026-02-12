@@ -237,7 +237,11 @@ indexing_pipeline.add_node(classifier, name="Classifier", inputs=["File"])
 
 ## Converts a file into text and performs basic cleaning (TextConverter node)
 text_converter = TextConverter(remove_numeric_tables=True)
-indexing_pipeline.add_node(text_converter, name="Text_converter", inputs=["Classifier.output_1"])
+indexing_pipeline.add_node(
+    text_converter,
+    name="Text_converter",
+    inputs=["Classifier.output_1"],
+)
 
 ## Pre-processes the text by performing splits and adding metadata to the text (Preprocessor node)
 preprocessor = PreProcessor(
@@ -250,7 +254,11 @@ preprocessor = PreProcessor(
 indexing_pipeline.add_node(preprocessor, name="Preprocessor", inputs=["Text_converter"])
 
 ## - Writes the resulting documents into the document store
-indexing_pipeline.add_node(document_store, name="Document_Store", inputs=["Preprocessor"])
+indexing_pipeline.add_node(
+    document_store,
+    name="Document_Store",
+    inputs=["Preprocessor"],
+)
 
 ## Then we run it with the documents and their metadata as input
 result = indexing_pipeline.run(file_paths=file_paths, meta=files_metadata)
@@ -338,7 +346,10 @@ reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
 extractive_qa_pipeline = ExtractiveQAPipeline(reader, retriever)
 
 query = "What is the capital of France?"
-result = extractive_qa_pipeline.run(query=query, params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}})
+result = extractive_qa_pipeline.run(
+    query=query,
+    params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}},
+)
 ```
 
 </details>
@@ -372,7 +383,10 @@ extractive_qa_pipeline.connect("retriever", "reader")
 
 query = "What is the capital of France?"
 result = extractive_qa_pipeline.run(
-    data={"retriever": {"query": query, "top_k": 3}, "reader": {"query": query, "top_k": 2}},
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "reader": {"query": query, "top_k": 2},
+    },
 )
 ```
 
@@ -409,7 +423,11 @@ rag_prompt = PromptTemplate(
     output_parser=AnswerParser(),
 )
 
-prompt_node = PromptNode(model_name_or_path="gpt-3.5-turbo", api_key=OPENAI_API_KEY, default_prompt_template=rag_prompt)
+prompt_node = PromptNode(
+    model_name_or_path="gpt-3.5-turbo",
+    api_key=OPENAI_API_KEY,
+    default_prompt_template=rag_prompt,
+)
 
 pipe = Pipeline()
 pipe.add_node(component=retriever, name="retriever", inputs=["Query"])
@@ -437,7 +455,9 @@ from haystack.components.retrievers import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore()
 dataset = load_dataset("bilgeyucel/seven-wonders", split="train")
-embedder = SentenceTransformersDocumentEmbedder("sentence-transformers/all-MiniLM-L6-v2")
+embedder = SentenceTransformersDocumentEmbedder(
+    "sentence-transformers/all-MiniLM-L6-v2",
+)
 embedder.warm_up()
 output = embedder.run([Document(**ds) for ds in dataset])
 document_store.write_documents(output.get("documents"))
@@ -457,7 +477,9 @@ prompt_builder = PromptBuilder(template=template)
 
 retriever = InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
 generator = OpenAIGenerator(model="gpt-3.5-turbo")
-query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+query_embedder = SentenceTransformersTextEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
 
 basic_rag_pipeline = Pipeline()
 basic_rag_pipeline.add_component("text_embedder", query_embedder)
@@ -470,7 +492,9 @@ basic_rag_pipeline.connect("retriever", "prompt_builder.documents")
 basic_rag_pipeline.connect("prompt_builder", "llm")
 
 query = "What does Rhodes Statue look like?"
-output = basic_rag_pipeline.run({"text_embedder": {"text": query}, "prompt_builder": {"question": query}})
+output = basic_rag_pipeline.run(
+    {"text_embedder": {"text": query}, "prompt_builder": {"question": query}},
+)
 ```
 
 </details>

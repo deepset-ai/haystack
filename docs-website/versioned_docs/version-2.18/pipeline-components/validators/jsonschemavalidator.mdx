@@ -48,7 +48,10 @@ class MessageProducer:
 p = Pipeline()
 p.add_component(
     "llm",
-    OpenAIChatGenerator(model="gpt-4-1106-preview", generation_kwargs={"response_format": {"type": "json_object"}}),
+    OpenAIChatGenerator(
+        model="gpt-4-1106-preview",
+        generation_kwargs={"response_format": {"type": "json_object"}},
+    ),
 )
 p.add_component("schema_validator", JsonSchemaValidator())
 p.add_component("branch_joiner", BranchJoiner(List[ChatMessage]))
@@ -62,10 +65,17 @@ p.connect("schema_validator.validation_error", "branch_joiner")
 result = p.run(
     data={
         "message_producer": {
-            "messages": [ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")],
+            "messages": [
+                ChatMessage.from_user(
+                    "Generate JSON for person with name 'John' and age 30",
+                ),
+            ],
         },
         "schema_validator": {
-            "json_schema": {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}},
+            "json_schema": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+            },
         },
     },
 )

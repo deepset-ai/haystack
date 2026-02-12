@@ -82,7 +82,11 @@ from haystack_integrations.tools.github import GitHubIssueViewerTool
 
 issue_tool = GitHubIssueViewerTool(name="github_issue_viewer")
 
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[issue_tool], exit_conditions=["text"])
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[issue_tool],
+    exit_conditions=["text"],
+)
 
 agent.warm_up()
 response = agent.run(

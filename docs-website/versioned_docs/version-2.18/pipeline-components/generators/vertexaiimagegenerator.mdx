@@ -41,7 +41,9 @@ Basic usage:
 ```python
 from pathlib import Path
 
-from haystack_integrations.components.generators.google_vertex import VertexAIImageGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIImageGenerator,
+)
 
 generator = VertexAIImageGenerator()
 result = generator.run(prompt="Generate an image of a cute cat")
@@ -55,7 +57,9 @@ Let’s also use a negative prompt to omit something from the image:
 ```python
 from pathlib import Path
 
-from haystack_integrations.components.generators.google_vertex import VertexAIImageGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIImageGenerator,
+)
 
 generator = VertexAIImageGenerator(
     number_of_images=3,
