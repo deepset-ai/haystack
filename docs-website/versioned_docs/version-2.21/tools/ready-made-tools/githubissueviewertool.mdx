@@ -85,17 +85,13 @@ issue_tool = GitHubIssueViewerTool(name="github_issue_viewer")
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[issue_tool],
-    exit_conditions=["text"],
+    exit_conditions=["text"]
 )
 
 agent.warm_up()
-response = agent.run(
-    messages=[
-        ChatMessage.from_user(
-            "Please analyze this GitHub issue and summarize the main problem: https://github.com/deepset-ai/haystack/issues/123",
-        ),
-    ],
-)
+response = agent.run(messages=[
+    ChatMessage.from_user("Please analyze this GitHub issue and summarize the main problem: https://github.com/deepset-ai/haystack/issues/123")
+])
 
 print(response["last_message"].text)
 ```

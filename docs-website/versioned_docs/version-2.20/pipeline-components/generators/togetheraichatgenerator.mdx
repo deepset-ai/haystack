@@ -84,12 +84,12 @@ Basic usage:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.togetherai import (
-    TogetherAIChatGenerator,
-)
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
 
 client = TogetherAIChatGenerator()
-response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
 print(response["replies"][0].text)
 ```
 
@@ -97,16 +97,16 @@ With streaming:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.togetherai import (
-    TogetherAIChatGenerator,
-)
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
 
 client = TogetherAIChatGenerator(
     model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
     streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
 )
 
-response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
 
 # check the model used for the response
 print("\n\nModel used:", response["replies"][0].meta.get("model"))
@@ -118,9 +118,7 @@ print("\n\nModel used:", response["replies"][0].meta.get("model"))
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.togetherai import (
-    TogetherAIChatGenerator,
-)
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
 
 prompt_builder = ChatPromptBuilder()
 llm = TogetherAIChatGenerator(model="meta-llama/Llama-3.3-70B-Instruct-Turbo")
@@ -136,7 +134,8 @@ messages = [
 ]
 
 response = pipe.run(
-    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
+    data={"builder": {"template": messages,
+                      "template_variables": {"city": "Berlin"}}}
 )
 print(response)
 ```

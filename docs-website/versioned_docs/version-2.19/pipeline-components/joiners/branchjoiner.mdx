@@ -37,6 +37,7 @@ from haystack.components.joiners import BranchJoiner
 
 bj = BranchJoiner(int)
 bj.run(value=[3, 4, 5])
+
 ```
 
 ## Usage
@@ -79,25 +80,19 @@ person_schema = {
     "properties": {
         "first_name": {"type": "string", "pattern": "^[A-Z][a-z]+$"},
         "last_name": {"type": "string", "pattern": "^[A-Z][a-z]+$"},
-        "nationality": {
-            "type": "string",
-            "enum": ["Italian", "Portuguese", "American"],
-        },
+        "nationality": {"type": "string", "enum": ["Italian", "Portuguese", "American"]},
     },
-    "required": ["first_name", "last_name", "nationality"],
+    "required": ["first_name", "last_name", "nationality"]
 }
 
 ## Initialize a pipeline
 pipe = Pipeline()
 
 ## Add components to the pipeline
-pipe.add_component("joiner", BranchJoiner(List[ChatMessage]))
-pipe.add_component("fc_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
-pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
-pipe.add_component(
-    "adapter",
-    OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True),
-)
+pipe.add_component('joiner', BranchJoiner(List[ChatMessage]))
+pipe.add_component('fc_llm', OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
+pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True))
 
 ## Connect components
 pipe.connect("adapter", "joiner")
@@ -105,22 +100,17 @@ pipe.connect("joiner", "fc_llm")
 pipe.connect("fc_llm.replies", "validator.messages")
 pipe.connect("validator.validation_error", "joiner")
 
-result = pipe.run(
-    data={
-        "fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-        "adapter": {
-            "chat_message": [
-                ChatMessage.from_user("Create json object from Peter Parker"),
-            ],
-        },
-    },
-)
+result = pipe.run(data={
+    "fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
+    "adapter": {"chat_message": [ChatMessage.from_user("Create json object from Peter Parker")]}
+})
 
 print(json.loads(result["validator"]["validated"][0].text))
 
 ## Output:
 ## {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
 ## 'Superhero', 'age': 23, 'location': 'New York City'}
+
 ```
 
 <details>
@@ -156,19 +146,19 @@ Answer:
 
 documents = [
     Document(
-        content="Super appartement. Juste au dessus de plusieurs bars qui ferment très tard. A savoir à l'avance. (Bouchons d'oreilles fournis !)",
+        content="Super appartement. Juste au dessus de plusieurs bars qui ferment très tard. A savoir à l'avance. (Bouchons d'oreilles fournis !)"
     ),
     Document(
-        content="El apartamento estaba genial y muy céntrico, todo a mano. Al lado de la librería Lello y De la Torre de los clérigos. Está situado en una zona de marcha, así que si vais en fin de semana , habrá ruido, aunque a nosotros no nos molestaba para dormir",
+        content="El apartamento estaba genial y muy céntrico, todo a mano. Al lado de la librería Lello y De la Torre de los clérigos. Está situado en una zona de marcha, así que si vais en fin de semana , habrá ruido, aunque a nosotros no nos molestaba para dormir"
     ),
     Document(
-        content="The keypad with a code is convenient and the location is convenient. Basically everything else, very noisy, wi-fi didn't work, check-in person didn't explain anything about facilities, shower head was broken, there's no cleaning and everything else one may need is charged.",
+        content="The keypad with a code is convenient and the location is convenient. Basically everything else, very noisy, wi-fi didn't work, check-in person didn't explain anything about facilities, shower head was broken, there's no cleaning and everything else one may need is charged."
     ),
     Document(
-        content="It is very central and appartement has a nice appearance (even though a lot IKEA stuff), *W A R N I N G** the appartement presents itself as a elegant and as a place to relax, very wrong place to relax - you cannot sleep in this appartement, even the beds are vibrating from the bass of the clubs in the same building - you get ear plugs from the hotel.",
+        content="It is very central and appartement has a nice appearance (even though a lot IKEA stuff), *W A R N I N G** the appartement presents itself as a elegant and as a place to relax, very wrong place to relax - you cannot sleep in this appartement, even the beds are vibrating from the bass of the clubs in the same building - you get ear plugs from the hotel."
     ),
     Document(
-        content="Céntrico. Muy cómodo para moverse y ver Oporto. Edificio con terraza propia en la última planta. Todo reformado y nuevo. They traen un estupendo desayuno todas las mañanas al apartamento. Solo que se puede escuchar algo de ruido de la called a primeras horas de la noche. Es un zona de ocio nocturno. Pero respetan los horarios.",
+        content="Céntrico. Muy cómodo para moverse y ver Oporto. Edificio con terraza propia en la última planta. Todo reformado y nuevo. They traen un estupendo desayuno todas las mañanas al apartamento. Solo que se puede escuchar algo de ruido de la called a primeras horas de la noche. Es un zona de ocio nocturno. Pero respetan los horarios."
     ),
 ]
 
@@ -177,27 +167,12 @@ fr_document_store = InMemoryDocumentStore()
 es_document_store = InMemoryDocumentStore()
 
 rag_pipeline = Pipeline()
-rag_pipeline.add_component(
-    instance=TextLanguageRouter(["en", "fr", "es"]),
-    name="router",
-)
-rag_pipeline.add_component(
-    instance=InMemoryBM25Retriever(document_store=en_document_store),
-    name="en_retriever",
-)
-rag_pipeline.add_component(
-    instance=InMemoryBM25Retriever(document_store=fr_document_store),
-    name="fr_retriever",
-)
-rag_pipeline.add_component(
-    instance=InMemoryBM25Retriever(document_store=es_document_store),
-    name="es_retriever",
-)
+rag_pipeline.add_component(instance=TextLanguageRouter(["en", "fr", "es"]), name="router")
+rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=en_document_store), name="en_retriever")
+rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=fr_document_store), name="fr_retriever")
+rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=es_document_store), name="es_retriever")
 rag_pipeline.add_component(instance=BranchJoiner(type_=list[Document]), name="joiner")
-rag_pipeline.add_component(
-    instance=PromptBuilder(template=prompt_template),
-    name="prompt_builder",
-)
+rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
 rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
 
 rag_pipeline.connect("router.en", "en_retriever.query")
@@ -211,11 +186,10 @@ rag_pipeline.connect("prompt_builder", "llm")
 
 en_question = "Does this apartment has a noise problem?"
 
-result = rag_pipeline.run(
-    {"router": {"text": en_question}, "prompt_builder": {"query": en_question}},
-)
+result = rag_pipeline.run({"router": {"text": en_question}, "prompt_builder": {"query": en_question}})
 
 print(result["llm"]["replies"][0])
+
 ```
 
 <details>

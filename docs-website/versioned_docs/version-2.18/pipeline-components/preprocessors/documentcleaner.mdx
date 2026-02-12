@@ -51,7 +51,7 @@ from haystack.components.preprocessors import DocumentCleaner
 
 doc = Document(content="This   is  a  document  to  clean\n\n\nsubstring to remove")
 
-cleaner = DocumentCleaner(remove_substrings=["substring to remove"])
+cleaner = DocumentCleaner(remove_substrings = ["substring to remove"])
 result = cleaner.run(documents=[doc])
 
 assert result["documents"][0].content == "This is a document to clean "
@@ -72,10 +72,7 @@ document_store = InMemoryDocumentStore()
 p = Pipeline()
 p.add_component(instance=TextFileToDocument(), name="text_file_converter")
 p.add_component(instance=DocumentCleaner(), name="cleaner")
-p.add_component(
-    instance=DocumentSplitter(split_by="sentence", split_length=1),
-    name="splitter",
-)
+p.add_component(instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 p.connect("text_file_converter.documents", "cleaner.documents")
 p.connect("cleaner.documents", "splitter.documents")

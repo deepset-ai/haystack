@@ -42,10 +42,7 @@ converter = DOCXToDocument()
 ## or define the table format
 converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
 
-results = converter.run(
-    sources=["sample.docx"],
-    meta={"date_added": datetime.now().isoformat()},
-)
+results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
 documents = results["documents"]
 
 print(documents[0].content)
@@ -68,10 +65,7 @@ document_store = InMemoryDocumentStore()
 pipeline = Pipeline()
 pipeline.add_component("converter", DOCXToDocument())
 pipeline.add_component("cleaner", DocumentCleaner())
-pipeline.add_component(
-    "splitter",
-    DocumentSplitter(split_by="sentence", split_length=5),
-)
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 pipeline.connect("converter", "cleaner")
 pipeline.connect("cleaner", "splitter")

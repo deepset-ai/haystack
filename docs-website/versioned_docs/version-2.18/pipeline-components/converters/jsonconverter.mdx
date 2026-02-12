@@ -54,9 +54,7 @@ import json
 from haystack.components.converters import JSONConverter
 from haystack.dataclasses import ByteStream
 
-source = ByteStream.from_string(
-    json.dumps({"text": "This is the content of my document"}),
-)
+source = ByteStream.from_string(json.dumps({"text": "This is the content of my document"}))
 
 converter = JSONConverter(content_key="text")
 results = converter.run(sources=[source])
@@ -74,26 +72,24 @@ from haystack.components.converters import JSONConverter
 from haystack.dataclasses import ByteStream
 
 data = {
-    "laureates": [
-        {
-            "firstname": "Enrico",
-            "surname": "Fermi",
-            "motivation": "for his demonstrations of the existence of new radioactive elements produced "
-            "by neutron irradiation, and for his related discovery of nuclear reactions brought about by"
-            " slow neutrons",
-        },
-        {
-            "firstname": "Rita",
-            "surname": "Levi-Montalcini",
-            "motivation": "for their discoveries of growth factors",
-        },
-    ],
+  "laureates": [
+    {
+      "firstname": "Enrico",
+      "surname": "Fermi",
+      "motivation": "for his demonstrations of the existence of new radioactive elements produced "
+      "by neutron irradiation, and for his related discovery of nuclear reactions brought about by"
+      " slow neutrons",
+    },
+    {
+      "firstname": "Rita",
+      "surname": "Levi-Montalcini",
+      "motivation": "for their discoveries of growth factors",
+    },
+  ],
 }
 source = ByteStream.from_string(json.dumps(data))
 converter = JSONConverter(
-    jq_schema=".laureates[]",
-    content_key="motivation",
-    extra_meta_fields={"firstname", "surname"},
+  jq_schema=".laureates[]", content_key="motivation", extra_meta_fields={"firstname", "surname"}
 )
 
 results = converter.run(sources=[source])

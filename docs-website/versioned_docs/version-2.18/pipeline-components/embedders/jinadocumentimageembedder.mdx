@@ -97,10 +97,7 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-from haystack_integrations.components.embedders.jina import (
-    JinaDocumentImageEmbedder,
-    JinaTextEmbedder,
-)
+from haystack_integrations.components.embedders.jina import JinaDocumentImageEmbedder, JinaTextEmbedder
 
 document_store = InMemoryDocumentStore()
 
@@ -109,9 +106,11 @@ indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("image_converter", ImageFileToDocument())
 indexing_pipeline.add_component(
     "embedder",
-    JinaDocumentImageEmbedder(model="jina-clip-v2", image_size=(200, 200)),
+    JinaDocumentImageEmbedder(model="jina-clip-v2", image_size=(200, 200))
 )
-indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.add_component(
+    "writer", DocumentWriter(document_store=document_store)
+)
 indexing_pipeline.connect("image_converter", "embedder")
 indexing_pipeline.connect("embedder", "writer")
 
@@ -119,10 +118,13 @@ indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "cat.jpg"
 
 ## Multimodal retrieval pipeline
 retrieval_pipeline = Pipeline()
-retrieval_pipeline.add_component("embedder", JinaTextEmbedder(model="jina-clip-v2"))
+retrieval_pipeline.add_component(
+    "embedder",
+    JinaTextEmbedder(model="jina-clip-v2")
+)
 retrieval_pipeline.add_component(
     "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2),
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
 )
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 

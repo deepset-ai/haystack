@@ -44,36 +44,20 @@ You can create a `PipelineTool` from any existing Haystack pipeline:
 from haystack import Document, Pipeline
 from haystack.tools import PipelineTool
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.rankers.sentence_transformers_similarity import (
-    SentenceTransformersSimilarityRanker,
-)
+from haystack.components.rankers.sentence_transformers_similarity import SentenceTransformersSimilarityRanker
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 ## Create your pipeline
 document_store = InMemoryDocumentStore()
 ## Add some example documents
-document_store.write_documents(
-    [
-        Document(
-            content="Nikola Tesla was a Serbian-American inventor and electrical engineer.",
-        ),
-        Document(
-            content="Alternating current (AC) is an electric current which periodically reverses direction.",
-        ),
-        Document(
-            content="Thomas Edison promoted direct current (DC) and competed with AC in the War of Currents.",
-        ),
-    ],
-)
+document_store.write_documents([
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(content="Alternating current (AC) is an electric current which periodically reverses direction."),
+    Document(content="Thomas Edison promoted direct current (DC) and competed with AC in the War of Currents."),
+])
 retrieval_pipeline = Pipeline()
-retrieval_pipeline.add_component(
-    "bm25_retriever",
-    InMemoryBM25Retriever(document_store=document_store),
-)
-retrieval_pipeline.add_component(
-    "ranker",
-    SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2"),
-)
+retrieval_pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store))
+retrieval_pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2"))
 retrieval_pipeline.connect("bm25_retriever.documents", "ranker.documents")
 
 ## Wrap the pipeline as a tool
@@ -94,12 +78,8 @@ Create a `PipelineTool` from a retrieval pipeline and let an `OpenAIChatGenerato
 from haystack import Document, Pipeline
 from haystack.tools import PipelineTool
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders.sentence_transformers_text_embedder import (
-    SentenceTransformersTextEmbedder,
-)
-from haystack.components.embedders.sentence_transformers_document_embedder import (
-    SentenceTransformersDocumentEmbedder,
-)
+from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools.tool_invoker import ToolInvoker
@@ -107,16 +87,10 @@ from haystack.dataclasses import ChatMessage
 
 ## Initialize a document store and add some documents
 document_store = InMemoryDocumentStore()
-document_embedder = SentenceTransformersDocumentEmbedder(
-    model="sentence-transformers/all-MiniLM-L6-v2",
-)
+document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 documents = [
-    Document(
-        content="Nikola Tesla was a Serbian-American inventor and electrical engineer.",
-    ),
-    Document(
-        content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system.",
-    ),
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system."),
 ]
 document_embedder.warm_up()
 docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
@@ -125,13 +99,9 @@ document_store.write_documents(docs_with_embeddings)
 ## Build a simple retrieval pipeline
 retrieval_pipeline = Pipeline()
 retrieval_pipeline.add_component(
-    "embedder",
-    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 )
-retrieval_pipeline.add_component(
-    "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store),
-)
+retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
 ## Wrap the pipeline as a tool
@@ -145,18 +115,13 @@ retriever_tool = PipelineTool(
 
 ## Create pipeline with OpenAIChatGenerator and ToolInvoker
 pipeline = Pipeline()
-pipeline.add_component(
-    "llm",
-    OpenAIChatGenerator(model="gpt-4o-mini", tools=[retriever_tool]),
-)
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[retriever_tool]))
 pipeline.add_component("tool_invoker", ToolInvoker(tools=[retriever_tool]))
 
 ## Connect components
 pipeline.connect("llm.replies", "tool_invoker.messages")
 
-message = ChatMessage.from_user(
-    "Use the document retriever tool to find information about Nikola Tesla",
-)
+message = ChatMessage.from_user("Use the document retriever tool to find information about Nikola Tesla")
 
 ## Run pipeline
 result = pipeline.run({"llm": {"messages": [message]}})
@@ -172,12 +137,8 @@ Use `PipelineTool` with the [Agent](../pipeline-components/agents-1/agent.mdx) c
 from haystack import Document, Pipeline
 from haystack.tools import PipelineTool
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders.sentence_transformers_text_embedder import (
-    SentenceTransformersTextEmbedder,
-)
-from haystack.components.embedders.sentence_transformers_document_embedder import (
-    SentenceTransformersDocumentEmbedder,
-)
+from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.agents import Agent
@@ -185,16 +146,10 @@ from haystack.dataclasses import ChatMessage
 
 ## Initialize a document store and add some documents
 document_store = InMemoryDocumentStore()
-document_embedder = SentenceTransformersDocumentEmbedder(
-    model="sentence-transformers/all-MiniLM-L6-v2",
-)
+document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 documents = [
-    Document(
-        content="Nikola Tesla was a Serbian-American inventor and electrical engineer.",
-    ),
-    Document(
-        content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system.",
-    ),
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system."),
 ]
 document_embedder.warm_up()
 docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
@@ -203,13 +158,9 @@ document_store.write_documents(docs_with_embeddings)
 ## Build a simple retrieval pipeline
 retrieval_pipeline = Pipeline()
 retrieval_pipeline.add_component(
-    "embedder",
-    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 )
-retrieval_pipeline.add_component(
-    "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store),
-)
+retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
 ## Wrap the pipeline as a tool
@@ -224,7 +175,7 @@ retriever_tool = PipelineTool(
 ## Create an Agent with the tool
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    tools=[retriever_tool],
+    tools=[retriever_tool]
 )
 
 ## Let the Agent handle a query

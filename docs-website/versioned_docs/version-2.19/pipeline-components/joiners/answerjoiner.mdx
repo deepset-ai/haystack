@@ -41,12 +41,8 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
 query = "What's Natural Language Processing?"
-messages = [
-    ChatMessage.from_system(
-        "You are a helpful, respectful and honest assistant. Be super concise.",
-    ),
-    ChatMessage.from_user(query),
-]
+messages = [ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+            ChatMessage.from_user(query)]
 
 pipe = Pipeline()
 pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
@@ -60,12 +56,8 @@ pipe.connect("llama.replies", "abb")
 pipe.connect("aba.answers", "joiner")
 pipe.connect("abb.answers", "joiner")
 
-results = pipe.run(
-    data={
-        "gpt-4o": {"messages": messages},
-        "llama": {"messages": messages},
-        "aba": {"query": query},
-        "abb": {"query": query},
-    },
-)
+results = pipe.run(data={"gpt-4o": {"messages": messages},
+                            "llama": {"messages": messages},
+                            "aba": {"query": query},
+                            "abb": {"query": query}})
 ```

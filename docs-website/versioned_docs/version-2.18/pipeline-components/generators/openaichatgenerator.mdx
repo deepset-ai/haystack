@@ -45,7 +45,6 @@ from pydantic import BaseModel
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
-
 class NobelPrizeInfo(BaseModel):
     recipient_name: str
     award_year: int
@@ -53,22 +52,20 @@ class NobelPrizeInfo(BaseModel):
     achievement_description: str
     nationality: str
 
-
 client = OpenAIChatGenerator(
     model="gpt-4o-2024-08-06",
-    generation_kwargs={"response_format": NobelPrizeInfo},
+    generation_kwargs={"response_format": NobelPrizeInfo}
 )
 
-response = client.run(
-    messages=[
-        ChatMessage.from_user(
-            "In 2021, American scientist David Julius received the Nobel Prize in"
-            " Physiology or Medicine for his groundbreaking discoveries on how the human body"
-            " senses temperature and touch.",
-        ),
-    ],
-)
+response = client.run(messages=[
+    ChatMessage.from_user(
+        "In 2021, American scientist David Julius received the Nobel Prize in"
+        " Physiology or Medicine for his groundbreaking discoveries on how the human body"
+        " senses temperature and touch."
+    )
+])
 print(response["replies"][0].text)
+
 ```
 
 :::note
@@ -119,9 +116,10 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 
 client = OpenAIChatGenerator()
 response = client.run(
-    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+	  [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 )
 print(response)
+
 ```
 
 With streaming:
@@ -130,13 +128,12 @@ With streaming:
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import OpenAIChatGenerator
 
-client = OpenAIChatGenerator(
-    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
-)
+client = OpenAIChatGenerator(streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
 response = client.run(
-    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+	  [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 )
 print(response)
+
 ```
 
 With multimodal inputs:
@@ -148,12 +145,14 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 llm = OpenAIChatGenerator(model="gpt-4o-mini")
 
 image = ImageContent.from_file_path("apple.jpg", detail="low")
-user_message = ChatMessage.from_user(
-    content_parts=["What does the image show? Max 5 words.", image],
-)
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
+
 ```
 
 ### In a Pipeline
@@ -167,30 +166,17 @@ from haystack.utils import Secret
 
 ## no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
-llm = OpenAIChatGenerator(
-    api_key=Secret.from_env_var("OPENAI_API_KEY"),
-    model="gpt-4o-mini",
-)
+llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
-messages = [
-    ChatMessage.from_system(
-        "Always respond in German even if some input data is in other languages.",
-    ),
-    ChatMessage.from_user("Tell me about {{location}}"),
-]
-pipe.run(
-    data={
-        "prompt_builder": {
-            "template_variables": {"location": location},
-            "template": messages,
-        },
-    },
-)
+messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+            ChatMessage.from_user("Tell me about {{location}}")]
+pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+
 ```
 
 ## Additional References

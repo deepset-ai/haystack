@@ -57,9 +57,7 @@ from haystack import Pipeline
 from haystack.components.joiners import ListJoiner
 from typing import List
 
-user_message = [
-    ChatMessage.from_user("Give a brief answer the following question: {{query}}"),
-]
+user_message = [ChatMessage.from_user("Give a brief answer the following question: {{query}}")]
 
 feedback_prompt = """
     You are given a question and an answer.
@@ -89,12 +87,8 @@ pipe.connect("feedback_prompt_builder.prompt", "feedback_llm.messages")
 pipe.connect("feedback_llm.replies", "list_joiner")
 
 query = "What is nuclear physics?"
-ans = pipe.run(
-    data={
-        "prompt_builder": {"template_variables": {"query": query}},
-        "feedback_prompt_builder": {"template_variables": {"query": query}},
-    },
-)
+ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
+    "feedback_prompt_builder": {"template_variables":{"query": query}}})
 
 print(ans["list_joiner"]["values"])
 ```

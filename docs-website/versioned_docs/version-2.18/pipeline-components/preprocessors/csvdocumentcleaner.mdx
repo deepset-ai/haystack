@@ -53,7 +53,7 @@ from haystack.components.preprocessors import CSVDocumentCleaner
 
 cleaner = CSVDocumentCleaner(ignore_rows=1, ignore_columns=0)
 
-documents = [Document(content="""col1,col2,col3\n,,\na,b,c\n,,""")]
+documents = [Document(content="""col1,col2,col3\n,,\na,b,c\n,,""" )]
 cleaned_docs = cleaner.run(documents=documents)
 ```
 
@@ -70,10 +70,7 @@ from haystack.components.writers import DocumentWriter
 document_store = InMemoryDocumentStore()
 p = Pipeline()
 p.add_component(instance=XLSXToDocument(), name="xlsx_file_converter")
-p.add_component(
-    instance=CSVDocumentCleaner(ignore_rows=1, ignore_columns=1),
-    name="csv_cleaner",
-)
+p.add_component(instance=CSVDocumentCleaner(ignore_rows=1, ignore_columns=1), name="csv_cleaner")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 
 p.connect("xlsx_file_converter.documents", "csv_cleaner.documents")

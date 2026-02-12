@@ -57,9 +57,7 @@ This Retriever needs the `PgvectorDocumentStore` and indexed Documents to run.
 ```python
 import os
 from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
-from haystack_integrations.components.retrievers.pgvector import (
-    PgvectorEmbeddingRetriever,
-)
+from haystack_integrations.components.retrievers.pgvector import PgvectorEmbeddingRetriever
 
 os.environ["PG_CONN_STR"] = "postgresql://postgres:postgres@localhost:5432/postgres"
 
@@ -67,7 +65,7 @@ document_store = PgvectorDocumentStore()
 retriever = PgvectorEmbeddingRetriever(document_store=document_store)
 
 ## using a fake vector to keep the example simple
-retriever.run(query_embedding=[0.1] * 768)
+retriever.run(query_embedding=[0.1]*768)
 ```
 
 ### In a Pipeline
@@ -76,15 +74,10 @@ retriever.run(query_embedding=[0.1] * 768)
 import os
 from haystack.document_stores import DuplicatePolicy
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
-    SentenceTransformersTextEmbedder,
-    SentenceTransformersDocumentEmbedder,
-)
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 
 from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
-from haystack_integrations.components.retrievers.pgvector import (
-    PgvectorEmbeddingRetriever,
-)
+from haystack_integrations.components.retrievers.pgvector import PgvectorEmbeddingRetriever
 
 os.environ["PG_CONN_STR"] = "postgresql://postgres:postgres@localhost:5432/postgres"
 
@@ -94,36 +87,24 @@ document_store = PgvectorDocumentStore(
     recreate_table=True,
 )
 
-documents = [
-    Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(
-        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
-    ),
-    Document(
-        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
-    ),
-]
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
 document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 
-document_store.write_documents(
-    documents_with_embeddings.get("documents"),
-    policy=DuplicatePolicy.OVERWRITE,
-)
+document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
-query_pipeline.add_component(
-    "retriever",
-    PgvectorEmbeddingRetriever(document_store=document_store),
-)
+query_pipeline.add_component("retriever", PgvectorEmbeddingRetriever(document_store=document_store))
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "How many languages are there?"
 
 result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result["retriever"]["documents"][0])
+print(result['retriever']['documents'][0])
 ```

@@ -31,11 +31,9 @@ To work with Azure components, you will need an Azure OpenAI API key, as well as
 The component uses `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_AD_TOKEN` environment variables by default. Otherwise, you can pass `api_key` and `azure_ad_token` at initialization:
 
 ```python
-client = AzureOpenAIGenerator(
-    azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-    api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<a model name>",
-)
+client = AzureOpenAIGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+                        api_key=Secret.from_token("<your-api-key>"),
+                        azure_deployment="<a model name>")
 ```
 
 :::info
@@ -108,12 +106,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack import Document
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents(
-    [
-        Document(content="Rome is the capital of Italy"),
-        Document(content="Paris is the capital of France"),
-    ],
-)
+docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
 
 query = "What is the capital of France?"
 
@@ -135,7 +128,14 @@ pipe.add_component("llm", AzureOpenAIGenerator())
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
+res=pipe.run({
+    "prompt_builder": {
+        "query": query
+    },
+    "retriever": {
+        "query": query
+    }
+})
 
 print(res)
 ```

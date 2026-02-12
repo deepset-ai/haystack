@@ -60,13 +60,9 @@ able to embed images and text into the same vector space. Compatible models incl
 
 ```python
 from haystack import Document
-from haystack.components.embedders.image import (
-    SentenceTransformersDocumentImageEmbedder,
-)
+from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
 
-embedder = SentenceTransformersDocumentImageEmbedder(
-    model="sentence-transformers/clip-ViT-B-32",
-)
+embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
 embedder.warm_up()
 
 documents = [
@@ -100,9 +96,7 @@ There is also a multimodal retrieval pipeline, composed by a `SentenceTransforme
 from haystack import Pipeline
 from haystack.components.converters.image import ImageFileToDocument
 from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.embedders.image import (
-    SentenceTransformersDocumentImageEmbedder,
-)
+from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -114,11 +108,11 @@ indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("image_converter", ImageFileToDocument())
 indexing_pipeline.add_component(
     "embedder",
-    SentenceTransformersDocumentImageEmbedder(
-        model="sentence-transformers/clip-ViT-B-32",
-    ),
+    SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
 )
-indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.add_component(
+    "writer", DocumentWriter(document_store=document_store)
+)
 indexing_pipeline.connect("image_converter", "embedder")
 indexing_pipeline.connect("embedder", "writer")
 
@@ -128,11 +122,11 @@ indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "hyena.jp
 retrieval_pipeline = Pipeline()
 retrieval_pipeline.add_component(
     "embedder",
-    SentenceTransformersTextEmbedder(model="sentence-transformers/clip-ViT-B-32"),
+    SentenceTransformersTextEmbedder(model="sentence-transformers/clip-ViT-B-32")
 )
 retrieval_pipeline.add_component(
     "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2),
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
 )
 retrieval_pipeline.connect("embedder", "retriever")
 

@@ -36,10 +36,7 @@ You can optionally attach metadata to each document with a `meta` parameter when
 from haystack.components.converters.csv import CSVToDocument
 
 converter = CSVToDocument()
-results = converter.run(
-    sources=["sample.csv"],
-    meta={"date_added": datetime.now().isoformat()},
-)
+results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
 documents = results["documents"]
 
 print(documents[0].content)
@@ -61,10 +58,7 @@ document_store = InMemoryDocumentStore()
 pipeline = Pipeline()
 pipeline.add_component("converter", CSVToDocument())
 pipeline.add_component("cleaner", DocumentCleaner())
-pipeline.add_component(
-    "splitter",
-    DocumentSplitter(split_by="sentence", split_length=5),
-)
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 pipeline.connect("converter", "cleaner")
 pipeline.connect("cleaner", "splitter")

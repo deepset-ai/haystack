@@ -47,12 +47,12 @@ from haystack.components.connectors.openapi import OpenAPIConnector
 connector = OpenAPIConnector(
     openapi_spec="https://bit.ly/serperdev_openapi",
     credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
-    service_kwargs={"config_factory": my_custom_config_factory},
+    service_kwargs={"config_factory": my_custom_config_factory}
 )
 
 response = connector.run(
     operation_id="search",
-    arguments={"q": "Who was Nikola Tesla?"},
+    arguments={"q": "Who was Nikola Tesla?"}
 )
 ```
 
@@ -80,7 +80,7 @@ from haystack.utils import Secret
 ## Initialize the OpenAPIConnector
 connector = OpenAPIConnector(
     openapi_spec="https://bit.ly/serperdev_openapi",
-    credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
+    credentials=Secret.from_env_var("SERPERDEV_API_KEY")
 )
 
 ## Create a ChatMessage from the user
@@ -92,12 +92,7 @@ pipeline.add_component("openapi_connector", connector)
 
 ## Run the pipeline
 response = pipeline.run(
-    data={
-        "openapi_connector": {
-            "operation_id": "search",
-            "arguments": {"q": user_message.text},
-        },
-    },
+    data={"openapi_connector": {"operation_id": "search", "arguments": {"q": user_message.text}}}
 )
 
 ## Extract the answer from the response

@@ -47,9 +47,7 @@ Basic usage with a local file:
 ```python
 from pathlib import Path
 from haystack.utils import Secret
-from haystack_integrations.components.converters.paddleocr import (
-    PaddleOCRVLDocumentConverter,
-)
+from haystack_integrations.components.converters.paddleocr import PaddleOCRVLDocumentConverter
 
 converter = PaddleOCRVLDocumentConverter(
     api_url="<your-api-url>",
@@ -70,9 +68,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.utils import Secret
-from haystack_integrations.components.converters.paddleocr import (
-    PaddleOCRVLDocumentConverter,
-)
+from haystack_integrations.components.converters.paddleocr import PaddleOCRVLDocumentConverter
 
 document_store = InMemoryDocumentStore()
 
@@ -82,7 +78,7 @@ pipeline.add_component(
     PaddleOCRVLDocumentConverter(
         api_url="<your-api-url>",
         access_token=Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
-    ),
+    )
 )
 pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))

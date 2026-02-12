@@ -58,9 +58,7 @@ Basic usage:
 ```python
 import os
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiChatGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 gemini_chat = GoogleAIGeminiChatGenerator()
@@ -82,17 +80,12 @@ When chatting with Gemini, you can also easily use function calls. First, define
 from typing import Annotated
 from haystack.tools import create_tool_from_function
 
-
 ## example function to get the current weather
 def get_current_weather(
-    location: Annotated[
-        str,
-        "The city for which to get the weather, e.g. 'San Francisco'",
-    ] = "Munich",
+    location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
-
 
 tool = create_tool_from_function(get_current_weather)
 ```
@@ -101,9 +94,7 @@ Create a new instance of `GoogleAIGeminiChatGenerator` to set the tools and a [T
 
 ```python
 import os
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiChatGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
 from haystack.components.tools import ToolInvoker
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
@@ -111,6 +102,7 @@ os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 gemini_chat = GoogleAIGeminiChatGenerator(model="gemini-2.0-flash", tools=[tool])
 
 tool_invoker = ToolInvoker(tools=[tool])
+
 ```
 
 And then ask a question:
@@ -126,9 +118,7 @@ print(res["replies"][0].tool_calls)
 tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
 messages = user_message + replies + tool_messages
 
-messages += res["replies"][0] + [
-    ChatMessage.from_function(content=weather, name="get_current_weather"),
-]
+messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
 
 final_replies = gemini_chat.run(messages=messages)["replies"]
 print(final_replies[0].text)
@@ -141,9 +131,7 @@ import os
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiChatGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
 
 ## no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
@@ -158,14 +146,8 @@ pipe.connect("prompt_builder.prompt", "gemini.messages")
 
 location = "Rome"
 messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
-res = pipe.run(
-    data={
-        "prompt_builder": {
-            "template_variables": {"location": location},
-            "template": messages,
-        },
-    },
-)
+res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
 
 print(res)
+
 ```

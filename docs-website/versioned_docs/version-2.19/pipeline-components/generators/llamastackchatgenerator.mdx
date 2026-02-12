@@ -93,12 +93,12 @@ pip install llama-stack-haystack
 ```python
 import os
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.llama_stack import (
-    LlamaStackChatGenerator,
-)
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
 
 client = LlamaStackChatGenerator(model="ollama/llama3.2:3b")
-response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
 print(response["replies"])
 ```
 
@@ -107,16 +107,14 @@ print(response["replies"])
 ```python
 import os
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.llama_stack import (
-    LlamaStackChatGenerator,
-)
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 
-client = LlamaStackChatGenerator(
-    model="ollama/llama3.2:3b",
-    streaming_callback=print_streaming_chunk,
+client = LlamaStackChatGenerator(model="ollama/llama3.2:3b",
+				streaming_callback=print_streaming_chunk)
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
 )
-response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 print(response["replies"])
 ```
 
@@ -126,9 +124,7 @@ print(response["replies"])
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.llama_stack import (
-    LlamaStackChatGenerator,
-)
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
 
 prompt_builder = ChatPromptBuilder()
 llm = LlamaStackChatGenerator(model="ollama/llama3.2:3b")
@@ -140,11 +136,12 @@ pipe.connect("builder.prompt", "llm.messages")
 
 messages = [
     ChatMessage.from_system("Give brief answers."),
-    ChatMessage.from_user("Tell me about {{city}}"),
+    ChatMessage.from_user("Tell me about {{city}}")
 ]
 
 response = pipe.run(
-    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
+    data={"builder": {"template": messages,
+                      "template_variables": {"city": "Berlin"}}}
 )
 print(response)
 ```

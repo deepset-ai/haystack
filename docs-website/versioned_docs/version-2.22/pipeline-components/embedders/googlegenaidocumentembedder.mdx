@@ -55,9 +55,7 @@ The following examples show how to use the component with the Gemini Developer A
 #### Gemini Developer API (API Key Authentication)
 
 ```python
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAIDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 ## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIDocumentEmbedder()
@@ -66,9 +64,7 @@ chat_generator = GoogleGenAIDocumentEmbedder()
 #### Vertex AI (Application Default Credentials)
 
 ```python
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAIDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 ## Using Application Default Credentials (requires gcloud auth setup)
 chat_generator = GoogleGenAIDocumentEmbedder(
@@ -81,9 +77,7 @@ chat_generator = GoogleGenAIDocumentEmbedder(
 #### Vertex AI (API Key Authentication)
 
 ```python
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAIDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 ## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIDocumentEmbedder(api="vertex")
@@ -99,16 +93,11 @@ You can do this by using the Document Embedder:
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAIDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
-embedder = GoogleGenAIDocumentEmbedder(
-    api_key=Secret.from_token("<your-api-key>"),
-    meta_fields_to_embed=["title"],
-)
+embedder = GoogleGenAIDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), meta_fields_to_embed=["title"])
 
 docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 ```
@@ -121,16 +110,14 @@ Here is how you can use the component on its own. You'll need to pass in your Go
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAIDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 doc = Document(content="I love pizza!")
 
 document_embedder = GoogleGenAIDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 ## [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
@@ -140,22 +127,16 @@ print(result["documents"][0].embedding)
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAITextEmbedder,
-)
-from haystack_integrations.components.embedders.google_genai import (
-    GoogleGenAIDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [
-    Document(content="My name is Wolfgang and I live in Berlin"),
-    Document(content="I saw a black horse running"),
-    Document(content="Germany has many big cities"),
-]
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("embedder", GoogleGenAIDocumentEmbedder())
@@ -166,17 +147,14 @@ indexing_pipeline.run({"embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", GoogleGenAITextEmbedder())
-query_pipeline.add_component(
-    "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store),
-)
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder": {"text": query}})
+result = query_pipeline.run({"text_embedder":{"text": query}})
 
-print(result["retriever"]["documents"][0])
+print(result['retriever']['documents'][0])
 
 ## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
 ```

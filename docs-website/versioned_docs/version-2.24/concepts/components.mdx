@@ -53,7 +53,7 @@ doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersDocumentEmbedder()
 
 result = doc_embedder.run([doc])  # warm_up() is called automatically on first run
-print(result["documents"][0].embedding)
+print(result['documents'][0].embedding)
 ```
 
 You can still call `warm_up()` explicitly if you want to control when resources are loaded.

@@ -48,14 +48,12 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 ```python
 from haystack.components.generators import HuggingFaceLocalGenerator
 
-generator = HuggingFaceLocalGenerator(
-    model="google/flan-t5-large",
-    task="text2text-generation",
-    generation_kwargs={
-        "max_new_tokens": 100,
-        "temperature": 0.9,
-    },
-)
+generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
+                                      task="text2text-generation",
+                                      generation_kwargs={
+                                        "max_new_tokens": 100,
+                                        "temperature": 0.9,
+                                        })
 
 generator.warm_up()
 print(generator.run("Who is the best American actor?"))
@@ -73,21 +71,14 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack import Document
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents(
-    [
-        Document(content="Rome is the capital of Italy"),
-        Document(content="Paris is the capital of France"),
-    ],
-)
+docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
 
-generator = HuggingFaceLocalGenerator(
-    model="google/flan-t5-large",
-    task="text2text-generation",
-    generation_kwargs={
-        "max_new_tokens": 100,
-        "temperature": 0.9,
-    },
-)
+generator = HuggingFaceLocalGenerator(model="google/flan-t5-large",
+                                      task="text2text-generation",
+                                      generation_kwargs={
+                                        "max_new_tokens": 100,
+                                        "temperature": 0.9,
+                                        })
 
 query = "What is the capital of France?"
 
@@ -109,7 +100,14 @@ pipe.add_component("llm", generator)
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
+res=pipe.run({
+    "prompt_builder": {
+        "query": query
+    },
+    "retriever": {
+        "query": query
+    }
+})
 
 print(res)
 ```

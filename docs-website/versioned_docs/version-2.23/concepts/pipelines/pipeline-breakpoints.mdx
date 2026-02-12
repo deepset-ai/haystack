@@ -29,7 +29,7 @@ from haystack.core.errors import BreakpointException
 break_point = Breakpoint(
     component_name="llm",
     visit_count=0,  # 0 = first visit, 1 = second visit, etc.
-    snapshot_file_path="/path/to/snapshots",  # Optional: save snapshot to file
+    snapshot_file_path="/path/to/snapshots"  # Optional: save snapshot to file
 )
 
 ## Run pipeline with breakpoint
@@ -55,11 +55,9 @@ You can pass a `snapshot_callback` to `Pipeline.run()` or `Agent.run()` to handl
 from haystack.core.errors import BreakpointException
 from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
 
-
 def my_snapshot_callback(snapshot: PipelineSnapshot) -> None:
     # Custom handling: e.g. save to DB, send to API, or log
     print(f"Snapshot at component: {snapshot.break_point}")
-
 
 break_point = Breakpoint(component_name="llm", visit_count=0)
 try:
@@ -125,7 +123,10 @@ from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBr
 
 ## Break at chat generator (LLM calls)
 chat_bp = Breakpoint(component_name="chat_generator", visit_count=0)
-agent_breakpoint = AgentBreakpoint(break_point=chat_bp, agent_name="my_agent")
+agent_breakpoint = AgentBreakpoint(
+    break_point=chat_bp,
+    agent_name="my_agent"
+)
 ```
 
 To set a breakpoint on a Tool in an Agent, do the following:
@@ -141,9 +142,12 @@ from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBr
 tool_bp = ToolBreakpoint(
     component_name="tool_invoker",
     visit_count=0,
-    tool_name="weather_tool",  # Specific tool, or None for any tool
+    tool_name="weather_tool"  # Specific tool, or None for any tool
 )
-agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="my_agent")
+agent_breakpoint = AgentBreakpoint(
+    break_point=tool_bp,
+    agent_name="my_agent"
+)
 ```
 
 ### Resuming Agent Execution
@@ -207,8 +211,6 @@ Resume from disk:
 ```python
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 
-snapshot = load_pipeline_snapshot(
-    "/path/to/.haystack/pipeline_snapshot/reader_0_2025_09_20_12_33_10.json",
-)
+snapshot = load_pipeline_snapshot("/path/to/.haystack/pipeline_snapshot/reader_0_2025_09_20_12_33_10.json")
 result = pipeline.run(data={}, pipeline_snapshot=snapshot)
 ```

@@ -134,18 +134,12 @@ prompt_template = [
     ChatMessage.from_user(
         "Given the information below:\n"
         "{% for document in documents %}{{ document.content }}{% endfor %}\n"
-        "Answer question: {{ query }}.\nAnswer:",
-    ),
+        "Answer question: {{ query }}.\nAnswer:"
+    )
 ]
 
-prompt_builder = ChatPromptBuilder(
-    template=prompt_template,
-    required_variables={"query", "documents"},
-)
-llm = OpenAIChatGenerator(
-    model="gpt-4o-mini",
-    api_key=Secret.from_token("<your-api-key>"),
-)
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
+llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("<your-api-key>"))
 
 pipe = Pipeline()
 pipe.add_component("reader_connector", reader_connector)
@@ -157,9 +151,7 @@ pipe.connect("prompt_builder.messages", "llm.messages")
 
 query = "What is the most famous landmark in Berlin?"
 
-result = pipe.run(
-    data={"reader_connector": {"query": query}, "prompt_builder": {"query": query}},
-)
+result = pipe.run(data={"reader_connector": {"query": query}, "prompt_builder": {"query": query}})
 print(result)
 
 ## {'llm': {'replies': ['The most famous landmark in Berlin is the **Brandenburg Gate**. It is considered the symbol of the city and represents reunification.'], 'meta': [{'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 27, 'prompt_tokens': 4479, 'total_tokens': 4506, 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0, cached_tokens=0)}}]}}

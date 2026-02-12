@@ -82,17 +82,12 @@ When chatting with Gemini, you can also easily use function calls. First, define
 from typing import Annotated
 from haystack.tools import create_tool_from_function
 
-
 ## example function to get the current weather
 def get_current_weather(
-    location: Annotated[
-        str,
-        "The city for which to get the weather, e.g. 'San Francisco'",
-    ] = "Munich",
+    location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
-
 
 tool = create_tool_from_function(get_current_weather)
 ```
@@ -101,9 +96,7 @@ Create a new instance of `GoogleAIGeminiChatGenerator` to set the tools and a [T
 
 ```python
 import os
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiChatGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
 from haystack.components.tools import ToolInvoker
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
@@ -111,6 +104,7 @@ os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 gemini_chat = GoogleAIGeminiChatGenerator(model="gemini-2.0-flash", tools=[tool])
 
 tool_invoker = ToolInvoker(tools=[tool])
+
 ```
 
 And then ask a question:

@@ -113,7 +113,6 @@ from pathlib import Path
 from haystack import Pipeline
 from hayhooks import BasePipelineWrapper
 
-
 class PipelineWrapper(BasePipelineWrapper):
     def setup(self) -> None:
         pipeline_yaml = (Path(__file__).parent / "pipeline.yml").read_text()
@@ -144,11 +143,8 @@ Hayhooks automatically processes uploaded files and passes them to the `run_api`
 Hayhooks also supports handling both files and additional parameters in the same request by including them as arguments in `run_api`:
 
 ```python
-def run_api(
-    self,
-    files: Optional[List[UploadFile]] = None,
-    additional_param: str = "default",
-) -> str: ...
+def run_api(self, files: Optional[List[UploadFile]] = None, additional_param: str = "default") -> str:
+    ...
 ```
 
 ## Running Pipelines from the CLI
@@ -219,7 +215,6 @@ from typing import List
 from haystack import Pipeline
 from hayhooks import BasePipelineWrapper
 
-
 class PipelineWrapper(BasePipelineWrapper):
     def setup(self) -> None:
         pipeline_yaml = (Path(__file__).parent / "chat_with_website.yml").read_text()
@@ -229,9 +224,7 @@ class PipelineWrapper(BasePipelineWrapper):
         """
         Ask a question about one or more websites using a Haystack pipeline.
         """
-        result = self.pipeline.run(
-            {"fetcher": {"urls": urls}, "prompt": {"query": question}},
-        )
+        result = self.pipeline.run({"fetcher": {"urls": urls}, "prompt": {"query": question}})
         return result["llm"]["replies"][0]
 ```
 
@@ -244,9 +237,11 @@ class PipelineWrapper(BasePipelineWrapper):
     # This will skip the MCP Tool listing
     skip_mcp = True
 
-    def setup(self) -> None: ...
+    def setup(self) -> None:
+        ...
 
-    def run_api(self, urls: List[str], question: str) -> str: ...
+    def run_api(self, urls: List[str], question: str) -> str:
+        ...
 ```
 
 ## OpenAI Compatibility
@@ -255,7 +250,6 @@ Hayhooks supports OpenAI-compatible endpoints through the `run_chat_completion` 
 
 ```python
 from hayhooks import BasePipelineWrapper, get_last_user_message
-
 
 class PipelineWrapper(BasePipelineWrapper):
     def run_chat_completion(self, model: str, messages: list, body: dict):
@@ -270,13 +264,9 @@ Hayhooks provides a `streaming_generator` utility to stream pipeline output to t
 ```python
 from hayhooks import streaming_generator
 
-
 def run_chat_completion(self, model: str, messages: list, body: dict):
     question = get_last_user_message(messages)
-    return streaming_generator(
-        pipeline=self.pipeline,
-        pipeline_run_args={"query": question},
-    )
+    return streaming_generator(pipeline=self.pipeline, pipeline_run_args={"query": question})
 ```
 
 ## Running Programmatically
@@ -292,12 +282,10 @@ from hayhooks import create_app
 ## Create the Hayhooks app
 hayhooks = create_app()
 
-
 ## Add a custom route
 @hayhooks.get("/custom")
 async def custom_route():
     return {"message": "Hi, this is a custom route!"}
-
 
 ## Add a custom middleware
 @hayhooks.middleware("http")
@@ -305,7 +293,6 @@ async def custom_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Custom-Header"] = "custom-header-value"
     return response
-
 
 if __name__ == "__main__":
     uvicorn.run("app:hayhooks", host=settings.host, port=settings.port)

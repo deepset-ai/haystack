@@ -87,10 +87,7 @@ You can also create an `MCPTool` that executes a local program directly and conn
 from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
 
 ## Create an MCP tool that uses stdio transport
-server_info = StdioServerInfo(
-    command="uvx",
-    args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
-)
+server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
 tool = MCPTool(name="get_current_time", server_info=server_info)
 
 ## Get the current time in New York
@@ -112,16 +109,10 @@ from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
 
 time_tool = MCPTool(
     name="get_current_time",
-    server_info=StdioServerInfo(
-        command="uvx",
-        args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
-    ),
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
 )
 pipeline = Pipeline()
-pipeline.add_component(
-    "llm",
-    OpenAIChatGenerator(model="gpt-4o-mini", tools=[time_tool]),
-)
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[time_tool]))
 pipeline.add_component("tool_invoker", ToolInvoker(tools=[time_tool]))
 pipeline.add_component(
     "adapter",
@@ -140,12 +131,7 @@ pipeline.connect("adapter.output", "response_llm.messages")
 user_input = "What is the time in New York? Be brief."  # can be any city
 user_input_msg = ChatMessage.from_user(text=user_input)
 
-result = pipeline.run(
-    {
-        "llm": {"messages": [user_input_msg]},
-        "adapter": {"initial_msg": [user_input_msg]},
-    },
-)
+result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
 
 print(result["response_llm"]["replies"][0].text)
 ## The current time in New York is 1:57 PM.
@@ -164,24 +150,19 @@ from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
 
 time_tool = MCPTool(
     name="get_current_time",
-    server_info=StdioServerInfo(
-        command="uvx",
-        args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
-    ),
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
 )
 
 ## Agent Setup
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[time_tool],
-    exit_conditions=["text"],
+    exit_conditions=["text"]
 )
 
 ## Run the Agent
 agent.warm_up()
-response = agent.run(
-    messages=[ChatMessage.from_user("What is the time in New York? Be brief.")],
-)
+response = agent.run(messages=[ChatMessage.from_user("What is the time in New York? Be brief.")])
 
 ## Output
 print(response["messages"][-1].text)

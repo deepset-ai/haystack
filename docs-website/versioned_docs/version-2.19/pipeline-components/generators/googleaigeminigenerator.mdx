@@ -57,16 +57,15 @@ Basic usage:
 
 ```python
 import os
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
 gemini = GoogleAIGeminiGenerator(model="gemini-1.5-pro")
-res = gemini.run(parts=["What is the most interesting thing you know?"])
+res = gemini.run(parts = ["What is the most interesting thing you know?"])
 for answer in res["replies"]:
     print(answer)
+
 ```
 
 This is a more advanced usage that also uses text and images as input:
@@ -75,26 +74,26 @@ This is a more advanced usage that also uses text and images as input:
 import requests
 import os
 from haystack.dataclasses.byte_stream import ByteStream
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
 
 URLS = [
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot1.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot2.jpg",
     "https://raw.githubusercontent.com/silvanocerza/robots/main/robot3.jpg",
-    "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg",
+    "https://raw.githubusercontent.com/silvanocerza/robots/main/robot4.jpg"
 ]
 images = [
-    ByteStream(data=requests.get(url).content, mime_type="image/jpeg") for url in URLS
+    ByteStream(data=requests.get(url).content, mime_type="image/jpeg")
+    for url in URLS
 ]
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
 gemini = GoogleAIGeminiGenerator(model="gemini-1.5-pro")
-result = gemini.run(parts=["What can you tell me about this robots?", *images])
+result = gemini.run(parts = ["What can you tell me about this robots?", *images])
 for answer in result["replies"]:
     print(answer)
+
 ```
 
 ### In a pipeline
@@ -107,9 +106,7 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
@@ -133,5 +130,9 @@ pipe.add_component("gemini", GoogleAIGeminiGenerator(model="gemini-pro"))
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "gemini")
 
-pipe.run({"prompt_builder": {"country": "France"}})
+pipe.run({
+    "prompt_builder": {
+        "country": "France"
+    }
+})
 ```

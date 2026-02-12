@@ -120,9 +120,7 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.generators.google_ai import (
-    GoogleAIGeminiGenerator,
-)
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiGenerator
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
@@ -146,5 +144,9 @@ pipe.add_component("gemini", GoogleAIGeminiGenerator(model="gemini-pro"))
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "gemini")
 
-pipe.run({"prompt_builder": {"country": "France"}})
+pipe.run({
+    "prompt_builder": {
+        "country": "France"
+    }
+})
 ```

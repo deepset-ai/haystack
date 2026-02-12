@@ -46,9 +46,7 @@ pip install weaviate-haystack
 This Retriever needs an instance of `WeaviateDocumentStore` and indexed Documents to run.
 
 ```python
-from haystack_integrations.document_stores.weaviate.document_store import (
-    WeaviateDocumentStore,
-)
+from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
 from haystack_integrations.components.retrievers.weaviate import WeaviateBM25Retriever
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
@@ -92,10 +90,10 @@ document_store = WeaviateDocumentStore(url="http://localhost:8080")
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
-        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."
     ),
     Document(
-        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves."
     ),
 ]
 
@@ -104,12 +102,10 @@ document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(
-    name="retriever",
-    instance=WeaviateBM25Retriever(document_store=document_store),
+    name="retriever", instance=WeaviateBM25Retriever(document_store=document_store)
 )
 rag_pipeline.add_component(
-    instance=PromptBuilder(template=prompt_template),
-    name="prompt_builder",
+    instance=PromptBuilder(template=prompt_template), name="prompt_builder"
 )
 rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
@@ -125,7 +121,8 @@ result = rag_pipeline.run(
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
         "answer_builder": {"query": question},
-    },
+    }
 )
 print(result["answer_builder"]["answers"][0])
+
 ```

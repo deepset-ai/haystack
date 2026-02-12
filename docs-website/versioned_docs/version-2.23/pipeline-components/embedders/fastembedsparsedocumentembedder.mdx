@@ -48,11 +48,11 @@ pip install fastembed-haystack
 You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use:
 
 ```python
-cache_dir = "/your_cacheDirectory"
+cache_dir= "/your_cacheDirectory"
 embedder = FastembedSparseDocumentEmbedder(
-    model="prithivida/Splade_PP_en_v1",
-    cache_dir=cache_dir,
-    threads=2,
+	model="prithivida/Splade_PP_en_v1",
+	cache_dir=cache_dir,
+	threads=2
 )
 ```
 
@@ -74,18 +74,15 @@ You can do this easily by using the sparse Document Embedder:
 
 ```python
 from haystack.preview import Document
-from haystack_integrations.components.embedders.fastembed import (
-    FastembedSparseDocumentEmbedder,
-)
+from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
 
-doc = Document(
-    text="some text",
-    metadata={"title": "relevant title", "page number": 18},
-)
+doc = Document(text="some text",
+							 metadata={"title": "relevant title",
+												 "page number": 18})
 
 embedder = FastembedSparseDocumentEmbedder(
-    model="prithivida/Splade_PP_en_v1",
-    metadata_fields_to_embed=["title"],
+	model="prithivida/Splade_PP_en_v1",
+	metadata_fields_to_embed=["title"]
 )
 
 docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
@@ -97,20 +94,17 @@ docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
 
 ```python
 from haystack.dataclasses import Document
-from haystack_integrations.components.embedders.fastembed import (
-    FastembedSparseDocumentEmbedder,
-)
-
+from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
 document_list = [
-    Document(content="I love pizza!"),
-    Document(content="I like spaghetti"),
+	Document(content="I love pizza!"),
+	Document(content="I like spaghetti")
 ]
 
 doc_embedder = FastembedSparseDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run(document_list)
-print(result["documents"][0])
+print(result['documents'][0])
 
 ## Document(id=...,
 ## content: 'I love pizza!',
@@ -131,20 +125,15 @@ Then, try out this pipeline:
 ```python
 from haystack import Document, Pipeline
 from haystack.components.writers import DocumentWriter
-from haystack_integrations.components.retrievers.qdrant import (
-    QdrantSparseEmbeddingRetriever,
-)
+from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack_integrations.components.embedders.fastembed import (
-    FastembedDocumentEmbedder,
-    FastembedTextEmbedder,
-)
+from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder, FastembedTextEmbedder
 
 document_store = QdrantDocumentStore(
     ":memory:",
     recreate_index=True,
-    use_sparse_embeddings=True,
+    use_sparse_embeddings=True
 )
 
 documents = [
@@ -166,14 +155,8 @@ indexing_pipeline.run({"sparse_document_embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("sparse_text_embedder", FastembedSparseTextEmbedder())
-query_pipeline.add_component(
-    "sparse_retriever",
-    QdrantSparseEmbeddingRetriever(document_store=document_store),
-)
-query_pipeline.connect(
-    "sparse_text_embedder.sparse_embedding",
-    "sparse_retriever.query_sparse_embedding",
-)
+query_pipeline.add_component("sparse_retriever", QdrantSparseEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
 
 query = "Who supports fastembed?"
 

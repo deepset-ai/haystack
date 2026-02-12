@@ -33,7 +33,7 @@ from haystack.components.generators.chat import AnthropicChatGenerator
 
 expander = QueryExpander(
     chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-20250514"),
-    n_expansions=3,
+    n_expansions=3
 )
 ```
 
@@ -60,7 +60,10 @@ Return a JSON object with a "queries" array containing the expanded queries.
 Focus on technical terminology and domain-specific variations.
 """
 
-expander = QueryExpander(prompt_template=custom_template, n_expansions=4)
+expander = QueryExpander(
+    prompt_template=custom_template,
+    n_expansions=4
+)
 
 result = expander.run(query="machine learning optimization")
 ```

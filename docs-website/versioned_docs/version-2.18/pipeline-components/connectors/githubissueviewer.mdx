@@ -98,8 +98,8 @@ prompt_template = [
         "**Comment by {{ document.meta.author }}:** {{ document.content }}\n"
         "{% endif %}"
         "{% endfor %}\n"
-        "Please provide a summary of the issue and suggest potential solutions.",
-    ),
+        "Please provide a summary of the issue and suggest potential solutions."
+    )
 ]
 
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")

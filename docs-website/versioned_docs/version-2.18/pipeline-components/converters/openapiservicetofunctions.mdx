@@ -60,51 +60,29 @@ from haystack.components.fetchers import LinkContentFetcher
 from haystack.dataclasses import ChatMessage, ByteStream
 from haystack.utils import Secret
 
-
 def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]:
     return {
-        "tools": [{"type": "function", "function": openai_functions_schema}],
+        "tools": [{
+            "type": "function",
+            "function": openai_functions_schema
+        }],
         "tool_choice": {
             "type": "function",
-            "function": {"name": openai_functions_schema["name"]},
-        },
+            "function": {"name": openai_functions_schema["name"]}
+        }
     }
-
 
 system_prompt = requests.get("https://bit.ly/serper_dev_system_prompt").text
 serper_spec = requests.get("https://bit.ly/serper_dev_spec").text
 
 pipe = Pipeline()
 pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
-pipe.add_component(
-    "functions_llm",
-    OpenAIChatGenerator(
-        api_key=Secret.from_token(llm_api_key),
-        model="gpt-3.5-turbo-0613",
-    ),
-)
+pipe.add_component("functions_llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-3.5-turbo-0613"))
 pipe.add_component("openapi_container", OpenAPIServiceConnector())
-pipe.add_component(
-    "a1",
-    OutputAdapter(
-        "{{functions[0] | prepare_fc}}",
-        Dict[str, Any],
-        {"prepare_fc": prepare_fc_params},
-    ),
-)
+pipe.add_component("a1", OutputAdapter("{{functions[0] | prepare_fc}}", Dict[str, Any], {"prepare_fc": prepare_fc_params}))
 pipe.add_component("a2", OutputAdapter("{{specs[0]}}", Dict[str, Any]))
-pipe.add_component(
-    "a3",
-    OutputAdapter("{{system_message + service_response}}", List[ChatMessage]),
-)
-pipe.add_component(
-    "llm",
-    OpenAIChatGenerator(
-        api_key=Secret.from_token(llm_api_key),
-        model="gpt-4-1106-preview",
-        streaming_callback=print_streaming_chunk,
-    ),
-)
+pipe.add_component("a3", OutputAdapter("{{system_message + service_response}}", List[ChatMessage]))
+pipe.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-4-1106-preview", streaming_callback=print_streaming_chunk))
 
 pipe.connect("spec_to_functions.functions", "a1.functions")
 pipe.connect("spec_to_functions.openapi_specs", "a2.specs")
@@ -116,17 +94,9 @@ pipe.connect("a3", "llm.messages")
 
 user_prompt = "Why was Sam Altman ousted from OpenAI?"
 
-result = pipe.run(
-    data={
-        "functions_llm": {
-            "messages": [
-                ChatMessage.from_system("Only do function calling"),
-                ChatMessage.from_user(user_prompt),
-            ],
-        },
-        "openapi_container": {"service_credentials": serper_dev_key},
-        "spec_to_functions": {"sources": [ByteStream.from_string(serper_spec)]},
-        "a3": {"system_message": [ChatMessage.from_system(system_prompt)]},
-    },
-)
+result = pipe.run(data={"functions_llm": {"messages":[ChatMessage.from_system("Only do function calling"), ChatMessage.from_user(user_prompt)]},
+                        "openapi_container": {"service_credentials": serper_dev_key},
+                        "spec_to_functions": {"sources": [ByteStream.from_string(serper_spec)]},
+                        "a3": {"system_message": [ChatMessage.from_system(system_prompt)]}})
+
 ```

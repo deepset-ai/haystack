@@ -54,9 +54,7 @@ Remember to set `COHERE_API_KEY` as an environment variable first.
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.cohere import (
-    CohereDocumentImageEmbedder,
-)
+from haystack_integrations.components.embedders.cohere import CohereDocumentImageEmbedder
 
 embedder = CohereDocumentImageEmbedder(model="embed-v4.0")
 embedder.warm_up()
@@ -95,10 +93,7 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-from haystack_integrations.components.embedders.cohere import (
-    CohereDocumentImageEmbedder,
-    CohereTextEmbedder,
-)
+from haystack_integrations.components.embedders.cohere import CohereDocumentImageEmbedder, CohereTextEmbedder
 
 document_store = InMemoryDocumentStore()
 
@@ -107,9 +102,11 @@ indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("image_converter", ImageFileToDocument())
 indexing_pipeline.add_component(
     "embedder",
-    CohereDocumentImageEmbedder(model="embed-v4.0"),
+    CohereDocumentImageEmbedder(model="embed-v4.0")
 )
-indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.add_component(
+    "writer", DocumentWriter(document_store=document_store)
+)
 indexing_pipeline.connect("image_converter", "embedder")
 indexing_pipeline.connect("embedder", "writer")
 
@@ -117,10 +114,13 @@ indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "hyena.jp
 
 ## Multimodal retrieval pipeline
 retrieval_pipeline = Pipeline()
-retrieval_pipeline.add_component("embedder", CohereTextEmbedder(model="embed-v4.0"))
+retrieval_pipeline.add_component(
+    "embedder",
+    CohereTextEmbedder(model="embed-v4.0")
+)
 retrieval_pipeline.add_component(
     "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2),
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
 )
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 

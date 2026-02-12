@@ -30,7 +30,6 @@ class TextContent:
 
     text: str
 
-
 @dataclass
 class ToolCall:
     """
@@ -45,7 +44,6 @@ class ToolCall:
     arguments: Dict[str, Any]
     id: Optional[str] = None  # noqa: A003
 
-
 @dataclass
 class ToolCallResult:
     """
@@ -59,7 +57,6 @@ class ToolCallResult:
     result: str
     origin: ToolCall
     error: bool
-
 
 @dataclass
 class ImageContent:
@@ -84,6 +81,7 @@ class ImageContent:
     detail: Optional[Literal["auto", "high", "low"]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     validation: bool = True
+
 ```
 
 The `ImageContent` dataclass also provides two convenience class methods: `from_file_path` and `from_url`. For more details, refer to our [API documentation](/reference/data-classes-api#imagecontent).
@@ -120,8 +118,10 @@ capybara_image_url = (
 image_content = ImageContent.from_url(capybara_image_url, detail="low")
 
 user_message = ChatMessage.from_user(
-    content_parts=["What does the image show?", image_content],
-)
+	content_parts=[
+		"What does the image show?",
+		image_content
+		])
 
 print(user_message)
 
@@ -175,11 +175,7 @@ print(assistant_message_w_tool_call.tool_call_results)
 ```python
 from haystack.dataclasses import ChatMessage
 
-tool_message = ChatMessage.from_tool(
-    tool_result="temperature: 25°C",
-    origin=tool_call,
-    error=False,
-)
+tool_message = ChatMessage.from_tool(tool_result="temperature: 25°C", origin=tool_call, error=False)
 
 print(tool_message)
 

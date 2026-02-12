@@ -81,36 +81,24 @@ This feature is particularly useful for coding assistants that need full codebas
 Here's an example of an instance of `AnthropicVertexChatGenerator` being initialized with prompt caching and tagging a message to be cached:
 
 ```python
-from haystack_integrations.components.generators.anthropic import (
-    AnthropicVertexChatGenerator,
-)
+from haystack_integrations.components.generators.anthropic import AnthropicVertexChatGenerator
 from haystack.dataclasses import ChatMessage
 
 generation_kwargs = {"extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}}
 
 claude_llm = AnthropicVertexChatGenerator(
-    region="your_region",
-    project_id="test_id",
-    generation_kwargs=generation_kwargs,
+    region="your_region", project_id="test_id", generation_kwargs=generation_kwargs
 )
 
-system_message = ChatMessage.from_system(
-    "Replace with some long text documents, code or instructions",
-)
+system_message = ChatMessage.from_system("Replace with some long text documents, code or instructions")
 system_message.meta["cache_control"] = {"type": "ephemeral"}
 
-messages = [
-    system_message,
-    ChatMessage.from_user("A query about the long text for example"),
-]
+messages = [system_message, ChatMessage.from_user("A query about the long text for example")]
 result = claude_llm.run(messages)
 
 ## and now invoke again with
 
-messages = [
-    system_message,
-    ChatMessage.from_user("Another query about the long text etc"),
-]
+messages = [system_message, ChatMessage.from_user("Another query about the long text etc")]
 result = claude_llm.run(messages)
 
 ## and so on, either invoking component directly or in the pipeline
@@ -129,16 +117,13 @@ pip install anthropic-haystack
 ### On its own
 
 ```python
-from haystack_integrations.components.generators.anthropic import (
-    AnthropicVertexChatGenerator,
-)
+from haystack_integrations.components.generators.anthropic import AnthropicVertexChatGenerator
 from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AnthropicVertexChatGenerator(
-    model="claude-3-sonnet@20240229",
-    project_id="your-project-id",
-    region="us-central1",
+  model="claude-3-sonnet@20240229",
+  project_id="your-project-id", region="us-central1"
 )
 
 response = client.run(messages)
@@ -153,35 +138,19 @@ You can also use `AnthropicVertexChatGenerator`with the Anthropic chat models i
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.anthropic import (
-    AnthropicVertexChatGenerator,
-)
+from haystack_integrations.components.generators.anthropic import AnthropicVertexChatGenerator
 from haystack.utils import Secret
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
-pipe.add_component(
-    "llm",
-    AnthropicVertexChatGenerator(project_id="test_id", region="us-central1"),
-)
+pipe.add_component("llm", AnthropicVertexChatGenerator(project_id="test_id", region="us-central1"))
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"
-system_message = ChatMessage.from_system(
-    "You are an assistant giving out valuable information to language learners.",
-)
-messages = [
-    system_message,
-    ChatMessage.from_user("What's the official language of {{ country }}?"),
-]
+system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
+messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
 
-res = pipe.run(
-    data={
-        "prompt_builder": {
-            "template_variables": {"country": country},
-            "template": messages,
-        },
-    },
-)
+res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
 print(res)
+
 ```

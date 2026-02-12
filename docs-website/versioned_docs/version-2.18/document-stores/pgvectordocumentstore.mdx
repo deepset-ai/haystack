@@ -57,12 +57,10 @@ document_store = PgvectorDocumentStore(
     search_strategy="hnsw",
 )
 
-document_store.write_documents(
-    [
-        Document(content="This is first", embedding=[0.1] * 768),
-        Document(content="This is second", embedding=[0.3] * 768),
-    ],
-)
+document_store.write_documents([
+    Document(content="This is first", embedding=[0.1]*768),
+    Document(content="This is second", embedding=[0.3]*768)
+    ])
 print(document_store.count_documents())
 ```
 

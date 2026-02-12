@@ -38,14 +38,14 @@ By default, when the pattern doesn't match, the component returns an empty dicti
 from haystack.components.extractors import RegexTextExtractor
 
 # Default behavior - returns empty dict when no match
-extractor_default = RegexTextExtractor(regex_pattern=r"<answer>(.*?)</answer>")
+extractor_default = RegexTextExtractor(regex_pattern=r'<answer>(.*?)</answer>')
 result = extractor_default.run(text_or_messages="No answer tags here")
 print(result)  # Output: {}
 
 # Alternative behavior - returns empty string when no match
 extractor_explicit = RegexTextExtractor(
-    regex_pattern=r"<answer>(.*?)</answer>",
-    return_empty_on_no_match=False,
+    regex_pattern=r'<answer>(.*?)</answer>',
+    return_empty_on_no_match=False
 )
 result = extractor_explicit.run(text_or_messages="No answer tags here")
 print(result)  # Output: {'captured_text': ''}
@@ -68,9 +68,7 @@ from haystack.components.extractors import RegexTextExtractor
 extractor = RegexTextExtractor(regex_pattern='<issue url="(.+?)">')
 
 # Extract from a string
-result = extractor.run(
-    text_or_messages='<issue url="github.com/example/issue/123">Issue description</issue>',
-)
+result = extractor.run(text_or_messages='<issue url="github.com/example/issue/123">Issue description</issue>')
 print(result)
 # Output: {'captured_text': 'github.com/example/issue/123'}
 ```
@@ -83,17 +81,12 @@ When working with LLM outputs in chat pipelines, you can extract structured data
 from haystack.components.extractors import RegexTextExtractor
 from haystack.dataclasses import ChatMessage
 
-extractor = RegexTextExtractor(
-    regex_pattern=r"```json\s*(.*?)\s*```",
-    return_empty_on_no_match=False,
-)
+extractor = RegexTextExtractor(regex_pattern=r'```json\s*(.*?)\s*```', return_empty_on_no_match=False)
 
 # Simulating an LLM response with JSON in a code block
 messages = [
     ChatMessage.from_user("Extract the data"),
-    ChatMessage.from_assistant(
-        'Here is the data:\n```json\n{"name": "Alice", "age": 30}\n```',
-    ),
+    ChatMessage.from_assistant('Here is the data:\n```json\n{"name": "Alice", "age": 30}\n```')
 ]
 
 result = extractor.run(text_or_messages=messages)
@@ -118,13 +111,7 @@ from haystack.dataclasses import ChatMessage
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
 pipe.add_component("llm", OpenAIChatGenerator())
-pipe.add_component(
-    "extractor",
-    RegexTextExtractor(
-        regex_pattern=r"<summary>(.*?)</summary>",
-        return_empty_on_no_match=False,
-    ),
-)
+pipe.add_component("extractor", RegexTextExtractor(regex_pattern=r'<summary>(.*?)</summary>', return_empty_on_no_match=False))
 
 pipe.connect("prompt_builder.prompt", "llm.messages")
 pipe.connect("llm.replies", "extractor.text_or_messages")
@@ -134,9 +121,9 @@ messages = [
     ChatMessage.from_system(
         "Respond using this exact format:\n"
         "<analysis>Your detailed analysis here</analysis>\n"
-        "<summary>A one-sentence summary</summary>",
+        "<summary>A one-sentence summary</summary>"
     ),
-    ChatMessage.from_user("What are the main benefits and drawbacks of remote work?"),
+    ChatMessage.from_user("What are the main benefits and drawbacks of remote work?")
 ]
 
 # Run the pipeline (requires OPENAI_API_KEY environment variable)

@@ -64,12 +64,10 @@ export UNSTRUCTURED_API_KEY=your_api_key
 
 ```python
 import os
-from haystack_integrations.components.converters.unstructured import (
-    UnstructuredFileConverter,
-)
+from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
 
 converter = UnstructuredFileConverter()
-documents = converter.run(paths=["a/file/path.pdf", "a/directory/path"])["documents"]
+documents = converter.run(paths = ["a/file/path.pdf", "a/directory/path"])["documents"]
 ```
 
 ### In a pipeline
@@ -79,9 +77,7 @@ import os
 from haystack import Pipeline
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.converters.unstructured import (
-    UnstructuredFileConverter,
-)
+from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
 
 document_store = InMemoryDocumentStore()
 
@@ -104,11 +100,7 @@ docker run -p 8000:8000 -d --rm --name unstructured-api quay.io/unstructured-io/
 When initializing the component, specify the localhost URL:
 
 ```python
-from haystack_integrations.components.converters.unstructured import (
-    UnstructuredFileConverter,
-)
+from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
 
-converter = UnstructuredFileConverter(
-    api_url="http://localhost:8000/general/v0/general",
-)
+converter = UnstructuredFileConverter(api_url="http://localhost:8000/general/v0/general")
 ```

@@ -53,13 +53,11 @@ from haystack.dataclasses import ChatMessage
 
 # create a document store and write documents to it
 document_store = InMemoryDocumentStore()
-document_store.write_documents(
-    [
-        Document(content="My name is Jean and I live in Paris."),
-        Document(content="My name is Mark and I live in Berlin."),
-        Document(content="My name is Giorgio and I live in Rome."),
-    ],
-)
+document_store.write_documents([
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome.")
+])
 
 # A prompt corresponds to an NLP task and contains instructions for the model. Here, the pipeline will go through each Document to figure out the answer.
 prompt_template = [
@@ -71,19 +69,18 @@ prompt_template = [
             {{ doc.content }}
         {% endfor %}
         Question:
-        """,
+        """
     ),
-    ChatMessage.from_user("{{question}}"),
-    ChatMessage.from_system("Answer:"),
+    ChatMessage.from_user(
+        "{{question}}"
+    ),
+    ChatMessage.from_system("Answer:")
 ]
 
 # create the components adding the necessary parameters
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
-llm = OpenAIChatGenerator(
-    api_key=Secret.from_env_var("OPENAI_API_KEY"),
-    model="gpt-4o-mini",
-)
+llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
 
 # Create the pipeline and add the components to it. The order doesn't matter.
 # At this stage, the Pipeline validates the components without running them yet.
@@ -102,10 +99,11 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    },
+    }
 )
 
 print(results["llm"]["replies"])
+
 ```
 
 ### Adding Your Data

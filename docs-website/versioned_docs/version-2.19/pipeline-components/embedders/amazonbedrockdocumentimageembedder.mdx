@@ -56,13 +56,11 @@ Even if Haystack provides a unified interface, each model offered by Bedrock can
 - **Cohere v3**: Use `embedding_types` to select a single embedding type for images.
 
 ```python
-from haystack_integrations.components.embedders.amazon_bedrock import (
-    AmazonBedrockDocumentImageEmbedder,
-)
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentImageEmbedder
 
 embedder = AmazonBedrockDocumentImageEmbedder(
     model="cohere.embed-english-v3",
-    embedding_types=["float"],  # single value only
+    embedding_types=["float"]  # single value only
 )
 ```
 
@@ -75,9 +73,7 @@ Note that only _one_ value in `embedding_types` is supported by this component. 
 ```python
 import os
 from haystack import Document
-from haystack_integrations.components.embedders.amazon_bedrock import (
-    AmazonBedrockDocumentImageEmbedder,
-)
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentImageEmbedder
 
 os.environ["AWS_ACCESS_KEY_ID"] = "..."
 os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
@@ -86,23 +82,17 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # example
 ## Point Documents to image/PDF files via metadata (default key: "file_path")
 documents = [
     Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
-    Document(
-        content="Invoice page",
-        meta={
-            "file_path": "invoice.pdf",
-            "mime_type": "application/pdf",
-            "page_number": 1,
-        },
-    ),
+    Document(content="Invoice page", meta={"file_path": "invoice.pdf", "mime_type": "application/pdf", "page_number": 1}),
 ]
 
 embedder = AmazonBedrockDocumentImageEmbedder(
     model="amazon.titan-embed-image-v1",
-    image_size=(1024, 1024),  # optional downscaling
+    image_size=(1024, 1024),   # optional downscaling
 )
 
 result = embedder.run(documents=documents)
 embedded_docs = result["documents"]
+
 ```
 
 ### In a pipeline
@@ -136,24 +126,15 @@ documents = [
 
 ## Indexing pipeline: image embeddings -> write to store
 indexing = Pipeline()
-indexing.add_component(
-    "image_embedder",
-    AmazonBedrockDocumentImageEmbedder(model="cohere.embed-english-v3"),
-)
+indexing.add_component("image_embedder", AmazonBedrockDocumentImageEmbedder(model="cohere.embed-english-v3"))
 indexing.add_component("writer", DocumentWriter(document_store=document_store))
 indexing.connect("image_embedder", "writer")
 indexing.run({"image_embedder": {"documents": documents}})
 
 ## Query pipeline: text -> embedding -> vector retriever
 query = Pipeline()
-query.add_component(
-    "text_embedder",
-    AmazonBedrockTextEmbedder(model="cohere.embed-english-v3"),
-)
-query.add_component(
-    "retriever",
-    InMemoryEmbeddingRetriever(document_store=document_store),
-)
+query.add_component("text_embedder", AmazonBedrockTextEmbedder(model="cohere.embed-english-v3"))
+query.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 query.connect("text_embedder.embedding", "retriever.query_embedding")
 
 res = query.run({"text_embedder": {"text": "Which document shows a horse?"}})

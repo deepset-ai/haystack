@@ -59,10 +59,7 @@ from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
-generator = MistralChatGenerator(
-    api_key=Secret.from_env_var("MISTRAL_API_KEY"),
-    streaming_callback=print_streaming_chunk,
-)
+generator = MistralChatGenerator(api_key=Secret.from_env_var("MISTRAL_API_KEY"), streaming_callback=print_streaming_chunk)
 message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
 print(generator.run([message]))
 ```
@@ -85,10 +82,7 @@ from haystack_integrations.components.generators.mistral import MistralChatGener
 fetcher = LinkContentFetcher()
 converter = HTMLToDocument()
 prompt_builder = ChatPromptBuilder(variables=["documents"])
-llm = MistralChatGenerator(
-    streaming_callback=print_streaming_chunk,
-    model="mistral-small",
-)
+llm = MistralChatGenerator(streaming_callback=print_streaming_chunk, model='mistral-small')
 
 message_template = """Answer the following question based on the contents of the article: {{query}}\n
                Article: {{documents[0].content}} \n
@@ -110,10 +104,8 @@ question = "What are the capabilities of Mixtral?"
 result = rag_pipeline.run(
     {
         "fetcher": {"urls": ["https://mistral.ai/news/mixtral-of-experts"]},
-        "prompt_builder": {
-            "template_variables": {"query": question},
-            "template": messages,
-        },
+        "prompt_builder": {"template_variables": {"query": question}, "template": messages},
+
         "llm": {"generation_kwargs": {"max_tokens": 165}},
     },
 )

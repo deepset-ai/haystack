@@ -57,14 +57,12 @@ pip install watsonx-haystack
 ### On its own
 
 ```python
-from haystack_integrations.components.generators.watsonx.generator import (
-    WatsonxGenerator,
-)
+from haystack_integrations.components.generators.watsonx.generator import WatsonxGenerator
 from haystack.utils import Secret
 
 generator = WatsonxGenerator(
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
-    project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
+    project_id=Secret.from_env_var("WATSONX_PROJECT_ID")
 )
 
 print(generator.run("What's Natural Language Processing? Be brief."))
@@ -77,9 +75,7 @@ You can also use `WatsonxGenerator` with the IBM watsonx.ai models in your pipel
 ```python
 from haystack import Pipeline
 from haystack.components.builders import PromptBuilder
-from haystack_integrations.components.generators.watsonx.generator import (
-    WatsonxGenerator,
-)
+from haystack_integrations.components.generators.watsonx.generator import WatsonxGenerator
 from haystack.utils import Secret
 
 template = """
@@ -91,13 +87,10 @@ Question: {{ query }}?
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", PromptBuilder(template))
-pipe.add_component(
-    "llm",
-    WatsonxGenerator(
-        api_key=Secret.from_env_var("WATSONX_API_KEY"),
-        project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-    ),
-)
+pipe.add_component("llm", WatsonxGenerator(
+    api_key=Secret.from_env_var("WATSONX_API_KEY"),
+    project_id=Secret.from_env_var("WATSONX_PROJECT_ID")
+))
 pipe.connect("prompt_builder", "llm")
 
 query = "What language is spoken in Germany?"
