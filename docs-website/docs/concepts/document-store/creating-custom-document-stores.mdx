@@ -161,13 +161,9 @@ Haystack comes with some testing functionalities you can use in a custom Documen
   6. Keep iterating with the remaining methods.
 - Having a notebook where users can try out your Document Store in a full pipeline can really help adoption, and it’s a great source of documentation. Our [haystack-cookbook](https://github.com/deepset-ai/haystack-cookbook) repository has good visibility, and we encourage contributors to create a PR and add their own.
 
-The [tests](https://github.com/deepset-ai/haystack/blob/main/haystack/testing/document_store.py) in `DocumentStoreBaseTests`give you a good idea of
-the overall expected behavior of a Document Store and the operations it should support, following it is a good way to make sure your implementation
-is consistent with the rest of the Haystack ecosystem.
+The [tests](https://github.com/deepset-ai/haystack/blob/main/haystack/testing/document_store.py) in `DocumentStoreBaseTests`give you a good idea of the overall expected behavior of a Document Store and the operations it should support, following it is a good way to make sure your implementation is consistent with the rest of the Haystack ecosystem.
 
-If the technology you are using for your Document Store supports asynchronous operations, we recommend implementing `async` versions of the methods
-in the `DocumentStore` protocol as well. This will allow users to take advantage of async features in their applications and pipelines,
-improving performance and scalability.
+If the technology you are using for your Document Store supports asynchronous operations, we recommend implementing `async` versions of the methods in the `DocumentStore` protocol as well. This will allow users to take advantage of async features in their applications and pipelines, improving performance and scalability.
 
 ## Get Featured on the Integrations Page
 
