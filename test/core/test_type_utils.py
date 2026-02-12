@@ -977,6 +977,47 @@ class TestConversion:
         # multi-level wrap not supported
         assert _types_are_compatible(sender=str, receiver=List[List[str]]) == (False, None)
 
+        ### Handle Union in receiver + conversion
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str] | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=Union[list[str], list[ChatMessage]]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+
+        assert _types_are_compatible(sender=str, receiver=list[str] | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=str | ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=str | ChatMessage) == (True, ConversionStrategy.UNWRAP)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | int) == (
+            True,
+            ConversionStrategy.CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=str, receiver=ChatMessage | int) == (
+            True,
+            ConversionStrategy.STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=int, receiver=str | ChatMessage) == (False, None)
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[ChatMessage] | None) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=Optional[list[ChatMessage]]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+
     def test_convert_value(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
             _convert_value(
