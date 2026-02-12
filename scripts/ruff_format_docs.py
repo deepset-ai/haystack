@@ -113,7 +113,9 @@ def main() -> int:
     for path in args.files:
         with open(path) as f:
             original = f.read()
-        new = PYTHON_FENCE_RE.sub(lambda m: _format_code_block(m, line_length=args.line_length, path=path), original)
+        new = PYTHON_FENCE_RE.sub(
+            lambda m, path=path: _format_code_block(m, line_length=args.line_length, path=path), original
+        )
         if new != original:
             with open(path, "w") as f:
                 f.write(new)
