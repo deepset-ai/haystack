@@ -406,7 +406,7 @@ MongoDBAtlasDocumentStore. For more details refer to MongoDB Atlas
 [documentation](https://www.mongodb.com/docs/atlas/atlas-search/create-index/).
 - `embedding_field`: The name of the field containing document embeddings. Default is "embedding".
 - `content_field`: The name of the field containing the document content. Default is "content".
-This field is allows defining which field to load into the Haystack Document object as content.
+This field allows defining which field to load into the Haystack Document object as content.
 It can be particularly useful when integrating with an existing collection for retrieval. We discourage
 using this parameter when working with collections created by Haystack.
 
@@ -484,6 +484,208 @@ Asynchronously returns how many documents are present in the document store.
 **Returns**:
 
 The number of documents in the document store.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.count_documents_by_filter"></a>
+
+#### MongoDBAtlasDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Applies a filter and counts the documents that matched it.
+
+**Arguments**:
+
+- `filters`: The filters to apply to the document list.
+
+**Returns**:
+
+The number of documents that match the filter.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.count_documents_by_filter_async"></a>
+
+#### MongoDBAtlasDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously applies a filter and counts the documents that matched it.
+
+**Arguments**:
+
+- `filters`: The filters to apply to the document list.
+
+**Returns**:
+
+The number of documents that match the filter.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### MongoDBAtlasDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Applies a filter selecting documents and counts the unique values for each meta field of the matched documents.
+
+**Arguments**:
+
+- `filters`: The filters to apply to the document list.
+- `metadata_fields`: The metadata fields to count unique values for.
+
+**Returns**:
+
+A dictionary where the keys are the metadata field names and the values are the count of unique
+values.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### MongoDBAtlasDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously applies a filter selecting documents and counts the unique values for each meta field of the
+
+matched documents.
+
+**Arguments**:
+
+- `filters`: The filters to apply to the document list.
+- `metadata_fields`: The metadata fields to count unique values for.
+
+**Returns**:
+
+A dictionary where the keys are the metadata field names and the values are the count of unique
+values.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.get_metadata_fields_info"></a>
+
+#### MongoDBAtlasDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict]
+```
+
+Returns the metadata fields and their corresponding types.
+
+Since MongoDB is schemaless, this method samples the latest 50 documents to infer the fields and their types.
+
+**Returns**:
+
+A dictionary where the keys are the metadata field names and the values are dictionary with 'type'.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.get_metadata_fields_info_async"></a>
+
+#### MongoDBAtlasDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict]
+```
+
+Asynchronously returns the metadata fields and their corresponding types.
+
+Since MongoDB is schemaless, this method samples the latest 50 documents to infer the fields and their types.
+
+**Returns**:
+
+A dictionary where the keys are the metadata field names and the values are dictionary with 'type'.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.get_metadata_field_min_max"></a>
+
+#### MongoDBAtlasDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+For a given metadata field, find its max and min value.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the min and max values for.
+
+**Returns**:
+
+A dictionary with 'min' and 'max' keys.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### MongoDBAtlasDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, Any]
+```
+
+Asynchronously for a given metadata field, find its max and min value.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the min and max values for.
+
+**Returns**:
+
+A dictionary with 'min' and 'max' keys.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.get_metadata_field_unique_values"></a>
+
+#### MongoDBAtlasDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(metadata_field: str,
+                                     search_term: str | None = None,
+                                     from_: int = 0,
+                                     size: int = 10) -> tuple[list[str], int]
+```
+
+Retrieves unique values for a field matching a search_term or all possible values if no search term is given.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to retrieve unique values for.
+- `search_term`: The search term to filter values. Matches as a case-insensitive substring.
+- `from_`: The starting index for pagination.
+- `size`: The number of values to return.
+
+**Returns**:
+
+A tuple containing a list of unique values and the total count of unique values matching the
+search term.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### MongoDBAtlasDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10) -> tuple[list[str], int]
+```
+
+Asynchronously retrieves unique values for a field matching a search_term or all possible values if no search
+
+term is given.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to retrieve unique values for.
+- `search_term`: The search term to filter values. Matches as a case-insensitive substring.
+- `from_`: The starting index for pagination.
+- `size`: The number of values to return.
+
+**Returns**:
+
+A tuple containing a list of unique values and the total count of unique values matching the
+search term.
 
 <a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.filter_documents"></a>
 
