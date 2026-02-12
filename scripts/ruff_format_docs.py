@@ -4,6 +4,7 @@ Pre-commit hook that runs ruff format on Python code blocks in Markdown/MDX file
 Uses the ruff configuration from pyproject.toml automatically.
 """
 
+import argparse
 import os
 import re
 import subprocess
@@ -23,11 +24,12 @@ def _find_tool(name: str) -> str:
     return os.path.join(os.path.dirname(sys.executable), name)
 
 
-def _ruff(code: str) -> str:
+def _ruff(code: str, *, line_length: int) -> str:
     return subprocess.run(
         [
             _find_tool("ruff"),
             "format",
+            f"--line-length={line_length}",
             "--config",
             "format.skip-magic-trailing-comma = false",
             "--stdin-filename",
@@ -54,14 +56,14 @@ def _add_trailing_commas(code: str) -> str:
         os.unlink(tmpfile)
 
 
-def format_code_block(match: re.Match) -> str:
+def _format_code_block(match: re.Match, *, line_length: int) -> str:
     """Format a single code block"""
     code = match.group("code")
     try:
         # 1. ruff format (may create new multi-line expressions)
         # 2. add trailing commas to all multi-line expressions
         # 3. ruff format again (respects trailing commas, ensures stable output)
-        formatted = _ruff(_add_trailing_commas(_ruff(code)))
+        formatted = _ruff(_add_trailing_commas(_ruff(code, line_length=line_length)), line_length=line_length)
     except subprocess.CalledProcessError:
         # If ruff can't parse the snippet (e.g. partial code), leave it unchanged.
         return match.group(0)
@@ -70,11 +72,16 @@ def format_code_block(match: re.Match) -> str:
 
 def main() -> int:
     """Main entrypoint"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--line-length", type=int, default=120)
+    parser.add_argument("files", nargs="*")
+    args = parser.parse_args()
+
     ret = 0
-    for path in sys.argv[1:]:
+    for path in args.files:
         with open(path) as f:
             original = f.read()
-        new = PYTHON_FENCE_RE.sub(format_code_block, original)
+        new = PYTHON_FENCE_RE.sub(lambda m: _format_code_block(m, line_length=args.line_length), original)
         if new != original:
             with open(path, "w") as f:
                 f.write(new)
