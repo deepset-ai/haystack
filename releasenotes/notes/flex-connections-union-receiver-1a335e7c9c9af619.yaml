@@ -5,4 +5,4 @@ fixes:
     component expects a Union type.
     For example, connecting a component returning ``ChatMessage`` to a receiver expecting
     ``list[str] | list[ChatMessage]`` should have worked but did not.
-    The conversion strategy now correctly evaluates each arm of a Union receiver and picks the best match.
+    The conversion strategy now correctly evaluates each branch of a Union receiver and picks the best match.
