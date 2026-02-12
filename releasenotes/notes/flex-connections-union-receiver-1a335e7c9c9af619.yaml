@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed a bug in flexible Pipeline connections that prevented automatic value conversion when the receiving
+    component expects a Union type.
+    For example, connecting a component returning ``ChatMessage`` to a receiver expecting
+    ``list[str] | list[ChatMessage]`` should have worked but did not.
+    The conversion strategy now correctly evaluates each arm of a Union receiver and picks the best match.
