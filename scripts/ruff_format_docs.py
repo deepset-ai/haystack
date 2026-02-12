@@ -56,7 +56,7 @@ def _add_trailing_commas(code: str) -> str:
         os.unlink(tmpfile)
 
 
-def _format_code_block(match: re.Match, *, line_length: int) -> str:
+def _format_code_block(match: re.Match, *, line_length: int, path: str) -> str:
     """Format a single code block"""
     code = match.group("code")
     try:
@@ -64,8 +64,15 @@ def _format_code_block(match: re.Match, *, line_length: int) -> str:
         # 2. add trailing commas to all multi-line expressions
         # 3. ruff format again (respects trailing commas, ensures stable output)
         formatted = _ruff(_add_trailing_commas(_ruff(code, line_length=line_length)), line_length=line_length)
-    except subprocess.CalledProcessError:
-        # If ruff can't parse the snippet (e.g. partial code), leave it unchanged.
+    except subprocess.CalledProcessError as exc:
+        snippet = code.strip().splitlines()
+        preview = "\n".join(snippet[:5])
+        if len(snippet) > 5:
+            preview += f"\n... ({len(snippet) - 5} more lines)"
+        print(
+            f"WARNING: {path}: Failed to format code block:\n{preview}\nruff stderr: {exc.stderr.strip()}",
+            file=sys.stderr,
+        )
         return match.group(0)
     return match.group("before") + formatted + match.group("after")
 
@@ -81,7 +88,7 @@ def main() -> int:
     for path in args.files:
         with open(path) as f:
             original = f.read()
-        new = PYTHON_FENCE_RE.sub(lambda m: _format_code_block(m, line_length=args.line_length), original)
+        new = PYTHON_FENCE_RE.sub(lambda m: _format_code_block(m, line_length=args.line_length, path=path), original)
         if new != original:
             with open(path, "w") as f:
                 f.write(new)
