@@ -133,7 +133,7 @@ class LLMDocumentContentExtractor:
         self.root_path = root_path or ""
         self.detail = detail
         self.size = size
-        LLMDocumentContentExtractor._validate_prompt_no_variables(prompt, "extract the content of")
+        LLMDocumentContentExtractor._validate_prompt_no_variables(prompt)
         self.raise_on_failure = raise_on_failure
         self.max_workers = max_workers
         self._document_to_image_content = DocumentToImageContent(
