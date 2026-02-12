@@ -23,6 +23,7 @@ on:
       - "test/**/*.py"
       - "pyproject.toml"
       - ".github/utils/*.py"
+      - "scripts/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
