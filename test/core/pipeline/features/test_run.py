@@ -5002,7 +5002,7 @@ def pipeline_that_performs_automatic_conversion_wrapping_ChatMessage_for_Union_r
     class FakeAnswerBuilder:
         @component.output_types(answers=list[str])
         def run(self, query: str, replies: list[str] | list[ChatMessage]) -> dict[str, list[str]]:
-            return {"answers": [r.text if isinstance(r, ChatMessage) else r for r in replies]}
+            return {"answers": [r.text or "" if isinstance(r, ChatMessage) else r for r in replies]}
 
     pipe.add_component("agent", FakeAgent())
     pipe.add_component("answer_builder", FakeAnswerBuilder())
