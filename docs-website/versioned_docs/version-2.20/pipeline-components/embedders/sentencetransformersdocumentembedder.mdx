@@ -34,7 +34,9 @@ Authentication with a Hugging Face API Token is only required to access private 
 The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
 
 ```python
-document_embedder = SentenceTransformersDocumentEmbedder(token=Secret.from_token("<your-api-key>"))
+document_embedder = SentenceTransformersDocumentEmbedder(
+    token=Secret.from_token("<your-api-key>"),
+)
 ```
 
 ### Compatible Models
@@ -54,8 +56,10 @@ For example, if you use [intfloat/e5-large-v2](https://huggingface.co/BAAI/bge-l
 This is how it works with `SentenceTransformersDocumentEmbedder`:
 
 ```python
-embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-large-v2",
-                                                prefix="passage")
+embedder = SentenceTransformersDocumentEmbedder(
+    model="intfloat/e5-large-v2",
+    prefix="passage",
+)
 ```
 
 ### Embedding Metadata
@@ -68,9 +72,7 @@ You can do this easily by using the Document Embedder:
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 
-doc = Document(content="some text",
-               meta={"title": "relevant title",
-                         "page number": 18})
+doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
 embedder = SentenceTransformersDocumentEmbedder(meta_fields_to_embed=["title"])
 
@@ -84,12 +86,13 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersDocumentEmbedder()
 doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 
 ## [-0.07804739475250244, 0.1498992145061493, ...]
 ```
@@ -100,15 +103,20 @@ print(result['documents'][0].embedding)
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("embedder", SentenceTransformersDocumentEmbedder())
@@ -117,15 +125,18 @@ indexing_pipeline.connect("embedder", "writer")
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
 indexing_pipeline.run({"documents": documents})
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., mimetype: 'text/plain',
 ## text: 'My name is Wolfgang and I live in Berlin')

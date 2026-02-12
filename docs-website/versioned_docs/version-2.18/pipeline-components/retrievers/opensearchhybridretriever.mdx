@@ -53,7 +53,7 @@ retriever = OpenSearchHybridRetriever(
     document_store=document_store,
     embedder=embedder,
     bm25_retriever={"raise_on_failure": True},
-    embedding_retriever={"raise_on_failure": False}
+    embedding_retriever={"raise_on_failure": False},
 )
 ```
 

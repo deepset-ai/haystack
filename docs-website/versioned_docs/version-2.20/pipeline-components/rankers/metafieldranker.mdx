@@ -44,7 +44,10 @@ This example uses the `MetaFieldRanker` to rank two simple documents. When runni
 from haystack import Document
 from haystack.components.rankers import MetaFieldRanker
 
-docs = [Document(content="Paris", meta={"rating": 1.3}), Document(content="Berlin", meta={"rating": 0.7})]
+docs = [
+    Document(content="Paris", meta={"rating": 1.3}),
+    Document(content="Berlin", meta={"rating": 0.7}),
+]
 
 ranker = MetaFieldRanker(meta_field="rating")
 
@@ -61,13 +64,15 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.rankers import MetaFieldRanker
 
-docs = [Document(content="Paris", meta={"rating": 1.3}),
-        Document(content="Berlin", meta={"rating": 0.7}),
-        Document(content="Barcelona", meta={"rating": 2.1})]
+docs = [
+    Document(content="Paris", meta={"rating": 1.3}),
+    Document(content="Berlin", meta={"rating": 0.7}),
+    Document(content="Barcelona", meta={"rating": 2.1}),
+]
 document_store = InMemoryDocumentStore()
 document_store.write_documents(docs)
 
-retriever = InMemoryBM25Retriever(document_store = document_store)
+retriever = InMemoryBM25Retriever(document_store=document_store)
 ranker = MetaFieldRanker(meta_field="rating")
 
 document_ranker_pipeline = Pipeline()
@@ -77,6 +82,10 @@ document_ranker_pipeline.add_component(instance=ranker, name="ranker")
 document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
-                                   "ranker": {"query": query, "top_k": 2}})
+document_ranker_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
+)
 ```

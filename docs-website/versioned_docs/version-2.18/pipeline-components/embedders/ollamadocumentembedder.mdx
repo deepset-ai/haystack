@@ -48,7 +48,7 @@ Most embedded metadata contains information about the model name and type. You c
 The name of the model used will be automatically appended as part of the document metadata. An example payload using the nomic-embed-text model will look like this:
 
 ```python
-{'meta': {'model': 'nomic-embed-text'}}
+{"meta": {"model": "nomic-embed-text"}}
 ```
 
 ## Usage
@@ -63,11 +63,11 @@ doc = Document(content="What do llamas say once you have thanked them? No probll
 document_embedder = OllamaDocumentEmbedder()
 
 result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 
-#Calculating embeddings: 100%|██████████| 1/1 [00:02<00:00, 2.82s/it]
+# Calculating embeddings: 100%|██████████| 1/1 [00:02<00:00, 2.82s/it]
 
-#[-0.16412407159805298, -3.8359334468841553, ... ]
+# [-0.16412407159805298, -3.8359334468841553, ... ]
 ```
 
 ### In a pipeline
@@ -86,7 +86,10 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-embedder = OllamaDocumentEmbedder(model="nomic-embed-text", url="http://localhost:11434") # This is the default model and URL
+embedder = OllamaDocumentEmbedder(
+    model="nomic-embed-text",
+    url="http://localhost:11434",
+)  # This is the default model and URL
 
 cleaner = DocumentCleaner()
 splitter = DocumentSplitter()

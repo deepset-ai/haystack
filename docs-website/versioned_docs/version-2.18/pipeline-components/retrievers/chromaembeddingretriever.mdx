@@ -41,7 +41,7 @@ document_store = ChromaDocumentStore()
 retriever = ChromaEmbeddingRetriever(document_store=document_store)
 
 ## example run query
-retriever.run(query_embedding=[0.1]*384)
+retriever.run(query_embedding=[0.1] * 384)
 ```
 
 #### In a pipeline
@@ -59,8 +59,12 @@ from pathlib import Path
 from haystack import Pipeline
 from haystack.dataclasses import Document
 from haystack.components.writers import DocumentWriter
+
 ## Note: the following requires a "pip install sentence-transformers"
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
 
 from haystack_integrations.document_stores.chroma import ChromaDocumentStore
 from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
@@ -71,8 +75,14 @@ document_store = ChromaDocumentStore()
 
 documents = [
     Document(content="This contains variable declarations", meta={"title": "one"}),
-    Document(content="This contains another sort of variable declarations", meta={"title": "two"}),
-    Document(content="This has nothing to do with variable declarations", meta={"title": "three"}),
+    Document(
+        content="This contains another sort of variable declarations",
+        meta={"title": "two"},
+    ),
+    Document(
+        content="This has nothing to do with variable declarations",
+        meta={"title": "three"},
+    ),
     Document(content="A random doc", meta={"title": "four"}),
 ]
 

@@ -74,14 +74,16 @@ document_store = QdrantDocumentStore(
     wait_result_from_api=True,
 )
 
-doc = Document(content="test",
-               embedding=[0.5]*768,
-               sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]))
+doc = Document(
+    content="test",
+    embedding=[0.5] * 768,
+    sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]),
+)
 
 document_store.write_documents([doc])
 
 retriever = QdrantHybridRetriever(document_store=document_store)
-embedding = [0.1]*768
+embedding = [0.1] * 768
 sparse_embedding = SparseEmbedding(indices=[0, 1, 2, 3], values=[0.1, 0.8, 0.05, 0.33])
 retriever.run(query_embedding=embedding, query_sparse_embedding=sparse_embedding)
 ```
@@ -104,17 +106,17 @@ from haystack_integrations.components.retrievers.qdrant import QdrantHybridRetri
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.fastembed import (
-	FastembedTextEmbedder,
-	FastembedDocumentEmbedder,
-	FastembedSparseTextEmbedder,
-	FastembedSparseDocumentEmbedder
+    FastembedTextEmbedder,
+    FastembedDocumentEmbedder,
+    FastembedSparseTextEmbedder,
+    FastembedSparseDocumentEmbedder,
 )
 
 document_store = QdrantDocumentStore(
     ":memory:",
     recreate_index=True,
     use_sparse_embeddings=True,
-    embedding_dim = 384
+    embedding_dim=384,
 )
 
 documents = [
@@ -125,29 +127,53 @@ documents = [
 ]
 
 indexing = Pipeline()
-indexing.add_component("sparse_doc_embedder", FastembedSparseDocumentEmbedder(model="prithvida/Splade_PP_en_v1"))
-indexing.add_component("dense_doc_embedder", FastembedDocumentEmbedder(model="BAAI/bge-small-en-v1.5"))
-indexing.add_component("writer", DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE))
+indexing.add_component(
+    "sparse_doc_embedder",
+    FastembedSparseDocumentEmbedder(model="prithvida/Splade_PP_en_v1"),
+)
+indexing.add_component(
+    "dense_doc_embedder",
+    FastembedDocumentEmbedder(model="BAAI/bge-small-en-v1.5"),
+)
+indexing.add_component(
+    "writer",
+    DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE),
+)
 indexing.connect("sparse_doc_embedder", "dense_doc_embedder")
 indexing.connect("dense_doc_embedder", "writer")
 
 indexing.run({"sparse_doc_embedder": {"documents": documents}})
 
 querying = Pipeline()
-querying.add_component("sparse_text_embedder", FastembedSparseTextEmbedder(model="prithvida/Splade_PP_en_v1"))
-querying.add_component("dense_text_embedder", FastembedTextEmbedder(
-	model="BAAI/bge-small-en-v1.5", prefix="Represent this sentence for searching relevant passages: ")
-	)
-querying.add_component("retriever", QdrantHybridRetriever(document_store=document_store))
+querying.add_component(
+    "sparse_text_embedder",
+    FastembedSparseTextEmbedder(model="prithvida/Splade_PP_en_v1"),
+)
+querying.add_component(
+    "dense_text_embedder",
+    FastembedTextEmbedder(
+        model="BAAI/bge-small-en-v1.5",
+        prefix="Represent this sentence for searching relevant passages: ",
+    ),
+)
+querying.add_component(
+    "retriever",
+    QdrantHybridRetriever(document_store=document_store),
+)
 
-querying.connect("sparse_text_embedder.sparse_embedding", "retriever.query_sparse_embedding")
+querying.connect(
+    "sparse_text_embedder.sparse_embedding",
+    "retriever.query_sparse_embedding",
+)
 querying.connect("dense_text_embedder.embedding", "retriever.query_embedding")
 
 question = "Who supports fastembed?"
 
 results = query_mix.run(
-    {"dense_text_embedder": {"text": question},
-     "sparse_text_embedder": {"text": question}}
+    {
+        "dense_text_embedder": {"text": question},
+        "sparse_text_embedder": {"text": question},
+    },
 )
 
 print(result["retriever"]["documents"][0])

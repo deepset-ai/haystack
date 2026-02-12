@@ -45,7 +45,11 @@ result = evaluator.run(
     ],
     retrieved_documents=[
         [Document(content="France")],
-        [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+        [
+            Document(content="9th century"),
+            Document(content="10th century"),
+            Document(content="9th"),
+        ],
     ],
 )
 print(result["individual_scores"])
@@ -68,28 +72,36 @@ map_evaluator = DocumentMAPEvaluator()
 pipeline.add_component("mrr_evaluator", mrr_evaluator)
 pipeline.add_component("map_evaluator", map_evaluator)
 
-ground_truth_documents=[
+ground_truth_documents = [
     [Document(content="France")],
     [Document(content="9th century"), Document(content="9th")],
 ]
-retrieved_documents=[
+retrieved_documents = [
     [Document(content="France")],
-    [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+    [
+        Document(content="9th century"),
+        Document(content="10th century"),
+        Document(content="9th"),
+    ],
 ]
 
 result = pipeline.run(
-		{
-			"mrr_evaluator": {"ground_truth_documents": ground_truth_documents,
-	    "retrieved_documents": retrieved_documents},
-	    "map_evaluator": {"ground_truth_documents": ground_truth_documents,
-	    "retrieved_documents": retrieved_documents}
-    }
+    {
+        "mrr_evaluator": {
+            "ground_truth_documents": ground_truth_documents,
+            "retrieved_documents": retrieved_documents,
+        },
+        "map_evaluator": {
+            "ground_truth_documents": ground_truth_documents,
+            "retrieved_documents": retrieved_documents,
+        },
+    },
 )
 
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
-#[1.0, 1.0]
-#[1.0, 0.8333333333333333]
+# [1.0, 1.0]
+# [1.0, 0.8333333333333333]
 for evaluator in result:
     print(result[evaluator]["score"])
 ## 1.0

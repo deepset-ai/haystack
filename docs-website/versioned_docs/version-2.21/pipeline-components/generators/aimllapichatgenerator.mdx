@@ -122,6 +122,7 @@ component = AIMLAPIChatGenerator(streaming_callback=print_streaming_chunk)
 
 # Pass a list of messages
 from haystack.dataclasses import ChatMessage
+
 component.run([ChatMessage.from_user("Your question here")])
 ```
 
