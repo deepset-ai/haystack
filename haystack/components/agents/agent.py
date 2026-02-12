@@ -728,11 +728,9 @@ class Agent:
                         )
                     raise new_error from e
                 except BreakpointException as e:
-                    agent_name = break_point.agent_name if break_point else None
-                    tool_name = e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None
                     e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=tool_name,
-                        agent_name=agent_name,
+                        tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
+                        agent_name=break_point.agent_name if break_point else None,
                         execution_context=exe_context,
                         break_point=break_point,
                     )
