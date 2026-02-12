@@ -42,10 +42,12 @@ document_store = QdrantDocumentStore(
     return_embedding=True,
     wait_result_from_api=True,
 )
-document_store.write_documents([
-	Document(content="This is first", embedding=[0.0]*768),
-	Document(content="This is second", embedding=[0.1]*768)
-])
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.0] * 768),
+        Document(content="This is second", embedding=[0.1] * 768),
+    ],
+)
 print(document_store.count_documents())
 ```
 
@@ -64,15 +66,17 @@ from haystack.utils import Secret
 document_store = QdrantDocumentStore(
     url="https://XXXXXXXXX.us-east4-0.gcp.cloud.qdrant.io:6333",
     index="your_index_name",
-    embedding_dim=1024, # based on the embedding model
-    recreate_index=True, # enable only to recreate the index and not connect to the existing one
-    api_key = Secret.from_token("YOUR_TOKEN")
+    embedding_dim=1024,  # based on the embedding model
+    recreate_index=True,  # enable only to recreate the index and not connect to the existing one
+    api_key=Secret.from_token("YOUR_TOKEN"),
 )
 
-document_store.write_documents([
-	  Document(content="This is first", embedding=[0.0]*5),
-	  Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
-])
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.0] * 5),
+        Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5]),
+    ],
+)
 print(document_store.count_documents())
 ```
 

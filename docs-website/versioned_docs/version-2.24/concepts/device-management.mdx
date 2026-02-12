@@ -47,12 +47,14 @@ To use multiple devices, use the `ComponentDevice.from_multiple` class method:
 ```python
 from haystack.utils import ComponentDevice, Device, DeviceMap
 
-device_map = DeviceMap({
-    "encoder.layer1": Device.gpu(id=0),
-    "decoder.layer2": Device.gpu(id=1),
-    "self_attention": Device.disk(),
-    "lm_head": Device.cpu()
-})
+device_map = DeviceMap(
+    {
+        "encoder.layer1": Device.gpu(id=0),
+        "decoder.layer2": Device.gpu(id=1),
+        "self_attention": Device.disk(),
+        "lm_head": Device.cpu(),
+    },
+)
 device = ComponentDevice.from_multiple(device_map)
 generator = HuggingFaceLocalGenerator(model="llama2", device=device)
 ```
@@ -117,7 +119,8 @@ If the component’s backend provides a more specialized API to manage devices, 
 
 ```python
 generator = HuggingFaceLocalGenerator(
-    model="llama2", huggingface_pipeline_kwargs={"device_map": "balanced"}
+    model="llama2",
+    huggingface_pipeline_kwargs={"device_map": "balanced"},
 )
 ```
 

@@ -41,8 +41,8 @@ from haystack.components.evaluators import SASEvaluator
 
 sas_evaluator = SASEvaluator()
 result = sas_evaluator.run(
-  ground_truth_answers=["Berlin", "Paris"],
-  predicted_answers=["Berlin", "Lyon"]
+    ground_truth_answers=["Berlin", "Paris"],
+    predicted_answers=["Berlin", "Lyon"],
 )
 print(result["individual_scores"])
 ## [[array([[0.99999994]], dtype=float32), array([[0.51747656]], dtype=float32)]
@@ -68,12 +68,16 @@ ground_truth_answers = ["Berlin", "Paris"]
 predicted_answers = ["Berlin", "Lyon"]
 
 result = pipeline.run(
-		{
-			"em_evaluator": {"ground_truth_answers": ground_truth_answers,
-	    "predicted_answers": predicted_answers},
-	    "sas_evaluator": {"ground_truth_answers": ground_truth_answers,
-	    "predicted_answers": predicted_answers}
-    }
+    {
+        "em_evaluator": {
+            "ground_truth_answers": ground_truth_answers,
+            "predicted_answers": predicted_answers,
+        },
+        "sas_evaluator": {
+            "ground_truth_answers": ground_truth_answers,
+            "predicted_answers": predicted_answers,
+        },
+    },
 )
 
 for evaluator in result:

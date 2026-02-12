@@ -93,7 +93,7 @@ from haystack_integrations.components.generators.togetherai import TogetherAIGen
 
 client = TogetherAIGenerator(
     model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    system_prompt="You are a helpful assistant that provides concise answers."
+    system_prompt="You are a helpful assistant that provides concise answers.",
 )
 
 response = client.run("What's Natural Language Processing?")

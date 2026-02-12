@@ -79,7 +79,7 @@ web_search = SerperDevWebSearch(top_k=3)
 web_tool = ComponentTool(
     component=web_search,
     name="web_search",
-    description="Search the web for current information like weather, news, or facts."
+    description="Search the web for current information like weather, news, or facts.",
 )
 
 ## Create the agent with the web tool
@@ -89,7 +89,7 @@ tool_calling_agent = Agent(
                      use the web_search tool to find the information and then summarize the findings.
                      When you get web search results, extract the relevant information and present it in a clear,
                      concise manner.""",
-    tools=[web_tool]
+    tools=[web_tool],
 )
 
 ## Run the agent with the user message
@@ -136,6 +136,7 @@ from haystack.tools import ComponentTool
 
 from typing import Any
 
+
 ## helper component to temporarily store last user query before the tool call
 @component()
 class MessageCollector:
@@ -150,10 +151,9 @@ class MessageCollector:
     def clear(self):
         self._messages = []
 
+
 ## Create a tool from a component
-web_tool = ComponentTool(
-    component=SerperDevWebSearch(top_k=3)
-)
+web_tool = ComponentTool(component=SerperDevWebSearch(top_k=3))
 
 ## Define routing conditions
 routes = [
@@ -175,7 +175,8 @@ routes = [
 tool_agent = Pipeline()
 tool_agent.add_component("message_collector", MessageCollector())
 tool_agent.add_component(
-    "generator", OpenAIChatGenerator(model="gpt-4o-mini", tools=[web_tool])
+    "generator",
+    OpenAIChatGenerator(model="gpt-4o-mini", tools=[web_tool]),
 )
 tool_agent.add_component("router", ConditionalRouter(routes, unsafe=True))
 tool_agent.add_component("tool_invoker", ToolInvoker(tools=[web_tool]))
@@ -187,8 +188,10 @@ tool_agent.connect("tool_invoker.tool_messages", "message_collector")
 tool_agent.connect("message_collector", "generator.messages")
 
 messages = [
-    ChatMessage.from_system("You're a helpful agent choosing the right tool when necessary"),
-    ChatMessage.from_user("How is the weather in Berlin?")
+    ChatMessage.from_system(
+        "You're a helpful agent choosing the right tool when necessary",
+    ),
+    ChatMessage.from_user("How is the weather in Berlin?"),
 ]
 result = tool_agent.run({"messages": messages})
 

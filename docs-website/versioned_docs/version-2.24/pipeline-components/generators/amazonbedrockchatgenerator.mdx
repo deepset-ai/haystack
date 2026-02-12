@@ -87,15 +87,17 @@ This generator allows you to control cache points at the `ChatMessage` level via
 For example, to cache a long user message to be reused across multiple requests:
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 msg = ChatMessage.from_user(
     "long message...",
-    meta={"cachePoint": {"type": "default", "ttl": "5m"}}
+    meta={"cachePoint": {"type": "default", "ttl": "5m"}},
 )
 
 generator = AmazonBedrockChatGenerator(
-    model="anthropic.claude-sonnet-4-5-20250929-v1:0"
+    model="anthropic.claude-sonnet-4-5-20250929-v1:0",
 )
 
 result = generator.run(messages=[msg])
@@ -113,14 +115,16 @@ When provided, all tools sent to the model are cached, if they exceed the minimu
 model supports prompt caching.
 
 ```python
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 # define or load your tools
 
 generator = AmazonBedrockChatGenerator(
     model="anthropic.claude-sonnet-4-5-20250929-v1:0",
     tools=my_tools,
-    tools_cachepoint_config={"type": "default", "ttl": "5m"}
+    tools_cachepoint_config={"type": "default", "ttl": "5m"},
 )
 
 # send a request to the Language Model
@@ -141,11 +145,18 @@ pip install amazon-bedrock-haystack
 Basic usage:
 
 ```python
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 generator = AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1")
-messages = [ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"), ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+messages = [
+    ChatMessage.from_system(
+        "You are a helpful assistant that answers question in Spanish only",
+    ),
+    ChatMessage.from_user("What's Natural Language Processing? Be brief."),
+]
 
 response = generator.run(messages)
 print(response)
@@ -155,15 +166,16 @@ With multimodal inputs:
 
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 llm = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
 
 image = ImageContent.from_file_path("apple.jpg")
-user_message = ChatMessage.from_user(content_parts=[
-	"What does the image show? Max 5 words.",
-	image
-	])
+user_message = ChatMessage.from_user(
+    content_parts=["What does the image show? Max 5 words.", image],
+)
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
@@ -179,7 +191,9 @@ In a RAG pipeline:
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
@@ -187,9 +201,21 @@ pipe.add_component("llm", AmazonBedrockChatGenerator(model="meta.llama2-70b-chat
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"
-system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
-messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+system_message = ChatMessage.from_system(
+    "You are an assistant giving out valuable information to language learners.",
+)
+messages = [
+    system_message,
+    ChatMessage.from_user("What's the official language of {{ country }}?"),
+]
 
-res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        },
+    },
+)
 print(res)
 ```

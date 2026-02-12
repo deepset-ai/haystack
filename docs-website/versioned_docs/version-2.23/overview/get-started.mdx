@@ -39,11 +39,13 @@ from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_system(
@@ -53,16 +55,16 @@ prompt_template = [
         {% for doc in documents %}
             {{ doc.content }}
         {% endfor %}
-        """
+        """,
     ),
-    ChatMessage.from_user("{{question}}")
+    ChatMessage.from_user("{{question}}"),
 ]
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
 llm = OpenAIChatGenerator(
     api_key=Secret.from_env_var("OPENAI_API_KEY"),
-    model="gpt-4o-mini"
+    model="gpt-4o-mini",
 )
 
 rag_pipeline = Pipeline()
@@ -77,7 +79,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])
@@ -98,11 +100,13 @@ from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_system(
@@ -112,9 +116,9 @@ prompt_template = [
         {% for doc in documents %}
             {{ doc.content }}
         {% endfor %}
-        """
+        """,
     ),
-    ChatMessage.from_user("{{question}}")
+    ChatMessage.from_user("{{question}}"),
 ]
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
@@ -122,7 +126,7 @@ prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables=
 llm = HuggingFaceAPIChatGenerator(
     api_type="serverless_inference_api",
     api_params={"model": "Qwen/Qwen2.5-72B-Instruct"},
-    token=Secret.from_env_var("HF_API_TOKEN")
+    token=Secret.from_env_var("HF_API_TOKEN"),
 )
 
 rag_pipeline = Pipeline()
@@ -137,7 +141,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])
@@ -164,11 +168,13 @@ from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_system(
@@ -178,16 +184,16 @@ prompt_template = [
         {% for doc in documents %}
             {{ doc.content }}
         {% endfor %}
-        """
+        """,
     ),
-    ChatMessage.from_user("{{question}}")
+    ChatMessage.from_user("{{question}}"),
 ]
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
 llm = AnthropicChatGenerator(
     api_key=Secret.from_env_var("ANTHROPIC_API_KEY"),
-    model="claude-sonnet-4-5-20250929"
+    model="claude-sonnet-4-5-20250929",
 )
 
 rag_pipeline = Pipeline()
@@ -202,7 +208,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])
@@ -222,7 +228,9 @@ See the [AmazonBedrockChatGenerator](../pipeline-components/generators/amazonbed
 ```python
 import os
 from haystack import Pipeline, Document
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.builders import ChatPromptBuilder
@@ -233,11 +241,13 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "YOUR_AWS_SECRET_ACCESS_KEY"
 os.environ["AWS_DEFAULT_REGION"] = "YOUR_AWS_REGION"
 
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_system(
@@ -247,9 +257,9 @@ prompt_template = [
         {% for doc in documents %}
             {{ doc.content }}
         {% endfor %}
-        """
+        """,
     ),
-    ChatMessage.from_user("{{question}}")
+    ChatMessage.from_user("{{question}}"),
 ]
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
@@ -268,7 +278,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])
@@ -287,7 +297,9 @@ See the [GoogleGenAIChatGenerator](../pipeline-components/generators/googlegenai
 
 ```python
 from haystack import Pipeline, Document
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.builders import ChatPromptBuilder
@@ -295,11 +307,13 @@ from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
 document_store = InMemoryDocumentStore()
-document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."),
-    Document(content="My name is Mark and I live in Berlin."),
-    Document(content="My name is Giorgio and I live in Rome.")
-])
+document_store.write_documents(
+    [
+        Document(content="My name is Jean and I live in Paris."),
+        Document(content="My name is Mark and I live in Berlin."),
+        Document(content="My name is Giorgio and I live in Rome."),
+    ],
+)
 
 prompt_template = [
     ChatMessage.from_system(
@@ -309,16 +323,16 @@ prompt_template = [
         {% for doc in documents %}
             {{ doc.content }}
         {% endfor %}
-        """
+        """,
     ),
-    ChatMessage.from_user("{{question}}")
+    ChatMessage.from_user("{{question}}"),
 ]
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
 llm = GoogleGenAIChatGenerator(
     api_key=Secret.from_env_var("GOOGLE_API_KEY"),
-    model="gemini-2.5-flash"
+    model="gemini-2.5-flash",
 )
 
 rag_pipeline = Pipeline()
@@ -333,7 +347,7 @@ results = rag_pipeline.run(
     {
         "retriever": {"query": question},
         "prompt_builder": {"question": question},
-    }
+    },
 )
 
 print(results["llm"]["replies"])
@@ -383,10 +397,10 @@ search_tool = ComponentTool(component=SerperDevWebSearch())
 agent = Agent(
     chat_generator=OpenAIChatGenerator(
         api_key=Secret.from_env_var("OPENAI_API_KEY"),
-        model="gpt-4o-mini"
+        model="gpt-4o-mini",
     ),
     tools=[search_tool],
-    system_prompt="You are a helpful assistant that can search the web for information."
+    system_prompt="You are a helpful assistant that can search the web for information.",
 )
 
 result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
@@ -413,10 +427,10 @@ agent = Agent(
     chat_generator=HuggingFaceAPIChatGenerator(
         api_type="serverless_inference_api",
         api_params={"model": "Qwen/Qwen2.5-72B-Instruct"},
-        token=Secret.from_env_var("HF_API_TOKEN")
+        token=Secret.from_env_var("HF_API_TOKEN"),
     ),
     tools=[search_tool],
-    system_prompt="You are a helpful assistant that can search the web for information."
+    system_prompt="You are a helpful assistant that can search the web for information.",
 )
 
 result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
@@ -448,10 +462,10 @@ search_tool = ComponentTool(component=SerperDevWebSearch())
 agent = Agent(
     chat_generator=AnthropicChatGenerator(
         api_key=Secret.from_env_var("ANTHROPIC_API_KEY"),
-        model="claude-sonnet-4-5-20250929"
+        model="claude-sonnet-4-5-20250929",
     ),
     tools=[search_tool],
-    system_prompt="You are a helpful assistant that can search the web for information."
+    system_prompt="You are a helpful assistant that can search the web for information.",
 )
 
 result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
@@ -473,7 +487,9 @@ See the [AmazonBedrockChatGenerator](../pipeline-components/generators/amazonbed
 ```python
 import os
 from haystack.components.agents import Agent
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
 from haystack.components.websearch import SerperDevWebSearch
@@ -485,9 +501,11 @@ os.environ["AWS_DEFAULT_REGION"] = "YOUR_AWS_REGION"
 search_tool = ComponentTool(component=SerperDevWebSearch())
 
 agent = Agent(
-    chat_generator=AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0"),
+    chat_generator=AmazonBedrockChatGenerator(
+        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    ),
     tools=[search_tool],
-    system_prompt="You are a helpful assistant that can search the web for information."
+    system_prompt="You are a helpful assistant that can search the web for information.",
 )
 
 result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
@@ -508,7 +526,9 @@ See the [GoogleGenAIChatGenerator](../pipeline-components/generators/googlegenai
 
 ```python
 from haystack.components.agents import Agent
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
 from haystack.components.websearch import SerperDevWebSearch
@@ -519,10 +539,10 @@ search_tool = ComponentTool(component=SerperDevWebSearch())
 agent = Agent(
     chat_generator=GoogleGenAIChatGenerator(
         api_key=Secret.from_env_var("GOOGLE_API_KEY"),
-        model="gemini-2.5-flash"
+        model="gemini-2.5-flash",
     ),
     tools=[search_tool],
-    system_prompt="You are a helpful assistant that can search the web for information."
+    system_prompt="You are a helpful assistant that can search the web for information.",
 )
 
 result = agent.run(messages=[ChatMessage.from_user("What is Haystack AI?")])
