@@ -91,7 +91,27 @@ class LLMDocumentContentExtractor:
     \"\"\"
 
     chat_generator = OpenAIChatGenerator()
-    extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
+    extractor = LLMDocumentContentExtractor(
+        chat_generator=chat_generator,
+        generation_kwargs={
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "entity_extraction",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "author": {"type": "string"},
+                            "date": {"type": "string"},
+                            "document_type": {"type": "string"},
+                            "title": {"type": "string"},
+                        },
+                        "additionalProperties": False,
+                    },
+                },
+            }
+        }
+    )
     documents = [
         Document(content="", meta={"file_path": "image.jpg"}),
         Document(content="", meta={"file_path": "document.pdf", "page_number": 1})

@@ -487,7 +487,6 @@ class TestLLMDocumentContentExtractor:
                                     "document_type": {"type": "string"},
                                     "title": {"type": "string"},
                                 },
-                                "required": ["entities"],
                                 "additionalProperties": False,
                             },
                         },
@@ -507,4 +506,7 @@ class TestLLMDocumentContentExtractor:
         doc = doc_store_docs[0]
         assert len(doc.content) > 0, "Expected non-empty content (image/document description)"
         assert "extraction_error" not in doc.meta
-        assert len(doc.meta) >= 1, "Expected at least one metadata key"
+        assert "author" in doc.meta, "Expected 'author' key in metadata"
+        assert "date" in doc.meta, "Expected 'date' key in metadata"
+        assert "document_type" in doc.meta, "Expected 'document_type' key in metadata"
+        assert "title" in doc.meta, "Expected 'title' key in metadata"
