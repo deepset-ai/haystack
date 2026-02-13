@@ -80,7 +80,6 @@ The disk comes and it does not, only Windows.
 Do Not order this if you have a Mac!!"""
 
 text_embedder = FastembedSparseTextEmbedder(model="prithivida/Splade_PP_en_v1")
-text_embedder.warm_up()
 
 sparse_embedding = text_embedder.run(text)["sparse_embedding"]
 ```
@@ -125,7 +124,6 @@ sparse_document_embedder = FastembedSparseDocumentEmbedder(
     model="prithivida/Splade_PP_en_v1",
 )
 
-sparse_document_embedder.warm_up()
 documents_with_sparse_embeddings = sparse_document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_sparse_embeddings)
 
