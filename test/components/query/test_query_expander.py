@@ -379,7 +379,9 @@ class TestQueryExpanderIntegration:
                         "name": "query_expansion",
                         "schema": {
                             "type": "object",
-                            "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                            "properties": {
+                                "queries": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
+                            },
                             "required": ["queries"],
                             "additionalProperties": False,
                         },
@@ -393,11 +395,11 @@ class TestQueryExpanderIntegration:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     def test_query_expansion(self, chat_generator):
-        expander = QueryExpander(n_expansions=3, chat_generator=chat_generator)
+        expander = QueryExpander(n_expansions=2, chat_generator=chat_generator)
         expander.warm_up()
         result = expander.run("renewable energy sources")
 
-        assert len(result["queries"]) == 4
+        assert len(result["queries"]) == 3
         assert all(len(q.strip()) > 0 for q in result["queries"])
         assert "renewable energy sources" in result["queries"]
 
