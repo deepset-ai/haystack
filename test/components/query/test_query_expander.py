@@ -385,7 +385,6 @@ class TestQueryExpanderIntegration:
                         },
                     },
                 },
-                "seed": 42,
             },
         )
 
