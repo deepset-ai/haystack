@@ -148,7 +148,8 @@ class HuggingFaceLocalChatGenerator:
             If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
         :param task: The task for the Hugging Face pipeline. Possible options:
             - `text-generation`: Supported by decoder models, like GPT.
-            - `text2text-generation`: Supported by encoder-decoder models, like T5.
+            - `text2text-generation`: (deprecated in transformers v5 just use `text-generation`)
+               Supported by encoder-decoder models, like T5.
             If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
             If not specified, the component calls the Hugging Face API to infer the task from the model name.
         :param device: The device for loading the model. If `None`, automatically selects the default device.

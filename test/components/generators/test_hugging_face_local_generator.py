@@ -21,12 +21,12 @@ class TestHuggingFaceLocalGenerator:
     def test_init_default(self, model_info_mock, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         monkeypatch.delenv("HF_TOKEN", raising=False)
-        model_info_mock.return_value.pipeline_tag = "text2text-generation"
+        model_info_mock.return_value.pipeline_tag = "text-generation"
         generator = HuggingFaceLocalGenerator()
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "google/flan-t5-base",
-            "task": "text2text-generation",
+            "model": "Qwen/Qwen3-0.6B",
+            "task": "text-generation",
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
@@ -35,59 +35,59 @@ class TestHuggingFaceLocalGenerator:
 
     def test_init_custom_token(self):
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", token=Secret.from_token("fake-api-token")
+            model="Qwen/Qwen3-0.6B", task="text-generation", token=Secret.from_token("fake-api-token")
         )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "google/flan-t5-base",
-            "task": "text2text-generation",
+            "model": "Qwen/Qwen3-0.6B",
+            "task": "text-generation",
             "token": "fake-api-token",
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     def test_init_custom_device(self):
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base",
-            task="text2text-generation",
+            model="Qwen/Qwen3-0.6B",
+            task="text-generation",
             device=ComponentDevice.from_str("cuda:0"),
             token=Secret.from_token("fake-api-token"),
         )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "google/flan-t5-base",
-            "task": "text2text-generation",
+            "model": "Qwen/Qwen3-0.6B",
+            "task": "text-generation",
             "token": "fake-api-token",
             "device": "cuda:0",
         }
 
     def test_init_task_parameter(self):
-        generator = HuggingFaceLocalGenerator(task="text2text-generation", token=None)
+        generator = HuggingFaceLocalGenerator(task="text-generation", token=None)
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "google/flan-t5-base",
-            "task": "text2text-generation",
+            "model": "Qwen/Qwen3-0.6B",
+            "task": "text-generation",
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     def test_init_task_in_huggingface_pipeline_kwargs(self):
-        generator = HuggingFaceLocalGenerator(huggingface_pipeline_kwargs={"task": "text2text-generation"}, token=None)
+        generator = HuggingFaceLocalGenerator(huggingface_pipeline_kwargs={"task": "text-generation"}, token=None)
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "google/flan-t5-base",
-            "task": "text2text-generation",
+            "model": "Qwen/Qwen3-0.6B",
+            "task": "text-generation",
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
 
     @patch("haystack.utils.hf.model_info")
     def test_init_task_inferred_from_model_name(self, model_info_mock):
-        model_info_mock.return_value.pipeline_tag = "text2text-generation"
-        generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", token=None)
+        model_info_mock.return_value.pipeline_tag = "text-generation"
+        generator = HuggingFaceLocalGenerator(model="Qwen/Qwen3-0.6B", token=None)
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "google/flan-t5-base",
-            "task": "text2text-generation",
+            "model": "Qwen/Qwen3-0.6B",
+            "task": "text-generation",
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
@@ -111,7 +111,7 @@ class TestHuggingFaceLocalGenerator:
 
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-base",
-            task="text2text-generation",
+            task="text-generation",
             device=ComponentDevice.from_str("cpu"),
             token=None,
             huggingface_pipeline_kwargs=huggingface_pipeline_kwargs,
@@ -120,7 +120,7 @@ class TestHuggingFaceLocalGenerator:
         assert generator.huggingface_pipeline_kwargs == huggingface_pipeline_kwargs
 
     def test_init_generation_kwargs(self):
-        generator = HuggingFaceLocalGenerator(task="text2text-generation", generation_kwargs={"max_new_tokens": 100})
+        generator = HuggingFaceLocalGenerator(task="text-generation", generation_kwargs={"max_new_tokens": 100})
 
         assert generator.generation_kwargs == {"max_new_tokens": 100}
 
@@ -139,7 +139,7 @@ class TestHuggingFaceLocalGenerator:
             match="Found both the `stop_words` init parameter and the `stopping_criteria` key in `generation_kwargs`",
         ):
             HuggingFaceLocalGenerator(
-                task="text2text-generation",
+                task="text-generation",
                 stop_words=["coca", "cola"],
                 generation_kwargs={"stopping_criteria": "fake-stopping-criteria"},
             )
@@ -156,8 +156,8 @@ class TestHuggingFaceLocalGenerator:
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
-                    "model": "google/flan-t5-base",
-                    "task": "text2text-generation",
+                    "model": "Qwen/Qwen3-0.6B",
+                    "task": "text-generation",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                 },
                 "generation_kwargs": {"max_new_tokens": 512},
@@ -294,14 +294,14 @@ class TestHuggingFaceLocalGenerator:
 
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_warm_up(self, pipeline_mock):
-        generator = HuggingFaceLocalGenerator(model="google/flan-t5-base", task="text2text-generation", token=None)
+        generator = HuggingFaceLocalGenerator(model="Qwen/Qwen3-0.6B", task="text-generation", token=None)
         pipeline_mock.assert_not_called()
 
         generator.warm_up()
 
         pipeline_mock.assert_called_once_with(
-            model="google/flan-t5-base",
-            task="text2text-generation",
+            model="Qwen/Qwen3-0.6B",
+            task="text-generation",
             token=None,
             device=ComponentDevice.resolve_device(None).to_hf(),
         )
@@ -309,7 +309,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_warm_up_doesnt_reload(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", token=Secret.from_token("fake-api-token")
+            model="Qwen/Qwen3-0.6B", task="text-generation", token=Secret.from_token("fake-api-token")
         )
 
         pipeline_mock.assert_not_called()
@@ -321,7 +321,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_run(self):
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
+            model="Qwen/Qwen3-0.6B", task="text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         # create the pipeline object (simulating the warm_up)
@@ -337,7 +337,7 @@ class TestHuggingFaceLocalGenerator:
     @patch("haystack.components.generators.hugging_face_local.pipeline")
     def test_run_empty_prompt(self, pipeline_mock):
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
+            model="Qwen/Qwen3-0.6B", task="text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         generator.warm_up()
@@ -348,7 +348,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_run_with_generation_kwargs(self):
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
+            model="Qwen/Qwen3-0.6B", task="text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
         # create the pipeline object (simulating the warm_up)
@@ -365,7 +365,7 @@ class TestHuggingFaceLocalGenerator:
             return x
 
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", streaming_callback=streaming_callback_handler
+            model="Qwen/Qwen3-0.6B", task="text-generation", streaming_callback=streaming_callback_handler
         )
 
         # create the pipeline object (simulating the warm_up)
@@ -410,7 +410,7 @@ class TestHuggingFaceLocalGenerator:
         Test that warm_up method sets the `stopping_criteria_list` attribute if `stop_words` is provided
         """
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-small", task="text2text-generation", stop_words=["coca", "cola"]
+            model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["coca", "cola"]
         )
         generator.warm_up()
         stop_words_criteria_mock.assert_called_once()
@@ -419,9 +419,7 @@ class TestHuggingFaceLocalGenerator:
 
     def test_run_stop_words_removal(self):
         """Test that stop words are removed from the generated text (does not test stopping text generation)"""
-        generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-small", task="text2text-generation", stop_words=["world"]
-        )
+        generator = HuggingFaceLocalGenerator(model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["world"])
         generator.pipeline = Mock(return_value=[{"generated_text": "Hello world"}])
         generator.stopping_criteria_list = Mock()
         results = generator.run(prompt="irrelevant")
@@ -452,7 +450,7 @@ class TestHuggingFaceLocalGenerator:
         """Test that creating our own StopWordsCriteria and passing it to a Huggingface pipeline works."""
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
+            model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["unambiguously"]
         )
         generator.warm_up()
         assert generator.stopping_criteria_list is not None
