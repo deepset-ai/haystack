@@ -7,7 +7,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret
+from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 from haystack.utils.misc import _deduplicate_documents
 
@@ -167,9 +167,13 @@ class TransformersSimilarityRanker:
                 **self.tokenizer_kwargs,
             )
             # mypy doesn't know this is set right above
-            self.device = ComponentDevice.from_multiple(
-                device_map=DeviceMap.from_hf(self.model.hf_device_map)  # type: ignore[attr-defined]
-            )
+            hf_device_map = getattr(self.model, "hf_device_map", None)
+            if hf_device_map:
+                self.device = ComponentDevice.from_multiple(
+                    device_map=DeviceMap.from_hf(self.model.hf_device_map)  # type: ignore[attr-defined]
+                )
+            else:
+                self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
     def to_dict(self) -> dict[str, Any]:
         """
