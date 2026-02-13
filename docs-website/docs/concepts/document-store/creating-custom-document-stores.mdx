@@ -112,7 +112,7 @@ The `DocumentStore` interface supports the basic CRUD operations you would norma
 
 Usually, a Document Store comes with additional methods that can provide advanced search functionalities. These methods are not part of the `DocumentStore` protocol and don’t follow any particular convention. We designed it like this to provide maximum flexibility to the Document Store when using any specific features of the underlying database.
 
-Some additional methods that are not part of the `DocumentStore` protocol, but most of the Document Stores in Haystack have them implemented, are:
+Some additional methods that are not part of the `DocumentStore` protocol, but are implemented by most Document Stores in Haystack, include:
 
 ```python
 def delete_all_documents(recreate_index: bool = False)
