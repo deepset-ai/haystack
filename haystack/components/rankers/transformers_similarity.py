@@ -166,7 +166,8 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
-            # mypy doesn't know this is set right above
+            # hf_device_map appears to only be set now when mixed devices are actually used.
+            # So if it's missing then we can use the device attribute which is set even for single-device models.
             hf_device_map = getattr(self.model, "hf_device_map", None)
             if hf_device_map:
                 self.device = ComponentDevice.from_multiple(
