@@ -367,12 +367,34 @@ class TestQueryExpander:
 
 @pytest.mark.integration
 class TestQueryExpanderIntegration:
+    @pytest.fixture
+    def chat_generator(self):
+        return OpenAIChatGenerator(
+            model="gpt-4.1-nano",
+            generation_kwargs={
+                "temperature": 0.7,
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "query_expansion",
+                        "schema": {
+                            "type": "object",
+                            "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+                            "required": ["queries"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "seed": 42,
+            },
+        )
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_query_expansion(self):
-        expander = QueryExpander(n_expansions=3, chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+    def test_query_expansion(self, chat_generator):
+        expander = QueryExpander(n_expansions=3, chat_generator=chat_generator)
         expander.warm_up()
         result = expander.run("renewable energy sources")
 
@@ -384,12 +406,10 @@ class TestQueryExpanderIntegration:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_different_domains(self):
+    def test_different_domains(self, chat_generator):
         test_queries = ["machine learning algorithms", "climate change effects", "quantum computing applications"]
 
-        expander = QueryExpander(
-            n_expansions=2, include_original_query=False, chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano")
-        )
+        expander = QueryExpander(n_expansions=2, include_original_query=False, chat_generator=chat_generator)
         expander.warm_up()
 
         for query in test_queries:
