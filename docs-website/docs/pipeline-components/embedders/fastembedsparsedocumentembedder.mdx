@@ -107,7 +107,6 @@ document_list = [
 ]
 
 doc_embedder = FastembedSparseDocumentEmbedder()
-doc_embedder.warm_up()
 
 result = doc_embedder.run(document_list)
 print(result["documents"][0])
