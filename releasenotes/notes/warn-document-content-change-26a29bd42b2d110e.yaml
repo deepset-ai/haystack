@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    Added a warning when mutating the content field of a Document() instance after initialization. This encourages users to use ``dataclasses.replace`` for immutability and better performance. The warning is emitted only for the content field, allowing other fields to be mutated without warnings.
+
+    Here's an example of the warning in action:
+    .. code:: python
+
+        from haystack.dataclasses import Document
+
+        doc = Document(content="initial content")
+        doc.content = "mutated content"  # This will emit a warning recommending ``dataclasses.replace``
