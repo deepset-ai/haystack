@@ -8,12 +8,11 @@ from typing import Any
 
 from numpy import ndarray
 
+from haystack import logging
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 
 LEGACY_FIELDS = ["content_type", "id_hash_keys", "dataframe"]
-
-from haystack import logging
 
 logger = logging.getLogger(__name__)
 
