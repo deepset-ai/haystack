@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+import logging
 
 import pytest
 
@@ -344,3 +345,13 @@ def test_content_type():
 
     with pytest.raises(ValueError):
         _ = Document().content_type
+
+
+def test_setattr_warning(caplog):
+    doc = Document(content="initial content")
+
+    with caplog.at_level(logging.WARNING):
+        doc.content = "mutated content"
+
+    assert "Mutating `Document` field 'content' is discouraged" in caplog.text
+    assert "dataclasses.replace" in caplog.text

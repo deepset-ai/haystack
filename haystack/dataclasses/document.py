@@ -13,6 +13,10 @@ from haystack.dataclasses.sparse_embedding import SparseEmbedding
 
 LEGACY_FIELDS = ["content_type", "id_hash_keys", "dataframe"]
 
+from haystack import logging
+
+logger = logging.getLogger(__name__)
+
 
 class _BackwardCompatible(type):
     """
@@ -67,6 +71,8 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     embedding: list[float] | None = field(default=None)
     sparse_embedding: SparseEmbedding | None = field(default=None)
 
+    _warn_on_change = {"content"}
+
     def __repr__(self):
         fields = []
         if self.content is not None:
@@ -98,10 +104,14 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
 
     def __post_init__(self):
         """
-        Generate the ID based on the init parameters.
+        Post-initialization processing for the Document dataclass.
         """
         # Generate an id only if not explicitly set
         self.id = self.id or self._create_id()
+
+        # Mark initialization complete so further attribute assignments can be
+        # considered user-side mutations (and thus warned about).
+        object.__setattr__(self, "_initialized", True)
 
     def _create_id(self) -> str:
         """
@@ -139,6 +149,22 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
             return {**meta, **data}
 
         return data
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """
+        Intercept attribute assignments to warn about mutating dataclass fields.
+
+        We allow assignments during object initialization. After `__post_init__`
+        has run we set `_initialized` to True; further direct assignments to
+        dataclass fields will emit a warning recommending `dataclasses.replace`.
+        """
+        if getattr(self, "_initialized", False) and name in self.__class__._warn_on_change:
+            logger.warning(
+                (f"Mutating `Document` field '{name}' is discouraged; Instead make use of `dataclasses.replace()"),
+                stacklevel=2,
+            )
+
+        object.__setattr__(self, name, value)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Document":
