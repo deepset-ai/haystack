@@ -17,7 +17,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
+from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range, parse_json_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -233,26 +233,16 @@ class LLMMetadataExtractor:
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
-        parsed_metadata: dict[str, Any] = {}
-
         try:
-            parsed_metadata = json.loads(llm_answer)
-        except json.JSONDecodeError as e:
+            parsed_metadata = parse_json_from_text(llm_answer, expected_keys=self.expected_keys)
+        except (ValueError, json.JSONDecodeError) as e:
             logger.warning(
-                "Response from the LLM is not valid JSON. Skipping metadata extraction. Received output: {response}",
+                "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
                 response=llm_answer,
             )
             if self.raise_on_failure:
                 raise e
-            return {"error": "Response is not valid JSON. Received JSONDecodeError: " + str(e)}
-
-        if not all(key in parsed_metadata for key in self.expected_keys):
-            logger.warning(
-                "Expected response from LLM to be a JSON with keys {expected_keys}, got {parsed_json}. "
-                "Continuing extraction with received output.",
-                expected_keys=self.expected_keys,
-                parsed_json=parsed_metadata,
-            )
+            return {"error": "Response is not valid JSON or missing keys. Error: " + str(e)}
 
         return parsed_metadata
 

@@ -12,7 +12,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack.utils.deserialization import deserialize_chatgenerator_inplace
+from haystack.utils import deserialize_chatgenerator_inplace, parse_json_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -260,27 +260,8 @@ class QueryExpander:
         :param generator_response: The raw text response from the generator.
         :return: List of parsed expanded queries.
         """
-        if not generator_response.strip():
-            return []
-
         try:
-            parsed = json.loads(generator_response)
-            if not isinstance(parsed, dict) or "queries" not in parsed:
-                logger.warning(
-                    "Generator response is not a JSON object containing a 'queries' array: {response}",
-                    response=generator_response[:100],
-                )
-                return []
-
-            queries = []
-            for item in parsed["queries"]:
-                if isinstance(item, str) and item.strip():
-                    queries.append(item.strip())
-                else:
-                    logger.warning("Skipping non-string or empty query in response: {item}", item=item)
-
-            return queries
-
+            parsed = parse_json_from_text(generator_response)
         except json.JSONDecodeError as e:
             logger.warning(
                 "Failed to parse JSON response: {error}. Response: {response}",
@@ -288,3 +269,19 @@ class QueryExpander:
                 response=generator_response[:100],
             )
             return []
+
+        if not isinstance(parsed, dict) or "queries" not in parsed:
+            logger.warning(
+                "Generator response is not a JSON object containing a 'queries' array: {response}",
+                response=generator_response[:100],
+            )
+            return []
+
+        queries = []
+        for item in parsed["queries"]:
+            if isinstance(item, str) and item.strip():
+                queries.append(item.strip())
+            else:
+                logger.warning("Skipping non-string or empty query in response: {item}", item=item)
+
+        return queries

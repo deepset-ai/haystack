@@ -13,7 +13,7 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, parse_json_from_text, serialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -218,10 +218,20 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].text):
-                parsed_result = json.loads(result["replies"][0].text)
+            try:
+                parsed_result = parse_json_from_text(result["replies"][0].text, expected_keys=self.outputs)
                 results.append(parsed_result)
-            else:
+            except (ValueError, json.JSONDecodeError):
+                # The utility raises ValueError if expected keys are missing or if it's not a dict
+                # It raises JSONDecodeError if it's not valid JSON
+                if self.raise_on_failure:
+                    raise
+                logger.warning(
+                    "Response from LLM evaluator is not a valid JSON or missing expected keys. "
+                    "Expected keys: {expected}. Received: {received}",
+                    expected=self.outputs,
+                    received=result["replies"][0].text[:100],
+                )
                 results.append(None)
                 errors += 1
 
@@ -358,42 +368,4 @@ class LLMEvaluator:
             )
             raise ValueError(msg)
 
-    def is_valid_json_and_has_expected_keys(self, expected: list[str], received: str) -> bool:
-        """
-        Output must be a valid JSON with the expected keys.
 
-        :param expected:
-            Names of expected outputs
-        :param received:
-            Names of received outputs
-
-        :raises ValueError:
-            If the output is not a valid JSON with the expected keys:
-            - with `raise_on_failure` set to True a ValueError is raised.
-            - with `raise_on_failure` set to False a warning is issued and False is returned.
-
-        :returns:
-            True if the received output is a valid JSON with the expected keys, False otherwise.
-        """
-        try:
-            parsed_output = json.loads(received)
-        except json.JSONDecodeError:
-            msg = "Response from LLM evaluator is not a valid JSON."
-            if self.raise_on_failure:
-                raise ValueError(msg)
-            logger.warning(msg)
-            return False
-
-        if not all(output in parsed_output for output in expected):
-            if self.raise_on_failure:
-                raise ValueError(
-                    f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
-                )
-            logger.warning(
-                "Expected response from LLM evaluator to be JSON with keys {expected}, got {received}.",
-                expected=expected,
-                received=received,
-            )
-            return False
-
-        return True

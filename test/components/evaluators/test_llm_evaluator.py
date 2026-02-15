@@ -391,13 +391,26 @@ class TestLLMEvaluator:
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
             ],
         )
-        with pytest.raises(ValueError):
-            component.is_valid_json_and_has_expected_keys(
-                expected=["score", "another_expected_output"], received='{"score": 1.0}'
-            )
 
-        with pytest.raises(ValueError):
-            component.is_valid_json_and_has_expected_keys(expected=["score"], received='{"wrong_name": 1.0}')
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"score": 1.0}')]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+        
+        # Test missing key "another_expected_output"
+        component.outputs = ["score", "another_expected_output"]
+        with pytest.raises(ValueError, match="Missing expected keys"):
+             component.run(predicted_answers=["answer"])
+
+        # Test wrong key
+        def chat_generator_run_wrong_key(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"wrong_name": 1.0}')]}
+            
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run_wrong_key)
+        
+        component.outputs = ["score"]
+        with pytest.raises(ValueError, match="Missing expected keys"):
+            component.run(predicted_answers=["answer"])
 
     def test_output_invalid_json_raise_on_failure_false(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -410,10 +423,14 @@ class TestLLMEvaluator:
             ],
             raise_on_failure=False,
         )
-        assert (
-            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
-            is False
-        )
+        
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant("some_invalid_json_output")]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+        
+        result = component.run(predicted_answers=["answer"])
+        assert result["results"] == [None]
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -424,6 +441,13 @@ class TestLLMEvaluator:
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
             ],
+            raise_on_failure=True,
         )
-        with pytest.raises(ValueError):
-            component.is_valid_json_and_has_expected_keys(expected=["score"], received="some_invalid_json_output")
+        
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant("some_invalid_json_output")]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+        
+        with pytest.raises(ValueError): # json_utils/LLMEvaluator might raise JSONDecodeError which inherits from ValueError or wrapped
+             component.run(predicted_answers=["answer"])
