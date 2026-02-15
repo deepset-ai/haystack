@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+
 import pytest
+
 from haystack.utils.json_utils import extract_json_from_text, parse_json_from_text
 
 
