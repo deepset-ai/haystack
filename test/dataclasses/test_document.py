@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 
 import pytest
 
@@ -350,9 +349,7 @@ def test_content_type():
 
 def test_setattr_warning(caplog):
     doc = Document(content="initial content")
+    regex = r"Mutating `Document` field .*dataclasses\.replace"
 
-    with caplog.at_level(logging.WARNING):
-        doc.content = "mutated content"
-
-    assert "Mutating `Document` field 'content' is discouraged" in caplog.text
-    assert "dataclasses.replace" in caplog.text
+    with pytest.warns(UserWarning, match=regex):
+        doc.content = "new content"

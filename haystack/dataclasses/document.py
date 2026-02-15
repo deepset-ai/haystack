@@ -1,20 +1,17 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import hashlib
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
+from warnings import warn
 
 from numpy import ndarray
 
-from haystack import logging
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 
 LEGACY_FIELDS = ["content_type", "id_hash_keys", "dataframe"]
-
-logger = logging.getLogger(__name__)
 
 
 class _BackwardCompatible(type):
@@ -158,10 +155,8 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         dataclass fields will emit a warning recommending `dataclasses.replace`.
         """
         if getattr(self, "_initialized", False) and name in self.__class__._warn_on_change:
-            logger.warning(
-                (f"Mutating `Document` field '{name}' is discouraged; Instead make use of `dataclasses.replace()"),
-                stacklevel=2,
-            )
+            msg = f"Mutating `Document` field '{name}' is discouraged; Instead make use of `dataclasses.replace()`"
+            warn(msg, UserWarning, stacklevel=4)
 
         object.__setattr__(self, name, value)
 
