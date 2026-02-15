@@ -4,6 +4,7 @@
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import pytest
 
@@ -251,3 +252,26 @@ class TestPipeline:
         # Without deep copying the inputs, the second component would also see the modified document and produce
         # "modified" instead of "original"
         assert result["second"]["output"].content == "original"
+
+    def test_run_does_not_deepcopy_component_outputs(self):
+        class NonDeepCopyable:
+            def __deepcopy__(self, memo):
+                raise RuntimeError("deepcopy should not be called for pipeline outputs")
+
+        @component
+        class Producer:
+            def __init__(self):
+                self.value = NonDeepCopyable()
+
+            @component.output_types(value=Any)
+            def run(self) -> dict[str, Any]:
+                return {"value": self.value}
+
+        pp = Pipeline()
+        producer = Producer()
+        pp.add_component("producer", producer)
+
+        result = pp.run(data={}, include_outputs_from={"producer"})
+
+        assert "producer" in result
+        assert result["producer"]["value"] is producer.value

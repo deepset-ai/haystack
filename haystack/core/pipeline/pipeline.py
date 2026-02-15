@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import deepcopy
 from typing import Any, Mapping
 
 from haystack import logging, tracing
@@ -432,7 +431,9 @@ class Pipeline(PipelineBase):
                 )
 
                 if component_pipeline_outputs or component_name in include_outputs_from:
-                    pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
+                    # Inputs are already deep-copied before execution, so we can keep component outputs
+                    # as-is and avoid an extra deep copy on the hot path.
+                    pipeline_outputs[component_name] = component_pipeline_outputs
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
