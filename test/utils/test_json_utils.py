@@ -15,7 +15,7 @@ class TestJsonUtils:
     def test_extract_json_from_text_markdown(self):
         text = '```json\n{"key": "value"}\n```'
         assert extract_json_from_text(text) == '{"key": "value"}'
-    
+
     def test_extract_json_from_text_markdown_with_text_around(self):
         text = 'Here is the JSON:\n```json\n{"key": "value"}\n```\nHope this helps.'
         assert extract_json_from_text(text) == '{"key": "value"}'

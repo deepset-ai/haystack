@@ -367,5 +367,3 @@ class LLMEvaluator:
                 f"{[len(_input) for _input in inputs]}."
             )
             raise ValueError(msg)
-
-

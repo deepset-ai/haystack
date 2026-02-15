@@ -396,18 +396,20 @@ class TestLLMEvaluator:
             return {"replies": [ChatMessage.from_assistant('{"score": 1.0}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
-        
+
         # Test missing key "another_expected_output"
         component.outputs = ["score", "another_expected_output"]
         with pytest.raises(ValueError, match="Missing expected keys"):
-             component.run(predicted_answers=["answer"])
+            component.run(predicted_answers=["answer"])
 
         # Test wrong key
         def chat_generator_run_wrong_key(self, *args, **kwargs):
             return {"replies": [ChatMessage.from_assistant('{"wrong_name": 1.0}')]}
-            
-        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run_wrong_key)
-        
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run_wrong_key
+        )
+
         component.outputs = ["score"]
         with pytest.raises(ValueError, match="Missing expected keys"):
             component.run(predicted_answers=["answer"])
@@ -423,12 +425,12 @@ class TestLLMEvaluator:
             ],
             raise_on_failure=False,
         )
-        
+
         def chat_generator_run(self, *args, **kwargs):
             return {"replies": [ChatMessage.from_assistant("some_invalid_json_output")]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
-        
+
         result = component.run(predicted_answers=["answer"])
         assert result["results"] == [None]
 
@@ -443,11 +445,13 @@ class TestLLMEvaluator:
             ],
             raise_on_failure=True,
         )
-        
+
         def chat_generator_run(self, *args, **kwargs):
             return {"replies": [ChatMessage.from_assistant("some_invalid_json_output")]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
-        
-        with pytest.raises(ValueError): # json_utils/LLMEvaluator might raise JSONDecodeError which inherits from ValueError or wrapped
-             component.run(predicted_answers=["answer"])
+
+        with pytest.raises(
+            ValueError
+        ):  # json_utils/LLMEvaluator might raise JSONDecodeError which inherits from ValueError or wrapped
+            component.run(predicted_answers=["answer"])
