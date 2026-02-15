@@ -33,12 +33,12 @@ class TestJsonUtils:
         assert parse_json_from_text(text) == {"key": "value"}
 
     def test_parse_json_from_text_invalid(self):
-        text = 'invalid json'
+        text = "invalid json"
         with pytest.raises(json.JSONDecodeError):
             parse_json_from_text(text)
 
     def test_parse_json_from_text_empty(self):
-        text = ''
+        text = ""
         with pytest.raises(json.JSONDecodeError):
             parse_json_from_text(text)
 
@@ -67,8 +67,8 @@ class TestJsonUtils:
         assert extract_json_from_text(text) == '{"first": 1}'
 
     def test_extract_json_from_text_whitespace_only(self):
-        text = '   \n\t  '
-        assert extract_json_from_text(text) == ''
+        text = "   \n\t  "
+        assert extract_json_from_text(text) == ""
 
     def test_parse_json_from_text_generic_block(self):
         text = '```\n{"key": "value"}\n```'
@@ -78,3 +78,8 @@ class TestJsonUtils:
         text = '{"key": "value"}'
         # Should pass without validation if expected_keys is empty list
         assert parse_json_from_text(text, expected_keys=[]) == {"key": "value"}
+
+    def test_extract_json_from_text_json_block_priority_over_generic(self):
+        # Generic block appears first, but json-labeled block should be preferred
+        text = '```\n{"generic": 0}\n```\n```json\n{"labeled": 1}\n```'
+        assert extract_json_from_text(text) == '{"labeled": 1}'
