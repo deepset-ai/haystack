@@ -56,3 +56,25 @@ class TestJsonUtils:
         text = '["item1", "item2"]'
         with pytest.raises(ValueError, match="Expected a JSON object"):
             parse_json_from_text(text, expected_keys=["key1"])
+
+    def test_extract_json_from_text_generic_block(self):
+        text = '```\n{"key": "value"}\n```'
+        assert extract_json_from_text(text) == '{"key": "value"}'
+
+    def test_extract_json_from_text_multiple_blocks(self):
+        text = '```json\n{"first": 1}\n```\nSome text\n```json\n{"second": 2}\n```'
+        # Should return the first match
+        assert extract_json_from_text(text) == '{"first": 1}'
+
+    def test_extract_json_from_text_whitespace_only(self):
+        text = '   \n\t  '
+        assert extract_json_from_text(text) == ''
+
+    def test_parse_json_from_text_generic_block(self):
+        text = '```\n{"key": "value"}\n```'
+        assert parse_json_from_text(text) == {"key": "value"}
+
+    def test_parse_json_from_text_empty_expected_keys(self):
+        text = '{"key": "value"}'
+        # Should pass without validation if expected_keys is empty list
+        assert parse_json_from_text(text, expected_keys=[]) == {"key": "value"}

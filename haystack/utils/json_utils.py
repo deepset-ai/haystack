@@ -3,12 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import logging
+
 import re
 from typing import Any
-
-logger = logging.getLogger(__name__)
-
 
 def extract_json_from_text(text: str) -> str:
     """
@@ -17,8 +14,13 @@ def extract_json_from_text(text: str) -> str:
     :param text: The text containing JSON, possibly wrapped in markdown code blocks.
     :return: The extracted JSON string, or the original text if no markdown code blocks are found.
     """
-    # Try to find JSON inside a markdown code block
+    # Try to find JSON inside a markdown code block with "json" language specifier
     match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    # Fallback: Try to find JSON inside a generic markdown code block
+    match = re.search(r"```\s*(.*?)\s*```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
     
