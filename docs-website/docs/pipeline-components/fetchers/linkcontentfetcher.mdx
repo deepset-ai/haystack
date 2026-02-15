@@ -33,6 +33,47 @@ Often, to use this component in a pipeline, you must convert the returned list o
 
 You can use `LinkContentFetcher` at the beginning of an indexing pipeline to index the contents of URLs into a Document Store. You can also use it directly in a query pipeline, such as a retrieval-augmented generative (RAG) pipeline, to use the contents of a URL as the data source.
 
+## Security considerations
+
+`LinkContentFetcher` will request the URLs you pass to it. If those URLs come directly from end users, this can expose your environment to server-side request forgery (SSRF) risks.
+
+Before calling `LinkContentFetcher`, validate and sanitize user-provided URLs:
+
+- Allow only expected schemes (for example `https`)
+- Use an allowlist of trusted domains when possible
+- Block localhost, link-local, and private-network destinations
+- Consider using an outbound proxy or network-level egress restrictions in production
+
+For example:
+
+```python
+from ipaddress import ip_address, ip_network
+from urllib.parse import urlparse
+
+
+PRIVATE_RANGES = (
+    ip_network("127.0.0.0/8"),
+    ip_network("10.0.0.0/8"),
+    ip_network("172.16.0.0/12"),
+    ip_network("192.168.0.0/16"),
+    ip_network("169.254.0.0/16"),
+)
+
+
+def is_safe_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        return False
+    if not parsed.hostname:
+        return False
+    try:
+        host_ip = ip_address(parsed.hostname)
+    except ValueError:
+        # Hostname (not a raw IP). Apply your own domain allowlist policy here.
+        return True
+    return not any(host_ip in net for net in PRIVATE_RANGES)
+```
+
 ## Usage
 
 ### On its own
