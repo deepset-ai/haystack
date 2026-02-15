@@ -18,6 +18,21 @@ Here are the requirements for all custom components:
 - `@component`: This decorator marks a class as a component, allowing it to be used in a pipeline.
 - `run()`: This is a required method in every component. It accepts input arguments and returns a `dict`. The inputs can either come from the pipeline when it’s executed, or from the output of another component when connected using `connect()`. The `run()` method should be compatible with the input/output definitions declared for the component. See an [Extended Example](#extended-example) below to check how it works.
 
+:::note Avoid in-place input mutation
+When building custom components, do not mutate `run()` inputs in place (for example, editing a `dict`, `list`, or dataclass instance directly). Input values may be reused by other components or by later pipeline steps.
+
+If you need to modify an input value, create a copy first and work on that copy:
+
+```python
+import copy
+
+def run(self, documents):
+    documents_copy = copy.deepcopy(documents)
+    # mutate documents_copy safely here
+    return {"documents": documents_copy}
+```
+:::
+
 ### Inputs and Outputs
 
 Next, define the inputs and outputs for your component.
