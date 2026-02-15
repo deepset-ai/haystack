@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Improved `Pipeline.run` performance by avoiding a redundant deep copy of component outputs
+    in the synchronous execution path.
