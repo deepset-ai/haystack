@@ -30,7 +30,7 @@ class TestHuggingFaceLocalGenerator:
             "token": None,
             "device": ComponentDevice.resolve_device(None).to_hf(),
         }
-        assert generator.generation_kwargs == {"max_new_tokens": 512}
+        assert generator.generation_kwargs == {"max_new_tokens": 512, "return_full_text": False}
         assert generator.pipeline is None
 
     def test_init_custom_token(self):
@@ -122,7 +122,7 @@ class TestHuggingFaceLocalGenerator:
     def test_init_generation_kwargs(self):
         generator = HuggingFaceLocalGenerator(task="text-generation", generation_kwargs={"max_new_tokens": 100})
 
-        assert generator.generation_kwargs == {"max_new_tokens": 100}
+        assert generator.generation_kwargs == {"max_new_tokens": 100, "return_full_text": False}
 
     def test_init_set_return_full_text(self):
         """
@@ -146,7 +146,7 @@ class TestHuggingFaceLocalGenerator:
 
     @patch("haystack.utils.hf.model_info")
     def test_to_dict_default(self, model_info_mock):
-        model_info_mock.return_value.pipeline_tag = "text2text-generation"
+        model_info_mock.return_value.pipeline_tag = "text-generation"
 
         component = HuggingFaceLocalGenerator()
         data = component.to_dict()
@@ -160,7 +160,7 @@ class TestHuggingFaceLocalGenerator:
                     "task": "text-generation",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
                 },
-                "generation_kwargs": {"max_new_tokens": 512},
+                "generation_kwargs": {"max_new_tokens": 512, "return_full_text": False},
                 "streaming_callback": None,
                 "stop_words": None,
             },
@@ -330,7 +330,7 @@ class TestHuggingFaceLocalGenerator:
         results = generator.run(prompt="What's the capital of Italy?")
 
         generator.pipeline.assert_called_once_with(
-            "What's the capital of Italy?", max_new_tokens=100, stopping_criteria=None
+            "What's the capital of Italy?", max_new_tokens=100, stopping_criteria=None, return_full_text=False
         )
         assert results == {"replies": ["Rome"]}
 
@@ -357,7 +357,7 @@ class TestHuggingFaceLocalGenerator:
         generator.run(prompt="irrelevant", generation_kwargs={"max_new_tokens": 200, "temperature": 0.5})
 
         generator.pipeline.assert_called_once_with(
-            "irrelevant", max_new_tokens=200, temperature=0.5, stopping_criteria=None
+            "irrelevant", max_new_tokens=200, temperature=0.5, stopping_criteria=None, return_full_text=False
         )
 
     def test_run_with_streaming(self):
