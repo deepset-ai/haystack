@@ -1,5 +1,0 @@
-enhancements:
-  - |
-    Introduced ``haystack.utils.json_utils.extract_json_from_text`` and ``haystack.utils.json_utils.parse_json_from_text`` helper functions.
-    These utilities provide a robust way to extract and parse JSON from strings, handling markdown code blocks (both ``json``-labeled and generic) and cleaner error handling.
-    Refactored ``QueryExpander``, ``LLMEvaluator``, and ``LLMMetadataExtractor`` to use these new utilities for consistent JSON parsing logic.
