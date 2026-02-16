@@ -10,6 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
 from typing import Any, Callable, Literal, Union
 
+from packaging.version import Version
+
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
@@ -29,6 +31,7 @@ from haystack.utils import ComponentDevice, Secret, deserialize_callable, serial
 logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
+    import transformers
     from huggingface_hub import model_info
     from transformers import Pipeline as HfPipeline
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
@@ -218,6 +221,8 @@ class HuggingFaceLocalChatGenerator:
             raise ValueError(
                 f"Task '{task}' is not supported. The supported tasks are: {', '.join(PIPELINE_SUPPORTED_TASKS)}."
             )
+        if task == "text2text-generation" and Version(transformers.__version__) >= Version("5.0.0"):
+            raise ValueError("Task 'text2text-generation' is not supported with transformers v5 or higher.")
         huggingface_pipeline_kwargs["task"] = task
 
         # if not specified, set return_full_text to False for text-generation
