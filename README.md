@@ -54,13 +54,13 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/doc
 ## Features
 
 **Built for context engineering**  
-Design flexible systems with explicit control over how information is retrieved, structured, routed, and evaluated before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
+Design flexible systems with explicit control over how information is retrieved, ranked, filtered, combined, structured, and routed before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
 
 **Model- and vendor-agnostic**  
 Integrate with OpenAI, Mistral, Anthropic, Cohere, Hugging Face, Azure OpenAI, AWS Bedrock, local models, and many others. Swap models or infrastructure components without rewriting your system.
 
 **Modular and customizable**  
-Use built-in components for retrieval, indexing, tool calling, memory, evaluation, and deployment, or create your own. Add loops, branches, and conditional logic to precisely control how context moves through your pipelines and agent workflows.
+Use built-in components for retrieval, indexing, tool calling, memory, and evaluation, or create your own. Add loops, branches, and conditional logic to precisely control how context moves through your pipelines and agent workflows.
 
 **Extensible ecosystem**  
 Build and share custom components through a consistent interface that makes it easy for the community and third parties to extend Haystack and contribute to an open ecosystem.
@@ -75,7 +75,7 @@ Get expert support from the Haystack team, build faster with enterprise-grade te
 
 👉 [Get Haystack Enterprise Starter](https://www.deepset.ai/products-and-services/haystack-enterprise-starter?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise)
 
-Need a managed production setup for Haystack? The **Haystack Enterprise Platform** helps you deploy and operate Haystack pipelines with built-in observability, governance, and access controls. It’s available as a managed cloud service or as a self-hosted solution.
+Need a managed production setup for Haystack? The **Haystack Enterprise Platform** helps you build, test, deploy and operate Haystack pipelines with built-in observability, collaboration, governance, and access controls. It’s available as a managed cloud service or as a self-hosted solution.
 
 👉 Learn more about [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) or [try it free](https://www.deepset.ai/haystack-enterprise-platform-trial?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme)
 
