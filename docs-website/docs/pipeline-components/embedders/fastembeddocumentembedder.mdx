@@ -108,7 +108,6 @@ document_list = [
 ]
 
 doc_embedder = FastembedDocumentEmbedder()
-doc_embedder.warm_up()
 
 result = doc_embedder.run(document_list)
 print(result["documents"][0].embedding)

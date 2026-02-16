@@ -91,7 +91,6 @@ text = """It clearly says online this will work on a Mac OS system.
 The disk comes and it does not, only Windows.
 Do Not order this if you have a Mac!!"""
 text_embedder = FastembedTextEmbedder(model="BAAI/bge-small-en-v1.5")
-text_embedder.warm_up()
 embedding = text_embedder.run(text)["embedding"]
 ```
 
@@ -116,7 +115,6 @@ documents = [
 ]
 
 document_embedder = FastembedDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 

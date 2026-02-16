@@ -221,4 +221,4 @@ def test_image_content_from_url_wrong_mime_type_pdf(test_files_path):
 @pytest.mark.integration
 def test_image_content_from_url_wrong_mime_type():
     with pytest.raises(ValueError):
-        ImageContent.from_url(url="https://example.com", size=(100, 100), detail="high", meta={"test": "test"})
+        ImageContent.from_url(url="https://www.google.com/", size=(100, 100), detail="high", meta={"test": "test"})
