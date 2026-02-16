@@ -23,7 +23,7 @@ Before you start, there are a few recommendations we provide to ensure a custom 
 
 ### Naming Convention
 
-We recommend naming your Document Store following the format `<TECHNOLOGY>-haystack`, for example, `chroma-haystack`. This will make it consistent with the others, lowering the cognitive load for your users and easing discoverability.
+We recommend naming your Document Store following the format `<TECHNOLOGY>-haystack`, for example, `chroma-haystack`. This makes it consistent with the others, lowering the cognitive load for your users and easing discoverability.
 
 This naming convention applies to the name of the git repository (`https://github.com/your-org/example-haystack`) and the name of the Python package (`example-haystack`).
 
@@ -161,7 +161,9 @@ Haystack comes with some testing functionalities you can use in a custom Documen
   6. Keep iterating with the remaining methods.
 - Having a notebook where users can try out your Document Store in a full pipeline can really help adoption, and it’s a great source of documentation. Our [haystack-cookbook](https://github.com/deepset-ai/haystack-cookbook) repository has good visibility, and we encourage contributors to create a PR and add their own.
 
-The [tests](https://github.com/deepset-ai/haystack/blob/main/haystack/testing/document_store.py) in `DocumentStoreBaseTests`give you a good idea of the overall expected behavior of a Document Store and the operations it should support, following it is a good way to make sure your implementation is consistent with the rest of the Haystack ecosystem.
+Verifying that the implementation meets all `DocumentStoreBaseTests` [tests](https://github.com/deepset-ai/haystack/blob/main/haystack/testing/document_store.py) is the minimum requirement for a custom Document Store to be consistent with the rest of the Haystack ecosystem.
+
+But, ideally making it compatible with the ``DocumentStoreBaseExtendedTests`` tests is a good way to ensure that your Document Store meets all the common used functionalities that users expect from a Document Store, such as `delete_all_documents` or `update_by_filter`.
 
 If the technology you are using for your Document Store supports asynchronous operations, we recommend implementing `async` versions of the methods in the `DocumentStore` protocol as well. This allows users to take advantage of async features in their applications and pipelines, improving performance and scalability.
 
