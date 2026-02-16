@@ -76,7 +76,6 @@ The following pipeline analyzes a GitHub issue and automatically posts a respons
 ```python
 from haystack import Pipeline
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
-from haystack.components.converters import OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.connectors.github import (
@@ -105,19 +104,16 @@ prompt_template = [
 
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
 llm = OpenAIChatGenerator(model="gpt-4o-mini")
-adapter = OutputAdapter(template="{{ replies[-1].text }}", output_type=str)
 
 pipeline = Pipeline()
 pipeline.add_component("issue_viewer", issue_viewer)
 pipeline.add_component("prompt_builder", prompt_builder)
 pipeline.add_component("llm", llm)
-pipeline.add_component("adapter", adapter)
 pipeline.add_component("issue_commenter", issue_commenter)
 
 pipeline.connect("issue_viewer.documents", "prompt_builder.documents")
 pipeline.connect("prompt_builder.prompt", "llm.messages")
-pipeline.connect("llm.replies", "adapter.replies")
-pipeline.connect("adapter", "issue_commenter.comment")
+pipeline.connect("llm.replies", "issue_commenter.comment")
 
 issue_url = "https://github.com/owner/repo/issues/123"
 result = pipeline.run(

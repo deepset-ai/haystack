@@ -13,35 +13,66 @@ slug: "/extractors-api"
 
 ### LLMDocumentContentExtractor
 
-Extracts textual content from image-based documents using a vision-enabled LLM (Large Language Model).
+Extracts textual content and optionally metadata from image-based documents using a vision-enabled LLM.
 
-This component converts each input document into an image using the DocumentToImageContent component,
-uses a prompt to instruct the LLM on how to extract content, and uses a ChatGenerator to extract structured
-textual content based on the provided prompt.
+One prompt and one LLM call per document. The component converts each document to an image via
+DocumentToImageContent and sends it to the ChatGenerator. The prompt must not contain Jinja variables.
 
-The prompt must not contain variables; it should only include instructions for the LLM. Image data and the prompt
-are passed together to the LLM as a chat message.
+Response handling:
+- If the LLM returns a **plain string** (non-JSON or not a JSON object), it is written to the document's content.
+- If the LLM returns a **JSON object with only the key** `document_content`, that value is written to content.
+- If the LLM returns a **JSON object with multiple keys**, the value of ``document_content`` (if present) is
+  written to content and all other keys are merged into the document's metadata.
 
-Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list. These
-failed documents will have a `content_extraction_error` entry in their metadata. This metadata can be used for
-debugging or for reprocessing the documents later.
+The ChatGenerator can be configured to return JSON (e.g. ``response_format={"type": "json_object"}``
+in ``generation_kwargs``).
+
+Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
 
 ### Usage example
 ```python
 from haystack import Document
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.extractors.image import LLMDocumentContentExtractor
+
+prompt = """
+Extract the content from the provided image.
+Format everything as markdown. Return only the extracted content as a JSON object with the key 'document_content'.
+No markdown, no code fence, only raw JSON.
+
+Extract metadata about the image like source of the image, date of creation, etc. if you can.
+Return this metadata as additional key-value pairs in the same JSON object.
+"""
+
 chat_generator = OpenAIChatGenerator()
-extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
+extractor = LLMDocumentContentExtractor(
+    chat_generator=chat_generator,
+    generation_kwargs={
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "entity_extraction",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "document_content": {"type": "string"},
+                        "author": {"type": "string"},
+                        "date": {"type": "string"},
+                        "document_type": {"type": "string"},
+                        "title": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                },
+            },
+        }
+    }
+)
 documents = [
     Document(content="", meta={"file_path": "image.jpg"}),
-    Document(content="", meta={"file_path": "document.pdf", "page_number": 1}),
+    Document(content="", meta={"file_path": "document.pdf", "page_number": 1})
 ]
-updated_documents = extractor.run(documents=documents)["documents"]
-print(updated_documents)
-# [Document(content='Extracted text from image.jpg',
-#           meta={'file_path': 'image.jpg'}),
-#  ...]
+result = extractor.run(documents=documents)
+updated_documents = result["documents"]
 ```
 
 <a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.__init__"></a>
@@ -64,22 +95,16 @@ Initialize the LLMDocumentContentExtractor component.
 
 **Arguments**:
 
-- `chat_generator`: A ChatGenerator instance representing the LLM used to extract text. This generator must
-support vision-based input and return a plain text response.
-- `prompt`: Instructional text provided to the LLM. It must not contain Jinja variables.
-The prompt should only contain instructions on how to extract the content of the image-based document.
+- `chat_generator`: A ChatGenerator that supports vision input. Optionally configured for JSON
+(e.g. ``response_format={"type": "json_object"}`` in ``generation_kwargs``).
+- `prompt`: Prompt for extraction. Must not contain Jinja variables.
 - `file_path_meta_field`: The metadata field in the Document that contains the file path to the image or PDF.
 - `root_path`: The root directory path where document files are located. If provided, file paths in
 document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
 - `detail`: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
-This will be passed to chat_generator when processing the images.
-- `size`: If provided, resizes the image to fit within the specified dimensions (width, height) while
-maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
-when working with models that have resolution constraints or when transmitting images to remote services.
-- `raise_on_failure`: If True, exceptions from the LLM are raised. If False, failed documents are logged
-and returned.
-- `max_workers`: Maximum number of threads used to parallelize LLM calls across documents using a
-ThreadPoolExecutor.
+- `size`: If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
+- `raise_on_failure`: If True, exceptions from the LLM are raised. If False, failed documents are returned.
+- `max_workers`: Maximum number of threads for parallel LLM calls.
 
 <a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.warm_up"></a>
 
@@ -134,11 +159,7 @@ An instance of the component.
 def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
-Run content extraction on a list of image-based documents using a vision-capable LLM.
-
-Each document is passed to the LLM along with a predefined prompt. The response is used to update the document's
-content. If the extraction fails, the document is returned in the `failed_documents` list with metadata
-describing the failure.
+Run extraction on image-based documents. One LLM call per document.
 
 **Arguments**:
 
@@ -146,9 +167,7 @@ describing the failure.
 
 **Returns**:
 
-A dictionary with:
-- "documents": Successfully processed documents, updated with extracted content.
-- "failed_documents": Documents that failed processing, annotated with failure metadata.
+A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
 <a id="llm_metadata_extractor"></a>
 
