@@ -3,4 +3,4 @@ enhancements:
   - |
     The ``LLMDocumentContentExtractor`` now extracts both content and metadata from image-based documents.
     When the LLM returns JSON, ``document_content`` fills the document body and other keys are merged into metadata; plain text is still used as content.
-    If an error occurs the field ``extraction_error``is added to metadata with the error message.
+    The field ``content_extraction_error`` is no longer used and when an error occurs the field ``extraction_error``is added to metadata with the error message.

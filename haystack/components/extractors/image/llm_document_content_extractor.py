@@ -101,6 +101,7 @@ class LLMDocumentContentExtractor:
                     "schema": {
                         "type": "object",
                         "properties": {
+                            "document_content": {"type": "string"},
                             "author": {"type": "string"},
                             "date": {"type": "string"},
                             "document_type": {"type": "string"},
