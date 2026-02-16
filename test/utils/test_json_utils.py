@@ -6,25 +6,17 @@ import json
 
 import pytest
 
-from haystack.utils.json_utils import _parse_json_from_text, extract_json_from_text
+from haystack.utils.json_utils import _parse_json_from_text
 
 
 class TestJsonUtils:
-    def test_extract_json_from_text_plain(self):
-        text = '{"key": "value"}'
-        assert extract_json_from_text(text) == text
-
-    def test_extract_json_from_text_markdown(self):
-        text = '```json\n{"key": "value"}\n```'
-        assert extract_json_from_text(text) == '{"key": "value"}'
-
-    def test_extract_json_from_text_markdown_with_text_around(self):
+    def test__parse_json_from_text_markdown_with_text_around(self):
         text = 'Here is the JSON:\n```json\n{"key": "value"}\n```\nHope this helps.'
-        assert extract_json_from_text(text) == '{"key": "value"}'
+        assert _parse_json_from_text(text) == {"key": "value"}
 
-    def test_extract_json_from_text_case_insensitive(self):
+    def test__parse_json_from_text_case_insensitive(self):
         text = '```JSON\n{"key": "value"}\n```'
-        assert extract_json_from_text(text) == '{"key": "value"}'
+        assert _parse_json_from_text(text) == {"key": "value"}
 
     def test__parse_json_from_text_valid(self):
         text = '{"key": "value"}'
@@ -59,18 +51,15 @@ class TestJsonUtils:
         with pytest.raises(ValueError, match="Expected a JSON object"):
             _parse_json_from_text(text, expected_keys=["key1"])
 
-    def test_extract_json_from_text_generic_block(self):
-        text = '```\n{"key": "value"}\n```'
-        assert extract_json_from_text(text) == '{"key": "value"}'
-
-    def test_extract_json_from_text_multiple_blocks(self):
+    def test__parse_json_from_text_multiple_blocks(self):
         text = '```json\n{"first": 1}\n```\nSome text\n```json\n{"second": 2}\n```'
         # Should return the first match
-        assert extract_json_from_text(text) == '{"first": 1}'
+        assert _parse_json_from_text(text) == {"first": 1}
 
-    def test_extract_json_from_text_whitespace_only(self):
+    def test__parse_json_from_text_whitespace_only(self):
         text = "   \n\t  "
-        assert extract_json_from_text(text) == ""
+        with pytest.raises(json.JSONDecodeError):
+            _parse_json_from_text(text)
 
     def test__parse_json_from_text_generic_block(self):
         text = '```\n{"key": "value"}\n```'
@@ -81,7 +70,7 @@ class TestJsonUtils:
         # Should pass without validation if expected_keys is empty list
         assert _parse_json_from_text(text, expected_keys=[]) == {"key": "value"}
 
-    def test_extract_json_from_text_json_block_priority_over_generic(self):
+    def test__parse_json_from_text_json_block_priority_over_generic(self):
         # Generic block appears first, but json-labeled block should be preferred
         text = '```\n{"generic": 0}\n```\n```json\n{"labeled": 1}\n```'
-        assert extract_json_from_text(text) == '{"labeled": 1}'
+        assert _parse_json_from_text(text) == {"labeled": 1}

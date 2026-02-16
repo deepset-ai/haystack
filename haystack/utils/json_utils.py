@@ -7,27 +7,6 @@ import re
 from typing import Any
 
 
-def extract_json_from_text(text: str) -> str:
-    """
-    Extracts JSON content from a string, handling markdown code blocks if present.
-
-    :param text: The text containing JSON, possibly wrapped in markdown code blocks.
-    :return: The extracted JSON string, or the original text if no markdown code blocks are found.
-    """
-    # Try to find JSON inside a markdown code block with "json" language specifier
-    match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-
-    # Fallback: Try to find JSON inside a generic markdown code block
-    match = re.search(r"```(?!\w)\s*(.*?)\s*```", text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-
-    # If no markdown code block, return the original text stripped of whitespace
-    return text.strip()
-
-
 def _parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> Any:
     """
     Parses a JSON string (or a string containing JSON in a markdown code block).
@@ -38,7 +17,18 @@ def _parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> 
     :raises json.JSONDecodeError: If the text is not valid JSON.
     :raises ValueError: If `expected_keys` are provided and the parsed JSON is not a dict or is missing keys.
     """
-    cleaned_text = extract_json_from_text(text)
+    # Try to find JSON inside a markdown code block with "json" language specifier
+    match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+    if match:
+        cleaned_text = match.group(1).strip()
+    else:
+        # Fallback: Try to find JSON inside a generic markdown code block
+        match = re.search(r"```(?!\w)\s*(.*?)\s*```", text, re.DOTALL)
+        if match:
+            cleaned_text = match.group(1).strip()
+        else:
+            # If no markdown code block, return the original text stripped of whitespace
+            cleaned_text = text.strip()
 
     if not cleaned_text:
         # Handle empty string or string with only whitespace
