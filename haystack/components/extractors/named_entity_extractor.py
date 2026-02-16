@@ -15,13 +15,7 @@ from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import (
-        AutoModelForTokenClassification,
-        AutoTokenizer,
-        SentencePieceBackend,
-        TokenizersBackend,
-        pipeline,
-    )
+    from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
     from transformers import Pipeline as HfPipeline
 
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
@@ -374,7 +368,7 @@ class _HfBackend(_NerBackend):
         transformers_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self.tokenizer: TokenizersBackend | SentencePieceBackend | None = None
+        self.tokenizer: Any = None
         self.model: AutoModelForTokenClassification | None = None
         self.pipeline: HfPipeline | None = None
 
