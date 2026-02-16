@@ -35,19 +35,19 @@ You can use `LinkContentFetcher` at the beginning of an indexing pipeline to ind
 
 ## Security considerations
 
-`LinkContentFetcher` will request the URLs you pass to it. If those URLs come directly from end users, this can expose your environment to server-side request forgery (SSRF) risks.
+`LinkContentFetcher` requests the URLs passed to it. If those URLs come directly from end users, this can expose your environment to server-side request forgery (SSRF) risks.
 
-Before calling `LinkContentFetcher`, validate and sanitize user-provided URLs:
+Before calling `LinkContentFetcher`, an application should therefore validate and sanitize user-provided URLs. For example:
 
-- Allow only expected schemes (for example `https`)
+- Allow only expected schemes, for example `https`
 - Use an allowlist of trusted domains when possible
 - Block localhost, link-local, and private-network destinations
 - Consider using an outbound proxy or network-level egress restrictions in production
 
-For example:
+For example, an application could block private, loopback, link-local, reserved IPs, and custom IP ranges using the standard library's `ipaddress` module:
 
 ```python
-from ipaddress import ip_address, ip_network
+import ipaddress
 from urllib.parse import urlparse
 
 
@@ -60,19 +60,18 @@ PRIVATE_RANGES = (
 )
 
 
-def is_safe_url(url: str) -> bool:
+def is_unsafe_url(url: str) -> bool:
     parsed = urlparse(url)
-    if parsed.scheme != "https":
-        return False
-    if not parsed.hostname:
-        return False
-    try:
-        host_ip = ip_address(parsed.hostname)
-    except ValueError:
-        # Hostname (not a raw IP). Apply your own domain allowlist policy here.
+    if parsed.scheme != "https" or not parsed.hostname:
         return True
-    return not any(host_ip in net for net in PRIVATE_RANGES)
+    try:
+        ip = ipaddress.ip_address(parsed.hostname)
+    except ValueError:
+        # Hostname (not a raw IP). Apply your own domain allowlist policy here. Filter out "LOCALHOST" etc.
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or any(ip in net for net in PRIVATE_RANGES)
 ```
+
 
 ## Usage
 
