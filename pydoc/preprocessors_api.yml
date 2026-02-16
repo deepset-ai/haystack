@@ -9,6 +9,7 @@ loaders:
       "document_splitter",
       "embedding_based_document_splitter",
       "hierarchical_document_splitter",
+      "markdown_header_splitter",
       "recursive_splitter",
       "text_cleaner"]
     ignore_when_discovered: ["__init__"]

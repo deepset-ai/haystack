@@ -47,11 +47,11 @@ pip install fastembed-haystack
 You can set the path where the model is stored in a cache directory. You can also set the number of threads a single `onnxruntime` session can use.
 
 ```python
-cache_dir= "/your_cacheDirectory"
+cache_dir = "/your_cacheDirectory"
 ranker = FastembedRanker(
-	model="Xenova/ms-marco-MiniLM-L-6-v2",
-	cache_dir=cache_dir,
-	threads=2
+    model="Xenova/ms-marco-MiniLM-L-6-v2",
+    cache_dir=cache_dir,
+    threads=2,
 )
 ```
 
@@ -74,7 +74,6 @@ from haystack_integrations.components.rankers.fastembed import FastembedRanker
 docs = [Document(content="Paris"), Document(content="Berlin")]
 
 ranker = FastembedRanker()
-ranker.warm_up()
 
 ranker.run(query="City in France", documents=docs, top_k=1)
 ```
@@ -107,5 +106,10 @@ document_ranker_pipeline.add_component(instance=ranker, name="ranker")
 document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+res = document_ranker_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
+)
 ```

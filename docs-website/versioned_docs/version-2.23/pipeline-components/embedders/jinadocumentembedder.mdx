@@ -50,14 +50,14 @@ You can do this easily by using the Document Embedder:
 from haystack import Document
 from haystack_integrations.components.embedders.jina import JinaDocumentEmbedder
 
-doc = Document(content="some text",
-	       meta={"title": "relevant title",
-			"page number": 18})
+doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
-embedder = JinaDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), meta_fields_to_embed=["title"])
+embedder = JinaDocumentEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    meta_fields_to_embed=["title"],
+)
 
 docs_w_embeddings = embedder.run(documents=[doc])["documents"]
-
 ```
 
 ## Usage
@@ -74,10 +74,9 @@ doc = Document(content="I love pizza!")
 document_embedder = JinaDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
 
 result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 
 ## [0.017020374536514282, -0.023255806416273117, ...]
-
 ```
 
 :::info
@@ -96,31 +95,41 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 indexing_pipeline = Pipeline()
-indexing_pipeline.add_component("embedder", JinaDocumentEmbedder(api_key=Secret.from_token("<your-api-key>")))
+indexing_pipeline.add_component(
+    "embedder",
+    JinaDocumentEmbedder(api_key=Secret.from_token("<your-api-key>")),
+)
 indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 indexing_pipeline.connect("embedder", "writer")
 
 indexing_pipeline.run({"embedder": {"documents": documents}})
 
 query_pipeline = Pipeline()
-query_pipeline.add_component("text_embedder", JinaTextEmbedder(api_key=Secret.from_token("<your-api-key>")))
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "text_embedder",
+    JinaTextEmbedder(api_key=Secret.from_token("<your-api-key>")),
+)
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., mimetype: 'text/plain',
 ## text: 'My name is Wolfgang and I live in Berlin')
-
 ```
 
 ## Additional References

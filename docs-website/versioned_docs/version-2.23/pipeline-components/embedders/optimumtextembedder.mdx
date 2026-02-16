@@ -97,9 +97,9 @@ pipeline.add_component("embedder", embedder)
 results = pipeline.run(
     {
         "embedder": {
-            "text": "Ex profunditate antique doctrinae, Ad caelos supra semper, Hoc incantamentum evoco, draco apparet, Incantamentum iam transactum est"
+            "text": "Ex profunditate antique doctrinae, Ad caelos supra semper, Hoc incantamentum evoco, draco apparet, Incantamentum iam transactum est",
         },
-    }
+    },
 )
 
 print(results["embedder"]["embedding"])

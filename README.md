@@ -18,10 +18,8 @@ and LLMs into pipelines to build end-to-end NLP applications and solve your use 
 
 - [Installation](#installation)
 - [Documentation](#documentation)
-- [Features](#features)
-- [Use Cases](#features)
-- [Hayhooks (REST API Deployment)](#-tip-1)
-- [Haystack Enterprise Starter](#haystack-enterprise-best-practices-and-expert-support)
+- [Features and Use Cases](#features)
+- [Haystack Enterprise Starter](#haystack-enterprise-starter-best-practices-and-expert-support)
 - [Telemetry](#telemetry)
 - [🖖 Community](#-community)
 - [Contributing to Haystack](#contributing-to-haystack)

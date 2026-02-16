@@ -58,7 +58,9 @@ from haystack import Pipeline
 from haystack.utils import Secret
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
-from haystack_integrations.components.retrievers.snowflake import SnowflakeTableRetriever
+from haystack_integrations.components.retrievers.snowflake import (
+    SnowflakeTableRetriever,
+)
 
 executor = SnowflakeTableRetriever(
     user="<ACCOUNT-USER>",
@@ -68,7 +70,10 @@ executor = SnowflakeTableRetriever(
 )
 
 pipeline = Pipeline()
-pipeline.add_component("builder", PromptBuilder(template="Describe this table: {{ table }}"))
+pipeline.add_component(
+    "builder",
+    PromptBuilder(template="Describe this table: {{ table }}"),
+)
 pipeline.add_component("snowflake", executor)
 pipeline.add_component("llm", OpenAIGenerator(model="gpt-4o"))
 
@@ -76,5 +81,4 @@ pipeline.connect("snowflake.table", "builder.table")
 pipeline.connect("builder", "llm")
 
 pipeline.run(data={"query": "select employee, salary from table limit 10;"})
-
 ```

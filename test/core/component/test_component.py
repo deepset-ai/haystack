@@ -259,6 +259,15 @@ def test_set_input_types_overrides_run():
         _ = MockComponent(True)
 
 
+def test_set_input_types_postponed_annotations():
+    # The component HelloUsingFutureAnnotations must live in a different module than the one where the test is defined,
+    # so we can properly set up postponed evaluation of annotations using `from __future__ import annotations`.
+    # For this reason, we define it in haystack.testing.sample_components.future_annotations and import it here.
+    from haystack.testing.sample_components import HelloUsingFutureAnnotations
+
+    assert HelloUsingFutureAnnotations().__haystack_input__._sockets_dict == {"word": InputSocket("word", str)}  # type: ignore[attr-defined]
+
+
 def test_set_output_types():
     @component
     class MockComponent:

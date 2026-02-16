@@ -30,7 +30,9 @@ This component is designed for chat completion, not for text generation. If you 
 For remote file authorization, this component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token`:
 
 ```python
-local_generator = HuggingFaceLocalChatGenerator(token=Secret.from_token("<your-api-key>"))
+local_generator = HuggingFaceLocalChatGenerator(
+    token=Secret.from_token("<your-api-key>"),
+)
 ```
 
 ### Streaming
@@ -61,15 +63,28 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
 prompt_builder = ChatPromptBuilder()
-llm = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta", token=Secret.from_env_var("HF_API_TOKEN"))
+llm = HuggingFaceLocalChatGenerator(
+    model="HuggingFaceH4/zephyr-7b-beta",
+    token=Secret.from_env_var("HF_API_TOKEN"),
+)
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
-messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
-            ChatMessage.from_user("Tell me about {{location}}")]
-pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
-
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 ```

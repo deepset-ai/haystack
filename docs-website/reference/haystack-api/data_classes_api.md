@@ -871,6 +871,28 @@ def image() -> ImageContent | None
 
 Returns the first image contained in the message.
 
+<a id="chat_message.ChatMessage.files"></a>
+
+#### ChatMessage.files
+
+```python
+@property
+def files() -> list[FileContent]
+```
+
+Returns the list of all files contained in the message.
+
+<a id="chat_message.ChatMessage.file"></a>
+
+#### ChatMessage.file
+
+```python
+@property
+def file() -> FileContent | None
+```
+
+Returns the first file contained in the message.
+
 <a id="chat_message.ChatMessage.reasonings"></a>
 
 #### ChatMessage.reasonings
@@ -923,7 +945,8 @@ def from_user(
     meta: dict[str, Any] | None = None,
     name: str | None = None,
     *,
-    content_parts: Sequence[TextContent | str | ImageContent] | None = None
+    content_parts: Sequence[TextContent | str | ImageContent | FileContent]
+    | None = None
 ) -> "ChatMessage"
 ```
 
@@ -1211,6 +1234,119 @@ def content_type()
 Returns the type of the content for the document.
 
 This is necessary to keep backward compatibility with 1.x.
+
+<a id="file_content"></a>
+
+## Module file\_content
+
+<a id="file_content.FileContent"></a>
+
+### FileContent
+
+The file content of a chat message.
+
+**Arguments**:
+
+- `base64_data`: A base64 string representing the file.
+- `mime_type`: The MIME type of the file (e.g. "application/pdf").
+Providing this value is recommended, as most LLM providers require it.
+If not provided, the MIME type is guessed from the base64 string, which can be slow and not always reliable.
+- `filename`: Optional filename of the file. Some LLM providers use this information.
+- `extra`: Dictionary of extra information about the file. Can be used to store provider-specific information.
+To avoid serialization issues, values should be JSON serializable.
+- `validation`: If True (default), a validation process is performed:
+- Check whether the base64 string is valid;
+- Guess the MIME type if not provided.
+Set to False to skip validation and speed up initialization.
+
+<a id="file_content.FileContent.__repr__"></a>
+
+#### FileContent.\_\_repr\_\_
+
+```python
+def __repr__() -> str
+```
+
+Return a string representation of the FileContent, truncating the base64_data to 100 bytes.
+
+<a id="file_content.FileContent.to_dict"></a>
+
+#### FileContent.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert FileContent into a dictionary.
+
+<a id="file_content.FileContent.from_dict"></a>
+
+#### FileContent.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "FileContent"
+```
+
+Create an FileContent from a dictionary.
+
+<a id="file_content.FileContent.from_file_path"></a>
+
+#### FileContent.from\_file\_path
+
+```python
+@classmethod
+def from_file_path(cls,
+                   file_path: str | Path,
+                   *,
+                   filename: str | None = None,
+                   extra: dict[str, Any] | None = None) -> "FileContent"
+```
+
+Create an FileContent object from a file path.
+
+**Arguments**:
+
+- `file_path`: The path to the file.
+- `filename`: Optional file name. Some LLM providers use this information. If not provided, the filename is extracted
+from the file path.
+- `extra`: Dictionary of extra information about the file. Can be used to store provider-specific information.
+To avoid serialization issues, values should be JSON serializable.
+
+**Returns**:
+
+An FileContent object.
+
+<a id="file_content.FileContent.from_url"></a>
+
+#### FileContent.from\_url
+
+```python
+@classmethod
+def from_url(cls,
+             url: str,
+             *,
+             retry_attempts: int = 2,
+             timeout: int = 10,
+             filename: str | None = None,
+             extra: dict[str, Any] | None = None) -> "FileContent"
+```
+
+Create an FileContent object from a URL. The file is downloaded and converted to a base64 string.
+
+**Arguments**:
+
+- `url`: The URL of the file.
+- `retry_attempts`: The number of times to retry to fetch the URL's content.
+- `timeout`: Timeout in seconds for the request.
+- `filename`: Optional filename of the file. Some LLM providers use this information. If not provided, the filename is
+extracted from the URL.
+- `extra`: Dictionary of extra information about the file. Can be used to store provider-specific information.
+To avoid serialization issues, values should be JSON serializable.
+
+**Returns**:
+
+An FileContent object.
 
 <a id="image_content"></a>
 

@@ -53,17 +53,18 @@ You can also set other parameters like the number of output tokens, temperature,
 Let’s try a different model:
 
 ```python
-from haystack_integrations.components.generators.google_vertex import VertexAICodeGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAICodeGenerator,
+)
 
 generator = VertexAICodeGenerator(
-	model="code-gecko",
-	temperature=0.8,
-	candidate_count=3
+    model="code-gecko",
+    temperature=0.8,
+    candidate_count=3,
 )
 
 result = generator.run(prefix="def convert_temperature(degrees):")
 
 for answer in result["replies"]:
     print(answer)
-
 ```

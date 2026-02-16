@@ -62,7 +62,9 @@ pip install google-vertex-haystack
 ### On its own
 
 ```python
-from haystack_integrations.components.embedders.google_vertex import VertexAITextEmbedder
+from haystack_integrations.components.embedders.google_vertex import (
+    VertexAITextEmbedder,
+)
 
 text_to_embed = "I love pizza!"
 
@@ -78,30 +80,42 @@ print(text_embedder.run(text_to_embed))
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.google_vertex import VertexAITextEmbedder
-from haystack_integrations.components.embedders.google_vertex import VertexAIDocumentEmbedder
+from haystack_integrations.components.embedders.google_vertex import (
+    VertexAITextEmbedder,
+)
+from haystack_integrations.components.embedders.google_vertex import (
+    VertexAIDocumentEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 document_embedder = VertexAIDocumentEmbedder(model="text-embedding-005")
-documents_with_embeddings = document_embedder.run(documents)['documents']
+documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
-query_pipeline.add_component("text_embedder", VertexAITextEmbedder(model="text-embedding-005"))
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "text_embedder",
+    VertexAITextEmbedder(model="text-embedding-005"),
+)
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
 ```

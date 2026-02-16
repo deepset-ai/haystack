@@ -31,9 +31,11 @@ To work with Azure components, you will need an Azure OpenAI API key, as well as
 The component uses `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_AD_TOKEN` environment variables by default. Otherwise, you can pass `api_key` and `azure_ad_token` at initialization:
 
 ```python
-client = AzureOpenAIChatGenerator(azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-                        api_key=Secret.from_token("<your-api-key>"),
-                        azure_deployment="<a model name>")
+client = AzureOpenAIChatGenerator(
+    azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
+    api_key=Secret.from_token("<your-api-key>"),
+    azure_deployment="<a model name>",
+)
 ```
 
 :::info
@@ -130,9 +132,10 @@ Basic usage:
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
+
 client = AzureOpenAIChatGenerator()
 response = client.run(
-	  [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
 )
 print(response)
 ```
@@ -142,9 +145,12 @@ With streaming:
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
-client = AzureOpenAIChatGenerator(streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
+
+client = AzureOpenAIChatGenerator(
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
 response = client.run(
-	  [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
 )
 print(response)
 ```
@@ -161,10 +167,9 @@ llm = AzureOpenAIChatGenerator(
 )
 
 image = ImageContent.from_file_path("apple.jpg", detail="low")
-user_message = ChatMessage.from_user(content_parts=[
-	"What does the image show? Max 5 words.",
-	image
-	])
+user_message = ChatMessage.from_user(
+    content_parts=["What does the image show? Max 5 words.", image],
+)
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
@@ -189,7 +194,18 @@ pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 location = "Berlin"
-messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
-            ChatMessage.from_user("Tell me about {{location}}")]
-pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 ```
