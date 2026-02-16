@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
     from huggingface_hub import model_info
     from transformers import Pipeline as HfPipeline
-    from transformers import StoppingCriteriaList, pipeline
-    from transformers.tokenization_utils import PreTrainedTokenizer
-    from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
         AsyncHFTokenStreamingHandler,
