@@ -5,13 +5,8 @@ description: "Evaluate your pipelines or individual components."
 slug: "/evaluators-api"
 ---
 
-<a id="answer_exact_match"></a>
 
-## Module answer\_exact\_match
-
-<a id="answer_exact_match.AnswerExactMatchEvaluator"></a>
-
-### AnswerExactMatchEvaluator
+## `AnswerExactMatchEvaluator`
 
 An answer exact match evaluator class.
 
@@ -20,8 +15,8 @@ The result is a number from 0.0 to 1.0, it represents the proportion of predicte
 that matched one of the ground truth answers.
 There can be multiple ground truth answers and multiple predicted answers as input.
 
-
 Usage example:
+
 ```python
 from haystack.components.evaluators import AnswerExactMatchEvaluator
 
@@ -37,40 +32,32 @@ print(result["score"])
 # 0.5
 ```
 
-<a id="answer_exact_match.AnswerExactMatchEvaluator.run"></a>
-
-#### AnswerExactMatchEvaluator.run
+### `run`
 
 ```python
-@component.output_types(individual_scores=list[int], score=float)
-def run(ground_truth_answers: list[str],
-        predicted_answers: list[str]) -> dict[str, Any]
+run(ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, Any]
 ```
 
 Run the AnswerExactMatchEvaluator on the given inputs.
 
 The `ground_truth_answers` and `retrieved_answers` must have the same length.
 
-**Arguments**:
+**Parameters:**
 
-- `ground_truth_answers`: A list of expected answers.
-- `predicted_answers`: A list of predicted answers.
+- **ground_truth_answers** (<code>list\[str\]</code>) – A list of expected answers.
+- **predicted_answers** (<code>list\[str\]</code>) – A list of predicted answers.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following outputs:
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
 - `individual_scores` - A list of 0s and 1s, where 1 means that the predicted answer matched one of the
-    ground truth.
+  ground truth.
 - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
-             answer matched one of the ground truth answers.
+  answer matched one of the ground truth answers.
 
-<a id="context_relevance"></a>
+## `ContextRelevanceEvaluator`
 
-## Module context\_relevance
-
-<a id="context_relevance.ContextRelevanceEvaluator"></a>
-
-### ContextRelevanceEvaluator
+Bases: <code>LLMEvaluator</code>
 
 Evaluator that checks if a provided context is relevant to the question.
 
@@ -82,6 +69,7 @@ The evaluator also provides the relevant statements from the context and an aver
 input questions contexts pairs.
 
 Usage example:
+
 ```python
 from haystack.components.evaluators import ContextRelevanceEvaluator
 
@@ -127,29 +115,25 @@ print(result["results"])
 #  }]
 ```
 
-<a id="context_relevance.ContextRelevanceEvaluator.__init__"></a>
-
-#### ContextRelevanceEvaluator.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(examples: list[dict[str, Any]] | None = None,
-             progress_bar: bool = True,
-             raise_on_failure: bool = True,
-             chat_generator: ChatGenerator | None = None)
+__init__(examples: list[dict[str, Any]] | None = None, progress_bar: bool = True, raise_on_failure: bool = True, chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of ContextRelevanceEvaluator.
 
 If no LLM is specified using the `chat_generator` parameter, the component will use OpenAI in JSON mode.
 
-**Arguments**:
+**Parameters:**
 
-- `examples`: Optional few-shot examples conforming to the expected input and output format of ContextRelevanceEvaluator.
-Default examples will be used if none are provided.
-Each example must be a dictionary with keys "inputs" and "outputs".
-"inputs" must be a dictionary with keys "questions" and "contexts".
-"outputs" must be a dictionary with "relevant_statements".
-Expected format:
+- **examples** (<code>list\[dict\[str, Any\]\] | None</code>) – Optional few-shot examples conforming to the expected input and output format of ContextRelevanceEvaluator.
+  Default examples will be used if none are provided.
+  Each example must be a dictionary with keys "inputs" and "outputs".
+  "inputs" must be a dictionary with keys "questions" and "contexts".
+  "outputs" must be a dictionary with "relevant_statements".
+  Expected format:
+
 ```python
 [{
     "inputs": {
@@ -160,110 +144,94 @@ Expected format:
     },
 }]
 ```
-- `progress_bar`: Whether to show a progress bar during the evaluation.
-- `raise_on_failure`: Whether to raise an exception if the API call fails.
-- `chat_generator`: a ChatGenerator instance which represents the LLM.
-In order for the component to work, the LLM should be configured to return a JSON object. For example,
-when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
-`generation_kwargs`.
 
-<a id="context_relevance.ContextRelevanceEvaluator.run"></a>
+- **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
+  In order for the component to work, the LLM should be configured to return a JSON object. For example,
+  when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
+  `generation_kwargs`.
 
-#### ContextRelevanceEvaluator.run
-
-```python
-@component.output_types(score=float, results=list[dict[str, Any]])
-def run(**inputs) -> dict[str, Any]
-```
-
-Run the LLM evaluator.
-
-**Arguments**:
-
-- `questions`: A list of questions.
-- `contexts`: A list of lists of contexts. Each list of contexts corresponds to one question.
-
-**Returns**:
-
-A dictionary with the following outputs:
-- `score`: Mean context relevance score over all the provided input questions.
-- `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
-
-<a id="context_relevance.ContextRelevanceEvaluator.to_dict"></a>
-
-#### ContextRelevanceEvaluator.to\_dict
+### `warm_up`
 
 ```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-A dictionary with serialized data.
-
-<a id="context_relevance.ContextRelevanceEvaluator.from_dict"></a>
-
-#### ContextRelevanceEvaluator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ContextRelevanceEvaluator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
-<a id="context_relevance.ContextRelevanceEvaluator.warm_up"></a>
-
-#### ContextRelevanceEvaluator.warm\_up
-
-```python
-def warm_up()
+warm_up()
 ```
 
 Warm up the component by warming up the underlying chat generator.
 
-<a id="context_relevance.ContextRelevanceEvaluator.validate_init_parameters"></a>
-
-#### ContextRelevanceEvaluator.validate\_init\_parameters
+### `validate_init_parameters`
 
 ```python
-@staticmethod
-def validate_init_parameters(inputs: list[tuple[str, type[list]]],
-                             outputs: list[str], examples: list[dict[str,
-                                                                     Any]])
+validate_init_parameters(inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]])
 ```
 
 Validate the init parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `inputs`: The inputs to validate.
-- `outputs`: The outputs to validate.
-- `examples`: The examples to validate.
+- **inputs** (<code>list\[tuple\[str, type\[list\]\]\]</code>) – The inputs to validate.
+- **outputs** (<code>list\[str\]</code>) – The outputs to validate.
+- **examples** (<code>list\[dict\[str, Any\]\]</code>) – The examples to validate.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If the inputs are not a list of tuples with a string and a type of list.
-If the outputs are not a list of strings.
-If the examples are not a list of dictionaries.
-If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
+- <code>ValueError</code> – If the inputs are not a list of tuples with a string and a type of list.
+  If the outputs are not a list of strings.
+  If the examples are not a list of dictionaries.
+  If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
 
-<a id="context_relevance.ContextRelevanceEvaluator.prepare_template"></a>
-
-#### ContextRelevanceEvaluator.prepare\_template
+### `run`
 
 ```python
-def prepare_template() -> str
+run(**inputs) -> dict[str, Any]
+```
+
+Run the LLM evaluator.
+
+**Parameters:**
+
+- **questions** – A list of questions.
+- **contexts** – A list of lists of contexts. Each list of contexts corresponds to one question.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
+  - `score`: Mean context relevance score over all the provided input questions.
+  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+
+### `to_dict`
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with serialized data.
+
+### `from_dict`
+
+```python
+from_dict(data: dict[str, Any]) -> ContextRelevanceEvaluator
+```
+
+Deserialize this component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
+
+**Returns:**
+
+- <code>ContextRelevanceEvaluator</code> – The deserialized component instance.
+
+### `prepare_template`
+
+```python
+prepare_template() -> str
 ```
 
 Prepare the prompt template.
@@ -283,65 +251,52 @@ Inputs:
 `<inputs>`
 Outputs:
 
-**Returns**:
+**Returns:**
 
-The prompt template.
+- <code>str</code> – The prompt template.
 
-<a id="context_relevance.ContextRelevanceEvaluator.validate_input_parameters"></a>
-
-#### ContextRelevanceEvaluator.validate\_input\_parameters
+### `validate_input_parameters`
 
 ```python
-@staticmethod
-def validate_input_parameters(expected: dict[str, Any],
-                              received: dict[str, Any]) -> None
+validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None
 ```
 
 Validate the input parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `expected`: The expected input parameters.
-- `received`: The received input parameters.
+- **expected** (<code>dict\[str, Any\]</code>) – The expected input parameters.
+- **received** (<code>dict\[str, Any\]</code>) – The received input parameters.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If not all expected inputs are present in the received inputs
-If the received inputs are not lists or have different lengths
+- <code>ValueError</code> – If not all expected inputs are present in the received inputs
+  If the received inputs are not lists or have different lengths
 
-<a id="context_relevance.ContextRelevanceEvaluator.is_valid_json_and_has_expected_keys"></a>
-
-#### ContextRelevanceEvaluator.is\_valid\_json\_and\_has\_expected\_keys
+### `is_valid_json_and_has_expected_keys`
 
 ```python
-def is_valid_json_and_has_expected_keys(expected: list[str],
-                                        received: str) -> bool
+is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
 ```
 
 Output must be a valid JSON with the expected keys.
 
-**Arguments**:
+**Parameters:**
 
-- `expected`: Names of expected outputs
-- `received`: Names of received outputs
+- **expected** (<code>list\[str\]</code>) – Names of expected outputs
+- **received** (<code>str</code>) – Names of received outputs
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the output is not a valid JSON with the expected keys:
+- <code>bool</code> – True if the received output is a valid JSON with the expected keys, False otherwise.
+
+**Raises:**
+
+- <code>ValueError</code> – If the output is not a valid JSON with the expected keys:
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-**Returns**:
-
-True if the received output is a valid JSON with the expected keys, False otherwise.
-
-<a id="document_map"></a>
-
-## Module document\_map
-
-<a id="document_map.DocumentMAPEvaluator"></a>
-
-### DocumentMAPEvaluator
+## `DocumentMAPEvaluator`
 
 A Mean Average Precision (MAP) evaluator for documents.
 
@@ -353,6 +308,7 @@ Each question can have multiple ground truth documents and multiple retrieved do
 should be used to clean and normalize the documents before passing them to this evaluator.
 
 Usage example:
+
 ```python
 from haystack import Document
 from haystack.components.evaluators import DocumentMAPEvaluator
@@ -375,39 +331,29 @@ print(result["score"])
 # 0.9166666666666666
 ```
 
-<a id="document_map.DocumentMAPEvaluator.run"></a>
-
-#### DocumentMAPEvaluator.run
+### `run`
 
 ```python
-@component.output_types(score=float, individual_scores=list[float])
-def run(ground_truth_documents: list[list[Document]],
-        retrieved_documents: list[list[Document]]) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentMAPEvaluator on the given inputs.
 
 All lists must have the same length.
 
-**Arguments**:
+**Parameters:**
 
-- `ground_truth_documents`: A list of expected documents for each question.
-- `retrieved_documents`: A list of retrieved documents for each question.
+- **ground_truth_documents** (<code>list\[list\[Document\]\]</code>) – A list of expected documents for each question.
+- **retrieved_documents** (<code>list\[list\[Document\]\]</code>) – A list of retrieved documents for each question.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following outputs:
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
 - `score` - The average of calculated scores.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents
-    are ranked.
+  are ranked.
 
-<a id="document_mrr"></a>
-
-## Module document\_mrr
-
-<a id="document_mrr.DocumentMRREvaluator"></a>
-
-### DocumentMRREvaluator
+## `DocumentMRREvaluator`
 
 Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
@@ -418,6 +364,7 @@ Each question can have multiple ground truth documents and multiple retrieved do
 should be used to clean and normalize the documents before passing them to this evaluator.
 
 Usage example:
+
 ```python
 from haystack import Document
 from haystack.components.evaluators import DocumentMRREvaluator
@@ -439,39 +386,29 @@ print(result["score"])
 # 1.0
 ```
 
-<a id="document_mrr.DocumentMRREvaluator.run"></a>
-
-#### DocumentMRREvaluator.run
+### `run`
 
 ```python
-@component.output_types(score=float, individual_scores=list[float])
-def run(ground_truth_documents: list[list[Document]],
-        retrieved_documents: list[list[Document]]) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentMRREvaluator on the given inputs.
 
 `ground_truth_documents` and `retrieved_documents` must have the same length.
 
-**Arguments**:
+**Parameters:**
 
-- `ground_truth_documents`: A list of expected documents for each question.
-- `retrieved_documents`: A list of retrieved documents for each question.
+- **ground_truth_documents** (<code>list\[list\[Document\]\]</code>) – A list of expected documents for each question.
+- **retrieved_documents** (<code>list\[list\[Document\]\]</code>) – A list of retrieved documents for each question.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following outputs:
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
 - `score` - The average of calculated scores.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high the first retrieved
-    document is ranked.
+  document is ranked.
 
-<a id="document_ndcg"></a>
-
-## Module document\_ndcg
-
-<a id="document_ndcg.DocumentNDCGEvaluator"></a>
-
-### DocumentNDCGEvaluator
+## `DocumentNDCGEvaluator`
 
 Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
@@ -480,6 +417,7 @@ If the ground truth documents have relevance scores, the NDCG calculation uses t
 Otherwise, it assumes binary relevance of all ground truth documents.
 
 Usage example:
+
 ```python
 from haystack import Document
 from haystack.components.evaluators import DocumentNDCGEvaluator
@@ -495,14 +433,10 @@ print(result["score"])
 # 0.8869
 ```
 
-<a id="document_ndcg.DocumentNDCGEvaluator.run"></a>
-
-#### DocumentNDCGEvaluator.run
+### `run`
 
 ```python
-@component.output_types(score=float, individual_scores=list[float])
-def run(ground_truth_documents: list[list[Document]],
-        retrieved_documents: list[list[Document]]) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentNDCGEvaluator on the given inputs.
@@ -510,104 +444,85 @@ Run the DocumentNDCGEvaluator on the given inputs.
 `ground_truth_documents` and `retrieved_documents` must have the same length.
 The list items within `ground_truth_documents` and `retrieved_documents` can differ in length.
 
-**Arguments**:
+**Parameters:**
 
-- `ground_truth_documents`: Lists of expected documents, one list per question. Binary relevance is used if documents have no scores.
-- `retrieved_documents`: Lists of retrieved documents, one list per question.
+- **ground_truth_documents** (<code>list\[list\[Document\]\]</code>) – Lists of expected documents, one list per question. Binary relevance is used if documents have no scores.
+- **retrieved_documents** (<code>list\[list\[Document\]\]</code>) – Lists of retrieved documents, one list per question.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following outputs:
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
 - `score` - The average of calculated scores.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the NDCG for each question.
 
-<a id="document_ndcg.DocumentNDCGEvaluator.validate_inputs"></a>
-
-#### DocumentNDCGEvaluator.validate\_inputs
+### `validate_inputs`
 
 ```python
-@staticmethod
-def validate_inputs(gt_docs: list[list[Document]],
-                    ret_docs: list[list[Document]])
+validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]])
 ```
 
 Validate the input parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `gt_docs`: The ground_truth_documents to validate.
-- `ret_docs`: The retrieved_documents to validate.
+- **gt_docs** (<code>list\[list\[Document\]\]</code>) – The ground_truth_documents to validate.
+- **ret_docs** (<code>list\[list\[Document\]\]</code>) – The retrieved_documents to validate.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If the ground_truth_documents or the retrieved_documents are an empty a list.
-If the length of ground_truth_documents and retrieved_documents differs.
-If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
+- <code>ValueError</code> – If the ground_truth_documents or the retrieved_documents are an empty a list.
+  If the length of ground_truth_documents and retrieved_documents differs.
+  If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
 
-<a id="document_ndcg.DocumentNDCGEvaluator.calculate_dcg"></a>
-
-#### DocumentNDCGEvaluator.calculate\_dcg
+### `calculate_dcg`
 
 ```python
-@staticmethod
-def calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float
+calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float
 ```
 
 Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 
-**Arguments**:
+**Parameters:**
 
-- `gt_docs`: The ground truth documents.
-- `ret_docs`: The retrieved documents.
+- **gt_docs** (<code>list\[Document\]</code>) – The ground truth documents.
+- **ret_docs** (<code>list\[Document\]</code>) – The retrieved documents.
 
-**Returns**:
+**Returns:**
 
-The discounted cumulative gain (DCG) of the retrieved
-documents based on the ground truth documents.
+- <code>float</code> – The discounted cumulative gain (DCG) of the retrieved
+  documents based on the ground truth documents.
 
-<a id="document_ndcg.DocumentNDCGEvaluator.calculate_idcg"></a>
-
-#### DocumentNDCGEvaluator.calculate\_idcg
+### `calculate_idcg`
 
 ```python
-@staticmethod
-def calculate_idcg(gt_docs: list[Document]) -> float
+calculate_idcg(gt_docs: list[Document]) -> float
 ```
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-**Arguments**:
+**Parameters:**
 
-- `gt_docs`: The ground truth documents.
+- **gt_docs** (<code>list\[Document\]</code>) – The ground truth documents.
 
-**Returns**:
+**Returns:**
 
-The ideal discounted cumulative gain (IDCG) of the ground truth documents.
+- <code>float</code> – The ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-<a id="document_recall"></a>
+## `RecallMode`
 
-## Module document\_recall
-
-<a id="document_recall.RecallMode"></a>
-
-### RecallMode
+Bases: <code>Enum</code>
 
 Enum for the mode to use for calculating the recall score.
 
-<a id="document_recall.RecallMode.from_str"></a>
-
-#### RecallMode.from\_str
+### `from_str`
 
 ```python
-@staticmethod
-def from_str(string: str) -> "RecallMode"
+from_str(string: str) -> RecallMode
 ```
 
 Convert a string to a RecallMode enum.
 
-<a id="document_recall.DocumentRecallEvaluator"></a>
-
-### DocumentRecallEvaluator
+## `DocumentRecallEvaluator`
 
 Evaluator that calculates the Recall score for a list of documents.
 
@@ -615,6 +530,7 @@ Returns both a list of scores for each question and the average.
 There can be multiple ground truth documents and multiple predicted documents as input.
 
 Usage example:
+
 ```python
 from haystack import Document
 from haystack.components.evaluators import DocumentRecallEvaluator
@@ -636,64 +552,52 @@ print(result["score"])
 # 1.0
 ```
 
-<a id="document_recall.DocumentRecallEvaluator.__init__"></a>
-
-#### DocumentRecallEvaluator.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(mode: str | RecallMode = RecallMode.SINGLE_HIT)
+__init__(mode: str | RecallMode = RecallMode.SINGLE_HIT)
 ```
 
 Create a DocumentRecallEvaluator component.
 
-**Arguments**:
+**Parameters:**
 
-- `mode`: Mode to use for calculating the recall score.
+- **mode** (<code>str | RecallMode</code>) – Mode to use for calculating the recall score.
 
-<a id="document_recall.DocumentRecallEvaluator.run"></a>
-
-#### DocumentRecallEvaluator.run
+### `run`
 
 ```python
-@component.output_types(score=float, individual_scores=list[float])
-def run(ground_truth_documents: list[list[Document]],
-        retrieved_documents: list[list[Document]]) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentRecallEvaluator on the given inputs.
 
 `ground_truth_documents` and `retrieved_documents` must have the same length.
 
-**Arguments**:
+**Parameters:**
 
-- `ground_truth_documents`: A list of expected documents for each question.
-- `retrieved_documents`: A list of retrieved documents for each question.
-A dictionary with the following outputs:
-- `score` - The average of calculated scores.
-- `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching
+- **ground_truth_documents** (<code>list\[list\[Document\]\]</code>) – A list of expected documents for each question.
+- **retrieved_documents** (<code>list\[list\[Document\]\]</code>) – A list of retrieved documents for each question.
+  A dictionary with the following outputs:
+  - `score` - The average of calculated scores.
+  - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching
     documents retrieved. If the mode is `single_hit`, the individual scores are 0 or 1.
 
-<a id="document_recall.DocumentRecallEvaluator.to_dict"></a>
-
-#### DocumentRecallEvaluator.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="faithfulness"></a>
+## `FaithfulnessEvaluator`
 
-## Module faithfulness
-
-<a id="faithfulness.FaithfulnessEvaluator"></a>
-
-### FaithfulnessEvaluator
+Bases: <code>LLMEvaluator</code>
 
 Evaluator that checks if a generated answer can be inferred from the provided contexts.
 
@@ -702,6 +606,7 @@ context or not. The final score for the full answer is a number from 0.0 to 1.0.
 statements that can be inferred from the provided contexts.
 
 Usage example:
+
 ```python
 from haystack.components.evaluators import FaithfulnessEvaluator
 
@@ -728,29 +633,25 @@ print(result["results"])
 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
 ```
 
-<a id="faithfulness.FaithfulnessEvaluator.__init__"></a>
-
-#### FaithfulnessEvaluator.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(examples: list[dict[str, Any]] | None = None,
-             progress_bar: bool = True,
-             raise_on_failure: bool = True,
-             chat_generator: ChatGenerator | None = None)
+__init__(examples: list[dict[str, Any]] | None = None, progress_bar: bool = True, raise_on_failure: bool = True, chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of FaithfulnessEvaluator.
 
 If no LLM is specified using the `chat_generator` parameter, the component will use OpenAI in JSON mode.
 
-**Arguments**:
+**Parameters:**
 
-- `examples`: Optional few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
-Default examples will be used if none are provided.
-Each example must be a dictionary with keys "inputs" and "outputs".
-"inputs" must be a dictionary with keys "questions", "contexts", and "predicted_answers".
-"outputs" must be a dictionary with "statements" and "statement_scores".
-Expected format:
+- **examples** (<code>list\[dict\[str, Any\]\] | None</code>) – Optional few-shot examples conforming to the expected input and output format of FaithfulnessEvaluator.
+  Default examples will be used if none are provided.
+  Each example must be a dictionary with keys "inputs" and "outputs".
+  "inputs" must be a dictionary with keys "questions", "contexts", and "predicted_answers".
+  "outputs" must be a dictionary with "statements" and "statement_scores".
+  Expected format:
+
 ```python
 [{
     "inputs": {
@@ -763,114 +664,96 @@ Expected format:
     },
 }]
 ```
-- `progress_bar`: Whether to show a progress bar during the evaluation.
-- `raise_on_failure`: Whether to raise an exception if the API call fails.
-- `chat_generator`: a ChatGenerator instance which represents the LLM.
-In order for the component to work, the LLM should be configured to return a JSON object. For example,
-when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
-`generation_kwargs`.
 
-<a id="faithfulness.FaithfulnessEvaluator.run"></a>
+- **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the API call fails.
+- **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
+  In order for the component to work, the LLM should be configured to return a JSON object. For example,
+  when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
+  `generation_kwargs`.
 
-#### FaithfulnessEvaluator.run
-
-```python
-@component.output_types(individual_scores=list[int],
-                        score=float,
-                        results=list[dict[str, Any]])
-def run(**inputs) -> dict[str, Any]
-```
-
-Run the LLM evaluator.
-
-**Arguments**:
-
-- `questions`: A list of questions.
-- `contexts`: A nested list of contexts that correspond to the questions.
-- `predicted_answers`: A list of predicted answers.
-
-**Returns**:
-
-A dictionary with the following outputs:
-- `score`: Mean faithfulness score over all the provided input answers.
-- `individual_scores`: A list of faithfulness scores for each input answer.
-- `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
-
-<a id="faithfulness.FaithfulnessEvaluator.to_dict"></a>
-
-#### FaithfulnessEvaluator.to\_dict
+### `warm_up`
 
 ```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-A dictionary with serialized data.
-
-<a id="faithfulness.FaithfulnessEvaluator.from_dict"></a>
-
-#### FaithfulnessEvaluator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "FaithfulnessEvaluator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
-<a id="faithfulness.FaithfulnessEvaluator.warm_up"></a>
-
-#### FaithfulnessEvaluator.warm\_up
-
-```python
-def warm_up()
+warm_up()
 ```
 
 Warm up the component by warming up the underlying chat generator.
 
-<a id="faithfulness.FaithfulnessEvaluator.validate_init_parameters"></a>
-
-#### FaithfulnessEvaluator.validate\_init\_parameters
+### `validate_init_parameters`
 
 ```python
-@staticmethod
-def validate_init_parameters(inputs: list[tuple[str, type[list]]],
-                             outputs: list[str], examples: list[dict[str,
-                                                                     Any]])
+validate_init_parameters(inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]])
 ```
 
 Validate the init parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `inputs`: The inputs to validate.
-- `outputs`: The outputs to validate.
-- `examples`: The examples to validate.
+- **inputs** (<code>list\[tuple\[str, type\[list\]\]\]</code>) – The inputs to validate.
+- **outputs** (<code>list\[str\]</code>) – The outputs to validate.
+- **examples** (<code>list\[dict\[str, Any\]\]</code>) – The examples to validate.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If the inputs are not a list of tuples with a string and a type of list.
-If the outputs are not a list of strings.
-If the examples are not a list of dictionaries.
-If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
+- <code>ValueError</code> – If the inputs are not a list of tuples with a string and a type of list.
+  If the outputs are not a list of strings.
+  If the examples are not a list of dictionaries.
+  If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
 
-<a id="faithfulness.FaithfulnessEvaluator.prepare_template"></a>
-
-#### FaithfulnessEvaluator.prepare\_template
+### `run`
 
 ```python
-def prepare_template() -> str
+run(**inputs) -> dict[str, Any]
+```
+
+Run the LLM evaluator.
+
+**Parameters:**
+
+- **questions** – A list of questions.
+- **contexts** – A nested list of contexts that correspond to the questions.
+- **predicted_answers** – A list of predicted answers.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
+  - `score`: Mean faithfulness score over all the provided input answers.
+  - `individual_scores`: A list of faithfulness scores for each input answer.
+  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+
+### `to_dict`
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with serialized data.
+
+### `from_dict`
+
+```python
+from_dict(data: dict[str, Any]) -> FaithfulnessEvaluator
+```
+
+Deserialize this component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
+
+**Returns:**
+
+- <code>FaithfulnessEvaluator</code> – The deserialized component instance.
+
+### `prepare_template`
+
+```python
+prepare_template() -> str
 ```
 
 Prepare the prompt template.
@@ -890,65 +773,52 @@ Inputs:
 `<inputs>`
 Outputs:
 
-**Returns**:
+**Returns:**
 
-The prompt template.
+- <code>str</code> – The prompt template.
 
-<a id="faithfulness.FaithfulnessEvaluator.validate_input_parameters"></a>
-
-#### FaithfulnessEvaluator.validate\_input\_parameters
+### `validate_input_parameters`
 
 ```python
-@staticmethod
-def validate_input_parameters(expected: dict[str, Any],
-                              received: dict[str, Any]) -> None
+validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None
 ```
 
 Validate the input parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `expected`: The expected input parameters.
-- `received`: The received input parameters.
+- **expected** (<code>dict\[str, Any\]</code>) – The expected input parameters.
+- **received** (<code>dict\[str, Any\]</code>) – The received input parameters.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If not all expected inputs are present in the received inputs
-If the received inputs are not lists or have different lengths
+- <code>ValueError</code> – If not all expected inputs are present in the received inputs
+  If the received inputs are not lists or have different lengths
 
-<a id="faithfulness.FaithfulnessEvaluator.is_valid_json_and_has_expected_keys"></a>
-
-#### FaithfulnessEvaluator.is\_valid\_json\_and\_has\_expected\_keys
+### `is_valid_json_and_has_expected_keys`
 
 ```python
-def is_valid_json_and_has_expected_keys(expected: list[str],
-                                        received: str) -> bool
+is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
 ```
 
 Output must be a valid JSON with the expected keys.
 
-**Arguments**:
+**Parameters:**
 
-- `expected`: Names of expected outputs
-- `received`: Names of received outputs
+- **expected** (<code>list\[str\]</code>) – Names of expected outputs
+- **received** (<code>str</code>) – Names of received outputs
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the output is not a valid JSON with the expected keys:
+- <code>bool</code> – True if the received output is a valid JSON with the expected keys, False otherwise.
+
+**Raises:**
+
+- <code>ValueError</code> – If the output is not a valid JSON with the expected keys:
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-**Returns**:
-
-True if the received output is a valid JSON with the expected keys, False otherwise.
-
-<a id="llm_evaluator"></a>
-
-## Module llm\_evaluator
-
-<a id="llm_evaluator.LLMEvaluator"></a>
-
-### LLMEvaluator
+## `LLMEvaluator`
 
 Uses an LLM to evaluate inputs based on a prompt containing instructions and examples.
 
@@ -958,6 +828,7 @@ The output is a dictionary with a key `results` containing a list of evaluation 
 Each result is a dictionary with user-defined keys and values of either 0 for FALSE or 1 for TRUE respectively.
 
 Usage example:
+
 ```python
 from haystack.components.evaluators import LLMEvaluator
 evaluator = LLMEvaluator(
@@ -978,114 +849,93 @@ print(results)
 # {'results': [{'score': 0}, {'score': 0}]}
 ```
 
-<a id="llm_evaluator.LLMEvaluator.__init__"></a>
-
-#### LLMEvaluator.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(instructions: str,
-             inputs: list[tuple[str, type[list]]],
-             outputs: list[str],
-             examples: list[dict[str, Any]],
-             progress_bar: bool = True,
-             *,
-             raise_on_failure: bool = True,
-             chat_generator: ChatGenerator | None = None)
+__init__(instructions: str, inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]], progress_bar: bool = True, *, raise_on_failure: bool = True, chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of LLMEvaluator.
 
 If no LLM is specified using the `chat_generator` parameter, the component will use OpenAI in JSON mode.
 
-**Arguments**:
+**Parameters:**
 
-- `instructions`: The prompt instructions to use for evaluation.
-Should be a question about the inputs that can be answered with yes or no.
-- `inputs`: The inputs that the component expects as incoming connections and that it evaluates.
-Each input is a tuple of an input name and input type. Input types must be lists.
-- `outputs`: Output names of the evaluation results. They correspond to keys in the output dictionary.
-- `examples`: Few-shot examples conforming to the expected input and output format as defined in the `inputs` and
-`outputs` parameters.
-Each example is a dictionary with keys "inputs" and "outputs"
-They contain the input and output as dictionaries respectively.
-- `raise_on_failure`: If True, the component will raise an exception on an unsuccessful API call.
-- `progress_bar`: Whether to show a progress bar during the evaluation.
-- `chat_generator`: a ChatGenerator instance which represents the LLM.
-In order for the component to work, the LLM should be configured to return a JSON object. For example,
-when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
-`generation_kwargs`.
+- **instructions** (<code>str</code>) – The prompt instructions to use for evaluation.
+  Should be a question about the inputs that can be answered with yes or no.
+- **inputs** (<code>list\[tuple\[str, type\[list\]\]\]</code>) – The inputs that the component expects as incoming connections and that it evaluates.
+  Each input is a tuple of an input name and input type. Input types must be lists.
+- **outputs** (<code>list\[str\]</code>) – Output names of the evaluation results. They correspond to keys in the output dictionary.
+- **examples** (<code>list\[dict\[str, Any\]\]</code>) – Few-shot examples conforming to the expected input and output format as defined in the `inputs` and
+  `outputs` parameters.
+  Each example is a dictionary with keys "inputs" and "outputs"
+  They contain the input and output as dictionaries respectively.
+- **raise_on_failure** (<code>bool</code>) – If True, the component will raise an exception on an unsuccessful API call.
+- **progress_bar** (<code>bool</code>) – Whether to show a progress bar during the evaluation.
+- **chat_generator** (<code>ChatGenerator | None</code>) – a ChatGenerator instance which represents the LLM.
+  In order for the component to work, the LLM should be configured to return a JSON object. For example,
+  when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
+  `generation_kwargs`.
 
-<a id="llm_evaluator.LLMEvaluator.warm_up"></a>
-
-#### LLMEvaluator.warm\_up
+### `warm_up`
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Warm up the component by warming up the underlying chat generator.
 
-<a id="llm_evaluator.LLMEvaluator.validate_init_parameters"></a>
-
-#### LLMEvaluator.validate\_init\_parameters
+### `validate_init_parameters`
 
 ```python
-@staticmethod
-def validate_init_parameters(inputs: list[tuple[str, type[list]]],
-                             outputs: list[str], examples: list[dict[str,
-                                                                     Any]])
+validate_init_parameters(inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]])
 ```
 
 Validate the init parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `inputs`: The inputs to validate.
-- `outputs`: The outputs to validate.
-- `examples`: The examples to validate.
+- **inputs** (<code>list\[tuple\[str, type\[list\]\]\]</code>) – The inputs to validate.
+- **outputs** (<code>list\[str\]</code>) – The outputs to validate.
+- **examples** (<code>list\[dict\[str, Any\]\]</code>) – The examples to validate.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If the inputs are not a list of tuples with a string and a type of list.
-If the outputs are not a list of strings.
-If the examples are not a list of dictionaries.
-If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
+- <code>ValueError</code> – If the inputs are not a list of tuples with a string and a type of list.
+  If the outputs are not a list of strings.
+  If the examples are not a list of dictionaries.
+  If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
 
-<a id="llm_evaluator.LLMEvaluator.run"></a>
-
-#### LLMEvaluator.run
+### `run`
 
 ```python
-@component.output_types(results=list[dict[str, Any]])
-def run(**inputs) -> dict[str, Any]
+run(**inputs) -> dict[str, Any]
 ```
 
 Run the LLM evaluator.
 
-**Arguments**:
+**Parameters:**
 
-- `inputs`: The input values to evaluate. The keys are the input names and the values are lists of input values.
+- **inputs** – The input values to evaluate. The keys are the input names and the values are lists of input values.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
-different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+- <code>dict\[str, Any\]</code> – A dictionary with a `results` entry that contains a list of results.
+  Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
+  and the evaluation results as the values. If an exception occurs for a particular input value, the result
+  will be `None` for that entry.
+  If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
+  in the output dictionary, under the key "meta".
 
-**Returns**:
+**Raises:**
 
-A dictionary with a `results` entry that contains a list of results.
-Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
-and the evaluation results as the values. If an exception occurs for a particular input value, the result
-will be `None` for that entry.
-If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
-in the output dictionary, under the key "meta".
+- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
+  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
 
-<a id="llm_evaluator.LLMEvaluator.prepare_template"></a>
-
-#### LLMEvaluator.prepare\_template
+### `prepare_template`
 
 ```python
-def prepare_template() -> str
+prepare_template() -> str
 ```
 
 Prepare the prompt template.
@@ -1105,98 +955,80 @@ Inputs:
 `<inputs>`
 Outputs:
 
-**Returns**:
+**Returns:**
 
-The prompt template.
+- <code>str</code> – The prompt template.
 
-<a id="llm_evaluator.LLMEvaluator.to_dict"></a>
-
-#### LLMEvaluator.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="llm_evaluator.LLMEvaluator.from_dict"></a>
-
-#### LLMEvaluator.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "LLMEvaluator"
+from_dict(data: dict[str, Any]) -> LLMEvaluator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>LLMEvaluator</code> – The deserialized component instance.
 
-<a id="llm_evaluator.LLMEvaluator.validate_input_parameters"></a>
-
-#### LLMEvaluator.validate\_input\_parameters
+### `validate_input_parameters`
 
 ```python
-@staticmethod
-def validate_input_parameters(expected: dict[str, Any],
-                              received: dict[str, Any]) -> None
+validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None
 ```
 
 Validate the input parameters.
 
-**Arguments**:
+**Parameters:**
 
-- `expected`: The expected input parameters.
-- `received`: The received input parameters.
+- **expected** (<code>dict\[str, Any\]</code>) – The expected input parameters.
+- **received** (<code>dict\[str, Any\]</code>) – The received input parameters.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If not all expected inputs are present in the received inputs
-If the received inputs are not lists or have different lengths
+- <code>ValueError</code> – If not all expected inputs are present in the received inputs
+  If the received inputs are not lists or have different lengths
 
-<a id="llm_evaluator.LLMEvaluator.is_valid_json_and_has_expected_keys"></a>
-
-#### LLMEvaluator.is\_valid\_json\_and\_has\_expected\_keys
+### `is_valid_json_and_has_expected_keys`
 
 ```python
-def is_valid_json_and_has_expected_keys(expected: list[str],
-                                        received: str) -> bool
+is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
 ```
 
 Output must be a valid JSON with the expected keys.
 
-**Arguments**:
+**Parameters:**
 
-- `expected`: Names of expected outputs
-- `received`: Names of received outputs
+- **expected** (<code>list\[str\]</code>) – Names of expected outputs
+- **received** (<code>str</code>) – Names of received outputs
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the output is not a valid JSON with the expected keys:
+- <code>bool</code> – True if the received output is a valid JSON with the expected keys, False otherwise.
+
+**Raises:**
+
+- <code>ValueError</code> – If the output is not a valid JSON with the expected keys:
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-**Returns**:
-
-True if the received output is a valid JSON with the expected keys, False otherwise.
-
-<a id="sas_evaluator"></a>
-
-## Module sas\_evaluator
-
-<a id="sas_evaluator.SASEvaluator"></a>
-
-### SASEvaluator
+## `SASEvaluator`
 
 SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 
@@ -1205,6 +1037,7 @@ answers. The SAS is computed using a pre-trained model from the Hugging Face mod
 Bi-Encoder or a Cross-Encoder. The choice of the model is based on the `model` parameter.
 
 Usage example:
+
 ```python
 from haystack.components.evaluators.sas_evaluator import SASEvaluator
 
@@ -1231,82 +1064,63 @@ print(result["individual_scores"])
 # [0.9999765157699585, 0.999968409538269, 0.9999572038650513]
 ```
 
-<a id="sas_evaluator.SASEvaluator.__init__"></a>
-
-#### SASEvaluator.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(
-    model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-    batch_size: int = 32,
-    device: ComponentDevice | None = None,
-    token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                        strict=False)
-) -> None
+__init__(model: str = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2', batch_size: int = 32, device: ComponentDevice | None = None, token: Secret = Secret.from_env_var(['HF_API_TOKEN', 'HF_TOKEN'], strict=False)) -> None
 ```
 
 Creates a new instance of SASEvaluator.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
-model.
-- `batch_size`: Number of prediction-label pairs to encode at once.
-- `device`: The device on which the model is loaded. If `None`, the default device is automatically selected.
-- `token`: The Hugging Face token for HTTP bearer authorization.
-You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
+- **model** (<code>str</code>) – SentenceTransformers semantic textual similarity model, should be path or string pointing to a downloadable
+  model.
+- **batch_size** (<code>int</code>) – Number of prediction-label pairs to encode at once.
+- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically selected.
+- **token** (<code>Secret</code>) – The Hugging Face token for HTTP bearer authorization.
+  You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
 
-<a id="sas_evaluator.SASEvaluator.to_dict"></a>
-
-#### SASEvaluator.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="sas_evaluator.SASEvaluator.from_dict"></a>
-
-#### SASEvaluator.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "SASEvaluator"
+from_dict(data: dict[str, Any]) -> SASEvaluator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>SASEvaluator</code> – The deserialized component instance.
 
-<a id="sas_evaluator.SASEvaluator.warm_up"></a>
-
-#### SASEvaluator.warm\_up
+### `warm_up`
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Initializes the component.
 
-<a id="sas_evaluator.SASEvaluator.run"></a>
-
-#### SASEvaluator.run
+### `run`
 
 ```python
-@component.output_types(score=float, individual_scores=list[float])
-def run(ground_truth_answers: list[str],
-        predicted_answers: list[str]) -> dict[str, float | list[float]]
+run(ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, float | list[float]]
 ```
 
 SASEvaluator component run method.
@@ -1314,14 +1128,13 @@ SASEvaluator component run method.
 Run the SASEvaluator to compute the Semantic Answer Similarity (SAS) between a list of predicted answers
 and a list of ground truth answers. Both must be list of strings of same length.
 
-**Arguments**:
+**Parameters:**
 
-- `ground_truth_answers`: A list of expected answers for each question.
-- `predicted_answers`: A list of generated answers for each question.
+- **ground_truth_answers** (<code>list\[str\]</code>) – A list of expected answers for each question.
+- **predicted_answers** (<code>list\[str\]</code>) – A list of generated answers for each question.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following outputs:
-- `score`: Mean SAS score over all the predictions/ground-truth pairs.
-- `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
-
+- <code>dict\[str, float | list\[float\]\]</code> – A dictionary with the following outputs:
+  - `score`: Mean SAS score over all the predictions/ground-truth pairs.
+  - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.

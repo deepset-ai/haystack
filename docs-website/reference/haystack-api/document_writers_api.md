@@ -5,17 +5,13 @@ description: "Writes Documents to a DocumentStore."
 slug: "/document-writers-api"
 ---
 
-<a id="document_writer"></a>
 
-## Module document\_writer
-
-<a id="document_writer.DocumentWriter"></a>
-
-### DocumentWriter
+## `DocumentWriter`
 
 Writes documents to a DocumentStore.
 
 ### Usage example
+
 ```python
 from haystack import Document
 from haystack.components.writers import DocumentWriter
@@ -28,96 +24,80 @@ writer = DocumentWriter(document_store=doc_store)
 writer.run(docs)
 ```
 
-<a id="document_writer.DocumentWriter.__init__"></a>
-
-#### DocumentWriter.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(document_store: DocumentStore,
-             policy: DuplicatePolicy = DuplicatePolicy.NONE)
+__init__(document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.NONE)
 ```
 
 Create a DocumentWriter component.
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: The instance of the document store where you want to store your documents.
-- `policy`: The policy to apply when a Document with the same ID already exists in the DocumentStore.
+- **document_store** (<code>DocumentStore</code>) – The instance of the document store where you want to store your documents.
+- **policy** (<code>DuplicatePolicy</code>) – The policy to apply when a Document with the same ID already exists in the DocumentStore.
 - `DuplicatePolicy.NONE`: Default policy, relies on the DocumentStore settings.
 - `DuplicatePolicy.SKIP`: Skips documents with the same ID and doesn't write them to the DocumentStore.
 - `DuplicatePolicy.OVERWRITE`: Overwrites documents with the same ID.
 - `DuplicatePolicy.FAIL`: Raises an error if a Document with the same ID is already in the DocumentStore.
 
-<a id="document_writer.DocumentWriter.to_dict"></a>
-
-#### DocumentWriter.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="document_writer.DocumentWriter.from_dict"></a>
-
-#### DocumentWriter.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "DocumentWriter"
+from_dict(data: dict[str, Any]) -> DocumentWriter
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Raises**:
+**Returns:**
 
-- `DeserializationError`: If the document store is not properly specified in the serialization data or its type cannot be imported.
+- <code>DocumentWriter</code> – The deserialized component.
 
-**Returns**:
+**Raises:**
 
-The deserialized component.
+- <code>DeserializationError</code> – If the document store is not properly specified in the serialization data or its type cannot be imported.
 
-<a id="document_writer.DocumentWriter.run"></a>
-
-#### DocumentWriter.run
+### `run`
 
 ```python
-@component.output_types(documents_written=int)
-def run(documents: list[Document],
-        policy: DuplicatePolicy | None = None) -> dict[str, int]
+run(documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]
 ```
 
 Run the DocumentWriter on the given input data.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to write to the document store.
-- `policy`: The policy to use when encountering duplicate documents.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to write to the document store.
+- **policy** (<code>DuplicatePolicy | None</code>) – The policy to use when encountering duplicate documents.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the specified document store is not found.
+- <code>dict\[str, int\]</code> – Number of documents written to the document store.
 
-**Returns**:
+**Raises:**
 
-Number of documents written to the document store.
+- <code>ValueError</code> – If the specified document store is not found.
 
-<a id="document_writer.DocumentWriter.run_async"></a>
-
-#### DocumentWriter.run\_async
+### `run_async`
 
 ```python
-@component.output_types(documents_written=int)
-async def run_async(documents: list[Document],
-                    policy: DuplicatePolicy | None = None) -> dict[str, int]
+run_async(documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]
 ```
 
 Asynchronously run the DocumentWriter on the given input data.
@@ -125,17 +105,16 @@ Asynchronously run the DocumentWriter on the given input data.
 This is the asynchronous version of the `run` method. It has the same parameters and return values
 but can be used with `await` in async code.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to write to the document store.
-- `policy`: The policy to use when encountering duplicate documents.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to write to the document store.
+- **policy** (<code>DuplicatePolicy | None</code>) – The policy to use when encountering duplicate documents.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the specified document store is not found.
-- `TypeError`: If the specified document store does not implement `write_documents_async`.
+- <code>dict\[str, int\]</code> – Number of documents written to the document store.
 
-**Returns**:
+**Raises:**
 
-Number of documents written to the document store.
-
+- <code>ValueError</code> – If the specified document store is not found.
+- <code>TypeError</code> – If the specified document store does not implement `write_documents_async`.

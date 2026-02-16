@@ -5,30 +5,22 @@ description: "Components that join list of different objects"
 slug: "/joiners-api"
 ---
 
-<a id="answer_joiner"></a>
 
-## Module answer\_joiner
+## `JoinMode`
 
-<a id="answer_joiner.JoinMode"></a>
-
-### JoinMode
+Bases: <code>Enum</code>
 
 Enum for AnswerJoiner join modes.
 
-<a id="answer_joiner.JoinMode.from_str"></a>
-
-#### JoinMode.from\_str
+### `from_str`
 
 ```python
-@staticmethod
-def from_str(string: str) -> "JoinMode"
+from_str(string: str) -> JoinMode
 ```
 
 Convert a string to a JoinMode enum.
 
-<a id="answer_joiner.AnswerJoiner"></a>
-
-### AnswerJoiner
+## `AnswerJoiner`
 
 Merges multiple lists of `Answer` objects into a single list.
 
@@ -72,87 +64,69 @@ results = pipe.run(data={"llm_1": {"messages": messages},
                             "abb": {"query": query}})
 ```
 
-<a id="answer_joiner.AnswerJoiner.__init__"></a>
-
-#### AnswerJoiner.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(join_mode: str | JoinMode = JoinMode.CONCATENATE,
-             top_k: int | None = None,
-             sort_by_score: bool = False)
+__init__(join_mode: str | JoinMode = JoinMode.CONCATENATE, top_k: int | None = None, sort_by_score: bool = False)
 ```
 
 Creates an AnswerJoiner component.
 
-**Arguments**:
+**Parameters:**
 
-- `join_mode`: Specifies the join mode to use. Available modes:
+- **join_mode** (<code>str | JoinMode</code>) – Specifies the join mode to use. Available modes:
 - `concatenate`: Concatenates multiple lists of Answers into a single list.
-- `top_k`: The maximum number of Answers to return.
-- `sort_by_score`: If `True`, sorts the documents by score in descending order.
-If a document has no score, it is handled as if its score is -infinity.
+- **top_k** (<code>int | None</code>) – The maximum number of Answers to return.
+- **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
+  If a document has no score, it is handled as if its score is -infinity.
 
-<a id="answer_joiner.AnswerJoiner.run"></a>
-
-#### AnswerJoiner.run
+### `run`
 
 ```python
-@component.output_types(answers=list[AnswerType])
-def run(answers: Variadic[list[AnswerType]], top_k: int | None = None)
+run(answers: Variadic[list[AnswerType]], top_k: int | None = None)
 ```
 
 Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
-**Arguments**:
+**Parameters:**
 
-- `answers`: Nested list of Answers to be merged.
-- `top_k`: The maximum number of Answers to return. Overrides the instance's `top_k` if provided.
+- **answers** (<code>Variadic\[list\[AnswerType\]\]</code>) – Nested list of Answers to be merged.
+- **top_k** (<code>int | None</code>) – The maximum number of Answers to return. Overrides the instance's `top_k` if provided.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `answers`: Merged list of Answers
 
-<a id="answer_joiner.AnswerJoiner.to_dict"></a>
-
-#### AnswerJoiner.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="answer_joiner.AnswerJoiner.from_dict"></a>
-
-#### AnswerJoiner.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AnswerJoiner"
+from_dict(data: dict[str, Any]) -> AnswerJoiner
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>AnswerJoiner</code> – The deserialized component.
 
-<a id="branch"></a>
-
-## Module branch
-
-<a id="branch.BranchJoiner"></a>
-
-### BranchJoiner
+## `BranchJoiner`
 
 A component that merges multiple input branches of a pipeline into a single output stream.
 
@@ -160,6 +134,7 @@ A component that merges multiple input branches of a pipeline into a single outp
 to its output. This is useful for scenarios where multiple branches need to converge before proceeding.
 
 ### Common Use Cases:
+
 - **Loop Handling:** `BranchJoiner` helps close loops in pipelines. For example, if a pipeline component validates
   or modifies incoming data and produces an error-handling branch, `BranchJoiner` can merge both branches and send
   (or resend in the case of a loop) the data to the component that evaluates errors. See "Usage example" below.
@@ -171,6 +146,7 @@ to its output. This is useful for scenarios where multiple branches need to conv
   as a `PromptBuilder`.
 
 ### Example Usage:
+
 ```python
 import json
 
@@ -229,99 +205,82 @@ sends it down to the `OpenAIChatGenerator` for re-generation. We can have multip
 pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline could
 have more than one downstream component.
 
-<a id="branch.BranchJoiner.__init__"></a>
-
-#### BranchJoiner.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(type_: type)
+__init__(type_: type)
 ```
 
 Creates a `BranchJoiner` component.
 
-**Arguments**:
+**Parameters:**
 
-- `type_`: The expected data type of inputs and outputs.
+- **type\_** (<code>type</code>) – The expected data type of inputs and outputs.
 
-<a id="branch.BranchJoiner.to_dict"></a>
-
-#### BranchJoiner.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component into a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="branch.BranchJoiner.from_dict"></a>
-
-#### BranchJoiner.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "BranchJoiner"
+from_dict(data: dict[str, Any]) -> BranchJoiner
 ```
 
 Deserializes a `BranchJoiner` instance from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary containing serialized component data.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary containing serialized component data.
 
-**Returns**:
+**Returns:**
 
-A deserialized `BranchJoiner` instance.
+- <code>BranchJoiner</code> – A deserialized `BranchJoiner` instance.
 
-<a id="branch.BranchJoiner.run"></a>
-
-#### BranchJoiner.run
+### `run`
 
 ```python
-def run(**kwargs) -> dict[str, Any]
+run(**kwargs) -> dict[str, Any]
 ```
 
 Executes the `BranchJoiner`, selecting the first available input value and passing it downstream.
 
-**Arguments**:
+**Parameters:**
 
-- `**kwargs`: The input data. Must be of the type declared by `type_` during initialization.
+- \*\***kwargs** – The input data. Must be of the type declared by `type_` during initialization.
 
-**Returns**:
+**Returns:**
 
-A dictionary with a single key `value`, containing the first input received.
+- <code>dict\[str, Any\]</code> – A dictionary with a single key `value`, containing the first input received.
 
-<a id="document_joiner"></a>
+## `JoinMode`
 
-## Module document\_joiner
-
-<a id="document_joiner.JoinMode"></a>
-
-### JoinMode
+Bases: <code>Enum</code>
 
 Enum for join mode.
 
-<a id="document_joiner.JoinMode.from_str"></a>
-
-#### JoinMode.from\_str
+### `from_str`
 
 ```python
-@staticmethod
-def from_str(string: str) -> "JoinMode"
+from_str(string: str) -> JoinMode
 ```
 
 Convert a string to a JoinMode enum.
 
-<a id="document_joiner.DocumentJoiner"></a>
-
-### DocumentJoiner
+## `DocumentJoiner`
 
 Joins multiple lists of documents into a single list.
 
 It supports different join modes:
+
 - concatenate: Keeps the highest-scored document in case of duplicates.
 - merge: Calculates a weighted sum of scores for duplicates and merges them.
 - reciprocal_rank_fusion: Merges and assigns scores based on reciprocal rank fusion.
@@ -359,96 +318,77 @@ query = "What is the capital of France?"
 p.run(data={"query": query, "text": query, "top_k": 1})
 ```
 
-<a id="document_joiner.DocumentJoiner.__init__"></a>
-
-#### DocumentJoiner.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(join_mode: str | JoinMode = JoinMode.CONCATENATE,
-             weights: list[float] | None = None,
-             top_k: int | None = None,
-             sort_by_score: bool = True)
+__init__(join_mode: str | JoinMode = JoinMode.CONCATENATE, weights: list[float] | None = None, top_k: int | None = None, sort_by_score: bool = True)
 ```
 
 Creates a DocumentJoiner component.
 
-**Arguments**:
+**Parameters:**
 
-- `join_mode`: Specifies the join mode to use. Available modes:
+- **join_mode** (<code>str | JoinMode</code>) – Specifies the join mode to use. Available modes:
 - `concatenate`: Keeps the highest-scored document in case of duplicates.
 - `merge`: Calculates a weighted sum of scores for duplicates and merges them.
 - `reciprocal_rank_fusion`: Merges and assigns scores based on reciprocal rank fusion.
 - `distribution_based_rank_fusion`: Merges and assigns scores based on scores
-distribution in each Retriever.
-- `weights`: Assign importance to each list of documents to influence how they're joined.
-This parameter is ignored for
-`concatenate` or `distribution_based_rank_fusion` join modes.
-Weight for each list of documents must match the number of inputs.
-- `top_k`: The maximum number of documents to return.
-- `sort_by_score`: If `True`, sorts the documents by score in descending order.
-If a document has no score, it is handled as if its score is -infinity.
+  distribution in each Retriever.
+- **weights** (<code>list\[float\] | None</code>) – Assign importance to each list of documents to influence how they're joined.
+  This parameter is ignored for
+  `concatenate` or `distribution_based_rank_fusion` join modes.
+  Weight for each list of documents must match the number of inputs.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+- **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
+  If a document has no score, it is handled as if its score is -infinity.
 
-<a id="document_joiner.DocumentJoiner.run"></a>
-
-#### DocumentJoiner.run
+### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(documents: Variadic[list[Document]], top_k: int | None = None)
+run(documents: Variadic[list[Document]], top_k: int | None = None)
 ```
 
 Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: List of list of documents to be merged.
-- `top_k`: The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+- **documents** (<code>Variadic\[list\[Document\]\]</code>) – List of list of documents to be merged.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Merged list of Documents
 
-<a id="document_joiner.DocumentJoiner.to_dict"></a>
-
-#### DocumentJoiner.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="document_joiner.DocumentJoiner.from_dict"></a>
-
-#### DocumentJoiner.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "DocumentJoiner"
+from_dict(data: dict[str, Any]) -> DocumentJoiner
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>DocumentJoiner</code> – The deserialized component.
 
-<a id="list_joiner"></a>
-
-## Module list\_joiner
-
-<a id="list_joiner.ListJoiner"></a>
-
-### ListJoiner
+## `ListJoiner`
 
 A component that joins multiple lists into a single flat list.
 
@@ -456,6 +396,7 @@ The ListJoiner receives multiple lists of the same type and concatenates them in
 The output order respects the pipeline's execution sequence, with earlier inputs being added first.
 
 Usage example:
+
 ```python
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -500,80 +441,65 @@ ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
 print(ans["list_joiner"]["values"])
 ```
 
-<a id="list_joiner.ListJoiner.__init__"></a>
-
-#### ListJoiner.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(list_type_: type | None = None)
+__init__(list_type_: type | None = None)
 ```
 
 Creates a ListJoiner component.
 
-**Arguments**:
+**Parameters:**
 
-- `list_type_`: The expected type of the lists this component will join (e.g., list[ChatMessage]).
-If specified, all input lists must conform to this type. If None, the component defaults to handling
-lists of any type including mixed types.
+- **list_type\_** (<code>type | None</code>) – The expected type of the lists this component will join (e.g., list[ChatMessage]).
+  If specified, all input lists must conform to this type. If None, the component defaults to handling
+  lists of any type including mixed types.
 
-<a id="list_joiner.ListJoiner.to_dict"></a>
-
-#### ListJoiner.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="list_joiner.ListJoiner.from_dict"></a>
-
-#### ListJoiner.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ListJoiner"
+from_dict(data: dict[str, Any]) -> ListJoiner
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>ListJoiner</code> – Deserialized component.
 
-<a id="list_joiner.ListJoiner.run"></a>
-
-#### ListJoiner.run
+### `run`
 
 ```python
-def run(values: Variadic[list[Any]]) -> dict[str, list[Any]]
+run(values: Variadic[list[Any]]) -> dict[str, list[Any]]
 ```
 
 Joins multiple lists into a single flat list.
 
-**Arguments**:
+**Parameters:**
 
-- `values`: The list to be joined.
+- **values** (<code>Variadic\[list\[Any\]\]</code>) – The list to be joined.
 
-**Returns**:
+**Returns:**
 
-Dictionary with 'values' key containing the joined list.
+- <code>dict\[str, list\[Any\]\]</code> – Dictionary with 'values' key containing the joined list.
 
-<a id="string_joiner"></a>
-
-## Module string\_joiner
-
-<a id="string_joiner.StringJoiner"></a>
-
-### StringJoiner
+## `StringJoiner`
 
 Component to join strings from different components to a list of strings.
 
@@ -603,23 +529,19 @@ print(pipeline.run(data={"prompt_builder_1": {"query": string_1}, "prompt_builde
 >> {"string_joiner": {"strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What is life?"]}}
 ```
 
-<a id="string_joiner.StringJoiner.run"></a>
-
-#### StringJoiner.run
+### `run`
 
 ```python
-@component.output_types(strings=list[str])
-def run(strings: Variadic[str]) -> dict[str, list[str]]
+run(strings: Variadic[str]) -> dict[str, list[str]]
 ```
 
 Joins strings into a list of strings
 
-**Arguments**:
+**Parameters:**
 
-- `strings`: strings from different components
+- **strings** (<code>Variadic\[str\]</code>) – strings from different components
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[str\]\]</code> – A dictionary with the following keys:
 - `strings`: Merged list of strings
-

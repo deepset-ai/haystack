@@ -5,13 +5,8 @@ description: "Various connectors to integrate with external services."
 slug: "/connectors-api"
 ---
 
-<a id="openapi"></a>
 
-## Module openapi
-
-<a id="openapi.OpenAPIConnector"></a>
-
-### OpenAPIConnector
+## `OpenAPIConnector`
 
 OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
 
@@ -21,7 +16,7 @@ provides an interface for executing API operations. It is usually invoked by pas
 arguments to it from a Haystack pipeline run method or by other components in a pipeline that
 pass input arguments to this component.
 
-**Example**:
+Example:
 
 ```python
 from haystack.utils import Secret
@@ -38,79 +33,86 @@ response = connector.run(
 )
 ```
 
-**Notes**:
+Note:
 
-  - The `parameters` argument is required for this component.
-  - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
+- The `parameters` argument is required for this component.
+- The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
 
-<a id="openapi.OpenAPIConnector.__init__"></a>
-
-#### OpenAPIConnector.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(openapi_spec: str,
-             credentials: Secret | None = None,
-             service_kwargs: dict[str, Any] | None = None)
+__init__(openapi_spec: str, credentials: Secret | None = None, service_kwargs: dict[str, Any] | None = None)
 ```
 
 Initialize the OpenAPIConnector with a specification and optional credentials.
 
-**Arguments**:
+**Parameters:**
 
-- `openapi_spec`: URL, file path, or raw string of the OpenAPI specification
-- `credentials`: Optional API key or credentials for the service wrapped in a Secret
-- `service_kwargs`: Additional keyword arguments passed to OpenAPIClient.from_spec()
-For example, you can pass a custom config_factory or other configuration options.
+- **openapi_spec** (<code>str</code>) – URL, file path, or raw string of the OpenAPI specification
+- **credentials** (<code>Secret | None</code>) – Optional API key or credentials for the service wrapped in a Secret
+- **service_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments passed to OpenAPIClient.from_spec()
+  For example, you can pass a custom config_factory or other configuration options.
 
-<a id="openapi.OpenAPIConnector.to_dict"></a>
-
-#### OpenAPIConnector.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-<a id="openapi.OpenAPIConnector.from_dict"></a>
-
-#### OpenAPIConnector.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAPIConnector"
+from_dict(data: dict[str, Any]) -> OpenAPIConnector
 ```
 
 Deserialize this component from a dictionary.
 
-<a id="openapi.OpenAPIConnector.run"></a>
-
-#### OpenAPIConnector.run
+### `run`
 
 ```python
-@component.output_types(response=dict[str, Any])
-def run(operation_id: str,
-        arguments: dict[str, Any] | None = None) -> dict[str, Any]
+run(operation_id: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]
 ```
 
 Invokes a REST endpoint specified in the OpenAPI specification.
 
-**Arguments**:
+**Parameters:**
 
-- `operation_id`: The operationId from the OpenAPI spec to invoke
-- `arguments`: Optional parameters for the endpoint (query, path, or body parameters)
+- **operation_id** (<code>str</code>) – The operationId from the OpenAPI spec to invoke
+- **arguments** (<code>dict\[str, Any\] | None</code>) – Optional parameters for the endpoint (query, path, or body parameters)
 
-**Returns**:
+**Returns:**
 
-Dictionary containing the service response
+- <code>dict\[str, Any\]</code> – Dictionary containing the service response
 
-<a id="openapi_service"></a>
+## `patch_request`
 
-## Module openapi\_service
+```python
+patch_request(self, base_url: str, *, data: Any | None = None, parameters: dict[str, Any] | None = None, raw_response: bool = False, security: dict[str, str] | None = None, session: Any | None = None, verify: bool | str = True) -> Any | None
+```
 
-<a id="openapi_service.OpenAPIServiceConnector"></a>
+Sends an HTTP request as described by this path.
 
-### OpenAPIServiceConnector
+**Parameters:**
+
+- **base_url** (<code>str</code>) – The URL to append this operation's path to when making
+  the call.
+- **data** (<code>Any | None</code>) – The request body to send.
+- **parameters** (<code>dict\[str, Any\] | None</code>) – The parameters used to create the path.
+- **raw_response** (<code>bool</code>) – If true, return the raw response instead of validating
+  and exterpolating it.
+- **security** (<code>dict\[str, str\] | None</code>) – The security scheme to use, and the values it needs to
+  process successfully.
+- **session** (<code>Any | None</code>) – A persistent request session.
+- **verify** (<code>bool | str</code>) – If we should do an ssl verification on the request or not.
+  In case str was provided, will use that as the CA.
+
+**Returns:**
+
+- <code>Any | None</code> – The response data, either raw or processed depending on raw_response flag.
+
+## `OpenAPIServiceConnector`
 
 A component which connects the Haystack framework to OpenAPI services.
 
@@ -154,94 +156,79 @@ result = service_connector.run(messages=[ChatMessage.from_assistant(json.dumps(f
                                service_openapi_spec=serperdev_openapi_spec, service_credentials=serper_token)
 print(result)
 
->> {'service_response': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+>> {'service_response': ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
 >> '{"searchParameters": {"q": "Why was Sam Altman ousted from OpenAI?",
 >> "type": "search", "engine": "google"}, "answerBox": {"snippet": "Concerns over AI safety and OpenAI's role
 >> in protecting were at the center of Altman's brief ouster from the company."...
 ```
 
-<a id="openapi_service.OpenAPIServiceConnector.__init__"></a>
-
-#### OpenAPIServiceConnector.\_\_init\_\_
+### `__init__`
 
 ```python
-def __init__(ssl_verify: bool | str | None = None)
+__init__(ssl_verify: bool | str | None = None)
 ```
 
 Initializes the OpenAPIServiceConnector instance
 
-**Arguments**:
+**Parameters:**
 
-- `ssl_verify`: Decide if to use SSL verification to the requests or not,
-in case a string is passed, will be used as the CA.
+- **ssl_verify** (<code>[bool | str | None</code>) – Decide if to use SSL verification to the requests or not,
+  in case a string is passed, will be used as the CA.
 
-<a id="openapi_service.OpenAPIServiceConnector.run"></a>
-
-#### OpenAPIServiceConnector.run
+### `run`
 
 ```python
-@component.output_types(service_response=dict[str, Any])
-def run(
-    messages: list[ChatMessage],
-    service_openapi_spec: dict[str, Any],
-    service_credentials: dict | str | None = None
-) -> dict[str, list[ChatMessage]]
+run(messages: list[ChatMessage], service_openapi_spec: dict[str, Any], service_credentials: dict | str | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Processes a list of chat messages to invoke a method on an OpenAPI service.
 
 It parses the last message in the list, expecting it to contain tool calls.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of `ChatMessage` objects containing the messages to be processed. The last message
-should contain the tool calls.
-- `service_openapi_spec`: The OpenAPI JSON specification object of the service to be invoked. All the refs
-should already be resolved.
-- `service_credentials`: The credentials to be used for authentication with the service.
-Currently, only the http and apiKey OpenAPI security schemes are supported.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of `ChatMessage` objects containing the messages to be processed. The last message
+  should contain the tool calls.
+- **service_openapi_spec** (<code>dict\[str, Any\]</code>) – The OpenAPI JSON specification object of the service to be invoked. All the refs
+  should already be resolved.
+- **service_credentials** (<code>dict | str | None</code>) – The credentials to be used for authentication with the service.
+  Currently, only the http and apiKey OpenAPI security schemes are supported.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the last message is not from the assistant or if it does not contain tool calls.
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
+- `service_response`: a list of `ChatMessage` objects, each containing the response from the service. The
+  response is in JSON format, and the `content` attribute of the `ChatMessage` contains
+  the JSON string.
 
-**Returns**:
+**Raises:**
 
-A dictionary with the following keys:
-- `service_response`:  a list of `ChatMessage` objects, each containing the response from the service. The
-response is in JSON format, and the `content` attribute of the `ChatMessage` contains
-the JSON string.
+- <code>ValueError</code> – If the last message is not from the assistant or if it does not contain tool calls.
 
-<a id="openapi_service.OpenAPIServiceConnector.to_dict"></a>
-
-#### OpenAPIServiceConnector.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="openapi_service.OpenAPIServiceConnector.from_dict"></a>
-
-#### OpenAPIServiceConnector.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAPIServiceConnector"
+from_dict(data: dict[str, Any]) -> OpenAPIServiceConnector
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
-
+- <code>OpenAPIServiceConnector</code> – The deserialized component.

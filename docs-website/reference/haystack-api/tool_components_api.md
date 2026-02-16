@@ -5,55 +5,46 @@ description: "Components related to Tool Calling."
 slug: "/tool-components-api"
 ---
 
-<a id="tool_invoker"></a>
 
-## Module tool\_invoker
+## `ToolInvokerError`
 
-<a id="tool_invoker.ToolInvokerError"></a>
-
-### ToolInvokerError
+Bases: <code>Exception</code>
 
 Base exception class for ToolInvoker errors.
 
-<a id="tool_invoker.ToolNotFoundException"></a>
+## `ToolNotFoundException`
 
-### ToolNotFoundException
+Bases: <code>ToolInvokerError</code>
 
 Exception raised when a tool is not found in the list of available tools.
 
-<a id="tool_invoker.StringConversionError"></a>
+## `StringConversionError`
 
-### StringConversionError
+Bases: <code>ToolInvokerError</code>
 
 Exception raised when the conversion of a tool result to a string fails.
 
-<a id="tool_invoker.ResultConversionError"></a>
+## `ResultConversionError`
 
-### ResultConversionError
+Bases: <code>ToolInvokerError</code>
 
 Exception raised when the conversion of a tool output to a result fails.
 
-<a id="tool_invoker.ToolOutputMergeError"></a>
+## `ToolOutputMergeError`
 
-### ToolOutputMergeError
+Bases: <code>ToolInvokerError</code>
 
 Exception raised when merging tool outputs into state fails.
 
-<a id="tool_invoker.ToolOutputMergeError.from_exception"></a>
-
-#### ToolOutputMergeError.from\_exception
+### `from_exception`
 
 ```python
-@classmethod
-def from_exception(cls, tool_name: str,
-                   error: Exception) -> "ToolOutputMergeError"
+from_exception(tool_name: str, error: Exception) -> ToolOutputMergeError
 ```
 
 Create a ToolOutputMergeError from an exception.
 
-<a id="tool_invoker.ToolInvoker"></a>
-
-### ToolInvoker
+## `ToolInvoker`
 
 Invokes tools based on prepared tool calls and returns the results as a list of ChatMessage objects.
 
@@ -64,6 +55,7 @@ and invokes the corresponding tools.
 The results of the tool invocations are returned as a list of ChatMessage objects with tool role.
 
 Usage example:
+
 ```python
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import Tool
@@ -119,7 +111,8 @@ print(result)
 ```
 
 Usage example with a Toolset:
-```python
+
+````python
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import Tool, Toolset
 from haystack.components.tools import ToolInvoker
@@ -154,51 +147,52 @@ result = invoker.run(messages=[message])
 
 print(result)
 
-<a id="tool_invoker.ToolInvoker.__init__"></a>
 
-#### ToolInvoker.\_\_init\_\_
+
+
+
+
+
+
+
+
+
+
+### `__init__`
 
 ```python
-def __init__(tools: ToolsType,
-             raise_on_failure: bool = True,
-             convert_result_to_json_string: bool = False,
-             streaming_callback: StreamingCallbackT | None = None,
-             *,
-             enable_streaming_callback_passthrough: bool = False,
-             max_workers: int = 4)
-```
+__init__(tools: ToolsType, raise_on_failure: bool = True, convert_result_to_json_string: bool = False, streaming_callback: StreamingCallbackT | None = None, *, enable_streaming_callback_passthrough: bool = False, max_workers: int = 4)
+````
 
 Initialize the ToolInvoker component.
 
-**Arguments**:
+**Parameters:**
 
-- `tools`: A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
-- `raise_on_failure`: If True, the component will raise an exception in case of errors
-(tool not found, tool invocation errors, tool result conversion errors).
-If False, the component will return a ChatMessage object with `error=True`
-and a description of the error in `result`.
-- `convert_result_to_json_string`: If True, the tool invocation result will be converted to a string using `json.dumps`.
-If False, the tool invocation result will be converted to a string using `str`.
-- `streaming_callback`: A callback function that will be called to emit tool results.
-Note that the result is only emitted once it becomes available — it is not
-streamed incrementally in real time.
-- `enable_streaming_callback_passthrough`: If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
-This allows tools to stream their results back to the client.
-Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
-If False, the `streaming_callback` will not be passed to the tool invocation.
-- `max_workers`: The maximum number of workers to use in the thread pool executor.
-This also decides the maximum number of concurrent tool invocations.
+- **tools** (<code>ToolsType</code>) – A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
+- **raise_on_failure** (<code>bool</code>) – If True, the component will raise an exception in case of errors
+  (tool not found, tool invocation errors, tool result conversion errors).
+  If False, the component will return a ChatMessage object with `error=True`
+  and a description of the error in `result`.
+- **convert_result_to_json_string** (<code>bool</code>) – If True, the tool invocation result will be converted to a string using `json.dumps`.
+  If False, the tool invocation result will be converted to a string using `str`.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that will be called to emit tool results.
+  Note that the result is only emitted once it becomes available — it is not
+  streamed incrementally in real time.
+- **enable_streaming_callback_passthrough** (<code>bool</code>) – If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
+  This allows tools to stream their results back to the client.
+  Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
+  If False, the `streaming_callback` will not be passed to the tool invocation.
+- **max_workers** (<code>int</code>) – The maximum number of workers to use in the thread pool executor.
+  This also decides the maximum number of concurrent tool invocations.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If no tools are provided or if duplicate tool names are found.
+- <code>ValueError</code> – If no tools are provided or if duplicate tool names are found.
 
-<a id="tool_invoker.ToolInvoker.warm_up"></a>
-
-#### ToolInvoker.warm\_up
+### `warm_up`
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Warm up the tool invoker.
@@ -206,124 +200,102 @@ Warm up the tool invoker.
 This will warm up the tools registered in the tool invoker.
 This method is idempotent and will only warm up the tools once.
 
-<a id="tool_invoker.ToolInvoker.run"></a>
-
-#### ToolInvoker.run
+### `run`
 
 ```python
-@component.output_types(tool_messages=list[ChatMessage], state=State)
-def run(messages: list[ChatMessage],
-        state: State | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
-        *,
-        enable_streaming_callback_passthrough: bool | None = None,
-        tools: ToolsType | None = None) -> dict[str, Any]
+run(messages: list[ChatMessage], state: State | None = None, streaming_callback: StreamingCallbackT | None = None, *, enable_streaming_callback_passthrough: bool | None = None, tools: ToolsType | None = None) -> dict[str, Any]
 ```
 
 Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage objects.
-- `state`: The runtime state that should be used by the tools.
-- `streaming_callback`: A callback function that will be called to emit tool results.
-Note that the result is only emitted once it becomes available — it is not
-streamed incrementally in real time.
-- `enable_streaming_callback_passthrough`: If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
-This allows tools to stream their results back to the client.
-Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
-If False, the `streaming_callback` will not be passed to the tool invocation.
-If None, the value from the constructor will be used.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects.
+- **state** (<code>State | None</code>) – The runtime state that should be used by the tools.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that will be called to emit tool results.
+  Note that the result is only emitted once it becomes available — it is not
+  streamed incrementally in real time.
+- **enable_streaming_callback_passthrough** (<code>bool | None</code>) – If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
+  This allows tools to stream their results back to the client.
+  Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
+  If False, the `streaming_callback` will not be passed to the tool invocation.
+  If None, the value from the constructor will be used.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  If set, it will override the `tools` parameter provided during initialization.
 
-**Raises**:
+**Returns:**
 
-- `ToolNotFoundException`: If the tool is not found in the list of available tools and `raise_on_failure` is True.
-- `ToolInvocationError`: If the tool invocation fails and `raise_on_failure` is True.
-- `StringConversionError`: If the conversion of the tool result to a string fails and `raise_on_failure` is True.
-- `ToolOutputMergeError`: If merging tool outputs into state fails and `raise_on_failure` is True.
+- <code>dict\[str, Any\]</code> – A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
+  Each ChatMessage objects wraps the result of a tool invocation.
 
-**Returns**:
+**Raises:**
 
-A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
-Each ChatMessage objects wraps the result of a tool invocation.
+- <code>ToolNotFoundException</code> – If the tool is not found in the list of available tools and `raise_on_failure` is True.
+- <code>ToolInvocationError</code> – If the tool invocation fails and `raise_on_failure` is True.
+- <code>StringConversionError</code> – If the conversion of the tool result to a string fails and `raise_on_failure` is True.
+- <code>ToolOutputMergeError</code> – If merging tool outputs into state fails and `raise_on_failure` is True.
 
-<a id="tool_invoker.ToolInvoker.run_async"></a>
-
-#### ToolInvoker.run\_async
+### `run_async`
 
 ```python
-@component.output_types(tool_messages=list[ChatMessage], state=State)
-async def run_async(messages: list[ChatMessage],
-                    state: State | None = None,
-                    streaming_callback: StreamingCallbackT | None = None,
-                    *,
-                    enable_streaming_callback_passthrough: bool | None = None,
-                    tools: ToolsType | None = None) -> dict[str, Any]
+run_async(messages: list[ChatMessage], state: State | None = None, streaming_callback: StreamingCallbackT | None = None, *, enable_streaming_callback_passthrough: bool | None = None, tools: ToolsType | None = None) -> dict[str, Any]
 ```
 
 Asynchronously processes ChatMessage objects containing tool calls.
 
 Multiple tool calls are performed concurrently.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage objects.
-- `state`: The runtime state that should be used by the tools.
-- `streaming_callback`: An asynchronous callback function that will be called to emit tool results.
-Note that the result is only emitted once it becomes available — it is not
-streamed incrementally in real time.
-- `enable_streaming_callback_passthrough`: If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
-This allows tools to stream their results back to the client.
-Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
-If False, the `streaming_callback` will not be passed to the tool invocation.
-If None, the value from the constructor will be used.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects.
+- **state** (<code>State | None</code>) – The runtime state that should be used by the tools.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback function that will be called to emit tool results.
+  Note that the result is only emitted once it becomes available — it is not
+  streamed incrementally in real time.
+- **enable_streaming_callback_passthrough** (<code>bool | None</code>) – If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
+  This allows tools to stream their results back to the client.
+  Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
+  If False, the `streaming_callback` will not be passed to the tool invocation.
+  If None, the value from the constructor will be used.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  If set, it will override the `tools` parameter provided during initialization.
 
-**Raises**:
+**Returns:**
 
-- `ToolNotFoundException`: If the tool is not found in the list of available tools and `raise_on_failure` is True.
-- `ToolInvocationError`: If the tool invocation fails and `raise_on_failure` is True.
-- `StringConversionError`: If the conversion of the tool result to a string fails and `raise_on_failure` is True.
-- `ToolOutputMergeError`: If merging tool outputs into state fails and `raise_on_failure` is True.
+- <code>dict\[str, Any\]</code> – A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
+  Each ChatMessage objects wraps the result of a tool invocation.
 
-**Returns**:
+**Raises:**
 
-A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
-Each ChatMessage objects wraps the result of a tool invocation.
+- <code>ToolNotFoundException</code> – If the tool is not found in the list of available tools and `raise_on_failure` is True.
+- <code>ToolInvocationError</code> – If the tool invocation fails and `raise_on_failure` is True.
+- <code>StringConversionError</code> – If the conversion of the tool result to a string fails and `raise_on_failure` is True.
+- <code>ToolOutputMergeError</code> – If merging tool outputs into state fails and `raise_on_failure` is True.
 
-<a id="tool_invoker.ToolInvoker.to_dict"></a>
-
-#### ToolInvoker.to\_dict
+### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="tool_invoker.ToolInvoker.from_dict"></a>
-
-#### ToolInvoker.from\_dict
+### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ToolInvoker"
+from_dict(data: dict[str, Any]) -> ToolInvoker
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
-
+- <code>ToolInvoker</code> – The deserialized component.
