@@ -33,6 +33,46 @@ Often, to use this component in a pipeline, you must convert the returned list o
 
 You can use `LinkContentFetcher` at the beginning of an indexing pipeline to index the contents of URLs into a Document Store. You can also use it directly in a query pipeline, such as a retrieval-augmented generative (RAG) pipeline, to use the contents of a URL as the data source.
 
+## Security considerations
+
+`LinkContentFetcher` requests the URLs passed to it. If those URLs come directly from end users, this can expose your environment to server-side request forgery (SSRF) risks.
+
+Before calling `LinkContentFetcher`, an application should therefore validate and sanitize user-provided URLs. For example:
+
+- Allow only expected schemes, for example `https`
+- Use an allowlist of trusted domains when possible
+- Block localhost, link-local, and private-network destinations
+- Consider using an outbound proxy or network-level egress restrictions in production
+
+For example, an application could block private, loopback, link-local, reserved IPs, and custom IP ranges using the standard library's `ipaddress` module:
+
+```python
+import ipaddress
+from urllib.parse import urlparse
+
+
+PRIVATE_RANGES = (
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+)
+
+
+def is_unsafe_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return True
+    try:
+        ip = ipaddress.ip_address(parsed.hostname)
+    except ValueError:
+        # Hostname (not a raw IP). Apply your own domain allowlist policy here. Filter out "LOCALHOST" etc.
+        return False
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or any(ip in net for net in PRIVATE_RANGES)
+```
+
+
 ## Usage
 
 ### On its own
