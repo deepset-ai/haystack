@@ -322,7 +322,7 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
 
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
+    from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
     torch_import.check()
     transformers_import.check()
@@ -393,7 +393,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+            tokenizer: AutoTokenizer,
             stream_handler: SyncStreamingCallbackT,
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
@@ -427,7 +427,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+            tokenizer: AutoTokenizer,
             stream_handler: AsyncStreamingCallbackT,
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,

@@ -15,7 +15,7 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
     import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
     import torch
     from torch.utils.data import DataLoader, Dataset
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer, SentencePieceBackend, TokenizersBackend
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class TransformersSimilarityRanker:
         self.model = None
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
-        self.tokenizer: TokenizersBackend | SentencePieceBackend | None = None
+        self.tokenizer: Any = None
         self.device: ComponentDevice | None = None
         self.top_k = top_k
         self.token = token
@@ -169,9 +169,8 @@ class TransformersSimilarityRanker:
             assert self.model is not None  # mypy doesn't know this is set in the line above
             # hf_device_map appears to only be set now when mixed devices are actually used.
             # So if it's missing then we can use the device attribute which is set even for single-device models.
-            hf_device_map = getattr(self.model, "hf_device_map", None)
-            if hf_device_map:
-                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
             else:
                 self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
@@ -297,9 +296,7 @@ class TransformersSimilarityRanker:
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
         # mypy doesn't know this is set in warm_up
-        batch_enc = self.tokenizer(  # type: ignore[misc]
-            query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
-        ).to(
+        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
             self.device.first_device.to_torch()  # type: ignore[union-attr]
         )
         dataset = _Dataset(batch_enc)

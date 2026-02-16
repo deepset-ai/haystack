@@ -15,7 +15,7 @@ with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_
     import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
-    from transformers import AutoModelForQuestionAnswering, AutoTokenizer, SentencePieceBackend, TokenizersBackend
+    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.tokenizer: TokenizersBackend | SentencePieceBackend | None = None
+        self.tokenizer: Any = None
         self.device: ComponentDevice | None = None
         self.token = token
         self.max_seq_length = max_seq_length
@@ -189,9 +189,8 @@ class ExtractiveReader:
             assert self.model is not None  # mypy doesn't know this is set in the line above
             # hf_device_map appears to only be set now when mixed devices are actually used.
             # So if it's missing then we can use the device attribute which is set even for single-device models.
-            hf_device_map = getattr(self.model, "hf_device_map", None)
-            if hf_device_map:
-                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
             else:
                 self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
@@ -229,7 +228,7 @@ class ExtractiveReader:
             document_contents.append(doc.content)
 
         # mypy doesn't know this is set in warm_up
-        encodings_pt = self.tokenizer(  # type: ignore[misc]
+        encodings_pt = self.tokenizer(
             queries,
             document_contents,
             padding=True,
