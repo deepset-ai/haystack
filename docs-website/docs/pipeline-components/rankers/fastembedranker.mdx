@@ -74,7 +74,6 @@ from haystack_integrations.components.rankers.fastembed import FastembedRanker
 docs = [Document(content="Paris"), Document(content="Berlin")]
 
 ranker = FastembedRanker()
-ranker.warm_up()
 
 ranker.run(query="City in France", documents=docs, top_k=1)
 ```

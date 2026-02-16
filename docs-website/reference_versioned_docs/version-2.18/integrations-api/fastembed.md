@@ -29,8 +29,6 @@ doc_embedder = FastembedDocumentEmbedder(
     batch_size=256,
 )
 
-doc_embedder.warm_up()
-
 # Text taken from PubMed QA Dataset (https://huggingface.co/datasets/pubmed_qa)
 document_list = [
     Document(
@@ -166,8 +164,6 @@ sparse_doc_embedder = FastembedSparseDocumentEmbedder(
     batch_size=32,
 )
 
-sparse_doc_embedder.warm_up()
-
 # Text taken from PubMed QA Dataset (https://huggingface.co/datasets/pubmed_qa)
 document_list = [
     Document(
@@ -302,7 +298,6 @@ text = ("It clearly says online this will work on a Mac OS system. "
 sparse_text_embedder = FastembedSparseTextEmbedder(
     model="prithivida/Splade_PP_en_v1"
 )
-sparse_text_embedder.warm_up()
 
 sparse_embedding = sparse_text_embedder.run(text)["sparse_embedding"]
 ```
@@ -405,7 +400,6 @@ text = ("It clearly says online this will work on a Mac OS system. "
 text_embedder = FastembedTextEmbedder(
     model="BAAI/bge-small-en-v1.5"
 )
-text_embedder.warm_up()
 
 embedding = text_embedder.run(text)["embedding"]
 ```
