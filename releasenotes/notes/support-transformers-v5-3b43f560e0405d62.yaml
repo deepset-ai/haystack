@@ -3,7 +3,8 @@ upgrade:
   - |
     **Default Hugging Face pipeline task updated to ``text-generation``**
 
-    The default task used by ``HuggingFaceLocalGenerator`` has been changed from ``text2text-generation`` to ``text-generation``.
+    The default task used by ``HuggingFaceLocalGenerator`` has been changed from ``text2text-generation`` to ``text-generation``
+    and the default model has been changed from "google/flan-t5-base" to "Qwen/Qwen3-0.6B".
 
     In ``transformers`` v5+, ``text2text-generation`` is no longer available as a valid pipeline task (see: https://github.com/huggingface/transformers/pull/43256).
     While parts of the implementation still exist internally, it is no longer supported as a straightforward pipeline option.
