@@ -13,7 +13,6 @@ from haystack.components.extractors.image import LLMDocumentContentExtractor
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.core.serialization import component_to_dict
-from haystack.dataclasses import TextContent
 from haystack.dataclasses.chat_message import ChatMessage, ImageContent
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -173,20 +172,19 @@ class TestLLMDocumentContentExtractor:
 
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == doc.id
-        assert "content_extraction_error" in failed_doc.meta
-        assert failed_doc.meta["content_extraction_error"] == "Document has no content, skipping LLM call."
+        assert "extraction_error" in failed_doc.meta
+        assert failed_doc.meta["extraction_error"] == "Document has no content, skipping LLM call."
 
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run.assert_not_called()
 
     @patch.object(DocumentToImageContent, "run")
     def test_run_with_llm_success(self, mock_doc_to_image_run):
-        # Mock successful LLM response
+        # Mock successful LLM response (JSON with document_content)
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant(text="Extracted content from the image")]
+            "replies": [ChatMessage.from_assistant(text='{"document_content": "Extracted content from the image"}')]
         }
-        # Mock DocumentToImageContent to return valid image content
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
@@ -196,17 +194,67 @@ class TestLLMDocumentContentExtractor:
         docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
         result = extractor.run(documents=docs)
 
-        # Document should be successfully processed
         assert len(result["documents"]) == 1
         assert len(result["failed_documents"]) == 0
-
         processed_doc = result["documents"][0]
         assert processed_doc.id == docs[0].id
         assert processed_doc.content == "Extracted content from the image"
-        assert "content_extraction_error" not in processed_doc.meta
-
-        # Verify LLM was called
+        assert "extraction_error" not in processed_doc.meta
         mock_chat_generator.run.assert_called_once()
+
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_plain_string_response_goes_to_content(self, mock_doc_to_image_run):
+        """When LLM returns plain string (non-JSON), it is written to document content."""
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant(text="Plain text, not JSON")]}
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
+        result = extractor.run(documents=docs)
+        assert len(result["documents"]) == 1
+        assert len(result["failed_documents"]) == 0
+        assert result["documents"][0].content == "Plain text, not JSON"
+
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_valid_json_not_object_reports_error(self, mock_doc_to_image_run):
+        """When LLM returns valid JSON that is not an object (e.g. array or primitive), report error."""
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant(text='["array", "not", "object"]')]
+        }
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
+        result = extractor.run(documents=docs)
+        assert len(result["documents"]) == 0
+        assert len(result["failed_documents"]) == 1
+        assert "extraction_error" in result["failed_documents"][0].meta
+        assert "JSON object" in result["failed_documents"][0].meta["extraction_error"]
+
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_with_content_and_metadata_extraction(self, mock_doc_to_image_run):
+        """When content mode gets JSON with document_content and other keys, other keys are merged into metadata."""
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run.return_value = {
+            "replies": [
+                ChatMessage.from_assistant(text='{"document_content": "Main text", "title": "Doc Title", "page": "1"}')
+            ]
+        }
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
+        result = extractor.run(documents=docs)
+        assert len(result["documents"]) == 1
+        processed = result["documents"][0]
+        assert processed.content == "Main text"
+        assert processed.meta["title"] == "Doc Title"
+        assert processed.meta["page"] == "1"
 
     @patch.object(DocumentToImageContent, "run")
     def test_run_with_llm_failure_raise_on_failure_false(self, mock_doc_to_image_run, caplog):
@@ -229,8 +277,8 @@ class TestLLMDocumentContentExtractor:
 
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == docs[0].id
-        assert "content_extraction_error" in failed_doc.meta
-        assert "LLM failed with exception: LLM API error" in failed_doc.meta["content_extraction_error"]
+        assert "extraction_error" in failed_doc.meta
+        assert "LLM failed with exception: LLM API error" in failed_doc.meta["extraction_error"]
 
         # Check that error was logged
         assert "LLM" in caplog.text
@@ -250,11 +298,10 @@ class TestLLMDocumentContentExtractor:
             extractor.run(documents=[Document(content="", meta={"file_path": "/path/to/image.pdf"})])
 
     @patch.object(DocumentToImageContent, "run")
-    def test_run_removes_content_extraction_error_from_previous_runs(self, mock_doc_to_image_run):
-        # Mock successful LLM response
+    def test_run_removes_extraction_error_from_previous_runs(self, mock_doc_to_image_run):
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant(text="Successfully extracted content")]
+            "replies": [ChatMessage.from_assistant(text='{"document_content": "Successfully extracted content"}')]
         }
         # Mock DocumentToImageContent to return valid image content
         mock_doc_to_image_run.return_value = {
@@ -269,7 +316,7 @@ class TestLLMDocumentContentExtractor:
                 content="",
                 meta={
                     "file_path": "/path/to/image.pdf",
-                    "content_extraction_error": "Previous error",
+                    "extraction_error": "Previous error",
                     "other_meta": "should_remain",
                 },
             )
@@ -283,7 +330,7 @@ class TestLLMDocumentContentExtractor:
 
         processed_doc = result["documents"][0]
         assert processed_doc.content == "Successfully extracted content"
-        assert "content_extraction_error" not in processed_doc.meta
+        assert "extraction_error" not in processed_doc.meta
         assert processed_doc.meta["other_meta"] == "should_remain"
 
     @patch.object(DocumentToImageContent, "run")
@@ -291,8 +338,8 @@ class TestLLMDocumentContentExtractor:
         # Mock successful LLM response for first call, failure for second
         mock_chat_generator = Mock(spec=OpenAIChatGenerator)
         mock_chat_generator.run.side_effect = [
-            {"replies": [ChatMessage.from_assistant(text="Successfully extracted content")]},  # Success
-            Exception("LLM API error"),  # Failure
+            {"replies": [ChatMessage.from_assistant(text='{"document_content": "Successfully extracted content"}')]},
+            Exception("LLM API error"),
         ]
 
         extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator, raise_on_failure=False)
@@ -318,7 +365,31 @@ class TestLLMDocumentContentExtractor:
 
         failed_doc = result["failed_documents"][0]
         assert failed_doc.id == doc2.id
-        assert "content_extraction_error" in failed_doc.meta
+        assert "extraction_error" in failed_doc.meta
+
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_json_multiple_keys_metadata_merged(self, mock_doc_to_image_run):
+        """When LLM returns JSON with multiple keys and no document_content, all keys are merged into metadata."""
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run.return_value = {
+            "replies": [
+                ChatMessage.from_assistant(text='{"title": "Sample Doc", "author": "Test", "document_type": "report"}')
+            ]
+        }
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        original_content = "Original content"
+        docs = [Document(content=original_content, meta={"file_path": "/path/to/image.pdf"})]
+        result = extractor.run(documents=docs)
+        assert len(result["documents"]) == 1
+        assert len(result["failed_documents"]) == 0
+        processed = result["documents"][0]
+        assert processed.content == original_content
+        assert processed.meta["title"] == "Sample Doc"
+        assert processed.meta["author"] == "Test"
+        assert processed.meta["document_type"] == "report"
 
     def test_run_on_thread_with_none_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -326,24 +397,6 @@ class TestLLMDocumentContentExtractor:
         result = extractor._run_on_thread(None)
         assert "error" in result
         assert result["error"] == "Document has no content, skipping LLM call."
-
-    def test_run_on_thread_with_valid_prompt(self):
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant(text="Extracted content")]}
-
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
-
-        prompt = ChatMessage.from_user(
-            content_parts=[
-                TextContent(text="Instructions to extract content"),
-                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
-            ]
-        )
-
-        result = extractor._run_on_thread(prompt)
-        assert "error" not in result
-        assert result == {"replies": [ChatMessage.from_assistant(text="Extracted content")]}
-        mock_chat_generator.run.assert_called_once_with(messages=[prompt])
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -364,3 +417,96 @@ class TestLLMDocumentContentExtractor:
         doc_store_docs = doc_store.filter_documents()
         assert len(doc_store_docs) >= 1
         assert len(doc_store_docs[0].content) > 0
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    def test_live_run_on_image_with_metadata(self):
+        """
+        Live test using image_metadata.png: single prompt; LLM can return JSON with document_content
+        and metadata keys (author, date, document_type, topic) in one response.
+        """
+
+        prompt = """
+        You are part of an information extraction pipeline that extracts the content of image-based documents.
+
+        Extract the content from the provided image.
+        You need to extract the content exactly.
+        Format everything as markdown.
+        Make sure to retain the reading order of the document.
+
+        **Visual Elements**
+        Do not extract figures, drawings, maps, graphs or any other visual elements.
+        Instead, add a caption that describes briefly what you see in the visual element.
+        You must describe each visual element.
+        If you only see a visual element without other content, you must describe this visual element.
+        Enclose each image caption with [img-caption][/img-caption]
+
+        **Tables**
+        Make sure to format the table in markdown.
+        Add a short caption below the table that describes the table's content.
+        Enclose each table caption with [table-caption][/table-caption].
+        The caption must be placed below the extracted table.
+
+        **Forms**
+        Reproduce checkbox selections with markdown.
+
+        Return a single JSON object. It must contain the key "document_content" with the extracted text as value.
+
+        Include all other extracted information as keys for metadata. All metadata should be returned as separate keys
+        in the JSON object. For example, if you extract the document type and date, you should return:
+
+        {"title": "Example Document", "author": "John Doe", "date": "2024-01-15", "document_type": "invoice"}
+
+        Don't include any metadata in the "document_content" field. The "document_content" field should only contain the
+        image description and any possible text extracted from the image.
+
+        No markdown, no code fence, only raw JSON.
+
+        Document:"""
+
+        image_path = "./test/test_files/images/image_metadata.png"
+        docs = [Document(content="", meta={"file_path": image_path})]
+        doc_store = InMemoryDocumentStore()
+        extractor = LLMDocumentContentExtractor(
+            prompt=prompt,
+            chat_generator=OpenAIChatGenerator(
+                model="gpt-4.1-nano",
+                generation_kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "entity_extraction",
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "author": {"type": "string"},
+                                    "date": {"type": "string"},
+                                    "document_type": {"type": "string"},
+                                    "title": {"type": "string"},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                    }
+                },
+            ),
+        )
+        writer = DocumentWriter(document_store=doc_store)
+        pipeline = Pipeline()
+        pipeline.add_component("extractor", extractor)
+        pipeline.add_component("doc_writer", writer)
+        pipeline.connect("extractor.documents", "doc_writer.documents")
+        pipeline.run(data={"documents": docs})
+
+        doc_store_docs = doc_store.filter_documents()
+        assert len(doc_store_docs) >= 1
+        doc = doc_store_docs[0]
+        assert len(doc.content) > 0, "Expected non-empty content (image/document description)"
+        assert "extraction_error" not in doc.meta
+        assert "author" in doc.meta, "Expected 'author' key in metadata"
+        assert "date" in doc.meta, "Expected 'date' key in metadata"
+        assert "document_type" in doc.meta, "Expected 'document_type' key in metadata"
+        assert "title" in doc.meta, "Expected 'title' key in metadata"
