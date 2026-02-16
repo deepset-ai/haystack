@@ -15,7 +15,7 @@ with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_
     import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
-    from transformers import AutoModelForQuestionAnswering, AutoTokenizer
+    from transformers import AutoModelForQuestionAnswering, AutoTokenizer, SentencePieceBackend, TokenizersBackend
 
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.tokenizer = None
+        self.tokenizer: TokenizersBackend | SentencePieceBackend | None = None
         self.device: ComponentDevice | None = None
         self.token = token
         self.max_seq_length = max_seq_length
@@ -186,6 +186,7 @@ class ExtractiveReader:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name_or_path, token=self.token.resolve_value() if self.token else None
             )
+            assert self.model is not None  # mypy doesn't know this is set in the line above
             # hf_device_map appears to only be set now when mixed devices are actually used.
             # So if it's missing then we can use the device attribute which is set even for single-device models.
             hf_device_map = getattr(self.model, "hf_device_map", None)

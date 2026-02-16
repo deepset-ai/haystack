@@ -119,7 +119,10 @@ def _convert_tools_to_hfapi_tools(tools: ToolsType | None) -> list["ChatCompleti
         hf_tools_args = {"name": tool.name, "description": tool.description, parameters_name: tool.parameters}
 
         hf_tools.append(
-            ChatCompletionInputTool(function=ChatCompletionInputFunctionDefinition(**hf_tools_args), type="function")
+            ChatCompletionInputTool(
+                function=ChatCompletionInputFunctionDefinition(**hf_tools_args),  # type: ignore[arg-type]
+                type="function",
+            )
         )
 
     return hf_tools

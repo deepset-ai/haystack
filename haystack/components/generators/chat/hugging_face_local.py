@@ -581,7 +581,7 @@ class HuggingFaceLocalChatGenerator:
         # Set up stop words criteria if stop words exist
         stop_words_criteria = (
             StopWordsCriteria(
-                tokenizer,  # type: ignore[arg-type]
+                tokenizer,
                 stop_words,
                 self.pipeline.device,  # type: ignore[union-attr]
             )

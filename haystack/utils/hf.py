@@ -400,7 +400,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ):
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info
@@ -434,7 +434,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ):
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info
