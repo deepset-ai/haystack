@@ -248,7 +248,7 @@ Constructs a ChatPromptBuilder component.
 - **template** (<code>list\[ChatMessage\] | str | None</code>) – A list of `ChatMessage` objects or a string template. The component looks for Jinja2 template syntax and
   renders the prompt with the provided variables. Provide the template in either
   the `init` method`or the`run\` method.
-- **required_variables** (<code>list\[str\] | Literal\['*'\] | None</code>) – List variables that must be provided as input to ChatPromptBuilder.
+- **required_variables** (<code>list\[str\] | Literal\['\*'\] | None</code>) – List variables that must be provided as input to ChatPromptBuilder.
   If a variable listed as required is not provided, an exception is raised.
   If set to "*", all variables found in the prompt are required. Optional.
 - **variables** (<code>list\[str\] | None</code>) – List input variables to use in prompt templates instead of the ones inferred from the
