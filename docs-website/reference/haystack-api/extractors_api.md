@@ -43,7 +43,17 @@ print(updated_documents)
 ### `__init__`
 
 ```python
-__init__(*, chat_generator: ChatGenerator, prompt: str = DEFAULT_PROMPT_TEMPLATE, file_path_meta_field: str = 'file_path', root_path: str | None = None, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None, raise_on_failure: bool = False, max_workers: int = 3)
+__init__(
+    *,
+    chat_generator: ChatGenerator,
+    prompt: str = DEFAULT_PROMPT_TEMPLATE,
+    file_path_meta_field: str = "file_path",
+    root_path: str | None = None,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    raise_on_failure: bool = False,
+    max_workers: int = 3
+)
 ```
 
 Initialize the LLMDocumentContentExtractor component.
@@ -252,7 +262,14 @@ extractor.run(documents=docs)
 ### `__init__`
 
 ```python
-__init__(prompt: str, chat_generator: ChatGenerator, expected_keys: list[str] | None = None, page_range: list[str | int] | None = None, raise_on_failure: bool = False, max_workers: int = 3)
+__init__(
+    prompt: str,
+    chat_generator: ChatGenerator,
+    expected_keys: list[str] | None = None,
+    page_range: list[str | int] | None = None,
+    raise_on_failure: bool = False,
+    max_workers: int = 3,
+)
 ```
 
 Initializes the LLMMetadataExtractor.
@@ -397,7 +414,16 @@ print(annotations)
 ### `__init__`
 
 ```python
-__init__(*, backend: str | NamedEntityExtractorBackend, model: str, pipeline_kwargs: dict[str, Any] | None = None, device: ComponentDevice | None = None, token: Secret | None = Secret.from_env_var(['HF_API_TOKEN', 'HF_TOKEN'], strict=False)) -> None
+__init__(
+    *,
+    backend: str | NamedEntityExtractorBackend,
+    model: str,
+    pipeline_kwargs: dict[str, Any] | None = None,
+    device: ComponentDevice | None = None,
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    )
+) -> None
 ```
 
 Create a Named Entity extractor component.
@@ -488,7 +514,9 @@ Returns if the extractor is ready to annotate text.
 ### `get_stored_annotations`
 
 ```python
-get_stored_annotations(document: Document) -> list[NamedEntityAnnotation] | None
+get_stored_annotations(
+    document: Document,
+) -> list[NamedEntityAnnotation] | None
 ```
 
 Returns the document's named entity annotations stored in its metadata, if any.

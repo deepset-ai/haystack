@@ -22,7 +22,17 @@ Stores data in-memory. It's ephemeral and cannot be saved to disk.
 ### `__init__`
 
 ```python
-__init__(bm25_tokenization_regex: str = '(?u)\\b\\w\\w+\\b', bm25_algorithm: Literal['BM25Okapi', 'BM25L', 'BM25Plus'] = 'BM25L', bm25_parameters: dict | None = None, embedding_similarity_function: Literal['dot_product', 'cosine'] = 'dot_product', index: str | None = None, async_executor: ThreadPoolExecutor | None = None, return_embedding: bool = True)
+__init__(
+    bm25_tokenization_regex: str = "(?u)\\b\\w\\w+\\b",
+    bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
+    bm25_parameters: dict | None = None,
+    embedding_similarity_function: Literal[
+        "dot_product", "cosine"
+    ] = "dot_product",
+    index: str | None = None,
+    async_executor: ThreadPoolExecutor | None = None,
+    return_embedding: bool = True,
+)
 ```
 
 Initializes the DocumentStore.
@@ -145,7 +155,9 @@ documentation.
 ### `write_documents`
 
 ```python
-write_documents(documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Refer to the DocumentStore.write_documents() protocol documentation.
@@ -214,7 +226,12 @@ Deletes all documents that match the provided filters.
 ### `bm25_retrieval`
 
 ```python
-bm25_retrieval(query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False) -> list[Document]
+bm25_retrieval(
+    query: str,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    scale_score: bool = False,
+) -> list[Document]
 ```
 
 Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -233,7 +250,13 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 ### `embedding_retrieval`
 
 ```python
-embedding_retrieval(query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False, return_embedding: bool | None = False) -> list[Document]
+embedding_retrieval(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    scale_score: bool = False,
+    return_embedding: bool | None = False,
+) -> list[Document]
 ```
 
 Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -282,7 +305,9 @@ documentation.
 ### `write_documents_async`
 
 ```python
-write_documents_async(documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents_async(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Refer to the DocumentStore.write_documents() protocol documentation.
@@ -304,7 +329,12 @@ Deletes all documents with matching document_ids from the DocumentStore.
 ### `bm25_retrieval_async`
 
 ```python
-bm25_retrieval_async(query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False) -> list[Document]
+bm25_retrieval_async(
+    query: str,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    scale_score: bool = False,
+) -> list[Document]
 ```
 
 Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -323,7 +353,13 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 ### `embedding_retrieval_async`
 
 ```python
-embedding_retrieval_async(query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False, return_embedding: bool = False) -> list[Document]
+embedding_retrieval_async(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    scale_score: bool = False,
+    return_embedding: bool = False,
+) -> list[Document]
 ```
 
 Retrieves documents that are most similar to the query embedding using a vector similarity metric.

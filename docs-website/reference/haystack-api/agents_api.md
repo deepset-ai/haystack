@@ -90,7 +90,21 @@ print(result["messages"][-1].text)
 ### `__init__`
 
 ```python
-__init__(*, chat_generator: ChatGenerator, tools: ToolsType | None = None, system_prompt: str | None = None, exit_conditions: list[str] | None = None, state_schema: dict[str, Any] | None = None, max_agent_steps: int = 100, streaming_callback: StreamingCallbackT | None = None, raise_on_tool_invocation_failure: bool = False, tool_invoker_kwargs: dict[str, Any] | None = None, confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None) -> None
+__init__(
+    *,
+    chat_generator: ChatGenerator,
+    tools: ToolsType | None = None,
+    system_prompt: str | None = None,
+    exit_conditions: list[str] | None = None,
+    state_schema: dict[str, Any] | None = None,
+    max_agent_steps: int = 100,
+    streaming_callback: StreamingCallbackT | None = None,
+    raise_on_tool_invocation_failure: bool = False,
+    tool_invoker_kwargs: dict[str, Any] | None = None,
+    confirmation_strategies: (
+        dict[str | tuple[str, ...], ConfirmationStrategy] | None
+    ) = None
+) -> None
 ```
 
 Initialize the agent component.
@@ -157,7 +171,19 @@ Deserialize the agent from a dictionary.
 ### `run`
 
 ```python
-run(messages: list[ChatMessage], streaming_callback: StreamingCallbackT | None = None, *, generation_kwargs: dict[str, Any] | None = None, break_point: AgentBreakpoint | None = None, snapshot: AgentSnapshot | None = None, system_prompt: str | None = None, tools: ToolsType | list[str] | None = None, snapshot_callback: SnapshotCallback | None = None, confirmation_strategy_context: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]
+run(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    generation_kwargs: dict[str, Any] | None = None,
+    break_point: AgentBreakpoint | None = None,
+    snapshot: AgentSnapshot | None = None,
+    system_prompt: str | None = None,
+    tools: ToolsType | list[str] | None = None,
+    snapshot_callback: SnapshotCallback | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None,
+    **kwargs: Any
+) -> dict[str, Any]
 ```
 
 Process messages and execute tools until an exit condition is met.
@@ -200,7 +226,19 @@ Process messages and execute tools until an exit condition is met.
 ### `run_async`
 
 ```python
-run_async(messages: list[ChatMessage], streaming_callback: StreamingCallbackT | None = None, *, generation_kwargs: dict[str, Any] | None = None, break_point: AgentBreakpoint | None = None, snapshot: AgentSnapshot | None = None, system_prompt: str | None = None, tools: ToolsType | list[str] | None = None, snapshot_callback: SnapshotCallback | None = None, confirmation_strategy_context: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]
+run_async(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    generation_kwargs: dict[str, Any] | None = None,
+    break_point: AgentBreakpoint | None = None,
+    snapshot: AgentSnapshot | None = None,
+    system_prompt: str | None = None,
+    tools: ToolsType | list[str] | None = None,
+    snapshot_callback: SnapshotCallback | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None,
+    **kwargs: Any
+) -> dict[str, Any]
 ```
 
 Asynchronously process messages and execute tools until the exit condition is met.
@@ -315,7 +353,11 @@ Retrieve a value from the state by key.
 ### `set`
 
 ```python
-set(key: str, value: Any, handler_override: Callable[[Any, Any], Any] | None = None) -> None
+set(
+    key: str,
+    value: Any,
+    handler_override: Callable[[Any, Any], Any] | None = None,
+) -> None
 ```
 
 Set or merge a value in the state according to schema rules.

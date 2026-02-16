@@ -62,7 +62,13 @@ for doc in result.documents:
 ### `__init__`
 
 ```python
-__init__(pattern: str | None = None, reference_pattern: str | None = None, last_message_only: bool = False, *, return_only_referenced_documents: bool = True)
+__init__(
+    pattern: str | None = None,
+    reference_pattern: str | None = None,
+    last_message_only: bool = False,
+    *,
+    return_only_referenced_documents: bool = True
+)
 ```
 
 Creates an instance of the AnswerBuilder component.
@@ -92,7 +98,14 @@ Creates an instance of the AnswerBuilder component.
 ### `run`
 
 ```python
-run(query: str, replies: list[str] | list[ChatMessage], meta: list[dict[str, Any]] | None = None, documents: list[Document] | None = None, pattern: str | None = None, reference_pattern: str | None = None)
+run(
+    query: str,
+    replies: list[str] | list[ChatMessage],
+    meta: list[dict[str, Any]] | None = None,
+    documents: list[Document] | None = None,
+    pattern: str | None = None,
+    reference_pattern: str | None = None,
+)
 ```
 
 Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
@@ -238,7 +251,11 @@ builder.run(user_name="John", images=images)
 ### `__init__`
 
 ```python
-__init__(template: list[ChatMessage] | str | None = None, required_variables: list[str] | Literal['*'] | None = None, variables: list[str] | None = None)
+__init__(
+    template: list[ChatMessage] | str | None = None,
+    required_variables: list[str] | Literal["*"] | None = None,
+    variables: list[str] | None = None,
+)
 ```
 
 Constructs a ChatPromptBuilder component.
@@ -248,7 +265,7 @@ Constructs a ChatPromptBuilder component.
 - **template** (<code>list\[ChatMessage\] | str | None</code>) – A list of `ChatMessage` objects or a string template. The component looks for Jinja2 template syntax and
   renders the prompt with the provided variables. Provide the template in either
   the `init` method`or the`run\` method.
-- **required_variables** (<code>list\[str\] | Literal\['\*'\] | None</code>) – List variables that must be provided as input to ChatPromptBuilder.
+- **required_variables** (<code>list\[str\] | Literal\['*'\] | None</code>) – List variables that must be provided as input to ChatPromptBuilder.
   If a variable listed as required is not provided, an exception is raised.
   If set to "*", all variables found in the prompt are required. Optional.
 - **variables** (<code>list\[str\] | None</code>) – List input variables to use in prompt templates instead of the ones inferred from the
@@ -258,7 +275,11 @@ Constructs a ChatPromptBuilder component.
 ### `run`
 
 ```python
-run(template: list[ChatMessage] | str | None = None, template_variables: dict[str, Any] | None = None, **kwargs: dict[str, Any] | None)
+run(
+    template: list[ChatMessage] | str | None = None,
+    template_variables: dict[str, Any] | None = None,
+    **kwargs: dict[str, Any] | None
+)
 ```
 
 Renders the prompt template with the provided variables.
@@ -442,7 +463,11 @@ Use `template_variables` to overwrite pipeline variables (such as documents) as 
 ### `__init__`
 
 ```python
-__init__(template: str, required_variables: list[str] | Literal['*'] | None = None, variables: list[str] | None = None)
+__init__(
+    template: str,
+    required_variables: list[str] | Literal["*"] | None = None,
+    variables: list[str] | None = None,
+)
 ```
 
 Constructs a PromptBuilder component.
@@ -477,7 +502,11 @@ Returns a dictionary representation of the component.
 ### `run`
 
 ```python
-run(template: str | None = None, template_variables: dict[str, Any] | None = None, **kwargs: dict[str, Any] | None)
+run(
+    template: str | None = None,
+    template_variables: dict[str, Any] | None = None,
+    **kwargs: dict[str, Any] | None
+)
 ```
 
 Renders the prompt template with the provided variables.

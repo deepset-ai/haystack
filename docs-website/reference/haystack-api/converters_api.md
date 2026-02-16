@@ -40,7 +40,17 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(endpoint: str, api_key: Secret = Secret.from_env_var('AZURE_AI_API_KEY'), model_id: str = 'prebuilt-read', preceding_context_len: int = 3, following_context_len: int = 3, merge_multiple_column_headers: bool = True, page_layout: Literal['natural', 'single_column'] = 'natural', threshold_y: float | None = 0.05, store_full_path: bool = False)
+__init__(
+    endpoint: str,
+    api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
+    model_id: str = "prebuilt-read",
+    preceding_context_len: int = 3,
+    following_context_len: int = 3,
+    merge_multiple_column_headers: bool = True,
+    page_layout: Literal["natural", "single_column"] = "natural",
+    threshold_y: float | None = 0.05,
+    store_full_path: bool = False,
+)
 ```
 
 Creates an AzureOCRDocumentConverter component.
@@ -70,7 +80,10 @@ Creates an AzureOCRDocumentConverter component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
@@ -140,7 +153,14 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(encoding: str = 'utf-8', store_full_path: bool = False, *, conversion_mode: Literal['file', 'row'] = 'file', delimiter: str = ',', quotechar: str = '"')
+__init__(
+    encoding: str = "utf-8",
+    store_full_path: bool = False,
+    *,
+    conversion_mode: Literal["file", "row"] = "file",
+    delimiter: str = ",",
+    quotechar: str = '"'
+)
 ```
 
 Creates a CSVToDocument component.
@@ -160,7 +180,12 @@ Creates a CSVToDocument component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], *, content_column: str | None = None, meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    *,
+    content_column: str | None = None,
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+)
 ```
 
 Converts CSV files to a Document (file mode) or to one Document per row (row mode).
@@ -255,7 +280,11 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(table_format: str | DOCXTableFormat = DOCXTableFormat.CSV, link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE, store_full_path: bool = False)
+__init__(
+    table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
+    link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
+    store_full_path: bool = False,
+)
 ```
 
 Create a DOCXToDocument component.
@@ -302,7 +331,10 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts DOCX files to Documents.
@@ -341,7 +373,10 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False)
+__init__(
+    extraction_kwargs: dict[str, Any] | None = None,
+    store_full_path: bool = False,
+)
 ```
 
 Create an HTMLToDocument component.
@@ -385,7 +420,11 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None, extraction_kwargs: dict[str, Any] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    extraction_kwargs: dict[str, Any] | None = None,
+)
 ```
 
 Converts a list of HTML files to Documents.
@@ -477,7 +516,12 @@ print(documents[1].meta)
 ### `__init__`
 
 ```python
-__init__(jq_schema: str | None = None, content_key: str | None = None, extra_meta_fields: set[str] | Literal['*'] | None = None, store_full_path: bool = False)
+__init__(
+    jq_schema: str | None = None,
+    content_key: str | None = None,
+    extra_meta_fields: set[str] | Literal["*"] | None = None,
+    store_full_path: bool = False,
+)
 ```
 
 Creates a JSONConverter component.
@@ -547,7 +591,10 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts a list of JSON files to documents.
@@ -586,7 +633,11 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = False)
+__init__(
+    table_to_single_line: bool = False,
+    progress_bar: bool = True,
+    store_full_path: bool = False,
+)
 ```
 
 Create a MarkdownToDocument component.
@@ -601,7 +652,10 @@ Create a MarkdownToDocument component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts a list of Markdown files to Documents.
@@ -658,7 +712,10 @@ Creates a MSGToDocument component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None) -> dict[str, list[Document] | list[ByteStream]]
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+) -> dict[str, list[Document] | list[ByteStream]]
 ```
 
 Converts MSG files to Documents.
@@ -798,7 +855,12 @@ assert result["output"] == "Test content"
 ### `__init__`
 
 ```python
-__init__(template: str, output_type: TypeAlias, custom_filters: dict[str, Callable] | None = None, unsafe: bool = False) -> None
+__init__(
+    template: str,
+    output_type: TypeAlias,
+    custom_filters: dict[str, Callable] | None = None,
+    unsafe: bool = False,
+) -> None
 ```
 
 Create an OutputAdapter component.
@@ -891,7 +953,16 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(line_overlap: float = 0.5, char_margin: float = 2.0, line_margin: float = 0.5, word_margin: float = 0.1, boxes_flow: float | None = 0.5, detect_vertical: bool = True, all_texts: bool = False, store_full_path: bool = False) -> None
+__init__(
+    line_overlap: float = 0.5,
+    char_margin: float = 2.0,
+    line_margin: float = 0.5,
+    word_margin: float = 0.1,
+    boxes_flow: float | None = 0.5,
+    detect_vertical: bool = True,
+    all_texts: bool = False,
+    store_full_path: bool = False,
+) -> None
 ```
 
 Create a PDFMinerToDocument component.
@@ -947,7 +1018,10 @@ see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-v
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts PDF files to Documents.
@@ -999,7 +1073,10 @@ Create an PPTXToDocument component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts PPTX files to Documents.
@@ -1055,7 +1132,17 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(*, extraction_mode: str | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN, plain_mode_orientations: tuple = (0, 90, 180, 270), plain_mode_space_width: float = 200.0, layout_mode_space_vertically: bool = True, layout_mode_scale_weight: float = 1.25, layout_mode_strip_rotated: bool = True, layout_mode_font_height_weight: float = 1.0, store_full_path: bool = False)
+__init__(
+    *,
+    extraction_mode: str | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
+    plain_mode_orientations: tuple = (0, 90, 180, 270),
+    plain_mode_space_width: float = 200.0,
+    layout_mode_space_vertically: bool = True,
+    layout_mode_scale_weight: float = 1.25,
+    layout_mode_strip_rotated: bool = True,
+    layout_mode_font_height_weight: float = 1.0,
+    store_full_path: bool = False
+)
 ```
 
 Create an PyPDFToDocument component.
@@ -1111,7 +1198,10 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts PDF files to documents.
@@ -1187,7 +1277,9 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(tika_url: str = 'http://localhost:9998/tika', store_full_path: bool = False)
+__init__(
+    tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False
+)
 ```
 
 Create a TikaDocumentConverter component.
@@ -1201,7 +1293,10 @@ Create a TikaDocumentConverter component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts files to Documents.
@@ -1260,7 +1355,10 @@ Creates a TextFileToDocument component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts text files to documents.
@@ -1307,7 +1405,14 @@ print(documents[0].content)
 ### `__init__`
 
 ```python
-__init__(table_format: Literal['csv', 'markdown'] = 'csv', sheet_name: str | int | list[str | int] | None = None, read_excel_kwargs: dict[str, Any] | None = None, table_format_kwargs: dict[str, Any] | None = None, *, store_full_path: bool = False)
+__init__(
+    table_format: Literal["csv", "markdown"] = "csv",
+    sheet_name: str | int | list[str | int] | None = None,
+    read_excel_kwargs: dict[str, Any] | None = None,
+    table_format_kwargs: dict[str, Any] | None = None,
+    *,
+    store_full_path: bool = False
+)
 ```
 
 Creates a XLSXToDocument component.
@@ -1329,7 +1434,10 @@ Creates a XLSXToDocument component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None) -> dict[str, list[Document]]
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Converts a XLSX file to a Document.

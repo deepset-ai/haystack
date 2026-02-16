@@ -35,7 +35,11 @@ assert docs[0].content == "Sarajevo"
 ### `__init__`
 
 ```python
-__init__(top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None)
+__init__(
+    top_p: float = 1.0,
+    score_field: str | None = None,
+    min_top_k: int | None = None,
+)
 ```
 
 Creates an instance of TopPSampler.
