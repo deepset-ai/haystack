@@ -28,7 +28,7 @@ def extract_json_from_text(text: str) -> str:
     return text.strip()
 
 
-def parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> Any:
+def _parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> Any:
     """
     Parses a JSON string (or a string containing JSON in a markdown code block).
 
@@ -44,12 +44,7 @@ def parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> A
         # Handle empty string or string with only whitespace
         raise json.JSONDecodeError("Expecting value", cleaned_text, 0)
 
-    try:
-        parsed_json = json.loads(cleaned_text)
-    except json.JSONDecodeError:
-        # Re-raise the exception to let the caller handle it (or log it as they prefer)
-        # We don't log here to avoid duplicate logging if the caller handles it.
-        raise
+    parsed_json = json.loads(cleaned_text)
 
     if expected_keys:
         if not isinstance(parsed_json, dict):

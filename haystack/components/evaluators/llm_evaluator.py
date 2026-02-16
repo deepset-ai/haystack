@@ -13,7 +13,8 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, parse_json_from_text, serialize_type
+from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils.json_utils import _parse_json_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ class LLMEvaluator:
                 continue
 
             try:
-                parsed_result = parse_json_from_text(result["replies"][0].text, expected_keys=self.outputs)
+                parsed_result = _parse_json_from_text(result["replies"][0].text, expected_keys=self.outputs)
                 results.append(parsed_result)
             except (ValueError, json.JSONDecodeError):
                 # The utility raises ValueError if expected keys are missing or if it's not a dict

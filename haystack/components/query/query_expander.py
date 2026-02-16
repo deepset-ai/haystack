@@ -12,7 +12,8 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, parse_json_from_text
+from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.json_utils import _parse_json_from_text
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +262,7 @@ class QueryExpander:
         :return: List of parsed expanded queries.
         """
         try:
-            parsed = parse_json_from_text(generator_response)
+            parsed = _parse_json_from_text(generator_response)
         except json.JSONDecodeError as e:
             logger.warning(
                 "Failed to parse JSON response: {error}. Response: {response}",

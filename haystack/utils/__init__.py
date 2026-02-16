@@ -16,7 +16,6 @@ _import_structure = {
     "deserialization": ["deserialize_chatgenerator_inplace"],
     "filters": ["document_matches_filter", "raise_on_invalid_filter_syntax"],
     "jinja2_extensions": ["Jinja2TimeExtension"],
-    "json_utils": ["extract_json_from_text", "parse_json_from_text"],
     "jupyter": ["is_in_jupyter"],
     "misc": ["expit", "expand_page_range"],
     "requests_utils": ["request_with_retry", "async_request_with_retry"],
@@ -39,8 +38,6 @@ if TYPE_CHECKING:
     from .filters import document_matches_filter as document_matches_filter
     from .filters import raise_on_invalid_filter_syntax as raise_on_invalid_filter_syntax
     from .jinja2_extensions import Jinja2TimeExtension as Jinja2TimeExtension
-    from .json_utils import extract_json_from_text as extract_json_from_text
-    from .json_utils import parse_json_from_text as parse_json_from_text
     from .jupyter import is_in_jupyter as is_in_jupyter
     from .misc import expand_page_range as expand_page_range
     from .misc import expit as expit
