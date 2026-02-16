@@ -2,7 +2,7 @@
 upgrade:
   - |
     Removed the deprecated ``PipelineTemplate`` and ``PredefinedPipeline`` classes,
-    along with the `Pipeline.from_template()` method.
+    along with the ``Pipeline.from_template()`` method.
     Users should migrate to Pipeline YAML files for similar functionality.
     See the [Serialization documentation](https://docs.haystack.deepset.ai/docs/serialization)
     for details on using YAML-based pipeline definitions.
