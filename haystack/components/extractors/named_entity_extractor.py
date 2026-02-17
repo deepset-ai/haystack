@@ -368,7 +368,7 @@ class _HfBackend(_NerBackend):
         transformers_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self.tokenizer: AutoTokenizer | None = None
+        self.tokenizer: Any = None
         self.model: AutoModelForTokenClassification | None = None
         self.pipeline: HfPipeline | None = None
 
