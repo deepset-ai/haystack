@@ -1129,10 +1129,13 @@ as is.
 
 see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-values-in-the-textual-output
 
-:param: text: The text to check for undecoded CID characters
-:returns:
-    A dictionary containing detection results
+**Arguments**:
 
+- `text`: The text to check for undecoded CID characters
+
+**Returns**:
+
+A dictionary containing detection results
 
 <a id="pdfminer.PDFMinerToDocument.run"></a>
 
