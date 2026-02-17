@@ -3,13 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import re
 from typing import Any
 
 
 def _parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> Any:
     """
-    Parses a JSON string (or a string containing JSON in a markdown code block).
+    Parses a JSON string.
 
     :param text: The string to parse.
     :param expected_keys: A list of keys that must be present in the parsed JSON object (if it's a dict).
@@ -17,22 +16,12 @@ def _parse_json_from_text(text: str, expected_keys: list[str] | None = None) -> 
     :raises json.JSONDecodeError: If the text is not valid JSON.
     :raises ValueError: If `expected_keys` are provided and the parsed JSON is not a dict or is missing keys.
     """
-    # Try to find JSON inside a markdown code block with "json" language specifier
-    match = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
-    if match:
-        cleaned_text = match.group(1).strip()
-    else:
-        # Fallback: Try to find JSON inside a generic markdown code block
-        match = re.search(r"```(?!\w)\s*(.*?)\s*```", text, re.DOTALL)
-        if match:
-            cleaned_text = match.group(1).strip()
-        else:
-            # If no markdown code block, return the original text stripped of whitespace
-            cleaned_text = text.strip()
+    # Create a clean text, though json.loads handles whitespace, strictly checking for empty string is useful
+    cleaned_text = text.strip()
 
     if not cleaned_text:
         # Handle empty string or string with only whitespace
-        raise json.JSONDecodeError("Expecting value", cleaned_text, 0)
+        raise json.JSONDecodeError("Expecting value", text, 0)
 
     parsed_json = json.loads(cleaned_text)
 
