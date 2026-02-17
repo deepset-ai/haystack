@@ -526,7 +526,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             For filter syntax, see filter_documents.
         :param meta: The metadata fields to update. These will be merged with existing metadata.
         :returns: The number of documents updated.
-        :raises: ValueError if filters have invalid syntax.
+        :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
@@ -542,7 +542,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         :param filters: The filters to apply to select documents for deletion.
             For filter syntax, see filter_documents.
         :returns: The number of documents deleted.
-        :raises: ValueError if filters have invalid syntax.
+        :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
@@ -627,7 +627,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises: ValueError if filters have invalid syntax.
+        :raises ValueError: if filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
