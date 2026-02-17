@@ -25,7 +25,7 @@ jobs:
       - name: Set nightly version
         id: set-version
         run: |
-          BASE_VERSION=$(cat VERSION.txt | sed 's/-rc[0-9]*$//')
+          BASE_VERSION=$(sed 's/-rc[0-9]*$//' VERSION.txt)
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
           NIGHTLY_VERSION="${BASE_VERSION}.dev${TIMESTAMP}"
           echo "version=${NIGHTLY_VERSION}" >> "$GITHUB_OUTPUT"
