@@ -340,8 +340,6 @@ class TestHuggingFaceLocalGenerator:
             model="Qwen/Qwen3-0.6B", task="text-generation", generation_kwargs={"max_new_tokens": 100}
         )
 
-        generator.warm_up()
-
         results = generator.run(prompt="")
 
         assert results == {"replies": []}
@@ -452,7 +450,9 @@ class TestHuggingFaceLocalGenerator:
         generator = HuggingFaceLocalGenerator(
             model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["unambiguously"]
         )
-        generator.warm_up()
+        assert generator.stopping_criteria_list is None
+        # the property stopping_criteria_list is set during warm_up, which is called in run()
+        generator.run(prompt="irrelevant")
         assert generator.stopping_criteria_list is not None
 
     @pytest.mark.integration
