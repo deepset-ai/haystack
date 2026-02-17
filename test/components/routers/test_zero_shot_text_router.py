@@ -95,7 +95,6 @@ class TestTransformersZeroShotTextRouter:
     def test_run_fails_with_non_string_input(self, hf_pipeline_mock):
         hf_pipeline_mock.return_value = " "
         router = TransformersZeroShotTextRouter(labels=["query", "passage"])
-        router.warm_up()
         with pytest.raises(TypeError):
             router.run(text=["wrong_input"])
 
@@ -115,7 +114,6 @@ class TestTransformersZeroShotTextRouter:
     def test_run(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         router = TransformersZeroShotTextRouter(labels=["query", "passage"])
-        router.warm_up()
         out = router.run("What is the color of the sky?")
         assert router.pipeline is not None
         assert out == {"query": "What is the color of the sky?"}

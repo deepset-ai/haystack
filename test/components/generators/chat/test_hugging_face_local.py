@@ -487,7 +487,6 @@ class TestHuggingFaceLocalChatGenerator:
             mock_pipeline.tokenizer.apply_chat_template.return_value = "test prompt"
             mock_pipeline.return_value = [{"generated_text": "test response"}]
 
-            generator.warm_up()
             generator.run(messages)
 
         assert mock_convert.call_count == 2

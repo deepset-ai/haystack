@@ -154,7 +154,6 @@ class TestDALLEImageGenerator:
 
     def test_run(self, mock_image_response):
         generator = DALLEImageGenerator(api_key=Secret.from_token("test-api-key"))
-        generator.warm_up()
         response = generator.run("Show me a picture of a black cat.")
         assert isinstance(response, dict)
         assert "images" in response and "revised_prompt" in response

@@ -140,7 +140,6 @@ class TestLLMMessagesRouter:
             output_patterns=["safe", "unsafe"],
             system_prompt=system_prompt,
         )
-        router.warm_up()
 
         messages = [ChatMessage.from_user("Hello")]
         router.run(messages)
@@ -212,7 +211,6 @@ class TestLLMMessagesRouter:
         )
 
         messages = [ChatMessage.from_user("Hello")]
-        router.warm_up()
         result = router.run(messages)
         print(result)
 

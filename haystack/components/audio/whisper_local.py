@@ -45,7 +45,6 @@ class LocalWhisperTranscriber:
     from haystack.components.audio import LocalWhisperTranscriber
 
     whisper = LocalWhisperTranscriber(model="small")
-    whisper.warm_up()
     transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
     ```
     """
