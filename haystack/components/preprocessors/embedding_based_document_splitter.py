@@ -144,10 +144,9 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `page_number` to track the original page number.
                 - All other metadata copied from the original document.
 
-        :raises:
-            - `RuntimeError`: If the component wasn't warmed up.
-            - `TypeError`: If the input is not a list of Documents.
-            - `ValueError`: If the document content is None or empty.
+        :raises RuntimeError: If the component wasn't warmed up.
+        :raises TypeError: If the input is not a list of Documents.
+        :raises ValueError: If the document content is None or empty.
         """
         if not self._is_warmed_up:
             raise RuntimeError(
