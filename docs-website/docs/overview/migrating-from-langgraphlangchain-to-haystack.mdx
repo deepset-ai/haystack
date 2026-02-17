@@ -68,19 +68,15 @@ Here's the product equivalent of two ecosystems:
 
 Here's an example **graph-based agent** with access to a list of tools, comparing the LangGraph and Haystack APIs.
 
+**Step 1: Define tools**
+
+Both frameworks use a `@tool` decorator to expose Python functions as tools the LLM can call. The function signature and docstring define the tool's interface, which the LLM uses to understand when and how to invoke each tool.
+
 <div className="code-comparison">
   <div className="code-comparison__column">
     <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai anthropic-haystack
-from typing import Any, Dict, List
 
 from haystack.tools import tool
-from haystack import Pipeline,component
-from haystack.core.component.types import Variadic
-from haystack.dataclasses import ChatMessage
-from haystack.components.tools import ToolInvoker
-from haystack.components.routers import ConditionalRouter
-
-from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 
 # Define tools
 @tool
@@ -111,15 +107,87 @@ def divide(a: int, b: int) -> float:
         a: First int
         b: Second int
     """
-    return a / b
+    return a / b`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-anthropic langgraph langchain
+
+from langchain.tools import tool
+
+# Define tools
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply \`a\` and \`b\`.
+
+    Args:
+        a: First int
+        b: Second int
+    """
+    return a * b
+
+@tool
+def add(a: int, b: int) -> int:
+    """Adds \`a\` and \`b\`.
+
+    Args:
+        a: First int
+        b: Second int
+    """
+    return a + b
+
+@tool
+def divide(a: int, b: int) -> float:
+    """Divide \`a\` and \`b\`.
+
+    Args:
+        a: First int
+        b: Second int
+    """
+    return a / b`}</CodeBlock>
+  </div>
+</div>
+
+**Step 2: Initialize the LLM with tools**
+
+Both frameworks connect tools to the LLM, but with different APIs. In Haystack, tools are passed directly to the `ChatGenerator` component during initialization. In LangGraph, you first initialize the model, then bind tools using `.bind_tools()` to create a tool-enabled LLM instance.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 
 # Augment the LLM with tools
 tools = [add, multiply, divide]
 model = AnthropicChatGenerator(
     model="claude-sonnet-4-5-20250929",
-    generation_kwargs={"temperature":0},
+    generation_kwargs={"temperature": 0},
     tools=tools,
+)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`from langchain.chat_models import init_chat_model
+
+# Augment the LLM with tools
+model = init_chat_model(
+    "claude-sonnet-4-5-20250929",
+    temperature=0,
 )
+tools = [add, multiply, divide]
+tools_by_name = {tool.name: tool for tool in tools}
+llm_with_tools = model.bind_tools(tools)`}</CodeBlock>
+  </div>
+</div>
+
+**Step 3: Set up message handling and LLM invocation**
+
+This is where the frameworks diverge more significantly. In Haystack you'll use a custom component (`MessageCollector`) to accumulate conversation history across the agentic loop. LangGraph instead defines a node function (`llm_call`) that operates on `MessagesState` - a built-in state container that automatically manages message history.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from typing import Any, Dict, List
+
+from haystack import component
+from haystack.core.component.types import Variadic
+from haystack.dataclasses import ChatMessage
 
 # Components
 
@@ -131,107 +199,18 @@ class MessageCollector:
 
     @component.output_types(messages=List[ChatMessage])
     def run(self, messages: Variadic[List[ChatMessage]]) -> Dict[str, Any]:
-
         self._messages.extend([msg for inner in messages for msg in inner])
         return {"messages": self._messages}
 
     def clear(self):
         self._messages = []
 
-message_collector = MessageCollector()
-
-# ConditionalRouter component to route to the tool invoker or end user based upon whether the LLM made a tool call
-routes = [
-    {
-        "condition": "{{replies[0].tool_calls | length > 0}}",
-        "output": "{{replies}}",
-        "output_name": "there_are_tool_calls",
-        "output_type": List[ChatMessage],
-    },
-    {
-        "condition": "{{replies[0].tool_calls | length == 0}}",
-        "output": "{{replies}}",
-        "output_name": "final_replies",
-        "output_type": List[ChatMessage],
-    },
-]
-router = ConditionalRouter(routes, unsafe=True)
-
-# Tool invoker component to execute a tool call
-tool_invoker = ToolInvoker(tools=tools)
-
-# Build pipeline
-agent_pipe = Pipeline()
-
-# Add components
-agent_pipe.add_component("message_collector", message_collector)
-agent_pipe.add_component("llm", model)
-agent_pipe.add_component("router", router)
-agent_pipe.add_component("tool_invoker", tool_invoker)
-
-# Add connections
-agent_pipe.connect("message_collector", "llm.messages")
-agent_pipe.connect("llm.replies", "router")
-agent_pipe.connect("router.there_are_tool_calls", "tool_invoker") # If there are tool calls, send them to the ToolInvoker
-agent_pipe.connect("router.there_are_tool_calls", "message_collector")
-agent_pipe.connect("tool_invoker.tool_messages", "message_collector")
-
-# Run the pipeline
-message_collector.clear()
-messages = [
-    ChatMessage.from_system(text="You are a helpful assistant tasked with performing arithmetic on a set of inputs."),
-    ChatMessage.from_user(text="Add 3 and 4.")
-]
-result = agent_pipe.run({"messages": messages})`}</CodeBlock>
+message_collector = MessageCollector()`}</CodeBlock>
   </div>
   <div className="code-comparison__column">
-    <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-anthropic langgraph langchain
-from langgraph.graph import MessagesState
-from langchain.messages import SystemMessage, HumanMessage, ToolMessage
+    <CodeBlock language="python" title="LangGraph + LangChain">{`from langgraph.graph import MessagesState
+from langchain.messages import SystemMessage, ToolMessage
 from typing import Literal
-from langgraph.graph import StateGraph, START, END
-from langchain.tools import tool
-from langchain.chat_models import init_chat_model
-
-# Define tools
-@tool
-def multiply(a: int, b: int) -> int:
-    """Multiply \`a\` and \`b\`.
-
-    Args:
-        a: First int
-        b: Second int
-    """
-    return a * b
-
-@tool
-def add(a: int, b: int) -> int:
-    """Adds \`a\` and \`b\`.
-
-    Args:
-        a: First int
-        b: Second int
-    """
-    return a + b
-
-@tool
-def divide(a: int, b: int) -> float:
-    """Divide \`a\` and \`b\`.
-
-    Args:
-        a: First int
-        b: Second int
-    """
-    return a / b
-
-# Augment the LLM with tools
-model = init_chat_model(
-    "claude-sonnet-4-5-20250929",
-    temperature=0,
-)
-tools = [add, multiply, divide]
-tools_by_name = {tool.name: tool for tool in tools}
-llm_with_tools = model.bind_tools(tools)
 
 # Nodes
 def llm_call(state: MessagesState):
@@ -248,17 +227,60 @@ def llm_call(state: MessagesState):
                 + state["messages"]
             )
         ]
-    }
+    }`}</CodeBlock>
+  </div>
+</div>
 
-def tool_node(state: dict):
+**Step 4: Execute tool calls**
+
+When the LLM decides to use a tool, it must be invoked and its result returned. Haystack provides a built-in `ToolInvoker` component that handles this automatically. LangGraph requires you to define a custom node function that iterates over tool calls, invokes each tool, and wraps the results in `ToolMessage` objects.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack.components.tools import ToolInvoker
+
+# Tool invoker component to execute a tool call
+tool_invoker = ToolInvoker(tools=tools)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`def tool_node(state: dict):
     # Performs the tool call
-
     result = []
     for tool_call in state["messages"][-1].tool_calls:
         tool = tools_by_name[tool_call["name"]]
         observation = tool.invoke(tool_call["args"])
         result.append(ToolMessage(content=observation, tool_call_id=tool_call["id"]))
-    return {"messages": result}
+    return {"messages": result}`}</CodeBlock>
+  </div>
+</div>
+
+**Step 5: Implement conditional routing logic**
+
+After the LLM responds, we need to decide whether to continue the loop (if tools were called) or finish (if the LLM provided a final answer). Haystack uses a `ConditionalRouter` component with declarative route conditions written in Jinja2 templates. LangGraph uses a conditional edge function (`should_continue`) that inspects the state and returns the next node or `END`.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack.components.routers import ConditionalRouter
+
+# ConditionalRouter component to route to the tool invoker or end user based upon whether the LLM made a tool call
+routes = [
+    {
+        "condition": "{{replies[0].tool_calls | length > 0}}",
+        "output": "{{replies}}",
+        "output_name": "there_are_tool_calls",
+        "output_type": List[ChatMessage],
+    },
+    {
+        "condition": "{{replies[0].tool_calls | length == 0}}",
+        "output": "{{replies}}",
+        "output_name": "final_replies",
+        "output_type": List[ChatMessage],
+    },
+]
+router = ConditionalRouter(routes, unsafe=True)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`from langgraph.graph import END
 
 # Conditional edge function to route to the tool node or end based upon whether the LLM made a tool call
 def should_continue(state: MessagesState) -> Literal["tool_node", END]:
@@ -272,7 +294,36 @@ def should_continue(state: MessagesState) -> Literal["tool_node", END]:
         return "tool_node"
 
     # Otherwise, we stop (reply to the user)
-    return END
+    return END`}</CodeBlock>
+  </div>
+</div>
+
+**Step 6: Assemble the workflow**
+
+This is where you wire together all the components or nodes. Haystack uses a `Pipeline` where you explicitly add components and connect their inputs and outputs, creating a directed graph with loops. LangGraph uses a `StateGraph` where you add nodes and edges, then compile the graph into an executable agent. Both approaches achieve the same agentic loop, but with different levels of explicitness.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack import Pipeline
+
+# Build pipeline
+agent_pipe = Pipeline()
+
+# Add components
+agent_pipe.add_component("message_collector", message_collector)
+agent_pipe.add_component("llm", model)
+agent_pipe.add_component("router", router)
+agent_pipe.add_component("tool_invoker", tool_invoker)
+
+# Add connections
+agent_pipe.connect("message_collector", "llm.messages")
+agent_pipe.connect("llm.replies", "router")
+agent_pipe.connect("router.there_are_tool_calls", "tool_invoker") # If there are tool calls, send them to the ToolInvoker
+agent_pipe.connect("router.there_are_tool_calls", "message_collector")
+agent_pipe.connect("tool_invoker.tool_messages", "message_collector")`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`from langgraph.graph import StateGraph, START
 
 # Build workflow
 agent_builder = StateGraph(MessagesState)
@@ -291,10 +342,31 @@ agent_builder.add_conditional_edges(
 agent_builder.add_edge("tool_node", "llm_call")
 
 # Compile the agent
-agent = agent_builder.compile()
+agent = agent_builder.compile()`}</CodeBlock>
+  </div>
+</div>
+
+**Step 7: Run the agent**
+
+Finally, we execute the agent with a user message. Haystack calls `.run()` on the pipeline with initial messages, while LangGraph calls `.invoke()` on the compiled agent. Both return the conversation history.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`# Run the pipeline
+messages = [
+    ChatMessage.from_system(text="You are a helpful assistant tasked with performing arithmetic on a set of inputs."),
+    ChatMessage.from_user(text="Add 3 and 4.")
+]
+result = agent_pipe.run({"messages": messages})
+result`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`from langchain.messages import HumanMessage
 
 # Invoke
-messages = [HumanMessage(content="Add 3 and 4.")]
+messages = [
+    HumanMessage(content="Add 3 and 4.")
+]
 messages = agent.invoke({"messages": messages})
 for m in messages["messages"]:
     m.pretty_print()`}</CodeBlock>
