@@ -45,5 +45,5 @@ def _parse_json_from_text(text: str, expected_keys: list[str] | None = None, rai
     except (json.JSONDecodeError, ValueError) as e:
         if raise_on_failure:
             raise e
-        logger.warning("Failed to parse JSON from text: %s. Error: %s", text, e)
+        logger.warning("Failed to parse JSON from text: {text}. Error: {error}", text=text, error=e)
         return None
