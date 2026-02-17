@@ -161,7 +161,15 @@ print(result)
 ### `__init__`
 
 ```python
-__init__(tools: ToolsType, raise_on_failure: bool = True, convert_result_to_json_string: bool = False, streaming_callback: StreamingCallbackT | None = None, *, enable_streaming_callback_passthrough: bool = False, max_workers: int = 4)
+__init__(
+    tools: ToolsType,
+    raise_on_failure: bool = True,
+    convert_result_to_json_string: bool = False,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    enable_streaming_callback_passthrough: bool = False,
+    max_workers: int = 4
+)
 ````
 
 Initialize the ToolInvoker component.
@@ -203,7 +211,14 @@ This method is idempotent and will only warm up the tools once.
 ### `run`
 
 ```python
-run(messages: list[ChatMessage], state: State | None = None, streaming_callback: StreamingCallbackT | None = None, *, enable_streaming_callback_passthrough: bool | None = None, tools: ToolsType | None = None) -> dict[str, Any]
+run(
+    messages: list[ChatMessage],
+    state: State | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    enable_streaming_callback_passthrough: bool | None = None,
+    tools: ToolsType | None = None
+) -> dict[str, Any]
 ```
 
 Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -238,7 +253,14 @@ Processes ChatMessage objects containing tool calls and invokes the correspondin
 ### `run_async`
 
 ```python
-run_async(messages: list[ChatMessage], state: State | None = None, streaming_callback: StreamingCallbackT | None = None, *, enable_streaming_callback_passthrough: bool | None = None, tools: ToolsType | None = None) -> dict[str, Any]
+run_async(
+    messages: list[ChatMessage],
+    state: State | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    enable_streaming_callback_passthrough: bool | None = None,
+    tools: ToolsType | None = None
+) -> dict[str, Any]
 ```
 
 Asynchronously processes ChatMessage objects containing tool calls.

@@ -46,7 +46,15 @@ streams = asyncio.run(fetch_async())
 ### `__init__`
 
 ```python
-__init__(raise_on_failure: bool = True, user_agents: list[str] | None = None, retry_attempts: int = 2, timeout: int = 3, http2: bool = False, client_kwargs: dict | None = None, request_headers: dict[str, str] | None = None)
+__init__(
+    raise_on_failure: bool = True,
+    user_agents: list[str] | None = None,
+    retry_attempts: int = 2,
+    timeout: int = 3,
+    http2: bool = False,
+    client_kwargs: dict | None = None,
+    request_headers: dict[str, str] | None = None,
+)
 ```
 
 Initializes the component.

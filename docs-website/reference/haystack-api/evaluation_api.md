@@ -13,7 +13,11 @@ Contains the inputs and the outputs of an evaluation pipeline and provides metho
 ### `__init__`
 
 ```python
-__init__(run_name: str, inputs: dict[str, list[Any]], results: dict[str, dict[str, Any]])
+__init__(
+    run_name: str,
+    inputs: dict[str, list[Any]],
+    results: dict[str, dict[str, Any]],
+)
 ```
 
 Initialize a new evaluation run result.
@@ -31,7 +35,10 @@ Initialize a new evaluation run result.
 ### `aggregated_report`
 
 ```python
-aggregated_report(output_format: Literal['json', 'csv', 'df'] = 'json', csv_file: str | None = None) -> Union[dict[str, list[Any]], DataFrame, str]
+aggregated_report(
+    output_format: Literal["json", "csv", "df"] = "json",
+    csv_file: str | None = None,
+) -> Union[dict[str, list[Any]], DataFrame, str]
 ```
 
 Generates a report with aggregated scores for each metric.
@@ -49,7 +56,10 @@ Generates a report with aggregated scores for each metric.
 ### `detailed_report`
 
 ```python
-detailed_report(output_format: Literal['json', 'csv', 'df'] = 'json', csv_file: str | None = None) -> Union[dict[str, list[Any]], DataFrame, str]
+detailed_report(
+    output_format: Literal["json", "csv", "df"] = "json",
+    csv_file: str | None = None,
+) -> Union[dict[str, list[Any]], DataFrame, str]
 ```
 
 Generates a report with detailed scores for each metric.
@@ -67,7 +77,12 @@ Generates a report with detailed scores for each metric.
 ### `comparative_detailed_report`
 
 ```python
-comparative_detailed_report(other: EvaluationRunResult, keep_columns: list[str] | None = None, output_format: Literal['json', 'csv', 'df'] = 'json', csv_file: str | None = None) -> Union[str, DataFrame, None]
+comparative_detailed_report(
+    other: EvaluationRunResult,
+    keep_columns: list[str] | None = None,
+    output_format: Literal["json", "csv", "df"] = "json",
+    csv_file: str | None = None,
+) -> Union[str, DataFrame, None]
 ```
 
 Generates a report with detailed scores for each metric from two evaluation runs for comparison.

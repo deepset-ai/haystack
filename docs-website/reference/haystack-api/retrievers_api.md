@@ -269,7 +269,13 @@ print(result["documents"])
 ### `__init__`
 
 ```python
-__init__(document_store: InMemoryDocumentStore, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False, filter_policy: FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    document_store: InMemoryDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    scale_score: bool = False,
+    filter_policy: FilterPolicy = FilterPolicy.REPLACE,
+)
 ```
 
 Create the InMemoryBM25Retriever component.
@@ -322,7 +328,12 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, scale_score: bool | None = None) -> dict[str, list[Document]]
+run(
+    query: str,
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    scale_score: bool | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryBM25Retriever on the given input data.
@@ -346,7 +357,12 @@ Run the InMemoryBM25Retriever on the given input data.
 ### `run_async`
 
 ```python
-run_async(query: str, filters: dict[str, Any] | None = None, top_k: int | None = None, scale_score: bool | None = None) -> dict[str, list[Document]]
+run_async(
+    query: str,
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    scale_score: bool | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryBM25Retriever on the given input data.
@@ -410,7 +426,14 @@ print(result["documents"])
 ### `__init__`
 
 ```python
-__init__(document_store: InMemoryDocumentStore, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False, return_embedding: bool = False, filter_policy: FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    document_store: InMemoryDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    scale_score: bool = False,
+    return_embedding: bool = False,
+    filter_policy: FilterPolicy = FilterPolicy.REPLACE,
+)
 ```
 
 Create the InMemoryEmbeddingRetriever component.
@@ -465,7 +488,13 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None, scale_score: bool | None = None, return_embedding: bool | None = None) -> dict[str, list[Document]]
+run(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    scale_score: bool | None = None,
+    return_embedding: bool | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryEmbeddingRetriever on the given input data.
@@ -491,7 +520,13 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 ### `run_async`
 
 ```python
-run_async(query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None, scale_score: bool | None = None, return_embedding: bool | None = None) -> dict[str, list[Document]]
+run_async(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    scale_score: bool | None = None,
+    return_embedding: bool | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Run the InMemoryEmbeddingRetriever on the given input data.
@@ -576,7 +611,12 @@ for doc in result["documents"]:
 ### `__init__`
 
 ```python
-__init__(*, retriever: EmbeddingRetriever, query_embedder: TextEmbedder, max_workers: int = 3) -> None
+__init__(
+    *,
+    retriever: EmbeddingRetriever,
+    query_embedder: TextEmbedder,
+    max_workers: int = 3
+) -> None
 ```
 
 Initialize MultiQueryEmbeddingRetriever.
@@ -598,7 +638,9 @@ Warm up the query embedder and the retriever if any has a warm_up method.
 ### `run`
 
 ```python
-run(queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]
+run(
+    queries: list[str], retriever_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using multiple queries in parallel.
@@ -709,7 +751,9 @@ Warm up the retriever if it has a warm_up method.
 ### `run`
 
 ```python
-run(queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]
+run(
+    queries: list[str], retriever_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using multiple queries in parallel.
@@ -826,7 +870,14 @@ rag.run({'bm25_retriever': {"query":"third"}})
 ### `__init__`
 
 ```python
-__init__(document_store: DocumentStore, window_size: int = 3, *, source_id_meta_field: str | list[str] = 'source_id', split_id_meta_field: str = 'split_id', raise_on_missing_meta_fields: bool = True)
+__init__(
+    document_store: DocumentStore,
+    window_size: int = 3,
+    *,
+    source_id_meta_field: str | list[str] = "source_id",
+    split_id_meta_field: str = "split_id",
+    raise_on_missing_meta_fields: bool = True
+)
 ```
 
 Creates a new SentenceWindowRetriever component.

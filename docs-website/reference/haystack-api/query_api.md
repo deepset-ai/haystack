@@ -42,7 +42,13 @@ expander = QueryExpander(n_expansions=3, include_original_query=False)  # Exactl
 ### `__init__`
 
 ```python
-__init__(*, chat_generator: ChatGenerator | None = None, prompt_template: str | None = None, n_expansions: int = 4, include_original_query: bool = True) -> None
+__init__(
+    *,
+    chat_generator: ChatGenerator | None = None,
+    prompt_template: str | None = None,
+    n_expansions: int = 4,
+    include_original_query: bool = True
+) -> None
 ```
 
 Initialize the QueryExpander component.

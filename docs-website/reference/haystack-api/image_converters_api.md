@@ -54,7 +54,13 @@ image_contents = result["image_contents"]
 ### `__init__`
 
 ```python
-__init__(*, file_path_meta_field: str = 'file_path', root_path: str | None = None, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None)
+__init__(
+    *,
+    file_path_meta_field: str = "file_path",
+    root_path: str | None = None,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None
+)
 ```
 
 Initialize the DocumentToImageContent component.
@@ -142,7 +148,11 @@ Initialize the ImageFileToDocument component.
 ### `run`
 
 ```python
-run(*, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None) -> dict[str, list[Document]]
+run(
+    *,
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+) -> dict[str, list[Document]]
 ```
 
 Convert image files into empty Document objects with metadata.
@@ -191,7 +201,11 @@ print(image_contents)
 ### `__init__`
 
 ```python
-__init__(*, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None)
+__init__(
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None
+)
 ```
 
 Create the ImageFileToImageContent component.
@@ -207,7 +221,13 @@ Create the ImageFileToImageContent component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None, *, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None) -> dict[str, list[ImageContent]]
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None
+) -> dict[str, list[ImageContent]]
 ```
 
 Converts files to ImageContent objects.
@@ -259,7 +279,12 @@ print(image_contents)
 ### `__init__`
 
 ```python
-__init__(*, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None, page_range: list[str | int] | None = None)
+__init__(
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    page_range: list[str | int] | None = None
+)
 ```
 
 Create the PDFToImageContent component.
@@ -280,7 +305,14 @@ Create the PDFToImageContent component.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None, *, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None, page_range: list[str | int] | None = None) -> dict[str, list[ImageContent]]
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    page_range: list[str | int] | None = None
+) -> dict[str, list[ImageContent]]
 ```
 
 Converts files to ImageContent objects.

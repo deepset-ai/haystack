@@ -27,7 +27,11 @@ transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ### `__init__`
 
 ```python
-__init__(model: WhisperLocalModel = 'large', device: ComponentDevice | None = None, whisper_params: dict[str, Any] | None = None)
+__init__(
+    model: WhisperLocalModel = "large",
+    device: ComponentDevice | None = None,
+    whisper_params: dict[str, Any] | None = None,
+)
 ```
 
 Creates an instance of the LocalWhisperTranscriber component.
@@ -79,7 +83,10 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    whisper_params: dict[str, Any] | None = None,
+)
 ```
 
 Transcribes a list of audio files into a list of documents.
@@ -102,7 +109,10 @@ Transcribes a list of audio files into a list of documents.
 ### `transcribe`
 
 ```python
-transcribe(sources: list[str | Path | ByteStream], **kwargs: list[str | Path | ByteStream]) -> list[Document]
+transcribe(
+    sources: list[str | Path | ByteStream],
+    **kwargs: list[str | Path | ByteStream]
+) -> list[Document]
 ```
 
 Transcribes the audio files into a list of Documents, one for each input file.
@@ -140,7 +150,14 @@ transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ### `__init__`
 
 ```python
-__init__(api_key: Secret = Secret.from_env_var('OPENAI_API_KEY'), model: str = 'whisper-1', api_base_url: str | None = None, organization: str | None = None, http_client_kwargs: dict[str, Any] | None = None, **kwargs: dict[str, Any] | None)
+__init__(
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    model: str = "whisper-1",
+    api_base_url: str | None = None,
+    organization: str | None = None,
+    http_client_kwargs: dict[str, Any] | None = None,
+    **kwargs: dict[str, Any] | None
+)
 ```
 
 Creates an instance of the RemoteWhisperTranscriber component.

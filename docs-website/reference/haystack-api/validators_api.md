@@ -84,7 +84,9 @@ _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
 ### `__init__`
 
 ```python
-__init__(json_schema: dict[str, Any] | None = None, error_template: str | None = None)
+__init__(
+    json_schema: dict[str, Any] | None = None, error_template: str | None = None
+)
 ```
 
 Initialize the JsonSchemaValidator component.
@@ -98,7 +100,11 @@ Initialize the JsonSchemaValidator component.
 ### `run`
 
 ```python
-run(messages: list[ChatMessage], json_schema: dict[str, Any] | None = None, error_template: str | None = None) -> dict[str, list[ChatMessage]]
+run(
+    messages: list[ChatMessage],
+    json_schema: dict[str, Any] | None = None,
+    error_template: str | None = None,
+) -> dict[str, list[ChatMessage]]
 ```
 
 Validates the last of the provided messages against the specified json schema.
