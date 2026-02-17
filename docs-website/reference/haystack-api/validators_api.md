@@ -6,7 +6,7 @@ slug: "/validators-api"
 ---
 
 
-## `haystack.components.validators.json_schema`
+## `json_schema`
 
 ### `is_valid_json`
 

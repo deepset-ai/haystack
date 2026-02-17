@@ -6,7 +6,7 @@ slug: "/connectors-api"
 ---
 
 
-## `haystack.components.connectors.openapi`
+## `openapi`
 
 ### `OpenAPIConnector`
 
@@ -94,7 +94,7 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 
 - <code>dict\[str, Any\]</code> – Dictionary containing the service response
 
-## `haystack.components.connectors.openapi_service`
+## `openapi_service`
 
 ### `patch_request`
 

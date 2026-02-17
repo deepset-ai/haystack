@@ -6,7 +6,7 @@ slug: "/evaluators-api"
 ---
 
 
-## `haystack.components.evaluators.answer_exact_match`
+## `answer_exact_match`
 
 ### `AnswerExactMatchEvaluator`
 
@@ -59,7 +59,7 @@ The `ground_truth_answers` and `retrieved_answers` must have the same length.
 - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
   answer matched one of the ground truth answers.
 
-## `haystack.components.evaluators.context_relevance`
+## `context_relevance`
 
 ### `ContextRelevanceEvaluator`
 
@@ -163,39 +163,6 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
   `generation_kwargs`.
 
-#### `warm_up`
-
-```python
-warm_up()
-```
-
-Warm up the component by warming up the underlying chat generator.
-
-#### `validate_init_parameters`
-
-```python
-validate_init_parameters(
-    inputs: list[tuple[str, type[list]]],
-    outputs: list[str],
-    examples: list[dict[str, Any]],
-)
-```
-
-Validate the init parameters.
-
-**Parameters:**
-
-- **inputs** (<code>list\[tuple\[str, type\[list\]\]\]</code>) – The inputs to validate.
-- **outputs** (<code>list\[str\]</code>) – The outputs to validate.
-- **examples** (<code>list\[dict\[str, Any\]\]</code>) – The examples to validate.
-
-**Raises:**
-
-- <code>ValueError</code> – If the inputs are not a list of tuples with a string and a type of list.
-  If the outputs are not a list of strings.
-  If the examples are not a list of dictionaries.
-  If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
-
 #### `run`
 
 ```python
@@ -243,77 +210,7 @@ Deserialize this component from a dictionary.
 
 - <code>ContextRelevanceEvaluator</code> – The deserialized component instance.
 
-#### `prepare_template`
-
-```python
-prepare_template() -> str
-```
-
-Prepare the prompt template.
-
-Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
-Instructions:
-`<instructions>`
-
-Generate the response in JSON format with the following keys:
-`<list of output keys>`
-Consider the instructions and the examples below to determine those values.
-
-Examples:
-`<examples>`
-
-Inputs:
-`<inputs>`
-Outputs:
-
-**Returns:**
-
-- <code>str</code> – The prompt template.
-
-#### `validate_input_parameters`
-
-```python
-validate_input_parameters(
-    expected: dict[str, Any], received: dict[str, Any]
-) -> None
-```
-
-Validate the input parameters.
-
-**Parameters:**
-
-- **expected** (<code>dict\[str, Any\]</code>) – The expected input parameters.
-- **received** (<code>dict\[str, Any\]</code>) – The received input parameters.
-
-**Raises:**
-
-- <code>ValueError</code> – If not all expected inputs are present in the received inputs
-  If the received inputs are not lists or have different lengths
-
-#### `is_valid_json_and_has_expected_keys`
-
-```python
-is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
-```
-
-Output must be a valid JSON with the expected keys.
-
-**Parameters:**
-
-- **expected** (<code>list\[str\]</code>) – Names of expected outputs
-- **received** (<code>str</code>) – Names of received outputs
-
-**Returns:**
-
-- <code>bool</code> – True if the received output is a valid JSON with the expected keys, False otherwise.
-
-**Raises:**
-
-- <code>ValueError</code> – If the output is not a valid JSON with the expected keys:
-- with `raise_on_failure` set to True a ValueError is raised.
-- with `raise_on_failure` set to False a warning is issued and False is returned.
-
-## `haystack.components.evaluators.document_map`
+## `document_map`
 
 ### `DocumentMAPEvaluator`
 
@@ -375,7 +272,7 @@ All lists must have the same length.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents
   are ranked.
 
-## `haystack.components.evaluators.document_mrr`
+## `document_mrr`
 
 ### `DocumentMRREvaluator`
 
@@ -435,7 +332,7 @@ Run the DocumentMRREvaluator on the given inputs.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high the first retrieved
   document is ranked.
 
-## `haystack.components.evaluators.document_ndcg`
+## `document_ndcg`
 
 ### `DocumentNDCGEvaluator`
 
@@ -540,7 +437,7 @@ Calculate the ideal discounted cumulative gain (IDCG) of the ground truth docume
 
 - <code>float</code> – The ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-## `haystack.components.evaluators.document_recall`
+## `document_recall`
 
 ### `RecallMode`
 
@@ -632,7 +529,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-## `haystack.components.evaluators.faithfulness`
+## `faithfulness`
 
 ### `FaithfulnessEvaluator`
 
@@ -716,39 +613,6 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
   `generation_kwargs`.
 
-#### `warm_up`
-
-```python
-warm_up()
-```
-
-Warm up the component by warming up the underlying chat generator.
-
-#### `validate_init_parameters`
-
-```python
-validate_init_parameters(
-    inputs: list[tuple[str, type[list]]],
-    outputs: list[str],
-    examples: list[dict[str, Any]],
-)
-```
-
-Validate the init parameters.
-
-**Parameters:**
-
-- **inputs** (<code>list\[tuple\[str, type\[list\]\]\]</code>) – The inputs to validate.
-- **outputs** (<code>list\[str\]</code>) – The outputs to validate.
-- **examples** (<code>list\[dict\[str, Any\]\]</code>) – The examples to validate.
-
-**Raises:**
-
-- <code>ValueError</code> – If the inputs are not a list of tuples with a string and a type of list.
-  If the outputs are not a list of strings.
-  If the examples are not a list of dictionaries.
-  If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
-
 #### `run`
 
 ```python
@@ -798,77 +662,7 @@ Deserialize this component from a dictionary.
 
 - <code>FaithfulnessEvaluator</code> – The deserialized component instance.
 
-#### `prepare_template`
-
-```python
-prepare_template() -> str
-```
-
-Prepare the prompt template.
-
-Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
-Instructions:
-`<instructions>`
-
-Generate the response in JSON format with the following keys:
-`<list of output keys>`
-Consider the instructions and the examples below to determine those values.
-
-Examples:
-`<examples>`
-
-Inputs:
-`<inputs>`
-Outputs:
-
-**Returns:**
-
-- <code>str</code> – The prompt template.
-
-#### `validate_input_parameters`
-
-```python
-validate_input_parameters(
-    expected: dict[str, Any], received: dict[str, Any]
-) -> None
-```
-
-Validate the input parameters.
-
-**Parameters:**
-
-- **expected** (<code>dict\[str, Any\]</code>) – The expected input parameters.
-- **received** (<code>dict\[str, Any\]</code>) – The received input parameters.
-
-**Raises:**
-
-- <code>ValueError</code> – If not all expected inputs are present in the received inputs
-  If the received inputs are not lists or have different lengths
-
-#### `is_valid_json_and_has_expected_keys`
-
-```python
-is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
-```
-
-Output must be a valid JSON with the expected keys.
-
-**Parameters:**
-
-- **expected** (<code>list\[str\]</code>) – Names of expected outputs
-- **received** (<code>str</code>) – Names of received outputs
-
-**Returns:**
-
-- <code>bool</code> – True if the received output is a valid JSON with the expected keys, False otherwise.
-
-**Raises:**
-
-- <code>ValueError</code> – If the output is not a valid JSON with the expected keys:
-- with `raise_on_failure` set to True a ValueError is raised.
-- with `raise_on_failure` set to False a warning is issued and False is returned.
-
-## `haystack.components.evaluators.llm_evaluator`
+## `llm_evaluator`
 
 ### `LLMEvaluator`
 
@@ -1095,7 +889,7 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `haystack.components.evaluators.sas_evaluator`
+## `sas_evaluator`
 
 ### `SASEvaluator`
 

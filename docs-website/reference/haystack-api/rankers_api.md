@@ -6,7 +6,7 @@ slug: "/rankers-api"
 ---
 
 
-## `haystack.components.rankers.hugging_face_tei`
+## `hugging_face_tei`
 
 ### `TruncationDirection`
 
@@ -177,7 +177,7 @@ if a score is present.
 - <code>httpx.RequestError</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
 
-## `haystack.components.rankers.lost_in_the_middle`
+## `lost_in_the_middle`
 
 ### `LostInTheMiddleRanker`
 
@@ -256,7 +256,7 @@ if a score is present.
 
 - <code>ValueError</code> – If any of the documents is not textual.
 
-## `haystack.components.rankers.meta_field`
+## `meta_field`
 
 ### `MetaFieldRanker`
 
@@ -405,7 +405,7 @@ if a score is present.
   If `sort_order` is not 'ascending' or 'descending'.
   If `meta_value_type` is not 'float', 'int', 'date' or `None`.
 
-## `haystack.components.rankers.meta_field_grouping_ranker`
+## `meta_field_grouping_ranker`
 
 ### `MetaFieldGroupingRanker`
 
@@ -496,7 +496,7 @@ The output is a list of documents reordered based on how they were grouped.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
 
-## `haystack.components.rankers.sentence_transformers_diversity`
+## `sentence_transformers_diversity`
 
 ### `DiversityRankingStrategy`
 
@@ -695,7 +695,7 @@ Rank the documents based on their diversity.
 
 - <code>ValueError</code> – If the top_k value is less than or equal to 0.
 
-## `haystack.components.rankers.sentence_transformers_similarity`
+## `sentence_transformers_similarity`
 
 ### `SentenceTransformersSimilarityRanker`
 
@@ -858,7 +858,7 @@ if a score is present.
 
 - <code>ValueError</code> – If `top_k` is not > 0.
 
-## `haystack.components.rankers.transformers_similarity`
+## `transformers_similarity`
 
 ### `TransformersSimilarityRanker`
 

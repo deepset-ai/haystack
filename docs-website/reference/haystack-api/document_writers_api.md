@@ -6,7 +6,7 @@ slug: "/document-writers-api"
 ---
 
 
-## `haystack.components.writers.document_writer`
+## `document_writer`
 
 ### `DocumentWriter`
 

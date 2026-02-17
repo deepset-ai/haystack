@@ -5,18 +5,16 @@ description: "Nvidia integration for Haystack"
 slug: "/integrations-nvidia"
 ---
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder"></a>
 
-## Module haystack\_integrations.components.embedders.nvidia.document\_embedder
+## `haystack_integrations.components.embedders.nvidia.document_embedder`
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder"></a>
-
-### NvidiaDocumentEmbedder
+### `NvidiaDocumentEmbedder`
 
 A component for embedding documents using embedding models provided by
 [NVIDIA NIMs](https://ai.nvidia.com).
 
 Usage example:
+
 ```python
 from haystack_integrations.components.embedders.nvidia import NvidiaDocumentEmbedder
 
@@ -29,145 +27,125 @@ result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
 ```
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.__init__"></a>
-
-#### NvidiaDocumentEmbedder.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(model: str | None = None,
-             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
-             api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             prefix: str = "",
-             suffix: str = "",
-             batch_size: int = 32,
-             progress_bar: bool = True,
-             meta_fields_to_embed: list[str] | None = None,
-             embedding_separator: str = "\n",
-             truncate: EmbeddingTruncateMode | str | None = None,
-             timeout: float | None = None) -> None
+__init__(
+    model: str | None = None,
+    api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
+    api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
+    prefix: str = "",
+    suffix: str = "",
+    batch_size: int = 32,
+    progress_bar: bool = True,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    truncate: EmbeddingTruncateMode | str | None = None,
+    timeout: float | None = None,
+) -> None
 ```
 
 Create a NvidiaTextEmbedder component.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: Embedding model to use.
-If no specific model along with locally hosted API URL is provided,
-the system defaults to the available model found using /models API.
-- `api_key`: API key for the NVIDIA NIM.
-- `api_url`: Custom API URL for the NVIDIA NIM.
-Format for API URL is `http://host:port`
-- `prefix`: A string to add to the beginning of each text.
-- `suffix`: A string to add to the end of each text.
-- `batch_size`: Number of Documents to encode at once.
-Cannot be greater than 50.
-- `progress_bar`: Whether to show a progress bar or not.
-- `meta_fields_to_embed`: List of meta fields that should be embedded along with the Document text.
-- `embedding_separator`: Separator used to concatenate the meta fields to the Document text.
-- `truncate`: Specifies how inputs longer than the maximum token length should be truncated.
-If None the behavior is model-dependent, see the official documentation for more information.
-- `timeout`: Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
-or set to 60 by default.
+- **model** (<code>str | None</code>) – Embedding model to use.
+  If no specific model along with locally hosted API URL is provided,
+  the system defaults to the available model found using /models API.
+- **api_key** (<code>Secret | None</code>) – API key for the NVIDIA NIM.
+- **api_url** (<code>str</code>) – Custom API URL for the NVIDIA NIM.
+  Format for API URL is `http://host:port`
+- **prefix** (<code>str</code>) – A string to add to the beginning of each text.
+- **suffix** (<code>str</code>) – A string to add to the end of each text.
+- **batch_size** (<code>int</code>) – Number of Documents to encode at once.
+  Cannot be greater than 50.
+- **progress_bar** (<code>bool</code>) – Whether to show a progress bar or not.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document text.
+- **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document text.
+- **truncate** (<code>EmbeddingTruncateMode | str | None</code>) – Specifies how inputs longer than the maximum token length should be truncated.
+  If None the behavior is model-dependent, see the official documentation for more information.
+- **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
+  or set to 60 by default.
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.default_model"></a>
-
-#### NvidiaDocumentEmbedder.default\_model
+#### `default_model`
 
 ```python
-def default_model() -> None
+default_model() -> None
 ```
 
 Set default model in local NIM mode.
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.warm_up"></a>
-
-#### NvidiaDocumentEmbedder.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Initializes the component.
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.to_dict"></a>
-
-#### NvidiaDocumentEmbedder.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.available_models"></a>
-
-#### NvidiaDocumentEmbedder.available\_models
+#### `available_models`
 
 ```python
-@property
-def available_models() -> list[Model]
+available_models: list[Model]
 ```
 
 Get a list of available models that work with NvidiaDocumentEmbedder.
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.from_dict"></a>
-
-#### NvidiaDocumentEmbedder.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "NvidiaDocumentEmbedder"
+from_dict(data: dict[str, Any]) -> NvidiaDocumentEmbedder
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>NvidiaDocumentEmbedder</code> – The deserialized component.
 
-<a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder.run"></a>
-
-#### NvidiaDocumentEmbedder.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-def run(documents: list[Document]
-        ) -> dict[str, list[Document] | dict[str, Any]]
+run(documents: list[Document]) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embed a list of Documents.
 
 The embedding of each Document is stored in the `embedding` field of the Document.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of Documents to embed.
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to embed.
 
-**Raises**:
+**Returns:**
 
-- `TypeError`: If the input is not a list of Documents.
-
-**Returns**:
-
-A dictionary with the following keys and values:
+- <code>dict\[str, list\[Document\] | dict\[str, Any\]\]</code> – A dictionary with the following keys and values:
 - `documents` - List of processed Documents with embeddings.
 - `meta` - Metadata on usage statistics, etc.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder"></a>
+**Raises:**
 
-## Module haystack\_integrations.components.embedders.nvidia.text\_embedder
+- <code>TypeError</code> – If the input is not a list of Documents.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder"></a>
+## `haystack_integrations.components.embedders.nvidia.text_embedder`
 
-### NvidiaTextEmbedder
+### `NvidiaTextEmbedder`
 
 A component for embedding strings using embedding models provided by
 [NVIDIA NIMs](https://ai.nvidia.com).
@@ -176,6 +154,7 @@ For models that differentiate between query and document inputs,
 this component embeds the input string as a query.
 
 Usage example:
+
 ```python
 from haystack_integrations.components.embedders.nvidia import NvidiaTextEmbedder
 
@@ -187,166 +166,144 @@ text_embedder.warm_up()
 print(text_embedder.run(text_to_embed))
 ```
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.__init__"></a>
-
-#### NvidiaTextEmbedder.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(model: str | None = None,
-             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
-             api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             prefix: str = "",
-             suffix: str = "",
-             truncate: EmbeddingTruncateMode | str | None = None,
-             timeout: float | None = None)
+__init__(
+    model: str | None = None,
+    api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
+    api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
+    prefix: str = "",
+    suffix: str = "",
+    truncate: EmbeddingTruncateMode | str | None = None,
+    timeout: float | None = None,
+)
 ```
 
 Create a NvidiaTextEmbedder component.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: Embedding model to use.
-If no specific model along with locally hosted API URL is provided,
-the system defaults to the available model found using /models API.
-- `api_key`: API key for the NVIDIA NIM.
-- `api_url`: Custom API URL for the NVIDIA NIM.
-Format for API URL is `http://host:port`
-- `prefix`: A string to add to the beginning of each text.
-- `suffix`: A string to add to the end of each text.
-- `truncate`: Specifies how inputs longer that the maximum token length should be truncated.
-If None the behavior is model-dependent, see the official documentation for more information.
-- `timeout`: Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
-or set to 60 by default.
+- **model** (<code>str | None</code>) – Embedding model to use.
+  If no specific model along with locally hosted API URL is provided,
+  the system defaults to the available model found using /models API.
+- **api_key** (<code>Secret | None</code>) – API key for the NVIDIA NIM.
+- **api_url** (<code>str</code>) – Custom API URL for the NVIDIA NIM.
+  Format for API URL is `http://host:port`
+- **prefix** (<code>str</code>) – A string to add to the beginning of each text.
+- **suffix** (<code>str</code>) – A string to add to the end of each text.
+- **truncate** (<code>EmbeddingTruncateMode | str | None</code>) – Specifies how inputs longer that the maximum token length should be truncated.
+  If None the behavior is model-dependent, see the official documentation for more information.
+- **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
+  or set to 60 by default.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.default_model"></a>
-
-#### NvidiaTextEmbedder.default\_model
+#### `default_model`
 
 ```python
-def default_model()
+default_model()
 ```
 
 Set default model in local NIM mode.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.warm_up"></a>
-
-#### NvidiaTextEmbedder.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Initializes the component.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.to_dict"></a>
-
-#### NvidiaTextEmbedder.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.available_models"></a>
-
-#### NvidiaTextEmbedder.available\_models
+#### `available_models`
 
 ```python
-@property
-def available_models() -> list[Model]
+available_models: list[Model]
 ```
 
 Get a list of available models that work with NvidiaTextEmbedder.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.from_dict"></a>
-
-#### NvidiaTextEmbedder.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "NvidiaTextEmbedder"
+from_dict(data: dict[str, Any]) -> NvidiaTextEmbedder
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>NvidiaTextEmbedder</code> – The deserialized component.
 
-<a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder.run"></a>
-
-#### NvidiaTextEmbedder.run
+#### `run`
 
 ```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-def run(text: str) -> dict[str, list[float] | dict[str, Any]]
+run(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Embed a string.
 
-**Arguments**:
+**Parameters:**
 
-- `text`: The text to embed.
+- **text** (<code>str</code>) – The text to embed.
 
-**Raises**:
+**Returns:**
 
-- `TypeError`: If the input is not a string.
-- `ValueError`: If the input string is empty.
-
-**Returns**:
-
-A dictionary with the following keys and values:
+- <code>dict\[str, list\[float\] | dict\[str, Any\]\]</code> – A dictionary with the following keys and values:
 - `embedding` - Embedding of the text.
 - `meta` - Metadata on usage statistics, etc.
 
-<a id="haystack_integrations.components.embedders.nvidia.truncate"></a>
+**Raises:**
 
-## Module haystack\_integrations.components.embedders.nvidia.truncate
+- <code>TypeError</code> – If the input is not a string.
+- <code>ValueError</code> – If the input string is empty.
 
-<a id="haystack_integrations.components.embedders.nvidia.truncate.EmbeddingTruncateMode"></a>
+## `haystack_integrations.components.embedders.nvidia.truncate`
 
-### EmbeddingTruncateMode
+### `EmbeddingTruncateMode`
+
+Bases: <code>Enum</code>
 
 Specifies how inputs to the NVIDIA embedding components are truncated.
 If START, the input will be truncated from the start.
 If END, the input will be truncated from the end.
 If NONE, an error will be returned (if the input is too long).
 
-<a id="haystack_integrations.components.embedders.nvidia.truncate.EmbeddingTruncateMode.from_str"></a>
-
-#### EmbeddingTruncateMode.from\_str
+#### `from_str`
 
 ```python
-@classmethod
-def from_str(cls, string: str) -> "EmbeddingTruncateMode"
+from_str(string: str) -> EmbeddingTruncateMode
 ```
 
 Create an truncate mode from a string.
 
-**Arguments**:
+**Parameters:**
 
-- `string`: String to convert.
+- **string** (<code>str</code>) – String to convert.
 
-**Returns**:
+**Returns:**
 
-Truncate mode.
+- <code>EmbeddingTruncateMode</code> – Truncate mode.
 
-<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator"></a>
+## `haystack_integrations.components.generators.nvidia.chat.chat_generator`
 
-## Module haystack\_integrations.components.generators.nvidia.chat.chat\_generator
+### `NvidiaChatGenerator`
 
-<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator.NvidiaChatGenerator"></a>
-
-### NvidiaChatGenerator
+Bases: <code>OpenAIChatGenerator</code>
 
 Enables text generation using NVIDIA generative models.
 For supported models, see [NVIDIA Docs](https://build.nvidia.com/models).
@@ -364,6 +321,7 @@ For more details on the parameters supported by the NVIDIA API, refer to the
 [NVIDIA Docs](https://build.nvidia.com/models).
 
 Usage example:
+
 ```python
 from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -375,90 +333,83 @@ response = client.run(messages)
 print(response)
 ```
 
-<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator.NvidiaChatGenerator.__init__"></a>
-
-#### NvidiaChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("NVIDIA_API_KEY"),
-             model: str = "meta/llama-3.1-8b-instruct",
-             streaming_callback: StreamingCallbackT | None = None,
-             api_base_url: str | None = os.getenv("NVIDIA_API_URL",
-                                                  DEFAULT_API_URL),
-             generation_kwargs: dict[str, Any] | None = None,
-             tools: ToolsType | None = None,
-             timeout: float | None = None,
-             max_retries: int | None = None,
-             http_client_kwargs: dict[str, Any] | None = None) -> None
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("NVIDIA_API_KEY"),
+    model: str = "meta/llama-3.1-8b-instruct",
+    streaming_callback: StreamingCallbackT | None = None,
+    api_base_url: str | None = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    http_client_kwargs: dict[str, Any] | None = None
+) -> None
 ```
 
 Creates an instance of NvidiaChatGenerator.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The NVIDIA API key.
-- `model`: The name of the NVIDIA chat completion model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `api_base_url`: The NVIDIA API Base url.
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the NVIDIA API endpoint. See [NVIDIA API docs](https://docs.nvcf.nvidia.com/ai/generative-models/)
-for more details.
-Some of the supported parameters:
+- **api_key** (<code>Secret</code>) – The NVIDIA API key.
+- **model** (<code>str</code>) – The name of the NVIDIA chat completion model to use.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **api_base_url** (<code>str | None</code>) – The NVIDIA API Base url.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the NVIDIA API endpoint. See [NVIDIA API docs](https://docs.nvcf.nvidia.com/ai/generative-models/)
+  for more details.
+  Some of the supported parameters:
 - `max_tokens`: The maximum number of tokens the output text can have.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+  Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
+  considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+  comprising the top 10% probability mass are considered.
 - `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
-    events as they become available, with the stream terminated by a data: [DONE] message.
+  events as they become available, with the stream terminated by a data: [DONE] message.
 - `response_format`: For NVIDIA NIM servers, this parameter has limited support.
-    - The basic JSON mode with `{"type": "json_object"}` is supported by compatible models, to produce
+  - The basic JSON mode with `{"type": "json_object"}` is supported by compatible models, to produce
     valid JSON output.
     To pass the JSON schema to the model, use the `guided_json` parameter in `extra_body`.
     For example:
-    ```python
-    generation_kwargs={
-        "extra_body": {
-            "nvext": {
-                "guided_json": {
-                    json_schema
-            }
-        }
-    }
-    ```
-    For more details, see the [NVIDIA NIM documentation](https://docs.nvidia.com/nim/large-language-models/latest/structured-generation.html).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
-- `timeout`: The timeout for the NVIDIA API call.
-- `max_retries`: Maximum number of retries to contact NVIDIA after an internal error.
-If not set, it defaults to either the `NVIDIA_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+  ```python
+  generation_kwargs={
+      "extra_body": {
+          "nvext": {
+              "guided_json": {
+                  json_schema
+          }
+      }
+  }
+  ```
+  For more details, see the [NVIDIA NIM documentation](https://docs.nvidia.com/nim/large-language-models/latest/structured-generation.html).
+- **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+  list of `Tool` objects or a `Toolset` instance.
+- **timeout** (<code>float | None</code>) – The timeout for the NVIDIA API call.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact NVIDIA after an internal error.
+  If not set, it defaults to either the `NVIDIA_MAX_RETRIES` environment variable, or set to 5.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+  For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator.NvidiaChatGenerator.to_dict"></a>
-
-#### NvidiaChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.nvidia.generator"></a>
+## `haystack_integrations.components.generators.nvidia.generator`
 
-## Module haystack\_integrations.components.generators.nvidia.generator
-
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator"></a>
-
-### NvidiaGenerator
+### `NvidiaGenerator`
 
 Generates text using generative models hosted with
 [NVIDIA NIM](https://ai.nvidia.com) on the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
@@ -486,135 +437,117 @@ print(result["usage"])
 
 You need an NVIDIA API key for this component to work.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.__init__"></a>
-
-#### NvidiaGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(model: str | None = None,
-             api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
-             model_arguments: dict[str, Any] | None = None,
-             timeout: float | None = None) -> None
+__init__(
+    model: str | None = None,
+    api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
+    api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
+    model_arguments: dict[str, Any] | None = None,
+    timeout: float | None = None,
+) -> None
 ```
 
 Create a NvidiaGenerator component.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: Name of the model to use for text generation.
-See the [NVIDIA NIMs](https://ai.nvidia.com)
-for more information on the supported models.
-`Note`: If no specific model along with locally hosted API URL is provided,
-the system defaults to the available model found using /models API.
-Check supported models at [NVIDIA NIM](https://ai.nvidia.com).
-- `api_key`: API key for the NVIDIA NIM. Set it as the `NVIDIA_API_KEY` environment
-variable or pass it here.
-- `api_url`: Custom API URL for the NVIDIA NIM.
-- `model_arguments`: Additional arguments to pass to the model provider. These arguments are
-specific to a model.
-Search your model in the [NVIDIA NIM](https://ai.nvidia.com)
-to find the arguments it accepts.
-- `timeout`: Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
-or set to 60 by default.
+- **model** (<code>str | None</code>) – Name of the model to use for text generation.
+  See the [NVIDIA NIMs](https://ai.nvidia.com)
+  for more information on the supported models.
+  `Note`: If no specific model along with locally hosted API URL is provided,
+  the system defaults to the available model found using /models API.
+  Check supported models at [NVIDIA NIM](https://ai.nvidia.com).
+- **api_key** (<code>Secret | None</code>) – API key for the NVIDIA NIM. Set it as the `NVIDIA_API_KEY` environment
+  variable or pass it here.
+- **api_url** (<code>str</code>) – Custom API URL for the NVIDIA NIM.
+- **model_arguments** (<code>dict\[str, Any\] | None</code>) – Additional arguments to pass to the model provider. These arguments are
+  specific to a model.
+  Search your model in the [NVIDIA NIM](https://ai.nvidia.com)
+  to find the arguments it accepts.
+- **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
+  or set to 60 by default.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.default_model"></a>
-
-#### NvidiaGenerator.default\_model
+#### `default_model`
 
 ```python
-def default_model() -> None
+default_model() -> None
 ```
 
 Set default model in local NIM mode.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.warm_up"></a>
-
-#### NvidiaGenerator.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Initializes the component.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.to_dict"></a>
-
-#### NvidiaGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.available_models"></a>
-
-#### NvidiaGenerator.available\_models
+#### `available_models`
 
 ```python
-@property
-def available_models() -> list[Model]
+available_models: list[Model]
 ```
 
 Get a list of available models that work with ChatNVIDIA.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.from_dict"></a>
-
-#### NvidiaGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "NvidiaGenerator"
+from_dict(data: dict[str, Any]) -> NvidiaGenerator
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>NvidiaGenerator</code> – Deserialized component.
 
-<a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator.run"></a>
-
-#### NvidiaGenerator.run
+#### `run`
 
 ```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
+run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Queries the model with the provided prompt.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: Text to be sent to the generative model.
+- **prompt** (<code>str</code>) – Text to be sent to the generative model.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary with the following keys:
 - `replies` - Replies generated by the model.
 - `meta` - Metadata for each reply.
 
-<a id="haystack_integrations.components.rankers.nvidia.ranker"></a>
+## `haystack_integrations.components.rankers.nvidia.ranker`
 
-## Module haystack\_integrations.components.rankers.nvidia.ranker
-
-<a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker"></a>
-
-### NvidiaRanker
+### `NvidiaRanker`
 
 A component for ranking documents using ranking models provided by
 [NVIDIA NIMs](https://ai.nvidia.com).
 
 Usage example:
+
 ```python
 from haystack_integrations.components.rankers.nvidia import NvidiaRanker
 from haystack import Document
@@ -637,143 +570,127 @@ result = ranker.run(query, documents, top_k=2)
 print(result["documents"])
 ```
 
-<a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker.__init__"></a>
-
-#### NvidiaRanker.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(model: str | None = None,
-             truncate: RankerTruncateMode | str | None = None,
-             api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
-             top_k: int = 5,
-             query_prefix: str = "",
-             document_prefix: str = "",
-             meta_fields_to_embed: list[str] | None = None,
-             embedding_separator: str = "\n",
-             timeout: float | None = None) -> None
+__init__(
+    model: str | None = None,
+    truncate: RankerTruncateMode | str | None = None,
+    api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
+    api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
+    top_k: int = 5,
+    query_prefix: str = "",
+    document_prefix: str = "",
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    timeout: float | None = None,
+) -> None
 ```
 
 Create a NvidiaRanker component.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: Ranking model to use.
-- `truncate`: Truncation strategy to use. Can be "NONE", "END", or RankerTruncateMode. Defaults to NIM's default.
-- `api_key`: API key for the NVIDIA NIM.
-- `api_url`: Custom API URL for the NVIDIA NIM.
-- `top_k`: Number of documents to return.
-- `query_prefix`: A string to add at the beginning of the query text before ranking.
-Use it to prepend the text with an instruction, as required by reranking models like `bge`.
-- `document_prefix`: A string to add at the beginning of each document before ranking. You can use it to prepend the document
-with an instruction, as required by embedding models like `bge`.
-- `meta_fields_to_embed`: List of metadata fields to embed with the document.
-- `embedding_separator`: Separator to concatenate metadata fields to the document.
-- `timeout`: Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
-or set to 60 by default.
+- **model** (<code>str | None</code>) – Ranking model to use.
+- **truncate** (<code>RankerTruncateMode | str | None</code>) – Truncation strategy to use. Can be "NONE", "END", or RankerTruncateMode. Defaults to NIM's default.
+- **api_key** (<code>Secret | None</code>) – API key for the NVIDIA NIM.
+- **api_url** (<code>str</code>) – Custom API URL for the NVIDIA NIM.
+- **top_k** (<code>int</code>) – Number of documents to return.
+- **query_prefix** (<code>str</code>) – A string to add at the beginning of the query text before ranking.
+  Use it to prepend the text with an instruction, as required by reranking models like `bge`.
+- **document_prefix** (<code>str</code>) – A string to add at the beginning of each document before ranking. You can use it to prepend the document
+  with an instruction, as required by embedding models like `bge`.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed with the document.
+- **embedding_separator** (<code>str</code>) – Separator to concatenate metadata fields to the document.
+- **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
+  or set to 60 by default.
 
-<a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker.to_dict"></a>
-
-#### NvidiaRanker.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the ranker to a dictionary.
 
-**Returns**:
+**Returns:**
 
-A dictionary containing the ranker's attributes.
+- <code>dict\[str, Any\]</code> – A dictionary containing the ranker's attributes.
 
-<a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker.from_dict"></a>
-
-#### NvidiaRanker.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "NvidiaRanker"
+from_dict(data: dict[str, Any]) -> NvidiaRanker
 ```
 
 Deserialize the ranker from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: A dictionary containing the ranker's attributes.
+- **data** (<code>dict\[str, Any\]</code>) – A dictionary containing the ranker's attributes.
 
-**Returns**:
+**Returns:**
 
-The deserialized ranker.
+- <code>NvidiaRanker</code> – The deserialized ranker.
 
-<a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker.warm_up"></a>
-
-#### NvidiaRanker.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Initialize the ranker.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If the API key is required for hosted NVIDIA NIMs.
+- <code>ValueError</code> – If the API key is required for hosted NVIDIA NIMs.
 
-<a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker.run"></a>
-
-#### NvidiaRanker.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(query: str,
-        documents: list[Document],
-        top_k: int | None = None) -> dict[str, list[Document]]
+run(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, list[Document]]
 ```
 
 Rank a list of documents based on a given query.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: The query to rank the documents against.
-- `documents`: The list of documents to rank.
-- `top_k`: The number of documents to return.
+- **query** (<code>str</code>) – The query to rank the documents against.
+- **documents** (<code>list\[Document\]</code>) – The list of documents to rank.
+- **top_k** (<code>int | None</code>) – The number of documents to return.
 
-**Raises**:
+**Returns:**
 
-- `TypeError`: If the arguments are of the wrong type.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary containing the ranked documents.
 
-**Returns**:
+**Raises:**
 
-A dictionary containing the ranked documents.
+- <code>TypeError</code> – If the arguments are of the wrong type.
 
-<a id="haystack_integrations.components.rankers.nvidia.truncate"></a>
+## `haystack_integrations.components.rankers.nvidia.truncate`
 
-## Module haystack\_integrations.components.rankers.nvidia.truncate
+### `RankerTruncateMode`
 
-<a id="haystack_integrations.components.rankers.nvidia.truncate.RankerTruncateMode"></a>
-
-### RankerTruncateMode
+Bases: <code>str</code>, <code>Enum</code>
 
 Specifies how inputs to the NVIDIA ranker components are truncated.
 If NONE, the input will not be truncated and an error returned instead.
 If END, the input will be truncated from the end.
 
-<a id="haystack_integrations.components.rankers.nvidia.truncate.RankerTruncateMode.from_str"></a>
-
-#### RankerTruncateMode.from\_str
+#### `from_str`
 
 ```python
-@classmethod
-def from_str(cls, string: str) -> "RankerTruncateMode"
+from_str(string: str) -> RankerTruncateMode
 ```
 
 Create an truncate mode from a string.
 
-**Arguments**:
+**Parameters:**
 
-- `string`: String to convert.
+- **string** (<code>str</code>) – String to convert.
 
-**Returns**:
+**Returns:**
 
-Truncate mode.
-
+- <code>RankerTruncateMode</code> – Truncate mode.

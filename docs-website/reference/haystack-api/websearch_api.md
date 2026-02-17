@@ -6,7 +6,7 @@ slug: "/websearch-api"
 ---
 
 
-## `haystack.components.websearch.searchapi`
+## `searchapi`
 
 ### `SearchApiWebSearch`
 
@@ -126,7 +126,7 @@ This is the asynchronous version of the `run` method with the same parameters an
 - <code>TimeoutError</code> – If the request to the SearchApi API times out.
 - <code>SearchApiError</code> – If an error occurs while querying the SearchApi API.
 
-## `haystack.components.websearch.serper_dev`
+## `serper_dev`
 
 ### `SerperDevWebSearch`
 

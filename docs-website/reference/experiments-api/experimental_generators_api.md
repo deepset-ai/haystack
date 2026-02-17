@@ -6,7 +6,7 @@ slug: "/experimental-generators-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.components.generators.chat.openai`
+## `haystack_experimental.components.generators.chat.openai`
 
 ### `OpenAIChatGenerator`
 

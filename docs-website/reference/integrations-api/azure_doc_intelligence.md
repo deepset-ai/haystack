@@ -5,13 +5,10 @@ description: "Azure Document Intelligence integration for Haystack"
 slug: "/integrations-azure_doc_intelligence"
 ---
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter"></a>
 
-## Module haystack\_integrations.components.converters.azure\_doc\_intelligence.converter
+## `haystack_integrations.components.converters.azure_doc_intelligence.converter`
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter.AzureDocumentIntelligenceConverter"></a>
-
-### AzureDocumentIntelligenceConverter
+### `AzureDocumentIntelligenceConverter`
 
 Converts files to Documents using Azure's Document Intelligence service.
 
@@ -21,6 +18,7 @@ GitHub Flavored Markdown for better integration with LLM/RAG applications.
 Supported file formats: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, HTML.
 
 Key features:
+
 - Markdown output with preserved structure (headings, tables, lists)
 - Inline table integration (tables rendered as markdown tables)
 - Improved layout analysis and reading order
@@ -51,105 +49,92 @@ documents = results["documents"]
 print(documents[0].content)
 ```
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter.AzureDocumentIntelligenceConverter.__init__"></a>
-
-#### AzureDocumentIntelligenceConverter.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(endpoint: str,
-             *,
-             api_key: Secret = Secret.from_env_var("AZURE_DI_API_KEY"),
-             model_id: str = "prebuilt-document",
-             store_full_path: bool = False)
+__init__(
+    endpoint: str,
+    *,
+    api_key: Secret = Secret.from_env_var("AZURE_DI_API_KEY"),
+    model_id: str = "prebuilt-document",
+    store_full_path: bool = False
+)
 ```
 
 Creates an AzureDocumentIntelligenceConverter component.
 
-**Arguments**:
+**Parameters:**
 
-- `endpoint`: The endpoint URL of your Azure Document Intelligence resource.
-Example: "https://YOUR_RESOURCE.cognitiveservices.azure.com/"
-- `api_key`: API key for Azure authentication. Can use Secret.from_env_var()
-to load from AZURE_DI_API_KEY environment variable.
-- `model_id`: Azure model to use for analysis. Options:
+- **endpoint** (<code>str</code>) – The endpoint URL of your Azure Document Intelligence resource.
+  Example: "https://YOUR_RESOURCE.cognitiveservices.azure.com/"
+- **api_key** (<code>Secret</code>) – API key for Azure authentication. Can use Secret.from_env_var()
+  to load from AZURE_DI_API_KEY environment variable.
+- **model_id** (<code>str</code>) – Azure model to use for analysis. Options:
 - "prebuilt-document": General document analysis (default)
 - "prebuilt-read": Fast OCR for text extraction
 - "prebuilt-layout": Enhanced layout analysis with better table/structure detection
 - Custom model IDs from your Azure resource
-- `store_full_path`: If True, stores complete file path in metadata.
-If False, stores only the filename (default).
+- **store_full_path** (<code>bool</code>) – If True, stores complete file path in metadata.
+  If False, stores only the filename (default).
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter.AzureDocumentIntelligenceConverter.warm_up"></a>
-
-#### AzureDocumentIntelligenceConverter.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Initializes the Azure Document Intelligence client.
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter.AzureDocumentIntelligenceConverter.run"></a>
-
-#### AzureDocumentIntelligenceConverter.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document],
-                        raw_azure_response=list[dict])
-def run(
+run(
     sources: list[str | Path | ByteStream],
-    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
 ) -> dict[str, list[Document] | list[dict]]
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will be
-zipped. If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will be
+  zipped. If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\] | list\[dict\]\]</code> – A dictionary with the following keys:
 - `documents`: List of created Documents
 - `raw_azure_response`: List of raw Azure responses used to create the Documents
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter.AzureDocumentIntelligenceConverter.to_dict"></a>
-
-#### AzureDocumentIntelligenceConverter.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.converters.azure_doc_intelligence.converter.AzureDocumentIntelligenceConverter.from_dict"></a>
-
-#### AzureDocumentIntelligenceConverter.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str,
-                              Any]) -> "AzureDocumentIntelligenceConverter"
+from_dict(data: dict[str, Any]) -> AzureDocumentIntelligenceConverter
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
-
+- <code>AzureDocumentIntelligenceConverter</code> – The deserialized component.

@@ -6,7 +6,7 @@ slug: "/human-in-the-loop-api"
 ---
 
 
-## `haystack.human_in_the_loop.dataclasses`
+## `dataclasses`
 
 ### `ConfirmationUIResult`
 
@@ -64,7 +64,7 @@ Populate the ToolExecutionDecision from a dictionary representation.
 
 - <code>ToolExecutionDecision</code> – An instance of ToolExecutionDecision.
 
-## `haystack.human_in_the_loop.policies`
+## `policies`
 
 ### `AlwaysAskPolicy`
 
@@ -92,35 +92,6 @@ Always ask for confirmation before executing the tool.
 
 - <code>bool</code> – Always returns True, indicating confirmation is needed.
 
-#### `update_after_confirmation`
-
-```python
-update_after_confirmation(
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    confirmation_result: ConfirmationUIResult,
-) -> None
-```
-
-Update the policy based on the confirmation UI result.
-
-#### `to_dict`
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serialize the policy to a dictionary.
-
-#### `from_dict`
-
-```python
-from_dict(data: dict[str, Any]) -> ConfirmationPolicy
-```
-
-Deserialize the policy from a dictionary.
-
 ### `NeverAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
@@ -146,35 +117,6 @@ Never ask for confirmation, always proceed with tool execution.
 **Returns:**
 
 - <code>bool</code> – Always returns False, indicating no confirmation is needed.
-
-#### `update_after_confirmation`
-
-```python
-update_after_confirmation(
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    confirmation_result: ConfirmationUIResult,
-) -> None
-```
-
-Update the policy based on the confirmation UI result.
-
-#### `to_dict`
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serialize the policy to a dictionary.
-
-#### `from_dict`
-
-```python
-from_dict(data: dict[str, Any]) -> ConfirmationPolicy
-```
-
-Deserialize the policy from a dictionary.
 
 ### `AskOncePolicy`
 
@@ -202,22 +144,6 @@ Ask for confirmation only once per tool with specific parameters.
 
 - <code>bool</code> – True if confirmation is needed, False if already asked with the same parameters.
 
-#### `to_dict`
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serialize the policy to a dictionary.
-
-#### `from_dict`
-
-```python
-from_dict(data: dict[str, Any]) -> ConfirmationPolicy
-```
-
-Deserialize the policy from a dictionary.
-
 #### `update_after_confirmation`
 
 ```python
@@ -241,7 +167,7 @@ tool with the given parameters.
 - **tool_params** (<code>dict\[str, Any\]</code>) – The parameters that were passed to the tool.
 - **confirmation_result** (<code>ConfirmationUIResult</code>) – The result from the confirmation UI.
 
-## `haystack.human_in_the_loop.strategies`
+## `strategies`
 
 ### `BlockingConfirmationStrategy`
 
@@ -357,21 +283,13 @@ Deserializes the BlockingConfirmationStrategy from a dictionary.
 
 - <code>BlockingConfirmationStrategy</code> – Deserialized BlockingConfirmationStrategy.
 
-## `haystack.human_in_the_loop.user_interfaces`
+## `user_interfaces`
 
 ### `RichConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 
 Rich console interface for user interaction.
-
-#### `from_dict`
-
-```python
-from_dict(data: dict[str, Any]) -> ConfirmationUI
-```
-
-Deserialize the ConfirmationUI from a dictionary.
 
 #### `get_user_confirmation`
 
@@ -410,22 +328,6 @@ Serializes the RichConsoleConfirmationUI to a dictionary.
 Bases: <code>ConfirmationUI</code>
 
 Simple console interface using standard input/output.
-
-#### `to_dict`
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serialize the UI to a dictionary.
-
-#### `from_dict`
-
-```python
-from_dict(data: dict[str, Any]) -> ConfirmationUI
-```
-
-Deserialize the ConfirmationUI from a dictionary.
 
 #### `get_user_confirmation`
 

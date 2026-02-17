@@ -6,7 +6,7 @@ slug: "/image-converters-api"
 ---
 
 
-## `haystack.components.converters.image.document_to_image`
+## `document_to_image`
 
 ### `DocumentToImageContent`
 
@@ -106,7 +106,7 @@ into ImageContent objects.
 - <code>ValueError</code> – If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
   MIME type. The error message will specify which document and what information is missing or incorrect.
 
-## `haystack.components.converters.image.file_to_document`
+## `file_to_document`
 
 ### `ImageFileToDocument`
 
@@ -179,7 +179,7 @@ user-provided metadata.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
 - `documents`: A list of `Document` objects with empty content and associated metadata.
 
-## `haystack.components.converters.image.file_to_image`
+## `file_to_image`
 
 ### `ImageFileToImageContent`
 
@@ -259,7 +259,7 @@ Converts files to ImageContent objects.
 - <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
 - `image_contents`: A list of ImageContent objects.
 
-## `haystack.components.converters.image.pdf_to_image`
+## `pdf_to_image`
 
 ### `PDFToImageContent`
 

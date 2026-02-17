@@ -6,7 +6,7 @@ slug: "/readers-api"
 ---
 
 
-## `haystack.components.readers.extractive`
+## `extractive`
 
 ### `ExtractiveReader`
 

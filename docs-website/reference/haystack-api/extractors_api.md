@@ -6,7 +6,7 @@ slug: "/extractors-api"
 ---
 
 
-## `haystack.components.extractors.image.llm_document_content_extractor`
+## `image/llm_document_content_extractor`
 
 ### `LLMDocumentContentExtractor`
 
@@ -157,7 +157,7 @@ Run extraction on image-based documents. One LLM call per document.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
-## `haystack.components.extractors.llm_metadata_extractor`
+## `llm_metadata_extractor`
 
 ### `LLMMetadataExtractor`
 
@@ -382,7 +382,7 @@ The original documents will be returned updated with the extracted metadata.
   "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
   re-run with the extractor to extract metadata.
 
-## `haystack.components.extractors.named_entity_extractor`
+## `named_entity_extractor`
 
 ### `NamedEntityExtractorBackend`
 
@@ -555,7 +555,7 @@ Returns the document's named entity annotations stored in its metadata, if any.
 
 - <code>list\[NamedEntityAnnotation\] | None</code> – The stored annotations.
 
-## `haystack.components.extractors.regex_text_extractor`
+## `regex_text_extractor`
 
 ### `RegexTextExtractor`
 

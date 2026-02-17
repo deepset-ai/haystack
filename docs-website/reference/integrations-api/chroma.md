@@ -5,17 +5,15 @@ description: "Chroma integration for Haystack"
 slug: "/integrations-chroma"
 ---
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever"></a>
 
-## Module haystack\_integrations.components.retrievers.chroma.retriever
+## `haystack_integrations.components.retrievers.chroma.retriever`
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever"></a>
-
-### ChromaQueryTextRetriever
+### `ChromaQueryTextRetriever`
 
 A component for retrieving documents from a [Chroma database](https://docs.trychroma.com/) using the `query` API.
 
 Example usage:
+
 ```python
 from haystack import Pipeline
 from haystack.components.converters import TextFileToDocument
@@ -43,333 +41,302 @@ for d in results["retriever"]["documents"]:
     print(d.meta, d.score)
 ```
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever.__init__"></a>
-
-#### ChromaQueryTextRetriever.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(document_store: ChromaDocumentStore,
-             filters: dict[str, Any] | None = None,
-             top_k: int = 10,
-             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    document_store: ChromaDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+)
 ```
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: an instance of `ChromaDocumentStore`.
-- `filters`: filters to narrow down the search space.
-- `top_k`: the maximum number of documents to retrieve.
-- `filter_policy`: Policy to determine how filters are applied.
+- **document_store** (<code>ChromaDocumentStore</code>) – an instance of `ChromaDocumentStore`.
+- **filters** (<code>dict\[str, Any\] | None</code>) – filters to narrow down the search space.
+- **top_k** (<code>int</code>) – the maximum number of documents to retrieve.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever.run"></a>
-
-#### ChromaQueryTextRetriever.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(query: str,
-        filters: dict[str, Any] | None = None,
-        top_k: int | None = None) -> dict[str, Any]
+run(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, Any]
 ```
 
 Run the retriever on the given input data.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: The input data for the retriever. In this case, a plain-text query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: The maximum number of documents to retrieve.
-If not specified, the default value from the constructor is used.
+- **query** (<code>str</code>) – The input data for the retriever. In this case, a plain-text query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to retrieve.
+  If not specified, the default value from the constructor is used.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the specified document store is not found or is not a MemoryDocumentStore instance.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of documents returned by the search engine.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever.run_async"></a>
+**Raises:**
 
-#### ChromaQueryTextRetriever.run\_async
+- <code>ValueError</code> – If the specified document store is not found or is not a MemoryDocumentStore instance.
+
+#### `run_async`
 
 ```python
-@component.output_types(documents=list[Document])
-async def run_async(query: str,
-                    filters: dict[str, Any] | None = None,
-                    top_k: int | None = None) -> dict[str, Any]
+run_async(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, Any]
 ```
 
 Asynchronously run the retriever on the given input data.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: The input data for the retriever. In this case, a plain-text query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: The maximum number of documents to retrieve.
-If not specified, the default value from the constructor is used.
+- **query** (<code>str</code>) – The input data for the retriever. In this case, a plain-text query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to retrieve.
+  If not specified, the default value from the constructor is used.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the specified document store is not found or is not a MemoryDocumentStore instance.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of documents returned by the search engine.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever.from_dict"></a>
+**Raises:**
 
-#### ChromaQueryTextRetriever.from\_dict
+- <code>ValueError</code> – If the specified document store is not found or is not a MemoryDocumentStore instance.
+
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChromaQueryTextRetriever"
+from_dict(data: dict[str, Any]) -> ChromaQueryTextRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>ChromaQueryTextRetriever</code> – Deserialized component.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever.to_dict"></a>
-
-#### ChromaQueryTextRetriever.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever"></a>
-
-### ChromaEmbeddingRetriever
+### `ChromaEmbeddingRetriever`
 
 A component for retrieving documents from a [Chroma database](https://docs.trychroma.com/) using embeddings.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever.__init__"></a>
-
-#### ChromaEmbeddingRetriever.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(document_store: ChromaDocumentStore,
-             filters: dict[str, Any] | None = None,
-             top_k: int = 10,
-             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    document_store: ChromaDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+)
 ```
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: an instance of `ChromaDocumentStore`.
-- `filters`: filters to narrow down the search space.
-- `top_k`: the maximum number of documents to retrieve.
-- `filter_policy`: Policy to determine how filters are applied.
+- **document_store** (<code>ChromaDocumentStore</code>) – an instance of `ChromaDocumentStore`.
+- **filters** (<code>dict\[str, Any\] | None</code>) – filters to narrow down the search space.
+- **top_k** (<code>int</code>) – the maximum number of documents to retrieve.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever.run"></a>
-
-#### ChromaEmbeddingRetriever.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(query_embedding: list[float],
-        filters: dict[str, Any] | None = None,
-        top_k: int | None = None) -> dict[str, Any]
+run(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, Any]
 ```
 
 Run the retriever on the given input data.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: the query embeddings.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: the maximum number of documents to retrieve.
-If not specified, the default value from the constructor is used.
+- **query_embedding** (<code>list\[float\]</code>) – the query embeddings.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – the maximum number of documents to retrieve.
+  If not specified, the default value from the constructor is used.
 
-**Returns**:
+**Returns:**
 
-a dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – a dictionary with the following keys:
 - `documents`: List of documents returned by the search engine.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever.run_async"></a>
-
-#### ChromaEmbeddingRetriever.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(documents=list[Document])
-async def run_async(query_embedding: list[float],
-                    filters: dict[str, Any] | None = None,
-                    top_k: int | None = None) -> dict[str, Any]
+run_async(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, Any]
 ```
 
 Asynchronously run the retriever on the given input data.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: the query embeddings.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: the maximum number of documents to retrieve.
-If not specified, the default value from the constructor is used.
+- **query_embedding** (<code>list\[float\]</code>) – the query embeddings.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – the maximum number of documents to retrieve.
+  If not specified, the default value from the constructor is used.
 
-**Returns**:
+**Returns:**
 
-a dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – a dictionary with the following keys:
 - `documents`: List of documents returned by the search engine.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever.from_dict"></a>
-
-#### ChromaEmbeddingRetriever.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChromaEmbeddingRetriever"
+from_dict(data: dict[str, Any]) -> ChromaEmbeddingRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>ChromaEmbeddingRetriever</code> – Deserialized component.
 
-<a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever.to_dict"></a>
-
-#### ChromaEmbeddingRetriever.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.document_stores.chroma.document_store"></a>
+## `haystack_integrations.document_stores.chroma.document_store`
 
-## Module haystack\_integrations.document\_stores.chroma.document\_store
-
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore"></a>
-
-### ChromaDocumentStore
+### `ChromaDocumentStore`
 
 A document store using [Chroma](https://docs.trychroma.com/) as the backend.
 
 We use the `collection.get` API to implement the document store protocol,
 the `collection.search` API will be used in the retriever instead.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.__init__"></a>
-
-#### ChromaDocumentStore.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(collection_name: str = "documents",
-             embedding_function: str = "default",
-             persist_path: str | None = None,
-             host: str | None = None,
-             port: int | None = None,
-             distance_function: Literal["l2", "cosine", "ip"] = "l2",
-             metadata: dict | None = None,
-             client_settings: dict[str, Any] | None = None,
-             **embedding_function_params: Any)
+__init__(
+    collection_name: str = "documents",
+    embedding_function: str = "default",
+    persist_path: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
+    distance_function: Literal["l2", "cosine", "ip"] = "l2",
+    metadata: dict | None = None,
+    client_settings: dict[str, Any] | None = None,
+    **embedding_function_params: Any
+)
 ```
 
 Creates a new ChromaDocumentStore instance.
-
 It is meant to be connected to a Chroma collection.
 
 Note: for the component to be part of a serializable pipeline, the __init__
 parameters must be serializable, reason why we use a registry to configure the
 embedding function passing a string.
 
-**Arguments**:
+**Parameters:**
 
-- `collection_name`: the name of the collection to use in the database.
-- `embedding_function`: the name of the embedding function to use to embed the query
-- `persist_path`: Path for local persistent storage. Cannot be used in combination with `host` and `port`.
-If none of `persist_path`, `host`, and `port` is specified, the database will be `in-memory`.
-- `host`: The host address for the remote Chroma HTTP client connection. Cannot be used with `persist_path`.
-- `port`: The port number for the remote Chroma HTTP client connection. Cannot be used with `persist_path`.
-- `distance_function`: The distance metric for the embedding space.
+- **collection_name** (<code>str</code>) – the name of the collection to use in the database.
+- **embedding_function** (<code>str</code>) – the name of the embedding function to use to embed the query
+- **persist_path** (<code>str | None</code>) – Path for local persistent storage. Cannot be used in combination with `host` and `port`.
+  If none of `persist_path`, `host`, and `port` is specified, the database will be `in-memory`.
+- **host** (<code>str | None</code>) – The host address for the remote Chroma HTTP client connection. Cannot be used with `persist_path`.
+- **port** (<code>int | None</code>) – The port number for the remote Chroma HTTP client connection. Cannot be used with `persist_path`.
+- **distance_function** (<code>Literal['l2', 'cosine', 'ip']</code>) – The distance metric for the embedding space.
 - `"l2"` computes the Euclidean (straight-line) distance between vectors,
-where smaller scores indicate more similarity.
+  where smaller scores indicate more similarity.
 - `"cosine"` computes the cosine similarity between vectors,
-with higher scores indicating greater similarity.
+  with higher scores indicating greater similarity.
 - `"ip"` stands for inner product, where higher scores indicate greater similarity between vectors.
-**Note**: `distance_function` can only be set during the creation of a collection.
-To change the distance metric of an existing collection, consider cloning the collection.
-- `metadata`: a dictionary of chromadb collection parameters passed directly to chromadb's client
-method `create_collection`. If it contains the key `"hnsw:space"`, the value will take precedence over the
-`distance_function` parameter above.
-- `client_settings`: a dictionary of Chroma Settings configuration options passed to
-`chromadb.config.Settings`. These settings configure the underlying Chroma client behavior.
-For available options, see [Chroma's config.py](https://github.com/chroma-core/chroma/blob/main/chromadb/config.py).
-**Note**: specifying these settings may interfere with standard client initialization parameters.
-This option is intended for advanced customization.
-- `embedding_function_params`: additional parameters to pass to the embedding function.
+  **Note**: `distance_function` can only be set during the creation of a collection.
+  To change the distance metric of an existing collection, consider cloning the collection.
+- **metadata** (<code>dict | None</code>) – a dictionary of chromadb collection parameters passed directly to chromadb's client
+  method `create_collection`. If it contains the key `"hnsw:space"`, the value will take precedence over the
+  `distance_function` parameter above.
+- **client_settings** (<code>dict\[str, Any\] | None</code>) – a dictionary of Chroma Settings configuration options passed to
+  `chromadb.config.Settings`. These settings configure the underlying Chroma client behavior.
+  For available options, see [Chroma's config.py](https://github.com/chroma-core/chroma/blob/main/chromadb/config.py).
+  **Note**: specifying these settings may interfere with standard client initialization parameters.
+  This option is intended for advanced customization.
+- **embedding_function_params** (<code>Any</code>) – additional parameters to pass to the embedding function.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents"></a>
-
-#### ChromaDocumentStore.count\_documents
+#### `count_documents`
 
 ```python
-def count_documents() -> int
+count_documents() -> int
 ```
 
 Returns how many documents are present in the document store.
 
-**Returns**:
+**Returns:**
 
-how many documents are present in the document store.
+- <code>int</code> – how many documents are present in the document store.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents_async"></a>
-
-#### ChromaDocumentStore.count\_documents\_async
+#### `count_documents_async`
 
 ```python
-async def count_documents_async() -> int
+count_documents_async() -> int
 ```
 
 Asynchronously returns how many documents are present in the document store.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Returns**:
+**Returns:**
 
-how many documents are present in the document store.
+- <code>int</code> – how many documents are present in the document store.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.filter_documents"></a>
-
-#### ChromaDocumentStore.filter\_documents
+#### `filter_documents`
 
 ```python
-def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -377,21 +344,18 @@ Returns the documents that match the filters provided.
 For a detailed specification of the filters,
 refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: the filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\] | None</code>) – the filters to apply to the document list.
 
-**Returns**:
+**Returns:**
 
-a list of Documents that match the given filters.
+- <code>list\[Document\]</code> – a list of Documents that match the given filters.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.filter_documents_async"></a>
-
-#### ChromaDocumentStore.filter\_documents\_async
+#### `filter_documents_async`
 
 ```python
-async def filter_documents_async(
-        filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -401,141 +365,128 @@ Asynchronous methods are only supported for HTTP connections.
 For a detailed specification of the filters,
 refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: the filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\] | None</code>) – the filters to apply to the document list.
 
-**Returns**:
+**Returns:**
 
-a list of Documents that match the given filters.
+- <code>list\[Document\]</code> – a list of Documents that match the given filters.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.write_documents"></a>
-
-#### ChromaDocumentStore.write\_documents
+#### `write_documents`
 
 ```python
-def write_documents(documents: list[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int
+write_documents(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
+) -> int
 ```
 
 Writes (or overwrites) documents into the store.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to write into the document store.
-- `policy`: Not supported at the moment.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to write into the document store.
+- **policy** (<code>DuplicatePolicy</code>) – Not supported at the moment.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: When input is not valid.
+- <code>int</code> – The number of documents written
 
-**Returns**:
+**Raises:**
 
-The number of documents written
+- <code>ValueError</code> – When input is not valid.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.write_documents_async"></a>
-
-#### ChromaDocumentStore.write\_documents\_async
+#### `write_documents_async`
 
 ```python
-async def write_documents_async(
-        documents: list[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int
+write_documents_async(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
+) -> int
 ```
 
 Asynchronously writes (or overwrites) documents into the store.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to write into the document store.
-- `policy`: Not supported at the moment.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to write into the document store.
+- **policy** (<code>DuplicatePolicy</code>) – Not supported at the moment.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: When input is not valid.
+- <code>int</code> – The number of documents written
 
-**Returns**:
+**Raises:**
 
-The number of documents written
+- <code>ValueError</code> – When input is not valid.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_documents"></a>
-
-#### ChromaDocumentStore.delete\_documents
+#### `delete_documents`
 
 ```python
-def delete_documents(document_ids: list[str]) -> None
+delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes all documents with a matching document_ids from the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: the document ids to delete
+- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_documents_async"></a>
-
-#### ChromaDocumentStore.delete\_documents\_async
+#### `delete_documents_async`
 
 ```python
-async def delete_documents_async(document_ids: list[str]) -> None
+delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes all documents with a matching document_ids from the document store.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: the document ids to delete
+- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_by_filter"></a>
-
-#### ChromaDocumentStore.delete\_by\_filter
+#### `delete_by_filter`
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> int
+delete_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Deletes all documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents deleted.
+- <code>int</code> – The number of documents deleted.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_by_filter_async"></a>
-
-#### ChromaDocumentStore.delete\_by\_filter\_async
+#### `delete_by_filter_async`
 
 ```python
-async def delete_by_filter_async(filters: dict[str, Any]) -> int
+delete_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents deleted.
+- <code>int</code> – The number of documents deleted.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.update_by_filter"></a>
-
-#### ChromaDocumentStore.update\_by\_filter
+#### `update_by_filter`
 
 ```python
-def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
@@ -544,23 +495,20 @@ Updates the metadata of all documents that match the provided filters.
 then updated. If documents are modified between the fetch and update operations,
 those changes may be lost.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `meta`: The metadata fields to update. This will be merged with existing metadata.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update. This will be merged with existing metadata.
 
-**Returns**:
+**Returns:**
 
-The number of documents updated.
+- <code>int</code> – The number of documents updated.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.update_by_filter_async"></a>
-
-#### ChromaDocumentStore.update\_by\_filter\_async
+#### `update_by_filter_async`
 
 ```python
-async def update_by_filter_async(filters: dict[str, Any],
-                                 meta: dict[str, Any]) -> int
+update_by_filter_async(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
@@ -571,243 +519,221 @@ Asynchronous methods are only supported for HTTP connections.
 then updated. If documents are modified between the fetch and update operations,
 those changes may be lost.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `meta`: The metadata fields to update. This will be merged with existing metadata.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update. This will be merged with existing metadata.
 
-**Returns**:
+**Returns:**
 
-The number of documents updated.
+- <code>int</code> – The number of documents updated.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_all_documents"></a>
-
-#### ChromaDocumentStore.delete\_all\_documents
+#### `delete_all_documents`
 
 ```python
-def delete_all_documents(*, recreate_index: bool = False) -> None
+delete_all_documents(*, recreate_index: bool = False) -> None
 ```
 
 Deletes all documents in the document store.
 
 A fast way to clear all documents from the document store while preserving any collection settings and mappings.
 
-**Arguments**:
+**Parameters:**
 
-- `recreate_index`: Whether to recreate the index after deleting all documents.
+- **recreate_index** (<code>bool</code>) – Whether to recreate the index after deleting all documents.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_all_documents_async"></a>
-
-#### ChromaDocumentStore.delete\_all\_documents\_async
+#### `delete_all_documents_async`
 
 ```python
-async def delete_all_documents_async(*, recreate_index: bool = False) -> None
+delete_all_documents_async(*, recreate_index: bool = False) -> None
 ```
 
 Asynchronously deletes all documents in the document store.
 
 A fast way to clear all documents from the document store while preserving any collection settings and mappings.
 
-**Arguments**:
+**Parameters:**
 
-- `recreate_index`: Whether to recreate the index after deleting all documents.
+- **recreate_index** (<code>bool</code>) – Whether to recreate the index after deleting all documents.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.search"></a>
-
-#### ChromaDocumentStore.search
+#### `search`
 
 ```python
-def search(queries: list[str],
-           top_k: int,
-           filters: dict[str, Any] | None = None) -> list[list[Document]]
+search(
+    queries: list[str], top_k: int, filters: dict[str, Any] | None = None
+) -> list[list[Document]]
 ```
 
 Search the documents in the store using the provided text queries.
 
-**Arguments**:
+**Parameters:**
 
-- `queries`: the list of queries to search for.
-- `top_k`: top_k documents to return for each query.
-- `filters`: a dictionary of filters to apply to the search. Accepts filters in haystack format.
+- **queries** (<code>list\[str\]</code>) – the list of queries to search for.
+- **top_k** (<code>int</code>) – top_k documents to return for each query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – a dictionary of filters to apply to the search. Accepts filters in haystack format.
 
-**Returns**:
+**Returns:**
 
-matching documents for each query.
+- <code>list\[list\[Document\]\]</code> – matching documents for each query.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.search_async"></a>
-
-#### ChromaDocumentStore.search\_async
+#### `search_async`
 
 ```python
-async def search_async(
-        queries: list[str],
-        top_k: int,
-        filters: dict[str, Any] | None = None) -> list[list[Document]]
+search_async(
+    queries: list[str], top_k: int, filters: dict[str, Any] | None = None
+) -> list[list[Document]]
 ```
 
 Asynchronously search the documents in the store using the provided text queries.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `queries`: the list of queries to search for.
-- `top_k`: top_k documents to return for each query.
-- `filters`: a dictionary of filters to apply to the search. Accepts filters in haystack format.
+- **queries** (<code>list\[str\]</code>) – the list of queries to search for.
+- **top_k** (<code>int</code>) – top_k documents to return for each query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – a dictionary of filters to apply to the search. Accepts filters in haystack format.
 
-**Returns**:
+**Returns:**
 
-matching documents for each query.
+- <code>list\[list\[Document\]\]</code> – matching documents for each query.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.search_embeddings"></a>
-
-#### ChromaDocumentStore.search\_embeddings
+#### `search_embeddings`
 
 ```python
-def search_embeddings(
-        query_embeddings: list[list[float]],
-        top_k: int,
-        filters: dict[str, Any] | None = None) -> list[list[Document]]
+search_embeddings(
+    query_embeddings: list[list[float]],
+    top_k: int,
+    filters: dict[str, Any] | None = None,
+) -> list[list[Document]]
 ```
 
 Perform vector search on the stored document, pass the embeddings of the queries instead of their text.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embeddings`: a list of embeddings to use as queries.
-- `top_k`: the maximum number of documents to retrieve.
-- `filters`: a dictionary of filters to apply to the search. Accepts filters in haystack format.
+- **query_embeddings** (<code>list\[list\[float\]\]</code>) – a list of embeddings to use as queries.
+- **top_k** (<code>int</code>) – the maximum number of documents to retrieve.
+- **filters** (<code>dict\[str, Any\] | None</code>) – a dictionary of filters to apply to the search. Accepts filters in haystack format.
 
-**Returns**:
+**Returns:**
 
-a list of lists of documents that match the given filters.
+- <code>list\[list\[Document\]\]</code> – a list of lists of documents that match the given filters.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.search_embeddings_async"></a>
-
-#### ChromaDocumentStore.search\_embeddings\_async
+#### `search_embeddings_async`
 
 ```python
-async def search_embeddings_async(
-        query_embeddings: list[list[float]],
-        top_k: int,
-        filters: dict[str, Any] | None = None) -> list[list[Document]]
+search_embeddings_async(
+    query_embeddings: list[list[float]],
+    top_k: int,
+    filters: dict[str, Any] | None = None,
+) -> list[list[Document]]
 ```
 
 Asynchronously perform vector search on the stored document, pass the embeddings of the queries instead of
-
 their text.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embeddings`: a list of embeddings to use as queries.
-- `top_k`: the maximum number of documents to retrieve.
-- `filters`: a dictionary of filters to apply to the search. Accepts filters in haystack format.
+- **query_embeddings** (<code>list\[list\[float\]\]</code>) – a list of embeddings to use as queries.
+- **top_k** (<code>int</code>) – the maximum number of documents to retrieve.
+- **filters** (<code>dict\[str, Any\] | None</code>) – a dictionary of filters to apply to the search. Accepts filters in haystack format.
 
-**Returns**:
+**Returns:**
 
-a list of lists of documents that match the given filters.
+- <code>list\[list\[Document\]\]</code> – a list of lists of documents that match the given filters.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents_by_filter"></a>
-
-#### ChromaDocumentStore.count\_documents\_by\_filter
+#### `count_documents_by_filter`
 
 ```python
-def count_documents_by_filter(filters: dict[str, Any]) -> int
+count_documents_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Returns the number of documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to count documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents that match the filters.
+- <code>int</code> – The number of documents that match the filters.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents_by_filter_async"></a>
-
-#### ChromaDocumentStore.count\_documents\_by\_filter\_async
+#### `count_documents_by_filter_async`
 
 ```python
-async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+count_documents_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously returns the number of documents that match the provided filters.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to count documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents that match the filters.
+- <code>int</code> – The number of documents that match the filters.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_unique_metadata_by_filter"></a>
-
-#### ChromaDocumentStore.count\_unique\_metadata\_by\_filter
+#### `count_unique_metadata_by_filter`
 
 ```python
-def count_unique_metadata_by_filter(
-        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+count_unique_metadata_by_filter(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
 ```
 
 Returns the number of unique values for each specified metadata field
-
 of the documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to count documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `metadata_fields`: List of field names to calculate unique values for.
-Field names can include or omit the "meta." prefix.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **metadata_fields** (<code>list\[str\]</code>) – List of field names to calculate unique values for.
+  Field names can include or omit the "meta." prefix.
 
-**Returns**:
+**Returns:**
 
-A dictionary mapping each metadata field name to the count of
-its unique values among the filtered documents.
+- <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name to the count of
+  its unique values among the filtered documents.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_unique_metadata_by_filter_async"></a>
-
-#### ChromaDocumentStore.count\_unique\_metadata\_by\_filter\_async
+#### `count_unique_metadata_by_filter_async`
 
 ```python
-async def count_unique_metadata_by_filter_async(
-        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+count_unique_metadata_by_filter_async(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
 ```
 
 Asynchronously returns the number of unique values for each specified metadata field
-
 of the documents that match the provided filters.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to count documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `metadata_fields`: List of field names to calculate unique values for.
-Field names can include or omit the "meta." prefix.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **metadata_fields** (<code>list\[str\]</code>) – List of field names to calculate unique values for.
+  Field names can include or omit the "meta." prefix.
 
-**Returns**:
+**Returns:**
 
-A dictionary mapping each metadata field name to the count of
-its unique values among the filtered documents.
+- <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name to the count of
+  its unique values among the filtered documents.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_fields_info"></a>
-
-#### ChromaDocumentStore.get\_metadata\_fields\_info
+#### `get_metadata_fields_info`
 
 ```python
-def get_metadata_fields_info() -> dict[str, dict[str, str]]
+get_metadata_fields_info() -> dict[str, dict[str, str]]
 ```
 
 Returns information about the metadata fields in the collection.
@@ -832,16 +758,14 @@ This method would return:
 }
 ```
 
-**Returns**:
+**Returns:**
 
-Dictionary mapping field names to their type information.
+- <code>dict\[str, dict\[str, str\]\]</code> – Dictionary mapping field names to their type information.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_fields_info_async"></a>
-
-#### ChromaDocumentStore.get\_metadata\_fields\_info\_async
+#### `get_metadata_fields_info_async`
 
 ```python
-async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+get_metadata_fields_info_async() -> dict[str, dict[str, str]]
 ```
 
 Asynchronously returns information about the metadata fields in the collection.
@@ -868,202 +792,185 @@ This method would return:
 }
 ```
 
-**Returns**:
+**Returns:**
 
-Dictionary mapping field names to their type information.
+- <code>dict\[str, dict\[str, str\]\]</code> – Dictionary mapping field names to their type information.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_min_max"></a>
-
-#### ChromaDocumentStore.get\_metadata\_field\_min\_max
+#### `get_metadata_field_min_max`
 
 ```python
-def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
 ```
 
 Returns the minimum and maximum values for the given metadata field.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field to get the minimum and maximum values for.
-Can include or omit the "meta." prefix.
+- **metadata_field** (<code>str</code>) – The metadata field to get the minimum and maximum values for.
+  Can include or omit the "meta." prefix.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the keys "min" and "max", where each value is
-the minimum or maximum value of the metadata field across all documents.
-Returns:
+- <code>dict\[str, Any\]</code> – A dictionary with the keys "min" and "max", where each value is
+  the minimum or maximum value of the metadata field across all documents.
+  Returns:
+
 ```python
   {"min": None, "max": None}
 ```
+
 if field doesn't exist or has no values.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_min_max_async"></a>
-
-#### ChromaDocumentStore.get\_metadata\_field\_min\_max\_async
+#### `get_metadata_field_min_max_async`
 
 ```python
-async def get_metadata_field_min_max_async(
-        metadata_field: str) -> dict[str, Any]
+get_metadata_field_min_max_async(metadata_field: str) -> dict[str, Any]
 ```
 
 Asynchronously returns the minimum and maximum values for the given metadata field.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field to get the minimum and maximum values for.
-Can include or omit the "meta." prefix.
+- **metadata_field** (<code>str</code>) – The metadata field to get the minimum and maximum values for.
+  Can include or omit the "meta." prefix.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the keys "min" and "max", where each value is
-the minimum or maximum value of the metadata field across all documents.
-Returns:
+- <code>dict\[str, Any\]</code> – A dictionary with the keys "min" and "max", where each value is
+  the minimum or maximum value of the metadata field across all documents.
+  Returns:
+
 ```python
   {"min": None, "max": None}
 ```
+
 if field doesn't exist or has no values.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_unique_values"></a>
-
-#### ChromaDocumentStore.get\_metadata\_field\_unique\_values
+#### `get_metadata_field_unique_values`
 
 ```python
-def get_metadata_field_unique_values(metadata_field: str,
-                                     search_term: str | None = None,
-                                     from_: int = 0,
-                                     size: int = 10) -> tuple[list[str], int]
+get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[str], int]
 ```
 
 Returns unique values for a metadata field, optionally filtered by
-
 a search term in the content field, with pagination support.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field to get unique values for.
-Can include or omit the "meta." prefix.
-- `search_term`: Optional search term to filter documents by matching
-in the content field.
-- `from_`: The offset to start returning values from (for pagination).
-- `size`: The maximum number of unique values to return.
+- **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
+  Can include or omit the "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching
+  in the content field.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
 
-**Returns**:
+**Returns:**
 
-A tuple containing list of unique values and total count of unique values.
+- <code>tuple\[list\[str\], int\]</code> – A tuple containing list of unique values and total count of unique values.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.get_metadata_field_unique_values_async"></a>
-
-#### ChromaDocumentStore.get\_metadata\_field\_unique\_values\_async
+#### `get_metadata_field_unique_values_async`
 
 ```python
-async def get_metadata_field_unique_values_async(
-        metadata_field: str,
-        search_term: str | None = None,
-        from_: int = 0,
-        size: int = 10) -> tuple[list[str], int]
+get_metadata_field_unique_values_async(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[str], int]
 ```
 
 Asynchronously returns unique values for a metadata field, optionally filtered by
-
 a search term in the content field, with pagination support.
 
 Asynchronous methods are only supported for HTTP connections.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field to get unique values for.
-Can include or omit the "meta." prefix.
-- `search_term`: Optional search term to filter documents by matching
-in the content field.
-- `from_`: The offset to start returning values from (for pagination).
-- `size`: The maximum number of unique values to return.
+- **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
+  Can include or omit the "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching
+  in the content field.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
 
-**Returns**:
+**Returns:**
 
-A tuple containing list of unique values and total count of unique values.
+- <code>tuple\[list\[str\], int\]</code> – A tuple containing list of unique values and total count of unique values.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.from_dict"></a>
-
-#### ChromaDocumentStore.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChromaDocumentStore"
+from_dict(data: dict[str, Any]) -> ChromaDocumentStore
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>ChromaDocumentStore</code> – Deserialized component.
 
-<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.to_dict"></a>
-
-#### ChromaDocumentStore.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.document_stores.chroma.errors"></a>
+## `haystack_integrations.document_stores.chroma.errors`
 
-## Module haystack\_integrations.document\_stores.chroma.errors
+### `ChromaDocumentStoreError`
 
-<a id="haystack_integrations.document_stores.chroma.errors.ChromaDocumentStoreError"></a>
-
-### ChromaDocumentStoreError
+Bases: <code>DocumentStoreError</code>
 
 Parent class for all ChromaDocumentStore exceptions.
 
-<a id="haystack_integrations.document_stores.chroma.errors.ChromaDocumentStoreFilterError"></a>
+### `ChromaDocumentStoreFilterError`
 
-### ChromaDocumentStoreFilterError
+Bases: <code>FilterError</code>, <code>ValueError</code>
 
 Raised when a filter is not valid for a ChromaDocumentStore.
 
-<a id="haystack_integrations.document_stores.chroma.errors.ChromaDocumentStoreConfigError"></a>
+### `ChromaDocumentStoreConfigError`
 
-### ChromaDocumentStoreConfigError
+Bases: <code>ChromaDocumentStoreError</code>
 
 Raised when a configuration is not valid for a ChromaDocumentStore.
 
-<a id="haystack_integrations.document_stores.chroma.utils"></a>
+## `haystack_integrations.document_stores.chroma.utils`
 
-## Module haystack\_integrations.document\_stores.chroma.utils
-
-<a id="haystack_integrations.document_stores.chroma.utils.get_embedding_function"></a>
-
-#### get\_embedding\_function
+### `get_embedding_function`
 
 ```python
-def get_embedding_function(function_name: str,
-                           **kwargs: Any) -> EmbeddingFunction
+get_embedding_function(function_name: str, **kwargs: Any) -> EmbeddingFunction
 ```
 
 Load an embedding function by name.
 
-**Arguments**:
+**Parameters:**
 
-- `function_name`: the name of the embedding function.
-- `kwargs`: additional arguments to pass to the embedding function.
+- **function_name** (<code>str</code>) – the name of the embedding function.
+- **kwargs** (<code>Any</code>) – additional arguments to pass to the embedding function.
 
-**Raises**:
+**Returns:**
 
-- `ChromaDocumentStoreConfigError`: if the function name is invalid.
+- <code>EmbeddingFunction</code> – the loaded embedding function.
 
-**Returns**:
+**Raises:**
 
-the loaded embedding function.
-
+- <code>ChromaDocumentStoreConfigError</code> – if the function name is invalid.

@@ -6,7 +6,7 @@ slug: "/fetchers-api"
 ---
 
 
-## `haystack.components.fetchers.link_content`
+## `link_content`
 
 ### `LinkContentFetcher`
 

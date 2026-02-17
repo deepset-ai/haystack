@@ -6,7 +6,7 @@ slug: "/document-stores-api"
 ---
 
 
-## `haystack.document_stores.in_memory.document_store`
+## `document_store`
 
 ### `BM25DocumentStats`
 

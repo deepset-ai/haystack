@@ -6,7 +6,7 @@ slug: "/tool-components-api"
 ---
 
 
-## `haystack.components.tools.tool_invoker`
+## `tool_invoker`
 
 ### `ToolInvokerError`
 

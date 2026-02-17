@@ -6,7 +6,7 @@ slug: "/generators-api"
 ---
 
 
-## `haystack.components.generators.azure`
+## `azure`
 
 ### `AzureOpenAIGenerator`
 
@@ -130,34 +130,6 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-#### `run`
-
-```python
-run(
-    prompt: str,
-    system_prompt: str | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-) -> dict[str, list[str] | list[dict[str, Any]]]
-```
-
-Invoke the text generation inference based on the provided messages and generation parameters.
-
-**Parameters:**
-
-- **prompt** (<code>str</code>) – The string prompt to use for text generation.
-- **system_prompt** (<code>str | None</code>) – The system prompt to use for text generation. If this run time system prompt is omitted, the system
-  prompt, if defined at initialisation time, is used.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
-  passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
-  the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-
-**Returns:**
-
-- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A list of strings containing the generated responses and a list of dictionaries containing the metadata
-  for each response.
-
 #### `from_dict`
 
 ```python
@@ -174,7 +146,7 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIGenerator</code> – The deserialized component instance.
 
-## `haystack.components.generators.chat.azure`
+## `chat/azure`
 
 ### `AzureOpenAIChatGenerator`
 
@@ -346,77 +318,7 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIChatGenerator</code> – The deserialized component instance.
 
-#### `run`
-
-```python
-run(
-    messages: list[ChatMessage],
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    *,
-    tools: ToolsType | None = None,
-    tools_strict: bool | None = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Invokes chat completion based on the provided messages and generation parameters.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
-  For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If set, it will override the `tools` parameter provided during initialization.
-- **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-  the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-  If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-#### `run_async`
-
-```python
-run_async(
-    messages: list[ChatMessage],
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    *,
-    tools: ToolsType | None = None,
-    tools_strict: bool | None = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Asynchronously invokes chat completion based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-  Must be a coroutine.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
-  For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-  If set, it will override the `tools` parameter provided during initialization.
-- **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-  the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-  If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-## `haystack.components.generators.chat.azure_responses`
+## `chat/azure_responses`
 
 ### `AzureOpenAIResponsesChatGenerator`
 
@@ -541,17 +443,6 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-#### `warm_up`
-
-```python
-warm_up()
-```
-
-Warm up the OpenAI responses chat generator.
-
-This will warm up the tools registered in the chat generator.
-This method is idempotent and will only warm up the tools once.
-
 #### `from_dict`
 
 ```python
@@ -568,85 +459,7 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIResponsesChatGenerator</code> – The deserialized component instance.
 
-#### `run`
-
-```python
-run(
-    messages: list[ChatMessage],
-    *,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    tools: ToolsType | list[dict] | None = None,
-    tools_strict: bool | None = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Invokes response generation based on the provided messages and generation parameters.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
-  For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create).
-- **tools** (<code>ToolsType | list\[dict\] | None</code>) – The tools that the model can use to prepare calls. If set, it will override the
-  `tools` parameter set during component initialization. This parameter can accept either a
-  mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
-  OpenAI/MCP tool definitions.
-  Note: You cannot pass OpenAI/MCP tools and Haystack tools together.
-  For details on tool support, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create#responses-create-tools).
-- **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls. If set to `False`, the model may not exactly
-  follow the schema provided in the `parameters` field of the tool definition. In Response API, tool calls
-  are strict by default.
-  If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-#### `run_async`
-
-```python
-run_async(
-    messages: list[ChatMessage],
-    *,
-    streaming_callback: StreamingCallbackT | None = None,
-    generation_kwargs: dict[str, Any] | None = None,
-    tools: ToolsType | list[dict] | None = None,
-    tools_strict: bool | None = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Asynchronously invokes response generation based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Parameters:**
-
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-  Must be a coroutine.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
-  override the parameters passed during component initialization.
-  For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create).
-- **tools** (<code>ToolsType | list\[dict\] | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-  `tools` parameter set during component initialization. This parameter can accept either a list of
-  mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
-  OpenAI/MCP tool definitions.
-  Note: You cannot pass OpenAI/MCP tools and Haystack tools together.
-- **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-  the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-  If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns:**
-
-- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-## `haystack.components.generators.chat.fallback`
+## `chat/fallback`
 
 ### `FallbackChatGenerator`
 
@@ -779,7 +592,7 @@ Asynchronously execute chat generators sequentially until one succeeds.
 
 - <code>RuntimeError</code> – If all chat generators fail.
 
-## `haystack.components.generators.chat.hugging_face_api`
+## `chat/hugging_face_api`
 
 ### `HuggingFaceAPIChatGenerator`
 
@@ -1011,7 +824,7 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage objects.
 
-## `haystack.components.generators.chat.hugging_face_local`
+## `chat/hugging_face_local`
 
 ### `default_tool_parser`
 
@@ -1263,7 +1076,7 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `haystack.components.generators.chat.openai`
+## `chat/openai`
 
 ### `OpenAIChatGenerator`
 
@@ -1494,7 +1307,7 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `haystack.components.generators.chat.openai_responses`
+## `chat/openai_responses`
 
 ### `OpenAIResponsesChatGenerator`
 
@@ -1725,7 +1538,7 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `haystack.components.generators.hugging_face_api`
+## `hugging_face_api`
 
 ### `HuggingFaceAPIGenerator`
 
@@ -1869,7 +1682,7 @@ Invoke the text generation inference for the given prompt and generation paramet
 - – A dictionary with the generated replies and metadata. Both are lists of length n.
 - replies: A list of strings representing the generated replies.
 
-## `haystack.components.generators.hugging_face_local`
+## `hugging_face_local`
 
 ### `HuggingFaceLocalGenerator`
 
@@ -2001,7 +1814,7 @@ Run the text generation model on the given prompt.
 - – A dictionary containing the generated replies.
 - replies: A list of strings representing the generated replies.
 
-## `haystack.components.generators.openai`
+## `openai`
 
 ### `OpenAIGenerator`
 
@@ -2148,7 +1961,7 @@ Invoke the text generation inference based on the provided messages and generati
 - <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A list of strings containing the generated responses and a list of dictionaries containing the metadata
   for each response.
 
-## `haystack.components.generators.openai_dalle`
+## `openai_dalle`
 
 ### `DALLEImageGenerator`
 
@@ -2271,7 +2084,7 @@ Deserialize this component from a dictionary.
 
 - <code>DALLEImageGenerator</code> – The deserialized component instance.
 
-## `haystack.components.generators.utils`
+## `utils`
 
 ### `print_streaming_chunk`
 

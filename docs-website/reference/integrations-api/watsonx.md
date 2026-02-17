@@ -5,13 +5,10 @@ description: "IBM watsonx.ai integration for Haystack"
 slug: "/integrations-watsonx"
 ---
 
-<a id="haystack_integrations.components.embedders.watsonx.document_embedder"></a>
 
-## Module haystack\_integrations.components.embedders.watsonx.document\_embedder
+## `haystack_integrations.components.embedders.watsonx.document_embedder`
 
-<a id="haystack_integrations.components.embedders.watsonx.document_embedder.WatsonxDocumentEmbedder"></a>
-
-### WatsonxDocumentEmbedder
+### `WatsonxDocumentEmbedder`
 
 Computes document embeddings using IBM watsonx.ai models.
 
@@ -39,109 +36,96 @@ print(result["documents"][0].embedding)
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
-<a id="haystack_integrations.components.embedders.watsonx.document_embedder.WatsonxDocumentEmbedder.__init__"></a>
-
-#### WatsonxDocumentEmbedder.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             model: str = "ibm/slate-30m-english-rtrvr-v2",
-             api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             api_base_url: str = "https://us-south.ml.cloud.ibm.com",
-             project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
-             truncate_input_tokens: int | None = None,
-             prefix: str = "",
-             suffix: str = "",
-             batch_size: int = 1000,
-             concurrency_limit: int = 5,
-             timeout: float | None = None,
-             max_retries: int | None = None,
-             meta_fields_to_embed: list[str] | None = None,
-             embedding_separator: str = "\n")
+__init__(
+    *,
+    model: str = "ibm/slate-30m-english-rtrvr-v2",
+    api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
+    api_base_url: str = "https://us-south.ml.cloud.ibm.com",
+    project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
+    truncate_input_tokens: int | None = None,
+    prefix: str = "",
+    suffix: str = "",
+    batch_size: int = 1000,
+    concurrency_limit: int = 5,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n"
+)
 ```
 
 Creates a WatsonxDocumentEmbedder component.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: The name of the model to use for calculating embeddings.
-Default is "ibm/slate-30m-english-rtrvr-v2".
-- `api_key`: The WATSONX API key. Can be set via environment variable WATSONX_API_KEY.
-- `api_base_url`: The WATSONX URL for the watsonx.ai service.
-Default is "https://us-south.ml.cloud.ibm.com".
-- `project_id`: The ID of the Watson Studio project.
-Can be set via environment variable WATSONX_PROJECT_ID.
-- `truncate_input_tokens`: Maximum number of tokens to use from the input text.
-If set to `None` (or not provided), the full input text is used, up to the model's maximum token limit.
-- `prefix`: A string to add at the beginning of each text.
-- `suffix`: A string to add at the end of each text.
-- `batch_size`: Number of documents to embed in one API call. Default is 1000.
-- `concurrency_limit`: Number of parallel requests to make. Default is 5.
-- `timeout`: Timeout for API requests in seconds.
-- `max_retries`: Maximum number of retries for API requests.
+- **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
+  Default is "ibm/slate-30m-english-rtrvr-v2".
+- **api_key** (<code>Secret</code>) – The WATSONX API key. Can be set via environment variable WATSONX_API_KEY.
+- **api_base_url** (<code>str</code>) – The WATSONX URL for the watsonx.ai service.
+  Default is "https://us-south.ml.cloud.ibm.com".
+- **project_id** (<code>Secret</code>) – The ID of the Watson Studio project.
+  Can be set via environment variable WATSONX_PROJECT_ID.
+- **truncate_input_tokens** (<code>int | None</code>) – Maximum number of tokens to use from the input text.
+  If set to `None` (or not provided), the full input text is used, up to the model's maximum token limit.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text.
+- **suffix** (<code>str</code>) – A string to add at the end of each text.
+- **batch_size** (<code>int</code>) – Number of documents to embed in one API call. Default is 1000.
+- **concurrency_limit** (<code>int</code>) – Number of parallel requests to make. Default is 5.
+- **timeout** (<code>float | None</code>) – Timeout for API requests in seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests.
 
-<a id="haystack_integrations.components.embedders.watsonx.document_embedder.WatsonxDocumentEmbedder.to_dict"></a>
-
-#### WatsonxDocumentEmbedder.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.embedders.watsonx.document_embedder.WatsonxDocumentEmbedder.from_dict"></a>
-
-#### WatsonxDocumentEmbedder.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "WatsonxDocumentEmbedder"
+from_dict(data: dict[str, Any]) -> 'WatsonxDocumentEmbedder'
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>'WatsonxDocumentEmbedder'</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.embedders.watsonx.document_embedder.WatsonxDocumentEmbedder.run"></a>
-
-#### WatsonxDocumentEmbedder.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-def run(documents: list[Document]
-        ) -> dict[str, list[Document] | dict[str, Any]]
+run(documents: list[Document]) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embeds a list of documents.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to embed.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
 
-**Returns**:
+**Returns:**
 
-A dictionary with:
+- <code>dict\[str, list\[Document\] | dict\[str, Any\]\]</code> – A dictionary with:
 - 'documents': List of Documents with embeddings added
 - 'meta': Information about the model usage
 
-<a id="haystack_integrations.components.embedders.watsonx.text_embedder"></a>
+## `haystack_integrations.components.embedders.watsonx.text_embedder`
 
-## Module haystack\_integrations.components.embedders.watsonx.text\_embedder
-
-<a id="haystack_integrations.components.embedders.watsonx.text_embedder.WatsonxTextEmbedder"></a>
-
-### WatsonxTextEmbedder
+### `WatsonxTextEmbedder`
 
 Embeds strings using IBM watsonx.ai foundation models.
 
@@ -168,102 +152,90 @@ print(text_embedder.run(text_to_embed))
 #           'truncated_input_tokens': 3}}
 ```
 
-<a id="haystack_integrations.components.embedders.watsonx.text_embedder.WatsonxTextEmbedder.__init__"></a>
-
-#### WatsonxTextEmbedder.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             model: str = "ibm/slate-30m-english-rtrvr-v2",
-             api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             api_base_url: str = "https://us-south.ml.cloud.ibm.com",
-             project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
-             truncate_input_tokens: int | None = None,
-             prefix: str = "",
-             suffix: str = "",
-             timeout: float | None = None,
-             max_retries: int | None = None)
+__init__(
+    *,
+    model: str = "ibm/slate-30m-english-rtrvr-v2",
+    api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
+    api_base_url: str = "https://us-south.ml.cloud.ibm.com",
+    project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
+    truncate_input_tokens: int | None = None,
+    prefix: str = "",
+    suffix: str = "",
+    timeout: float | None = None,
+    max_retries: int | None = None
+)
 ```
 
 Creates an WatsonxTextEmbedder component.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: The name of the IBM watsonx model to use for calculating embeddings.
-Default is "ibm/slate-30m-english-rtrvr-v2".
-- `api_key`: The WATSONX API key. Can be set via environment variable WATSONX_API_KEY.
-- `api_base_url`: The WATSONX URL for the watsonx.ai service.
-Default is "https://us-south.ml.cloud.ibm.com".
-- `project_id`: The ID of the Watson Studio project.
-Can be set via environment variable WATSONX_PROJECT_ID.
-- `truncate_input_tokens`: Maximum number of tokens to use from the input text.
-If set to `None` (or not provided), the full input text is used, up to the model's maximum token limit.
-- `prefix`: A string to add at the beginning of each text to embed.
-- `suffix`: A string to add at the end of each text to embed.
-- `timeout`: Timeout for API requests in seconds.
-- `max_retries`: Maximum number of retries for API requests.
+- **model** (<code>str</code>) – The name of the IBM watsonx model to use for calculating embeddings.
+  Default is "ibm/slate-30m-english-rtrvr-v2".
+- **api_key** (<code>Secret</code>) – The WATSONX API key. Can be set via environment variable WATSONX_API_KEY.
+- **api_base_url** (<code>str</code>) – The WATSONX URL for the watsonx.ai service.
+  Default is "https://us-south.ml.cloud.ibm.com".
+- **project_id** (<code>Secret</code>) – The ID of the Watson Studio project.
+  Can be set via environment variable WATSONX_PROJECT_ID.
+- **truncate_input_tokens** (<code>int | None</code>) – Maximum number of tokens to use from the input text.
+  If set to `None` (or not provided), the full input text is used, up to the model's maximum token limit.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text to embed.
+- **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
+- **timeout** (<code>float | None</code>) – Timeout for API requests in seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries for API requests.
 
-<a id="haystack_integrations.components.embedders.watsonx.text_embedder.WatsonxTextEmbedder.to_dict"></a>
-
-#### WatsonxTextEmbedder.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.embedders.watsonx.text_embedder.WatsonxTextEmbedder.from_dict"></a>
-
-#### WatsonxTextEmbedder.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "WatsonxTextEmbedder"
+from_dict(data: dict[str, Any]) -> WatsonxTextEmbedder
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>WatsonxTextEmbedder</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.embedders.watsonx.text_embedder.WatsonxTextEmbedder.run"></a>
-
-#### WatsonxTextEmbedder.run
+#### `run`
 
 ```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-def run(text: str) -> dict[str, list[float] | dict[str, Any]]
+run(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Embeds a single string.
 
-**Arguments**:
+**Parameters:**
 
-- `text`: Text to embed.
+- **text** (<code>str</code>) – Text to embed.
 
-**Returns**:
+**Returns:**
 
-A dictionary with:
+- <code>dict\[str, list\[float\] | dict\[str, Any\]\]</code> – A dictionary with:
 - 'embedding': The embedding of the input text
 - 'meta': Information about the model usage
 
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator"></a>
+## `haystack_integrations.components.generators.watsonx.chat.chat_generator`
 
-## Module haystack\_integrations.components.generators.watsonx.chat.chat\_generator
-
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator"></a>
-
-### WatsonxChatGenerator
+### `WatsonxChatGenerator`
 
 Enables chat completions using IBM's watsonx.ai foundation models.
 
@@ -319,41 +291,42 @@ response = client.run(messages)
 print(response)
 ```
 
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator.__init__"></a>
-
-#### WatsonxChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             model: str = "ibm/granite-4-h-small",
-             project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
-             api_base_url: str = "https://us-south.ml.cloud.ibm.com",
-             generation_kwargs: dict[str, Any] | None = None,
-             timeout: float | None = None,
-             max_retries: int | None = None,
-             verify: bool | str | None = None,
-             streaming_callback: StreamingCallbackT | None = None) -> None
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
+    model: str = "ibm/granite-4-h-small",
+    project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
+    api_base_url: str = "https://us-south.ml.cloud.ibm.com",
+    generation_kwargs: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    verify: bool | str | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> None
 ```
 
 Creates an instance of WatsonxChatGenerator.
 
 Before initializing the component, you can set environment variables:
+
 - `WATSONX_TIMEOUT` to override the default timeout
 - `WATSONX_MAX_RETRIES` to override the default retry count
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: IBM Cloud API key for watsonx.ai access.
-Can be set via `WATSONX_API_KEY` environment variable or passed directly.
-- `model`: The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
-Available models can be found in your IBM Cloud account.
-- `project_id`: IBM Cloud project ID
-- `api_base_url`: Custom base URL for the API endpoint.
-Defaults to "https://us-south.ml.cloud.ibm.com".
-- `generation_kwargs`: Additional parameters to control text generation.
-These parameters are passed directly to the watsonx.ai inference endpoint.
-Supported parameters include:
+- **api_key** (<code>Secret</code>) – IBM Cloud API key for watsonx.ai access.
+  Can be set via `WATSONX_API_KEY` environment variable or passed directly.
+- **model** (<code>str</code>) – The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
+  Available models can be found in your IBM Cloud account.
+- **project_id** (<code>Secret</code>) – IBM Cloud project ID
+- **api_base_url** (<code>str</code>) – Custom base URL for the API endpoint.
+  Defaults to "https://us-south.ml.cloud.ibm.com".
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional parameters to control text generation.
+  These parameters are passed directly to the watsonx.ai inference endpoint.
+  Supported parameters include:
 - `temperature`: Controls randomness (lower = more deterministic)
 - `max_new_tokens`: Maximum number of tokens to generate
 - `min_new_tokens`: Minimum number of tokens to generate
@@ -363,56 +336,48 @@ Supported parameters include:
 - `length_penalty`: Penalty based on output length
 - `stop_sequences`: List of sequences where generation should stop
 - `random_seed`: Seed for reproducible results
-- `timeout`: Timeout in seconds for API requests.
-Defaults to environment variable `WATSONX_TIMEOUT` or 30 seconds.
-- `max_retries`: Maximum number of retry attempts for failed requests.
-Defaults to environment variable `WATSONX_MAX_RETRIES` or 5.
-- `verify`: SSL verification setting. Can be:
+- **timeout** (<code>float | None</code>) – Timeout in seconds for API requests.
+  Defaults to environment variable `WATSONX_TIMEOUT` or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retry attempts for failed requests.
+  Defaults to environment variable `WATSONX_MAX_RETRIES` or 5.
+- **verify** (<code>bool | str | None</code>) – SSL verification setting. Can be:
 - True: Verify SSL certificates (default)
 - False: Skip verification (insecure)
 - Path to CA bundle for custom certificates
-- `streaming_callback`: A callback function for streaming responses.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function for streaming responses.
 
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator.to_dict"></a>
-
-#### WatsonxChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator.from_dict"></a>
-
-#### WatsonxChatGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "WatsonxChatGenerator"
+from_dict(data: dict[str, Any]) -> WatsonxChatGenerator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>WatsonxChatGenerator</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator.run"></a>
-
-#### WatsonxChatGenerator.run
+#### `run`
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-def run(
+run(
     *,
     messages: list[ChatMessage],
     generation_kwargs: dict[str, Any] | None = None,
@@ -422,26 +387,23 @@ def run(
 
 Generate chat completions synchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-If provided this will override the `streaming_callback` set in the `__init__` method.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
+  passed in the `__init__` method.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  If provided this will override the `streaming_callback` set in the `__init__` method.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following key:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-<a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator.run_async"></a>
-
-#### WatsonxChatGenerator.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(
+run_async(
     *,
     messages: list[ChatMessage],
     generation_kwargs: dict[str, Any] | None = None,
@@ -451,26 +413,24 @@ async def run_async(
 
 Generate chat completions asynchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-If provided this will override the `streaming_callback` set in the `__init__` method.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
+  passed in the `__init__` method.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  If provided this will override the `streaming_callback` set in the `__init__` method.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following key:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-<a id="haystack_integrations.components.generators.watsonx.generator"></a>
+## `haystack_integrations.components.generators.watsonx.generator`
 
-## Module haystack\_integrations.components.generators.watsonx.generator
+### `WatsonxGenerator`
 
-<a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator"></a>
-
-### WatsonxGenerator
+Bases: <code>WatsonxChatGenerator</code>
 
 Enables text completions using IBM's watsonx.ai foundation models.
 
@@ -504,7 +464,9 @@ response = generator.run(
 )
 print(response)
 ```
+
 Output:
+
 ```
 {
     "replies": ["Quantum computing uses quantum-mechanical phenomena like...."],
@@ -522,43 +484,44 @@ Output:
 }
 ```
 
-<a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator.__init__"></a>
-
-#### WatsonxGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             model: str = "ibm/granite-4-h-small",
-             project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
-             api_base_url: str = "https://us-south.ml.cloud.ibm.com",
-             system_prompt: str | None = None,
-             generation_kwargs: dict[str, Any] | None = None,
-             timeout: float | None = None,
-             max_retries: int | None = None,
-             verify: bool | str | None = None,
-             streaming_callback: StreamingCallbackT | None = None) -> None
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
+    model: str = "ibm/granite-4-h-small",
+    project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
+    api_base_url: str = "https://us-south.ml.cloud.ibm.com",
+    system_prompt: str | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    verify: bool | str | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> None
 ```
 
 Creates an instance of WatsonxGenerator.
 
 Before initializing the component, you can set environment variables:
+
 - `WATSONX_TIMEOUT` to override the default timeout
 - `WATSONX_MAX_RETRIES` to override the default retry count
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: IBM Cloud API key for watsonx.ai access.
-Can be set via `WATSONX_API_KEY` environment variable or passed directly.
-- `model`: The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
-Available models can be found in your IBM Cloud account.
-- `project_id`: IBM Cloud project ID
-- `api_base_url`: Custom base URL for the API endpoint.
-Defaults to "https://us-south.ml.cloud.ibm.com".
-- `system_prompt`: The system prompt to use for text generation.
-- `generation_kwargs`: Additional parameters to control text generation.
-These parameters are passed directly to the watsonx.ai inference endpoint.
-Supported parameters include:
+- **api_key** (<code>Secret</code>) – IBM Cloud API key for watsonx.ai access.
+  Can be set via `WATSONX_API_KEY` environment variable or passed directly.
+- **model** (<code>str</code>) – The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
+  Available models can be found in your IBM Cloud account.
+- **project_id** (<code>Secret</code>) – IBM Cloud project ID
+- **api_base_url** (<code>str</code>) – Custom base URL for the API endpoint.
+  Defaults to "https://us-south.ml.cloud.ibm.com".
+- **system_prompt** (<code>str | None</code>) – The system prompt to use for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional parameters to control text generation.
+  These parameters are passed directly to the watsonx.ai inference endpoint.
+  Supported parameters include:
 - `temperature`: Controls randomness (lower = more deterministic)
 - `max_new_tokens`: Maximum number of tokens to generate
 - `min_new_tokens`: Minimum number of tokens to generate
@@ -568,110 +531,101 @@ Supported parameters include:
 - `length_penalty`: Penalty based on output length
 - `stop_sequences`: List of sequences where generation should stop
 - `random_seed`: Seed for reproducible results
-- `timeout`: Timeout in seconds for API requests.
-Defaults to environment variable `WATSONX_TIMEOUT` or 30 seconds.
-- `max_retries`: Maximum number of retry attempts for failed requests.
-Defaults to environment variable `WATSONX_MAX_RETRIES` or 5.
-- `verify`: SSL verification setting. Can be:
+- **timeout** (<code>float | None</code>) – Timeout in seconds for API requests.
+  Defaults to environment variable `WATSONX_TIMEOUT` or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum number of retry attempts for failed requests.
+  Defaults to environment variable `WATSONX_MAX_RETRIES` or 5.
+- **verify** (<code>bool | str | None</code>) – SSL verification setting. Can be:
 - True: Verify SSL certificates (default)
 - False: Skip verification (insecure)
 - Path to CA bundle for custom certificates
-- `streaming_callback`: A callback function for streaming responses.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function for streaming responses.
 
-<a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator.to_dict"></a>
-
-#### WatsonxGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator.from_dict"></a>
-
-#### WatsonxGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "WatsonxGenerator"
+from_dict(data: dict[str, Any]) -> WatsonxGenerator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>WatsonxGenerator</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator.run"></a>
-
-#### WatsonxGenerator.run
+#### `run`
 
 ```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(*,
-        prompt: str,
-        system_prompt: str | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
-        generation_kwargs: dict[str, Any] | None = None) -> dict[str, Any]
+run(
+    *,
+    prompt: str,
+    system_prompt: str | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, Any]
 ```
 
 Generate text completions synchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: The input prompt string for text generation.
-- `system_prompt`: An optional system prompt to provide context or instructions for the generation.
-If not provided, the system prompt set in the `__init__` method will be used.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-If provided, this will override the `streaming_callback` set in the `__init__` method.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
+- **prompt** (<code>str</code>) – The input prompt string for text generation.
+- **system_prompt** (<code>str | None</code>) – An optional system prompt to provide context or instructions for the generation.
+  If not provided, the system prompt set in the `__init__` method will be used.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  If provided, this will override the `streaming_callback` set in the `__init__` method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
+  passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `replies`: A list of generated text completions as strings.
 - `meta`: A list of metadata dictionaries containing information about each generation,
-including model name, finish reason, and token usage statistics.
+  including model name, finish reason, and token usage statistics.
 
-<a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator.run_async"></a>
-
-#### WatsonxGenerator.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-async def run_async(
-        *,
-        prompt: str,
-        system_prompt: str | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
-        generation_kwargs: dict[str, Any] | None = None) -> dict[str, Any]
+run_async(
+    *,
+    prompt: str,
+    system_prompt: str | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, Any]
 ```
 
 Generate text completions asynchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: The input prompt string for text generation.
-- `system_prompt`: An optional system prompt to provide context or instructions for the generation.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-If provided, this will override the `streaming_callback` set in the `__init__` method.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
+- **prompt** (<code>str</code>) – The input prompt string for text generation.
+- **system_prompt** (<code>str | None</code>) – An optional system prompt to provide context or instructions for the generation.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  If provided, this will override the `streaming_callback` set in the `__init__` method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
+  passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `replies`: A list of generated text completions as strings.
 - `meta`: A list of metadata dictionaries containing information about each generation,
-including model name, finish reason, and token usage statistics.
-
+  including model name, finish reason, and token usage statistics.

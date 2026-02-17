@@ -6,7 +6,7 @@ slug: "/builders-api"
 ---
 
 
-## `haystack.components.builders.answer_builder`
+## `answer_builder`
 
 ### `AnswerBuilder`
 
@@ -143,7 +143,7 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 - – A dictionary with the following keys:
 - `answers`: The answers received from the output of the Generator.
 
-## `haystack.components.builders.chat_prompt_builder`
+## `chat_prompt_builder`
 
 ### `ChatPromptBuilder`
 
@@ -337,7 +337,7 @@ Deserialize this component from a dictionary.
 
 - <code>ChatPromptBuilder</code> – The deserialized component.
 
-## `haystack.components.builders.prompt_builder`
+## `prompt_builder`
 
 ### `PromptBuilder`
 

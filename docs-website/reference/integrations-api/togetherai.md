@@ -5,13 +5,12 @@ description: "Together AI integration for Haystack"
 slug: "/integrations-togetherai"
 ---
 
-<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator"></a>
 
-## Module haystack\_integrations.components.generators.togetherai.chat.chat\_generator
+## `haystack_integrations.components.generators.togetherai.chat.chat_generator`
 
-<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator.TogetherAIChatGenerator"></a>
+### `TogetherAIChatGenerator`
 
-### TogetherAIChatGenerator
+Bases: <code>OpenAIChatGenerator</code>
 
 Enables text generation using Together AI generative models.
 For supported models, see [Together AI docs](https://docs.together.ai/docs).
@@ -21,6 +20,7 @@ directly to this component using the `generation_kwargs` parameter in `__init__`
 parameter in `run` method.
 
 Key Features and Compatibility:
+
 - **Primary Compatibility**: Designed to work seamlessly with the Together AI chat completion endpoint.
 - **Streaming Support**: Supports streaming responses from the Together AI chat completion endpoint.
 - **Customizability**: Supports all parameters supported by the Together AI chat completion endpoint.
@@ -34,6 +34,7 @@ For more details on the parameters supported by the Together AI API, refer to th
 [Together AI API Docs](https://docs.together.ai/reference/chat-completions-1).
 
 Usage example:
+
 ```python
 from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -51,89 +52,85 @@ print(response)
 >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 ```
 
-<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator.TogetherAIChatGenerator.__init__"></a>
-
-#### TogetherAIChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("TOGETHER_API_KEY"),
-             model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-             streaming_callback: StreamingCallbackT | None = None,
-             api_base_url: str | None = "https://api.together.xyz/v1",
-             generation_kwargs: dict[str, Any] | None = None,
-             tools: ToolsType | None = None,
-             timeout: float | None = None,
-             max_retries: int | None = None,
-             http_client_kwargs: dict[str, Any] | None = None)
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("TOGETHER_API_KEY"),
+    model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    streaming_callback: StreamingCallbackT | None = None,
+    api_base_url: str | None = "https://api.together.xyz/v1",
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    http_client_kwargs: dict[str, Any] | None = None
+)
 ```
 
 Creates an instance of TogetherAIChatGenerator. Unless specified otherwise,
-
 the default model is `meta-llama/Llama-3.3-70B-Instruct-Turbo`.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The Together API key.
-- `model`: The name of the Together AI chat completion model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `api_base_url`: The Together AI API Base url.
-For more details, see Together AI [docs](https://docs.together.ai/docs/openai-api-compatibility).
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the Together AI endpoint. See [Together AI API docs](https://docs.together.ai/reference/chat-completions-1)
-for more details.
-Some of the supported parameters:
+- **api_key** (<code>Secret</code>) – The Together API key.
+- **model** (<code>str</code>) – The name of the Together AI chat completion model to use.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **api_base_url** (<code>str | None</code>) – The Together AI API Base url.
+  For more details, see Together AI [docs](https://docs.together.ai/docs/openai-api-compatibility).
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the Together AI endpoint. See [Together AI API docs](https://docs.together.ai/reference/chat-completions-1)
+  for more details.
+  Some of the supported parameters:
 - `max_tokens`: The maximum number of tokens the output text can have.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+  Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
+  considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+  comprising the top 10% probability mass are considered.
 - `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
-    events as they become available, with the stream terminated by a data: [DONE] message.
+  events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
 - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
-    If provided, the output will always be validated against this
-    format (unless the model returns a tool call).
-    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-    Notes:
-    - For structured outputs with streaming,
-      the `response_format` must be a JSON schema and not a Pydantic model.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-Each tool should have a unique name.
-- `timeout`: The timeout for the Together AI API call.
-- `max_retries`: Maximum number of retries to contact Together AI after an internal error.
-If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+  If provided, the output will always be validated against this
+  format (unless the model returns a tool call).
+  For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+  Notes:
+  - For structured outputs with streaming,
+    the `response_format` must be a JSON schema and not a Pydantic model.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  Each tool should have a unique name.
+- **timeout** (<code>float | None</code>) – The timeout for the Together AI API call.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact Together AI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+  For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator.TogetherAIChatGenerator.to_dict"></a>
-
-#### TogetherAIChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.togetherai.generator"></a>
+## `haystack_integrations.components.generators.togetherai.generator`
 
-## Module haystack\_integrations.components.generators.togetherai.generator
+### `TogetherAIGenerator`
 
-<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator"></a>
-
-### TogetherAIGenerator
+Bases: <code>TogetherAIChatGenerator</code>
 
 Provides an interface to generate text using an LLM running on Together AI.
 
 Usage example:
+
 ```python
 from haystack_integrations.components.generators.togetherai import TogetherAIGenerator
 
@@ -145,150 +142,141 @@ generator = TogetherAIGenerator(model="deepseek-ai/DeepSeek-R1",
 print(generator.run("Who is the best Italian actor?"))
 ```
 
-<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.__init__"></a>
-
-#### TogetherAIGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(api_key: Secret = Secret.from_env_var("TOGETHER_API_KEY"),
-             model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-             api_base_url: str | None = "https://api.together.xyz/v1",
-             streaming_callback: StreamingCallbackT | None = None,
-             system_prompt: str | None = None,
-             generation_kwargs: dict[str, Any] | None = None,
-             timeout: float | None = None,
-             max_retries: int | None = None)
+__init__(
+    api_key: Secret = Secret.from_env_var("TOGETHER_API_KEY"),
+    model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    api_base_url: str | None = "https://api.together.xyz/v1",
+    streaming_callback: StreamingCallbackT | None = None,
+    system_prompt: str | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+)
 ```
 
 Initialize the TogetherAIGenerator.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The Together API key.
-- `model`: The name of the model to use.
-- `api_base_url`: The base URL of the Together AI API.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `system_prompt`: The system prompt to use for text generation. If not provided, the system prompt is
-omitted, and the default system prompt of the model is used.
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the Together AI endpoint. See Together AI
-[documentation](https://docs.together.ai/reference/chat-completions-1) for more details.
-Some of the supported parameters:
+- **api_key** (<code>Secret</code>) – The Together API key.
+- **model** (<code>str</code>) – The name of the model to use.
+- **api_base_url** (<code>str | None</code>) – The base URL of the Together AI API.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **system_prompt** (<code>str | None</code>) – The system prompt to use for text generation. If not provided, the system prompt is
+  omitted, and the default system prompt of the model is used.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the Together AI endpoint. See Together AI
+  [documentation](https://docs.together.ai/reference/chat-completions-1) for more details.
+  Some of the supported parameters:
 - `max_tokens`: The maximum number of tokens the output text can have.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+  Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So, 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
+  considers the results of the tokens with top_p probability mass. So, 0.1 means only the tokens
+  comprising the top 10% probability mass are considered.
 - `n`: How many completions to generate for each prompt. For example, if the LLM gets 3 prompts and n is 2,
-    it will generate two completions for each of the three prompts, ending up with 6 completions in total.
+  it will generate two completions for each of the three prompts, ending up with 6 completions in total.
 - `stop`: One or more sequences after which the LLM should stop generating tokens.
 - `presence_penalty`: What penalty to apply if a token is already present at all. Bigger values mean
-    the model will be less likely to repeat the same token in the text.
+  the model will be less likely to repeat the same token in the text.
 - `frequency_penalty`: What penalty to apply if a token has already been generated in the text.
-    Bigger values mean the model will be less likely to repeat the same token in the text.
+  Bigger values mean the model will be less likely to repeat the same token in the text.
 - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
-    values are the bias to add to that token.
-- `timeout`: Timeout for together.ai Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment
-variable or set to 30.
-- `max_retries`: Maximum retries to establish contact with Together AI if it returns an internal error, if not set it is
-inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+  values are the bias to add to that token.
+- **timeout** (<code>float | None</code>) – Timeout for together.ai Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment
+  variable or set to 30.
+- **max_retries** (<code>int | None</code>) – Maximum retries to establish contact with Together AI if it returns an internal error, if not set it is
+  inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
 
-<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.to_dict"></a>
-
-#### TogetherAIGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.from_dict"></a>
-
-#### TogetherAIGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "TogetherAIGenerator"
+from_dict(data: dict[str, Any]) -> TogetherAIGenerator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>TogetherAIGenerator</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.run"></a>
-
-#### TogetherAIGenerator.run
+#### `run`
 
 ```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(*,
-        prompt: str,
-        system_prompt: str | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
-        generation_kwargs: dict[str, Any] | None = None) -> dict[str, Any]
+run(
+    *,
+    prompt: str,
+    system_prompt: str | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, Any]
 ```
 
 Generate text completions synchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: The input prompt string for text generation.
-- `system_prompt`: An optional system prompt to provide context or instructions for the generation.
-If not provided, the system prompt set in the `__init__` method will be used.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-If provided, this will override the `streaming_callback` set in the `__init__` method.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
+- **prompt** (<code>str</code>) – The input prompt string for text generation.
+- **system_prompt** (<code>str | None</code>) – An optional system prompt to provide context or instructions for the generation.
+  If not provided, the system prompt set in the `__init__` method will be used.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  If provided, this will override the `streaming_callback` set in the `__init__` method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
+  passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `replies`: A list of generated text completions as strings.
 - `meta`: A list of metadata dictionaries containing information about each generation,
-including model name, finish reason, and token usage statistics.
+  including model name, finish reason, and token usage statistics.
 
-<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.run_async"></a>
-
-#### TogetherAIGenerator.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-async def run_async(
-        *,
-        prompt: str,
-        system_prompt: str | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
-        generation_kwargs: dict[str, Any] | None = None) -> dict[str, Any]
+run_async(
+    *,
+    prompt: str,
+    system_prompt: str | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, Any]
 ```
 
 Generate text completions asynchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: The input prompt string for text generation.
-- `system_prompt`: An optional system prompt to provide context or instructions for the generation.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-If provided, this will override the `streaming_callback` set in the `__init__` method.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
+- **prompt** (<code>str</code>) – The input prompt string for text generation.
+- **system_prompt** (<code>str | None</code>) – An optional system prompt to provide context or instructions for the generation.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  If provided, this will override the `streaming_callback` set in the `__init__` method.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
+  passed in the `__init__` method. Supported parameters include temperature, max_new_tokens, top_p, etc.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `replies`: A list of generated text completions as strings.
 - `meta`: A list of metadata dictionaries containing information about each generation,
-including model name, finish reason, and token usage statistics.
-
+  including model name, finish reason, and token usage statistics.

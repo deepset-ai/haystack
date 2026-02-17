@@ -6,7 +6,7 @@ slug: "/classifiers-api"
 ---
 
 
-## `haystack.components.classifiers.document_language_classifier`
+## `document_language_classifier`
 
 ### `DocumentLanguageClassifier`
 
@@ -91,7 +91,7 @@ sets the metadata value to "unmatched".
 
 - <code>TypeError</code> – if the input is not a list of Documents.
 
-## `haystack.components.classifiers.zero_shot_document_classifier`
+## `zero_shot_document_classifier`
 
 ### `TransformersZeroShotDocumentClassifier`
 

@@ -6,7 +6,7 @@ slug: "/experimental-summarizers-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.components.summarizers.llm_summarizer`
+## `haystack_experimental.components.summarizers.llm_summarizer`
 
 ### `LLMSummarizer`
 

@@ -6,7 +6,7 @@ slug: "/experimental-agents-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.components.agents.agent`
+## `haystack_experimental.components.agents.agent`
 
 ### `Agent`
 
@@ -277,7 +277,7 @@ Deserialize the agent from a dictionary.
 
 - <code>Agent</code> – Deserialized agent
 
-## `haystack-experimental.haystack_experimental.components.agents.human_in_the_loop.breakpoint`
+## `haystack_experimental.components.agents.human_in_the_loop.breakpoint`
 
 ### `get_tool_calls_and_descriptions_from_snapshot`
 
@@ -303,7 +303,7 @@ to a human for confirmation before execution.
 
 - <code>tuple\[list\[dict\], dict\[str, str\]\]</code> – A tuple containing a list of tool call dictionaries and a dictionary of tool descriptions
 
-## `haystack-experimental.haystack_experimental.components.agents.human_in_the_loop.errors`
+## `haystack_experimental.components.agents.human_in_the_loop.errors`
 
 ### `HITLBreakpointException`
 
@@ -332,7 +332,7 @@ Initialize the HITLBreakpointException.
 - **tool_call_id** (<code>str | None</code>) – Optional unique identifier for the tool call. This can be used to track and correlate
   the decision with a specific tool invocation.
 
-## `haystack-experimental.haystack_experimental.components.agents.human_in_the_loop.strategies`
+## `haystack_experimental.components.agents.human_in_the_loop.strategies`
 
 ### `BreakpointConfirmationStrategy`
 

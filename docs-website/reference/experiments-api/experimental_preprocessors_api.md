@@ -6,7 +6,7 @@ slug: "/experimental-preprocessors-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.components.preprocessors.md_header_level_inferrer`
+## `haystack_experimental.components.preprocessors.md_header_level_inferrer`
 
 ### `MarkdownHeaderLevelInferrer`
 

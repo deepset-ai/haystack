@@ -6,7 +6,7 @@ slug: "/evaluation-api"
 ---
 
 
-## `haystack.evaluation.eval_run_result`
+## `eval_run_result`
 
 ### `EvaluationRunResult`
 

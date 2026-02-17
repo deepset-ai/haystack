@@ -6,7 +6,7 @@ slug: "/query-api"
 ---
 
 
-## `haystack.components.query.query_expander`
+## `query_expander`
 
 ### `QueryExpander`
 

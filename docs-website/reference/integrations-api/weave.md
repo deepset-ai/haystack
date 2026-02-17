@@ -5,13 +5,10 @@ description: "Weights & Bias integration for Haystack"
 slug: "/integrations-weave"
 ---
 
-<a id="haystack_integrations.components.connectors.weave.weave_connector"></a>
 
-## Module haystack\_integrations.components.connectors.weave.weave\_connector
+## `haystack_integrations.components.connectors.weave.weave_connector`
 
-<a id="haystack_integrations.components.connectors.weave.weave_connector.WeaveConnector"></a>
-
-### WeaveConnector
+### `WeaveConnector`
 
 Collects traces from your pipeline and sends them to Weights & Biases.
 
@@ -29,7 +26,7 @@ enable Haystack tracing in your pipeline.
 To use this connector simply add it to your pipeline without any connections, and it will automatically start
 sending traces to Weights & Biases.
 
-**Example**:
+Example:
 
 ```python
 import os
@@ -68,160 +65,139 @@ response = pipe.run(
 )
 print(response["llm"]["replies"][0])
 ```
-  
-  You should then head to `https://wandb.ai/<user_name>/projects` and see the complete trace for your pipeline under
-  the pipeline name you specified, when creating the `WeaveConnector`
 
-<a id="haystack_integrations.components.connectors.weave.weave_connector.WeaveConnector.__init__"></a>
+You should then head to `https://wandb.ai/<user_name>/projects` and see the complete trace for your pipeline under
+the pipeline name you specified, when creating the `WeaveConnector`
 
-#### WeaveConnector.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(pipeline_name: str,
-             weave_init_kwargs: dict[str, Any] | None = None) -> None
+__init__(
+    pipeline_name: str, weave_init_kwargs: dict[str, Any] | None = None
+) -> None
 ```
 
 Initialize WeaveConnector.
 
-**Arguments**:
+**Parameters:**
 
-- `pipeline_name`: The name of the pipeline you want to trace.
-- `weave_init_kwargs`: Additional arguments to pass to the WeaveTracer client.
+- **pipeline_name** (<code>str</code>) – The name of the pipeline you want to trace.
+- **weave_init_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional arguments to pass to the WeaveTracer client.
 
-<a id="haystack_integrations.components.connectors.weave.weave_connector.WeaveConnector.warm_up"></a>
-
-#### WeaveConnector.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Initialize the WeaveTracer.
 
-<a id="haystack_integrations.components.connectors.weave.weave_connector.WeaveConnector.to_dict"></a>
-
-#### WeaveConnector.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with all the necessary information to recreate this component.
+- <code>dict\[str, Any\]</code> – Dictionary with all the necessary information to recreate this component.
 
-<a id="haystack_integrations.components.connectors.weave.weave_connector.WeaveConnector.from_dict"></a>
-
-#### WeaveConnector.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "WeaveConnector"
+from_dict(data: dict[str, Any]) -> WeaveConnector
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>WeaveConnector</code> – Deserialized component.
 
-<a id="haystack_integrations.tracing.weave.tracer"></a>
+## `haystack_integrations.tracing.weave.tracer`
 
-## Module haystack\_integrations.tracing.weave.tracer
+### `WeaveSpan`
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveSpan"></a>
-
-### WeaveSpan
+Bases: <code>Span</code>
 
 A bridge between Haystack's Span interface and Weave's Call object.
 
 Stores metadata about a component execution and its inputs and outputs, and manages the attributes/tags
 that describe the operation.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveSpan.set_tag"></a>
-
-#### WeaveSpan.set\_tag
+#### `set_tag`
 
 ```python
-def set_tag(key: str, value: Any) -> None
+set_tag(key: str, value: Any) -> None
 ```
 
 Set a tag by adding it to the call's inputs.
 
-**Arguments**:
+**Parameters:**
 
-- `key`: The tag key.
-- `value`: The tag value.
+- **key** (<code>str</code>) – The tag key.
+- **value** (<code>Any</code>) – The tag value.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveSpan.raw_span"></a>
-
-#### WeaveSpan.raw\_span
+#### `raw_span`
 
 ```python
-def raw_span() -> Any
+raw_span() -> Any
 ```
 
 Access to the underlying Weave Call object.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveSpan.get_correlation_data_for_logs"></a>
-
-#### WeaveSpan.get\_correlation\_data\_for\_logs
+#### `get_correlation_data_for_logs`
 
 ```python
-def get_correlation_data_for_logs() -> dict[str, Any]
+get_correlation_data_for_logs() -> dict[str, Any]
 ```
 
 Correlation data for logging.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveTracer"></a>
+### `WeaveTracer`
 
-### WeaveTracer
+Bases: <code>Tracer</code>
 
 Implements a Haystack's Tracer to make an interface with Weights and Bias Weave.
 
 It's responsible for creating and managing Weave calls, and for converting Haystack spans
 to Weave spans. It creates spans for each Haystack component run.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveTracer.__init__"></a>
-
-#### WeaveTracer.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(project_name: str, **weave_init_kwargs: Any) -> None
+__init__(project_name: str, **weave_init_kwargs: Any) -> None
 ```
 
 Initialize the WeaveTracer.
 
-**Arguments**:
+**Parameters:**
 
-- `project_name`: The name of the project to trace, this is will be the name appearing in Weave project.
-- `weave_init_kwargs`: Additional arguments to pass to the Weave client.
+- **project_name** (<code>str</code>) – The name of the project to trace, this is will be the name appearing in Weave project.
+- **weave_init_kwargs** (<code>Any</code>) – Additional arguments to pass to the Weave client.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveTracer.current_span"></a>
-
-#### WeaveTracer.current\_span
+#### `current_span`
 
 ```python
-def current_span() -> Span | None
+current_span() -> Span | None
 ```
 
 Get the current active span.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveTracer.trace"></a>
-
-#### WeaveTracer.trace
+#### `trace`
 
 ```python
-@contextlib.contextmanager
-def trace(operation_name: str,
-          tags: dict[str, Any] | None = None,
-          parent_span: WeaveSpan | None = None) -> Iterator[WeaveSpan]
+trace(
+    operation_name: str,
+    tags: dict[str, Any] | None = None,
+    parent_span: WeaveSpan | None = None,
+) -> Iterator[WeaveSpan]
 ```
 
 A context manager that creates and manages spans for tracking operations in Weights & Biases Weave.
@@ -229,20 +205,19 @@ A context manager that creates and manages spans for tracking operations in Weig
 It has two main workflows:
 
 A) For regular operations (operation_name != "haystack.component.run"):
-    Creates a Weave Call immediately
-    Creates a WeaveSpan with this call
-    Sets any provided tags
-    Yields the span for use in the with block
-    When the block ends, updates the call with pipeline output data
+Creates a Weave Call immediately
+Creates a WeaveSpan with this call
+Sets any provided tags
+Yields the span for use in the with block
+When the block ends, updates the call with pipeline output data
 
 B) For component runs (operation_name == "haystack.component.run"):
-    Creates a WeaveSpan WITHOUT a call initially (deferred creation)
-    Sets any provided tags
-    Yields the span for use in the with block
-    Creates the actual Weave Call only at the end, when all component information is available
-    Updates the call with component output data
+Creates a WeaveSpan WITHOUT a call initially (deferred creation)
+Sets any provided tags
+Yields the span for use in the with block
+Creates the actual Weave Call only at the end, when all component information is available
+Updates the call with component output data
 
 This distinction is important because Weave's calls can't be updated once created, but the content
 tags are only set on the Span at a later stage. To get the inputs on call creation, we need to create
 the call after we yield the span.
-

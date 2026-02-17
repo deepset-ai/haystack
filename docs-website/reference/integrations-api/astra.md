@@ -5,17 +5,15 @@ description: "Astra integration for Haystack"
 slug: "/integrations-astra"
 ---
 
-<a id="haystack_integrations.components.retrievers.astra.retriever"></a>
 
-## Module haystack\_integrations.components.retrievers.astra.retriever
+## `haystack_integrations.components.retrievers.astra.retriever`
 
-<a id="haystack_integrations.components.retrievers.astra.retriever.AstraEmbeddingRetriever"></a>
-
-### AstraEmbeddingRetriever
+### `AstraEmbeddingRetriever`
 
 A component for retrieving documents from an AstraDocumentStore.
 
 Usage example:
+
 ```python
 from haystack_integrations.document_stores.astra import AstraDocumentStore
 from haystack_integrations.components.retrievers.astra import AstraEmbeddingRetriever
@@ -31,94 +29,85 @@ document_store = AstraDocumentStore(
 retriever = AstraEmbeddingRetriever(document_store=document_store)
 ```
 
-<a id="haystack_integrations.components.retrievers.astra.retriever.AstraEmbeddingRetriever.__init__"></a>
-
-#### AstraEmbeddingRetriever.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(document_store: AstraDocumentStore,
-             filters: dict[str, Any] | None = None,
-             top_k: int = 10,
-             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    document_store: AstraDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+)
 ```
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: An instance of AstraDocumentStore.
-- `filters`: a dictionary with filters to narrow down the search space.
-- `top_k`: the maximum number of documents to retrieve.
-- `filter_policy`: Policy to determine how filters are applied.
+- **document_store** (<code>AstraDocumentStore</code>) – An instance of AstraDocumentStore.
+- **filters** (<code>dict\[str, Any\] | None</code>) – a dictionary with filters to narrow down the search space.
+- **top_k** (<code>int</code>) – the maximum number of documents to retrieve.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 
-<a id="haystack_integrations.components.retrievers.astra.retriever.AstraEmbeddingRetriever.run"></a>
-
-#### AstraEmbeddingRetriever.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(query_embedding: list[float],
-        filters: dict[str, Any] | None = None,
-        top_k: int | None = None) -> dict[str, list[Document]]
+run(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the AstraDocumentStore.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: floats representing the query embedding
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: the maximum number of documents to retrieve.
+- **query_embedding** (<code>list\[float\]</code>) – floats representing the query embedding
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – the maximum number of documents to retrieve.
 
-**Returns**:
+**Returns:**
 
-a dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – a dictionary with the following keys:
 - `documents`: A list of documents retrieved from the AstraDocumentStore.
 
-<a id="haystack_integrations.components.retrievers.astra.retriever.AstraEmbeddingRetriever.to_dict"></a>
-
-#### AstraEmbeddingRetriever.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.retrievers.astra.retriever.AstraEmbeddingRetriever.from_dict"></a>
-
-#### AstraEmbeddingRetriever.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AstraEmbeddingRetriever"
+from_dict(data: dict[str, Any]) -> AstraEmbeddingRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>AstraEmbeddingRetriever</code> – Deserialized component.
 
-<a id="haystack_integrations.document_stores.astra.document_store"></a>
+## `haystack_integrations.document_stores.astra.document_store`
 
-## Module haystack\_integrations.document\_stores.astra.document\_store
-
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore"></a>
-
-### AstraDocumentStore
+### `AstraDocumentStore`
 
 An AstraDocumentStore document store for Haystack.
 
 Example Usage:
+
 ```python
 from haystack_integrations.document_stores.astra import AstraDocumentStore
 
@@ -131,302 +120,275 @@ document_store = AstraDocumentStore(
 )
 ```
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.__init__"></a>
-
-#### AstraDocumentStore.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(
-        api_endpoint: Secret = Secret.from_env_var("ASTRA_DB_API_ENDPOINT"),
-        token: Secret = Secret.from_env_var("ASTRA_DB_APPLICATION_TOKEN"),
-        collection_name: str = "documents",
-        embedding_dimension: int = 768,
-        duplicates_policy: DuplicatePolicy = DuplicatePolicy.NONE,
-        similarity: str = "cosine",
-        namespace: str | None = None)
+__init__(
+    api_endpoint: Secret = Secret.from_env_var("ASTRA_DB_API_ENDPOINT"),
+    token: Secret = Secret.from_env_var("ASTRA_DB_APPLICATION_TOKEN"),
+    collection_name: str = "documents",
+    embedding_dimension: int = 768,
+    duplicates_policy: DuplicatePolicy = DuplicatePolicy.NONE,
+    similarity: str = "cosine",
+    namespace: str | None = None,
+)
 ```
 
 The connection to Astra DB is established and managed through the JSON API.
-
 The required credentials (api endpoint and application token) can be generated
 through the UI by clicking and the connect tab, and then selecting JSON API and
 Generate Configuration.
 
-**Arguments**:
+**Parameters:**
 
-- `api_endpoint`: the Astra DB API endpoint.
-- `token`: the Astra DB application token.
-- `collection_name`: the current collection in the keyspace in the current Astra DB.
-- `embedding_dimension`: dimension of embedding vector.
-- `duplicates_policy`: handle duplicate documents based on DuplicatePolicy parameter options.
-Parameter options : (`SKIP`, `OVERWRITE`, `FAIL`, `NONE`)
+- **api_endpoint** (<code>Secret</code>) – the Astra DB API endpoint.
+- **token** (<code>Secret</code>) – the Astra DB application token.
+- **collection_name** (<code>str</code>) – the current collection in the keyspace in the current Astra DB.
+- **embedding_dimension** (<code>int</code>) – dimension of embedding vector.
+- **duplicates_policy** (<code>DuplicatePolicy</code>) – handle duplicate documents based on DuplicatePolicy parameter options.
+  Parameter options : (`SKIP`, `OVERWRITE`, `FAIL`, `NONE`)
 - `DuplicatePolicy.NONE`: Default policy, If a Document with the same ID already exists,
-      it is skipped and not written.
+  it is skipped and not written.
 - `DuplicatePolicy.SKIP`: if a Document with the same ID already exists, it is skipped and not written.
 - `DuplicatePolicy.OVERWRITE`: if a Document with the same ID already exists, it is overwritten.
 - `DuplicatePolicy.FAIL`: if a Document with the same ID already exists, an error is raised.
-- `similarity`: the similarity function used to compare document vectors.
+- **similarity** (<code>str</code>) – the similarity function used to compare document vectors.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: if the API endpoint or token is not set.
+- <code>ValueError</code> – if the API endpoint or token is not set.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.from_dict"></a>
-
-#### AstraDocumentStore.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AstraDocumentStore"
+from_dict(data: dict[str, Any]) -> AstraDocumentStore
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>AstraDocumentStore</code> – Deserialized component.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.to_dict"></a>
-
-#### AstraDocumentStore.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.write_documents"></a>
-
-#### AstraDocumentStore.write\_documents
+#### `write_documents`
 
 ```python
-def write_documents(documents: list[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Indexes documents for later queries.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: a list of Haystack Document objects.
-- `policy`: handle duplicate documents based on DuplicatePolicy parameter options.
-Parameter options : (`SKIP`, `OVERWRITE`, `FAIL`, `NONE`)
+- **documents** (<code>list\[Document\]</code>) – a list of Haystack Document objects.
+- **policy** (<code>DuplicatePolicy</code>) – handle duplicate documents based on DuplicatePolicy parameter options.
+  Parameter options : (`SKIP`, `OVERWRITE`, `FAIL`, `NONE`)
 - `DuplicatePolicy.NONE`: Default policy, If a Document with the same ID already exists,
-    it is skipped and not written.
+  it is skipped and not written.
 - `DuplicatePolicy.SKIP`: If a Document with the same ID already exists,
-    it is skipped and not written.
+  it is skipped and not written.
 - `DuplicatePolicy.OVERWRITE`: If a Document with the same ID already exists, it is overwritten.
 - `DuplicatePolicy.FAIL`: If a Document with the same ID already exists, an error is raised.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: if the documents are not of type Document or dict.
-- `DuplicateDocumentError`: if a document with the same ID already exists and policy is set to FAIL.
-- `Exception`: if the document ID is not a string or if `id` and `_id` are both present in the document.
+- <code>int</code> – number of documents written.
 
-**Returns**:
+**Raises:**
 
-number of documents written.
+- <code>ValueError</code> – if the documents are not of type Document or dict.
+- <code>DuplicateDocumentError</code> – if a document with the same ID already exists and policy is set to FAIL.
+- <code>Exception</code> – if the document ID is not a string or if `id` and `_id` are both present in the document.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.count_documents"></a>
-
-#### AstraDocumentStore.count\_documents
+#### `count_documents`
 
 ```python
-def count_documents() -> int
+count_documents() -> int
 ```
 
 Counts the number of documents in the document store.
 
-**Returns**:
+**Returns:**
 
-the number of documents in the document store.
+- <code>int</code> – the number of documents in the document store.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.filter_documents"></a>
-
-#### AstraDocumentStore.filter\_documents
+#### `filter_documents`
 
 ```python
-def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns at most 1000 documents that match the filter.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: filters to apply.
+- **filters** (<code>dict\[str, Any\] | None</code>) – filters to apply.
 
-**Raises**:
+**Returns:**
 
-- `AstraDocumentStoreFilterError`: if the filter is invalid or not supported by this class.
+- <code>list\[Document\]</code> – matching documents.
 
-**Returns**:
+**Raises:**
 
-matching documents.
+- <code>AstraDocumentStoreFilterError</code> – if the filter is invalid or not supported by this class.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.get_documents_by_id"></a>
-
-#### AstraDocumentStore.get\_documents\_by\_id
+#### `get_documents_by_id`
 
 ```python
-def get_documents_by_id(ids: list[str]) -> list[Document]
+get_documents_by_id(ids: list[str]) -> list[Document]
 ```
 
 Gets documents by their IDs.
 
-**Arguments**:
+**Parameters:**
 
-- `ids`: the IDs of the documents to retrieve.
+- **ids** (<code>list\[str\]</code>) – the IDs of the documents to retrieve.
 
-**Returns**:
+**Returns:**
 
-the matching documents.
+- <code>list\[Document\]</code> – the matching documents.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.get_document_by_id"></a>
-
-#### AstraDocumentStore.get\_document\_by\_id
+#### `get_document_by_id`
 
 ```python
-def get_document_by_id(document_id: str) -> Document
+get_document_by_id(document_id: str) -> Document
 ```
 
 Gets a document by its ID.
 
-**Arguments**:
+**Parameters:**
 
-- `document_id`: the ID to filter by
+- **document_id** (<code>str</code>) – the ID to filter by
 
-**Raises**:
+**Returns:**
 
-- `MissingDocumentError`: if the document is not found
+- <code>Document</code> – the found document
 
-**Returns**:
+**Raises:**
 
-the found document
+- <code>MissingDocumentError</code> – if the document is not found
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.search"></a>
-
-#### AstraDocumentStore.search
+#### `search`
 
 ```python
-def search(query_embedding: list[float],
-           top_k: int,
-           filters: dict[str, Any] | None = None) -> list[Document]
+search(
+    query_embedding: list[float],
+    top_k: int,
+    filters: dict[str, Any] | None = None,
+) -> list[Document]
 ```
 
 Perform a search for a list of queries.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: a list of query embeddings.
-- `top_k`: the number of results to return.
-- `filters`: filters to apply during search.
+- **query_embedding** (<code>list\[float\]</code>) – a list of query embeddings.
+- **top_k** (<code>int</code>) – the number of results to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – filters to apply during search.
 
-**Returns**:
+**Returns:**
 
-matching documents.
+- <code>list\[Document\]</code> – matching documents.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.delete_documents"></a>
-
-#### AstraDocumentStore.delete\_documents
+#### `delete_documents`
 
 ```python
-def delete_documents(document_ids: list[str]) -> None
+delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents from the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: IDs of the documents to delete.
+- **document_ids** (<code>list\[str\]</code>) – IDs of the documents to delete.
 
-**Raises**:
+**Raises:**
 
-- `MissingDocumentError`: if no document was deleted but document IDs were provided.
+- <code>MissingDocumentError</code> – if no document was deleted but document IDs were provided.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.delete_all_documents"></a>
-
-#### AstraDocumentStore.delete\_all\_documents
+#### `delete_all_documents`
 
 ```python
-def delete_all_documents() -> None
+delete_all_documents() -> None
 ```
 
 Deletes all documents from the document store.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.delete_by_filter"></a>
-
-#### AstraDocumentStore.delete\_by\_filter
+#### `delete_by_filter`
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> int
+delete_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Deletes documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to find documents to delete.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to find documents to delete.
 
-**Raises**:
+**Returns:**
 
-- `AstraDocumentStoreFilterError`: if the filter is invalid or not supported.
+- <code>int</code> – The number of documents deleted.
 
-**Returns**:
+**Raises:**
 
-The number of documents deleted.
+- <code>AstraDocumentStoreFilterError</code> – if the filter is invalid or not supported.
 
-<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.update_by_filter"></a>
-
-#### AstraDocumentStore.update\_by\_filter
+#### `update_by_filter`
 
 ```python
-def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Updates documents that match the provided filters with the given metadata.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to find documents to update.
-- `meta`: The metadata fields to update. This will be merged with existing metadata.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to find documents to update.
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update. This will be merged with existing metadata.
 
-**Raises**:
+**Returns:**
 
-- `None`: AstraDocumentStoreFilterError: if the filter is invalid or not supported.
+- <code>int</code> – The number of documents updated.
 
-**Returns**:
+**Raises:**
 
-The number of documents updated.
+- <code>AstraDocumentStoreFilterError</code> – if the filter is invalid or not supported.
 
-<a id="haystack_integrations.document_stores.astra.errors"></a>
+## `haystack_integrations.document_stores.astra.errors`
 
-## Module haystack\_integrations.document\_stores.astra.errors
+### `AstraDocumentStoreError`
 
-<a id="haystack_integrations.document_stores.astra.errors.AstraDocumentStoreError"></a>
-
-### AstraDocumentStoreError
+Bases: <code>DocumentStoreError</code>
 
 Parent class for all AstraDocumentStore errors.
 
-<a id="haystack_integrations.document_stores.astra.errors.AstraDocumentStoreFilterError"></a>
+### `AstraDocumentStoreFilterError`
 
-### AstraDocumentStoreFilterError
+Bases: <code>FilterError</code>
 
 Raised when an invalid filter is passed to AstraDocumentStore.
 
-<a id="haystack_integrations.document_stores.astra.errors.AstraDocumentStoreConfigError"></a>
+### `AstraDocumentStoreConfigError`
 
-### AstraDocumentStoreConfigError
+Bases: <code>AstraDocumentStoreError</code>
 
 Raised when an invalid configuration is passed to AstraDocumentStore.
-

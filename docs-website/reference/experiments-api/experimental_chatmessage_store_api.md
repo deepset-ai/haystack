@@ -6,7 +6,7 @@ slug: "/experimental-chatmessage-store-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.chat_message_stores.in_memory`
+## `haystack_experimental.chat_message_stores.in_memory`
 
 ### `InMemoryChatMessageStore`
 

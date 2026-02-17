@@ -5,26 +5,22 @@ description: "GitHub integration for Haystack"
 slug: "/integrations-github"
 ---
 
-<a id="haystack_integrations.components.connectors.github.file_editor"></a>
 
-## Module haystack\_integrations.components.connectors.github.file\_editor
+## `haystack_integrations.components.connectors.github.file_editor`
 
-<a id="haystack_integrations.components.connectors.github.file_editor.Command"></a>
+### `Command`
 
-### Command
+Bases: <code>str</code>, <code>Enum</code>
 
 Available commands for file operations in GitHub.
 
-**Attributes**:
+Attributes:
+EDIT: Edit an existing file by replacing content
+UNDO: Revert the last commit if made by the same user
+CREATE: Create a new file
+DELETE: Delete an existing file
 
-- `EDIT` - Edit an existing file by replacing content
-- `UNDO` - Revert the last commit if made by the same user
-- `CREATE` - Create a new file
-- `DELETE` - Delete an existing file
-
-<a id="haystack_integrations.components.connectors.github.file_editor.GitHubFileEditor"></a>
-
-### GitHubFileEditor
+### `GitHubFileEditor`
 
 A Haystack component for editing files in GitHub repositories.
 
@@ -32,6 +28,7 @@ Supports editing, undoing changes, deleting files, and creating new files
 through the GitHub API.
 
 ### Usage example
+
 ```python
 from haystack_integrations.components.connectors.github import Command, GitHubFileEditor
 from haystack.utils import Secret
@@ -68,88 +65,78 @@ result = editor.run(
 )
 ```
 
-<a id="haystack_integrations.components.connectors.github.file_editor.GitHubFileEditor.__init__"></a>
-
-#### GitHubFileEditor.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
-             repo: str | None = None,
-             branch: str = "main",
-             raise_on_failure: bool = True)
+__init__(
+    *,
+    github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
+    repo: str | None = None,
+    branch: str = "main",
+    raise_on_failure: bool = True
+)
 ```
 
 Initialize the component.
 
-**Arguments**:
+**Parameters:**
 
-- `github_token`: GitHub personal access token for API authentication
-- `repo`: Default repository in owner/repo format
-- `branch`: Default branch to work with
-- `raise_on_failure`: If True, raises exceptions on API errors
+- **github_token** (<code>Secret</code>) – GitHub personal access token for API authentication
+- **repo** (<code>str | None</code>) – Default repository in owner/repo format
+- **branch** (<code>str</code>) – Default branch to work with
+- **raise_on_failure** (<code>bool</code>) – If True, raises exceptions on API errors
 
-**Raises**:
+**Raises:**
 
-- `TypeError`: If github_token is not a Secret
+- <code>TypeError</code> – If github_token is not a Secret
 
-<a id="haystack_integrations.components.connectors.github.file_editor.GitHubFileEditor.run"></a>
-
-#### GitHubFileEditor.run
+#### `run`
 
 ```python
-@component.output_types(result=str)
-def run(command: Command | str,
-        payload: dict[str, Any],
-        repo: str | None = None,
-        branch: str | None = None) -> dict[str, str]
+run(
+    command: Command | str,
+    payload: dict[str, Any],
+    repo: str | None = None,
+    branch: str | None = None,
+) -> dict[str, str]
 ```
 
 Process GitHub file operations.
 
-**Arguments**:
+**Parameters:**
 
-- `command`: Operation to perform ("edit", "undo", "create", "delete")
-- `payload`: Dictionary containing command-specific parameters
-- `repo`: Repository in owner/repo format (overrides default if provided)
-- `branch`: Branch to perform operations on (overrides default if provided)
+- **command** (<code>Command | str</code>) – Operation to perform ("edit", "undo", "create", "delete")
+- **payload** (<code>dict\[str, Any\]</code>) – Dictionary containing command-specific parameters
+- **repo** (<code>str | None</code>) – Repository in owner/repo format (overrides default if provided)
+- **branch** (<code>str | None</code>) – Branch to perform operations on (overrides default if provided)
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If command is not a valid Command enum value
+- <code>dict\[str, str\]</code> – Dictionary containing operation result
 
-**Returns**:
+**Raises:**
 
-Dictionary containing operation result
+- <code>ValueError</code> – If command is not a valid Command enum value
 
-<a id="haystack_integrations.components.connectors.github.file_editor.GitHubFileEditor.to_dict"></a>
-
-#### GitHubFileEditor.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-<a id="haystack_integrations.components.connectors.github.file_editor.GitHubFileEditor.from_dict"></a>
-
-#### GitHubFileEditor.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GitHubFileEditor"
+from_dict(data: dict[str, Any]) -> GitHubFileEditor
 ```
 
 Deserialize the component from a dictionary.
 
-<a id="haystack_integrations.components.connectors.github.issue_commenter"></a>
+## `haystack_integrations.components.connectors.github.issue_commenter`
 
-## Module haystack\_integrations.components.connectors.github.issue\_commenter
-
-<a id="haystack_integrations.components.connectors.github.issue_commenter.GitHubIssueCommenter"></a>
-
-### GitHubIssueCommenter
+### `GitHubIssueCommenter`
 
 Posts comments to GitHub issues.
 
@@ -157,6 +144,7 @@ The component takes a GitHub issue URL and comment text, then posts the comment
 to the specified issue using the GitHub API.
 
 ### Usage example
+
 ```python
 from haystack_integrations.components.connectors.github import GitHubIssueCommenter
 from haystack.utils import Secret
@@ -170,93 +158,83 @@ result = commenter.run(
 print(result["success"])
 ```
 
-<a id="haystack_integrations.components.connectors.github.issue_commenter.GitHubIssueCommenter.__init__"></a>
-
-#### GitHubIssueCommenter.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
-             raise_on_failure: bool = True,
-             retry_attempts: int = 2)
+__init__(
+    *,
+    github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
+    raise_on_failure: bool = True,
+    retry_attempts: int = 2
+)
 ```
 
 Initialize the component.
 
-**Arguments**:
+**Parameters:**
 
-- `github_token`: GitHub personal access token for API authentication as a Secret
-- `raise_on_failure`: If True, raises exceptions on API errors
-- `retry_attempts`: Number of retry attempts for failed requests
+- **github_token** (<code>Secret</code>) – GitHub personal access token for API authentication as a Secret
+- **raise_on_failure** (<code>bool</code>) – If True, raises exceptions on API errors
+- **retry_attempts** (<code>int</code>) – Number of retry attempts for failed requests
 
-<a id="haystack_integrations.components.connectors.github.issue_commenter.GitHubIssueCommenter.to_dict"></a>
-
-#### GitHubIssueCommenter.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.connectors.github.issue_commenter.GitHubIssueCommenter.from_dict"></a>
-
-#### GitHubIssueCommenter.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GitHubIssueCommenter"
+from_dict(data: dict[str, Any]) -> GitHubIssueCommenter
 ```
 
 Deserialize the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GitHubIssueCommenter</code> – Deserialized component.
 
-<a id="haystack_integrations.components.connectors.github.issue_commenter.GitHubIssueCommenter.run"></a>
-
-#### GitHubIssueCommenter.run
+#### `run`
 
 ```python
-@component.output_types(success=bool)
-def run(url: str, comment: str) -> dict
+run(url: str, comment: str) -> dict
 ```
 
 Post a comment to a GitHub issue.
 
-**Arguments**:
+**Parameters:**
 
-- `url`: GitHub issue URL
-- `comment`: Comment text to post
+- **url** (<code>str</code>) – GitHub issue URL
+- **comment** (<code>str</code>) – Comment text to post
 
-**Returns**:
+**Returns:**
 
-Dictionary containing success status
+- <code>dict</code> – Dictionary containing success status
 
-<a id="haystack_integrations.components.connectors.github.issue_viewer"></a>
+## `haystack_integrations.components.connectors.github.issue_viewer`
 
-## Module haystack\_integrations.components.connectors.github.issue\_viewer
-
-<a id="haystack_integrations.components.connectors.github.issue_viewer.GitHubIssueViewer"></a>
-
-### GitHubIssueViewer
+### `GitHubIssueViewer`
 
 Fetches and parses GitHub issues into Haystack documents.
 
 The component takes a GitHub issue URL and returns a list of documents where:
+
 - First document contains the main issue content
 - Subsequent documents contain the issue comments
 
 ### Usage example
+
 ```python
 from haystack_integrations.components.connectors.github import GitHubIssueViewer
 
@@ -268,90 +246,79 @@ docs = viewer.run(
 print(docs)
 ```
 
-<a id="haystack_integrations.components.connectors.github.issue_viewer.GitHubIssueViewer.__init__"></a>
-
-#### GitHubIssueViewer.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             github_token: Secret | None = None,
-             raise_on_failure: bool = True,
-             retry_attempts: int = 2)
+__init__(
+    *,
+    github_token: Secret | None = None,
+    raise_on_failure: bool = True,
+    retry_attempts: int = 2
+)
 ```
 
 Initialize the component.
 
-**Arguments**:
+**Parameters:**
 
-- `github_token`: GitHub personal access token for API authentication as a Secret
-- `raise_on_failure`: If True, raises exceptions on API errors
-- `retry_attempts`: Number of retry attempts for failed requests
+- **github_token** (<code>Secret | None</code>) – GitHub personal access token for API authentication as a Secret
+- **raise_on_failure** (<code>bool</code>) – If True, raises exceptions on API errors
+- **retry_attempts** (<code>int</code>) – Number of retry attempts for failed requests
 
-<a id="haystack_integrations.components.connectors.github.issue_viewer.GitHubIssueViewer.to_dict"></a>
-
-#### GitHubIssueViewer.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.connectors.github.issue_viewer.GitHubIssueViewer.from_dict"></a>
-
-#### GitHubIssueViewer.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GitHubIssueViewer"
+from_dict(data: dict[str, Any]) -> GitHubIssueViewer
 ```
 
 Deserialize the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GitHubIssueViewer</code> – Deserialized component.
 
-<a id="haystack_integrations.components.connectors.github.issue_viewer.GitHubIssueViewer.run"></a>
-
-#### GitHubIssueViewer.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(url: str) -> dict
+run(url: str) -> dict
 ```
 
 Process a GitHub issue URL and return documents.
 
-**Arguments**:
+**Parameters:**
 
-- `url`: GitHub issue URL
+- **url** (<code>str</code>) – GitHub issue URL
 
-**Returns**:
+**Returns:**
 
-Dictionary containing list of documents
+- <code>dict</code> – Dictionary containing list of documents
 
-<a id="haystack_integrations.components.connectors.github.pr_creator"></a>
+## `haystack_integrations.components.connectors.github.pr_creator`
 
-## Module haystack\_integrations.components.connectors.github.pr\_creator
-
-<a id="haystack_integrations.components.connectors.github.pr_creator.GitHubPRCreator"></a>
-
-### GitHubPRCreator
+### `GitHubPRCreator`
 
 A Haystack component for creating pull requests from a fork back to the original repository.
 
 Uses the authenticated user's fork to create the PR and links it to an existing issue.
 
 ### Usage example
+
 ```python
 from haystack_integrations.components.connectors.github import GitHubPRCreator
 from haystack.utils import Secret
@@ -363,87 +330,77 @@ pr_creator = GitHubPRCreator(
 # Create a PR from your fork
 result = pr_creator.run(
     issue_url="https://github.com/owner/repo/issues/123",
-    title="Fix issue `123`",
-    body="This PR addresses issue `123`",
+    title="Fix issue #123",
+    body="This PR addresses issue #123",
     branch="feature-branch",     # The branch in your fork with the changes
     base="main"                  # The branch in the original repo to merge into
 )
 ```
 
-<a id="haystack_integrations.components.connectors.github.pr_creator.GitHubPRCreator.__init__"></a>
-
-#### GitHubPRCreator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
-             raise_on_failure: bool = True)
+__init__(
+    *,
+    github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
+    raise_on_failure: bool = True
+)
 ```
 
 Initialize the component.
 
-**Arguments**:
+**Parameters:**
 
-- `github_token`: GitHub personal access token for authentication (from the fork owner)
-- `raise_on_failure`: If True, raises exceptions on API errors
+- **github_token** (<code>Secret</code>) – GitHub personal access token for authentication (from the fork owner)
+- **raise_on_failure** (<code>bool</code>) – If True, raises exceptions on API errors
 
-<a id="haystack_integrations.components.connectors.github.pr_creator.GitHubPRCreator.run"></a>
-
-#### GitHubPRCreator.run
+#### `run`
 
 ```python
-@component.output_types(result=str)
-def run(issue_url: str,
-        title: str,
-        branch: str,
-        base: str,
-        body: str = "",
-        draft: bool = False) -> dict[str, str]
+run(
+    issue_url: str,
+    title: str,
+    branch: str,
+    base: str,
+    body: str = "",
+    draft: bool = False,
+) -> dict[str, str]
 ```
 
 Create a new pull request from your fork to the original repository, linked to the specified issue.
 
-**Arguments**:
+**Parameters:**
 
-- `issue_url`: URL of the GitHub issue to link the PR to
-- `title`: Title of the pull request
-- `branch`: Name of the branch in your fork where changes are implemented
-- `base`: Name of the branch in the original repo you want to merge into
-- `body`: Additional content for the pull request description
-- `draft`: Whether to create a draft pull request
+- **issue_url** (<code>str</code>) – URL of the GitHub issue to link the PR to
+- **title** (<code>str</code>) – Title of the pull request
+- **branch** (<code>str</code>) – Name of the branch in your fork where changes are implemented
+- **base** (<code>str</code>) – Name of the branch in the original repo you want to merge into
+- **body** (<code>str</code>) – Additional content for the pull request description
+- **draft** (<code>bool</code>) – Whether to create a draft pull request
 
-**Returns**:
+**Returns:**
 
-Dictionary containing operation result
+- <code>dict\[str, str\]</code> – Dictionary containing operation result
 
-<a id="haystack_integrations.components.connectors.github.pr_creator.GitHubPRCreator.to_dict"></a>
-
-#### GitHubPRCreator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-<a id="haystack_integrations.components.connectors.github.pr_creator.GitHubPRCreator.from_dict"></a>
-
-#### GitHubPRCreator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GitHubPRCreator"
+from_dict(data: dict[str, Any]) -> GitHubPRCreator
 ```
 
 Deserialize the component from a dictionary.
 
-<a id="haystack_integrations.components.connectors.github.repo_forker"></a>
+## `haystack_integrations.components.connectors.github.repo_forker`
 
-## Module haystack\_integrations.components.connectors.github.repo\_forker
-
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker"></a>
-
-### GitHubRepoForker
+### `GitHubRepoForker`
 
 Forks a GitHub repository from an issue URL.
 
@@ -451,6 +408,7 @@ The component takes a GitHub issue URL, extracts the repository information,
 creates or syncs a fork of that repository, and optionally creates an issue-specific branch.
 
 ### Usage example
+
 ```python
 from haystack_integrations.components.connectors.github import GitHubRepoForker
 from haystack.utils import Secret
@@ -467,123 +425,107 @@ print(result)
 # Will create or sync fork and create branch "fix-123"
 ```
 
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.__init__"></a>
-
-#### GitHubRepoForker.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
-             raise_on_failure: bool = True,
-             wait_for_completion: bool = False,
-             max_wait_seconds: int = 300,
-             poll_interval: int = 2,
-             auto_sync: bool = True,
-             create_branch: bool = True)
+__init__(
+    *,
+    github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
+    raise_on_failure: bool = True,
+    wait_for_completion: bool = False,
+    max_wait_seconds: int = 300,
+    poll_interval: int = 2,
+    auto_sync: bool = True,
+    create_branch: bool = True
+)
 ```
 
 Initialize the component.
 
-**Arguments**:
+**Parameters:**
 
-- `github_token`: GitHub personal access token for API authentication
-- `raise_on_failure`: If True, raises exceptions on API errors
-- `wait_for_completion`: If True, waits until fork is fully created
-- `max_wait_seconds`: Maximum time to wait for fork completion in seconds
-- `poll_interval`: Time between status checks in seconds
-- `auto_sync`: If True, syncs fork with original repository if it already exists
-- `create_branch`: If True, creates a fix branch based on the issue number
+- **github_token** (<code>Secret</code>) – GitHub personal access token for API authentication
+- **raise_on_failure** (<code>bool</code>) – If True, raises exceptions on API errors
+- **wait_for_completion** (<code>bool</code>) – If True, waits until fork is fully created
+- **max_wait_seconds** (<code>int</code>) – Maximum time to wait for fork completion in seconds
+- **poll_interval** (<code>int</code>) – Time between status checks in seconds
+- **auto_sync** (<code>bool</code>) – If True, syncs fork with original repository if it already exists
+- **create_branch** (<code>bool</code>) – If True, creates a fix branch based on the issue number
 
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.to_dict"></a>
-
-#### GitHubRepoForker.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.from_dict"></a>
-
-#### GitHubRepoForker.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GitHubRepoForker"
+from_dict(data: dict[str, Any]) -> GitHubRepoForker
 ```
 
 Deserialize the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GitHubRepoForker</code> – Deserialized component.
 
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.run"></a>
-
-#### GitHubRepoForker.run
+#### `run`
 
 ```python
-@component.output_types(repo=str, issue_branch=str)
-def run(url: str) -> dict
+run(url: str) -> dict
 ```
 
 Process a GitHub issue URL and create or sync a fork of the repository.
 
-**Arguments**:
+**Parameters:**
 
-- `url`: GitHub issue URL
+- **url** (<code>str</code>) – GitHub issue URL
 
-**Returns**:
+**Returns:**
 
-Dictionary containing repository path in owner/repo format
+- <code>dict</code> – Dictionary containing repository path in owner/repo format
 
-<a id="haystack_integrations.components.connectors.github.repo_viewer"></a>
+## `haystack_integrations.components.connectors.github.repo_viewer`
 
-## Module haystack\_integrations.components.connectors.github.repo\_viewer
-
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubItem"></a>
-
-### GitHubItem
+### `GitHubItem`
 
 Represents an item (file or directory) in a GitHub repository
 
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubItem.type"></a>
-
-#### type
-
-"file" or "dir"
-
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubRepoViewer"></a>
-
-### GitHubRepoViewer
+### `GitHubRepoViewer`
 
 Navigates and fetches content from GitHub repositories.
 
 For directories:
+
 - Returns a list of Documents, one for each item
 - Each Document's content is the item name
 - Full path and metadata in Document.meta
 
 For files:
+
 - Returns a single Document
 - Document's content is the file content
 - Full path and metadata in Document.meta
 
 For errors:
+
 - Returns a single Document
 - Document's content is the error message
 - Document's meta contains type="error"
 
 ### Usage example
+
 ```python
 from haystack_integrations.components.connectors.github import GitHubRepoViewer
 
@@ -606,82 +548,73 @@ result = viewer.run(
 print(result)
 ```
 
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubRepoViewer.__init__"></a>
-
-#### GitHubRepoViewer.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             github_token: Secret | None = None,
-             raise_on_failure: bool = True,
-             max_file_size: int = 1_000_000,
-             repo: str | None = None,
-             branch: str = "main")
+__init__(
+    *,
+    github_token: Secret | None = None,
+    raise_on_failure: bool = True,
+    max_file_size: int = 1000000,
+    repo: str | None = None,
+    branch: str = "main"
+)
 ```
 
 Initialize the component.
 
-**Arguments**:
+**Parameters:**
 
-- `github_token`: GitHub personal access token for API authentication
-- `raise_on_failure`: If True, raises exceptions on API errors
-- `max_file_size`: Maximum file size in bytes to fetch (default: 1MB)
-- `repo`: Repository in format "owner/repo"
-- `branch`: Git reference (branch, tag, commit) to use
+- **github_token** (<code>Secret | None</code>) – GitHub personal access token for API authentication
+- **raise_on_failure** (<code>bool</code>) – If True, raises exceptions on API errors
+- **max_file_size** (<code>int</code>) – Maximum file size in bytes to fetch (default: 1MB)
+- **repo** (<code>str | None</code>) – Repository in format "owner/repo"
+- **branch** (<code>str</code>) – Git reference (branch, tag, commit) to use
 
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubRepoViewer.to_dict"></a>
-
-#### GitHubRepoViewer.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubRepoViewer.from_dict"></a>
-
-#### GitHubRepoViewer.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GitHubRepoViewer"
+from_dict(data: dict[str, Any]) -> GitHubRepoViewer
 ```
 
 Deserialize the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GitHubRepoViewer</code> – Deserialized component.
 
-<a id="haystack_integrations.components.connectors.github.repo_viewer.GitHubRepoViewer.run"></a>
-
-#### GitHubRepoViewer.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(path: str,
-        repo: str | None = None,
-        branch: str | None = None) -> dict[str, list[Document]]
+run(
+    path: str, repo: str | None = None, branch: str | None = None
+) -> dict[str, list[Document]]
 ```
 
 Process a GitHub repository path and return documents.
 
-**Arguments**:
+**Parameters:**
 
-- `repo`: Repository in format "owner/repo"
-- `path`: Path within repository (default: root)
-- `branch`: Git reference (branch, tag, commit) to use
+- **repo** (<code>str | None</code>) – Repository in format "owner/repo"
+- **path** (<code>str</code>) – Path within repository (default: root)
+- **branch** (<code>str | None</code>) – Git reference (branch, tag, commit) to use
 
-**Returns**:
+**Returns:**
 
-Dictionary containing list of documents
-
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary containing list of documents

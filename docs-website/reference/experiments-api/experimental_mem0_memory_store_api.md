@@ -6,7 +6,7 @@ slug: "/experimental-mem0-memory-store-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.memory_stores.mem0.memory_store`
+## `haystack_experimental.memory_stores.mem0.memory_store`
 
 ### `Mem0MemoryStore`
 

@@ -6,7 +6,7 @@ slug: "/preprocessors-api"
 ---
 
 
-## `haystack.components.preprocessors.csv_document_cleaner`
+## `csv_document_cleaner`
 
 ### `CSVDocumentCleaner`
 
@@ -69,7 +69,7 @@ Processing steps:
 1. Returns the cleaned CSV content as a new `Document` object, with an option to retain the original
    document ID.
 
-## `haystack.components.preprocessors.csv_document_splitter`
+## `csv_document_splitter`
 
 ### `CSVDocumentSplitter`
 
@@ -144,7 +144,7 @@ Processes and splits a list of CSV documents into multiple sub-tables.
 
 - The `meta` field from the original document is preserved in the split documents.
 
-## `haystack.components.preprocessors.document_cleaner`
+## `document_cleaner`
 
 ### `DocumentCleaner`
 
@@ -231,7 +231,7 @@ Cleans up the documents.
 
 - <code>TypeError</code> – if documents is not a list of Documents.
 
-## `haystack.components.preprocessors.document_preprocessor`
+## `document_preprocessor`
 
 ### `DocumentPreprocessor`
 
@@ -337,7 +337,7 @@ Deserializes the SuperComponent from a dictionary.
 
 - <code>DocumentPreprocessor</code> – Deserialized SuperComponent.
 
-## `haystack.components.preprocessors.document_splitter`
+## `document_splitter`
 
 ### `DocumentSplitter`
 
@@ -471,7 +471,7 @@ from_dict(data: dict[str, Any]) -> DocumentSplitter
 
 Deserializes the component from a dictionary.
 
-## `haystack.components.preprocessors.embedding_based_document_splitter`
+## `embedding_based_document_splitter`
 
 ### `EmbeddingBasedDocumentSplitter`
 
@@ -614,7 +614,7 @@ Deserializes the component from a dictionary.
 
 - <code>EmbeddingBasedDocumentSplitter</code> – The deserialized component.
 
-## `haystack.components.preprocessors.hierarchical_document_splitter`
+## `hierarchical_document_splitter`
 
 ### `HierarchicalDocumentSplitter`
 
@@ -722,7 +722,7 @@ Deserialize this component from a dictionary.
 
 - <code>HierarchicalDocumentSplitter</code> – The deserialized component.
 
-## `haystack.components.preprocessors.markdown_header_splitter`
+## `markdown_header_splitter`
 
 ### `MarkdownHeaderSplitter`
 
@@ -796,7 +796,7 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
-## `haystack.components.preprocessors.recursive_splitter`
+## `recursive_splitter`
 
 ### `RecursiveDocumentSplitter`
 
@@ -897,7 +897,7 @@ Split a list of documents into documents with smaller chunks of text.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
   to the input documents.
 
-## `haystack.components.preprocessors.text_cleaner`
+## `text_cleaner`
 
 ### `TextCleaner`
 

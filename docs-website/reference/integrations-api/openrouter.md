@@ -5,13 +5,12 @@ description: "OpenRouter integration for Haystack"
 slug: "/integrations-openrouter"
 ---
 
-<a id="haystack_integrations.components.generators.openrouter.chat.chat_generator"></a>
 
-## Module haystack\_integrations.components.generators.openrouter.chat.chat\_generator
+## `haystack_integrations.components.generators.openrouter.chat.chat_generator`
 
-<a id="haystack_integrations.components.generators.openrouter.chat.chat_generator.OpenRouterChatGenerator"></a>
+### `OpenRouterChatGenerator`
 
-### OpenRouterChatGenerator
+Bases: <code>OpenAIChatGenerator</code>
 
 Enables text generation using OpenRouter generative models.
 For supported models, see [OpenRouter docs](https://openrouter.ai/models).
@@ -21,6 +20,7 @@ directly to this component using the `generation_kwargs` parameter in `__init__`
 parameter in `run` method.
 
 Key Features and Compatibility:
+
 - **Primary Compatibility**: Designed to work seamlessly with the OpenRouter chat completion endpoint.
 - **Streaming Support**: Supports streaming responses from the OpenRouter chat completion endpoint.
 - **Customizability**: Supports all parameters supported by the OpenRouter chat completion endpoint.
@@ -34,6 +34,7 @@ For more details on the parameters supported by the OpenRouter API, refer to the
 [OpenRouter API Docs](https://openrouter.ai/docs/quickstart).
 
 Usage example:
+
 ```python
 from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -51,79 +52,75 @@ print(response)
 >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 ```
 
-<a id="haystack_integrations.components.generators.openrouter.chat.chat_generator.OpenRouterChatGenerator.__init__"></a>
-
-#### OpenRouterChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("OPENROUTER_API_KEY"),
-             model: str = "openai/gpt-5-mini",
-             streaming_callback: StreamingCallbackT | None = None,
-             api_base_url: str | None = "https://openrouter.ai/api/v1",
-             generation_kwargs: dict[str, Any] | None = None,
-             tools: ToolsType | None = None,
-             timeout: float | None = None,
-             extra_headers: dict[str, Any] | None = None,
-             max_retries: int | None = None,
-             http_client_kwargs: dict[str, Any] | None = None)
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("OPENROUTER_API_KEY"),
+    model: str = "openai/gpt-5-mini",
+    streaming_callback: StreamingCallbackT | None = None,
+    api_base_url: str | None = "https://openrouter.ai/api/v1",
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    extra_headers: dict[str, Any] | None = None,
+    max_retries: int | None = None,
+    http_client_kwargs: dict[str, Any] | None = None
+)
 ```
 
 Creates an instance of OpenRouterChatGenerator. Unless specified otherwise,
-
 the default model is `openai/gpt-5-mini`.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The OpenRouter API key.
-- `model`: The name of the OpenRouter chat completion model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `api_base_url`: The OpenRouter API Base url.
-For more details, see OpenRouter [docs](https://openrouter.ai/docs/quickstart).
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the OpenRouter endpoint. See [OpenRouter API docs](https://openrouter.ai/docs/quickstart) for more details.
-Some of the supported parameters:
+- **api_key** (<code>Secret</code>) – The OpenRouter API key.
+- **model** (<code>str</code>) – The name of the OpenRouter chat completion model to use.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **api_base_url** (<code>str | None</code>) – The OpenRouter API Base url.
+  For more details, see OpenRouter [docs](https://openrouter.ai/docs/quickstart).
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the OpenRouter endpoint. See [OpenRouter API docs](https://openrouter.ai/docs/quickstart) for more details.
+  Some of the supported parameters:
 - `max_tokens`: The maximum number of tokens the output text can have.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+  Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
+  considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+  comprising the top 10% probability mass are considered.
 - `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
-    events as they become available, with the stream terminated by a data: [DONE] message.
+  events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
 - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
-    If provided, the output will always be validated against this
-    format (unless the model returns a tool call).
-    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-    Notes:
-    - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
-    - For structured outputs with streaming,
-      the `response_format` must be a JSON schema and not a Pydantic model.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
-- `timeout`: The timeout for the OpenRouter API call.
-- `extra_headers`: Additional HTTP headers to include in requests to the OpenRouter API.
-This can be useful for adding site URL or title for rankings on openrouter.ai
-For more details, see OpenRouter [docs](https://openrouter.ai/docs/quickstart).
-- `max_retries`: Maximum number of retries to contact OpenAI after an internal error.
-If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+  If provided, the output will always be validated against this
+  format (unless the model returns a tool call).
+  For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+  Notes:
+  - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
+  - For structured outputs with streaming,
+    the `response_format` must be a JSON schema and not a Pydantic model.
+- **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+  list of `Tool` objects or a `Toolset` instance.
+- **timeout** (<code>float | None</code>) – The timeout for the OpenRouter API call.
+- **extra_headers** (<code>dict\[str, Any\] | None</code>) – Additional HTTP headers to include in requests to the OpenRouter API.
+  This can be useful for adding site URL or title for rankings on openrouter.ai
+  For more details, see OpenRouter [docs](https://openrouter.ai/docs/quickstart).
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.
+  If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+  For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-<a id="haystack_integrations.components.generators.openrouter.chat.chat_generator.OpenRouterChatGenerator.to_dict"></a>
-
-#### OpenRouterChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
-
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.

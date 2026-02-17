@@ -6,7 +6,7 @@ slug: "/experimental-writers-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.components.writers.chat_message_writer`
+## `haystack_experimental.components.writers.chat_message_writer`
 
 ### `ChatMessageWriter`
 

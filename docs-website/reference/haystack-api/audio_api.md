@@ -6,7 +6,7 @@ slug: "/audio-api"
 ---
 
 
-## `haystack.components.audio.whisper_local`
+## `whisper_local`
 
 ### `LocalWhisperTranscriber`
 
@@ -131,7 +131,7 @@ For the supported audio formats, languages, and other parameters, see the
 
 - <code>list\[Document\]</code> – A list of Documents, one for each file.
 
-## `haystack.components.audio.whisper_remote`
+## `whisper_remote`
 
 ### `RemoteWhisperTranscriber`
 

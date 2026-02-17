@@ -6,7 +6,7 @@ slug: "/agents-api"
 ---
 
 
-## `haystack.components.agents.agent`
+## `agent`
 
 ### `Agent`
 
@@ -283,7 +283,7 @@ if available.
 
 - <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
-## `haystack.components.agents.state.state`
+## `state/state`
 
 ### `State`
 

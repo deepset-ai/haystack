@@ -6,7 +6,7 @@ slug: "/caching-api"
 ---
 
 
-## `haystack.components.caching.cache_checker`
+## `cache_checker`
 
 ### `CacheChecker`
 

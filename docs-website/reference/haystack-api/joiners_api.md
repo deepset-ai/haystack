@@ -6,7 +6,7 @@ slug: "/joiners-api"
 ---
 
 
-## `haystack.components.joiners.answer_joiner`
+## `answer_joiner`
 
 ### `JoinMode`
 
@@ -132,7 +132,7 @@ Deserializes the component from a dictionary.
 
 - <code>AnswerJoiner</code> – The deserialized component.
 
-## `haystack.components.joiners.branch`
+## `branch`
 
 ### `BranchJoiner`
 
@@ -269,7 +269,7 @@ Executes the `BranchJoiner`, selecting the first available input value and passi
 
 - <code>dict\[str, Any\]</code> – A dictionary with a single key `value`, containing the first input received.
 
-## `haystack.components.joiners.document_joiner`
+## `document_joiner`
 
 ### `JoinMode`
 
@@ -403,7 +403,7 @@ Deserializes the component from a dictionary.
 
 - <code>DocumentJoiner</code> – The deserialized component.
 
-## `haystack.components.joiners.list_joiner`
+## `list_joiner`
 
 ### `ListJoiner`
 
@@ -516,7 +516,7 @@ Joins multiple lists into a single flat list.
 
 - <code>dict\[str, list\[Any\]\]</code> – Dictionary with 'values' key containing the joined list.
 
-## `haystack.components.joiners.string_joiner`
+## `string_joiner`
 
 ### `StringJoiner`
 

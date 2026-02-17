@@ -5,18 +5,10 @@ description: "Anthropic integration for Haystack"
 slug: "/integrations-anthropic"
 ---
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator"></a>
 
-## Module haystack\_integrations.components.generators.anthropic.chat.chat\_generator
+## `haystack_integrations.components.generators.anthropic.chat.chat_generator`
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator"></a>
-
-### AnthropicChatGenerator
-
-```python
-@component
-class AnthropicChatGenerator()
-```
+### `AnthropicChatGenerator`
 
 Completes chats using Anthropic's large language models (LLMs).
 
@@ -32,6 +24,7 @@ For details on Anthropic API parameters, see
 [Anthropic documentation](https://docs.anthropic.com/en/api/messages).
 
 Usage example:
+
 ```python
 from haystack_integrations.components.generators.anthropic import (
     AnthropicChatGenerator,
@@ -55,6 +48,7 @@ print(generator.run(messages=messages))
 ```
 
 Usage example with images:
+
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
 
@@ -68,35 +62,36 @@ generator = AnthropicChatGenerator()
 result = generator.run(messages)
 ```
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator.__init__"></a>
-
-#### AnthropicChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-             model: str = "claude-sonnet-4-5",
-             streaming_callback: StreamingCallbackT | None = None,
-             generation_kwargs: dict[str, Any] | None = None,
-             ignore_tools_thinking_messages: bool = True,
-             tools: ToolsType | None = None,
-             *,
-             timeout: float | None = None,
-             max_retries: int | None = None)
+__init__(
+    api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
+    model: str = "claude-sonnet-4-5",
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    ignore_tools_thinking_messages: bool = True,
+    tools: ToolsType | None = None,
+    *,
+    timeout: float | None = None,
+    max_retries: int | None = None
+)
 ```
 
 Creates an instance of AnthropicChatGenerator.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The Anthropic API key
-- `model`: The name of the model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the Anthropic endpoint. See Anthropic [documentation](https://docs.anthropic.com/claude/reference/messages_post)
-for more details.
+- **api_key** (<code>Secret</code>) – The Anthropic API key
+- **model** (<code>str</code>) – The name of the model to use.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the Anthropic endpoint. See Anthropic [documentation](https://docs.anthropic.com/claude/reference/messages_post)
+  for more details.
 
 Supported generation_kwargs parameters are:
+
 - `system`: The system message to be passed to the model.
 - `max_tokens`: The maximum number of tokens to generate.
 - `metadata`: A dictionary of metadata to be passed to the model.
@@ -106,121 +101,106 @@ Supported generation_kwargs parameters are:
 - `top_k`: The top_k value to use for top-k sampling.
 - `extra_headers`: A dictionary of extra headers to be passed to the model (i.e. for beta features).
 - `thinking`: A dictionary of thinking parameters to be passed to the model.
-    The `budget_tokens` passed for thinking should be less than `max_tokens`.
-    For more details and supported models, see: [Anthropic Extended Thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking)
-- `ignore_tools_thinking_messages`: Anthropic's approach to tools (function calling) resolution involves a
-"chain of thought" messages before returning the actual function names and parameters in a message. If
-`ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
-use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
-for more details.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
-Each tool should have a unique name.
-- `timeout`: Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
-- `max_retries`: Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
-the Anthropic client.
+  The `budget_tokens` passed for thinking should be less than `max_tokens`.
+  For more details and supported models, see: [Anthropic Extended Thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking)
+- **ignore_tools_thinking_messages** (<code>bool</code>) – Anthropic's approach to tools (function calling) resolution involves a
+  "chain of thought" messages before returning the actual function names and parameters in a message. If
+  `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
+  use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
+  for more details.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name.
+- **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
+  the Anthropic client.
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator.to_dict"></a>
-
-#### AnthropicChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator.from_dict"></a>
-
-#### AnthropicChatGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AnthropicChatGenerator"
+from_dict(data: dict[str, Any]) -> AnthropicChatGenerator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>AnthropicChatGenerator</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator.run"></a>
-
-#### AnthropicChatGenerator.run
+#### `run`
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        streaming_callback: StreamingCallbackT | None = None,
-        generation_kwargs: dict[str, Any] | None = None,
-        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
+run(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes the Anthropic API with the given messages and generation kwargs.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Optional arguments to pass to the Anthropic generation endpoint.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
-Each tool should have a unique name. If set, it will override the `tools` parameter set during component
-initialization.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name. If set, it will override the `tools` parameter set during component
+  initialization.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: The responses from the model
 
-<a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator.run_async"></a>
-
-#### AnthropicChatGenerator.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(
-        messages: list[ChatMessage],
-        streaming_callback: StreamingCallbackT | None = None,
-        generation_kwargs: dict[str, Any] | None = None,
-        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
+run_async(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+) -> dict[str, list[ChatMessage]]
 ```
 
 Async version of the run method. Invokes the Anthropic API with the given messages and generation kwargs.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Optional arguments to pass to the Anthropic generation endpoint.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
-Each tool should have a unique name. If set, it will override the `tools` parameter set during component
-initialization.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name. If set, it will override the `tools` parameter set during component
+  initialization.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: The responses from the model
 
-<a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator"></a>
+## `haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator`
 
-## Module haystack\_integrations.components.generators.anthropic.chat.vertex\_chat\_generator
+### `AnthropicVertexChatGenerator`
 
-<a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator.AnthropicVertexChatGenerator"></a>
-
-### AnthropicVertexChatGenerator
-
-```python
-@component
-class AnthropicVertexChatGenerator(AnthropicChatGenerator)
-```
+Bases: <code>AnthropicChatGenerator</code>
 
 Enables text generation using state-of-the-art Claude 3 LLMs via the Anthropic Vertex AI API.
 It supports models such as `Claude 3.5 Sonnet`, `Claude 3 Opus`, `Claude 3 Sonnet`, and `Claude 3 Haiku`,
@@ -262,38 +242,38 @@ print(response)
 For more details on supported models and their capabilities, refer to the Anthropic
 [documentation](https://docs.anthropic.com/claude/docs/intro-to-claude).
 
-<a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator.AnthropicVertexChatGenerator.__init__"></a>
-
-#### AnthropicVertexChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(region: str,
-             project_id: str,
-             model: str = "claude-sonnet-4@20250514",
-             streaming_callback: Callable[[StreamingChunk], None]
-             | None = None,
-             generation_kwargs: dict[str, Any] | None = None,
-             ignore_tools_thinking_messages: bool = True,
-             tools: ToolsType | None = None,
-             *,
-             timeout: float | None = None,
-             max_retries: int | None = None)
+__init__(
+    region: str,
+    project_id: str,
+    model: str = "claude-sonnet-4@20250514",
+    streaming_callback: Callable[[StreamingChunk], None] | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    ignore_tools_thinking_messages: bool = True,
+    tools: ToolsType | None = None,
+    *,
+    timeout: float | None = None,
+    max_retries: int | None = None
+)
 ```
 
 Creates an instance of AnthropicVertexChatGenerator.
 
-**Arguments**:
+**Parameters:**
 
-- `region`: The region where the Anthropic model is deployed. Defaults to "us-central1".
-- `project_id`: The GCP project ID where the Anthropic model is deployed.
-- `model`: The name of the model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the AnthropicVertex endpoint. See Anthropic [documentation](https://docs.anthropic.com/claude/reference/messages_post)
-for more details.
+- **region** (<code>str</code>) – The region where the Anthropic model is deployed. Defaults to "us-central1".
+- **project_id** (<code>str</code>) – The GCP project ID where the Anthropic model is deployed.
+- **model** (<code>str</code>) – The name of the model to use.
+- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the AnthropicVertex endpoint. See Anthropic [documentation](https://docs.anthropic.com/claude/reference/messages_post)
+  for more details.
 
 Supported generation_kwargs parameters are:
+
 - `system`: The system message to be passed to the model.
 - `max_tokens`: The maximum number of tokens to generate.
 - `metadata`: A dictionary of metadata to be passed to the model.
@@ -302,62 +282,48 @@ Supported generation_kwargs parameters are:
 - `top_p`: The top_p value to use for nucleus sampling.
 - `top_k`: The top_k value to use for top-k sampling.
 - `extra_headers`: A dictionary of extra headers to be passed to the model (i.e. for beta features).
-- `ignore_tools_thinking_messages`: Anthropic's approach to tools (function calling) resolution involves a
-"chain of thought" messages before returning the actual function names and parameters in a message. If
-`ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
-use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
-for more details.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
-Each tool should have a unique name.
-- `timeout`: Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
-- `max_retries`: Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
-the Anthropic client.
+- **ignore_tools_thinking_messages** (<code>bool</code>) – Anthropic's approach to tools (function calling) resolution involves a
+  "chain of thought" messages before returning the actual function names and parameters in a message. If
+  `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
+  use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
+  for more details.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name.
+- **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
+  the Anthropic client.
 
-<a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator.AnthropicVertexChatGenerator.to_dict"></a>
-
-#### AnthropicVertexChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator.AnthropicVertexChatGenerator.from_dict"></a>
-
-#### AnthropicVertexChatGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AnthropicVertexChatGenerator"
+from_dict(data: dict[str, Any]) -> AnthropicVertexChatGenerator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>AnthropicVertexChatGenerator</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.anthropic.generator"></a>
+## `haystack_integrations.components.generators.anthropic.generator`
 
-## Module haystack\_integrations.components.generators.anthropic.generator
-
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator"></a>
-
-### AnthropicGenerator
-
-```python
-@component
-class AnthropicGenerator()
-```
+### `AnthropicGenerator`
 
 Enables text generation using Anthropic large language models (LLMs). It supports the Claude family of models.
 
@@ -377,89 +343,79 @@ print(response)
 >> 'claude-2.1', 'index': 0, 'finish_reason': 'end_turn', 'usage': {'input_tokens': 18, 'output_tokens': 58}}}
 ```
 
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.__init__"></a>
-
-#### AnthropicGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-             model: str = "claude-sonnet-4-20250514",
-             streaming_callback: Callable[[StreamingChunk], None]
-             | None = None,
-             system_prompt: str | None = None,
-             generation_kwargs: dict[str, Any] | None = None,
-             *,
-             timeout: float | None = None,
-             max_retries: int | None = None)
+__init__(
+    api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
+    model: str = "claude-sonnet-4-20250514",
+    streaming_callback: Callable[[StreamingChunk], None] | None = None,
+    system_prompt: str | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    *,
+    timeout: float | None = None,
+    max_retries: int | None = None
+)
 ```
 
 Initialize the AnthropicGenerator.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The Anthropic API key.
-- `model`: The name of the Anthropic model to use.
-- `streaming_callback`: An optional callback function to handle streaming chunks.
-- `system_prompt`: An optional system prompt to use for generation.
-- `generation_kwargs`: Additional keyword arguments for generation.
+- **api_key** (<code>Secret</code>) – The Anthropic API key.
+- **model** (<code>str</code>) – The name of the Anthropic model to use.
+- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – An optional callback function to handle streaming chunks.
+- **system_prompt** (<code>str | None</code>) – An optional system prompt to use for generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for generation.
 
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.to_dict"></a>
-
-#### AnthropicGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.from_dict"></a>
-
-#### AnthropicGenerator.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AnthropicGenerator"
+from_dict(data: dict[str, Any]) -> AnthropicGenerator
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary representation of this component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component instance.
+- <code>AnthropicGenerator</code> – The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.run"></a>
-
-#### AnthropicGenerator.run
+#### `run`
 
 ```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(
+run(
     prompt: str,
     generation_kwargs: dict[str, Any] | None = None,
-    streaming_callback: Callable[[StreamingChunk], None] | None = None
+    streaming_callback: Callable[[StreamingChunk], None] | None = None,
 ) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Generate replies using the Anthropic API.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: The input prompt for generation.
-- `generation_kwargs`: Additional keyword arguments for generation.
-- `streaming_callback`: An optional callback function to handle streaming chunks.
+- **prompt** (<code>str</code>) – The input prompt for generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for generation.
+- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – An optional callback function to handle streaming chunks.
 
-**Returns**:
+**Returns:**
 
-A dictionary containing:
+- <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary containing:
 - `replies`: A list of generated replies.
 - `meta`: A list of metadata dictionaries for each reply.
-

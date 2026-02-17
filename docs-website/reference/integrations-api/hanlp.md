@@ -5,13 +5,10 @@ description: "HanLP integration for Haystack"
 slug: "/integrations-hanlp"
 ---
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter"></a>
 
-## Module haystack\_integrations.components.preprocessors.hanlp.chinese\_document\_splitter
+## `haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter`
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter"></a>
-
-### ChineseDocumentSplitter
+### `ChineseDocumentSplitter`
 
 A DocumentSplitter for Chinese text.
 
@@ -28,6 +25,7 @@ Therefore, splitting by word means splitting by these multi-character tokens,
 not simply by single characters or spaces.
 
 ### Usage example
+
 ```python
 doc = Document(content=
     "这是第一句话，这是第二句话，这是第三句话。"
@@ -42,116 +40,104 @@ result = splitter.run(documents=[doc])
 print(result["documents"])
 ```
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter.__init__"></a>
-
-#### ChineseDocumentSplitter.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(split_by: Literal["word", "sentence", "passage", "page", "line",
-                               "period", "function"] = "word",
-             split_length: int = 1000,
-             split_overlap: int = 200,
-             split_threshold: int = 0,
-             respect_sentence_boundary: bool = False,
-             splitting_function: Callable | None = None,
-             granularity: Literal["coarse", "fine"] = "coarse") -> None
+__init__(
+    split_by: Literal[
+        "word", "sentence", "passage", "page", "line", "period", "function"
+    ] = "word",
+    split_length: int = 1000,
+    split_overlap: int = 200,
+    split_threshold: int = 0,
+    respect_sentence_boundary: bool = False,
+    splitting_function: Callable | None = None,
+    granularity: Literal["coarse", "fine"] = "coarse",
+) -> None
 ```
 
 Initialize the ChineseDocumentSplitter component.
 
-**Arguments**:
+**Parameters:**
 
-- `split_by`: The unit for splitting your documents. Choose from:
+- **split_by** (<code>Literal['word', 'sentence', 'passage', 'page', 'line', 'period', 'function']</code>) – The unit for splitting your documents. Choose from:
 - `word` for splitting by spaces (" ")
 - `period` for splitting by periods (".")
-- `page` for splitting by form feed ("\f")
-- `passage` for splitting by double line breaks ("\n\n")
-- `line` for splitting each line ("\n")
+- `page` for splitting by form feed ("\\f")
+- `passage` for splitting by double line breaks ("\\n\\n")
+- `line` for splitting each line ("\\n")
 - `sentence` for splitting by HanLP sentence tokenizer
-- `split_length`: The maximum number of units in each split.
-- `split_overlap`: The number of overlapping units for each split.
-- `split_threshold`: The minimum number of units per split. If a split has fewer units
-than the threshold, it's attached to the previous split.
-- `respect_sentence_boundary`: Choose whether to respect sentence boundaries when splitting by "word".
-If True, uses HanLP to detect sentence boundaries, ensuring splits occur only between sentences.
-- `splitting_function`: Necessary when `split_by` is set to "function".
-This is a function which must accept a single `str` as input and return a `list` of `str` as output,
-representing the chunks after splitting.
-- `granularity`: The granularity of Chinese word segmentation, either 'coarse' or 'fine'.
+- **split_length** (<code>int</code>) – The maximum number of units in each split.
+- **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
+- **split_threshold** (<code>int</code>) – The minimum number of units per split. If a split has fewer units
+  than the threshold, it's attached to the previous split.
+- **respect_sentence_boundary** (<code>bool</code>) – Choose whether to respect sentence boundaries when splitting by "word".
+  If True, uses HanLP to detect sentence boundaries, ensuring splits occur only between sentences.
+- **splitting_function** (<code>Callable | None</code>) – Necessary when `split_by` is set to "function".
+  This is a function which must accept a single `str` as input and return a `list` of `str` as output,
+  representing the chunks after splitting.
+- **granularity** (<code>Literal['coarse', 'fine']</code>) – The granularity of Chinese word segmentation, either 'coarse' or 'fine'.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If the granularity is not 'coarse' or 'fine'.
+- <code>ValueError</code> – If the granularity is not 'coarse' or 'fine'.
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter.run"></a>
-
-#### ChineseDocumentSplitter.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(documents: list[Document]) -> dict[str, list[Document]]
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Split documents into smaller chunks.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: The documents to split.
+- **documents** (<code>list\[Document\]</code>) – The documents to split.
 
-**Raises**:
+**Returns:**
 
-- `RuntimeError`: If the Chinese word segmentation model is not loaded.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary containing the split documents.
 
-**Returns**:
+**Raises:**
 
-A dictionary containing the split documents.
+- <code>RuntimeError</code> – If the Chinese word segmentation model is not loaded.
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter.warm_up"></a>
-
-#### ChineseDocumentSplitter.warm\_up
+#### `warm_up`
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Warm up the component by loading the necessary models.
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter.chinese_sentence_split"></a>
-
-#### ChineseDocumentSplitter.chinese\_sentence\_split
+#### `chinese_sentence_split`
 
 ```python
-def chinese_sentence_split(text: str) -> list[dict[str, Any]]
+chinese_sentence_split(text: str) -> list[dict[str, Any]]
 ```
 
 Split Chinese text into sentences.
 
-**Arguments**:
+**Parameters:**
 
-- `text`: The text to split.
+- **text** (<code>str</code>) – The text to split.
 
-**Returns**:
+**Returns:**
 
-A list of split sentences.
+- <code>list\[dict\[str, Any\]\]</code> – A list of split sentences.
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter.to_dict"></a>
-
-#### ChineseDocumentSplitter.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-<a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter.from_dict"></a>
-
-#### ChineseDocumentSplitter.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChineseDocumentSplitter"
+from_dict(data: dict[str, Any]) -> ChineseDocumentSplitter
 ```
 
 Deserializes the component from a dictionary.
-

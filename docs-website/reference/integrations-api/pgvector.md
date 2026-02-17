@@ -5,17 +5,15 @@ description: "Pgvector integration for Haystack"
 slug: "/integrations-pgvector"
 ---
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever"></a>
 
-## Module haystack\_integrations.components.retrievers.pgvector.embedding\_retriever
+## `haystack_integrations.components.retrievers.pgvector.embedding_retriever`
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever"></a>
-
-### PgvectorEmbeddingRetriever
+### `PgvectorEmbeddingRetriever`
 
 Retrieves documents from the `PgvectorDocumentStore`, based on their dense embeddings.
 
 Example usage:
+
 ```python
 from haystack.document_stores import DuplicatePolicy
 from haystack import Document, Pipeline
@@ -55,142 +53,130 @@ res = query_pipeline.run({"text_embedder": {"text": query}})
 assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
 ```
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever.__init__"></a>
-
-#### PgvectorEmbeddingRetriever.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             document_store: PgvectorDocumentStore,
-             filters: dict[str, Any] | None = None,
-             top_k: int = 10,
-             vector_function: Literal["cosine_similarity", "inner_product",
-                                      "l2_distance"] | None = None,
-             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    *,
+    document_store: PgvectorDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    vector_function: (
+        Literal["cosine_similarity", "inner_product", "l2_distance"] | None
+    ) = None,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
+)
 ```
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: An instance of `PgvectorDocumentStore`.
-- `filters`: Filters applied to the retrieved Documents.
-- `top_k`: Maximum number of Documents to return.
-- `vector_function`: The similarity function to use when searching for similar embeddings.
-Defaults to the one set in the `document_store` instance.
-`"cosine_similarity"` and `"inner_product"` are similarity functions and
-higher scores indicate greater similarity between the documents.
-`"l2_distance"` returns the straight-line distance between vectors,
-and the most similar documents are the ones with the smallest score.
-**Important**: if the document store is using the `"hnsw"` search strategy, the vector function
-should match the one utilized during index creation to take advantage of the index.
-- `filter_policy`: Policy to determine how filters are applied.
+- **document_store** (<code>PgvectorDocumentStore</code>) – An instance of `PgvectorDocumentStore`.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents.
+- **top_k** (<code>int</code>) – Maximum number of Documents to return.
+- **vector_function** (<code>Literal['cosine_similarity', 'inner_product', 'l2_distance'] | None</code>) – The similarity function to use when searching for similar embeddings.
+  Defaults to the one set in the `document_store` instance.
+  `"cosine_similarity"` and `"inner_product"` are similarity functions and
+  higher scores indicate greater similarity between the documents.
+  `"l2_distance"` returns the straight-line distance between vectors,
+  and the most similar documents are the ones with the smallest score.
+  **Important**: if the document store is using the `"hnsw"` search strategy, the vector function
+  should match the one utilized during index creation to take advantage of the index.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If `document_store` is not an instance of `PgvectorDocumentStore` or if `vector_function`
-is not one of the valid options.
+- <code>ValueError</code> – If `document_store` is not an instance of `PgvectorDocumentStore` or if `vector_function`
+  is not one of the valid options.
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever.to_dict"></a>
-
-#### PgvectorEmbeddingRetriever.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever.from_dict"></a>
-
-#### PgvectorEmbeddingRetriever.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "PgvectorEmbeddingRetriever"
+from_dict(data: dict[str, Any]) -> PgvectorEmbeddingRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>PgvectorEmbeddingRetriever</code> – Deserialized component.
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever.run"></a>
-
-#### PgvectorEmbeddingRetriever.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(
+run(
     query_embedding: list[float],
     filters: dict[str, Any] | None = None,
     top_k: int | None = None,
-    vector_function: Literal["cosine_similarity", "inner_product",
-                             "l2_distance"] | None = None
+    vector_function: (
+        Literal["cosine_similarity", "inner_product", "l2_distance"] | None
+    ) = None,
 ) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PgvectorDocumentStore`, based on their embeddings.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: Embedding of the query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return.
-- `vector_function`: The similarity function to use when searching for similar embeddings.
+- **query_embedding** (<code>list\[float\]</code>) – Embedding of the query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – Maximum number of Documents to return.
+- **vector_function** (<code>Literal['cosine_similarity', 'inner_product', 'l2_distance'] | None</code>) – The similarity function to use when searching for similar embeddings.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: List of `Document`s that are similar to `query_embedding`.
 
-<a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever.run_async"></a>
-
-#### PgvectorEmbeddingRetriever.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(documents=list[Document])
-async def run_async(
+run_async(
     query_embedding: list[float],
     filters: dict[str, Any] | None = None,
     top_k: int | None = None,
-    vector_function: Literal["cosine_similarity", "inner_product",
-                             "l2_distance"] | None = None
+    vector_function: (
+        Literal["cosine_similarity", "inner_product", "l2_distance"] | None
+    ) = None,
 ) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PgvectorDocumentStore`, based on their embeddings.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: Embedding of the query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return.
-- `vector_function`: The similarity function to use when searching for similar embeddings.
+- **query_embedding** (<code>list\[float\]</code>) – Embedding of the query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – Maximum number of Documents to return.
+- **vector_function** (<code>Literal['cosine_similarity', 'inner_product', 'l2_distance'] | None</code>) – The similarity function to use when searching for similar embeddings.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: List of `Document`s that are similar to `query_embedding`.
 
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever"></a>
+## `haystack_integrations.components.retrievers.pgvector.keyword_retriever`
 
-## Module haystack\_integrations.components.retrievers.pgvector.keyword\_retriever
-
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever"></a>
-
-### PgvectorKeywordRetriever
+### `PgvectorKeywordRetriever`
 
 Retrieve documents from the `PgvectorDocumentStore`, based on keywords.
 
@@ -201,7 +187,8 @@ For more details, see
 [Postgres documentation](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING).
 
 Usage example:
-```python
+
+````python
 from haystack.document_stores import DuplicatePolicy
 from haystack import Document
 
@@ -225,295 +212,277 @@ result = retriever.run(query="languages")
 
 assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
 
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever.__init__"></a>
 
-#### PgvectorKeywordRetriever.\_\_init\_\_
 
-```python
-def __init__(*,
-             document_store: PgvectorDocumentStore,
-             filters: dict[str, Any] | None = None,
-             top_k: int = 10,
-             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
-```
 
-**Arguments**:
 
-- `document_store`: An instance of `PgvectorDocumentStore`.
-- `filters`: Filters applied to the retrieved Documents.
-- `top_k`: Maximum number of Documents to return.
-- `filter_policy`: Policy to determine how filters are applied.
 
-**Raises**:
 
-- `ValueError`: If `document_store` is not an instance of `PgvectorDocumentStore`.
 
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever.to_dict"></a>
 
-#### PgvectorKeywordRetriever.to\_dict
+
+
+
+#### `__init__`
 
 ```python
-def to_dict() -> dict[str, Any]
+__init__(
+    *,
+    document_store: PgvectorDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
+)
+````
+
+**Parameters:**
+
+- **document_store** (<code>PgvectorDocumentStore</code>) – An instance of `PgvectorDocumentStore`.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents.
+- **top_k** (<code>int</code>) – Maximum number of Documents to return.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
+
+**Raises:**
+
+- <code>ValueError</code> – If `document_store` is not an instance of `PgvectorDocumentStore`.
+
+#### `to_dict`
+
+```python
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever.from_dict"></a>
-
-#### PgvectorKeywordRetriever.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "PgvectorKeywordRetriever"
+from_dict(data: dict[str, Any]) -> PgvectorKeywordRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>PgvectorKeywordRetriever</code> – Deserialized component.
 
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever.run"></a>
-
-#### PgvectorKeywordRetriever.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(query: str,
-        filters: dict[str, Any] | None = None,
-        top_k: int | None = None) -> dict[str, list[Document]]
+run(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PgvectorDocumentStore`, based on keywords.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: String to search in `Document`s' content.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return.
+- **query** (<code>str</code>) – String to search in `Document`s' content.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – Maximum number of Documents to return.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: List of `Document`s that match the query.
 
-<a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever.run_async"></a>
-
-#### PgvectorKeywordRetriever.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(documents=list[Document])
-async def run_async(query: str,
-                    filters: dict[str, Any] | None = None,
-                    top_k: int | None = None) -> dict[str, list[Document]]
+run_async(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PgvectorDocumentStore`, based on keywords.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: String to search in `Document`s' content.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return.
+- **query** (<code>str</code>) – String to search in `Document`s' content.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – Maximum number of Documents to return.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: List of `Document`s that match the query.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store"></a>
+## `haystack_integrations.document_stores.pgvector.document_store`
 
-## Module haystack\_integrations.document\_stores.pgvector.document\_store
-
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore"></a>
-
-### PgvectorDocumentStore
+### `PgvectorDocumentStore`
 
 A Document Store using PostgreSQL with the [pgvector extension](https://github.com/pgvector/pgvector) installed.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.__init__"></a>
-
-#### PgvectorDocumentStore.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             connection_string: Secret = Secret.from_env_var("PG_CONN_STR"),
-             create_extension: bool = True,
-             schema_name: str = "public",
-             table_name: str = "haystack_documents",
-             language: str = "english",
-             embedding_dimension: int = 768,
-             vector_type: Literal["vector", "halfvec"] = "vector",
-             vector_function: Literal["cosine_similarity", "inner_product",
-                                      "l2_distance"] = "cosine_similarity",
-             recreate_table: bool = False,
-             search_strategy: Literal["exact_nearest_neighbor",
-                                      "hnsw"] = "exact_nearest_neighbor",
-             hnsw_recreate_index_if_exists: bool = False,
-             hnsw_index_creation_kwargs: dict[str, int] | None = None,
-             hnsw_index_name: str = "haystack_hnsw_index",
-             hnsw_ef_search: int | None = None,
-             keyword_index_name: str = "haystack_keyword_index")
+__init__(
+    *,
+    connection_string: Secret = Secret.from_env_var("PG_CONN_STR"),
+    create_extension: bool = True,
+    schema_name: str = "public",
+    table_name: str = "haystack_documents",
+    language: str = "english",
+    embedding_dimension: int = 768,
+    vector_type: Literal["vector", "halfvec"] = "vector",
+    vector_function: Literal[
+        "cosine_similarity", "inner_product", "l2_distance"
+    ] = "cosine_similarity",
+    recreate_table: bool = False,
+    search_strategy: Literal[
+        "exact_nearest_neighbor", "hnsw"
+    ] = "exact_nearest_neighbor",
+    hnsw_recreate_index_if_exists: bool = False,
+    hnsw_index_creation_kwargs: dict[str, int] | None = None,
+    hnsw_index_name: str = "haystack_hnsw_index",
+    hnsw_ef_search: int | None = None,
+    keyword_index_name: str = "haystack_keyword_index"
+)
 ```
 
 Creates a new PgvectorDocumentStore instance.
-
 It is meant to be connected to a PostgreSQL database with the pgvector extension installed.
 A specific table to store Haystack documents will be created if it doesn't exist yet.
 
-**Arguments**:
+**Parameters:**
 
-- `connection_string`: The connection string to use to connect to the PostgreSQL database, defined as an
-environment variable. Supported formats:
+- **connection_string** (<code>Secret</code>) – The connection string to use to connect to the PostgreSQL database, defined as an
+  environment variable. Supported formats:
 - URI, e.g. `PG_CONN_STR="postgresql://USER:PASSWORD@HOST:PORT/DB_NAME"` (use percent-encoding for special
-    characters)
+  characters)
 - keyword/value format, e.g. `PG_CONN_STR="host=HOST port=PORT dbname=DBNAME user=USER password=PASSWORD"`
-See [PostgreSQL Documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
-for more details.
-- `create_extension`: Whether to create the pgvector extension if it doesn't exist.
-Set this to `True` (default) to automatically create the extension if it is missing.
-Creating the extension may require superuser privileges.
-If set to `False`, ensure the extension is already installed; otherwise, an error will be raised.
-- `schema_name`: The name of the schema the table is created in. The schema must already exist.
-- `table_name`: The name of the table to use to store Haystack documents.
-- `language`: The language to be used to parse query and document content in keyword retrieval.
-To see the list of available languages, you can run the following SQL query in your PostgreSQL database:
-`SELECT cfgname FROM pg_ts_config;`.
-More information can be found in this [StackOverflow answer](https://stackoverflow.com/a/39752553).
-- `embedding_dimension`: The dimension of the embedding.
-- `vector_type`: The type of vector used for embedding storage.
-"vector" is the default.
-"halfvec" stores embeddings in half-precision, which is particularly useful for high-dimensional embeddings
-(dimension greater than 2,000 and up to 4,000). Requires pgvector versions 0.7.0 or later. For more
-information, see the [pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file).
-- `vector_function`: The similarity function to use when searching for similar embeddings.
-`"cosine_similarity"` and `"inner_product"` are similarity functions and
-higher scores indicate greater similarity between the documents.
-`"l2_distance"` returns the straight-line distance between vectors,
-and the most similar documents are the ones with the smallest score.
-**Important**: when using the `"hnsw"` search strategy, an index will be created that depends on the
-`vector_function` passed here. Make sure subsequent queries will keep using the same
-vector similarity function in order to take advantage of the index.
-- `recreate_table`: Whether to recreate the table if it already exists.
-- `search_strategy`: The search strategy to use when searching for similar embeddings.
-`"exact_nearest_neighbor"` provides perfect recall but can be slow for large numbers of documents.
-`"hnsw"` is an approximate nearest neighbor search strategy,
-which trades off some accuracy for speed; it is recommended for large numbers of documents.
-**Important**: when using the `"hnsw"` search strategy, an index will be created that depends on the
-`vector_function` passed here. Make sure subsequent queries will keep using the same
-vector similarity function in order to take advantage of the index.
-- `hnsw_recreate_index_if_exists`: Whether to recreate the HNSW index if it already exists.
-Only used if search_strategy is set to `"hnsw"`.
-- `hnsw_index_creation_kwargs`: Additional keyword arguments to pass to the HNSW index creation.
-Only used if search_strategy is set to `"hnsw"`. You can find the list of valid arguments in the
-[pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw)
-- `hnsw_index_name`: Index name for the HNSW index.
-- `hnsw_ef_search`: The `ef_search` parameter to use at query time. Only used if search_strategy is set to
-`"hnsw"`. You can find more information about this parameter in the
-[pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw).
-- `keyword_index_name`: Index name for the Keyword index.
+  See [PostgreSQL Documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
+  for more details.
+- **create_extension** (<code>bool</code>) – Whether to create the pgvector extension if it doesn't exist.
+  Set this to `True` (default) to automatically create the extension if it is missing.
+  Creating the extension may require superuser privileges.
+  If set to `False`, ensure the extension is already installed; otherwise, an error will be raised.
+- **schema_name** (<code>str</code>) – The name of the schema the table is created in. The schema must already exist.
+- **table_name** (<code>str</code>) – The name of the table to use to store Haystack documents.
+- **language** (<code>str</code>) – The language to be used to parse query and document content in keyword retrieval.
+  To see the list of available languages, you can run the following SQL query in your PostgreSQL database:
+  `SELECT cfgname FROM pg_ts_config;`.
+  More information can be found in this [StackOverflow answer](https://stackoverflow.com/a/39752553).
+- **embedding_dimension** (<code>int</code>) – The dimension of the embedding.
+- **vector_type** (<code>Literal['vector', 'halfvec']</code>) – The type of vector used for embedding storage.
+  "vector" is the default.
+  "halfvec" stores embeddings in half-precision, which is particularly useful for high-dimensional embeddings
+  (dimension greater than 2,000 and up to 4,000). Requires pgvector versions 0.7.0 or later. For more
+  information, see the [pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file).
+- **vector_function** (<code>Literal['cosine_similarity', 'inner_product', 'l2_distance']</code>) – The similarity function to use when searching for similar embeddings.
+  `"cosine_similarity"` and `"inner_product"` are similarity functions and
+  higher scores indicate greater similarity between the documents.
+  `"l2_distance"` returns the straight-line distance between vectors,
+  and the most similar documents are the ones with the smallest score.
+  **Important**: when using the `"hnsw"` search strategy, an index will be created that depends on the
+  `vector_function` passed here. Make sure subsequent queries will keep using the same
+  vector similarity function in order to take advantage of the index.
+- **recreate_table** (<code>bool</code>) – Whether to recreate the table if it already exists.
+- **search_strategy** (<code>Literal['exact_nearest_neighbor', 'hnsw']</code>) – The search strategy to use when searching for similar embeddings.
+  `"exact_nearest_neighbor"` provides perfect recall but can be slow for large numbers of documents.
+  `"hnsw"` is an approximate nearest neighbor search strategy,
+  which trades off some accuracy for speed; it is recommended for large numbers of documents.
+  **Important**: when using the `"hnsw"` search strategy, an index will be created that depends on the
+  `vector_function` passed here. Make sure subsequent queries will keep using the same
+  vector similarity function in order to take advantage of the index.
+- **hnsw_recreate_index_if_exists** (<code>bool</code>) – Whether to recreate the HNSW index if it already exists.
+  Only used if search_strategy is set to `"hnsw"`.
+- **hnsw_index_creation_kwargs** (<code>dict\[str, int\] | None</code>) – Additional keyword arguments to pass to the HNSW index creation.
+  Only used if search_strategy is set to `"hnsw"`. You can find the list of valid arguments in the
+  [pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw)
+- **hnsw_index_name** (<code>str</code>) – Index name for the HNSW index.
+- **hnsw_ef_search** (<code>int | None</code>) – The `ef_search` parameter to use at query time. Only used if search_strategy is set to
+  `"hnsw"`. You can find more information about this parameter in the
+  [pgvector documentation](https://github.com/pgvector/pgvector?tab=readme-ov-file#hnsw).
+- **keyword_index_name** (<code>str</code>) – Index name for the Keyword index.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.to_dict"></a>
-
-#### PgvectorDocumentStore.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.from_dict"></a>
-
-#### PgvectorDocumentStore.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "PgvectorDocumentStore"
+from_dict(data: dict[str, Any]) -> PgvectorDocumentStore
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>PgvectorDocumentStore</code> – Deserialized component.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_table"></a>
-
-#### PgvectorDocumentStore.delete\_table
+#### `delete_table`
 
 ```python
-def delete_table()
+delete_table()
 ```
 
 Deletes the table used to store Haystack documents.
 The name of the schema (`schema_name`) and the name of the table (`table_name`)
 are defined when initializing the `PgvectorDocumentStore`.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_table_async"></a>
-
-#### PgvectorDocumentStore.delete\_table\_async
+#### `delete_table_async`
 
 ```python
-async def delete_table_async()
+delete_table_async()
 ```
 
 Async method to delete the table used to store Haystack documents.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_documents"></a>
-
-#### PgvectorDocumentStore.count\_documents
+#### `count_documents`
 
 ```python
-def count_documents() -> int
+count_documents() -> int
 ```
 
 Returns how many documents are present in the document store.
 
-**Returns**:
+**Returns:**
 
-Number of documents in the document store.
+- <code>int</code> – Number of documents in the document store.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_documents_async"></a>
-
-#### PgvectorDocumentStore.count\_documents\_async
+#### `count_documents_async`
 
 ```python
-async def count_documents_async() -> int
+count_documents_async() -> int
 ```
 
 Returns how many documents are present in the document store.
 
-**Returns**:
+**Returns:**
 
-Number of documents in the document store.
+- <code>int</code> – Number of documents in the document store.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.filter_documents"></a>
-
-#### PgvectorDocumentStore.filter\_documents
+#### `filter_documents`
 
 ```python
-def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -521,26 +490,23 @@ Returns the documents that match the filters provided.
 For a detailed specification of the filters,
 refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
 
-**Raises**:
+**Returns:**
 
-- `TypeError`: If `filters` is not a dictionary.
-- `ValueError`: If `filters` syntax is invalid.
+- <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
-**Returns**:
+**Raises:**
 
-A list of Documents that match the given filters.
+- <code>TypeError</code> – If `filters` is not a dictionary.
+- <code>ValueError</code> – If `filters` syntax is invalid.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.filter_documents_async"></a>
-
-#### PgvectorDocumentStore.filter\_documents\_async
+#### `filter_documents_async`
 
 ```python
-async def filter_documents_async(
-        filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -548,293 +514,263 @@ Asynchronously returns the documents that match the filters provided.
 For a detailed specification of the filters,
 refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
 
-**Raises**:
+**Returns:**
 
-- `TypeError`: If `filters` is not a dictionary.
-- `ValueError`: If `filters` syntax is invalid.
+- <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
-**Returns**:
+**Raises:**
 
-A list of Documents that match the given filters.
+- <code>TypeError</code> – If `filters` is not a dictionary.
+- <code>ValueError</code> – If `filters` syntax is invalid.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.write_documents"></a>
-
-#### PgvectorDocumentStore.write\_documents
+#### `write_documents`
 
 ```python
-def write_documents(documents: list[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Writes documents to the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of Documents to write to the document store.
-- `policy`: The duplicate policy to use when writing documents.
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to write to the document store.
+- **policy** (<code>DuplicatePolicy</code>) – The duplicate policy to use when writing documents.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If `documents` contains objects that are not of type `Document`.
-- `DuplicateDocumentError`: If a document with the same id already exists in the document store
-and the policy is set to `DuplicatePolicy.FAIL` (or not specified).
-- `DocumentStoreError`: If the write operation fails for any other reason.
+- <code>int</code> – The number of documents written to the document store.
 
-**Returns**:
+**Raises:**
 
-The number of documents written to the document store.
+- <code>ValueError</code> – If `documents` contains objects that are not of type `Document`.
+- <code>DuplicateDocumentError</code> – If a document with the same id already exists in the document store
+  and the policy is set to `DuplicatePolicy.FAIL` (or not specified).
+- <code>DocumentStoreError</code> – If the write operation fails for any other reason.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.write_documents_async"></a>
-
-#### PgvectorDocumentStore.write\_documents\_async
+#### `write_documents_async`
 
 ```python
-async def write_documents_async(
-        documents: list[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents_async(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Asynchronously writes documents to the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of Documents to write to the document store.
-- `policy`: The duplicate policy to use when writing documents.
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to write to the document store.
+- **policy** (<code>DuplicatePolicy</code>) – The duplicate policy to use when writing documents.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If `documents` contains objects that are not of type `Document`.
-- `DuplicateDocumentError`: If a document with the same id already exists in the document store
-and the policy is set to `DuplicatePolicy.FAIL` (or not specified).
-- `DocumentStoreError`: If the write operation fails for any other reason.
+- <code>int</code> – The number of documents written to the document store.
 
-**Returns**:
+**Raises:**
 
-The number of documents written to the document store.
+- <code>ValueError</code> – If `documents` contains objects that are not of type `Document`.
+- <code>DuplicateDocumentError</code> – If a document with the same id already exists in the document store
+  and the policy is set to `DuplicatePolicy.FAIL` (or not specified).
+- <code>DocumentStoreError</code> – If the write operation fails for any other reason.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_documents"></a>
-
-#### PgvectorDocumentStore.delete\_documents
+#### `delete_documents`
 
 ```python
-def delete_documents(document_ids: list[str]) -> None
+delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: the document ids to delete
+- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_documents_async"></a>
-
-#### PgvectorDocumentStore.delete\_documents\_async
+#### `delete_documents_async`
 
 ```python
-async def delete_documents_async(document_ids: list[str]) -> None
+delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: the document ids to delete
+- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_all_documents"></a>
-
-#### PgvectorDocumentStore.delete\_all\_documents
+#### `delete_all_documents`
 
 ```python
-def delete_all_documents() -> None
+delete_all_documents() -> None
 ```
 
 Deletes all documents in the document store.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_all_documents_async"></a>
-
-#### PgvectorDocumentStore.delete\_all\_documents\_async
+#### `delete_all_documents_async`
 
 ```python
-async def delete_all_documents_async() -> None
+delete_all_documents_async() -> None
 ```
 
 Asynchronously deletes all documents in the document store.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_by_filter"></a>
-
-#### PgvectorDocumentStore.delete\_by\_filter
+#### `delete_by_filter`
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> int
+delete_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Deletes all documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents deleted.
+- <code>int</code> – The number of documents deleted.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_by_filter_async"></a>
-
-#### PgvectorDocumentStore.delete\_by\_filter\_async
+#### `delete_by_filter_async`
 
 ```python
-async def delete_by_filter_async(filters: dict[str, Any]) -> int
+delete_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents deleted.
+- <code>int</code> – The number of documents deleted.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.update_by_filter"></a>
-
-#### PgvectorDocumentStore.update\_by\_filter
+#### `update_by_filter`
 
 ```python
-def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `meta`: The metadata fields to update.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update.
 
-**Returns**:
+**Returns:**
 
-The number of documents updated.
+- <code>int</code> – The number of documents updated.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.update_by_filter_async"></a>
-
-#### PgvectorDocumentStore.update\_by\_filter\_async
+#### `update_by_filter_async`
 
 ```python
-async def update_by_filter_async(filters: dict[str, Any],
-                                 meta: dict[str, Any]) -> int
+update_by_filter_async(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `meta`: The metadata fields to update.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update.
 
-**Returns**:
+**Returns:**
 
-The number of documents updated.
+- <code>int</code> – The number of documents updated.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_documents_by_filter"></a>
-
-#### PgvectorDocumentStore.count\_documents\_by\_filter
+#### `count_documents_by_filter`
 
 ```python
-def count_documents_by_filter(filters: dict[str, Any]) -> int
+count_documents_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Returns the number of documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to count documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents that match the filters.
+- <code>int</code> – The number of documents that match the filters.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_documents_by_filter_async"></a>
-
-#### PgvectorDocumentStore.count\_documents\_by\_filter\_async
+#### `count_documents_by_filter_async`
 
 ```python
-async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+count_documents_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously returns the number of documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to count documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to count documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents that match the filters.
+- <code>int</code> – The number of documents that match the filters.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_unique_metadata_by_filter"></a>
-
-#### PgvectorDocumentStore.count\_unique\_metadata\_by\_filter
+#### `count_unique_metadata_by_filter`
 
 ```python
-def count_unique_metadata_by_filter(
-        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+count_unique_metadata_by_filter(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
 ```
 
 Returns the count of unique values for each specified metadata field,
-
 considering only documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `metadata_fields`: List of metadata field names to count unique values for.
-Field names can include or omit the "meta." prefix.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names to count unique values for.
+  Field names can include or omit the "meta." prefix.
 
-**Returns**:
+**Returns:**
 
-A dictionary mapping field names to their unique value counts.
+- <code>dict\[str, int\]</code> – A dictionary mapping field names to their unique value counts.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.count_unique_metadata_by_filter_async"></a>
-
-#### PgvectorDocumentStore.count\_unique\_metadata\_by\_filter\_async
+#### `count_unique_metadata_by_filter_async`
 
 ```python
-async def count_unique_metadata_by_filter_async(
-        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+count_unique_metadata_by_filter_async(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
 ```
 
 Asynchronously returns the count of unique values for each specified metadata field,
-
 considering only documents that match the provided filters.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `metadata_fields`: List of metadata field names to count unique values for.
-Field names can include or omit the "meta." prefix.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names to count unique values for.
+  Field names can include or omit the "meta." prefix.
 
-**Returns**:
+**Returns:**
 
-A dictionary mapping field names to their unique value counts.
+- <code>dict\[str, int\]</code> – A dictionary mapping field names to their unique value counts.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_fields_info"></a>
-
-#### PgvectorDocumentStore.get\_metadata\_fields\_info
+#### `get_metadata_fields_info`
 
 ```python
-def get_metadata_fields_info() -> dict[str, dict[str, str]]
+get_metadata_fields_info() -> dict[str, dict[str, str]]
 ```
 
 Returns the information about the metadata fields in the document store.
@@ -843,6 +779,7 @@ Since metadata is stored in a JSONB field, this method analyzes actual data
 to infer field types.
 
 Example return:
+
 ```python
 {
     'content': {'type': 'text'},
@@ -852,16 +789,14 @@ Example return:
 }
 ```
 
-**Returns**:
+**Returns:**
 
-A dictionary mapping field names to their type information.
+- <code>dict\[str, dict\[str, str\]\]</code> – A dictionary mapping field names to their type information.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_fields_info_async"></a>
-
-#### PgvectorDocumentStore.get\_metadata\_fields\_info\_async
+#### `get_metadata_fields_info_async`
 
 ```python
-async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+get_metadata_fields_info_async() -> dict[str, dict[str, str]]
 ```
 
 Asynchronously returns the information about the metadata fields in the document store.
@@ -869,108 +804,98 @@ Asynchronously returns the information about the metadata fields in the document
 Since metadata is stored in a JSONB field, this method analyzes actual data
 to infer field types.
 
-**Returns**:
+**Returns:**
 
-A dictionary mapping field names to their type information.
+- <code>dict\[str, dict\[str, str\]\]</code> – A dictionary mapping field names to their type information.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_min_max"></a>
-
-#### PgvectorDocumentStore.get\_metadata\_field\_min\_max
+#### `get_metadata_field_min_max`
 
 ```python
-def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
 ```
 
 Returns the minimum and maximum values for a given metadata field.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
+- **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the field doesn't exist or has no values.
+- <code>dict\[str, Any\]</code> – A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
+  For numeric fields (integer, real), returns numeric min/max.
+  For text fields, returns lexicographic min/max based on database collation.
 
-**Returns**:
+**Raises:**
 
-A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
-For numeric fields (integer, real), returns numeric min/max.
-For text fields, returns lexicographic min/max based on database collation.
+- <code>ValueError</code> – If the field doesn't exist or has no values.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_min_max_async"></a>
-
-#### PgvectorDocumentStore.get\_metadata\_field\_min\_max\_async
+#### `get_metadata_field_min_max_async`
 
 ```python
-async def get_metadata_field_min_max_async(
-        metadata_field: str) -> dict[str, Any]
+get_metadata_field_min_max_async(metadata_field: str) -> dict[str, Any]
 ```
 
 Asynchronously returns the minimum and maximum values for a given metadata field.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
+- **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the field doesn't exist or has no values.
+- <code>dict\[str, Any\]</code> – A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
+  For numeric fields (integer, real), returns numeric min/max.
+  For text fields, returns lexicographic min/max based on database collation.
 
-**Returns**:
+**Raises:**
 
-A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
-For numeric fields (integer, real), returns numeric min/max.
-For text fields, returns lexicographic min/max based on database collation.
+- <code>ValueError</code> – If the field doesn't exist or has no values.
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_unique_values"></a>
-
-#### PgvectorDocumentStore.get\_metadata\_field\_unique\_values
+#### `get_metadata_field_unique_values`
 
 ```python
-def get_metadata_field_unique_values(metadata_field: str,
-                                     search_term: str | None, from_: int,
-                                     size: int) -> tuple[list[str], int]
+get_metadata_field_unique_values(
+    metadata_field: str, search_term: str | None, from_: int, size: int
+) -> tuple[list[str], int]
 ```
 
 Returns unique values for a given metadata field, optionally filtered by a search term.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
-- `search_term`: Optional search term to filter documents by content before extracting unique values.
-If None, all documents are considered.
-- `from_`: The offset for pagination (0-based).
-- `size`: The number of unique values to return.
+- **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional search term to filter documents by content before extracting unique values.
+  If None, all documents are considered.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based).
+- **size** (<code>int</code>) – The number of unique values to return.
 
-**Returns**:
+**Returns:**
 
-A tuple containing:
+- <code>tuple\[list\[str\], int\]</code> – A tuple containing:
 - A list of unique values (as strings)
 - The total count of unique values
 
-<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.get_metadata_field_unique_values_async"></a>
-
-#### PgvectorDocumentStore.get\_metadata\_field\_unique\_values\_async
+#### `get_metadata_field_unique_values_async`
 
 ```python
-async def get_metadata_field_unique_values_async(
-        metadata_field: str, search_term: str | None, from_: int,
-        size: int) -> tuple[list[str], int]
+get_metadata_field_unique_values_async(
+    metadata_field: str, search_term: str | None, from_: int, size: int
+) -> tuple[list[str], int]
 ```
 
 Asynchronously returns unique values for a given metadata field, optionally filtered by a search term.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The name of the metadata field. Can include or omit the "meta." prefix.
-- `search_term`: Optional search term to filter documents by content before extracting unique values.
-If None, all documents are considered.
-- `from_`: The offset for pagination (0-based).
-- `size`: The number of unique values to return.
+- **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
+- **search_term** (<code>str | None</code>) – Optional search term to filter documents by content before extracting unique values.
+  If None, all documents are considered.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based).
+- **size** (<code>int</code>) – The number of unique values to return.
 
-**Returns**:
+**Returns:**
 
-A tuple containing:
+- <code>tuple\[list\[str\], int\]</code> – A tuple containing:
 - A list of unique values (as strings)
 - The total count of unique values
-

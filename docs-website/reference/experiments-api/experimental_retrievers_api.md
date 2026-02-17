@@ -6,7 +6,7 @@ slug: "/experimental-retrievers-api"
 ---
 
 
-## `haystack-experimental.haystack_experimental.components.retrievers.chat_message_retriever`
+## `haystack_experimental.components.retrievers.chat_message_retriever`
 
 ### `ChatMessageRetriever`
 

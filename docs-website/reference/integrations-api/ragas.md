@@ -5,18 +5,16 @@ description: "Ragas integration for Haystack"
 slug: "/integrations-ragas"
 ---
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator"></a>
 
-## Module haystack\_integrations.components.evaluators.ragas.evaluator
+## `haystack_integrations.components.evaluators.ragas.evaluator`
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator"></a>
-
-### RagasEvaluator
+### `RagasEvaluator`
 
 A component that uses the [Ragas framework](https://docs.ragas.io/) to evaluate
 inputs against specified Ragas metrics.
 
 Usage example:
+
 ```python
 from haystack.components.generators import OpenAIGenerator
 from haystack_integrations.components.evaluators.ragas import RagasEvaluator
@@ -45,53 +43,51 @@ output = evaluator.run(
 output['result']
 ```
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator.__init__"></a>
-
-#### RagasEvaluator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(ragas_metrics: list[Metric],
-             evaluator_llm: BaseRagasLLM | None = None,
-             evaluator_embedding: BaseRagasEmbeddings | None = None)
+__init__(
+    ragas_metrics: list[Metric],
+    evaluator_llm: BaseRagasLLM | None = None,
+    evaluator_embedding: BaseRagasEmbeddings | None = None,
+)
 ```
 
 Constructs a new Ragas evaluator.
 
-**Arguments**:
+**Parameters:**
 
-- `ragas_metrics`: A list of evaluation metrics from the [Ragas](https://docs.ragas.io/) library.
-- `evaluator_llm`: A language model used by metrics that require LLMs for evaluation.
-- `evaluator_embedding`: An embedding model used by metrics that require embeddings for evaluation.
+- **ragas_metrics** (<code>list\[Metric\]</code>) – A list of evaluation metrics from the [Ragas](https://docs.ragas.io/) library.
+- **evaluator_llm** (<code>BaseRagasLLM | None</code>) – A language model used by metrics that require LLMs for evaluation.
+- **evaluator_embedding** (<code>BaseRagasEmbeddings | None</code>) – An embedding model used by metrics that require embeddings for evaluation.
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator.run"></a>
-
-#### RagasEvaluator.run
+#### `run`
 
 ```python
-@component.output_types(result=EvaluationResult)
-def run(query: str | None = None,
-        response: list[ChatMessage] | str | None = None,
-        documents: list[Document | str] | None = None,
-        reference_contexts: list[str] | None = None,
-        multi_responses: list[str] | None = None,
-        reference: str | None = None,
-        rubrics: dict[str, str] | None = None) -> dict[str, Any]
+run(
+    query: str | None = None,
+    response: list[ChatMessage] | str | None = None,
+    documents: list[Document | str] | None = None,
+    reference_contexts: list[str] | None = None,
+    multi_responses: list[str] | None = None,
+    reference: str | None = None,
+    rubrics: dict[str, str] | None = None,
+) -> dict[str, Any]
 ```
 
 Evaluates the provided query against the documents and returns the evaluation result.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: The input query from the user.
-- `response`: A list of ChatMessage responses (typically from a language model or agent).
-- `documents`: A list of Haystack Document or strings that were retrieved for the query.
-- `reference_contexts`: A list of reference contexts that should have been retrieved for the query.
-- `multi_responses`: List of multiple responses generated for the query.
-- `reference`: A string reference answer for the query.
-- `rubrics`: A dictionary of evaluation rubric, where keys represent the score
-and the values represent the corresponding evaluation criteria.
+- **query** (<code>str | None</code>) – The input query from the user.
+- **response** (<code>list\[ChatMessage\] | str | None</code>) – A list of ChatMessage responses (typically from a language model or agent).
+- **documents** (<code>list\[Document | str\] | None</code>) – A list of Haystack Document or strings that were retrieved for the query.
+- **reference_contexts** (<code>list\[str\] | None</code>) – A list of reference contexts that should have been retrieved for the query.
+- **multi_responses** (<code>list\[str\] | None</code>) – List of multiple responses generated for the query.
+- **reference** (<code>str | None</code>) – A string reference answer for the query.
+- **rubrics** (<code>dict\[str, str\] | None</code>) – A dictionary of evaluation rubric, where keys represent the score
+  and the values represent the corresponding evaluation criteria.
 
-**Returns**:
+**Returns:**
 
-A dictionary containing the evaluation result.
-
+- <code>dict\[str, Any\]</code> – A dictionary containing the evaluation result.

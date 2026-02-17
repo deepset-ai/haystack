@@ -6,7 +6,7 @@ slug: "/data-classes-api"
 ---
 
 
-## `haystack.dataclasses.answer`
+## `answer`
 
 ### `ExtractedAnswer`
 
@@ -68,7 +68,7 @@ Deserialize the object from a dictionary.
 
 - <code>GeneratedAnswer</code> – Deserialized object.
 
-## `haystack.dataclasses.breakpoints`
+## `breakpoints`
 
 ### `Breakpoint`
 
@@ -122,34 +122,6 @@ the breakpoint applies to all tools within the Agent component.
 **Parameters:**
 
 - **tool_name** (<code>str | None</code>) – The name of the tool to target within the Agent component. If None, applies to all tools.
-
-#### `to_dict`
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Convert the Breakpoint to a dictionary representation.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary containing the component name, visit count, and debug path.
-
-#### `from_dict`
-
-```python
-from_dict(data: dict) -> Breakpoint
-```
-
-Populate the Breakpoint from a dictionary representation.
-
-**Parameters:**
-
-- **data** (<code>dict</code>) – A dictionary containing the component name, visit count, and debug path.
-
-**Returns:**
-
-- <code>Breakpoint</code> – An instance of Breakpoint.
 
 ### `AgentBreakpoint`
 
@@ -307,7 +279,7 @@ Populate the PipelineSnapshot from a dictionary representation.
 - **data** (<code>dict</code>) – A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input
   data, ordered component names, include_outputs_from, and pipeline outputs.
 
-## `haystack.dataclasses.byte_stream`
+## `byte_stream`
 
 ### `ByteStream`
 
@@ -419,7 +391,7 @@ Create a ByteStream from a dictionary representation.
 
 - <code>ByteStream</code> – A ByteStream instance.
 
-## `haystack.dataclasses.chat_message`
+## `chat_message`
 
 ### `ChatRole`
 
@@ -890,7 +862,7 @@ encounter validation errors.
 
 - <code>ValueError</code> – If the message dictionary is missing required fields.
 
-## `haystack.dataclasses.document`
+## `document`
 
 ### `Document`
 
@@ -943,7 +915,7 @@ Returns the type of the content for the document.
 
 This is necessary to keep backward compatibility with 1.x.
 
-## `haystack.dataclasses.file_content`
+## `file_content`
 
 ### `FileContent`
 
@@ -1033,7 +1005,7 @@ Create an FileContent object from a URL. The file is downloaded and converted to
 
 - <code>FileContent</code> – An FileContent object.
 
-## `haystack.dataclasses.image_content`
+## `image_content`
 
 ### `ImageContent`
 
@@ -1146,7 +1118,7 @@ For PDF to ImageContent conversion, use the `PDFToImageContent` component.
 
 - <code>ValueError</code> – If the URL does not point to an image or if it points to a PDF file.
 
-## `haystack.dataclasses.sparse_embedding`
+## `sparse_embedding`
 
 ### `SparseEmbedding`
 
@@ -1185,7 +1157,7 @@ Deserializes the sparse embedding from a dictionary.
 
 - <code>SparseEmbedding</code> – Deserialized sparse embedding.
 
-## `haystack.dataclasses.streaming_chunk`
+## `streaming_chunk`
 
 ### `ToolCallDelta`
 

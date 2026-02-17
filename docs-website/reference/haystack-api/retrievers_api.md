@@ -6,7 +6,7 @@ slug: "/retrievers-api"
 ---
 
 
-## `haystack.components.retrievers.auto_merging_retriever`
+## `auto_merging_retriever`
 
 ### `AutoMergingRetriever`
 
@@ -140,7 +140,7 @@ continuing up the hierarchy until no more merges are possible.
 
 - – List of documents (could be a mix of different hierarchy levels)
 
-## `haystack.components.retrievers.filter_retriever`
+## `filter_retriever`
 
 ### `FilterRetriever`
 
@@ -243,7 +243,7 @@ Asynchronously run the FilterRetriever on the given input data.
 
 - – A list of retrieved documents.
 
-## `haystack.components.retrievers.in_memory.bm25_retriever`
+## `in_memory/bm25_retriever`
 
 ### `InMemoryBM25Retriever`
 
@@ -389,7 +389,7 @@ Run the InMemoryBM25Retriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
 
-## `haystack.components.retrievers.in_memory.embedding_retriever`
+## `in_memory/embedding_retriever`
 
 ### `InMemoryEmbeddingRetriever`
 
@@ -557,7 +557,7 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
 
-## `haystack.components.retrievers.multi_query_embedding_retriever`
+## `multi_query_embedding_retriever`
 
 ### `MultiQueryEmbeddingRetriever`
 
@@ -693,7 +693,7 @@ Deserializes the component from a dictionary.
 
 - <code>MultiQueryEmbeddingRetriever</code> – The deserialized component.
 
-## `haystack.components.retrievers.multi_query_text_retriever`
+## `multi_query_text_retriever`
 
 ### `MultiQueryTextRetriever`
 
@@ -808,7 +808,7 @@ Deserializes the component from a dictionary.
 
 - <code>MultiQueryTextRetriever</code> – The deserialized component.
 
-## `haystack.components.retrievers.sentence_window_retriever`
+## `sentence_window_retriever`
 
 ### `SentenceWindowRetriever`
 

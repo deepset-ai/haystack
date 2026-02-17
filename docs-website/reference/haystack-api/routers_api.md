@@ -6,7 +6,7 @@ slug: "/routers-api"
 ---
 
 
-## `haystack.components.routers.conditional_router`
+## `conditional_router`
 
 ### `NoRouteSelectedException`
 
@@ -235,7 +235,7 @@ order they are listed. The method directs the flow of data to the output specifi
 - <code>RouteConditionException</code> – If there is an error parsing or evaluating the `condition` expression in the routes.
 - <code>ValueError</code> – If type validation is enabled and route type doesn't match actual value type.
 
-## `haystack.components.routers.document_length_router`
+## `document_length_router`
 
 ### `DocumentLengthRouter`
 
@@ -301,7 +301,7 @@ Categorize input documents into groups based on the length of the `content` fiel
   equal to the threshold.
 - `long_documents`: A list of documents where the length of `content` is greater than the threshold.
 
-## `haystack.components.routers.document_type_router`
+## `document_type_router`
 
 ### `DocumentTypeRouter`
 
@@ -394,7 +394,7 @@ standard Python `mimetypes` module and custom mappings.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of documents.
 
-## `haystack.components.routers.file_type_router`
+## `file_type_router`
 
 ### `FileTypeRouter`
 
@@ -508,7 +508,7 @@ Categorize files or byte streams according to their MIME types.
   Two extra keys may be returned: `"unclassified"` when a source's MIME type doesn't match any pattern
   and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
 
-## `haystack.components.routers.llm_messages_router`
+## `llm_messages_router`
 
 ### `LLMMessagesRouter`
 
@@ -639,7 +639,7 @@ Deserialize this component from a dictionary.
 
 - <code>LLMMessagesRouter</code> – The deserialized component instance.
 
-## `haystack.components.routers.metadata_router`
+## `metadata_router`
 
 ### `MetadataRouter`
 
@@ -783,7 +783,7 @@ Deserialize this component from a dictionary.
 
 - <code>MetadataRouter</code> – The deserialized component instance.
 
-## `haystack.components.routers.text_language_router`
+## `text_language_router`
 
 ### `TextLanguageRouter`
 
@@ -854,7 +854,7 @@ If the document's text doesn't match any of the specified languages, the metadat
 
 - <code>TypeError</code> – If the input is not a string.
 
-## `haystack.components.routers.transformers_text_router`
+## `transformers_text_router`
 
 ### `TransformersTextRouter`
 
@@ -991,7 +991,7 @@ Routes the text strings to different connections based on a category label.
 
 - <code>TypeError</code> – If the input is not a str.
 
-## `haystack.components.routers.zero_shot_text_router`
+## `zero_shot_text_router`
 
 ### `TransformersZeroShotTextRouter`
 

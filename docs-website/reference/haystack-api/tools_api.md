@@ -6,7 +6,7 @@ slug: "/tools-api"
 ---
 
 
-## `haystack.tools.component_tool`
+## `component_tool`
 
 ### `ComponentTool`
 
@@ -152,22 +152,6 @@ Example:
 
 - <code>ValueError</code> – If the component is invalid or schema generation fails.
 
-#### `tool_spec`
-
-```python
-tool_spec: dict[str, Any]
-```
-
-Return the Tool specification to be used by the Language Model.
-
-#### `invoke`
-
-```python
-invoke(**kwargs: Any) -> Any
-```
-
-Invoke the Tool with the provided keyword arguments.
-
 #### `warm_up`
 
 ```python
@@ -192,7 +176,7 @@ from_dict(data: dict[str, Any]) -> ComponentTool
 
 Deserializes the ComponentTool from a dictionary.
 
-## `haystack.tools.from_function`
+## `from_function`
 
 ### `create_tool_from_function`
 
@@ -434,7 +418,7 @@ Example:
 
 - <code>Tool | Callable\\[[Callable\], Tool\]</code> – Either a Tool instance or a decorator function that will create one
 
-## `haystack.tools.pipeline_tool`
+## `pipeline_tool`
 
 ### `PipelineTool`
 
@@ -652,31 +636,7 @@ Deserializes the PipelineTool from a dictionary.
 
 - <code>PipelineTool</code> – The deserialized PipelineTool instance.
 
-#### `tool_spec`
-
-```python
-tool_spec: dict[str, Any]
-```
-
-Return the Tool specification to be used by the Language Model.
-
-#### `invoke`
-
-```python
-invoke(**kwargs: Any) -> Any
-```
-
-Invoke the Tool with the provided keyword arguments.
-
-#### `warm_up`
-
-```python
-warm_up()
-```
-
-Prepare the ComponentTool for use.
-
-## `haystack.tools.tool`
+## `tool`
 
 ### `Tool`
 
@@ -808,7 +768,7 @@ Deserializes the Tool from a dictionary.
 
 - <code>Tool</code> – Deserialized Tool.
 
-## `haystack.tools.toolset`
+## `toolset`
 
 ### `Toolset`
 

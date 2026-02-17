@@ -5,17 +5,15 @@ description: "Pinecone integration for Haystack"
 slug: "/integrations-pinecone"
 ---
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever"></a>
 
-## Module haystack\_integrations.components.retrievers.pinecone.embedding\_retriever
+## `haystack_integrations.components.retrievers.pinecone.embedding_retriever`
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever"></a>
-
-### PineconeEmbeddingRetriever
+### `PineconeEmbeddingRetriever`
 
 Retrieves documents from the `PineconeDocumentStore`, based on their dense embeddings.
 
 Usage example:
+
 ```python
 import os
 from haystack.document_stores.types import DuplicatePolicy
@@ -49,286 +47,253 @@ res = query_pipeline.run({"text_embedder": {"text": query}})
 assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
 ```
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever.__init__"></a>
-
-#### PineconeEmbeddingRetriever.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             document_store: PineconeDocumentStore,
-             filters: dict[str, Any] | None = None,
-             top_k: int = 10,
-             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+__init__(
+    *,
+    document_store: PineconeDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
+)
 ```
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: The Pinecone Document Store.
-- `filters`: Filters applied to the retrieved Documents.
-- `top_k`: Maximum number of Documents to return.
-- `filter_policy`: Policy to determine how filters are applied.
+- **document_store** (<code>PineconeDocumentStore</code>) – The Pinecone Document Store.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents.
+- **top_k** (<code>int</code>) – Maximum number of Documents to return.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
 
-**Raises**:
+**Raises:**
 
-- `ValueError`: If `document_store` is not an instance of `PineconeDocumentStore`.
+- <code>ValueError</code> – If `document_store` is not an instance of `PineconeDocumentStore`.
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever.to_dict"></a>
-
-#### PineconeEmbeddingRetriever.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever.from_dict"></a>
-
-#### PineconeEmbeddingRetriever.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "PineconeEmbeddingRetriever"
+from_dict(data: dict[str, Any]) -> PineconeEmbeddingRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>PineconeEmbeddingRetriever</code> – Deserialized component.
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever.run"></a>
-
-#### PineconeEmbeddingRetriever.run
+#### `run`
 
 ```python
-@component.output_types(documents=list[Document])
-def run(query_embedding: list[float],
-        filters: dict[str, Any] | None = None,
-        top_k: int | None = None) -> dict[str, list[Document]]
+run(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PineconeDocumentStore`, based on their dense embeddings.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: Embedding of the query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of `Document`s to return.
+- **query_embedding** (<code>list\[float\]</code>) – Embedding of the query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – Maximum number of `Document`s to return.
 
-**Returns**:
+**Returns:**
 
-List of Document similar to `query_embedding`.
+- <code>dict\[str, list\[Document\]\]</code> – List of Document similar to `query_embedding`.
 
-<a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever.run_async"></a>
-
-#### PineconeEmbeddingRetriever.run\_async
+#### `run_async`
 
 ```python
-@component.output_types(documents=list[Document])
-async def run_async(query_embedding: list[float],
-                    filters: dict[str, Any] | None = None,
-                    top_k: int | None = None) -> dict[str, list[Document]]
+run_async(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PineconeDocumentStore`, based on their dense embeddings.
 
-**Arguments**:
+**Parameters:**
 
-- `query_embedding`: Embedding of the query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of `Document`s to return.
+- **query_embedding** (<code>list\[float\]</code>) – Embedding of the query.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – Maximum number of `Document`s to return.
 
-**Returns**:
+**Returns:**
 
-List of Document similar to `query_embedding`.
+- <code>dict\[str, list\[Document\]\]</code> – List of Document similar to `query_embedding`.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store"></a>
+## `haystack_integrations.document_stores.pinecone.document_store`
 
-## Module haystack\_integrations.document\_stores.pinecone.document\_store
-
-<a id="haystack_integrations.document_stores.pinecone.document_store.METADATA_SUPPORTED_TYPES"></a>
-
-#### METADATA\_SUPPORTED\_TYPES
-
-List[str] is supported and checked separately
-
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore"></a>
-
-### PineconeDocumentStore
+### `PineconeDocumentStore`
 
 A Document Store using [Pinecone vector database](https://www.pinecone.io/).
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.__init__"></a>
-
-#### PineconeDocumentStore.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("PINECONE_API_KEY"),
-             index: str = "default",
-             namespace: str = "default",
-             batch_size: int = 100,
-             dimension: int = 768,
-             spec: dict[str, Any] | None = None,
-             metric: Literal["cosine", "euclidean", "dotproduct"] = "cosine")
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("PINECONE_API_KEY"),
+    index: str = "default",
+    namespace: str = "default",
+    batch_size: int = 100,
+    dimension: int = 768,
+    spec: dict[str, Any] | None = None,
+    metric: Literal["cosine", "euclidean", "dotproduct"] = "cosine",
+    show_progress: bool = True
+)
 ```
 
 Creates a new PineconeDocumentStore instance.
-
 It is meant to be connected to a Pinecone index and namespace.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The Pinecone API key.
-- `index`: The Pinecone index to connect to. If the index does not exist, it will be created.
-- `namespace`: The Pinecone namespace to connect to. If the namespace does not exist, it will be created
-at the first write.
-- `batch_size`: The number of documents to write in a single batch. When setting this parameter,
-consider [documented Pinecone limits](https://docs.pinecone.io/reference/quotas-and-limits).
-- `dimension`: The dimension of the embeddings. This parameter is only used when creating a new index.
-- `spec`: The Pinecone spec to use when creating a new index. Allows choosing between serverless and pod
-deployment options and setting additional parameters. Refer to the
-[Pinecone documentation](https://docs.pinecone.io/reference/api/control-plane/create_index) for more
-details.
-If not provided, a default spec with serverless deployment in the `us-east-1` region will be used
-(compatible with the free tier).
-- `metric`: The metric to use for similarity search. This parameter is only used when creating a new index.
+- **api_key** (<code>Secret</code>) – The Pinecone API key.
+- **index** (<code>str</code>) – The Pinecone index to connect to. If the index does not exist, it will be created.
+- **namespace** (<code>str</code>) – The Pinecone namespace to connect to. If the namespace does not exist, it will be created
+  at the first write.
+- **batch_size** (<code>int</code>) – The number of documents to write in a single batch. When setting this parameter,
+  consider [documented Pinecone limits](https://docs.pinecone.io/reference/quotas-and-limits).
+- **dimension** (<code>int</code>) – The dimension of the embeddings. This parameter is only used when creating a new index.
+- **spec** (<code>dict\[str, Any\] | None</code>) – The Pinecone spec to use when creating a new index. Allows choosing between serverless and pod
+  deployment options and setting additional parameters. Refer to the
+  [Pinecone documentation](https://docs.pinecone.io/reference/api/control-plane/create_index) for more
+  details.
+  If not provided, a default spec with serverless deployment in the `us-east-1` region will be used
+  (compatible with the free tier).
+- **metric** (<code>Literal['cosine', 'euclidean', 'dotproduct']</code>) – The metric to use for similarity search. This parameter is only used when creating a new index.
+- **show_progress** (<code>bool</code>) – Whether to show a progress bar when upserting documents. Set to False to disable
+  (e.g. in tests or scripts where quiet output is preferred).
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.close"></a>
-
-#### PineconeDocumentStore.close
+#### `close`
 
 ```python
-def close()
+close()
 ```
 
 Close the associated synchronous resources.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.close_async"></a>
-
-#### PineconeDocumentStore.close\_async
+#### `close_async`
 
 ```python
-async def close_async()
+close_async()
 ```
 
 Close the associated asynchronous resources. To be invoked manually when the Document Store is no longer needed.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.from_dict"></a>
-
-#### PineconeDocumentStore.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "PineconeDocumentStore"
+from_dict(data: dict[str, Any]) -> PineconeDocumentStore
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>PineconeDocumentStore</code> – Deserialized component.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.to_dict"></a>
-
-#### PineconeDocumentStore.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_documents"></a>
-
-#### PineconeDocumentStore.count\_documents
+#### `count_documents`
 
 ```python
-def count_documents() -> int
+count_documents() -> int
 ```
 
 Returns how many documents are present in the document store.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_documents_async"></a>
-
-#### PineconeDocumentStore.count\_documents\_async
+#### `count_documents_async`
 
 ```python
-async def count_documents_async() -> int
+count_documents_async() -> int
 ```
 
 Asynchronously returns how many documents are present in the document store.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.write_documents"></a>
-
-#### PineconeDocumentStore.write\_documents
+#### `write_documents`
 
 ```python
-def write_documents(documents: list[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Writes Documents to Pinecone.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of Documents to write to the document store.
-- `policy`: The duplicate policy to use when writing documents.
-PineconeDocumentStore only supports `DuplicatePolicy.OVERWRITE`.
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to write to the document store.
+- **policy** (<code>DuplicatePolicy</code>) – The duplicate policy to use when writing documents.
+  PineconeDocumentStore only supports `DuplicatePolicy.OVERWRITE`.
 
-**Returns**:
+**Returns:**
 
-The number of documents written to the document store.
+- <code>int</code> – The number of documents written to the document store.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.write_documents_async"></a>
-
-#### PineconeDocumentStore.write\_documents\_async
+#### `write_documents_async`
 
 ```python
-async def write_documents_async(
-        documents: list[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+write_documents_async(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
 ```
 
 Asynchronously writes Documents to Pinecone.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of Documents to write to the document store.
-- `policy`: The duplicate policy to use when writing documents.
-PineconeDocumentStore only supports `DuplicatePolicy.OVERWRITE`.
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to write to the document store.
+- **policy** (<code>DuplicatePolicy</code>) – The duplicate policy to use when writing documents.
+  PineconeDocumentStore only supports `DuplicatePolicy.OVERWRITE`.
 
-**Returns**:
+**Returns:**
 
-The number of documents written to the document store.
+- <code>int</code> – The number of documents written to the document store.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.filter_documents"></a>
-
-#### PineconeDocumentStore.filter\_documents
+#### `filter_documents`
 
 ```python
-def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -336,87 +301,74 @@ Returns the documents that match the filters provided.
 For a detailed specification of the filters,
 refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
 
-**Returns**:
+**Returns:**
 
-A list of Documents that match the given filters.
+- <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.filter_documents_async"></a>
-
-#### PineconeDocumentStore.filter\_documents\_async
+#### `filter_documents_async`
 
 ```python
-async def filter_documents_async(
-        filters: dict[str, Any] | None = None) -> list[Document]
+filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
 
-**Returns**:
+**Returns:**
 
-A list of Documents that match the given filters.
+- <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_documents"></a>
-
-#### PineconeDocumentStore.delete\_documents
+#### `delete_documents`
 
 ```python
-def delete_documents(document_ids: list[str]) -> None
+delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: the document ids to delete
+- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_documents_async"></a>
-
-#### PineconeDocumentStore.delete\_documents\_async
+#### `delete_documents_async`
 
 ```python
-async def delete_documents_async(document_ids: list[str]) -> None
+delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
 
-**Arguments**:
+**Parameters:**
 
-- `document_ids`: the document ids to delete
+- **document_ids** (<code>list\[str\]</code>) – the document ids to delete
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_all_documents"></a>
-
-#### PineconeDocumentStore.delete\_all\_documents
+#### `delete_all_documents`
 
 ```python
-def delete_all_documents() -> None
+delete_all_documents() -> None
 ```
 
 Deletes all documents in the document store.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_all_documents_async"></a>
-
-#### PineconeDocumentStore.delete\_all\_documents\_async
+#### `delete_all_documents_async`
 
 ```python
-async def delete_all_documents_async() -> None
+delete_all_documents_async() -> None
 ```
 
 Asynchronously deletes all documents in the document store.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_by_filter"></a>
-
-#### PineconeDocumentStore.delete\_by\_filter
+#### `delete_by_filter`
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> int
+delete_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Deletes all documents that match the provided filters.
@@ -424,21 +376,19 @@ Deletes all documents that match the provided filters.
 Pinecone does not support server-side delete by filter, so this method
 first searches for matching documents, then deletes them by ID.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents deleted.
+- <code>int</code> – The number of documents deleted.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_by_filter_async"></a>
-
-#### PineconeDocumentStore.delete\_by\_filter\_async
+#### `delete_by_filter_async`
 
 ```python
-async def delete_by_filter_async(filters: dict[str, Any]) -> int
+delete_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
@@ -446,21 +396,19 @@ Asynchronously deletes all documents that match the provided filters.
 Pinecone does not support server-side delete by filter, so this method
 first searches for matching documents, then deletes them by ID.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents deleted.
+- <code>int</code> – The number of documents deleted.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.update_by_filter"></a>
-
-#### PineconeDocumentStore.update\_by\_filter
+#### `update_by_filter`
 
 ```python
-def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
@@ -468,23 +416,20 @@ Updates the metadata of all documents that match the provided filters.
 Pinecone does not support server-side update by filter, so this method
 first searches for matching documents, then updates their metadata and re-writes them.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `meta`: The metadata fields to update. This will be merged with existing metadata.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update. This will be merged with existing metadata.
 
-**Returns**:
+**Returns:**
 
-The number of documents updated.
+- <code>int</code> – The number of documents updated.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.update_by_filter_async"></a>
-
-#### PineconeDocumentStore.update\_by\_filter\_async
+#### `update_by_filter_async`
 
 ```python
-async def update_by_filter_async(filters: dict[str, Any],
-                                 meta: dict[str, Any]) -> int
+update_by_filter_async(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
@@ -492,22 +437,20 @@ Asynchronously updates the metadata of all documents that match the provided fil
 Pinecone does not support server-side update by filter, so this method
 first searches for matching documents, then updates their metadata and re-writes them.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- `meta`: The metadata fields to update. This will be merged with existing metadata.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update. This will be merged with existing metadata.
 
-**Returns**:
+**Returns:**
 
-The number of documents updated.
+- <code>int</code> – The number of documents updated.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_documents_by_filter"></a>
-
-#### PineconeDocumentStore.count\_documents\_by\_filter
+#### `count_documents_by_filter`
 
 ```python
-def count_documents_by_filter(filters: dict[str, Any]) -> int
+count_documents_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Returns the count of documents that match the provided filters.
@@ -515,21 +458,19 @@ Returns the count of documents that match the provided filters.
 Note: Due to Pinecone's limitations, this method fetches documents and counts them.
 For large result sets, this is subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to the document list.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to the document list.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
-**Returns**:
+**Returns:**
 
-The number of documents that match the filters.
+- <code>int</code> – The number of documents that match the filters.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_documents_by_filter_async"></a>
-
-#### PineconeDocumentStore.count\_documents\_by\_filter\_async
+#### `count_documents_by_filter_async`
 
 ```python
-async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+count_documents_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously returns the count of documents that match the provided filters.
@@ -537,21 +478,20 @@ Asynchronously returns the count of documents that match the provided filters.
 Note: Due to Pinecone's limitations, this method fetches documents and counts them.
 For large result sets, this is subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to the document list.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to the document list.
 
-**Returns**:
+**Returns:**
 
-The number of documents that match the filters.
+- <code>int</code> – The number of documents that match the filters.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_unique_metadata_by_filter"></a>
-
-#### PineconeDocumentStore.count\_unique\_metadata\_by\_filter
+#### `count_unique_metadata_by_filter`
 
 ```python
-def count_unique_metadata_by_filter(
-        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+count_unique_metadata_by_filter(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
 ```
 
 Counts unique values for each specified metadata field in documents matching the filters.
@@ -559,22 +499,21 @@ Counts unique values for each specified metadata field in documents matching the
 Note: Due to Pinecone's limitations, this method fetches documents and aggregates in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents.
-- `metadata_fields`: List of metadata field names to count unique values for.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents.
+- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names to count unique values for.
 
-**Returns**:
+**Returns:**
 
-Dictionary mapping field names to counts of unique values.
+- <code>dict\[str, int\]</code> – Dictionary mapping field names to counts of unique values.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.count_unique_metadata_by_filter_async"></a>
-
-#### PineconeDocumentStore.count\_unique\_metadata\_by\_filter\_async
+#### `count_unique_metadata_by_filter_async`
 
 ```python
-async def count_unique_metadata_by_filter_async(
-        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+count_unique_metadata_by_filter_async(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
 ```
 
 Asynchronously counts unique values for each specified metadata field in documents matching the filters.
@@ -582,21 +521,19 @@ Asynchronously counts unique values for each specified metadata field in documen
 Note: Due to Pinecone's limitations, this method fetches documents and aggregates in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `filters`: The filters to apply to select documents.
-- `metadata_fields`: List of metadata field names to count unique values for.
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents.
+- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names to count unique values for.
 
-**Returns**:
+**Returns:**
 
-Dictionary mapping field names to counts of unique values.
+- <code>dict\[str, int\]</code> – Dictionary mapping field names to counts of unique values.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_fields_info"></a>
-
-#### PineconeDocumentStore.get\_metadata\_fields\_info
+#### `get_metadata_fields_info`
 
 ```python
-def get_metadata_fields_info() -> dict[str, dict[str, str]]
+get_metadata_fields_info() -> dict[str, dict[str, str]]
 ```
 
 Returns information about metadata fields and their types by sampling documents.
@@ -605,15 +542,17 @@ Note: Pinecone doesn't provide a schema introspection API, so this method infers
 by examining the metadata of documents stored in the index (up to 1000 documents).
 
 Type mappings:
+
 - 'text': Document content field
 - 'keyword': String metadata values
 - 'long': Numeric metadata values (int or float)
 - 'boolean': Boolean metadata values
 
-**Returns**:
+**Returns:**
 
-Dictionary mapping field names to type information.
-Example:
+- <code>dict\[str, dict\[str, str\]\]</code> – Dictionary mapping field names to type information.
+  Example:
+
 ```python
 {
     'content': {'type': 'text'},
@@ -622,12 +561,10 @@ Example:
 }
 ```
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_fields_info_async"></a>
-
-#### PineconeDocumentStore.get\_metadata\_fields\_info\_async
+#### `get_metadata_fields_info_async`
 
 ```python
-async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+get_metadata_fields_info_async() -> dict[str, dict[str, str]]
 ```
 
 Asynchronously returns information about metadata fields and their types by sampling documents.
@@ -636,15 +573,17 @@ Note: Pinecone doesn't provide a schema introspection API, so this method infers
 by examining the metadata of documents stored in the index (up to 1000 documents).
 
 Type mappings:
+
 - 'text': Document content field
 - 'keyword': String metadata values
 - 'long': Numeric metadata values (int or float)
 - 'boolean': Boolean metadata values
 
-**Returns**:
+**Returns:**
 
-Dictionary mapping field names to type information.
-Example:
+- <code>dict\[str, dict\[str, str\]\]</code> – Dictionary mapping field names to type information.
+  Example:
+
 ```python
 {
     'content': {'type': 'text'},
@@ -653,17 +592,16 @@ Example:
 }
 ```
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_min_max"></a>
-
-#### PineconeDocumentStore.get\_metadata\_field\_min\_max
+#### `get_metadata_field_min_max`
 
 ```python
-def get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
 ```
 
 Returns the minimum and maximum values for a metadata field.
 
 Supports numeric (int, float), boolean, and string (keyword) types:
+
 - Numeric: Returns min/max based on numeric value
 - Boolean: Returns False as min, True as max
 - String: Returns min/max based on alphabetical ordering
@@ -671,30 +609,28 @@ Supports numeric (int, float), boolean, and string (keyword) types:
 Note: This method fetches all documents and computes min/max in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field name to analyze.
+- **metadata_field** (<code>str</code>) – The metadata field name to analyze.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the field doesn't exist or has no values.
+- <code>dict\[str, Any\]</code> – Dictionary with 'min' and 'max' keys.
 
-**Returns**:
+**Raises:**
 
-Dictionary with 'min' and 'max' keys.
+- <code>ValueError</code> – If the field doesn't exist or has no values.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_min_max_async"></a>
-
-#### PineconeDocumentStore.get\_metadata\_field\_min\_max\_async
+#### `get_metadata_field_min_max_async`
 
 ```python
-async def get_metadata_field_min_max_async(
-        metadata_field: str) -> dict[str, Any]
+get_metadata_field_min_max_async(metadata_field: str) -> dict[str, Any]
 ```
 
 Asynchronously returns the minimum and maximum values for a metadata field.
 
 Supports numeric (int, float), boolean, and string (keyword) types:
+
 - Numeric: Returns min/max based on numeric value
 - Boolean: Returns False as min, True as max
 - String: Returns min/max based on alphabetical ordering
@@ -702,27 +638,27 @@ Supports numeric (int, float), boolean, and string (keyword) types:
 Note: This method fetches all documents and computes min/max in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field name to analyze.
+- **metadata_field** (<code>str</code>) – The metadata field name to analyze.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If the field doesn't exist or has no values.
+- <code>dict\[str, Any\]</code> – Dictionary with 'min' and 'max' keys.
 
-**Returns**:
+**Raises:**
 
-Dictionary with 'min' and 'max' keys.
+- <code>ValueError</code> – If the field doesn't exist or has no values.
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_unique_values"></a>
-
-#### PineconeDocumentStore.get\_metadata\_field\_unique\_values
+#### `get_metadata_field_unique_values`
 
 ```python
-def get_metadata_field_unique_values(metadata_field: str,
-                                     search_term: str | None = None,
-                                     from_: int = 0,
-                                     size: int = 10) -> tuple[list[str], int]
+get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[str], int]
 ```
 
 Retrieves unique values for a metadata field with optional search and pagination.
@@ -730,27 +666,26 @@ Retrieves unique values for a metadata field with optional search and pagination
 Note: This method fetches documents and extracts unique values in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field name to get unique values for.
-- `search_term`: Optional search term to filter values (case-insensitive substring match).
-- `from_`: Starting offset for pagination (default: 0).
-- `size`: Number of values to return (default: 10).
+- **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values (case-insensitive substring match).
+- **from\_** (<code>int</code>) – Starting offset for pagination (default: 0).
+- **size** (<code>int</code>) – Number of values to return (default: 10).
 
-**Returns**:
+**Returns:**
 
-Tuple of (list of unique values, total count of matching values).
+- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).
 
-<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.get_metadata_field_unique_values_async"></a>
-
-#### PineconeDocumentStore.get\_metadata\_field\_unique\_values\_async
+#### `get_metadata_field_unique_values_async`
 
 ```python
-async def get_metadata_field_unique_values_async(
-        metadata_field: str,
-        search_term: str | None = None,
-        from_: int = 0,
-        size: int = 10) -> tuple[list[str], int]
+get_metadata_field_unique_values_async(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[str], int]
 ```
 
 Asynchronously retrieves unique values for a metadata field with optional search and pagination.
@@ -758,14 +693,13 @@ Asynchronously retrieves unique values for a metadata field with optional search
 Note: This method fetches documents and extracts unique values in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
-**Arguments**:
+**Parameters:**
 
-- `metadata_field`: The metadata field name to get unique values for.
-- `search_term`: Optional search term to filter values (case-insensitive substring match).
-- `from_`: Starting offset for pagination (default: 0).
-- `size`: Number of values to return (default: 10).
+- **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values (case-insensitive substring match).
+- **from\_** (<code>int</code>) – Starting offset for pagination (default: 0).
+- **size** (<code>int</code>) – Number of values to return (default: 10).
 
-**Returns**:
+**Returns:**
 
-Tuple of (list of unique values, total count of matching values).
-
+- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).

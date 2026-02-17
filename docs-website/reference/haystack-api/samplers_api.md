@@ -6,7 +6,7 @@ slug: "/samplers-api"
 ---
 
 
-## `haystack.components.samplers.top_p`
+## `top_p`
 
 ### `TopPSampler`
 

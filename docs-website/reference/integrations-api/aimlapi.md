@@ -5,13 +5,12 @@ description: "AIMLAPI integration for Haystack"
 slug: "/integrations-aimlapi"
 ---
 
-<a id="haystack_integrations.components.generators.aimlapi.chat.chat_generator"></a>
 
-## Module haystack\_integrations.components.generators.aimlapi.chat.chat\_generator
+## `haystack_integrations.components.generators.aimlapi.chat.chat_generator`
 
-<a id="haystack_integrations.components.generators.aimlapi.chat.chat_generator.AIMLAPIChatGenerator"></a>
+### `AIMLAPIChatGenerator`
 
-### AIMLAPIChatGenerator
+Bases: <code>OpenAIChatGenerator</code>
 
 Enables text generation using AIMLAPI generative models.
 For supported models, see AIMLAPI documentation.
@@ -21,6 +20,7 @@ directly to this component using the `generation_kwargs` parameter in `__init__`
 parameter in `run` method.
 
 Key Features and Compatibility:
+
 - **Primary Compatibility**: Designed to work seamlessly with the AIMLAPI chat completion endpoint.
 - **Streaming Support**: Supports streaming responses from the AIMLAPI chat completion endpoint.
 - **Customizability**: Supports all parameters supported by the AIMLAPI chat completion endpoint.
@@ -34,6 +34,7 @@ For more details on the parameters supported by the AIMLAPI API, refer to the
 AIMLAPI documentation.
 
 Usage example:
+
 ```python
 from haystack_integrations.components.generators.aimlapi import AIMLAPIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -51,69 +52,65 @@ print(response)
 >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 ```
 
-<a id="haystack_integrations.components.generators.aimlapi.chat.chat_generator.AIMLAPIChatGenerator.__init__"></a>
-
-#### AIMLAPIChatGenerator.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var("AIMLAPI_API_KEY"),
-             model: str = "openai/gpt-5-chat-latest",
-             streaming_callback: StreamingCallbackT | None = None,
-             api_base_url: str | None = "https://api.aimlapi.com/v1",
-             generation_kwargs: dict[str, Any] | None = None,
-             tools: ToolsType | None = None,
-             timeout: float | None = None,
-             extra_headers: dict[str, Any] | None = None,
-             max_retries: int | None = None,
-             http_client_kwargs: dict[str, Any] | None = None)
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var("AIMLAPI_API_KEY"),
+    model: str = "openai/gpt-5-chat-latest",
+    streaming_callback: StreamingCallbackT | None = None,
+    api_base_url: str | None = "https://api.aimlapi.com/v1",
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    extra_headers: dict[str, Any] | None = None,
+    max_retries: int | None = None,
+    http_client_kwargs: dict[str, Any] | None = None
+)
 ```
 
 Creates an instance of AIMLAPIChatGenerator. Unless specified otherwise,
-
 the default model is `openai/gpt-5-chat-latest`.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: The AIMLAPI API key.
-- `model`: The name of the AIMLAPI chat completion model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `api_base_url`: The AIMLAPI API Base url.
-For more details, see AIMLAPI documentation.
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the AIMLAPI endpoint. See AIMLAPI API docs for more details.
-Some of the supported parameters:
+- **api_key** (<code>Secret</code>) – The AIMLAPI API key.
+- **model** (<code>str</code>) – The name of the AIMLAPI chat completion model to use.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **api_base_url** (<code>str | None</code>) – The AIMLAPI API Base url.
+  For more details, see AIMLAPI documentation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the AIMLAPI endpoint. See AIMLAPI API docs for more details.
+  Some of the supported parameters:
 - `max_tokens`: The maximum number of tokens the output text can have.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+  Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
+  considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+  comprising the top 10% probability mass are considered.
 - `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
-    events as they become available, with the stream terminated by a data: [DONE] message.
+  events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
-- `timeout`: The timeout for the AIMLAPI API call.
-- `extra_headers`: Additional HTTP headers to include in requests to the AIMLAPI API.
-- `max_retries`: Maximum number of retries to contact AIMLAPI after an internal error.
-If not set, it defaults to either the `AIMLAPI_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+- **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+  list of `Tool` objects or a `Toolset` instance.
+- **timeout** (<code>float | None</code>) – The timeout for the AIMLAPI API call.
+- **extra_headers** (<code>dict\[str, Any\] | None</code>) – Additional HTTP headers to include in requests to the AIMLAPI API.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to contact AIMLAPI after an internal error.
+  If not set, it defaults to either the `AIMLAPI_MAX_RETRIES` environment variable, or set to 5.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+  For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-<a id="haystack_integrations.components.generators.aimlapi.chat.chat_generator.AIMLAPIChatGenerator.to_dict"></a>
-
-#### AIMLAPIChatGenerator.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-The serialized component as a dictionary.
-
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
