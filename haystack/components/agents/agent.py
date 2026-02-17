@@ -641,16 +641,16 @@ class Agent:
                         )
                     except PipelineRuntimeError as e:
                         agent_name = getattr(self, "__component_name__", None)
-                        snapshot = _create_pipeline_snapshot_from_chat_generator(
+                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
                             agent_name=agent_name, execution_context=exe_context, break_point=None
                         )
                         new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                        new_error.pipeline_snapshot = snapshot
+                        new_error.pipeline_snapshot = pipe_snapshot
                         # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                         # Checked by __component_name__ not being set.
                         if agent_name is None:
                             new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=snapshot, snapshot_callback=snapshot_callback
+                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
                             )
                         raise new_error from e
                     except BreakpointException as e:
@@ -715,16 +715,16 @@ class Agent:
                 except PipelineRuntimeError as e:
                     agent_name = getattr(self, "__component_name__", None)
                     tool_name = getattr(e.__cause__, "tool_name", None)
-                    snapshot = _create_pipeline_snapshot_from_tool_invoker(
+                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
                         tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
                     )
                     new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                    new_error.pipeline_snapshot = snapshot
+                    new_error.pipeline_snapshot = pipe_snapshot
                     # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                     # Checked by __component_name__ not being set.
                     if agent_name is None:
                         new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=snapshot, snapshot_callback=snapshot_callback
+                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
                         )
                     raise new_error from e
                 except BreakpointException as e:
