@@ -278,7 +278,7 @@ renders the prompt with the provided variables. Provide the template in either
 the `init` method` or the `run` method.
 - `required_variables`: List variables that must be provided as input to ChatPromptBuilder.
 If a variable listed as required is not provided, an exception is raised.
-If set to "*", all variables found in the prompt are required. Optional.
+If set to `"*"`, all variables found in the prompt are required. Optional.
 - `variables`: List input variables to use in prompt templates instead of the ones inferred from the
 `template` parameter. For example, to use more variables during prompt engineering than the ones present
 in the default template, you can provide them here.
@@ -499,7 +499,7 @@ unless explicitly specified.
 If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
 - `required_variables`: List variables that must be provided as input to PromptBuilder.
 If a variable listed as required is not provided, an exception is raised.
-If set to "*", all variables found in the prompt are required. Optional.
+If set to `"*"`, all variables found in the prompt are required. Optional.
 - `variables`: List input variables to use in prompt templates instead of the ones inferred from the
 `template` parameter. For example, to use more variables during prompt engineering than the ones present
 in the default template, you can provide them here.
