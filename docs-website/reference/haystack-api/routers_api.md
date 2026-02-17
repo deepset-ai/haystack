@@ -103,13 +103,7 @@ print(result)
 ### `__init__`
 
 ```python
-__init__(
-    routes: list[Route],
-    custom_filters: dict[str, Callable] | None = None,
-    unsafe: bool = False,
-    validate_output_type: bool = False,
-    optional_variables: list[str] | None = None,
-)
+__init__(routes: list[Route], custom_filters: dict[str, Callable] | None = None, unsafe: bool = False, validate_output_type: bool = False, optional_variables: list[str] | None = None)
 ```
 
 Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -342,13 +336,7 @@ Expected output:
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    mime_types: list[str],
-    mime_type_meta_field: str | None = None,
-    file_path_meta_field: str | None = None,
-    additional_mimetypes: dict[str, str] | None = None
-) -> None
+__init__(*, mime_types: list[str], mime_type_meta_field: str | None = None, file_path_meta_field: str | None = None, additional_mimetypes: dict[str, str] | None = None) -> None
 ```
 
 Initialize the DocumentTypeRouter component.
@@ -427,11 +415,7 @@ print(router_with_regex.run(sources=sources))
 ### `__init__`
 
 ```python
-__init__(
-    mime_types: list[str],
-    additional_mimetypes: dict[str, str] | None = None,
-    raise_on_failure: bool = False,
-)
+__init__(mime_types: list[str], additional_mimetypes: dict[str, str] | None = None, raise_on_failure: bool = False)
 ```
 
 Initialize the FileTypeRouter component.
@@ -477,10 +461,7 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(
-    sources: list[str | Path | ByteStream],
-    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-) -> dict[str, list[ByteStream | Path]]
+run(sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None) -> dict[str, list[ByteStream | Path]]
 ```
 
 Categorize files or byte streams according to their MIME types.
@@ -545,12 +526,7 @@ S2',
 ### `__init__`
 
 ```python
-__init__(
-    chat_generator: ChatGenerator,
-    output_names: list[str],
-    output_patterns: list[str],
-    system_prompt: str | None = None,
-)
+__init__(chat_generator: ChatGenerator, output_names: list[str], output_patterns: list[str], system_prompt: str | None = None)
 ```
 
 Initialize the LLMMessagesRouter component.
@@ -892,15 +868,7 @@ print(p.run({"text_router": {"text": "Was ist die Hauptstadt von Deutschland?"}}
 ### `__init__`
 
 ```python
-__init__(
-    model: str,
-    labels: list[str] | None = None,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-)
+__init__(model: str, labels: list[str] | None = None, device: ComponentDevice | None = None, token: Secret | None = Secret.from_env_var(['HF_API_TOKEN', 'HF_TOKEN'], strict=False), huggingface_pipeline_kwargs: dict[str, Any] | None = None)
 ```
 
 Initializes the TransformersTextRouter component.
@@ -1048,16 +1016,7 @@ p.run({
 ### `__init__`
 
 ```python
-__init__(
-    labels: list[str],
-    multi_label: bool = False,
-    model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-)
+__init__(labels: list[str], multi_label: bool = False, model: str = 'MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33', device: ComponentDevice | None = None, token: Secret | None = Secret.from_env_var(['HF_API_TOKEN', 'HF_TOKEN'], strict=False), huggingface_pipeline_kwargs: dict[str, Any] | None = None)
 ```
 
 Initializes the TransformersZeroShotTextRouter component.

@@ -71,16 +71,7 @@ print(result)
 ### `__init__`
 
 ```python
-__init__(
-    component: Component,
-    name: str | None = None,
-    description: str | None = None,
-    parameters: dict[str, Any] | None = None,
-    *,
-    outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
-    inputs_from_state: dict[str, str] | None = None,
-    outputs_to_state: dict[str, dict[str, str | Callable]] | None = None
-) -> None
+__init__(component: Component, name: str | None = None, description: str | None = None, parameters: dict[str, Any] | None = None, *, outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None, inputs_from_state: dict[str, str] | None = None, outputs_to_state: dict[str, dict[str, str | Callable]] | None = None) -> None
 ```
 
 Create a Tool instance from a Haystack component.
@@ -193,14 +184,7 @@ Deserializes the ComponentTool from a dictionary.
 ## `create_tool_from_function`
 
 ```python
-create_tool_from_function(
-    function: Callable,
-    name: str | None = None,
-    description: str | None = None,
-    inputs_from_state: dict[str, str] | None = None,
-    outputs_to_state: dict[str, dict[str, Any]] | None = None,
-    outputs_to_string: dict[str, Any] | None = None,
-) -> Tool
+create_tool_from_function(function: Callable, name: str | None = None, description: str | None = None, inputs_from_state: dict[str, str] | None = None, outputs_to_state: dict[str, dict[str, Any]] | None = None, outputs_to_string: dict[str, Any] | None = None) -> Tool
 ```
 
 Create a Tool instance from a function.
@@ -316,15 +300,7 @@ Example:
 ## `tool`
 
 ```python
-tool(
-    function: Callable | None = None,
-    *,
-    name: str | None = None,
-    description: str | None = None,
-    inputs_from_state: dict[str, str] | None = None,
-    outputs_to_state: dict[str, dict[str, Any]] | None = None,
-    outputs_to_string: dict[str, Any] | None = None
-) -> Tool | Callable[[Callable], Tool]
+tool(function: Callable | None = None, *, name: str | None = None, description: str | None = None, inputs_from_state: dict[str, str] | None = None, outputs_to_state: dict[str, dict[str, Any]] | None = None, outputs_to_string: dict[str, Any] | None = None) -> Tool | Callable[[Callable], Tool]
 ```
 
 Decorator to convert a function into a Tool.
@@ -516,18 +492,7 @@ print(result["messages"][-1].text)
 ### `__init__`
 
 ```python
-__init__(
-    pipeline: Pipeline | AsyncPipeline,
-    *,
-    name: str,
-    description: str,
-    input_mapping: dict[str, list[str]] | None = None,
-    output_mapping: dict[str, str] | None = None,
-    parameters: dict[str, Any] | None = None,
-    outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
-    inputs_from_state: dict[str, str] | None = None,
-    outputs_to_state: dict[str, dict[str, str | Callable]] | None = None
-) -> None
+__init__(pipeline: Pipeline | AsyncPipeline, *, name: str, description: str, input_mapping: dict[str, list[str]] | None = None, output_mapping: dict[str, str] | None = None, parameters: dict[str, Any] | None = None, outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None, inputs_from_state: dict[str, str] | None = None, outputs_to_state: dict[str, dict[str, str | Callable]] | None = None) -> None
 ```
 
 Create a Tool instance from a Haystack pipeline.

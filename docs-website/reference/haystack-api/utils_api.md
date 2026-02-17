@@ -16,7 +16,7 @@ Returns if the given callable is usable inside a component's `run_async` method.
 
 **Parameters:**
 
-- **callable** – The callable to check.
+- **func** (<code>Callable</code>) – The callable to check.
 
 **Returns:**
 
@@ -301,9 +301,7 @@ The type of the secret.
 ## `deserialize_secrets_inplace`
 
 ```python
-deserialize_secrets_inplace(
-    data: dict[str, Any], keys: Iterable[str], *, recursive: bool = False
-) -> None
+deserialize_secrets_inplace(data: dict[str, Any], keys: Iterable[str], *, recursive: bool = False) -> None
 ```
 
 Deserialize secrets in a dictionary inplace.
@@ -402,9 +400,7 @@ Deserializes a callable given its full import path as a string.
 ## `deserialize_chatgenerator_inplace`
 
 ```python
-deserialize_chatgenerator_inplace(
-    data: dict[str, Any], key: str = "chat_generator"
-) -> None
+deserialize_chatgenerator_inplace(data: dict[str, Any], key: str = 'chat_generator') -> None
 ```
 
 Deserialize a ChatGenerator in a dictionary inplace.
@@ -422,9 +418,7 @@ Deserialize a ChatGenerator in a dictionary inplace.
 ## `deserialize_component_inplace`
 
 ```python
-deserialize_component_inplace(
-    data: dict[str, Any], key: str = "chat_generator"
-) -> None
+deserialize_component_inplace(data: dict[str, Any], key: str = 'chat_generator') -> None
 ```
 
 Deserialize a Component in a dictionary inplace.
@@ -744,9 +738,7 @@ Convert the component device representation to HuggingFace format.
 ### `update_hf_kwargs`
 
 ```python
-update_hf_kwargs(
-    hf_kwargs: dict[str, Any], *, overwrite: bool
-) -> dict[str, Any]
+update_hf_kwargs(hf_kwargs: dict[str, Any], *, overwrite: bool) -> dict[str, Any]
 ```
 
 Convert the component device representation to HuggingFace format.
@@ -837,9 +829,7 @@ Raise an error if the filter syntax is invalid.
 ## `document_matches_filter`
 
 ```python
-document_matches_filter(
-    filters: dict[str, Any], document: Document | ByteStream
-) -> bool
+document_matches_filter(filters: dict[str, Any], document: Document | ByteStream) -> bool
 ```
 
 Return whether `filters` match the Document or the ByteStream.
@@ -850,9 +840,7 @@ For a detailed specification of the filters, refer to the
 ## `init_http_client`
 
 ```python
-init_http_client(
-    http_client_kwargs: dict[str, Any] | None = None, async_client: bool = False
-) -> httpx.Client | httpx.AsyncClient | None
+init_http_client(http_client_kwargs: dict[str, Any] | None = None, async_client: bool = False) -> httpx.Client | httpx.AsyncClient | None
 ```
 
 Initialize an httpx client based on the http_client_kwargs.
@@ -1016,11 +1004,7 @@ Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 ## `request_with_retry`
 
 ```python
-request_with_retry(
-    attempts: int = 3,
-    status_codes_to_retry: list[int] | None = None,
-    **kwargs: Any
-) -> requests.Response
+request_with_retry(attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any) -> requests.Response
 ```
 
 Executes an HTTP request with a configurable exponential backoff retry on failures.
@@ -1081,11 +1065,7 @@ res = request_with_retry(method="GET", url="https://example.com", status_codes_t
 ## `async_request_with_retry`
 
 ```python
-async_request_with_retry(
-    attempts: int = 3,
-    status_codes_to_retry: list[int] | None = None,
-    **kwargs: Any
-) -> httpx.Response
+async_request_with_retry(attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any) -> httpx.Response
 ```
 
 Executes an asynchronous HTTP request with a configurable exponential backoff retry on failures.

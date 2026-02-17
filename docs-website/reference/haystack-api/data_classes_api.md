@@ -328,12 +328,7 @@ Write the ByteStream to a file. Note: the metadata will be lost.
 ### `from_file_path`
 
 ```python
-from_file_path(
-    filepath: Path,
-    mime_type: str | None = None,
-    meta: dict[str, Any] | None = None,
-    guess_mime_type: bool = False,
-) -> ByteStream
+from_file_path(filepath: Path, mime_type: str | None = None, meta: dict[str, Any] | None = None, guess_mime_type: bool = False) -> ByteStream
 ```
 
 Create a ByteStream from the contents read from a file.
@@ -348,12 +343,7 @@ Create a ByteStream from the contents read from a file.
 ### `from_string`
 
 ```python
-from_string(
-    text: str,
-    encoding: str = "utf-8",
-    mime_type: str | None = None,
-    meta: dict[str, Any] | None = None,
-) -> ByteStream
+from_string(text: str, encoding: str = 'utf-8', mime_type: str | None = None, meta: dict[str, Any] | None = None) -> ByteStream
 ```
 
 Create a ByteStream encoding a string.
@@ -380,6 +370,10 @@ Convert the ByteStream to a string, metadata will not be included.
 **Returns:**
 
 - <code>str</code> – The string representation of the ByteStream.
+
+**Raises:**
+
+- <code>UnicodeDecodeError</code> – If the ByteStream data cannot be decoded with the specified encoding.
 
 ### `to_dict`
 
@@ -708,15 +702,7 @@ Check if the message is from a specific role.
 ### `from_user`
 
 ```python
-from_user(
-    text: str | None = None,
-    meta: dict[str, Any] | None = None,
-    name: str | None = None,
-    *,
-    content_parts: (
-        Sequence[TextContent | str | ImageContent | FileContent] | None
-    ) = None
-) -> ChatMessage
+from_user(text: str | None = None, meta: dict[str, Any] | None = None, name: str | None = None, *, content_parts: Sequence[TextContent | str | ImageContent | FileContent] | None = None) -> ChatMessage
 ```
 
 Create a message from the user.
@@ -735,9 +721,7 @@ Create a message from the user.
 ### `from_system`
 
 ```python
-from_system(
-    text: str, meta: dict[str, Any] | None = None, name: str | None = None
-) -> ChatMessage
+from_system(text: str, meta: dict[str, Any] | None = None, name: str | None = None) -> ChatMessage
 ```
 
 Create a message from the system.
@@ -755,14 +739,7 @@ Create a message from the system.
 ### `from_assistant`
 
 ```python
-from_assistant(
-    text: str | None = None,
-    meta: dict[str, Any] | None = None,
-    name: str | None = None,
-    tool_calls: list[ToolCall] | None = None,
-    *,
-    reasoning: str | ReasoningContent | None = None
-) -> ChatMessage
+from_assistant(text: str | None = None, meta: dict[str, Any] | None = None, name: str | None = None, tool_calls: list[ToolCall] | None = None, *, reasoning: str | ReasoningContent | None = None) -> ChatMessage
 ```
 
 Create a message from the assistant.
@@ -782,12 +759,7 @@ Create a message from the assistant.
 ### `from_tool`
 
 ```python
-from_tool(
-    tool_result: ToolCallResultContentT,
-    origin: ToolCall,
-    error: bool = False,
-    meta: dict[str, Any] | None = None,
-) -> ChatMessage
+from_tool(tool_result: ToolCallResultContentT, origin: ToolCall, error: bool = False, meta: dict[str, Any] | None = None) -> ChatMessage
 ```
 
 Create a message from a Tool.
@@ -966,12 +938,7 @@ Create an FileContent from a dictionary.
 ### `from_file_path`
 
 ```python
-from_file_path(
-    file_path: str | Path,
-    *,
-    filename: str | None = None,
-    extra: dict[str, Any] | None = None
-) -> FileContent
+from_file_path(file_path: str | Path, *, filename: str | None = None, extra: dict[str, Any] | None = None) -> FileContent
 ```
 
 Create an FileContent object from a file path.
@@ -991,14 +958,7 @@ Create an FileContent object from a file path.
 ### `from_url`
 
 ```python
-from_url(
-    url: str,
-    *,
-    retry_attempts: int = 2,
-    timeout: int = 10,
-    filename: str | None = None,
-    extra: dict[str, Any] | None = None
-) -> FileContent
+from_url(url: str, *, retry_attempts: int = 2, timeout: int = 10, filename: str | None = None, extra: dict[str, Any] | None = None) -> FileContent
 ```
 
 Create an FileContent object from a URL. The file is downloaded and converted to a base64 string.
@@ -1062,13 +1022,7 @@ Create an ImageContent from a dictionary.
 ### `from_file_path`
 
 ```python
-from_file_path(
-    file_path: str | Path,
-    *,
-    size: tuple[int, int] | None = None,
-    detail: Literal["auto", "high", "low"] | None = None,
-    meta: dict[str, Any] | None = None
-) -> ImageContent
+from_file_path(file_path: str | Path, *, size: tuple[int, int] | None = None, detail: Literal['auto', 'high', 'low'] | None = None, meta: dict[str, Any] | None = None) -> ImageContent
 ```
 
 Create an ImageContent object from a file path.
@@ -1093,15 +1047,7 @@ use the `PDFToImageContent` component.
 ### `from_url`
 
 ```python
-from_url(
-    url: str,
-    *,
-    retry_attempts: int = 2,
-    timeout: int = 10,
-    size: tuple[int, int] | None = None,
-    detail: Literal["auto", "high", "low"] | None = None,
-    meta: dict[str, Any] | None = None
-) -> ImageContent
+from_url(url: str, *, retry_attempts: int = 2, timeout: int = 10, size: tuple[int, int] | None = None, detail: Literal['auto', 'high', 'low'] | None = None, meta: dict[str, Any] | None = None) -> ImageContent
 ```
 
 Create an ImageContent object from a URL. The image is downloaded and converted to a base64 string.
@@ -1313,11 +1259,7 @@ Creates a deserialized StreamingChunk instance from a serialized representation.
 ## `select_streaming_callback`
 
 ```python
-select_streaming_callback(
-    init_callback: StreamingCallbackT | None,
-    runtime_callback: StreamingCallbackT | None,
-    requires_async: bool,
-) -> StreamingCallbackT | None
+select_streaming_callback(init_callback: StreamingCallbackT | None, runtime_callback: StreamingCallbackT | None, requires_async: bool) -> StreamingCallbackT | None
 ```
 
 Picks the correct streaming callback given an optional initial and runtime callback.

@@ -71,9 +71,7 @@ Always ask for confirmation.
 ### `should_ask`
 
 ```python
-should_ask(
-    tool_name: str, tool_description: str, tool_params: dict[str, Any]
-) -> bool
+should_ask(tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool
 ```
 
 Always ask for confirmation before executing the tool.
@@ -91,12 +89,7 @@ Always ask for confirmation before executing the tool.
 ### `update_after_confirmation`
 
 ```python
-update_after_confirmation(
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    confirmation_result: ConfirmationUIResult,
-) -> None
+update_after_confirmation(tool_name: str, tool_description: str, tool_params: dict[str, Any], confirmation_result: ConfirmationUIResult) -> None
 ```
 
 Update the policy based on the confirmation UI result.
@@ -126,9 +119,7 @@ Never ask for confirmation.
 ### `should_ask`
 
 ```python
-should_ask(
-    tool_name: str, tool_description: str, tool_params: dict[str, Any]
-) -> bool
+should_ask(tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool
 ```
 
 Never ask for confirmation, always proceed with tool execution.
@@ -146,12 +137,7 @@ Never ask for confirmation, always proceed with tool execution.
 ### `update_after_confirmation`
 
 ```python
-update_after_confirmation(
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    confirmation_result: ConfirmationUIResult,
-) -> None
+update_after_confirmation(tool_name: str, tool_description: str, tool_params: dict[str, Any], confirmation_result: ConfirmationUIResult) -> None
 ```
 
 Update the policy based on the confirmation UI result.
@@ -181,9 +167,7 @@ Ask only once per tool with specific parameters.
 ### `should_ask`
 
 ```python
-should_ask(
-    tool_name: str, tool_description: str, tool_params: dict[str, Any]
-) -> bool
+should_ask(tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool
 ```
 
 Ask for confirmation only once per tool with specific parameters.
@@ -217,12 +201,7 @@ Deserialize the policy from a dictionary.
 ### `update_after_confirmation`
 
 ```python
-update_after_confirmation(
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    confirmation_result: ConfirmationUIResult,
-) -> None
+update_after_confirmation(tool_name: str, tool_description: str, tool_params: dict[str, Any], confirmation_result: ConfirmationUIResult) -> None
 ```
 
 Store the tool and parameters if the action was "confirm" to avoid asking again.
@@ -244,14 +223,7 @@ Confirmation strategy that blocks execution to gather user feedback.
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    confirmation_policy: ConfirmationPolicy,
-    confirmation_ui: ConfirmationUI,
-    reject_template: str = REJECTION_FEEDBACK_TEMPLATE,
-    modify_template: str = MODIFICATION_FEEDBACK_TEMPLATE,
-    user_feedback_template: str = USER_FEEDBACK_TEMPLATE
-) -> None
+__init__(*, confirmation_policy: ConfirmationPolicy, confirmation_ui: ConfirmationUI, reject_template: str = REJECTION_FEEDBACK_TEMPLATE, modify_template: str = MODIFICATION_FEEDBACK_TEMPLATE, user_feedback_template: str = USER_FEEDBACK_TEMPLATE) -> None
 ```
 
 Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
@@ -268,14 +240,7 @@ Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
 ### `run`
 
 ```python
-run(
-    *,
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    tool_call_id: str | None = None,
-    confirmation_strategy_context: dict[str, Any] | None = None
-) -> ToolExecutionDecision
+run(*, tool_name: str, tool_description: str, tool_params: dict[str, Any], tool_call_id: str | None = None, confirmation_strategy_context: dict[str, Any] | None = None) -> ToolExecutionDecision
 ```
 
 Run the human-in-the-loop strategy for a given tool and its parameters.
@@ -299,14 +264,7 @@ Run the human-in-the-loop strategy for a given tool and its parameters.
 ### `run_async`
 
 ```python
-run_async(
-    *,
-    tool_name: str,
-    tool_description: str,
-    tool_params: dict[str, Any],
-    tool_call_id: str | None = None,
-    confirmation_strategy_context: dict[str, Any] | None = None
-) -> ToolExecutionDecision
+run_async(*, tool_name: str, tool_description: str, tool_params: dict[str, Any], tool_call_id: str | None = None, confirmation_strategy_context: dict[str, Any] | None = None) -> ToolExecutionDecision
 ```
 
 Async version of run. Calls the sync run() method by default.
@@ -368,9 +326,7 @@ Deserialize the ConfirmationUI from a dictionary.
 ### `get_user_confirmation`
 
 ```python
-get_user_confirmation(
-    tool_name: str, tool_description: str, tool_params: dict[str, Any]
-) -> ConfirmationUIResult
+get_user_confirmation(tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> ConfirmationUIResult
 ```
 
 Get user confirmation for tool execution via rich console prompts.
@@ -422,9 +378,7 @@ Deserialize the ConfirmationUI from a dictionary.
 ### `get_user_confirmation`
 
 ```python
-get_user_confirmation(
-    tool_name: str, tool_description: str, tool_params: dict[str, Any]
-) -> ConfirmationUIResult
+get_user_confirmation(tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> ConfirmationUIResult
 ```
 
 Get user confirmation for tool execution via simple console prompts.

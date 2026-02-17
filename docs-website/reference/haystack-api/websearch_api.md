@@ -26,12 +26,7 @@ assert results["links"]
 ### `__init__`
 
 ```python
-__init__(
-    api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
-    top_k: int | None = 10,
-    allowed_domains: list[str] | None = None,
-    search_params: dict[str, Any] | None = None,
-) -> None
+__init__(api_key: Secret = Secret.from_env_var('SEARCHAPI_API_KEY'), top_k: int | None = 10, allowed_domains: list[str] | None = None, search_params: dict[str, Any] | None = None) -> None
 ```
 
 Initialize the SearchApiWebSearch component.
@@ -155,14 +150,7 @@ results_filtered = websearch_filtered.run(query="search query")
 ### `__init__`
 
 ```python
-__init__(
-    api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
-    top_k: int | None = 10,
-    allowed_domains: list[str] | None = None,
-    search_params: dict[str, Any] | None = None,
-    *,
-    exclude_subdomains: bool = False
-) -> None
+__init__(api_key: Secret = Secret.from_env_var('SERPERDEV_API_KEY'), top_k: int | None = 10, allowed_domains: list[str] | None = None, search_params: dict[str, Any] | None = None, *, exclude_subdomains: bool = False) -> None
 ```
 
 Initialize the SerperDevWebSearch component.

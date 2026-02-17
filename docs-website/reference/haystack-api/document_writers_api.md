@@ -27,10 +27,7 @@ writer.run(docs)
 ### `__init__`
 
 ```python
-__init__(
-    document_store: DocumentStore,
-    policy: DuplicatePolicy = DuplicatePolicy.NONE,
-)
+__init__(document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.NONE)
 ```
 
 Create a DocumentWriter component.
@@ -79,9 +76,7 @@ Deserializes the component from a dictionary.
 ### `run`
 
 ```python
-run(
-    documents: list[Document], policy: DuplicatePolicy | None = None
-) -> dict[str, int]
+run(documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]
 ```
 
 Run the DocumentWriter on the given input data.
@@ -102,9 +97,7 @@ Run the DocumentWriter on the given input data.
 ### `run_async`
 
 ```python
-run_async(
-    documents: list[Document], policy: DuplicatePolicy | None = None
-) -> dict[str, int]
+run_async(documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]
 ```
 
 Asynchronously run the DocumentWriter on the given input data.

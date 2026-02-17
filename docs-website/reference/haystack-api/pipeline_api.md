@@ -18,11 +18,7 @@ This enables efficient processing of components by minimizing idle time and maxi
 ### `__init__`
 
 ```python
-__init__(
-    metadata: dict[str, Any] | None = None,
-    max_runs_per_component: int = 100,
-    connection_type_validation: bool = True,
-)
+__init__(metadata: dict[str, Any] | None = None, max_runs_per_component: int = 100, connection_type_validation: bool = True)
 ```
 
 Creates the Pipeline.
@@ -40,11 +36,7 @@ Creates the Pipeline.
 ### `run_async_generator`
 
 ```python
-run_async_generator(
-    data: dict[str, Any],
-    include_outputs_from: set[str] | None = None,
-    concurrency_limit: int = 4,
-) -> AsyncIterator[dict[str, Any]]
+run_async_generator(data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4) -> AsyncIterator[dict[str, Any]]
 ```
 
 Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
@@ -158,11 +150,7 @@ This is meant to be an intermediate representation but it can be also used to sa
 ### `from_dict`
 
 ```python
-from_dict(
-    data: dict[str, Any],
-    callbacks: DeserializationCallbacks | None = None,
-    **kwargs: Any
-) -> T
+from_dict(data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any) -> T
 ```
 
 Deserializes the pipeline from a dictionary.
@@ -210,11 +198,7 @@ Writes the string representation of this pipeline to the file-like object passed
 ### `loads`
 
 ```python
-loads(
-    data: str | bytes | bytearray,
-    marshaller: Marshaller = DEFAULT_MARSHALLER,
-    callbacks: DeserializationCallbacks | None = None,
-) -> T
+loads(data: str | bytes | bytearray, marshaller: Marshaller = DEFAULT_MARSHALLER, callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -236,11 +220,7 @@ Creates a `Pipeline` object from the string representation passed in the `data` 
 ### `load`
 
 ```python
-load(
-    fp: TextIO,
-    marshaller: Marshaller = DEFAULT_MARSHALLER,
-    callbacks: DeserializationCallbacks | None = None,
-) -> T
+load(fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER, callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object a string representation.
@@ -336,11 +316,7 @@ If connecting to a component that has several output connections, specify the in
 ### `run_async`
 
 ```python
-run_async(
-    data: dict[str, Any],
-    include_outputs_from: set[str] | None = None,
-    concurrency_limit: int = 4,
-) -> dict[str, Any]
+run_async(data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4) -> dict[str, Any]
 ```
 
 Provides an asynchronous interface to run the pipeline with provided input data.
@@ -458,11 +434,7 @@ data = {
 ### `run`
 
 ```python
-run(
-    data: dict[str, Any],
-    include_outputs_from: set[str] | None = None,
-    concurrency_limit: int = 4,
-) -> dict[str, Any]
+run(data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4) -> dict[str, Any]
 ```
 
 Provides a synchronous interface to run the pipeline with given input data.
@@ -615,9 +587,7 @@ Returns the name of the Component instance if it has been added to this Pipeline
 ### `inputs`
 
 ```python
-inputs(
-    include_components_with_connected_inputs: bool = False,
-) -> dict[str, dict[str, Any]]
+inputs(include_components_with_connected_inputs: bool = False) -> dict[str, dict[str, Any]]
 ```
 
 Returns a dictionary containing the inputs of a pipeline.
@@ -638,9 +608,7 @@ the input sockets of that component, including their types and whether they are 
 ### `outputs`
 
 ```python
-outputs(
-    include_components_with_connected_outputs: bool = False,
-) -> dict[str, dict[str, Any]]
+outputs(include_components_with_connected_outputs: bool = False) -> dict[str, dict[str, Any]]
 ```
 
 Returns a dictionary containing the outputs of a pipeline.
@@ -661,13 +629,7 @@ the output sockets of that component.
 ### `show`
 
 ```python
-show(
-    *,
-    server_url: str = "https://mermaid.ink",
-    params: dict | None = None,
-    timeout: int = 30,
-    super_component_expansion: bool = False
-) -> None
+show(*, server_url: str = 'https://mermaid.ink', params: dict | None = None, timeout: int = 30, super_component_expansion: bool = False) -> None
 ```
 
 Display an image representing this `Pipeline` in a Jupyter notebook.
@@ -704,14 +666,7 @@ the notebook.
 ### `draw`
 
 ```python
-draw(
-    *,
-    path: Path,
-    server_url: str = "https://mermaid.ink",
-    params: dict | None = None,
-    timeout: int = 30,
-    super_component_expansion: bool = False
-) -> None
+draw(*, path: Path, server_url: str = 'https://mermaid.ink', params: dict | None = None, timeout: int = 30, super_component_expansion: bool = False) -> None
 ```
 
 Save an image representing this `Pipeline` to the specified file path.
@@ -796,10 +751,7 @@ Validates that data:
 ### `from_template`
 
 ```python
-from_template(
-    predefined_pipeline: PredefinedPipeline,
-    template_params: dict[str, Any] | None = None,
-) -> PipelineBase
+from_template(predefined_pipeline: PredefinedPipeline, template_params: dict[str, Any] | None = None) -> PipelineBase
 ```
 
 Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
@@ -840,11 +792,7 @@ Orchestrates component execution according to the execution graph, one after the
 ### `__init__`
 
 ```python
-__init__(
-    metadata: dict[str, Any] | None = None,
-    max_runs_per_component: int = 100,
-    connection_type_validation: bool = True,
-)
+__init__(metadata: dict[str, Any] | None = None, max_runs_per_component: int = 100, connection_type_validation: bool = True)
 ```
 
 Creates the Pipeline.
@@ -862,14 +810,7 @@ Creates the Pipeline.
 ### `run`
 
 ```python
-run(
-    data: dict[str, Any],
-    include_outputs_from: set[str] | None = None,
-    *,
-    break_point: Breakpoint | AgentBreakpoint | None = None,
-    pipeline_snapshot: PipelineSnapshot | None = None,
-    snapshot_callback: SnapshotCallback | None = None
-) -> dict[str, Any]
+run(data: dict[str, Any], include_outputs_from: set[str] | None = None, *, break_point: Breakpoint | AgentBreakpoint | None = None, pipeline_snapshot: PipelineSnapshot | None = None, snapshot_callback: SnapshotCallback | None = None) -> dict[str, Any]
 ```
 
 Runs the Pipeline with given input data.
@@ -992,11 +933,7 @@ This is meant to be an intermediate representation but it can be also used to sa
 ### `from_dict`
 
 ```python
-from_dict(
-    data: dict[str, Any],
-    callbacks: DeserializationCallbacks | None = None,
-    **kwargs: Any
-) -> T
+from_dict(data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any) -> T
 ```
 
 Deserializes the pipeline from a dictionary.
@@ -1044,11 +981,7 @@ Writes the string representation of this pipeline to the file-like object passed
 ### `loads`
 
 ```python
-loads(
-    data: str | bytes | bytearray,
-    marshaller: Marshaller = DEFAULT_MARSHALLER,
-    callbacks: DeserializationCallbacks | None = None,
-) -> T
+loads(data: str | bytes | bytearray, marshaller: Marshaller = DEFAULT_MARSHALLER, callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -1070,11 +1003,7 @@ Creates a `Pipeline` object from the string representation passed in the `data` 
 ### `load`
 
 ```python
-load(
-    fp: TextIO,
-    marshaller: Marshaller = DEFAULT_MARSHALLER,
-    callbacks: DeserializationCallbacks | None = None,
-) -> T
+load(fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER, callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object a string representation.
@@ -1206,9 +1135,7 @@ Returns the name of the Component instance if it has been added to this Pipeline
 ### `inputs`
 
 ```python
-inputs(
-    include_components_with_connected_inputs: bool = False,
-) -> dict[str, dict[str, Any]]
+inputs(include_components_with_connected_inputs: bool = False) -> dict[str, dict[str, Any]]
 ```
 
 Returns a dictionary containing the inputs of a pipeline.
@@ -1229,9 +1156,7 @@ the input sockets of that component, including their types and whether they are 
 ### `outputs`
 
 ```python
-outputs(
-    include_components_with_connected_outputs: bool = False,
-) -> dict[str, dict[str, Any]]
+outputs(include_components_with_connected_outputs: bool = False) -> dict[str, dict[str, Any]]
 ```
 
 Returns a dictionary containing the outputs of a pipeline.
@@ -1252,13 +1177,7 @@ the output sockets of that component.
 ### `show`
 
 ```python
-show(
-    *,
-    server_url: str = "https://mermaid.ink",
-    params: dict | None = None,
-    timeout: int = 30,
-    super_component_expansion: bool = False
-) -> None
+show(*, server_url: str = 'https://mermaid.ink', params: dict | None = None, timeout: int = 30, super_component_expansion: bool = False) -> None
 ```
 
 Display an image representing this `Pipeline` in a Jupyter notebook.
@@ -1295,14 +1214,7 @@ the notebook.
 ### `draw`
 
 ```python
-draw(
-    *,
-    path: Path,
-    server_url: str = "https://mermaid.ink",
-    params: dict | None = None,
-    timeout: int = 30,
-    super_component_expansion: bool = False
-) -> None
+draw(*, path: Path, server_url: str = 'https://mermaid.ink', params: dict | None = None, timeout: int = 30, super_component_expansion: bool = False) -> None
 ```
 
 Save an image representing this `Pipeline` to the specified file path.
@@ -1387,10 +1299,7 @@ Validates that data:
 ### `from_template`
 
 ```python
-from_template(
-    predefined_pipeline: PredefinedPipeline,
-    template_params: dict[str, Any] | None = None,
-) -> PipelineBase
+from_template(predefined_pipeline: PredefinedPipeline, template_params: dict[str, Any] | None = None) -> PipelineBase
 ```
 
 Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.

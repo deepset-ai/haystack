@@ -35,9 +35,7 @@ print(result["score"])
 ### `run`
 
 ```python
-run(
-    ground_truth_answers: list[str], predicted_answers: list[str]
-) -> dict[str, Any]
+run(ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, Any]
 ```
 
 Run the AnswerExactMatchEvaluator on the given inputs.
@@ -120,12 +118,7 @@ print(result["results"])
 ### `__init__`
 
 ```python
-__init__(
-    examples: list[dict[str, Any]] | None = None,
-    progress_bar: bool = True,
-    raise_on_failure: bool = True,
-    chat_generator: ChatGenerator | None = None,
-)
+__init__(examples: list[dict[str, Any]] | None = None, progress_bar: bool = True, raise_on_failure: bool = True, chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of ContextRelevanceEvaluator.
@@ -170,11 +163,7 @@ Warm up the component by warming up the underlying chat generator.
 ### `validate_init_parameters`
 
 ```python
-validate_init_parameters(
-    inputs: list[tuple[str, type[list]]],
-    outputs: list[str],
-    examples: list[dict[str, Any]],
-)
+validate_init_parameters(inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]])
 ```
 
 Validate the init parameters.
@@ -269,9 +258,7 @@ Outputs:
 ### `validate_input_parameters`
 
 ```python
-validate_input_parameters(
-    expected: dict[str, Any], received: dict[str, Any]
-) -> None
+validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None
 ```
 
 Validate the input parameters.
@@ -347,10 +334,7 @@ print(result["score"])
 ### `run`
 
 ```python
-run(
-    ground_truth_documents: list[list[Document]],
-    retrieved_documents: list[list[Document]],
-) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentMAPEvaluator on the given inputs.
@@ -405,10 +389,7 @@ print(result["score"])
 ### `run`
 
 ```python
-run(
-    ground_truth_documents: list[list[Document]],
-    retrieved_documents: list[list[Document]],
-) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentMRREvaluator on the given inputs.
@@ -455,10 +436,7 @@ print(result["score"])
 ### `run`
 
 ```python
-run(
-    ground_truth_documents: list[list[Document]],
-    retrieved_documents: list[list[Document]],
-) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentNDCGEvaluator on the given inputs.
@@ -589,10 +567,7 @@ Create a DocumentRecallEvaluator component.
 ### `run`
 
 ```python
-run(
-    ground_truth_documents: list[list[Document]],
-    retrieved_documents: list[list[Document]],
-) -> dict[str, Any]
+run(ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]) -> dict[str, Any]
 ```
 
 Run the DocumentRecallEvaluator on the given inputs.
@@ -661,12 +636,7 @@ print(result["results"])
 ### `__init__`
 
 ```python
-__init__(
-    examples: list[dict[str, Any]] | None = None,
-    progress_bar: bool = True,
-    raise_on_failure: bool = True,
-    chat_generator: ChatGenerator | None = None,
-)
+__init__(examples: list[dict[str, Any]] | None = None, progress_bar: bool = True, raise_on_failure: bool = True, chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of FaithfulnessEvaluator.
@@ -713,11 +683,7 @@ Warm up the component by warming up the underlying chat generator.
 ### `validate_init_parameters`
 
 ```python
-validate_init_parameters(
-    inputs: list[tuple[str, type[list]]],
-    outputs: list[str],
-    examples: list[dict[str, Any]],
-)
+validate_init_parameters(inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]])
 ```
 
 Validate the init parameters.
@@ -814,9 +780,7 @@ Outputs:
 ### `validate_input_parameters`
 
 ```python
-validate_input_parameters(
-    expected: dict[str, Any], received: dict[str, Any]
-) -> None
+validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None
 ```
 
 Validate the input parameters.
@@ -888,16 +852,7 @@ print(results)
 ### `__init__`
 
 ```python
-__init__(
-    instructions: str,
-    inputs: list[tuple[str, type[list]]],
-    outputs: list[str],
-    examples: list[dict[str, Any]],
-    progress_bar: bool = True,
-    *,
-    raise_on_failure: bool = True,
-    chat_generator: ChatGenerator | None = None
-)
+__init__(instructions: str, inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]], progress_bar: bool = True, *, raise_on_failure: bool = True, chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of LLMEvaluator.
@@ -933,11 +888,7 @@ Warm up the component by warming up the underlying chat generator.
 ### `validate_init_parameters`
 
 ```python
-validate_init_parameters(
-    inputs: list[tuple[str, type[list]]],
-    outputs: list[str],
-    examples: list[dict[str, Any]],
-)
+validate_init_parameters(inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]])
 ```
 
 Validate the init parameters.
@@ -1039,9 +990,7 @@ Deserialize this component from a dictionary.
 ### `validate_input_parameters`
 
 ```python
-validate_input_parameters(
-    expected: dict[str, Any], received: dict[str, Any]
-) -> None
+validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None
 ```
 
 Validate the input parameters.
@@ -1118,14 +1067,7 @@ print(result["individual_scores"])
 ### `__init__`
 
 ```python
-__init__(
-    model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-    batch_size: int = 32,
-    device: ComponentDevice | None = None,
-    token: Secret = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-) -> None
+__init__(model: str = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2', batch_size: int = 32, device: ComponentDevice | None = None, token: Secret = Secret.from_env_var(['HF_API_TOKEN', 'HF_TOKEN'], strict=False)) -> None
 ```
 
 Creates a new instance of SASEvaluator.
@@ -1178,9 +1120,7 @@ Initializes the component.
 ### `run`
 
 ```python
-run(
-    ground_truth_answers: list[str], predicted_answers: list[str]
-) -> dict[str, float | list[float]]
+run(ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, float | list[float]]
 ```
 
 SASEvaluator component run method.

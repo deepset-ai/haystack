@@ -8,18 +8,22 @@ slug: "/extractors-api"
 
 ## `LLMDocumentContentExtractor`
 
-Extracts textual content from image-based documents using a vision-enabled LLM (Large Language Model).
+Extracts textual content and optionally metadata from image-based documents using a vision-enabled LLM.
 
-This component converts each input document into an image using the DocumentToImageContent component,
-uses a prompt to instruct the LLM on how to extract content, and uses a ChatGenerator to extract structured
-textual content based on the provided prompt.
+One prompt and one LLM call per document. The component converts each document to an image via
+DocumentToImageContent and sends it to the ChatGenerator. The prompt must not contain Jinja variables.
 
-The prompt must not contain variables; it should only include instructions for the LLM. Image data and the prompt
-are passed together to the LLM as a chat message.
+Response handling:
 
-Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list. These
-failed documents will have a `content_extraction_error` entry in their metadata. This metadata can be used for
-debugging or for reprocessing the documents later.
+- If the LLM returns a **plain string** (non-JSON or not a JSON object), it is written to the document's content.
+- If the LLM returns a **JSON object with only the key** `document_content`, that value is written to content.
+- If the LLM returns a **JSON object with multiple keys**, the value of `document_content` (if present) is
+  written to content and all other keys are merged into the document's metadata.
+
+The ChatGenerator can be configured to return JSON (e.g. `response_format={"type": "json_object"}`
+in `generation_kwargs`).
+
+Documents that fail extraction are returned in `failed_documents` with `content_extraction_error` in metadata.
 
 ### Usage example
 
@@ -27,55 +31,67 @@ debugging or for reprocessing the documents later.
 from haystack import Document
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.extractors.image import LLMDocumentContentExtractor
+
+prompt = """
+Extract the content from the provided image.
+Format everything as markdown. Return only the extracted content as a JSON object with the key 'document_content'.
+No markdown, no code fence, only raw JSON.
+
+Extract metadata about the image like source of the image, date of creation, etc. if you can.
+Return this metadata as additional key-value pairs in the same JSON object.
+"""
+
 chat_generator = OpenAIChatGenerator()
-extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
+extractor = LLMDocumentContentExtractor(
+    chat_generator=chat_generator,
+    generation_kwargs={
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "entity_extraction",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "document_content": {"type": "string"},
+                        "author": {"type": "string"},
+                        "date": {"type": "string"},
+                        "document_type": {"type": "string"},
+                        "title": {"type": "string"},
+                    },
+                    "additionalProperties": False,
+                },
+            },
+        }
+    }
+)
 documents = [
     Document(content="", meta={"file_path": "image.jpg"}),
-    Document(content="", meta={"file_path": "document.pdf", "page_number": 1}),
+    Document(content="", meta={"file_path": "document.pdf", "page_number": 1})
 ]
-updated_documents = extractor.run(documents=documents)["documents"]
-print(updated_documents)
-# [Document(content='Extracted text from image.jpg',
-#           meta={'file_path': 'image.jpg'}),
-#  ...]
+result = extractor.run(documents=documents)
+updated_documents = result["documents"]
 ```
 
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    chat_generator: ChatGenerator,
-    prompt: str = DEFAULT_PROMPT_TEMPLATE,
-    file_path_meta_field: str = "file_path",
-    root_path: str | None = None,
-    detail: Literal["auto", "high", "low"] | None = None,
-    size: tuple[int, int] | None = None,
-    raise_on_failure: bool = False,
-    max_workers: int = 3
-)
+__init__(*, chat_generator: ChatGenerator, prompt: str = DEFAULT_PROMPT_TEMPLATE, file_path_meta_field: str = 'file_path', root_path: str | None = None, detail: Literal['auto', 'high', 'low'] | None = None, size: tuple[int, int] | None = None, raise_on_failure: bool = False, max_workers: int = 3)
 ```
 
 Initialize the LLMDocumentContentExtractor component.
 
 **Parameters:**
 
-- **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator instance representing the LLM used to extract text. This generator must
-  support vision-based input and return a plain text response.
-- **prompt** (<code>str</code>) – Instructional text provided to the LLM. It must not contain Jinja variables.
-  The prompt should only contain instructions on how to extract the content of the image-based document.
+- **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator that supports vision input. Optionally configured for JSON
+  (e.g. `response_format={"type": "json_object"}` in `generation_kwargs`).
+- **prompt** (<code>str</code>) – Prompt for extraction. Must not contain Jinja variables.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
   document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
 - **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
-  This will be passed to chat_generator when processing the images.
-- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
-  maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
-  when working with models that have resolution constraints or when transmitting images to remote services.
-- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, failed documents are logged
-  and returned.
-- **max_workers** (<code>int</code>) – Maximum number of threads used to parallelize LLM calls across documents using a
-  ThreadPoolExecutor.
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
+- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, failed documents are returned.
+- **max_workers** (<code>int</code>) – Maximum number of threads for parallel LLM calls.
 
 ### `warm_up`
 
@@ -119,11 +135,7 @@ Deserializes the component from a dictionary.
 run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
-Run content extraction on a list of image-based documents using a vision-capable LLM.
-
-Each document is passed to the LLM along with a predefined prompt. The response is used to update the document's
-content. If the extraction fails, the document is returned in the `failed_documents` list with metadata
-describing the failure.
+Run extraction on image-based documents. One LLM call per document.
 
 **Parameters:**
 
@@ -131,9 +143,7 @@ describing the failure.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with:
-- "documents": Successfully processed documents, updated with extracted content.
-- "failed_documents": Documents that failed processing, annotated with failure metadata.
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
 ## `LLMMetadataExtractor`
 
@@ -262,14 +272,7 @@ extractor.run(documents=docs)
 ### `__init__`
 
 ```python
-__init__(
-    prompt: str,
-    chat_generator: ChatGenerator,
-    expected_keys: list[str] | None = None,
-    page_range: list[str | int] | None = None,
-    raise_on_failure: bool = False,
-    max_workers: int = 3,
-)
+__init__(prompt: str, chat_generator: ChatGenerator, expected_keys: list[str] | None = None, page_range: list[str | int] | None = None, raise_on_failure: bool = False, max_workers: int = 3)
 ```
 
 Initializes the LLMMetadataExtractor.
@@ -414,16 +417,7 @@ print(annotations)
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    backend: str | NamedEntityExtractorBackend,
-    model: str,
-    pipeline_kwargs: dict[str, Any] | None = None,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    )
-) -> None
+__init__(*, backend: str | NamedEntityExtractorBackend, model: str, pipeline_kwargs: dict[str, Any] | None = None, device: ComponentDevice | None = None, token: Secret | None = Secret.from_env_var(['HF_API_TOKEN', 'HF_TOKEN'], strict=False)) -> None
 ```
 
 Create a Named Entity extractor component.
@@ -514,9 +508,7 @@ Returns if the extractor is ready to annotate text.
 ### `get_stored_annotations`
 
 ```python
-get_stored_annotations(
-    document: Document,
-) -> list[NamedEntityAnnotation] | None
+get_stored_annotations(document: Document) -> list[NamedEntityAnnotation] | None
 ```
 
 Returns the document's named entity annotations stored in its metadata, if any.
@@ -611,3 +603,7 @@ Extracts text from input using the configured regex pattern.
 
 - <code>dict\[str, str\]</code> – - `{"captured_text": "matched text"}` if a match is found
 - `{"captured_text": ""}` if no match is found
+
+**Raises:**
+
+- <code>ValueError</code> – if receiving a list the last element is not a ChatMessage instance.

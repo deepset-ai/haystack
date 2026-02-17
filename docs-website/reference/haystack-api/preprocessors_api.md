@@ -18,14 +18,7 @@ control whether empty rows and columns should be removed.
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    ignore_rows: int = 0,
-    ignore_columns: int = 0,
-    remove_empty_rows: bool = True,
-    remove_empty_columns: bool = True,
-    keep_id: bool = False
-) -> None
+__init__(*, ignore_rows: int = 0, ignore_columns: int = 0, remove_empty_rows: bool = True, remove_empty_columns: bool = True, keep_id: bool = False) -> None
 ```
 
 Initializes the CSVDocumentCleaner component.
@@ -80,12 +73,7 @@ The splitter supports two modes of operation:
 ### `__init__`
 
 ```python
-__init__(
-    row_split_threshold: int | None = 2,
-    column_split_threshold: int | None = 2,
-    read_csv_kwargs: dict[str, Any] | None = None,
-    split_mode: SplitMode = "threshold",
-) -> None
+__init__(row_split_threshold: int | None = 2, column_split_threshold: int | None = 2, read_csv_kwargs: dict[str, Any] | None = None, split_mode: SplitMode = 'threshold') -> None
 ```
 
 Initializes the CSVDocumentSplitter component.
@@ -165,18 +153,7 @@ assert result["documents"][0].content == "This is a document to clean "
 ### `__init__`
 
 ```python
-__init__(
-    remove_empty_lines: bool = True,
-    remove_extra_whitespaces: bool = True,
-    remove_repeated_substrings: bool = False,
-    keep_id: bool = False,
-    remove_substrings: list[str] | None = None,
-    remove_regex: str | None = None,
-    unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
-    ascii_only: bool = False,
-    strip_whitespaces: bool = False,
-    replace_regexes: dict[str, str] | None = None,
-)
+__init__(remove_empty_lines: bool = True, remove_extra_whitespaces: bool = True, remove_repeated_substrings: bool = False, keep_id: bool = False, remove_substrings: list[str] | None = None, remove_regex: str | None = None, unicode_normalization: Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None = None, ascii_only: bool = False, strip_whitespaces: bool = False, replace_regexes: dict[str, str] | None = None)
 ```
 
 Initialize DocumentCleaner.
@@ -247,28 +224,7 @@ print(result["documents"])
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    split_by: Literal[
-        "function", "page", "passage", "period", "word", "line", "sentence"
-    ] = "word",
-    split_length: int = 250,
-    split_overlap: int = 0,
-    split_threshold: int = 0,
-    splitting_function: Callable[[str], list[str]] | None = None,
-    respect_sentence_boundary: bool = False,
-    language: Language = "en",
-    use_split_rules: bool = True,
-    extend_abbreviations: bool = True,
-    remove_empty_lines: bool = True,
-    remove_extra_whitespaces: bool = True,
-    remove_repeated_substrings: bool = False,
-    keep_id: bool = False,
-    remove_substrings: list[str] | None = None,
-    remove_regex: str | None = None,
-    unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
-    ascii_only: bool = False
-) -> None
+__init__(*, split_by: Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence'] = 'word', split_length: int = 250, split_overlap: int = 0, split_threshold: int = 0, splitting_function: Callable[[str], list[str]] | None = None, respect_sentence_boundary: bool = False, language: Language = 'en', use_split_rules: bool = True, extend_abbreviations: bool = True, remove_empty_lines: bool = True, remove_extra_whitespaces: bool = True, remove_repeated_substrings: bool = False, keep_id: bool = False, remove_substrings: list[str] | None = None, remove_regex: str | None = None, unicode_normalization: Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None = None, ascii_only: bool = False) -> None
 ```
 
 Initialize a DocumentPreProcessor that first splits and then cleans documents.
@@ -364,21 +320,7 @@ result = splitter.run(documents=[doc])
 ### `__init__`
 
 ```python
-__init__(
-    split_by: Literal[
-        "function", "page", "passage", "period", "word", "line", "sentence"
-    ] = "word",
-    split_length: int = 200,
-    split_overlap: int = 0,
-    split_threshold: int = 0,
-    splitting_function: Callable[[str], list[str]] | None = None,
-    respect_sentence_boundary: bool = False,
-    language: Language = "en",
-    use_split_rules: bool = True,
-    extend_abbreviations: bool = True,
-    *,
-    skip_empty_documents: bool = True
-)
+__init__(split_by: Literal['function', 'page', 'passage', 'period', 'word', 'line', 'sentence'] = 'word', split_length: int = 200, split_overlap: int = 0, split_threshold: int = 0, splitting_function: Callable[[str], list[str]] | None = None, respect_sentence_boundary: bool = False, language: Language = 'en', use_split_rules: bool = True, extend_abbreviations: bool = True, *, skip_empty_documents: bool = True)
 ```
 
 Initialize DocumentSplitter.
@@ -509,17 +451,7 @@ for i, split_doc in enumerate(result['documents']):
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    document_embedder: DocumentEmbedder,
-    sentences_per_group: int = 3,
-    percentile: float = 0.95,
-    min_length: int = 50,
-    max_length: int = 1000,
-    language: Language = "en",
-    use_split_rules: bool = True,
-    extend_abbreviations: bool = True
-)
+__init__(*, document_embedder: DocumentEmbedder, sentences_per_group: int = 3, percentile: float = 0.95, min_length: int = 50, max_length: int = 1000, language: Language = 'en', use_split_rules: bool = True, extend_abbreviations: bool = True)
 ```
 
 Initialize EmbeddingBasedDocumentSplitter.
@@ -567,6 +499,12 @@ Split documents based on embedding similarity.
   - A metadata field `split_id` to track the split number.
   - A metadata field `page_number` to track the original page number.
   - All other metadata copied from the original document.
+
+**Raises:**
+
+- <code>RuntimeError</code> – If the component wasn't warmed up.
+- <code>TypeError</code> – If the input is not a list of Documents.
+- <code>ValueError</code> – If the document content is None or empty.
 
 ### `to_dict`
 
@@ -624,11 +562,7 @@ splitter.run([doc])
 ### `__init__`
 
 ```python
-__init__(
-    block_sizes: set[int],
-    split_overlap: int = 0,
-    split_by: Literal["word", "sentence", "page", "passage"] = "word",
-)
+__init__(block_sizes: set[int], split_overlap: int = 0, split_by: Literal['word', 'sentence', 'page', 'passage'] = 'word')
 ```
 
 Initialize HierarchicalDocumentSplitter.
@@ -716,16 +650,7 @@ This component processes text documents by:
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    page_break_character: str = "\x0c",
-    keep_headers: bool = True,
-    secondary_split: Literal["word", "passage", "period", "line"] | None = None,
-    split_length: int = 200,
-    split_overlap: int = 0,
-    split_threshold: int = 0,
-    skip_empty_documents: bool = True
-)
+__init__(*, page_break_character: str = '\x0c', keep_headers: bool = True, secondary_split: Literal['word', 'passage', 'period', 'line'] | None = None, split_length: int = 200, split_overlap: int = 0, split_threshold: int = 0, skip_empty_documents: bool = True)
 ```
 
 Initialize the MarkdownHeaderSplitter.
@@ -816,14 +741,7 @@ print(doc_chunks["documents"])
 ### `__init__`
 
 ```python
-__init__(
-    *,
-    split_length: int = 200,
-    split_overlap: int = 0,
-    split_unit: Literal["word", "char", "token"] = "word",
-    separators: list[str] | None = None,
-    sentence_splitter_params: dict[str, Any] | None = None
-)
+__init__(*, split_length: int = 200, split_overlap: int = 0, split_unit: Literal['word', 'char', 'token'] = 'word', separators: list[str] | None = None, sentence_splitter_params: dict[str, Any] | None = None)
 ```
 
 Initializes a RecursiveDocumentSplitter.
@@ -895,12 +813,7 @@ result = cleaner.run(texts=[text_to_clean])
 ### `__init__`
 
 ```python
-__init__(
-    remove_regexps: list[str] | None = None,
-    convert_to_lowercase: bool = False,
-    remove_punctuation: bool = False,
-    remove_numbers: bool = False,
-)
+__init__(remove_regexps: list[str] | None = None, convert_to_lowercase: bool = False, remove_punctuation: bool = False, remove_numbers: bool = False)
 ```
 
 Initializes the TextCleaner component.

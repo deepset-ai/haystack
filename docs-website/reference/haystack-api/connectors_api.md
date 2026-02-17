@@ -41,11 +41,7 @@ Note:
 ### `__init__`
 
 ```python
-__init__(
-    openapi_spec: str,
-    credentials: Secret | None = None,
-    service_kwargs: dict[str, Any] | None = None,
-)
+__init__(openapi_spec: str, credentials: Secret | None = None, service_kwargs: dict[str, Any] | None = None)
 ```
 
 Initialize the OpenAPIConnector with a specification and optional credentials.
@@ -76,9 +72,7 @@ Deserialize this component from a dictionary.
 ### `run`
 
 ```python
-run(
-    operation_id: str, arguments: dict[str, Any] | None = None
-) -> dict[str, Any]
+run(operation_id: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]
 ```
 
 Invokes a REST endpoint specified in the OpenAPI specification.
@@ -95,17 +89,7 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 ## `patch_request`
 
 ```python
-patch_request(
-    self,
-    base_url: str,
-    *,
-    data: Any | None = None,
-    parameters: dict[str, Any] | None = None,
-    raw_response: bool = False,
-    security: dict[str, str] | None = None,
-    session: Any | None = None,
-    verify: bool | str = True
-) -> Any | None
+patch_request(self, base_url: str, *, data: Any | None = None, parameters: dict[str, Any] | None = None, raw_response: bool = False, security: dict[str, str] | None = None, session: Any | None = None, verify: bool | str = True) -> Any | None
 ```
 
 Sends an HTTP request as described by this path.
@@ -194,11 +178,7 @@ Initializes the OpenAPIServiceConnector instance
 ### `run`
 
 ```python
-run(
-    messages: list[ChatMessage],
-    service_openapi_spec: dict[str, Any],
-    service_credentials: dict | str | None = None,
-) -> dict[str, list[ChatMessage]]
+run(messages: list[ChatMessage], service_openapi_spec: dict[str, Any], service_credentials: dict | str | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Processes a list of chat messages to invoke a method on an OpenAPI service.

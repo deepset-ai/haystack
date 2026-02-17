@@ -67,11 +67,7 @@ results = pipe.run(data={"llm_1": {"messages": messages},
 ### `__init__`
 
 ```python
-__init__(
-    join_mode: str | JoinMode = JoinMode.CONCATENATE,
-    top_k: int | None = None,
-    sort_by_score: bool = False,
-)
+__init__(join_mode: str | JoinMode = JoinMode.CONCATENATE, top_k: int | None = None, sort_by_score: bool = False)
 ```
 
 Creates an AnswerJoiner component.
@@ -325,12 +321,7 @@ p.run(data={"query": query, "text": query, "top_k": 1})
 ### `__init__`
 
 ```python
-__init__(
-    join_mode: str | JoinMode = JoinMode.CONCATENATE,
-    weights: list[float] | None = None,
-    top_k: int | None = None,
-    sort_by_score: bool = True,
-)
+__init__(join_mode: str | JoinMode = JoinMode.CONCATENATE, weights: list[float] | None = None, top_k: int | None = None, sort_by_score: bool = True)
 ```
 
 Creates a DocumentJoiner component.
