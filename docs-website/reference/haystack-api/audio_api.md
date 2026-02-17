@@ -6,7 +6,9 @@ slug: "/audio-api"
 ---
 
 
-## `LocalWhisperTranscriber`
+## `whisper_local`
+
+### `LocalWhisperTranscriber`
 
 Transcribes audio files using OpenAI's Whisper model on your local machine.
 
@@ -24,7 +26,7 @@ whisper.warm_up()
 transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -44,7 +46,7 @@ Creates an instance of the LocalWhisperTranscriber component.
   [Whisper documentation](https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages).
 - **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -52,7 +54,7 @@ warm_up() -> None
 
 Loads the model in memory.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -64,7 +66,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> LocalWhisperTranscriber
@@ -80,7 +82,7 @@ Deserializes the component from a dictionary.
 
 - <code>LocalWhisperTranscriber</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -106,7 +108,7 @@ Transcribes a list of audio files into a list of documents.
   the Whisper model, such as the alignment data and the path to the audio file used
   for the transcription.
 
-### `transcribe`
+#### `transcribe`
 
 ```python
 transcribe(
@@ -129,7 +131,9 @@ For the supported audio formats, languages, and other parameters, see the
 
 - <code>list\[Document\]</code> – A list of Documents, one for each file.
 
-## `RemoteWhisperTranscriber`
+## `whisper_remote`
+
+### `RemoteWhisperTranscriber`
 
 Transcribes audio files using the OpenAI's Whisper API.
 
@@ -147,7 +151,7 @@ whisper = RemoteWhisperTranscriber(model="whisper-1")
 transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -192,7 +196,7 @@ Creates an instance of the RemoteWhisperTranscriber component.
   uses log probability to automatically increase the
   temperature until certain thresholds are hit.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -204,7 +208,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> RemoteWhisperTranscriber
@@ -220,7 +224,7 @@ Deserializes the component from a dictionary.
 
 - <code>RemoteWhisperTranscriber</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(sources: list[str | Path | ByteStream])

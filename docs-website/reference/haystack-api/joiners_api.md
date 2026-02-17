@@ -6,13 +6,15 @@ slug: "/joiners-api"
 ---
 
 
-## `JoinMode`
+## `answer_joiner`
+
+### `JoinMode`
 
 Bases: <code>Enum</code>
 
 Enum for AnswerJoiner join modes.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> JoinMode
@@ -20,7 +22,7 @@ from_str(string: str) -> JoinMode
 
 Convert a string to a JoinMode enum.
 
-## `AnswerJoiner`
+### `AnswerJoiner`
 
 Merges multiple lists of `Answer` objects into a single list.
 
@@ -64,7 +66,7 @@ results = pipe.run(data={"llm_1": {"messages": messages},
                             "abb": {"query": query}})
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -84,7 +86,7 @@ Creates an AnswerJoiner component.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
   If a document has no score, it is handled as if its score is -infinity.
 
-### `run`
+#### `run`
 
 ```python
 run(answers: Variadic[list[AnswerType]], top_k: int | None = None)
@@ -102,7 +104,7 @@ Joins multiple lists of Answers into a single list depending on the `join_mode` 
 - – A dictionary with the following keys:
 - `answers`: Merged list of Answers
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -114,7 +116,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AnswerJoiner
@@ -130,7 +132,9 @@ Deserializes the component from a dictionary.
 
 - <code>AnswerJoiner</code> – The deserialized component.
 
-## `BranchJoiner`
+## `branch`
+
+### `BranchJoiner`
 
 A component that merges multiple input branches of a pipeline into a single output stream.
 
@@ -209,7 +213,7 @@ sends it down to the `OpenAIChatGenerator` for re-generation. We can have multip
 pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline could
 have more than one downstream component.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(type_: type)
@@ -221,7 +225,7 @@ Creates a `BranchJoiner` component.
 
 - **type\_** (<code>type</code>) – The expected data type of inputs and outputs.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -233,7 +237,7 @@ Serializes the component into a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> BranchJoiner
@@ -249,7 +253,7 @@ Deserializes a `BranchJoiner` instance from a dictionary.
 
 - <code>BranchJoiner</code> – A deserialized `BranchJoiner` instance.
 
-### `run`
+#### `run`
 
 ```python
 run(**kwargs) -> dict[str, Any]
@@ -265,13 +269,15 @@ Executes the `BranchJoiner`, selecting the first available input value and passi
 
 - <code>dict\[str, Any\]</code> – A dictionary with a single key `value`, containing the first input received.
 
-## `JoinMode`
+## `document_joiner`
+
+### `JoinMode`
 
 Bases: <code>Enum</code>
 
 Enum for join mode.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> JoinMode
@@ -279,7 +285,7 @@ from_str(string: str) -> JoinMode
 
 Convert a string to a JoinMode enum.
 
-## `DocumentJoiner`
+### `DocumentJoiner`
 
 Joins multiple lists of documents into a single list.
 
@@ -322,7 +328,7 @@ query = "What is the capital of France?"
 p.run(data={"query": query, "text": query, "top_k": 1})
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -351,7 +357,7 @@ Creates a DocumentJoiner component.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
   If a document has no score, it is handled as if its score is -infinity.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: Variadic[list[Document]], top_k: int | None = None)
@@ -369,7 +375,7 @@ Joins multiple lists of Documents into a single list depending on the `join_mode
 - – A dictionary with the following keys:
 - `documents`: Merged list of Documents
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -381,7 +387,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> DocumentJoiner
@@ -397,7 +403,9 @@ Deserializes the component from a dictionary.
 
 - <code>DocumentJoiner</code> – The deserialized component.
 
-## `ListJoiner`
+## `list_joiner`
+
+### `ListJoiner`
 
 A component that joins multiple lists into a single flat list.
 
@@ -450,7 +458,7 @@ ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
 print(ans["list_joiner"]["values"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(list_type_: type | None = None)
@@ -464,7 +472,7 @@ Creates a ListJoiner component.
   If specified, all input lists must conform to this type. If None, the component defaults to handling
   lists of any type including mixed types.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -476,7 +484,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ListJoiner
@@ -492,7 +500,7 @@ Deserializes the component from a dictionary.
 
 - <code>ListJoiner</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(values: Variadic[list[Any]]) -> dict[str, list[Any]]
@@ -508,7 +516,9 @@ Joins multiple lists into a single flat list.
 
 - <code>dict\[str, list\[Any\]\]</code> – Dictionary with 'values' key containing the joined list.
 
-## `StringJoiner`
+## `string_joiner`
+
+### `StringJoiner`
 
 Component to join strings from different components to a list of strings.
 
@@ -538,7 +548,7 @@ print(pipeline.run(data={"prompt_builder_1": {"query": string_1}, "prompt_builde
 >> {"string_joiner": {"strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What is life?"]}}
 ```
 
-### `run`
+#### `run`
 
 ```python
 run(strings: Variadic[str]) -> dict[str, list[str]]

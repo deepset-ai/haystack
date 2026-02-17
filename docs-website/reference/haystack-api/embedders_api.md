@@ -6,7 +6,9 @@ slug: "/embedders-api"
 ---
 
 
-## `AzureOpenAIDocumentEmbedder`
+## `azure_document_embedder`
+
+### `AzureOpenAIDocumentEmbedder`
 
 Bases: <code>OpenAIDocumentEmbedder</code>
 
@@ -28,7 +30,7 @@ print(result['documents'][0].embedding)
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -98,7 +100,7 @@ Creates an AzureOpenAIDocumentEmbedder component.
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
   and continue processing the remaining documents. If `True`, it will raise an exception on failure.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -110,7 +112,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AzureOpenAIDocumentEmbedder
@@ -126,7 +128,7 @@ Deserializes the component from a dictionary.
 
 - <code>AzureOpenAIDocumentEmbedder</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -144,7 +146,7 @@ Embeds a list of documents.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(documents: list[Document])
@@ -162,7 +164,9 @@ Embeds a list of documents asynchronously.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-## `AzureOpenAITextEmbedder`
+## `azure_text_embedder`
+
+### `AzureOpenAITextEmbedder`
 
 Bases: <code>OpenAITextEmbedder</code>
 
@@ -184,7 +188,7 @@ print(text_embedder.run(text_to_embed))
 #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -243,7 +247,7 @@ Creates an AzureOpenAITextEmbedder component.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -255,7 +259,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str)
@@ -273,7 +277,7 @@ Embeds a single string.
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AzureOpenAITextEmbedder
@@ -289,7 +293,7 @@ Deserializes the component from a dictionary.
 
 - <code>AzureOpenAITextEmbedder</code> – Deserialized component.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(text: str)
@@ -310,7 +314,9 @@ but can be used with `await` in async code.
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-## `HuggingFaceAPIDocumentEmbedder`
+## `hugging_face_api_document_embedder`
+
+### `HuggingFaceAPIDocumentEmbedder`
 
 Embeds documents using Hugging Face APIs.
 
@@ -377,7 +383,7 @@ print(result["documents"][0].embedding)
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -423,7 +429,7 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -435,7 +441,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceAPIDocumentEmbedder
@@ -451,7 +457,7 @@ Deserializes the component from a dictionary.
 
 - <code>HuggingFaceAPIDocumentEmbedder</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -468,7 +474,7 @@ Embeds a list of documents.
 - – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(documents: list[Document])
@@ -485,7 +491,9 @@ Embeds a list of documents asynchronously.
 - – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 
-## `HuggingFaceAPITextEmbedder`
+## `hugging_face_api_text_embedder`
+
+### `HuggingFaceAPITextEmbedder`
 
 Embeds strings using Hugging Face APIs.
 
@@ -540,7 +548,7 @@ print(text_embedder.run("I love pizza!"))
 # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -578,7 +586,7 @@ Creates a HuggingFaceAPITextEmbedder component.
   if the backend uses Text Embeddings Inference.
   If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -590,7 +598,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceAPITextEmbedder
@@ -606,7 +614,7 @@ Deserializes the component from a dictionary.
 
 - <code>HuggingFaceAPITextEmbedder</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str)
@@ -623,7 +631,7 @@ Embeds a single string.
 - – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(text: str)
@@ -640,7 +648,9 @@ Embeds a single string asynchronously.
 - – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
-## `SentenceTransformersDocumentImageEmbedder`
+## `sentence_transformers_doc_image_embedder`
+
+### `SentenceTransformersDocumentImageEmbedder`
 
 A component for computing Document embeddings based on images using Sentence Transformers models.
 
@@ -672,7 +682,7 @@ print(documents_with_embeddings)
 #  ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -742,7 +752,7 @@ Creates a SentenceTransformersDocumentEmbedder component.
   Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
   for more information on acceleration and quantization options.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -754,7 +764,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersDocumentImageEmbedder
@@ -770,7 +780,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersDocumentImageEmbedder</code> – Deserialized component.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -778,7 +788,7 @@ warm_up() -> None
 
 Initializes the component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -795,7 +805,9 @@ Embed a list of documents.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
-## `OpenAIDocumentEmbedder`
+## `openai_document_embedder`
+
+### `OpenAIDocumentEmbedder`
 
 Computes document embeddings using OpenAI models.
 
@@ -815,7 +827,7 @@ print(result['documents'][0].embedding)
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -872,7 +884,7 @@ in the OpenAI client.
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
   and continue processing the remaining documents. If `True`, it will raise an exception on failure.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -884,7 +896,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAIDocumentEmbedder
@@ -900,7 +912,7 @@ Deserializes the component from a dictionary.
 
 - <code>OpenAIDocumentEmbedder</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -918,7 +930,7 @@ Embeds a list of documents.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(documents: list[Document])
@@ -936,7 +948,9 @@ Embeds a list of documents asynchronously.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-## `OpenAITextEmbedder`
+## `openai_text_embedder`
+
+### `OpenAITextEmbedder`
 
 Embeds strings using OpenAI models.
 
@@ -958,7 +972,7 @@ print(text_embedder.run(text_to_embed))
 #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1003,7 +1017,7 @@ in the OpenAI client.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1015,7 +1029,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAITextEmbedder
@@ -1031,7 +1045,7 @@ Deserializes the component from a dictionary.
 
 - <code>OpenAITextEmbedder</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str)
@@ -1049,7 +1063,7 @@ Embeds a single string.
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(text: str)
@@ -1070,7 +1084,9 @@ but can be used with `await` in async code.
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-## `SentenceTransformersDocumentEmbedder`
+## `sentence_transformers_document_embedder`
+
+### `SentenceTransformersDocumentEmbedder`
 
 Calculates document embeddings using Sentence Transformers models.
 
@@ -1094,7 +1110,7 @@ print(result['documents'][0].embedding)
 # [-0.07804739475250244, 0.1498992145061493, ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1167,7 +1183,7 @@ Creates a SentenceTransformersDocumentEmbedder component.
 - **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
   for a stored model on Hugging Face.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1179,7 +1195,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersDocumentEmbedder
@@ -1195,7 +1211,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersDocumentEmbedder</code> – Deserialized component.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1203,7 +1219,7 @@ warm_up()
 
 Initializes the component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -1220,7 +1236,9 @@ Embed a list of documents.
 - – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
-## `SentenceTransformersSparseDocumentEmbedder`
+## `sentence_transformers_sparse_document_embedder`
+
+### `SentenceTransformersSparseDocumentEmbedder`
 
 Calculates document sparse embeddings using sparse embedding models from Sentence Transformers.
 
@@ -1245,7 +1263,7 @@ print(result['documents'][0].sparse_embedding)
 # SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1300,7 +1318,7 @@ Creates a SentenceTransformersSparseDocumentEmbedder component.
 - **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
   for a stored model on Hugging Face.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1312,7 +1330,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersSparseDocumentEmbedder
@@ -1328,7 +1346,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersSparseDocumentEmbedder</code> – Deserialized component.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1336,7 +1354,7 @@ warm_up()
 
 Initializes the component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -1353,7 +1371,9 @@ Embed a list of documents.
 - – A dictionary with the following keys:
 - `documents`: Documents with sparse embeddings under the `sparse_embedding` field.
 
-## `SentenceTransformersSparseTextEmbedder`
+## `sentence_transformers_sparse_text_embedder`
+
+### `SentenceTransformersSparseTextEmbedder`
 
 Embeds strings using sparse embedding models from Sentence Transformers.
 
@@ -1374,7 +1394,7 @@ print(text_embedder.run(text_to_embed))
 # {'sparse_embedding': SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1421,7 +1441,7 @@ Create a SentenceTransformersSparseTextEmbedder component.
 - **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
   for a stored model on Hugging Face.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1433,7 +1453,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersSparseTextEmbedder
@@ -1449,7 +1469,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersSparseTextEmbedder</code> – Deserialized component.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1457,7 +1477,7 @@ warm_up()
 
 Initializes the component.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str)
@@ -1474,7 +1494,9 @@ Embed a single string.
 - – A dictionary with the following keys:
 - `sparse_embedding`: The sparse embedding of the input text.
 
-## `SentenceTransformersTextEmbedder`
+## `sentence_transformers_text_embedder`
+
+### `SentenceTransformersTextEmbedder`
 
 Embeds strings using Sentence Transformers models.
 
@@ -1495,7 +1517,7 @@ print(text_embedder.run(text_to_embed))
 # {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1564,7 +1586,7 @@ Create a SentenceTransformersTextEmbedder component.
 - **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
   for a stored model on Hugging Face.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1576,7 +1598,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersTextEmbedder
@@ -1592,7 +1614,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersTextEmbedder</code> – Deserialized component.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1600,7 +1622,7 @@ warm_up()
 
 Initializes the component.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str)

@@ -6,7 +6,9 @@ slug: "/retrievers-api"
 ---
 
 
-## `AutoMergingRetriever`
+## `auto_merging_retriever`
+
+### `AutoMergingRetriever`
 
 A retriever which returns parent documents of the matched leaf nodes documents, based on a threshold setting.
 
@@ -59,7 +61,7 @@ print(retrieved_docs["documents"])
 # 'page_number': 1, 'split_id': 1, 'split_idx_start': 45})]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(document_store: DocumentStore, threshold: float = 0.5)
@@ -72,7 +74,7 @@ Initialize the AutoMergingRetriever.
 - **document_store** (<code>DocumentStore</code>) – DocumentStore from which to retrieve the parent documents
 - **threshold** (<code>float</code>) – Threshold to decide whether the parent instead of the individual documents is returned
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -84,7 +86,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AutoMergingRetriever
@@ -100,7 +102,7 @@ Deserializes the component from a dictionary.
 
 - <code>AutoMergingRetriever</code> – An instance of the component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -119,7 +121,7 @@ continuing up the hierarchy until no more merges are possible.
 
 - – List of documents (could be a mix of different hierarchy levels)
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(documents: list[Document])
@@ -138,7 +140,9 @@ continuing up the hierarchy until no more merges are possible.
 
 - – List of documents (could be a mix of different hierarchy levels)
 
-## `FilterRetriever`
+## `filter_retriever`
+
+### `FilterRetriever`
 
 Retrieves documents that match the provided filters.
 
@@ -164,7 +168,7 @@ result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"
 print(result["documents"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(document_store: DocumentStore, filters: dict[str, Any] | None = None)
@@ -177,7 +181,7 @@ Create the FilterRetriever component.
 - **document_store** (<code>DocumentStore</code>) – An instance of a Document Store to use with the Retriever.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary with filters to narrow down the search space.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -189,7 +193,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> FilterRetriever
@@ -205,7 +209,7 @@ Deserializes the component from a dictionary.
 
 - <code>FilterRetriever</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(filters: dict[str, Any] | None = None)
@@ -222,7 +226,7 @@ Run the FilterRetriever on the given input data.
 
 - – A list of retrieved documents.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(filters: dict[str, Any] | None = None)
@@ -239,7 +243,9 @@ Asynchronously run the FilterRetriever on the given input data.
 
 - – A list of retrieved documents.
 
-## `InMemoryBM25Retriever`
+## `bm25_retriever`
+
+### `InMemoryBM25Retriever`
 
 Retrieves documents that are most similar to the query using keyword-based algorithm.
 
@@ -266,7 +272,7 @@ result = retriever.run(query="Programmiersprache")
 print(result["documents"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -297,7 +303,7 @@ Create the InMemoryBM25Retriever component.
 
 - <code>ValueError</code> – If the specified `top_k` is not > 0.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -309,7 +315,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> InMemoryBM25Retriever
@@ -325,7 +331,7 @@ Deserializes the component from a dictionary.
 
 - <code>InMemoryBM25Retriever</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -354,7 +360,7 @@ Run the InMemoryBM25Retriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -383,7 +389,9 @@ Run the InMemoryBM25Retriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
 
-## `InMemoryEmbeddingRetriever`
+## `embedding_retriever`
+
+### `InMemoryEmbeddingRetriever`
 
 Retrieves documents that are most semantically similar to the query.
 
@@ -423,7 +431,7 @@ result = retriever.run(query_embedding=query_embedding)
 print(result["documents"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -457,7 +465,7 @@ Create the InMemoryEmbeddingRetriever component.
 
 - <code>ValueError</code> – If the specified top_k is not > 0.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -469,7 +477,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> InMemoryEmbeddingRetriever
@@ -485,7 +493,7 @@ Deserializes the component from a dictionary.
 
 - <code>InMemoryEmbeddingRetriever</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -517,7 +525,7 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -549,7 +557,9 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
 
-## `MultiQueryEmbeddingRetriever`
+## `multi_query_embedding_retriever`
+
+### `MultiQueryEmbeddingRetriever`
 
 A component that retrieves documents using multiple queries in parallel with an embedding-based retriever.
 
@@ -608,7 +618,7 @@ for doc in result["documents"]:
 # >> Content: Biomass energy is produced from organic materials, such as plant and animal waste., Score: 0.25173074243
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -627,7 +637,7 @@ Initialize MultiQueryEmbeddingRetriever.
 - **query_embedder** (<code>TextEmbedder</code>) – The query embedder to convert text queries to embeddings.
 - **max_workers** (<code>int</code>) – Maximum number of worker threads for parallel processing.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -635,7 +645,7 @@ warm_up() -> None
 
 Warm up the query embedder and the retriever if any has a warm_up method.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -655,7 +665,7 @@ Retrieve documents using multiple queries in parallel.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
   - `documents`: List of retrieved documents sorted by relevance score.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -667,7 +677,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary representing the serialized component.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> MultiQueryEmbeddingRetriever
@@ -683,7 +693,9 @@ Deserializes the component from a dictionary.
 
 - <code>MultiQueryEmbeddingRetriever</code> – The deserialized component.
 
-## `MultiQueryTextRetriever`
+## `multi_query_text_retriever`
+
+### `MultiQueryTextRetriever`
 
 A component that retrieves documents using multiple queries in parallel with a text-based retriever.
 
@@ -727,7 +739,7 @@ for doc in results["documents"]:
 # >> Content: Renewable energy is energy that is collected from renewable resources., Score: 1.5255309812344944
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(*, retriever: TextRetriever, max_workers: int = 3) -> None
@@ -740,7 +752,7 @@ Initialize MultiQueryTextRetriever.
 - **retriever** (<code>TextRetriever</code>) – The text-based retriever to use for document retrieval.
 - **max_workers** (<code>int</code>) – Maximum number of worker threads for parallel processing. Default is 3.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -748,7 +760,7 @@ warm_up() -> None
 
 Warm up the retriever if it has a warm_up method.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -768,7 +780,7 @@ Retrieve documents using multiple queries in parallel.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
   `documents`: List of retrieved documents sorted by relevance score.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -780,7 +792,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> MultiQueryTextRetriever
@@ -796,7 +808,9 @@ Deserializes the component from a dictionary.
 
 - <code>MultiQueryTextRetriever</code> – The deserialized component.
 
-## `SentenceWindowRetriever`
+## `sentence_window_retriever`
+
+### `SentenceWindowRetriever`
 
 Retrieves neighboring documents from a DocumentStore to provide context for query results.
 
@@ -867,7 +881,7 @@ rag.run({'bm25_retriever': {"query":"third"}})
 # >> '_split_overlap': [{'doc_id': '...', 'range': (33, 59)}, {'doc_id': '...', 'range': (0, 24)}]})]]}}}}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -895,7 +909,7 @@ Creates a new SentenceWindowRetriever component.
   metadata fields. If False, it will skip retrieving the context for documents that are missing
   the required metadata fields, but will still include the original document in the results.
 
-### `merge_documents_text`
+#### `merge_documents_text`
 
 ```python
 merge_documents_text(documents: list[Document]) -> str
@@ -910,7 +924,7 @@ overlapping content.
 
 - **documents** (<code>list\[Document\]</code>) – List of Documents to merge.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -922,7 +936,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceWindowRetriever
@@ -934,7 +948,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceWindowRetriever</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(retrieved_documents: list[Document], window_size: int | None = None)
@@ -960,7 +974,7 @@ document from the document store.
     document surrounding them. The documents are sorted by the `split_idx_start`
     meta field.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(retrieved_documents: list[Document], window_size: int | None = None)

@@ -6,7 +6,9 @@ slug: "/tools-api"
 ---
 
 
-## `ComponentTool`
+## `component_tool`
+
+### `ComponentTool`
 
 Bases: <code>Tool</code>
 
@@ -68,7 +70,7 @@ result = pipeline.run({"llm": {"messages": [message]}})
 print(result)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -150,7 +152,7 @@ Example:
 
 - <code>ValueError</code> – If the component is invalid or schema generation fails.
 
-### `tool_spec`
+#### `tool_spec`
 
 ```python
 tool_spec: dict[str, Any]
@@ -158,7 +160,7 @@ tool_spec: dict[str, Any]
 
 Return the Tool specification to be used by the Language Model.
 
-### `invoke`
+#### `invoke`
 
 ```python
 invoke(**kwargs: Any) -> Any
@@ -166,7 +168,7 @@ invoke(**kwargs: Any) -> Any
 
 Invoke the Tool with the provided keyword arguments.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -174,7 +176,7 @@ warm_up()
 
 Prepare the ComponentTool for use.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -182,7 +184,7 @@ to_dict() -> dict[str, Any]
 
 Serializes the ComponentTool to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ComponentTool
@@ -190,7 +192,9 @@ from_dict(data: dict[str, Any]) -> ComponentTool
 
 Deserializes the ComponentTool from a dictionary.
 
-## `create_tool_from_function`
+## `from_function`
+
+### `create_tool_from_function`
 
 ```python
 create_tool_from_function(
@@ -313,7 +317,7 @@ Example:
 - <code>ValueError</code> – If any parameter of the function lacks a type hint.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
-## `tool`
+### `tool`
 
 ```python
 tool(
@@ -430,7 +434,9 @@ Example:
 
 - <code>Tool | Callable\\[[Callable\], Tool\]</code> – Either a Tool instance or a decorator function that will create one
 
-## `PipelineTool`
+## `pipeline_tool`
+
+### `PipelineTool`
 
 Bases: <code>ComponentTool</code>
 
@@ -513,7 +519,7 @@ print("Answer:")
 print(result["messages"][-1].text)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -618,7 +624,7 @@ Example:
 
 - <code>ValueError</code> – If the provided pipeline is not a valid Haystack Pipeline instance.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -630,7 +636,7 @@ Serializes the PipelineTool to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized dictionary representation of PipelineTool.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> PipelineTool
@@ -646,7 +652,7 @@ Deserializes the PipelineTool from a dictionary.
 
 - <code>PipelineTool</code> – The deserialized PipelineTool instance.
 
-### `tool_spec`
+#### `tool_spec`
 
 ```python
 tool_spec: dict[str, Any]
@@ -654,7 +660,7 @@ tool_spec: dict[str, Any]
 
 Return the Tool specification to be used by the Language Model.
 
-### `invoke`
+#### `invoke`
 
 ```python
 invoke(**kwargs: Any) -> Any
@@ -662,7 +668,7 @@ invoke(**kwargs: Any) -> Any
 
 Invoke the Tool with the provided keyword arguments.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -670,7 +676,9 @@ warm_up()
 
 Prepare the ComponentTool for use.
 
-## `Tool`
+## `tool`
+
+### `Tool`
 
 Data class representing a Tool that Language Models can prepare a call for.
 
@@ -744,7 +752,7 @@ Example:
 }
 ```
 
-### `tool_spec`
+#### `tool_spec`
 
 ```python
 tool_spec: dict[str, Any]
@@ -752,7 +760,7 @@ tool_spec: dict[str, Any]
 
 Return the Tool specification to be used by the Language Model.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -764,7 +772,7 @@ Override this method to establish connections to remote services, load models,
 or perform other resource-intensive initialization. This method should be idempotent,
 as it may be called multiple times.
 
-### `invoke`
+#### `invoke`
 
 ```python
 invoke(**kwargs: Any) -> Any
@@ -772,7 +780,7 @@ invoke(**kwargs: Any) -> Any
 
 Invoke the Tool with the provided keyword arguments.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -784,7 +792,7 @@ Serializes the Tool to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> Tool
@@ -800,7 +808,9 @@ Deserializes the Tool from a dictionary.
 
 - <code>Tool</code> – Deserialized Tool.
 
-## `Toolset`
+## `toolset`
+
+### `Toolset`
 
 A collection of related Tools that can be used and managed as a cohesive unit.
 
@@ -934,7 +944,7 @@ When implementing a custom Toolset subclass for dynamic tool loading:
 - Serialize endpoint descriptors rather than tool instances if your tools
   are loaded from external sources
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -963,7 +973,7 @@ class MCPToolset(Toolset):
 
 This method should be idempotent, as it may be called multiple times.
 
-### `add`
+#### `add`
 
 ```python
 add(tool: Union[Tool, Toolset]) -> None
@@ -980,7 +990,7 @@ Add a new Tool or merge another Toolset.
 - <code>ValueError</code> – If adding the tool would result in duplicate tool names
 - <code>TypeError</code> – If the provided object is not a Tool or Toolset
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1003,7 +1013,7 @@ if they have been modified or removed since the last serialization. Failing to s
 lead to issues where outdated or incorrect Tool configurations are loaded, potentially causing errors or
 unexpected behavior.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> Toolset

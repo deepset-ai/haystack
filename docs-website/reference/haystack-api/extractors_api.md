@@ -6,7 +6,9 @@ slug: "/extractors-api"
 ---
 
 
-## `LLMDocumentContentExtractor`
+## `llm_document_content_extractor`
+
+### `LLMDocumentContentExtractor`
 
 Extracts textual content and optionally metadata from image-based documents using a vision-enabled LLM.
 
@@ -72,7 +74,7 @@ result = extractor.run(documents=documents)
 updated_documents = result["documents"]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -103,7 +105,7 @@ Initialize the LLMDocumentContentExtractor component.
 - **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, failed documents are returned.
 - **max_workers** (<code>int</code>) – Maximum number of threads for parallel LLM calls.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -111,7 +113,7 @@ warm_up()
 
 Warm up the ChatGenerator if it has a warm_up method.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -123,7 +125,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> LLMDocumentContentExtractor
@@ -139,7 +141,7 @@ Deserializes the component from a dictionary.
 
 - <code>LLMDocumentContentExtractor</code> – An instance of the component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -155,7 +157,9 @@ Run extraction on image-based documents. One LLM call per document.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
-## `LLMMetadataExtractor`
+## `llm_metadata_extractor`
+
+### `LLMMetadataExtractor`
 
 Extracts metadata from documents using a Large Language Model (LLM).
 
@@ -279,7 +283,7 @@ extractor.run(documents=docs)
 >>
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -310,7 +314,7 @@ Initializes the LLMMetadataExtractor.
   validation of the JSON output.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use in the thread pool executor.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -318,7 +322,7 @@ warm_up()
 
 Warm up the LLM provider component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -330,7 +334,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> LLMMetadataExtractor
@@ -346,7 +350,7 @@ Deserializes the component from a dictionary.
 
 - <code>LLMMetadataExtractor</code> – An instance of the component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document], page_range: list[str | int] | None = None)
@@ -378,13 +382,15 @@ The original documents will be returned updated with the extracted metadata.
   "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
   re-run with the extractor to extract metadata.
 
-## `NamedEntityExtractorBackend`
+## `named_entity_extractor`
+
+### `NamedEntityExtractorBackend`
 
 Bases: <code>Enum</code>
 
 NLP backend to use for Named Entity Recognition.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> NamedEntityExtractorBackend
@@ -392,7 +398,7 @@ from_str(string: str) -> NamedEntityExtractorBackend
 
 Convert a string to a NamedEntityExtractorBackend enum.
 
-## `NamedEntityAnnotation`
+### `NamedEntityAnnotation`
 
 Describes a single NER annotation.
 
@@ -403,7 +409,7 @@ Describes a single NER annotation.
 - **end** (<code>int</code>) – End index of the entity in the document.
 - **score** (<code>float | None</code>) – Score calculated by the model.
 
-## `NamedEntityExtractor`
+### `NamedEntityExtractor`
 
 Annotates named entities in a collection of documents.
 
@@ -431,7 +437,7 @@ annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in resul
 print(annotations)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -462,7 +468,7 @@ Create a Named Entity extractor component.
   HuggingFace backend).
 - **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -474,7 +480,7 @@ Initialize the component.
 
 - <code>ComponentError</code> – If the backend fails to initialize successfully.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
@@ -495,7 +501,7 @@ Annotate named entities in each document and store the annotations in the docume
 
 - <code>ComponentError</code> – If the backend fails to process a document.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -507,7 +513,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> NamedEntityExtractor
@@ -523,7 +529,7 @@ Deserializes the component from a dictionary.
 
 - <code>NamedEntityExtractor</code> – Deserialized component.
 
-### `initialized`
+#### `initialized`
 
 ```python
 initialized: bool
@@ -531,7 +537,7 @@ initialized: bool
 
 Returns if the extractor is ready to annotate text.
 
-### `get_stored_annotations`
+#### `get_stored_annotations`
 
 ```python
 get_stored_annotations(
@@ -549,7 +555,9 @@ Returns the document's named entity annotations stored in its metadata, if any.
 
 - <code>list\[NamedEntityAnnotation\] | None</code> – The stored annotations.
 
-## `RegexTextExtractor`
+## `regex_text_extractor`
+
+### `RegexTextExtractor`
 
 Extracts text from chat message or string input using a regex pattern.
 
@@ -573,7 +581,7 @@ result = parser.run(text_or_messages=messages)
 # result: {"captured_text": "github.com/hahahaha"}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(regex_pattern: str)
@@ -587,7 +595,7 @@ Creates an instance of the RegexTextExtractor component.
   The pattern should include a capture group to extract the desired text.
   Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -599,7 +607,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> RegexTextExtractor
@@ -615,7 +623,7 @@ Deserializes the component from a dictionary.
 
 - <code>RegexTextExtractor</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(text_or_messages: str | list[ChatMessage]) -> dict[str, str]

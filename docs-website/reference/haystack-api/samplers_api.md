@@ -6,7 +6,9 @@ slug: "/samplers-api"
 ---
 
 
-## `TopPSampler`
+## `top_p`
+
+### `TopPSampler`
 
 Implements top-p (nucleus) sampling for document filtering based on cumulative probability scores.
 
@@ -32,7 +34,7 @@ assert len(docs) == 1
 assert docs[0].content == "Sarajevo"
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -53,7 +55,7 @@ Creates an instance of TopPSampler.
 - **min_top_k** (<code>int | None</code>) – If specified, the minimum number of documents to return. If the top_p selects
   fewer documents, additional ones with the next highest scores are added to the selection.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document], top_p: float | None = None)

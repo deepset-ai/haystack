@@ -6,7 +6,9 @@ slug: "/image-converters-api"
 ---
 
 
-## `DocumentToImageContent`
+## `document_to_image`
+
+### `DocumentToImageContent`
 
 Converts documents sourced from PDF and image files into ImageContents.
 
@@ -51,7 +53,7 @@ image_contents = result["image_contents"]
 ```
 ````
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -76,7 +78,7 @@ Initialize the DocumentToImageContent component.
   maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
   when working with models that have resolution constraints or when transmitting images to remote services.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[ImageContent | None]]
@@ -104,7 +106,9 @@ into ImageContent objects.
 - <code>ValueError</code> – If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
   MIME type. The error message will specify which document and what information is missing or incorrect.
 
-## `ImageFileToDocument`
+## `file_to_document`
+
+### `ImageFileToDocument`
 
 Converts image file references into empty Document objects with associated metadata.
 
@@ -132,7 +136,7 @@ print(documents)
 # Document(id=..., meta: {'file_path': 'another_image.png'})]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(*, store_full_path: bool = False)
@@ -145,7 +149,7 @@ Initialize the ImageFileToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -175,7 +179,9 @@ user-provided metadata.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
 - `documents`: A list of `Document` objects with empty content and associated metadata.
 
-## `ImageFileToImageContent`
+## `file_to_image`
+
+### `ImageFileToImageContent`
 
 Converts image files to ImageContent objects.
 
@@ -198,7 +204,7 @@ print(image_contents)
 #  ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -218,7 +224,7 @@ Create the ImageFileToImageContent component.
   maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
   when working with models that have resolution constraints or when transmitting images to remote services.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -253,7 +259,9 @@ Converts files to ImageContent objects.
 - <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
 - `image_contents`: A list of ImageContent objects.
 
-## `PDFToImageContent`
+## `pdf_to_image`
+
+### `PDFToImageContent`
 
 Converts PDF files to ImageContent objects.
 
@@ -276,7 +284,7 @@ print(image_contents)
 #  ...]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -302,7 +310,7 @@ Create the PDFToImageContent component.
   pages of the document. It also accepts printable range strings, e.g.: ['1-3', '5', '8', '10-12']
   will convert pages 1, 2, 3, 5, 8, 10, 11, 12.
 
-### `run`
+#### `run`
 
 ```python
 run(

@@ -6,7 +6,9 @@ slug: "/connectors-api"
 ---
 
 
-## `OpenAPIConnector`
+## `openapi`
+
+### `OpenAPIConnector`
 
 OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
 
@@ -38,7 +40,7 @@ Note:
 - The `parameters` argument is required for this component.
 - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -57,7 +59,7 @@ Initialize the OpenAPIConnector with a specification and optional credentials.
 - **service_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments passed to OpenAPIClient.from_spec()
   For example, you can pass a custom config_factory or other configuration options.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -65,7 +67,7 @@ to_dict() -> dict[str, Any]
 
 Serialize this component to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAPIConnector
@@ -73,7 +75,7 @@ from_dict(data: dict[str, Any]) -> OpenAPIConnector
 
 Deserialize this component from a dictionary.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -92,7 +94,9 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 
 - <code>dict\[str, Any\]</code> – Dictionary containing the service response
 
-## `patch_request`
+## `openapi_service`
+
+### `patch_request`
 
 ```python
 patch_request(
@@ -128,7 +132,7 @@ Sends an HTTP request as described by this path.
 
 - <code>Any | None</code> – The response data, either raw or processed depending on raw_response flag.
 
-## `OpenAPIServiceConnector`
+### `OpenAPIServiceConnector`
 
 A component which connects the Haystack framework to OpenAPI services.
 
@@ -178,7 +182,7 @@ print(result)
 >> in protecting were at the center of Altman's brief ouster from the company."...
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(ssl_verify: bool | str | None = None)
@@ -191,7 +195,7 @@ Initializes the OpenAPIServiceConnector instance
 - **ssl_verify** (<code>[bool | str | None</code>) – Decide if to use SSL verification to the requests or not,
   in case a string is passed, will be used as the CA.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -225,7 +229,7 @@ It parses the last message in the list, expecting it to contain tool calls.
 
 - <code>ValueError</code> – If the last message is not from the assistant or if it does not contain tool calls.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -237,7 +241,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAPIServiceConnector

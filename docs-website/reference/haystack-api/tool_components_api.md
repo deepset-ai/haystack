@@ -6,37 +6,39 @@ slug: "/tool-components-api"
 ---
 
 
-## `ToolInvokerError`
+## `tool_invoker`
+
+### `ToolInvokerError`
 
 Bases: <code>Exception</code>
 
 Base exception class for ToolInvoker errors.
 
-## `ToolNotFoundException`
+### `ToolNotFoundException`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when a tool is not found in the list of available tools.
 
-## `StringConversionError`
+### `StringConversionError`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when the conversion of a tool result to a string fails.
 
-## `ResultConversionError`
+### `ResultConversionError`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when the conversion of a tool output to a result fails.
 
-## `ToolOutputMergeError`
+### `ToolOutputMergeError`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when merging tool outputs into state fails.
 
-### `from_exception`
+#### `from_exception`
 
 ```python
 from_exception(tool_name: str, error: Exception) -> ToolOutputMergeError
@@ -44,7 +46,7 @@ from_exception(tool_name: str, error: Exception) -> ToolOutputMergeError
 
 Create a ToolOutputMergeError from an exception.
 
-## `ToolInvoker`
+### `ToolInvoker`
 
 Invokes tools based on prepared tool calls and returns the results as a list of ChatMessage objects.
 
@@ -158,7 +160,7 @@ print(result)
 
 
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -197,7 +199,7 @@ Initialize the ToolInvoker component.
 
 - <code>ValueError</code> – If no tools are provided or if duplicate tool names are found.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -208,7 +210,7 @@ Warm up the tool invoker.
 This will warm up the tools registered in the tool invoker.
 This method is idempotent and will only warm up the tools once.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -250,7 +252,7 @@ Processes ChatMessage objects containing tool calls and invokes the correspondin
 - <code>StringConversionError</code> – If the conversion of the tool result to a string fails and `raise_on_failure` is True.
 - <code>ToolOutputMergeError</code> – If merging tool outputs into state fails and `raise_on_failure` is True.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -294,7 +296,7 @@ Multiple tool calls are performed concurrently.
 - <code>StringConversionError</code> – If the conversion of the tool result to a string fails and `raise_on_failure` is True.
 - <code>ToolOutputMergeError</code> – If merging tool outputs into state fails and `raise_on_failure` is True.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -306,7 +308,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ToolInvoker

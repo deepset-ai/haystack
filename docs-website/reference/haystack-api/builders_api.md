@@ -6,7 +6,9 @@ slug: "/builders-api"
 ---
 
 
-## `AnswerBuilder`
+## `answer_builder`
+
+### `AnswerBuilder`
 
 Converts a query and Generator replies into a `GeneratedAnswer` object.
 
@@ -59,7 +61,7 @@ for doc in result.documents:
 # [3] Rome is the capital of Italy.
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -95,7 +97,7 @@ Creates an instance of the AnswerBuilder component.
   If False, all documents are returned.
   If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -141,7 +143,9 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 - – A dictionary with the following keys:
 - `answers`: The answers received from the output of the Generator.
 
-## `ChatPromptBuilder`
+## `chat_prompt_builder`
+
+### `ChatPromptBuilder`
 
 Renders a chat prompt from a template using Jinja2 syntax.
 
@@ -248,7 +252,7 @@ builder = ChatPromptBuilder(template=template)
 builder.run(user_name="John", images=images)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -272,7 +276,7 @@ Constructs a ChatPromptBuilder component.
   `template` parameter. For example, to use more variables during prompt engineering than the ones present
   in the default template, you can provide them here.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -305,7 +309,7 @@ To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
 - <code>ValueError</code> – If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -317,7 +321,7 @@ Returns a dictionary representation of the component.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the component.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ChatPromptBuilder
@@ -333,7 +337,9 @@ Deserialize this component from a dictionary.
 
 - <code>ChatPromptBuilder</code> – The deserialized component.
 
-## `PromptBuilder`
+## `prompt_builder`
+
+### `PromptBuilder`
 
 Renders a prompt filling in any variables so that it can send it to a Generator.
 
@@ -460,7 +466,7 @@ If not set otherwise, it will use its default value 'English'.
 This example overwrites its value to 'German'.
 Use `template_variables` to overwrite pipeline variables (such as documents) as well.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -487,7 +493,7 @@ Constructs a PromptBuilder component.
   `template` parameter. For example, to use more variables during prompt engineering than the ones present
   in the default template, you can provide them here.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -499,7 +505,7 @@ Returns a dictionary representation of the component.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the component.
 
-### `run`
+#### `run`
 
 ```python
 run(

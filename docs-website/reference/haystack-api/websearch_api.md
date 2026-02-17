@@ -6,7 +6,9 @@ slug: "/websearch-api"
 ---
 
 
-## `SearchApiWebSearch`
+## `searchapi`
+
+### `SearchApiWebSearch`
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
@@ -23,7 +25,7 @@ assert results["documents"]
 assert results["links"]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -48,7 +50,7 @@ Initialize the SearchApiWebSearch component.
 The default search engine is Google, however, users can change it by setting the `engine`
 parameter in the `search_params`.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -60,7 +62,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SearchApiWebSearch
@@ -76,7 +78,7 @@ Deserializes the component from a dictionary.
 
 - <code>SearchApiWebSearch</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(query: str) -> dict[str, list[Document] | list[str]]
@@ -99,7 +101,7 @@ Uses [SearchApi](https://www.searchapi.io/) to search the web.
 - <code>TimeoutError</code> – If the request to the SearchApi API times out.
 - <code>SearchApiError</code> – If an error occurs while querying the SearchApi API.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(query: str) -> dict[str, list[Document] | list[str]]
@@ -124,7 +126,9 @@ This is the asynchronous version of the `run` method with the same parameters an
 - <code>TimeoutError</code> – If the request to the SearchApi API times out.
 - <code>SearchApiError</code> – If an error occurs while querying the SearchApi API.
 
-## `SerperDevWebSearch`
+## `serper_dev`
+
+### `SerperDevWebSearch`
 
 Uses [Serper](https://serper.dev/) to search the web for relevant documents.
 
@@ -152,7 +156,7 @@ websearch_filtered = SerperDevWebSearch(
 results_filtered = websearch_filtered.run(query="search query")
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -179,7 +183,7 @@ Initialize the SerperDevWebSearch component.
   For example, you can set 'num' to 20 to increase the number of search results.
   See the [Serper website](https://serper.dev/) for more details.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -191,7 +195,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SerperDevWebSearch
@@ -207,7 +211,7 @@ Deserializes the component from a dictionary.
 
 - <code>SerperDevWebSearch</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(query: str) -> dict[str, list[Document] | list[str]]
@@ -230,7 +234,7 @@ Use [Serper](https://serper.dev/) to search the web.
 - <code>SerperDevError</code> – If an error occurs while querying the SerperDev API.
 - <code>TimeoutError</code> – If the request to the SerperDev API times out.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(query: str) -> dict[str, list[Document] | list[str]]

@@ -6,11 +6,13 @@ slug: "/evaluation-api"
 ---
 
 
-## `EvaluationRunResult`
+## `eval_run_result`
+
+### `EvaluationRunResult`
 
 Contains the inputs and the outputs of an evaluation pipeline and provides methods to inspect them.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -32,7 +34,7 @@ Initialize a new evaluation run result.
   - 'score': The aggregated score for the metric.
   - 'individual_scores': A list of scores for each input sample.
 
-### `aggregated_report`
+#### `aggregated_report`
 
 ```python
 aggregated_report(
@@ -53,7 +55,7 @@ Generates a report with aggregated scores for each metric.
 - <code>Union\[dict\[str, list\[Any\]\], DataFrame, str\]</code> – JSON or DataFrame with aggregated scores, in case the output is set to a CSV file, a message confirming the
   successful write or an error message.
 
-### `detailed_report`
+#### `detailed_report`
 
 ```python
 detailed_report(
@@ -74,7 +76,7 @@ Generates a report with detailed scores for each metric.
 - <code>Union\[dict\[str, list\[Any\]\], DataFrame, str\]</code> – JSON or DataFrame with the detailed scores, in case the output is set to a CSV file, a message confirming
   the successful write or an error message.
 
-### `comparative_detailed_report`
+#### `comparative_detailed_report`
 
 ```python
 comparative_detailed_report(

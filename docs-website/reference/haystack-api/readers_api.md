@@ -6,7 +6,9 @@ slug: "/readers-api"
 ---
 
 
-## `ExtractiveReader`
+## `extractive`
+
+### `ExtractiveReader`
 
 Locates and extracts answers to a given query from Documents.
 
@@ -34,7 +36,7 @@ result = reader.run(query=question, documents=docs)
 assert "Python" in result["answers"][0].data
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -85,7 +87,7 @@ Creates an instance of ExtractiveReader.
   when loading the model specified in `model`. For details on what kwargs you can pass,
   see the model's documentation.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -97,7 +99,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ExtractiveReader
@@ -113,7 +115,7 @@ Deserializes the component from a dictionary.
 
 - <code>ExtractiveReader</code> – Deserialized component.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -121,7 +123,7 @@ warm_up()
 
 Initializes the component.
 
-### `deduplicate_by_overlap`
+#### `deduplicate_by_overlap`
 
 ```python
 deduplicate_by_overlap(
@@ -148,7 +150,7 @@ answers overlap.
 
 - <code>list\[ExtractedAnswer\]</code> – List of deduplicated answers.
 
-### `run`
+#### `run`
 
 ```python
 run(

@@ -6,19 +6,21 @@ slug: "/routers-api"
 ---
 
 
-## `NoRouteSelectedException`
+## `conditional_router`
+
+### `NoRouteSelectedException`
 
 Bases: <code>Exception</code>
 
 Exception raised when no route is selected in ConditionalRouter.
 
-## `RouteConditionException`
+### `RouteConditionException`
 
 Bases: <code>Exception</code>
 
 Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter.
 
-## `ConditionalRouter`
+### `ConditionalRouter`
 
 Routes data based on specific conditions.
 
@@ -100,7 +102,7 @@ print(result)
 # >> {'router': {'few_items': 'Processing few items'}}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -177,7 +179,7 @@ This pattern is particularly useful when:
 - Some variables are only needed for specific routing conditions
 - You're building flexible pipelines where not all inputs are guaranteed to be present
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -189,7 +191,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ConditionalRouter
@@ -205,7 +207,7 @@ Deserializes the component from a dictionary.
 
 - <code>ConditionalRouter</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(**kwargs)
@@ -233,7 +235,9 @@ order they are listed. The method directs the flow of data to the output specifi
 - <code>RouteConditionException</code> – If there is an error parsing or evaluating the `condition` expression in the routes.
 - <code>ValueError</code> – If type validation is enabled and route type doesn't match actual value type.
 
-## `DocumentLengthRouter`
+## `document_length_router`
+
+### `DocumentLengthRouter`
 
 Categorizes documents based on the length of the `content` field and routes them to the appropriate output.
 
@@ -263,7 +267,7 @@ print(result)
 # }
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(*, threshold: int = 10) -> None
@@ -278,7 +282,7 @@ Initialize the DocumentLengthRouter component.
   output. Otherwise, they will be routed to the `long_documents` output.
   To route only documents with None content to `short_documents`, set the threshold to a negative number.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -297,7 +301,9 @@ Categorize input documents into groups based on the length of the `content` fiel
   equal to the threshold.
 - `long_documents`: A list of documents where the length of `content` is greater than the threshold.
 
-## `DocumentTypeRouter`
+## `document_type_router`
+
+### `DocumentTypeRouter`
 
 Routes documents by their MIME types.
 
@@ -339,7 +345,7 @@ Expected output:
 }
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -369,7 +375,7 @@ Initialize the DocumentTypeRouter component.
 - <code>ValueError</code> – If `mime_types` is empty or if both `mime_type_meta_field` and `file_path_meta_field` are
   not provided.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -388,7 +394,9 @@ standard Python `mimetypes` module and custom mappings.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of documents.
 
-## `FileTypeRouter`
+## `file_type_router`
+
+### `FileTypeRouter`
 
 Categorizes files or byte streams by their MIME types, helping in context-based routing.
 
@@ -424,7 +432,7 @@ print(router_with_regex.run(sources=sources))
 # ]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -446,7 +454,7 @@ Initialize the FileTypeRouter component.
 - **raise_on_failure** (<code>bool</code>) – If True, raises FileNotFoundError when a file path doesn't exist.
   If False (default), only emits a warning when a file path doesn't exist.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -458,7 +466,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> FileTypeRouter
@@ -474,7 +482,7 @@ Deserializes the component from a dictionary.
 
 - <code>FileTypeRouter</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -500,7 +508,9 @@ Categorize files or byte streams according to their MIME types.
   Two extra keys may be returned: `"unclassified"` when a source's MIME type doesn't match any pattern
   and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
 
-## `LLMMessagesRouter`
+## `llm_messages_router`
+
+### `LLMMessagesRouter`
 
 ````
 Routes Chat Messages to different connections using a generative Language Model to perform classification.
@@ -542,7 +552,7 @@ S2',
 \# }
 \`\`\`
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -570,7 +580,7 @@ Initialize the LLMMessagesRouter component.
 
 - <code>ValueError</code> – If output_names and output_patterns are not non-empty lists of the same length.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -578,7 +588,7 @@ warm_up()
 
 Warm up the underlying LLM.
 
-### `run`
+#### `run`
 
 ```python
 run(messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]
@@ -601,7 +611,7 @@ Classify the messages based on LLM output and route them to the appropriate outp
 
 - <code>ValueError</code> – If messages is an empty list or contains messages with unsupported roles.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -613,7 +623,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> LLMMessagesRouter
@@ -629,7 +639,9 @@ Deserialize this component from a dictionary.
 
 - <code>LLMMessagesRouter</code> – The deserialized component instance.
 
-## `MetadataRouter`
+## `metadata_router`
+
+### `MetadataRouter`
 
 Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -674,7 +686,7 @@ result = router.run(documents=streams)
 # {'english': [ByteStream(...)], 'unmatched': [ByteStream(...)]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(rules: dict[str, dict], output_type: type = list[Document]) -> None
@@ -724,7 +736,7 @@ Initializes the MetadataRouter component.
 
 :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document] | list[ByteStream])
@@ -743,7 +755,7 @@ If a document or byte stream does not match any of the rules, it's routed to a c
 - – A dictionary where the keys are the names of the output connections (including `"unmatched"`)
   and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -755,7 +767,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> MetadataRouter
@@ -771,7 +783,9 @@ Deserialize this component from a dictionary.
 
 - <code>MetadataRouter</code> – The deserialized component instance.
 
-## `TextLanguageRouter`
+## `text_language_router`
+
+### `TextLanguageRouter`
 
 Routes text strings to different output connections based on their language.
 
@@ -803,7 +817,7 @@ result = p.run({"text_language_router": {"text": "ένα ελληνικό κεί
 assert result["text_language_router"]["unmatched"] == "ένα ελληνικό κείμενο"
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(languages: list[str] | None = None)
@@ -817,7 +831,7 @@ Initialize the TextLanguageRouter component.
   See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
   If not specified, defaults to ["en"].
 
-### `run`
+#### `run`
 
 ```python
 run(text: str) -> dict[str, str]
@@ -840,7 +854,9 @@ If the document's text doesn't match any of the specified languages, the metadat
 
 - <code>TypeError</code> – If the input is not a string.
 
-## `TransformersTextRouter`
+## `transformers_text_router`
+
+### `TransformersTextRouter`
 
 Routes the text strings to different connections based on a category label.
 
@@ -889,7 +905,7 @@ print(p.run({"text_router": {"text": "What is the capital of Germany?"}}))
 print(p.run({"text_router": {"text": "Was ist die Hauptstadt von Deutschland?"}}))
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -919,7 +935,7 @@ Initializes the TransformersTextRouter component.
 - **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments for initializing the Hugging Face
   text classification pipeline.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -927,7 +943,7 @@ warm_up()
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -939,7 +955,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> TransformersTextRouter
@@ -955,7 +971,7 @@ Deserializes the component from a dictionary.
 
 - <code>TransformersTextRouter</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str) -> dict[str, str]
@@ -975,7 +991,9 @@ Routes the text strings to different connections based on a category label.
 
 - <code>TypeError</code> – If the input is not a str.
 
-## `TransformersZeroShotTextRouter`
+## `zero_shot_text_router`
+
+### `TransformersZeroShotTextRouter`
 
 Routes the text strings to different connections based on a category label.
 
@@ -1045,7 +1063,7 @@ p.run({
 })
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1079,7 +1097,7 @@ Initializes the TransformersZeroShotTextRouter component.
 - **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments for initializing the Hugging Face
   zero shot text classification.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1087,7 +1105,7 @@ warm_up()
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1099,7 +1117,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> TransformersZeroShotTextRouter
@@ -1115,7 +1133,7 @@ Deserializes the component from a dictionary.
 
 - <code>TransformersZeroShotTextRouter</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(text: str) -> dict[str, str]

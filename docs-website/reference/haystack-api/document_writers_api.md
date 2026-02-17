@@ -6,7 +6,9 @@ slug: "/document-writers-api"
 ---
 
 
-## `DocumentWriter`
+## `document_writer`
+
+### `DocumentWriter`
 
 Writes documents to a DocumentStore.
 
@@ -24,7 +26,7 @@ writer = DocumentWriter(document_store=doc_store)
 writer.run(docs)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -44,7 +46,7 @@ Create a DocumentWriter component.
 - `DuplicatePolicy.OVERWRITE`: Overwrites documents with the same ID.
 - `DuplicatePolicy.FAIL`: Raises an error if a Document with the same ID is already in the DocumentStore.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -56,7 +58,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> DocumentWriter
@@ -76,7 +78,7 @@ Deserializes the component from a dictionary.
 
 - <code>DeserializationError</code> – If the document store is not properly specified in the serialization data or its type cannot be imported.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -99,7 +101,7 @@ Run the DocumentWriter on the given input data.
 
 - <code>ValueError</code> – If the specified document store is not found.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(

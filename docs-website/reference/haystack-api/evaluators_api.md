@@ -6,7 +6,9 @@ slug: "/evaluators-api"
 ---
 
 
-## `AnswerExactMatchEvaluator`
+## `answer_exact_match`
+
+### `AnswerExactMatchEvaluator`
 
 An answer exact match evaluator class.
 
@@ -32,7 +34,7 @@ print(result["score"])
 # 0.5
 ```
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -57,7 +59,9 @@ The `ground_truth_answers` and `retrieved_answers` must have the same length.
 - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
   answer matched one of the ground truth answers.
 
-## `ContextRelevanceEvaluator`
+## `context_relevance`
+
+### `ContextRelevanceEvaluator`
 
 Bases: <code>LLMEvaluator</code>
 
@@ -117,7 +121,7 @@ print(result["results"])
 #  }]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -159,7 +163,7 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
   `generation_kwargs`.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -167,7 +171,7 @@ warm_up()
 
 Warm up the component by warming up the underlying chat generator.
 
-### `validate_init_parameters`
+#### `validate_init_parameters`
 
 ```python
 validate_init_parameters(
@@ -192,7 +196,7 @@ Validate the init parameters.
   If the examples are not a list of dictionaries.
   If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
 
-### `run`
+#### `run`
 
 ```python
 run(**inputs) -> dict[str, Any]
@@ -211,7 +215,7 @@ Run the LLM evaluator.
   - `score`: Mean context relevance score over all the provided input questions.
   - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -223,7 +227,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ContextRelevanceEvaluator
@@ -239,7 +243,7 @@ Deserialize this component from a dictionary.
 
 - <code>ContextRelevanceEvaluator</code> – The deserialized component instance.
 
-### `prepare_template`
+#### `prepare_template`
 
 ```python
 prepare_template() -> str
@@ -266,7 +270,7 @@ Outputs:
 
 - <code>str</code> – The prompt template.
 
-### `validate_input_parameters`
+#### `validate_input_parameters`
 
 ```python
 validate_input_parameters(
@@ -286,7 +290,7 @@ Validate the input parameters.
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
 
-### `is_valid_json_and_has_expected_keys`
+#### `is_valid_json_and_has_expected_keys`
 
 ```python
 is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
@@ -309,7 +313,9 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `DocumentMAPEvaluator`
+## `document_map`
+
+### `DocumentMAPEvaluator`
 
 A Mean Average Precision (MAP) evaluator for documents.
 
@@ -344,7 +350,7 @@ print(result["score"])
 # 0.9166666666666666
 ```
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -369,7 +375,9 @@ All lists must have the same length.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents
   are ranked.
 
-## `DocumentMRREvaluator`
+## `document_mrr`
+
+### `DocumentMRREvaluator`
 
 Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
@@ -402,7 +410,7 @@ print(result["score"])
 # 1.0
 ```
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -427,7 +435,9 @@ Run the DocumentMRREvaluator on the given inputs.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high the first retrieved
   document is ranked.
 
-## `DocumentNDCGEvaluator`
+## `document_ndcg`
+
+### `DocumentNDCGEvaluator`
 
 Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
@@ -452,7 +462,7 @@ print(result["score"])
 # 0.8869
 ```
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -477,7 +487,7 @@ The list items within `ground_truth_documents` and `retrieved_documents` can dif
 - `score` - The average of calculated scores.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the NDCG for each question.
 
-### `validate_inputs`
+#### `validate_inputs`
 
 ```python
 validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]])
@@ -496,7 +506,7 @@ Validate the input parameters.
   If the length of ground_truth_documents and retrieved_documents differs.
   If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
 
-### `calculate_dcg`
+#### `calculate_dcg`
 
 ```python
 calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float
@@ -514,7 +524,7 @@ Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 - <code>float</code> – The discounted cumulative gain (DCG) of the retrieved
   documents based on the ground truth documents.
 
-### `calculate_idcg`
+#### `calculate_idcg`
 
 ```python
 calculate_idcg(gt_docs: list[Document]) -> float
@@ -530,13 +540,15 @@ Calculate the ideal discounted cumulative gain (IDCG) of the ground truth docume
 
 - <code>float</code> – The ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-## `RecallMode`
+## `document_recall`
+
+### `RecallMode`
 
 Bases: <code>Enum</code>
 
 Enum for the mode to use for calculating the recall score.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> RecallMode
@@ -544,7 +556,7 @@ from_str(string: str) -> RecallMode
 
 Convert a string to a RecallMode enum.
 
-## `DocumentRecallEvaluator`
+### `DocumentRecallEvaluator`
 
 Evaluator that calculates the Recall score for a list of documents.
 
@@ -574,7 +586,7 @@ print(result["score"])
 # 1.0
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(mode: str | RecallMode = RecallMode.SINGLE_HIT)
@@ -586,7 +598,7 @@ Create a DocumentRecallEvaluator component.
 
 - **mode** (<code>str | RecallMode</code>) – Mode to use for calculating the recall score.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -608,7 +620,7 @@ Run the DocumentRecallEvaluator on the given inputs.
   - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents the proportion of matching
     documents retrieved. If the mode is `single_hit`, the individual scores are 0 or 1.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -620,7 +632,9 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-## `FaithfulnessEvaluator`
+## `faithfulness`
+
+### `FaithfulnessEvaluator`
 
 Bases: <code>LLMEvaluator</code>
 
@@ -658,7 +672,7 @@ print(result["results"])
 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -702,7 +716,7 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
   `generation_kwargs`.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -710,7 +724,7 @@ warm_up()
 
 Warm up the component by warming up the underlying chat generator.
 
-### `validate_init_parameters`
+#### `validate_init_parameters`
 
 ```python
 validate_init_parameters(
@@ -735,7 +749,7 @@ Validate the init parameters.
   If the examples are not a list of dictionaries.
   If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
 
-### `run`
+#### `run`
 
 ```python
 run(**inputs) -> dict[str, Any]
@@ -756,7 +770,7 @@ Run the LLM evaluator.
   - `individual_scores`: A list of faithfulness scores for each input answer.
   - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -768,7 +782,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> FaithfulnessEvaluator
@@ -784,7 +798,7 @@ Deserialize this component from a dictionary.
 
 - <code>FaithfulnessEvaluator</code> – The deserialized component instance.
 
-### `prepare_template`
+#### `prepare_template`
 
 ```python
 prepare_template() -> str
@@ -811,7 +825,7 @@ Outputs:
 
 - <code>str</code> – The prompt template.
 
-### `validate_input_parameters`
+#### `validate_input_parameters`
 
 ```python
 validate_input_parameters(
@@ -831,7 +845,7 @@ Validate the input parameters.
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
 
-### `is_valid_json_and_has_expected_keys`
+#### `is_valid_json_and_has_expected_keys`
 
 ```python
 is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
@@ -854,7 +868,9 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `LLMEvaluator`
+## `llm_evaluator`
+
+### `LLMEvaluator`
 
 Uses an LLM to evaluate inputs based on a prompt containing instructions and examples.
 
@@ -885,7 +901,7 @@ print(results)
 # {'results': [{'score': 0}, {'score': 0}]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -922,7 +938,7 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
   when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
   `generation_kwargs`.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -930,7 +946,7 @@ warm_up()
 
 Warm up the component by warming up the underlying chat generator.
 
-### `validate_init_parameters`
+#### `validate_init_parameters`
 
 ```python
 validate_init_parameters(
@@ -955,7 +971,7 @@ Validate the init parameters.
   If the examples are not a list of dictionaries.
   If any example does not have keys "inputs" and "outputs" with values that are dictionaries with string keys.
 
-### `run`
+#### `run`
 
 ```python
 run(**inputs) -> dict[str, Any]
@@ -981,7 +997,7 @@ Run the LLM evaluator.
 - <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
   different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
 
-### `prepare_template`
+#### `prepare_template`
 
 ```python
 prepare_template() -> str
@@ -1008,7 +1024,7 @@ Outputs:
 
 - <code>str</code> – The prompt template.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1020,7 +1036,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> LLMEvaluator
@@ -1036,7 +1052,7 @@ Deserialize this component from a dictionary.
 
 - <code>LLMEvaluator</code> – The deserialized component instance.
 
-### `validate_input_parameters`
+#### `validate_input_parameters`
 
 ```python
 validate_input_parameters(
@@ -1056,7 +1072,7 @@ Validate the input parameters.
 - <code>ValueError</code> – If not all expected inputs are present in the received inputs
   If the received inputs are not lists or have different lengths
 
-### `is_valid_json_and_has_expected_keys`
+#### `is_valid_json_and_has_expected_keys`
 
 ```python
 is_valid_json_and_has_expected_keys(expected: list[str], received: str) -> bool
@@ -1079,7 +1095,9 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `SASEvaluator`
+## `sas_evaluator`
+
+### `SASEvaluator`
 
 SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 
@@ -1115,7 +1133,7 @@ print(result["individual_scores"])
 # [0.9999765157699585, 0.999968409538269, 0.9999572038650513]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1139,7 +1157,7 @@ Creates a new instance of SASEvaluator.
 - **token** (<code>Secret</code>) – The Hugging Face token for HTTP bearer authorization.
   You can find your HF token in your [account settings](https://huggingface.co/settings/tokens)
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1151,7 +1169,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SASEvaluator
@@ -1167,7 +1185,7 @@ Deserialize this component from a dictionary.
 
 - <code>SASEvaluator</code> – The deserialized component instance.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -1175,7 +1193,7 @@ warm_up() -> None
 
 Initializes the component.
 
-### `run`
+#### `run`
 
 ```python
 run(

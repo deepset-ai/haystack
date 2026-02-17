@@ -6,7 +6,9 @@ slug: "/generators-api"
 ---
 
 
-## `AzureOpenAIGenerator`
+## `azure`
+
+### `AzureOpenAIGenerator`
 
 Bases: <code>OpenAIGenerator</code>
 
@@ -44,7 +46,7 @@ print(response)
 >> 'completion_tokens': 49, 'total_tokens': 65}}]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -116,7 +118,7 @@ Initialize the Azure OpenAI Generator.
 - **azure_ad_token_provider** (<code>AzureADTokenProvider | None</code>) – A function that returns an Azure Active Directory token, will be invoked on
   every request.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -128,7 +130,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -156,7 +158,7 @@ Invoke the text generation inference based on the provided messages and generati
 - <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A list of strings containing the generated responses and a list of dictionaries containing the metadata
   for each response.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AzureOpenAIGenerator
@@ -172,7 +174,9 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIGenerator</code> – The deserialized component instance.
 
-## `AzureOpenAIChatGenerator`
+## `azure`
+
+### `AzureOpenAIChatGenerator`
 
 Bases: <code>OpenAIChatGenerator</code>
 
@@ -218,7 +222,7 @@ print(response)
 }
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -303,7 +307,7 @@ Initialize the Azure OpenAI Chat Generator component.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -314,7 +318,7 @@ Warm up the Azure OpenAI chat generator.
 This will warm up the tools registered in the chat generator.
 This method is idempotent and will only warm up the tools once.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -326,7 +330,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AzureOpenAIChatGenerator
@@ -342,7 +346,7 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIChatGenerator</code> – The deserialized component instance.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -375,7 +379,7 @@ Invokes chat completion based on the provided messages and generation parameters
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -412,7 +416,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `AzureOpenAIResponsesChatGenerator`
+## `azure_responses`
+
+### `AzureOpenAIResponsesChatGenerator`
 
 Bases: <code>OpenAIResponsesChatGenerator</code>
 
@@ -446,7 +452,7 @@ response = client.run(messages)
 print(response)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -523,7 +529,7 @@ Initialize the AzureOpenAIResponsesChatGenerator component.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -535,7 +541,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -546,7 +552,7 @@ Warm up the OpenAI responses chat generator.
 This will warm up the tools registered in the chat generator.
 This method is idempotent and will only warm up the tools once.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AzureOpenAIResponsesChatGenerator
@@ -562,7 +568,7 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIResponsesChatGenerator</code> – The deserialized component instance.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -600,7 +606,7 @@ Invokes response generation based on the provided messages and generation parame
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -640,7 +646,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `FallbackChatGenerator`
+## `fallback`
+
+### `FallbackChatGenerator`
 
 A chat generator wrapper that tries multiple chat generators sequentially.
 
@@ -671,7 +679,7 @@ Failover is automatically triggered when a generator raises any exception, inclu
 - Server errors (500+)
 - Any other exception
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(chat_generators: list[ChatGenerator]) -> None
@@ -683,7 +691,7 @@ Creates an instance of FallbackChatGenerator.
 
 - **chat_generators** (<code>list\[ChatGenerator\]</code>) – A non-empty list of chat generator components to try in order.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -691,7 +699,7 @@ to_dict() -> dict[str, Any]
 
 Serialize the component, including nested chat generators when they support serialization.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> FallbackChatGenerator
@@ -699,7 +707,7 @@ from_dict(data: dict[str, Any]) -> FallbackChatGenerator
 
 Rebuild the component from a serialized representation, restoring nested chat generators.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -709,7 +717,7 @@ Warm up all underlying chat generators.
 
 This method calls warm_up() on each underlying generator that supports it.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -740,7 +748,7 @@ Execute chat generators sequentially until one succeeds.
 
 - <code>RuntimeError</code> – If all chat generators fail.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -771,7 +779,9 @@ Asynchronously execute chat generators sequentially until one succeeds.
 
 - <code>RuntimeError</code> – If all chat generators fail.
 
-## `HuggingFaceAPIChatGenerator`
+## `hugging_face_api`
+
+### `HuggingFaceAPIChatGenerator`
 
 Completes chats using Hugging Face APIs.
 
@@ -868,7 +878,7 @@ result = generator.run(messages)
 print(result)
 ````
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -911,7 +921,7 @@ Initialize the HuggingFaceAPIChatGenerator instance.
   Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
   unexpected behavior.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -922,7 +932,7 @@ Warm up the Hugging Face API chat generator.
 This will warm up the tools registered in the chat generator.
 This method is idempotent and will only warm up the tools once.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -934,7 +944,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the serialized component.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceAPIChatGenerator
@@ -942,7 +952,7 @@ from_dict(data: dict[str, Any]) -> HuggingFaceAPIChatGenerator
 
 Deserialize this component from a dictionary.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -970,7 +980,7 @@ Invoke the text generation inference based on the provided messages and generati
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage objects.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -1001,7 +1011,9 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage objects.
 
-## `default_tool_parser`
+## `hugging_face_local`
+
+### `default_tool_parser`
 
 ```python
 default_tool_parser(text: str) -> list[ToolCall] | None
@@ -1019,7 +1031,7 @@ Uses DEFAULT_TOOL_PATTERN to extract tool calls.
 
 - <code>list\[ToolCall\] | None</code> – A list containing a single ToolCall if a valid tool call is found, None otherwise.
 
-## `HuggingFaceLocalChatGenerator`
+### `HuggingFaceLocalChatGenerator`
 
 Generates chat responses using models from Hugging Face that run locally.
 
@@ -1055,7 +1067,7 @@ print(generator.run(messages))
 }
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1124,7 +1136,7 @@ Initializes the HuggingFaceLocalChatGenerator component.
 - **enable_thinking** (<code>bool</code>) – Whether to enable thinking mode in the chat template for thinking-capable models.
   When enabled, the model generates intermediate reasoning before the final response. Defaults to False.
 
-### `shutdown`
+#### `shutdown`
 
 ```python
 shutdown() -> None
@@ -1132,7 +1144,7 @@ shutdown() -> None
 
 Explicitly shutdown the executor if we own it.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -1140,7 +1152,7 @@ warm_up() -> None
 
 Initializes the component and warms up tools if provided.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1152,7 +1164,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceLocalChatGenerator
@@ -1168,7 +1180,7 @@ Deserializes the component from a dictionary.
 
 - <code>HuggingFaceLocalChatGenerator</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1194,7 +1206,7 @@ Invoke text generation inference based on the provided messages and generation p
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-### `create_message`
+#### `create_message`
 
 ```python
 create_message(
@@ -1222,7 +1234,7 @@ Create a ChatMessage instance from the provided text, populated with metadata.
 
 - <code>ChatMessage</code> – A ChatMessage instance.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -1251,7 +1263,9 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `OpenAIChatGenerator`
+## `openai`
+
+### `OpenAIChatGenerator`
 
 Completes chats using OpenAI's large language models (LLMs).
 
@@ -1295,7 +1309,7 @@ Output:
 }
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1371,7 +1385,7 @@ in the OpenAI client.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1382,7 +1396,7 @@ Warm up the OpenAI chat generator.
 This will warm up the tools registered in the chat generator.
 This method is idempotent and will only warm up the tools once.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1394,7 +1408,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAIChatGenerator
@@ -1410,7 +1424,7 @@ Deserialize this component from a dictionary.
 
 - <code>OpenAIChatGenerator</code> – The deserialized component instance.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1443,7 +1457,7 @@ Invokes chat completion based on the provided messages and generation parameters
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -1480,7 +1494,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `OpenAIResponsesChatGenerator`
+## `openai_responses`
+
+### `OpenAIResponsesChatGenerator`
 
 Completes chats using OpenAI's Responses API.
 
@@ -1509,7 +1525,7 @@ response = client.run(messages)
 print(response)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1592,7 +1608,7 @@ in the OpenAI client.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1603,7 +1619,7 @@ Warm up the OpenAI responses chat generator.
 This will warm up the tools registered in the chat generator.
 This method is idempotent and will only warm up the tools once.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1615,7 +1631,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAIResponsesChatGenerator
@@ -1631,7 +1647,7 @@ Deserialize this component from a dictionary.
 
 - <code>OpenAIResponsesChatGenerator</code> – The deserialized component instance.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1669,7 +1685,7 @@ Invokes response generation based on the provided messages and generation parame
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -1709,7 +1725,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `HuggingFaceAPIGenerator`
+## `hugging_face_api`
+
+### `HuggingFaceAPIGenerator`
 
 Generates text using Hugging Face APIs.
 
@@ -1769,7 +1787,7 @@ result = generator.run(prompt="What's Natural Language Processing?")
 print(result)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1808,7 +1826,7 @@ Initialize the HuggingFaceAPIGenerator instance.
 - **stop_words** (<code>list\[str\] | None</code>) – An optional list of strings representing the stop words.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1820,7 +1838,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the serialized component.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceAPIGenerator
@@ -1828,7 +1846,7 @@ from_dict(data: dict[str, Any]) -> HuggingFaceAPIGenerator
 
 Deserialize this component from a dictionary.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1851,7 +1869,9 @@ Invoke the text generation inference for the given prompt and generation paramet
 - – A dictionary with the generated replies and metadata. Both are lists of length n.
 - replies: A list of strings representing the generated replies.
 
-## `HuggingFaceLocalGenerator`
+## `hugging_face_local`
+
+### `HuggingFaceLocalGenerator`
 
 Generates text using models from Hugging Face that run locally.
 
@@ -1873,7 +1893,7 @@ print(generator.run("Who is the best American actor?"))
 # {'replies': ['John Cusack']}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1922,7 +1942,7 @@ Creates an instance of a HuggingFaceLocalGenerator.
   In these cases, make sure your prompt has no stop words.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -1930,7 +1950,7 @@ warm_up()
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1942,7 +1962,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceLocalGenerator
@@ -1958,7 +1978,7 @@ Deserializes the component from a dictionary.
 
 - <code>HuggingFaceLocalGenerator</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1981,7 +2001,9 @@ Run the text generation model on the given prompt.
 - – A dictionary containing the generated replies.
 - replies: A list of strings representing the generated replies.
 
-## `OpenAIGenerator`
+## `openai`
+
+### `OpenAIGenerator`
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -2011,7 +2033,7 @@ print(response)
 >> 'completion_tokens': 49, 'total_tokens': 65}}]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -2070,7 +2092,7 @@ in the OpenAI client.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -2082,7 +2104,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OpenAIGenerator
@@ -2098,7 +2120,7 @@ Deserialize this component from a dictionary.
 
 - <code>OpenAIGenerator</code> – The deserialized component instance.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -2126,7 +2148,9 @@ Invoke the text generation inference based on the provided messages and generati
 - <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A list of strings containing the generated responses and a list of dictionaries containing the metadata
   for each response.
 
-## `DALLEImageGenerator`
+## `openai_dalle`
+
+### `DALLEImageGenerator`
 
 Generates images using OpenAI's DALL-E model.
 
@@ -2142,7 +2166,7 @@ response = image_generator.run("Show me a picture of a black cat.")
 print(response)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -2181,7 +2205,7 @@ Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -2189,7 +2213,7 @@ warm_up() -> None
 
 Warm up the OpenAI client.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -2219,7 +2243,7 @@ Invokes the image generation inference based on the provided prompt and generati
   The revised prompt is the prompt that was used to generate the image, if there was any revision
   to the prompt made by OpenAI.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -2231,7 +2255,7 @@ Serialize this component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> DALLEImageGenerator
@@ -2247,7 +2271,9 @@ Deserialize this component from a dictionary.
 
 - <code>DALLEImageGenerator</code> – The deserialized component instance.
 
-## `print_streaming_chunk`
+## `utils`
+
+### `print_streaming_chunk`
 
 ```python
 print_streaming_chunk(chunk: StreamingChunk) -> None

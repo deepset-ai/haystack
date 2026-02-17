@@ -6,7 +6,9 @@ slug: "/caching-api"
 ---
 
 
-## `CacheChecker`
+## `cache_checker`
+
+### `CacheChecker`
 
 Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
@@ -33,7 +35,7 @@ results = checker.run(items=["https://example.com/1", "https://example.com/5"])
 assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(document_store: DocumentStore, cache_field: str)
@@ -47,7 +49,7 @@ Creates a CacheChecker component.
 - **cache_field** (<code>str</code>) – Name of the document's metadata field
   to check for cache hits.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -59,7 +61,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> CacheChecker
@@ -75,7 +77,7 @@ Deserializes the component from a dictionary.
 
 - <code>CacheChecker</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(items: list[Any])

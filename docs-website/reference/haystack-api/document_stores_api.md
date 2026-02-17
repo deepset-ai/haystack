@@ -6,7 +6,9 @@ slug: "/document-stores-api"
 ---
 
 
-## `BM25DocumentStats`
+## `document_store`
+
+### `BM25DocumentStats`
 
 A dataclass for managing document statistics for BM25 retrieval.
 
@@ -15,11 +17,11 @@ A dataclass for managing document statistics for BM25 retrieval.
 - **freq_token** (<code>dict\[str, int\]</code>) – A Counter of token frequencies in the document.
 - **doc_len** (<code>int</code>) – Number of tokens in the document.
 
-## `InMemoryDocumentStore`
+### `InMemoryDocumentStore`
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -53,7 +55,7 @@ Initializes the DocumentStore.
   executor will be initialized and used.
 - **return_embedding** (<code>bool</code>) – Whether to return the embedding of the retrieved Documents. Default is True.
 
-### `shutdown`
+#### `shutdown`
 
 ```python
 shutdown()
@@ -61,7 +63,7 @@ shutdown()
 
 Explicitly shutdown the executor if we own it.
 
-### `storage`
+#### `storage`
 
 ```python
 storage: dict[str, Document]
@@ -69,7 +71,7 @@ storage: dict[str, Document]
 
 Utility property that returns the storage used by this instance of InMemoryDocumentStore.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -81,7 +83,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> InMemoryDocumentStore
@@ -97,7 +99,7 @@ Deserializes the component from a dictionary.
 
 - <code>InMemoryDocumentStore</code> – The deserialized component.
 
-### `save_to_disk`
+#### `save_to_disk`
 
 ```python
 save_to_disk(path: str) -> None
@@ -109,7 +111,7 @@ Write the database and its' data to disk as a JSON file.
 
 - **path** (<code>str</code>) – The path to the JSON file.
 
-### `load_from_disk`
+#### `load_from_disk`
 
 ```python
 load_from_disk(path: str) -> InMemoryDocumentStore
@@ -125,7 +127,7 @@ Load the database and its' data from disk as a JSON file.
 
 - <code>InMemoryDocumentStore</code> – The loaded InMemoryDocumentStore.
 
-### `count_documents`
+#### `count_documents`
 
 ```python
 count_documents() -> int
@@ -133,7 +135,7 @@ count_documents() -> int
 
 Returns the number of how many documents are present in the DocumentStore.
 
-### `filter_documents`
+#### `filter_documents`
 
 ```python
 filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
@@ -152,7 +154,7 @@ documentation.
 
 - <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
-### `write_documents`
+#### `write_documents`
 
 ```python
 write_documents(
@@ -164,7 +166,7 @@ Refer to the DocumentStore.write_documents() protocol documentation.
 
 If `policy` is set to `DuplicatePolicy.NONE` defaults to `DuplicatePolicy.FAIL`.
 
-### `delete_documents`
+#### `delete_documents`
 
 ```python
 delete_documents(document_ids: list[str]) -> None
@@ -176,7 +178,7 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - **document_ids** (<code>list\[str\]</code>) – The object_ids to delete.
 
-### `delete_all_documents`
+#### `delete_all_documents`
 
 ```python
 delete_all_documents() -> None
@@ -184,7 +186,7 @@ delete_all_documents() -> None
 
 Deletes all documents in the document store.
 
-### `update_by_filter`
+#### `update_by_filter`
 
 ```python
 update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
@@ -206,7 +208,7 @@ Updates the metadata of all documents that match the provided filters.
 
 - <code>ValueError</code> – if filters have invalid syntax.
 
-### `delete_by_filter`
+#### `delete_by_filter`
 
 ```python
 delete_by_filter(filters: dict[str, Any]) -> int
@@ -227,7 +229,7 @@ Deletes all documents that match the provided filters.
 
 - <code>ValueError</code> – if filters have invalid syntax.
 
-### `bm25_retrieval`
+#### `bm25_retrieval`
 
 ```python
 bm25_retrieval(
@@ -251,7 +253,7 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 
 - <code>list\[Document\]</code> – A list of the top_k documents most relevant to the query.
 
-### `embedding_retrieval`
+#### `embedding_retrieval`
 
 ```python
 embedding_retrieval(
@@ -283,7 +285,7 @@ Retrieves documents that are most similar to the query embedding using a vector 
 
 - <code>ValueError</code> – if filters have invalid syntax.
 
-### `count_documents_async`
+#### `count_documents_async`
 
 ```python
 count_documents_async() -> int
@@ -291,7 +293,7 @@ count_documents_async() -> int
 
 Returns the number of how many documents are present in the DocumentStore.
 
-### `filter_documents_async`
+#### `filter_documents_async`
 
 ```python
 filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
@@ -310,7 +312,7 @@ documentation.
 
 - <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
-### `write_documents_async`
+#### `write_documents_async`
 
 ```python
 write_documents_async(
@@ -322,7 +324,7 @@ Refer to the DocumentStore.write_documents() protocol documentation.
 
 If `policy` is set to `DuplicatePolicy.NONE` defaults to `DuplicatePolicy.FAIL`.
 
-### `delete_documents_async`
+#### `delete_documents_async`
 
 ```python
 delete_documents_async(document_ids: list[str]) -> None
@@ -334,7 +336,7 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - **document_ids** (<code>list\[str\]</code>) – The object_ids to delete.
 
-### `bm25_retrieval_async`
+#### `bm25_retrieval_async`
 
 ```python
 bm25_retrieval_async(
@@ -358,7 +360,7 @@ Retrieves documents that are most relevant to the query using BM25 algorithm.
 
 - <code>list\[Document\]</code> – A list of the top_k documents most relevant to the query.
 
-### `embedding_retrieval_async`
+#### `embedding_retrieval_async`
 
 ```python
 embedding_retrieval_async(

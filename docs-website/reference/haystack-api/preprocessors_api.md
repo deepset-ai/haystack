@@ -6,7 +6,9 @@ slug: "/preprocessors-api"
 ---
 
 
-## `CSVDocumentCleaner`
+## `csv_document_cleaner`
+
+### `CSVDocumentCleaner`
 
 A component for cleaning CSV documents by removing empty rows and columns.
 
@@ -15,7 +17,7 @@ for the optional ignoring of a specified number of rows and columns before perfo
 the cleaning operation. Additionally, it provides options to keep document IDs and
 control whether empty rows and columns should be removed.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -41,7 +43,7 @@ Initializes the CSVDocumentCleaner component.
 Rows and columns ignored using these parameters are preserved in the final output, meaning
 they are not considered when removing empty rows and columns.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -67,7 +69,9 @@ Processing steps:
 1. Returns the cleaned CSV content as a new `Document` object, with an option to retain the original
    document ID.
 
-## `CSVDocumentSplitter`
+## `csv_document_splitter`
+
+### `CSVDocumentSplitter`
 
 A component for splitting CSV documents into sub-tables based on split arguments.
 
@@ -77,7 +81,7 @@ The splitter supports two modes of operation:
   and uses them as delimiters to segment the document into smaller tables.
 - split each row into a separate sub-table, represented as a Document.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -104,7 +108,7 @@ Initializes the CSVDocumentSplitter component.
   consecutive empty rows or columns that exceed the `row_split_threshold` or `column_split_threshold`.
   If `row-wise`, the component will split each row into a separate sub-table.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -140,7 +144,9 @@ Processes and splits a list of CSV documents into multiple sub-tables.
 
 - The `meta` field from the original document is preserved in the split documents.
 
-## `DocumentCleaner`
+## `document_cleaner`
+
+### `DocumentCleaner`
 
 Cleans the text in the documents.
 
@@ -162,7 +168,7 @@ result = cleaner.run(documents=[doc])
 assert result["documents"][0].content == "This is a document to clean "
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -204,7 +210,7 @@ Initialize DocumentCleaner.
   For example, `{r'\n\n+': '\n'}` replaces multiple consecutive newlines with a single newline.
   This is applied after `remove_regex` and allows custom replacements instead of just removal.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -225,7 +231,9 @@ Cleans up the documents.
 
 - <code>TypeError</code> – if documents is not a list of Documents.
 
-## `DocumentPreprocessor`
+## `document_preprocessor`
+
+### `DocumentPreprocessor`
 
 A SuperComponent that first splits and then cleans documents.
 
@@ -244,7 +252,7 @@ result = preprocessor.run(documents=[doc])
 print(result["documents"])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -301,7 +309,7 @@ Initialize a DocumentPreProcessor that first splits and then cleans documents.
 - **unicode_normalization** (<code>Literal['NFC', 'NFKC', 'NFD', 'NFKD'] | None</code>) – Unicode normalization form to apply to the text, for example `"NFC"`.
 - **ascii_only** (<code>bool</code>) – If `True`, converts text to ASCII only.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -313,7 +321,7 @@ Serialize SuperComponent to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> DocumentPreprocessor
@@ -329,7 +337,9 @@ Deserializes the SuperComponent from a dictionary.
 
 - <code>DocumentPreprocessor</code> – Deserialized SuperComponent.
 
-## `DocumentSplitter`
+## `document_splitter`
+
+### `DocumentSplitter`
 
 Splits long documents into smaller chunks.
 
@@ -361,7 +371,7 @@ splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
 result = splitter.run(documents=[doc])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -409,7 +419,7 @@ Initialize DocumentSplitter.
   Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
   from non-textual documents.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -417,7 +427,7 @@ warm_up()
 
 Warm up the DocumentSplitter by loading the sentence tokenizer.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -445,7 +455,7 @@ and an overlap of `split_overlap`.
 - <code>TypeError</code> – if the input is not a list of Documents.
 - <code>ValueError</code> – if the content of a document is None.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -453,7 +463,7 @@ to_dict() -> dict[str, Any]
 
 Serializes the component to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> DocumentSplitter
@@ -461,7 +471,9 @@ from_dict(data: dict[str, Any]) -> DocumentSplitter
 
 Deserializes the component from a dictionary.
 
-## `EmbeddingBasedDocumentSplitter`
+## `embedding_based_document_splitter`
+
+### `EmbeddingBasedDocumentSplitter`
 
 Splits documents based on embedding similarity using cosine distances between sequential sentence groups.
 
@@ -506,7 +518,7 @@ for i, split_doc in enumerate(result['documents']):
     print(f"Chunk {i}: {split_doc.content[:50]}...")
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -539,7 +551,7 @@ Initialize EmbeddingBasedDocumentSplitter.
   of curated abbreviations. Currently supported languages are: en, de.
   If False, the default abbreviations are used.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -547,7 +559,7 @@ warm_up() -> None
 
 Warm up the component by initializing the sentence splitter.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -574,7 +586,7 @@ Split documents based on embedding similarity.
 - <code>TypeError</code> – If the input is not a list of Documents.
 - <code>ValueError</code> – If the document content is None or empty.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -586,7 +598,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the component.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> EmbeddingBasedDocumentSplitter
@@ -602,7 +614,9 @@ Deserializes the component from a dictionary.
 
 - <code>EmbeddingBasedDocumentSplitter</code> – The deserialized component.
 
-## `HierarchicalDocumentSplitter`
+## `hierarchical_document_splitter`
+
+### `HierarchicalDocumentSplitter`
 
 Splits a documents into different block sizes building a hierarchical tree structure of blocks of different sizes.
 
@@ -627,7 +641,7 @@ splitter.run([doc])
 >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -645,7 +659,7 @@ Initialize HierarchicalDocumentSplitter.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
 - **split_by** (<code>Literal['word', 'sentence', 'page', 'passage']</code>) – The unit for splitting your documents.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -661,7 +675,7 @@ Builds a hierarchical document structure for each document in a list of document
 
 - – List of HierarchicalDocument
 
-### `build_hierarchy_from_doc`
+#### `build_hierarchy_from_doc`
 
 ```python
 build_hierarchy_from_doc(document: Document) -> list[Document]
@@ -680,7 +694,7 @@ as HierarchicalDocument objects.
 
 - <code>list\[Document\]</code> – List of HierarchicalDocument
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -692,7 +706,7 @@ Returns a dictionary representation of the component.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the component.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HierarchicalDocumentSplitter
@@ -708,7 +722,9 @@ Deserialize this component from a dictionary.
 
 - <code>HierarchicalDocumentSplitter</code> – The deserialized component.
 
-## `MarkdownHeaderSplitter`
+## `markdown_header_splitter`
+
+### `MarkdownHeaderSplitter`
 
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
@@ -719,7 +735,7 @@ This component processes text documents by:
   (using haystack's DocumentSplitter).
 - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -751,7 +767,7 @@ Initialize the MarkdownHeaderSplitter.
   Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
   from non-textual documents.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -759,7 +775,7 @@ warm_up()
 
 Warm up the MarkdownHeaderSplitter.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -780,7 +796,9 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
-## `RecursiveDocumentSplitter`
+## `recursive_splitter`
+
+### `RecursiveDocumentSplitter`
 
 Recursively chunk text into smaller chunks.
 
@@ -819,7 +837,7 @@ print(doc_chunks["documents"])
 >]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -854,7 +872,7 @@ Initializes a RecursiveDocumentSplitter.
 - <code>ValueError</code> – If the overlap is greater than or equal to the chunk size or if the overlap is negative, or
   if any separator is not a string.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -862,7 +880,7 @@ warm_up() -> None
 
 Warm up the sentence tokenizer and tiktoken tokenizer if needed.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, list[Document]]
@@ -879,7 +897,9 @@ Split a list of documents into documents with smaller chunks of text.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
   to the input documents.
 
-## `TextCleaner`
+## `text_cleaner`
+
+### `TextCleaner`
 
 Cleans text strings.
 
@@ -898,7 +918,7 @@ cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=False, remov
 result = cleaner.run(texts=[text_to_clean])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -918,7 +938,7 @@ Initializes the TextCleaner component.
 - **remove_punctuation** (<code>bool</code>) – If `True`, removes punctuation from the text.
 - **remove_numbers** (<code>bool</code>) – If `True`, removes numerical digits from the text.
 
-### `run`
+#### `run`
 
 ```python
 run(texts: list[str]) -> dict[str, Any]

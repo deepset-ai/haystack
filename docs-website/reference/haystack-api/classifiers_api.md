@@ -6,7 +6,9 @@ slug: "/classifiers-api"
 ---
 
 
-## `DocumentLanguageClassifier`
+## `document_language_classifier`
+
+### `DocumentLanguageClassifier`
 
 Classifies the language of each document and adds it to its metadata.
 
@@ -51,7 +53,7 @@ assert len(written_docs) == 1
 assert written_docs[0] == Document(id="1", content="This is an English document", meta={"language": "en"})
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(languages: list[str] | None = None)
@@ -65,7 +67,7 @@ Initializes the DocumentLanguageClassifier component.
   See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
   If not specified, defaults to ["en"].
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document])
@@ -89,7 +91,9 @@ sets the metadata value to "unmatched".
 
 - <code>TypeError</code> – if the input is not a list of Documents.
 
-## `TransformersZeroShotDocumentClassifier`
+## `zero_shot_document_classifier`
+
+### `TransformersZeroShotDocumentClassifier`
 
 Performs zero-shot classification of documents based on given labels and adds the predicted label to their metadata.
 
@@ -144,7 +148,7 @@ for idx, query in enumerate(queries):
             == expected_predictions[idx])
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -184,7 +188,7 @@ for the full list of zero-shot classification models (NLI) models.
 - **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing keyword arguments used to initialize the
   Hugging Face pipeline for text classification.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -192,7 +196,7 @@ warm_up()
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -204,7 +208,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> TransformersZeroShotDocumentClassifier
@@ -220,7 +224,7 @@ Deserializes the component from a dictionary.
 
 - <code>TransformersZeroShotDocumentClassifier</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document], batch_size: int = 1)

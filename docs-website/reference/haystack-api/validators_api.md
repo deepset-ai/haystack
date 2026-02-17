@@ -6,7 +6,9 @@ slug: "/validators-api"
 ---
 
 
-## `is_valid_json`
+## `json_schema`
+
+### `is_valid_json`
 
 ```python
 is_valid_json(s: str) -> bool
@@ -22,7 +24,7 @@ Check if the provided string is a valid JSON.
 
 - <code>bool</code> – `True` if the string is a valid JSON; otherwise, `False`.
 
-## `JsonSchemaValidator`
+### `JsonSchemaValidator`
 
 Validates JSON content of `ChatMessage` against a specified [JSON Schema](https://json-schema.org/).
 
@@ -81,7 +83,7 @@ _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
 'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -97,7 +99,7 @@ Initialize the JsonSchemaValidator component.
   the messages' content is validated.
 - **error_template** (<code>str | None</code>) – A custom template string for formatting the error message in case of validation failure.
 
-### `run`
+#### `run`
 
 ```python
 run(

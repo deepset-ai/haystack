@@ -6,7 +6,9 @@ slug: "/utils-api"
 ---
 
 
-## `is_callable_async_compatible`
+## `asynchronous`
+
+### `is_callable_async_compatible`
 
 ```python
 is_callable_async_compatible(func: Callable) -> bool
@@ -22,11 +24,13 @@ Returns if the given callable is usable inside a component's `run_async` method.
 
 - <code>bool</code> – True if the callable is compatible, False otherwise.
 
-## `SecretType`
+## `auth`
+
+### `SecretType`
 
 Bases: <code>Enum</code>
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> SecretType
@@ -38,7 +42,7 @@ Convert a string to a SecretType.
 
 - **string** (<code>str</code>) – The string to convert.
 
-## `Secret`
+### `Secret`
 
 Bases: <code>ABC</code>
 
@@ -53,7 +57,7 @@ from haystack.utils import Secret
 generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
 ```
 
-### `from_token`
+#### `from_token`
 
 ```python
 from_token(token: str) -> Secret
@@ -65,7 +69,7 @@ Create a token-based secret. Cannot be serialized.
 
 - **token** (<code>str</code>) – The token to use for authentication.
 
-### `from_env_var`
+#### `from_env_var`
 
 ```python
 from_env_var(env_vars: str | list[str], *, strict: bool = True) -> Secret
@@ -82,7 +86,7 @@ Upon resolution, it returns a string token from the first environment variable t
 - **strict** (<code>bool</code>) – Whether to raise an exception if none of the environment
   variables are set.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -96,7 +100,7 @@ Some secrets may not be serializable.
 
 - <code>dict\[str, Any\]</code> – The serialized policy.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(dict: dict[str, Any]) -> Secret
@@ -112,7 +116,7 @@ Create a secret from a JSON-serializable dictionary.
 
 - <code>Secret</code> – The deserialized secret.
 
-### `resolve_value`
+#### `resolve_value`
 
 ```python
 resolve_value() -> Any | None
@@ -124,7 +128,7 @@ Resolve the secret to an atomic value. The semantics of the value is secret-depe
 
 - <code>Any | None</code> – The value of the secret, if any.
 
-### `type`
+#### `type`
 
 ```python
 type: SecretType
@@ -132,7 +136,7 @@ type: SecretType
 
 The type of the secret.
 
-## `TokenSecret`
+### `TokenSecret`
 
 Bases: <code>Secret</code>
 
@@ -140,7 +144,7 @@ A secret that uses a string token/API key.
 
 Cannot be serialized.
 
-### `from_token`
+#### `from_token`
 
 ```python
 from_token(token: str) -> Secret
@@ -152,7 +156,7 @@ Create a token-based secret. Cannot be serialized.
 
 - **token** (<code>str</code>) – The token to use for authentication.
 
-### `from_env_var`
+#### `from_env_var`
 
 ```python
 from_env_var(env_vars: str | list[str], *, strict: bool = True) -> Secret
@@ -169,7 +173,7 @@ Upon resolution, it returns a string token from the first environment variable t
 - **strict** (<code>bool</code>) – Whether to raise an exception if none of the environment
   variables are set.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -183,7 +187,7 @@ Some secrets may not be serializable.
 
 - <code>dict\[str, Any\]</code> – The serialized policy.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(dict: dict[str, Any]) -> Secret
@@ -199,7 +203,7 @@ Create a secret from a JSON-serializable dictionary.
 
 - <code>Secret</code> – The deserialized secret.
 
-### `resolve_value`
+#### `resolve_value`
 
 ```python
 resolve_value() -> Any | None
@@ -207,7 +211,7 @@ resolve_value() -> Any | None
 
 Return the token.
 
-### `type`
+#### `type`
 
 ```python
 type: SecretType
@@ -215,7 +219,7 @@ type: SecretType
 
 The type of the secret.
 
-## `EnvVarSecret`
+### `EnvVarSecret`
 
 Bases: <code>Secret</code>
 
@@ -223,7 +227,7 @@ A secret that accepts one or more environment variables.
 
 Upon resolution, it returns a string token from the first environment variable that is set. Can be serialized.
 
-### `from_token`
+#### `from_token`
 
 ```python
 from_token(token: str) -> Secret
@@ -235,7 +239,7 @@ Create a token-based secret. Cannot be serialized.
 
 - **token** (<code>str</code>) – The token to use for authentication.
 
-### `from_env_var`
+#### `from_env_var`
 
 ```python
 from_env_var(env_vars: str | list[str], *, strict: bool = True) -> Secret
@@ -252,7 +256,7 @@ Upon resolution, it returns a string token from the first environment variable t
 - **strict** (<code>bool</code>) – Whether to raise an exception if none of the environment
   variables are set.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -266,7 +270,7 @@ Some secrets may not be serializable.
 
 - <code>dict\[str, Any\]</code> – The serialized policy.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(dict: dict[str, Any]) -> Secret
@@ -282,7 +286,7 @@ Create a secret from a JSON-serializable dictionary.
 
 - <code>Secret</code> – The deserialized secret.
 
-### `resolve_value`
+#### `resolve_value`
 
 ```python
 resolve_value() -> Any | None
@@ -290,7 +294,7 @@ resolve_value() -> Any | None
 
 Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
 
-### `type`
+#### `type`
 
 ```python
 type: SecretType
@@ -298,7 +302,7 @@ type: SecretType
 
 The type of the secret.
 
-## `deserialize_secrets_inplace`
+### `deserialize_secrets_inplace`
 
 ```python
 deserialize_secrets_inplace(
@@ -314,7 +318,9 @@ Deserialize secrets in a dictionary inplace.
 - **keys** (<code>Iterable\[str\]</code>) – The keys of the secrets to deserialize.
 - **recursive** (<code>bool</code>) – Whether to recursively deserialize nested dictionaries.
 
-## `default_azure_ad_token_provider`
+## `azure`
+
+### `default_azure_ad_token_provider`
 
 ```python
 default_azure_ad_token_provider() -> str
@@ -322,7 +328,9 @@ default_azure_ad_token_provider() -> str
 
 Get a Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
 
-## `serialize_class_instance`
+## `base_serialization`
+
+### `serialize_class_instance`
 
 ```python
 serialize_class_instance(obj: Any) -> dict[str, Any]
@@ -342,7 +350,7 @@ Serializes an object that has a `to_dict` method into a dictionary.
 
 - <code>SerializationError</code> – If the object does not have a `to_dict` method.
 
-## `deserialize_class_instance`
+### `deserialize_class_instance`
 
 ```python
 deserialize_class_instance(data: dict[str, Any]) -> Any
@@ -363,7 +371,9 @@ Deserializes an object from a dictionary representation generated by `auto_seria
 - <code>DeserializationError</code> – If the serialization data is malformed, the class type cannot be imported, or the
   class does not have a `from_dict` method.
 
-## `serialize_callable`
+## `callable_serialization`
+
+### `serialize_callable`
 
 ```python
 serialize_callable(callable_handle: Callable) -> str
@@ -379,7 +389,7 @@ Serializes a callable to its full path.
 
 - <code>str</code> – The full path of the callable
 
-## `deserialize_callable`
+### `deserialize_callable`
 
 ```python
 deserialize_callable(callable_handle: str) -> Callable
@@ -399,7 +409,9 @@ Deserializes a callable given its full import path as a string.
 
 - <code>DeserializationError</code> – If the callable cannot be found
 
-## `deserialize_chatgenerator_inplace`
+## `deserialization`
+
+### `deserialize_chatgenerator_inplace`
 
 ```python
 deserialize_chatgenerator_inplace(
@@ -419,7 +431,7 @@ Deserialize a ChatGenerator in a dictionary inplace.
 - <code>DeserializationError</code> – If the key is missing in the serialized data, the value is not a dictionary,
   the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
 
-## `deserialize_component_inplace`
+### `deserialize_component_inplace`
 
 ```python
 deserialize_component_inplace(
@@ -439,7 +451,9 @@ Deserialize a Component in a dictionary inplace.
 - <code>DeserializationError</code> – If the key is missing in the serialized data, the value is not a dictionary,
   the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
 
-## `DeviceType`
+## `device`
+
+### `DeviceType`
 
 Bases: <code>Enum</code>
 
@@ -448,7 +462,7 @@ Represents device types supported by Haystack.
 This also includes devices that are not directly used by models - for example, the disk device is exclusively used
 in device maps for frameworks that support offloading model weights to disk.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> DeviceType
@@ -464,7 +478,7 @@ Create a device type from a string.
 
 - <code>DeviceType</code> – The device type.
 
-## `Device`
+### `Device`
 
 A generic representation of a device.
 
@@ -473,7 +487,7 @@ A generic representation of a device.
 - **type** (<code>DeviceType</code>) – The device type.
 - **id** (<code>int | None</code>) – The optional device id.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(type: DeviceType, id: int | None = None)
@@ -486,7 +500,7 @@ Create a generic device.
 - **type** (<code>DeviceType</code>) – The device type.
 - **id** (<code>int | None</code>) – The device id.
 
-### `cpu`
+#### `cpu`
 
 ```python
 cpu() -> Device
@@ -498,7 +512,7 @@ Create a generic CPU device.
 
 - <code>Device</code> – The CPU device.
 
-### `gpu`
+#### `gpu`
 
 ```python
 gpu(id: int = 0) -> Device
@@ -514,7 +528,7 @@ Create a generic GPU device.
 
 - <code>Device</code> – The GPU device.
 
-### `disk`
+#### `disk`
 
 ```python
 disk() -> Device
@@ -526,7 +540,7 @@ Create a generic disk device.
 
 - <code>Device</code> – The disk device.
 
-### `mps`
+#### `mps`
 
 ```python
 mps() -> Device
@@ -538,7 +552,7 @@ Create a generic Apple Metal Performance Shader device.
 
 - <code>Device</code> – The MPS device.
 
-### `xpu`
+#### `xpu`
 
 ```python
 xpu() -> Device
@@ -550,7 +564,7 @@ Create a generic Intel GPU Optimization device.
 
 - <code>Device</code> – The XPU device.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> Device
@@ -562,7 +576,7 @@ Create a generic device from a string.
 
 - <code>Device</code> – The device.
 
-## `DeviceMap`
+### `DeviceMap`
 
 A generic mapping from strings to devices.
 
@@ -573,7 +587,7 @@ multiple devices.
 
 - **mapping** (<code>dict\[str, Device\]</code>) – Dictionary mapping strings to devices.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, str]
@@ -585,7 +599,7 @@ Serialize the mapping to a JSON-serializable dictionary.
 
 - <code>dict\[str, str\]</code> – The serialized mapping.
 
-### `first_device`
+#### `first_device`
 
 ```python
 first_device: Device | None
@@ -597,7 +611,7 @@ Return the first device in the mapping, if any.
 
 - <code>Device | None</code> – The first device.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(dict: dict[str, str]) -> DeviceMap
@@ -613,7 +627,7 @@ Create a generic device map from a JSON-serialized dictionary.
 
 - <code>DeviceMap</code> – The generic device map.
 
-### `from_hf`
+#### `from_hf`
 
 ```python
 from_hf(hf_device_map: dict[str, Union[int, str, torch.device]]) -> DeviceMap
@@ -629,13 +643,13 @@ Create a generic device map from a HuggingFace device map.
 
 - <code>DeviceMap</code> – The deserialized device map.
 
-## `ComponentDevice`
+### `ComponentDevice`
 
 A representation of a device for a component.
 
 This can be either a single device or a device map.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(device_str: str) -> ComponentDevice
@@ -653,7 +667,7 @@ The device string can only represent a single device.
 
 - <code>ComponentDevice</code> – The component device representation.
 
-### `from_single`
+#### `from_single`
 
 ```python
 from_single(device: Device) -> ComponentDevice
@@ -671,7 +685,7 @@ Disks cannot be used as single devices.
 
 - <code>ComponentDevice</code> – The component device representation.
 
-### `from_multiple`
+#### `from_multiple`
 
 ```python
 from_multiple(device_map: DeviceMap) -> ComponentDevice
@@ -687,7 +701,7 @@ Create a component device representation from a device map.
 
 - <code>ComponentDevice</code> – The component device representation.
 
-### `to_torch`
+#### `to_torch`
 
 ```python
 to_torch() -> torch.device
@@ -701,7 +715,7 @@ Device maps are not supported.
 
 - <code>device</code> – The PyTorch device representation.
 
-### `to_torch_str`
+#### `to_torch_str`
 
 ```python
 to_torch_str() -> str
@@ -715,7 +729,7 @@ Device maps are not supported.
 
 - <code>str</code> – The PyTorch device string representation.
 
-### `to_spacy`
+#### `to_spacy`
 
 ```python
 to_spacy() -> int
@@ -729,7 +743,7 @@ Device maps are not supported.
 
 - <code>int</code> – The spaCy device representation.
 
-### `to_hf`
+#### `to_hf`
 
 ```python
 to_hf() -> int | str | dict[str, int | str]
@@ -741,7 +755,7 @@ Convert the component device representation to HuggingFace format.
 
 - <code>int | str | dict\[str, int | str\]</code> – The HuggingFace device representation.
 
-### `update_hf_kwargs`
+#### `update_hf_kwargs`
 
 ```python
 update_hf_kwargs(
@@ -762,7 +776,7 @@ Add them as canonical keyword arguments to the keyword arguments dictionary.
 
 - <code>dict\[str, Any\]</code> – The HuggingFace keyword arguments dictionary.
 
-### `has_multiple_devices`
+#### `has_multiple_devices`
 
 ```python
 has_multiple_devices: bool
@@ -770,7 +784,7 @@ has_multiple_devices: bool
 
 Whether this component device representation contains multiple devices.
 
-### `first_device`
+#### `first_device`
 
 ```python
 first_device: Optional[ComponentDevice]
@@ -782,7 +796,7 @@ Return either the single device or the first device in the device map, if any.
 
 - <code>Optional\[ComponentDevice\]</code> – The first device.
 
-### `resolve_device`
+#### `resolve_device`
 
 ```python
 resolve_device(device: Optional[ComponentDevice] = None) -> ComponentDevice
@@ -798,7 +812,7 @@ Select a device for a component. If a device is specified, it's used. Otherwise,
 
 - <code>ComponentDevice</code> – The resolved device.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -810,7 +824,7 @@ Convert the component device representation to a JSON-serializable dictionary.
 
 - <code>dict\[str, Any\]</code> – The dictionary representation.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(dict: dict[str, Any]) -> ComponentDevice
@@ -826,7 +840,9 @@ Create a component device representation from a JSON-serialized dictionary.
 
 - <code>ComponentDevice</code> – The deserialized component device.
 
-## `raise_on_invalid_filter_syntax`
+## `filters`
+
+### `raise_on_invalid_filter_syntax`
 
 ```python
 raise_on_invalid_filter_syntax(filters: dict[str, Any] | None = None) -> None
@@ -834,7 +850,7 @@ raise_on_invalid_filter_syntax(filters: dict[str, Any] | None = None) -> None
 
 Raise an error if the filter syntax is invalid.
 
-## `document_matches_filter`
+### `document_matches_filter`
 
 ```python
 document_matches_filter(
@@ -847,7 +863,9 @@ Return whether `filters` match the Document or the ByteStream.
 For a detailed specification of the filters, refer to the
 `DocumentStore.filter_documents()` protocol documentation.
 
-## `init_http_client`
+## `http_client`
+
+### `init_http_client`
 
 ```python
 init_http_client(
@@ -866,7 +884,9 @@ Initialize an httpx client based on the http_client_kwargs.
 
 - <code>Client | AsyncClient | None</code> – A httpx client or an async httpx client.
 
-## `ChatMessageExtension`
+## `jinja2_chat_extension`
+
+### `ChatMessageExtension`
 
 Bases: <code>Extension</code>
 
@@ -903,7 +923,7 @@ Hello! I am {{user_name}}. Please describe the images.
 1. The obtained JSON string is usable in the ChatPromptBuilder component, where templates are rendered to actual
    ChatMessage objects.
 
-### `parse`
+#### `parse`
 
 ```python
 parse(parser: Any) -> nodes.Node | list[nodes.Node]
@@ -925,7 +945,7 @@ This method handles the parsing of role (mandatory), name (optional), meta (opti
 
 - <code>TemplateSyntaxError</code> – If an invalid role is provided
 
-## `templatize_part`
+### `templatize_part`
 
 ```python
 templatize_part(value: ChatMessageContentT) -> str
@@ -945,11 +965,13 @@ Jinja filter to convert an ChatMessageContentT object into JSON string wrapped i
 
 - <code>ValueError</code> – If the value is not an instance of ChatMessageContentT
 
-## `Jinja2TimeExtension`
+## `jinja2_extensions`
+
+### `Jinja2TimeExtension`
 
 Bases: <code>Extension</code>
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(environment: Environment)
@@ -962,7 +984,7 @@ Initializes the JinjaTimeExtension object.
 - **environment** (<code>Environment</code>) – The Jinja2 environment to initialize the extension with.
   It provides the context where the extension will operate.
 
-### `parse`
+#### `parse`
 
 ```python
 parse(parser: Any) -> nodes.Node | list[nodes.Node]
@@ -975,7 +997,9 @@ Parse the template expression to determine how to handle the datetime formatting
 - **parser** (<code>Any</code>) – The parser object that processes the template expressions and manages the syntax tree.
   It's used to interpret the template's structure.
 
-## `is_in_jupyter`
+## `jupyter`
+
+### `is_in_jupyter`
 
 ```python
 is_in_jupyter() -> bool
@@ -983,7 +1007,9 @@ is_in_jupyter() -> bool
 
 Returns `True` if in Jupyter or Google Colab, `False` otherwise.
 
-## `expand_page_range`
+## `misc`
+
+### `expand_page_range`
 
 ```python
 expand_page_range(page_range: list[str | int]) -> list[int]
@@ -1001,7 +1027,7 @@ For example, given a page_range=['1-3', '5', '8', '10-12'] the function will ret
 
 - <code>list\[int\]</code> – An expanded list of page integers
 
-## `expit`
+### `expit`
 
 ```python
 expit(x: float | ndarray[Any, Any]) -> float | ndarray[Any, Any]
@@ -1013,7 +1039,9 @@ Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 
 - **x** (<code>float | ndarray\[Any, Any\]</code>) – input value. Can be a scalar or a numpy array.
 
-## `request_with_retry`
+## `requests_utils`
+
+### `request_with_retry`
 
 ```python
 request_with_retry(
@@ -1078,7 +1106,7 @@ res = request_with_retry(method="GET", url="https://example.com", status_codes_t
 
 - <code>Response</code> – The `Response` object.
 
-## `async_request_with_retry`
+### `async_request_with_retry`
 
 ```python
 async_request_with_retry(
@@ -1166,7 +1194,9 @@ async def example_5xx():
 
 - <code>Response</code> – The `httpx.Response` object.
 
-## `serialize_type`
+## `type_serialization`
+
+### `serialize_type`
 
 ```python
 serialize_type(target: Any) -> str
@@ -1185,7 +1215,7 @@ It assumes that non-typing objects will have a '__name__' attribute.
 
 - <code>str</code> – The string representation of the type.
 
-## `deserialize_type`
+### `deserialize_type`
 
 ```python
 deserialize_type(type_str: str) -> Any
@@ -1209,7 +1239,7 @@ and then retrieve the type object from it. It also handles nested generic types 
 
 - <code>DeserializationError</code> – If the type cannot be deserialized due to missing module or type.
 
-## `thread_safe_import`
+### `thread_safe_import`
 
 ```python
 thread_safe_import(module_name: str) -> ModuleType
@@ -1225,7 +1255,9 @@ on the performance of the import for single-threaded environments.
 
 - **module_name** (<code>str</code>) – the module to import
 
-## `is_valid_http_url`
+## `url_validation`
+
+### `is_valid_http_url`
 
 ```python
 is_valid_http_url(url: str) -> bool

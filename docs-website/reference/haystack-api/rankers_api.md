@@ -6,7 +6,9 @@ slug: "/rankers-api"
 ---
 
 
-## `TruncationDirection`
+## `hugging_face_tei`
+
+### `TruncationDirection`
 
 Bases: <code>str</code>, <code>Enum</code>
 
@@ -16,7 +18,7 @@ Attributes:
 LEFT: Truncate text from the left side (start of text).
 RIGHT: Truncate text from the right side (end of text).
 
-## `HuggingFaceTEIRanker`
+### `HuggingFaceTEIRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -49,7 +51,7 @@ print(ranked_docs)
 >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -81,7 +83,7 @@ Initializes the TEI reranker component.
   depending on your TEI server configuration.
   Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -93,7 +95,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HuggingFaceTEIRanker
@@ -109,7 +111,7 @@ Deserializes the component from a dictionary.
 
 - <code>HuggingFaceTEIRanker</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -142,7 +144,7 @@ if a score is present.
 - <code>requests.exceptions.RequestException</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -175,7 +177,9 @@ if a score is present.
 - <code>httpx.RequestError</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
 
-## `LostInTheMiddleRanker`
+## `lost_in_the_middle`
+
+### `LostInTheMiddleRanker`
 
 A LostInTheMiddle Ranker.
 
@@ -204,7 +208,7 @@ for doc in result["documents"]:
     print(doc.content)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(word_count_threshold: int | None = None, top_k: int | None = None)
@@ -222,7 +226,7 @@ discarded.
 - **word_count_threshold** (<code>int | None</code>) – The maximum total number of words across all documents selected by the ranker.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -252,7 +256,9 @@ if a score is present.
 
 - <code>ValueError</code> – If any of the documents is not textual.
 
-## `MetaFieldRanker`
+## `meta_field`
+
+### `MetaFieldRanker`
 
 Ranks Documents based on the value of their specific meta field.
 
@@ -276,7 +282,7 @@ docs = output["documents"]
 assert docs[0].content == "Barcelona"
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -325,7 +331,7 @@ Creates an instance of MetaFieldRanker.
 - 'date' will parse the meta values into datetime objects.
 - 'None' (default) will do no parsing.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -399,7 +405,9 @@ if a score is present.
   If `sort_order` is not 'ascending' or 'descending'.
   If `meta_value_type` is not 'float', 'int', 'date' or `None`.
 
-## `MetaFieldGroupingRanker`
+## `meta_field_grouping_ranker`
+
+### `MetaFieldGroupingRanker`
 
 Reorders the documents by grouping them based on metadata keys.
 
@@ -445,7 +453,7 @@ print(result["documents"])
 # ]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -466,7 +474,7 @@ Creates an instance of MetaFieldGroupingRanker.
   documents within the groups or subgroups are not sorted and are kept in the same order as
   they were inserted in the subgroups.
 
-### `run`
+#### `run`
 
 ```python
 run(documents: list[Document]) -> dict[str, Any]
@@ -488,13 +496,15 @@ The output is a list of documents reordered based on how they were grouped.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
 
-## `DiversityRankingStrategy`
+## `sentence_transformers_diversity`
+
+### `DiversityRankingStrategy`
 
 Bases: <code>Enum</code>
 
 The strategy to use for diversity ranking.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> DiversityRankingStrategy
@@ -502,13 +512,13 @@ from_str(string: str) -> DiversityRankingStrategy
 
 Convert a string to a Strategy enum.
 
-## `DiversityRankingSimilarity`
+### `DiversityRankingSimilarity`
 
 Bases: <code>Enum</code>
 
 The similarity metric to use for comparing embeddings.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> DiversityRankingSimilarity
@@ -516,7 +526,7 @@ from_str(string: str) -> DiversityRankingSimilarity
 
 Convert a string to a Similarity enum.
 
-## `SentenceTransformersDiversityRanker`
+### `SentenceTransformersDiversityRanker`
 
 A Diversity Ranker based on Sentence Transformers.
 
@@ -558,7 +568,7 @@ output = ranker.run(query=query, documents=docs)
 docs = output["documents"]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -619,7 +629,7 @@ Initialize a SentenceTransformersDiversityRanker.
   Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
   for more information on acceleration and quantization options.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -627,7 +637,7 @@ warm_up()
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -639,7 +649,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersDiversityRanker
@@ -655,7 +665,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersDiversityRanker</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -685,7 +695,9 @@ Rank the documents based on their diversity.
 
 - <code>ValueError</code> – If the top_k value is less than or equal to 0.
 
-## `SentenceTransformersSimilarityRanker`
+## `sentence_transformers_similarity`
+
+### `SentenceTransformersSimilarityRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -706,7 +718,7 @@ docs = result["documents"]
 print(docs[0].content)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -772,7 +784,7 @@ Creates an instance of SentenceTransformersSimilarityRanker.
 
 - <code>ValueError</code> – If `top_k` is not > 0.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -780,7 +792,7 @@ warm_up() -> None
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -792,7 +804,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> SentenceTransformersSimilarityRanker
@@ -808,7 +820,7 @@ Deserializes the component from a dictionary.
 
 - <code>SentenceTransformersSimilarityRanker</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -846,7 +858,9 @@ if a score is present.
 
 - <code>ValueError</code> – If `top_k` is not > 0.
 
-## `TransformersSimilarityRanker`
+## `transformers_similarity`
+
+### `TransformersSimilarityRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -873,7 +887,7 @@ docs = result["documents"]
 print(docs[0].content)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -927,7 +941,7 @@ Creates an instance of TransformersSimilarityRanker.
 - <code>ValueError</code> – If `top_k` is not > 0.
   If `scale_score` is True and `calibration_factor` is not provided.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()
@@ -935,7 +949,7 @@ warm_up()
 
 Initializes the component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -947,7 +961,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> TransformersSimilarityRanker
@@ -963,7 +977,7 @@ Deserializes the component from a dictionary.
 
 - <code>TransformersSimilarityRanker</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(

@@ -6,7 +6,9 @@ slug: "/human-in-the-loop-api"
 ---
 
 
-## `ConfirmationUIResult`
+## `dataclasses`
+
+### `ConfirmationUIResult`
 
 Result of the confirmation UI interaction.
 
@@ -19,7 +21,7 @@ Result of the confirmation UI interaction.
 - **new_tool_params** (<code>dict\[str, Any\] | None</code>) – Optional set of new parameters for the tool. For example, if the user chooses to modify the tool parameters,
   they can provide a new set of parameters here.
 
-## `ToolExecutionDecision`
+### `ToolExecutionDecision`
 
 Decision made regarding tool execution.
 
@@ -34,7 +36,7 @@ Decision made regarding tool execution.
   modified, this can contain the modification details.
 - **final_tool_params** (<code>dict\[str, Any\] | None</code>) – Optional final parameters for the tool if execution is confirmed or modified.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -46,7 +48,7 @@ Convert the ToolExecutionDecision to a dictionary representation.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the tool execution decision details.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ToolExecutionDecision
@@ -62,13 +64,15 @@ Populate the ToolExecutionDecision from a dictionary representation.
 
 - <code>ToolExecutionDecision</code> – An instance of ToolExecutionDecision.
 
-## `AlwaysAskPolicy`
+## `policies`
+
+### `AlwaysAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
 Always ask for confirmation.
 
-### `should_ask`
+#### `should_ask`
 
 ```python
 should_ask(
@@ -88,7 +92,7 @@ Always ask for confirmation before executing the tool.
 
 - <code>bool</code> – Always returns True, indicating confirmation is needed.
 
-### `update_after_confirmation`
+#### `update_after_confirmation`
 
 ```python
 update_after_confirmation(
@@ -101,7 +105,7 @@ update_after_confirmation(
 
 Update the policy based on the confirmation UI result.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -109,7 +113,7 @@ to_dict() -> dict[str, Any]
 
 Serialize the policy to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ConfirmationPolicy
@@ -117,13 +121,13 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-## `NeverAskPolicy`
+### `NeverAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
 Never ask for confirmation.
 
-### `should_ask`
+#### `should_ask`
 
 ```python
 should_ask(
@@ -143,7 +147,7 @@ Never ask for confirmation, always proceed with tool execution.
 
 - <code>bool</code> – Always returns False, indicating no confirmation is needed.
 
-### `update_after_confirmation`
+#### `update_after_confirmation`
 
 ```python
 update_after_confirmation(
@@ -156,7 +160,7 @@ update_after_confirmation(
 
 Update the policy based on the confirmation UI result.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -164,7 +168,7 @@ to_dict() -> dict[str, Any]
 
 Serialize the policy to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ConfirmationPolicy
@@ -172,13 +176,13 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-## `AskOncePolicy`
+### `AskOncePolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
 Ask only once per tool with specific parameters.
 
-### `should_ask`
+#### `should_ask`
 
 ```python
 should_ask(
@@ -198,7 +202,7 @@ Ask for confirmation only once per tool with specific parameters.
 
 - <code>bool</code> – True if confirmation is needed, False if already asked with the same parameters.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -206,7 +210,7 @@ to_dict() -> dict[str, Any]
 
 Serialize the policy to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ConfirmationPolicy
@@ -214,7 +218,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-### `update_after_confirmation`
+#### `update_after_confirmation`
 
 ```python
 update_after_confirmation(
@@ -237,11 +241,13 @@ tool with the given parameters.
 - **tool_params** (<code>dict\[str, Any\]</code>) – The parameters that were passed to the tool.
 - **confirmation_result** (<code>ConfirmationUIResult</code>) – The result from the confirmation UI.
 
-## `BlockingConfirmationStrategy`
+## `strategies`
+
+### `BlockingConfirmationStrategy`
 
 Confirmation strategy that blocks execution to gather user feedback.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -265,7 +271,7 @@ Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
   placeholders.
 - **user_feedback_template** (<code>str</code>) – Template for user feedback messages. It should include a `{feedback}` placeholder.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -296,7 +302,7 @@ Run the human-in-the-loop strategy for a given tool and its parameters.
 - <code>ToolExecutionDecision</code> – A ToolExecutionDecision indicating whether to execute the tool with the given parameters, or a
   feedback message if rejected.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -323,7 +329,7 @@ Async version of run. Calls the sync run() method by default.
 
 - <code>ToolExecutionDecision</code> – A ToolExecutionDecision indicating whether to execute the tool with the given parameters.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -335,7 +341,7 @@ Serializes the BlockingConfirmationStrategy to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> BlockingConfirmationStrategy
@@ -351,13 +357,15 @@ Deserializes the BlockingConfirmationStrategy from a dictionary.
 
 - <code>BlockingConfirmationStrategy</code> – Deserialized BlockingConfirmationStrategy.
 
-## `RichConsoleUI`
+## `user_interfaces`
+
+### `RichConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 
 Rich console interface for user interaction.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ConfirmationUI
@@ -365,7 +373,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationUI
 
 Deserialize the ConfirmationUI from a dictionary.
 
-### `get_user_confirmation`
+#### `get_user_confirmation`
 
 ```python
 get_user_confirmation(
@@ -385,7 +393,7 @@ Get user confirmation for tool execution via rich console prompts.
 
 - <code>ConfirmationUIResult</code> – ConfirmationUIResult based on user input.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -397,13 +405,13 @@ Serializes the RichConsoleConfirmationUI to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-## `SimpleConsoleUI`
+### `SimpleConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 
 Simple console interface using standard input/output.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -411,7 +419,7 @@ to_dict() -> dict[str, Any]
 
 Serialize the UI to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ConfirmationUI
@@ -419,7 +427,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationUI
 
 Deserialize the ConfirmationUI from a dictionary.
 
-### `get_user_confirmation`
+#### `get_user_confirmation`
 
 ```python
 get_user_confirmation(

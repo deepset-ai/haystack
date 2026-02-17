@@ -6,7 +6,9 @@ slug: "/fetchers-api"
 ---
 
 
-## `LinkContentFetcher`
+## `link_content`
+
+### `LinkContentFetcher`
 
 Fetches and extracts content from URLs.
 
@@ -43,7 +45,7 @@ async def fetch_async():
 streams = asyncio.run(fetch_async())
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -72,7 +74,7 @@ Initializes the component.
 - **client_kwargs** (<code>dict | None</code>) – Additional keyword arguments to pass to the httpx client.
   If `None`, default values are used.
 
-### `run`
+#### `run`
 
 ```python
 run(urls: list[str])
@@ -100,7 +102,7 @@ the key "content_type". The URL of the fetched content is stored under the key "
   In all other scenarios, any retrieval errors are logged, and a list of successfully retrieved `ByteStream`
   objects is returned.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(urls: list[str])

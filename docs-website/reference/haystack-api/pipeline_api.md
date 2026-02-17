@@ -6,7 +6,9 @@ slug: "/pipeline-api"
 ---
 
 
-## `AsyncPipeline`
+## `async_pipeline`
+
+### `AsyncPipeline`
 
 Bases: <code>PipelineBase</code>
 
@@ -15,7 +17,7 @@ Asynchronous version of the Pipeline orchestration engine.
 Manages components in a pipeline allowing for concurrent processing when the pipeline's execution graph permits.
 This enables efficient processing of components by minimizing idle time and maximizing resource utilization.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -37,7 +39,7 @@ Creates the Pipeline.
 - **connection_type_validation** (<code>bool</code>) – Whether the pipeline will validate the types of the connections.
   Defaults to True.
 
-### `run_async_generator`
+#### `run_async_generator`
 
 ```python
 run_async_generator(
@@ -141,7 +143,7 @@ asyncio.run(process_results())
   it to get stuck and fail running.
   Or if a Component fails or returns output in an unsupported type.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -155,7 +157,7 @@ This is meant to be an intermediate representation but it can be also used to sa
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(
@@ -178,7 +180,7 @@ Deserializes the pipeline from a dictionary.
 
 - <code>T</code> – Deserialized component.
 
-### `dumps`
+#### `dumps`
 
 ```python
 dumps(marshaller: Marshaller = DEFAULT_MARSHALLER) -> str
@@ -194,7 +196,7 @@ Returns the string representation of this pipeline according to the format dicta
 
 - <code>str</code> – A string representing the pipeline.
 
-### `dump`
+#### `dump`
 
 ```python
 dump(fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> None
@@ -207,7 +209,7 @@ Writes the string representation of this pipeline to the file-like object passed
 - **fp** (<code>TextIO</code>) – A file-like object ready to be written to.
 - **marshaller** (<code>Marshaller</code>) – The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
 
-### `loads`
+#### `loads`
 
 ```python
 loads(
@@ -233,7 +235,7 @@ Creates a `Pipeline` object from the string representation passed in the `data` 
 
 - <code>DeserializationError</code> – If an error occurs during deserialization.
 
-### `load`
+#### `load`
 
 ```python
 load(
@@ -261,7 +263,7 @@ The string representation is read from the file-like object passed in the `fp` a
 
 - <code>DeserializationError</code> – If an error occurs during deserialization.
 
-### `add_component`
+#### `add_component`
 
 ```python
 add_component(name: str, instance: Component) -> None
@@ -282,7 +284,7 @@ Component names must be unique, but component instances can be reused if needed.
 - <code>ValueError</code> – If a component with the same name already exists.
 - <code>PipelineValidationError</code> – If the given instance is not a component.
 
-### `remove_component`
+#### `remove_component`
 
 ```python
 remove_component(name: str) -> Component
@@ -305,7 +307,7 @@ All edges that connect to the component will also be deleted.
 
 - <code>ValueError</code> – If there is no component with that name already in the Pipeline.
 
-### `connect`
+#### `connect`
 
 ```python
 connect(sender: str, receiver: str) -> PipelineBase
@@ -333,7 +335,7 @@ If connecting to a component that has several output connections, specify the in
 - <code>PipelineConnectError</code> – If the two components cannot be connected (for example if one of the components is
   not present in the pipeline, or the connections don't match by type, and so on).
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -455,7 +457,7 @@ data = {
   Or if a Component fails or returns output in an unsupported type.
 - <code>PipelineMaxComponentRuns</code> – If a Component reaches the maximum number of times it can be run in this Pipeline.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -576,7 +578,7 @@ data = {
 - <code>PipelineMaxComponentRuns</code> – If a Component reaches the maximum number of times it can be run in this Pipeline.
 - <code>RuntimeError</code> – If called from within an async context. Use `run_async` instead.
 
-### `get_component`
+#### `get_component`
 
 ```python
 get_component(name: str) -> Component
@@ -596,7 +598,7 @@ Get the component with the specified name from the pipeline.
 
 - <code>ValueError</code> – If a component with that name is not present in the pipeline.
 
-### `get_component_name`
+#### `get_component_name`
 
 ```python
 get_component_name(instance: Component) -> str
@@ -612,7 +614,7 @@ Returns the name of the Component instance if it has been added to this Pipeline
 
 - <code>str</code> – The name of the Component instance.
 
-### `inputs`
+#### `inputs`
 
 ```python
 inputs(
@@ -635,7 +637,7 @@ the input sockets of that component, including their types and whether they are 
 - <code>dict\[str, dict\[str, Any\]\]</code> – A dictionary where each key is a pipeline component name and each value is a dictionary of
   inputs sockets of that component.
 
-### `outputs`
+#### `outputs`
 
 ```python
 outputs(
@@ -658,7 +660,7 @@ the output sockets of that component.
 - <code>dict\[str, dict\[str, Any\]\]</code> – A dictionary where each key is a pipeline component name and each value is a dictionary of
   output sockets of that component.
 
-### `show`
+#### `show`
 
 ```python
 show(
@@ -701,7 +703,7 @@ the notebook.
 
 - <code>PipelineDrawingError</code> – If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
 
-### `draw`
+#### `draw`
 
 ```python
 draw(
@@ -745,7 +747,7 @@ This function generates a diagram of the `Pipeline` using the Mermaid server and
 
 - <code>PipelineDrawingError</code> – If there is an issue with rendering or saving the image.
 
-### `walk`
+#### `walk`
 
 ```python
 walk() -> Iterator[tuple[str, Component]]
@@ -759,7 +761,7 @@ No guarantees are provided on the visiting order.
 
 - <code>Iterator\[tuple\[str, Component\]\]</code> – An iterator of tuples of component name and component instance.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -770,7 +772,7 @@ Make sure all nodes are warm.
 It's the node's responsibility to make sure this method can be called at every `Pipeline.run()`
 without re-initializing everything.
 
-### `validate_input`
+#### `validate_input`
 
 ```python
 validate_input(data: dict[str, Any]) -> None
@@ -793,7 +795,7 @@ Validates that data:
 
 - <code>ValueError</code> – If inputs are invalid according to the above.
 
-### `from_template`
+#### `from_template`
 
 ```python
 from_template(
@@ -813,7 +815,7 @@ Create a Pipeline from a predefined template. See `PredefinedPipeline` for avail
 
 - <code>PipelineBase</code> – An instance of `Pipeline`.
 
-### `validate_pipeline`
+#### `validate_pipeline`
 
 ```python
 validate_pipeline(priority_queue: FIFOPriorityQueue) -> None
@@ -829,7 +831,9 @@ Validate the pipeline to check if it is blocked or has no valid entry point.
 
 - <code>PipelineRuntimeError</code> – If the pipeline is blocked or has no valid entry point.
 
-## `Pipeline`
+## `pipeline`
+
+### `Pipeline`
 
 Bases: <code>PipelineBase</code>
 
@@ -837,7 +841,7 @@ Synchronous version of the orchestration engine.
 
 Orchestrates component execution according to the execution graph, one after the other.
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -859,7 +863,7 @@ Creates the Pipeline.
 - **connection_type_validation** (<code>bool</code>) – Whether the pipeline will validate the types of the connections.
   Defaults to True.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -975,7 +979,7 @@ data = {
 - <code>PipelineMaxComponentRuns</code> – If a Component reaches the maximum number of times it can be run in this Pipeline.
 - <code>PipelineBreakpointException</code> – When a pipeline_breakpoint is triggered. Contains the component name, state, and partial results.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -989,7 +993,7 @@ This is meant to be an intermediate representation but it can be also used to sa
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(
@@ -1012,7 +1016,7 @@ Deserializes the pipeline from a dictionary.
 
 - <code>T</code> – Deserialized component.
 
-### `dumps`
+#### `dumps`
 
 ```python
 dumps(marshaller: Marshaller = DEFAULT_MARSHALLER) -> str
@@ -1028,7 +1032,7 @@ Returns the string representation of this pipeline according to the format dicta
 
 - <code>str</code> – A string representing the pipeline.
 
-### `dump`
+#### `dump`
 
 ```python
 dump(fp: TextIO, marshaller: Marshaller = DEFAULT_MARSHALLER) -> None
@@ -1041,7 +1045,7 @@ Writes the string representation of this pipeline to the file-like object passed
 - **fp** (<code>TextIO</code>) – A file-like object ready to be written to.
 - **marshaller** (<code>Marshaller</code>) – The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
 
-### `loads`
+#### `loads`
 
 ```python
 loads(
@@ -1067,7 +1071,7 @@ Creates a `Pipeline` object from the string representation passed in the `data` 
 
 - <code>DeserializationError</code> – If an error occurs during deserialization.
 
-### `load`
+#### `load`
 
 ```python
 load(
@@ -1095,7 +1099,7 @@ The string representation is read from the file-like object passed in the `fp` a
 
 - <code>DeserializationError</code> – If an error occurs during deserialization.
 
-### `add_component`
+#### `add_component`
 
 ```python
 add_component(name: str, instance: Component) -> None
@@ -1116,7 +1120,7 @@ Component names must be unique, but component instances can be reused if needed.
 - <code>ValueError</code> – If a component with the same name already exists.
 - <code>PipelineValidationError</code> – If the given instance is not a component.
 
-### `remove_component`
+#### `remove_component`
 
 ```python
 remove_component(name: str) -> Component
@@ -1139,7 +1143,7 @@ All edges that connect to the component will also be deleted.
 
 - <code>ValueError</code> – If there is no component with that name already in the Pipeline.
 
-### `connect`
+#### `connect`
 
 ```python
 connect(sender: str, receiver: str) -> PipelineBase
@@ -1167,7 +1171,7 @@ If connecting to a component that has several output connections, specify the in
 - <code>PipelineConnectError</code> – If the two components cannot be connected (for example if one of the components is
   not present in the pipeline, or the connections don't match by type, and so on).
 
-### `get_component`
+#### `get_component`
 
 ```python
 get_component(name: str) -> Component
@@ -1187,7 +1191,7 @@ Get the component with the specified name from the pipeline.
 
 - <code>ValueError</code> – If a component with that name is not present in the pipeline.
 
-### `get_component_name`
+#### `get_component_name`
 
 ```python
 get_component_name(instance: Component) -> str
@@ -1203,7 +1207,7 @@ Returns the name of the Component instance if it has been added to this Pipeline
 
 - <code>str</code> – The name of the Component instance.
 
-### `inputs`
+#### `inputs`
 
 ```python
 inputs(
@@ -1226,7 +1230,7 @@ the input sockets of that component, including their types and whether they are 
 - <code>dict\[str, dict\[str, Any\]\]</code> – A dictionary where each key is a pipeline component name and each value is a dictionary of
   inputs sockets of that component.
 
-### `outputs`
+#### `outputs`
 
 ```python
 outputs(
@@ -1249,7 +1253,7 @@ the output sockets of that component.
 - <code>dict\[str, dict\[str, Any\]\]</code> – A dictionary where each key is a pipeline component name and each value is a dictionary of
   output sockets of that component.
 
-### `show`
+#### `show`
 
 ```python
 show(
@@ -1292,7 +1296,7 @@ the notebook.
 
 - <code>PipelineDrawingError</code> – If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
 
-### `draw`
+#### `draw`
 
 ```python
 draw(
@@ -1336,7 +1340,7 @@ This function generates a diagram of the `Pipeline` using the Mermaid server and
 
 - <code>PipelineDrawingError</code> – If there is an issue with rendering or saving the image.
 
-### `walk`
+#### `walk`
 
 ```python
 walk() -> Iterator[tuple[str, Component]]
@@ -1350,7 +1354,7 @@ No guarantees are provided on the visiting order.
 
 - <code>Iterator\[tuple\[str, Component\]\]</code> – An iterator of tuples of component name and component instance.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -1361,7 +1365,7 @@ Make sure all nodes are warm.
 It's the node's responsibility to make sure this method can be called at every `Pipeline.run()`
 without re-initializing everything.
 
-### `validate_input`
+#### `validate_input`
 
 ```python
 validate_input(data: dict[str, Any]) -> None
@@ -1384,7 +1388,7 @@ Validates that data:
 
 - <code>ValueError</code> – If inputs are invalid according to the above.
 
-### `from_template`
+#### `from_template`
 
 ```python
 from_template(
@@ -1404,7 +1408,7 @@ Create a Pipeline from a predefined template. See `PredefinedPipeline` for avail
 
 - <code>PipelineBase</code> – An instance of `Pipeline`.
 
-### `validate_pipeline`
+#### `validate_pipeline`
 
 ```python
 validate_pipeline(priority_queue: FIFOPriorityQueue) -> None

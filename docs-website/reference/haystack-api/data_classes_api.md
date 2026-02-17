@@ -6,9 +6,11 @@ slug: "/data-classes-api"
 ---
 
 
-## `ExtractedAnswer`
+## `answer`
 
-### `to_dict`
+### `ExtractedAnswer`
+
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -20,7 +22,7 @@ Serialize the object to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the object.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ExtractedAnswer
@@ -36,9 +38,9 @@ Deserialize the object from a dictionary.
 
 - <code>ExtractedAnswer</code> – Deserialized object.
 
-## `GeneratedAnswer`
+### `GeneratedAnswer`
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -50,7 +52,7 @@ Serialize the object to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the object.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> GeneratedAnswer
@@ -66,7 +68,9 @@ Deserialize the object from a dictionary.
 
 - <code>GeneratedAnswer</code> – Deserialized object.
 
-## `Breakpoint`
+## `breakpoints`
+
+### `Breakpoint`
 
 A dataclass to hold a breakpoint for a component.
 
@@ -78,7 +82,7 @@ A dataclass to hold a breakpoint for a component.
   This is useful for debugging purposes, allowing you to inspect the state of the pipeline at the time of the
   breakpoint and to resume execution from that point.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -90,7 +94,7 @@ Convert the Breakpoint to a dictionary representation.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the component name, visit count, and debug path.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict) -> Breakpoint
@@ -106,7 +110,7 @@ Populate the Breakpoint from a dictionary representation.
 
 - <code>Breakpoint</code> – An instance of Breakpoint.
 
-## `ToolBreakpoint`
+### `ToolBreakpoint`
 
 Bases: <code>Breakpoint</code>
 
@@ -119,7 +123,7 @@ the breakpoint applies to all tools within the Agent component.
 
 - **tool_name** (<code>str | None</code>) – The name of the tool to target within the Agent component. If None, applies to all tools.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -131,7 +135,7 @@ Convert the Breakpoint to a dictionary representation.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the component name, visit count, and debug path.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict) -> Breakpoint
@@ -147,7 +151,7 @@ Populate the Breakpoint from a dictionary representation.
 
 - <code>Breakpoint</code> – An instance of Breakpoint.
 
-## `AgentBreakpoint`
+### `AgentBreakpoint`
 
 A dataclass representing a breakpoint tied to an Agent’s execution.
 
@@ -165,7 +169,7 @@ It enforces constraints on which component names are valid for each breakpoint t
 - Breakpoint must have component_name='chat_generator'.
 - ToolBreakpoint must have component_name='tool_invoker'.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -177,7 +181,7 @@ Convert the AgentBreakpoint to a dictionary representation.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the agent name and the breakpoint details.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict) -> AgentBreakpoint
@@ -193,9 +197,9 @@ Populate the AgentBreakpoint from a dictionary representation.
 
 - <code>AgentBreakpoint</code> – An instance of AgentBreakpoint.
 
-## `AgentSnapshot`
+### `AgentSnapshot`
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -207,7 +211,7 @@ Convert the AgentSnapshot to a dictionary representation.
 
 - <code>dict\[str, Any\]</code> – A dictionary containing the agent state, timestamp, and breakpoint.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict) -> AgentSnapshot
@@ -223,7 +227,7 @@ Populate the AgentSnapshot from a dictionary representation.
 
 - <code>AgentSnapshot</code> – An instance of AgentSnapshot.
 
-## `PipelineState`
+### `PipelineState`
 
 A dataclass to hold the state of the pipeline at a specific point in time.
 
@@ -233,7 +237,7 @@ A dataclass to hold the state of the pipeline at a specific point in time.
 - **inputs** (<code>dict\[str, Any\]</code>) – The inputs processed by the pipeline at the time of the snapshot.
 - **pipeline_outputs** (<code>dict\[str, Any\]</code>) – Dictionary containing the final outputs of the pipeline up to the breakpoint.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -246,7 +250,7 @@ Convert the PipelineState to a dictionary representation.
 - <code>dict\[str, Any\]</code> – A dictionary containing the inputs, component visits,
   and pipeline outputs.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict) -> PipelineState
@@ -263,7 +267,7 @@ Populate the PipelineState from a dictionary representation.
 
 - <code>PipelineState</code> – An instance of PipelineState.
 
-## `PipelineSnapshot`
+### `PipelineSnapshot`
 
 A dataclass to hold a snapshot of the pipeline at a specific point in time.
 
@@ -277,7 +281,7 @@ A dataclass to hold a snapshot of the pipeline at a specific point in time.
 - **timestamp** (<code>datetime | None</code>) – A timestamp indicating when the snapshot was taken.
 - **include_outputs_from** (<code>set\[str\]</code>) – Set of component names whose outputs should be included in the pipeline results.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -290,7 +294,7 @@ Convert the PipelineSnapshot to a dictionary representation.
 - <code>dict\[str, Any\]</code> – A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input data,
   ordered component names, include_outputs_from, and pipeline outputs.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict) -> PipelineSnapshot
@@ -303,7 +307,9 @@ Populate the PipelineSnapshot from a dictionary representation.
 - **data** (<code>dict</code>) – A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input
   data, ordered component names, include_outputs_from, and pipeline outputs.
 
-## `ByteStream`
+## `byte_stream`
+
+### `ByteStream`
 
 Base data class representing a binary object in the Haystack API.
 
@@ -313,7 +319,7 @@ Base data class representing a binary object in the Haystack API.
 - **meta** (<code>dict\[str, Any\]</code>) – Additional metadata to be stored with the ByteStream.
 - **mime_type** (<code>str | None</code>) – The mime type of the binary data.
 
-### `to_file`
+#### `to_file`
 
 ```python
 to_file(destination_path: Path) -> None
@@ -325,7 +331,7 @@ Write the ByteStream to a file. Note: the metadata will be lost.
 
 - **destination_path** (<code>Path</code>) – The path to write the ByteStream to.
 
-### `from_file_path`
+#### `from_file_path`
 
 ```python
 from_file_path(
@@ -345,7 +351,7 @@ Create a ByteStream from the contents read from a file.
 - **meta** (<code>dict\[str, Any\] | None</code>) – Additional metadata to be stored with the ByteStream.
 - **guess_mime_type** (<code>bool</code>) – Whether to guess the mime type from the file.
 
-### `from_string`
+#### `from_string`
 
 ```python
 from_string(
@@ -365,7 +371,7 @@ Create a ByteStream encoding a string.
 - **mime_type** (<code>str | None</code>) – The mime type of the file.
 - **meta** (<code>dict\[str, Any\] | None</code>) – Additional metadata to be stored with the ByteStream.
 
-### `to_string`
+#### `to_string`
 
 ```python
 to_string(encoding: str = 'utf-8') -> str
@@ -385,7 +391,7 @@ Convert the ByteStream to a string, metadata will not be included.
 
 - <code>UnicodeDecodeError</code> – If the ByteStream data cannot be decoded with the specified encoding.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -397,7 +403,7 @@ Convert the ByteStream to a dictionary representation.
 
 - <code>dict\[str, Any\]</code> – A dictionary with keys 'data', 'meta', and 'mime_type'.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ByteStream
@@ -413,13 +419,15 @@ Create a ByteStream from a dictionary representation.
 
 - <code>ByteStream</code> – A ByteStream instance.
 
-## `ChatRole`
+## `chat_message`
+
+### `ChatRole`
 
 Bases: <code>str</code>, <code>Enum</code>
 
 Enumeration representing the roles within a chat.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> ChatRole
@@ -427,7 +435,7 @@ from_str(string: str) -> ChatRole
 
 Convert a string to a ChatRole enum.
 
-## `TextContent`
+### `TextContent`
 
 The textual content of a chat message.
 
@@ -435,7 +443,7 @@ The textual content of a chat message.
 
 - **text** (<code>str</code>) – The text content of the message.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -443,7 +451,7 @@ to_dict() -> dict[str, Any]
 
 Convert TextContent into a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> TextContent
@@ -451,7 +459,7 @@ from_dict(data: dict[str, Any]) -> TextContent
 
 Create a TextContent from a dictionary.
 
-## `ToolCall`
+### `ToolCall`
 
 Represents a Tool call prepared by the model, usually contained in an assistant message.
 
@@ -463,7 +471,7 @@ Represents a Tool call prepared by the model, usually contained in an assistant 
 - **extra** (<code>dict\[str, Any\] | None</code>) – Dictionary of extra information about the Tool call. Use to store provider-specific
   information. To avoid serialization issues, values should be JSON serializable.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -475,7 +483,7 @@ Convert ToolCall into a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary with keys 'tool_name', 'arguments', 'id', and 'extra'.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ToolCall
@@ -491,7 +499,7 @@ Creates a new ToolCall object from a dictionary.
 
 - <code>ToolCall</code> – The created object.
 
-## `ToolCallResult`
+### `ToolCallResult`
 
 Represents the result of a Tool invocation.
 
@@ -501,7 +509,7 @@ Represents the result of a Tool invocation.
 - **origin** (<code>ToolCall</code>) – The Tool call that produced this result.
 - **error** (<code>bool</code>) – Whether the Tool invocation resulted in an error.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -513,7 +521,7 @@ Converts ToolCallResult into a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary with keys 'result', 'origin', and 'error'.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ToolCallResult
@@ -529,7 +537,7 @@ Creates a ToolCallResult from a dictionary.
 
 - <code>ToolCallResult</code> – The created object.
 
-## `ReasoningContent`
+### `ReasoningContent`
 
 Represents the optional reasoning content prepared by the model, usually contained in an assistant message.
 
@@ -539,7 +547,7 @@ Represents the optional reasoning content prepared by the model, usually contain
 - **extra** (<code>dict\[str, Any\]</code>) – Dictionary of extra information about the reasoning content. Use to store provider-specific
   information. To avoid serialization issues, values should be JSON serializable.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -551,7 +559,7 @@ Convert ReasoningContent into a dictionary.
 
 - <code>dict\[str, Any\]</code> – A dictionary with keys 'reasoning_text', and 'extra'.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ReasoningContent
@@ -567,13 +575,13 @@ Creates a new ReasoningContent object from a dictionary.
 
 - <code>ReasoningContent</code> – The created object.
 
-## `ChatMessage`
+### `ChatMessage`
 
 Represents a message in a LLM chat conversation.
 
 Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a ChatMessage.
 
-### `role`
+#### `role`
 
 ```python
 role: ChatRole
@@ -581,7 +589,7 @@ role: ChatRole
 
 Returns the role of the entity sending the message.
 
-### `meta`
+#### `meta`
 
 ```python
 meta: dict[str, Any]
@@ -589,7 +597,7 @@ meta: dict[str, Any]
 
 Returns the metadata associated with the message.
 
-### `name`
+#### `name`
 
 ```python
 name: str | None
@@ -597,7 +605,7 @@ name: str | None
 
 Returns the name associated with the message.
 
-### `texts`
+#### `texts`
 
 ```python
 texts: list[str]
@@ -605,7 +613,7 @@ texts: list[str]
 
 Returns the list of all texts contained in the message.
 
-### `text`
+#### `text`
 
 ```python
 text: str | None
@@ -613,7 +621,7 @@ text: str | None
 
 Returns the first text contained in the message.
 
-### `tool_calls`
+#### `tool_calls`
 
 ```python
 tool_calls: list[ToolCall]
@@ -621,7 +629,7 @@ tool_calls: list[ToolCall]
 
 Returns the list of all Tool calls contained in the message.
 
-### `tool_call`
+#### `tool_call`
 
 ```python
 tool_call: ToolCall | None
@@ -629,7 +637,7 @@ tool_call: ToolCall | None
 
 Returns the first Tool call contained in the message.
 
-### `tool_call_results`
+#### `tool_call_results`
 
 ```python
 tool_call_results: list[ToolCallResult]
@@ -637,7 +645,7 @@ tool_call_results: list[ToolCallResult]
 
 Returns the list of all Tool call results contained in the message.
 
-### `tool_call_result`
+#### `tool_call_result`
 
 ```python
 tool_call_result: ToolCallResult | None
@@ -645,7 +653,7 @@ tool_call_result: ToolCallResult | None
 
 Returns the first Tool call result contained in the message.
 
-### `images`
+#### `images`
 
 ```python
 images: list[ImageContent]
@@ -653,7 +661,7 @@ images: list[ImageContent]
 
 Returns the list of all images contained in the message.
 
-### `image`
+#### `image`
 
 ```python
 image: ImageContent | None
@@ -661,7 +669,7 @@ image: ImageContent | None
 
 Returns the first image contained in the message.
 
-### `files`
+#### `files`
 
 ```python
 files: list[FileContent]
@@ -669,7 +677,7 @@ files: list[FileContent]
 
 Returns the list of all files contained in the message.
 
-### `file`
+#### `file`
 
 ```python
 file: FileContent | None
@@ -677,7 +685,7 @@ file: FileContent | None
 
 Returns the first file contained in the message.
 
-### `reasonings`
+#### `reasonings`
 
 ```python
 reasonings: list[ReasoningContent]
@@ -685,7 +693,7 @@ reasonings: list[ReasoningContent]
 
 Returns the list of all reasoning contents contained in the message.
 
-### `reasoning`
+#### `reasoning`
 
 ```python
 reasoning: ReasoningContent | None
@@ -693,7 +701,7 @@ reasoning: ReasoningContent | None
 
 Returns the first reasoning content contained in the message.
 
-### `is_from`
+#### `is_from`
 
 ```python
 is_from(role: ChatRole | str) -> bool
@@ -709,7 +717,7 @@ Check if the message is from a specific role.
 
 - <code>bool</code> – True if the message is from the specified role, False otherwise.
 
-### `from_user`
+#### `from_user`
 
 ```python
 from_user(
@@ -736,7 +744,7 @@ Create a message from the user.
 
 - <code>ChatMessage</code> – A new ChatMessage instance.
 
-### `from_system`
+#### `from_system`
 
 ```python
 from_system(
@@ -756,7 +764,7 @@ Create a message from the system.
 
 - <code>ChatMessage</code> – A new ChatMessage instance.
 
-### `from_assistant`
+#### `from_assistant`
 
 ```python
 from_assistant(
@@ -783,7 +791,7 @@ Create a message from the assistant.
 
 - <code>ChatMessage</code> – A new ChatMessage instance.
 
-### `from_tool`
+#### `from_tool`
 
 ```python
 from_tool(
@@ -807,7 +815,7 @@ Create a message from a Tool.
 
 - <code>ChatMessage</code> – A new ChatMessage instance.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -819,7 +827,7 @@ Converts ChatMessage into a dictionary.
 
 - <code>dict\[str, Any\]</code> – Serialized version of the object.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ChatMessage
@@ -835,7 +843,7 @@ Creates a new ChatMessage object from a dictionary.
 
 - <code>ChatMessage</code> – The created object.
 
-### `to_openai_dict_format`
+#### `to_openai_dict_format`
 
 ```python
 to_openai_dict_format(require_tool_call_ids: bool = True) -> dict[str, Any]
@@ -857,7 +865,7 @@ Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Complet
 - <code>ValueError</code> – If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
   `id` attribute.
 
-### `from_openai_dict_format`
+#### `from_openai_dict_format`
 
 ```python
 from_openai_dict_format(message: dict[str, Any]) -> ChatMessage
@@ -882,7 +890,9 @@ encounter validation errors.
 
 - <code>ValueError</code> – If the message dictionary is missing required fields.
 
-## `Document`
+## `document`
+
+### `Document`
 
 Base data class containing some data to be queried.
 
@@ -899,7 +909,7 @@ to/from dictionary and JSON.
 - **embedding** (<code>list\[float\] | None</code>) – dense vector representation of the document.
 - **sparse_embedding** (<code>SparseEmbedding | None</code>) – sparse vector representation of the document.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict(flatten: bool = True) -> dict[str, Any]
@@ -913,7 +923,7 @@ Converts Document into a dictionary.
 
 - **flatten** (<code>bool</code>) – Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> Document
@@ -923,7 +933,7 @@ Creates a new Document object from a dictionary.
 
 The `blob` field is converted to its original type.
 
-### `content_type`
+#### `content_type`
 
 ```python
 content_type
@@ -933,7 +943,9 @@ Returns the type of the content for the document.
 
 This is necessary to keep backward compatibility with 1.x.
 
-## `FileContent`
+## `file_content`
+
+### `FileContent`
 
 The file content of a chat message.
 
@@ -951,7 +963,7 @@ The file content of a chat message.
 - Guess the MIME type if not provided.
   Set to False to skip validation and speed up initialization.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -959,7 +971,7 @@ to_dict() -> dict[str, Any]
 
 Convert FileContent into a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> FileContent
@@ -967,7 +979,7 @@ from_dict(data: dict[str, Any]) -> FileContent
 
 Create an FileContent from a dictionary.
 
-### `from_file_path`
+#### `from_file_path`
 
 ```python
 from_file_path(
@@ -992,7 +1004,7 @@ Create an FileContent object from a file path.
 
 - <code>FileContent</code> – An FileContent object.
 
-### `from_url`
+#### `from_url`
 
 ```python
 from_url(
@@ -1021,7 +1033,9 @@ Create an FileContent object from a URL. The file is downloaded and converted to
 
 - <code>FileContent</code> – An FileContent object.
 
-## `ImageContent`
+## `image_content`
+
+### `ImageContent`
 
 The image content of a chat message.
 
@@ -1039,7 +1053,7 @@ The image content of a chat message.
 - Check if the MIME type is a valid image MIME type.
   Set to False to skip validation and speed up initialization.
 
-### `show`
+#### `show`
 
 ```python
 show() -> None
@@ -1047,7 +1061,7 @@ show() -> None
 
 Shows the image.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1055,7 +1069,7 @@ to_dict() -> dict[str, Any]
 
 Convert ImageContent into a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ImageContent
@@ -1063,7 +1077,7 @@ from_dict(data: dict[str, Any]) -> ImageContent
 
 Create an ImageContent from a dictionary.
 
-### `from_file_path`
+#### `from_file_path`
 
 ```python
 from_file_path(
@@ -1094,7 +1108,7 @@ use the `PDFToImageContent` component.
 
 - <code>ImageContent</code> – An ImageContent object.
 
-### `from_url`
+#### `from_url`
 
 ```python
 from_url(
@@ -1132,7 +1146,9 @@ For PDF to ImageContent conversion, use the `PDFToImageContent` component.
 
 - <code>ValueError</code> – If the URL does not point to an image or if it points to a PDF file.
 
-## `SparseEmbedding`
+## `sparse_embedding`
+
+### `SparseEmbedding`
 
 Class representing a sparse embedding.
 
@@ -1141,7 +1157,7 @@ Class representing a sparse embedding.
 - **indices** (<code>list\[int\]</code>) – List of indices of non-zero elements in the embedding.
 - **values** (<code>list\[float\]</code>) – List of values of non-zero elements in the embedding.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1153,7 +1169,7 @@ Convert the SparseEmbedding object to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Serialized sparse embedding.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(sparse_embedding_dict: dict[str, Any]) -> SparseEmbedding
@@ -1169,7 +1185,9 @@ Deserializes the sparse embedding from a dictionary.
 
 - <code>SparseEmbedding</code> – Deserialized sparse embedding.
 
-## `ToolCallDelta`
+## `streaming_chunk`
+
+### `ToolCallDelta`
 
 Represents a Tool call prepared by the model, usually contained in an assistant message.
 
@@ -1182,7 +1200,7 @@ Represents a Tool call prepared by the model, usually contained in an assistant 
 - **extra** (<code>dict\[str, Any\] | None</code>) – Dictionary of extra information about the Tool call. Use to store provider-specific
   information. To avoid serialization issues, values should be JSON serializable.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1194,7 +1212,7 @@ Returns a dictionary representation of the ToolCallDelta.
 
 - <code>dict\[str, Any\]</code> – A dictionary with keys 'index', 'tool_name', 'arguments', 'id', and 'extra'.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ToolCallDelta
@@ -1210,7 +1228,7 @@ Creates a ToolCallDelta from a serialized representation.
 
 - <code>ToolCallDelta</code> – A ToolCallDelta instance.
 
-## `ComponentInfo`
+### `ComponentInfo`
 
 The `ComponentInfo` class encapsulates information about a component.
 
@@ -1219,7 +1237,7 @@ The `ComponentInfo` class encapsulates information about a component.
 - **type** (<code>str</code>) – The type of the component.
 - **name** (<code>str | None</code>) – The name of the component assigned when adding it to a pipeline.
 
-### `from_component`
+#### `from_component`
 
 ```python
 from_component(component: Component) -> ComponentInfo
@@ -1235,7 +1253,7 @@ Create a `ComponentInfo` object from a `Component` instance.
 
 - <code>ComponentInfo</code> – The `ComponentInfo` object with the type and name of the given component.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1247,7 +1265,7 @@ Returns a dictionary representation of ComponentInfo.
 
 - <code>dict\[str, Any\]</code> – A dictionary with keys 'type' and 'name'.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> ComponentInfo
@@ -1263,7 +1281,7 @@ Creates a ComponentInfo from a serialized representation.
 
 - <code>ComponentInfo</code> – A ComponentInfo instance.
 
-## `StreamingChunk`
+### `StreamingChunk`
 
 The `StreamingChunk` class encapsulates a segment of streamed content along with associated metadata.
 
@@ -1286,7 +1304,7 @@ This structure facilitates the handling and processing of streamed data in a sys
 - **reasoning** (<code>ReasoningContent | None</code>) – An optional ReasoningContent object representing the reasoning content associated
   with the message chunk.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -1298,7 +1316,7 @@ Returns a dictionary representation of the StreamingChunk.
 
 - <code>dict\[str, Any\]</code> – Serialized dictionary representation of the calling object.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> StreamingChunk
@@ -1314,7 +1332,7 @@ Creates a deserialized StreamingChunk instance from a serialized representation.
 
 - <code>StreamingChunk</code> – A StreamingChunk instance.
 
-## `select_streaming_callback`
+### `select_streaming_callback`
 
 ```python
 select_streaming_callback(

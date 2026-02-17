@@ -6,7 +6,9 @@ slug: "/query-api"
 ---
 
 
-## `QueryExpander`
+## `query_expander`
+
+### `QueryExpander`
 
 A component that returns a list of semantically similar queries to improve retrieval recall in RAG systems.
 
@@ -39,7 +41,7 @@ expander = QueryExpander(n_expansions=2, include_original_query=True)  # Up to 3
 expander = QueryExpander(n_expansions=3, include_original_query=False)  # Exactly 3 total
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -64,7 +66,7 @@ Initialize the QueryExpander component.
 - **n_expansions** (<code>int</code>) – Number of alternative queries to generate (default: 4).
 - **include_original_query** (<code>bool</code>) – Whether to include the original query in the output.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -76,7 +78,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> QueryExpander
@@ -92,7 +94,7 @@ Deserializes the component from a dictionary.
 
 - <code>QueryExpander</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(query: str, n_expansions: int | None = None) -> dict[str, list[str]]
@@ -118,7 +120,7 @@ The language of the original query is preserved in the expanded queries.
 
 - <code>ValueError</code> – If n_expansions is not positive (less than or equal to 0).
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up()

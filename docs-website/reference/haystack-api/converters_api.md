@@ -6,7 +6,9 @@ slug: "/converters-api"
 ---
 
 
-## `AzureOCRDocumentConverter`
+## `azure`
+
+### `AzureOCRDocumentConverter`
 
 Converts files to documents using Azure's Document Intelligence service.
 
@@ -37,7 +39,7 @@ print(documents[0].content)
 # 'This is a text from the PDF file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -77,7 +79,7 @@ Creates an AzureOCRDocumentConverter component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -103,7 +105,7 @@ Convert a list of files to Documents using Azure's Document Intelligence service
 - `documents`: List of created Documents
 - `raw_azure_response`: List of raw Azure responses used to create the Documents
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -115,7 +117,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> AzureOCRDocumentConverter
@@ -131,7 +133,9 @@ Deserializes the component from a dictionary.
 
 - <code>AzureOCRDocumentConverter</code> – The deserialized component.
 
-## `CSVToDocument`
+## `csv`
+
+### `CSVToDocument`
 
 Converts CSV files to Documents.
 
@@ -150,7 +154,7 @@ print(documents[0].content)
 # 'col1,col2\nrow1,row1\nrow2,row2\n'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -177,7 +181,7 @@ Creates a CSVToDocument component.
 - **delimiter** (<code>str</code>) – CSV delimiter used when parsing in row mode (passed to `csv.DictReader`).
 - **quotechar** (<code>str</code>) – CSV quote character used when parsing in row mode (passed to `csv.DictReader`).
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -208,7 +212,9 @@ Converts CSV files to a Document (file mode) or to one Document per row (row mod
 - – A dictionary with the following keys:
 - `documents`: Created documents
 
-## `DOCXMetadata`
+## `docx`
+
+### `DOCXMetadata`
 
 Describes the metadata of Docx file.
 
@@ -230,13 +236,13 @@ Describes the metadata of Docx file.
 - **title** (<code>str</code>) – The title
 - **version** (<code>str</code>) – The version
 
-## `DOCXTableFormat`
+### `DOCXTableFormat`
 
 Bases: <code>Enum</code>
 
 Supported formats for storing DOCX tabular data in a Document.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> DOCXTableFormat
@@ -244,13 +250,13 @@ from_str(string: str) -> DOCXTableFormat
 
 Convert a string to a DOCXTableFormat enum.
 
-## `DOCXLinkFormat`
+### `DOCXLinkFormat`
 
 Bases: <code>Enum</code>
 
 Supported formats for storing DOCX link information in a Document.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> DOCXLinkFormat
@@ -258,7 +264,7 @@ from_str(string: str) -> DOCXLinkFormat
 
 Convert a string to a DOCXLinkFormat enum.
 
-## `DOCXToDocument`
+### `DOCXToDocument`
 
 Converts DOCX files to Documents.
 
@@ -277,7 +283,7 @@ print(documents[0].content)
 # 'This is a text from the DOCX file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -300,7 +306,7 @@ Create a DOCXToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -312,7 +318,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> DOCXToDocument
@@ -328,7 +334,7 @@ Deserializes the component from a dictionary.
 
 - <code>DOCXToDocument</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -354,7 +360,9 @@ Converts DOCX files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `HTMLToDocument`
+## `html`
+
+### `HTMLToDocument`
 
 Converts an HTML file to a Document.
 
@@ -370,7 +378,7 @@ print(documents[0].content)
 # 'This is a text from the HTML file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -389,7 +397,7 @@ Create an HTMLToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -401,7 +409,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> HTMLToDocument
@@ -417,7 +425,7 @@ Deserializes the component from a dictionary.
 
 - <code>HTMLToDocument</code> – The deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -445,7 +453,9 @@ Converts a list of HTML files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `JSONConverter`
+## `json`
+
+### `JSONConverter`
 
 Converts one or more JSON files into a text document.
 
@@ -513,7 +523,7 @@ print(documents[1].meta)
 # {'firstname': 'Rita', 'surname': 'Levi-Montalcini'}
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -560,7 +570,7 @@ Initialization will fail if neither `jq_schema` nor `content_key` are set.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -572,7 +582,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> JSONConverter
@@ -588,7 +598,7 @@ Deserializes the component from a dictionary.
 
 - <code>JSONConverter</code> – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -613,7 +623,9 @@ Converts a list of JSON files to documents.
 - – A dictionary with the following keys:
 - `documents`: A list of created documents.
 
-## `MarkdownToDocument`
+## `markdown`
+
+### `MarkdownToDocument`
 
 Converts a Markdown file into a text Document.
 
@@ -630,7 +642,7 @@ print(documents[0].content)
 # 'This is a text from the markdown file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -649,7 +661,7 @@ Create a MarkdownToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -675,7 +687,9 @@ Converts a list of Markdown files to Documents.
 - – A dictionary with the following keys:
 - `documents`: List of created Documents
 
-## `MSGToDocument`
+## `msg`
+
+### `MSGToDocument`
 
 Converts Microsoft Outlook .msg files into Haystack Documents.
 
@@ -696,7 +710,7 @@ attachments = results["attachments"]
 print(documents[0].content)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(store_full_path: bool = False) -> None
@@ -709,7 +723,7 @@ Creates a MSGToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -736,7 +750,9 @@ Converts MSG files to Documents.
 - `documents`: Created Documents.
 - `attachments`: Created ByteStream objects from file attachments.
 
-## `MultiFileConverter`
+## `multi_file_converter`
+
+### `MultiFileConverter`
 
 A file converter that handles conversion of multiple file types.
 
@@ -761,7 +777,7 @@ converter = MultiFileConverter()
 converter.run(sources=["test.txt", "test.pdf"], meta={})
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(encoding: str = 'utf-8', json_content_key: str = 'content') -> None
@@ -774,7 +790,9 @@ Initialize the MultiFileConverter.
 - **encoding** (<code>str</code>) – The encoding to use when reading files.
 - **json_content_key** (<code>str</code>) – The key to use in a content field in a document when converting JSON files.
 
-## `OpenAPIServiceToFunctions`
+## `openapi_functions`
+
+### `OpenAPIServiceToFunctions`
 
 Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
 
@@ -798,7 +816,7 @@ result = converter.run(sources=["path/to/openapi_definition.yaml"])
 assert result["functions"]
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__()
@@ -806,7 +824,7 @@ __init__()
 
 Create an OpenAPIServiceToFunctions component.
 
-### `run`
+#### `run`
 
 ```python
 run(sources: list[str | Path | ByteStream]) -> dict[str, Any]
@@ -829,13 +847,15 @@ Converts OpenAPI definitions in OpenAI function calling format.
 - <code>RuntimeError</code> – If the OpenAPI definitions cannot be downloaded or processed.
 - <code>ValueError</code> – If the source type is not recognized or no functions are found in the OpenAPI definitions.
 
-## `OutputAdaptationException`
+## `output_adapter`
+
+### `OutputAdaptationException`
 
 Bases: <code>Exception</code>
 
 Exception raised when there is an error during output adaptation.
 
-## `OutputAdapter`
+### `OutputAdapter`
 
 Adapts output of a Component using Jinja templates.
 
@@ -852,7 +872,7 @@ result = adapter.run(documents=documents)
 assert result["output"] == "Test content"
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -883,7 +903,7 @@ The Component input will be `documents`.
 - **unsafe** (<code>bool</code>) – Enable execution of arbitrary code in the Jinja template.
   This should only be used if you trust the source of the template as it can be lead to remote code execution.
 
-### `run`
+#### `run`
 
 ```python
 run(**kwargs)
@@ -904,7 +924,7 @@ Renders the Jinja template with the provided inputs.
 
 - <code>OutputAdaptationException</code> – If template rendering fails.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -916,7 +936,7 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> OutputAdapter
@@ -932,7 +952,9 @@ Deserializes the component from a dictionary.
 
 - <code>OutputAdapter</code> – The deserialized component.
 
-## `PDFMinerToDocument`
+## `pdfminer`
+
+### `PDFMinerToDocument`
 
 Converts PDF files to Documents.
 
@@ -950,7 +972,7 @@ print(documents[0].content)
 # 'This is a text from the PDF file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -993,7 +1015,7 @@ Create a PDFMinerToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `detect_undecoded_cid_characters`
+#### `detect_undecoded_cid_characters`
 
 ```python
 detect_undecoded_cid_characters(text: str) -> dict[str, Any]
@@ -1019,7 +1041,7 @@ see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-v
 
 - <code>dict\[str, Any\]</code> – A dictionary containing detection results
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1045,7 +1067,9 @@ Converts PDF files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `PPTXToDocument`
+## `pptx`
+
+### `PPTXToDocument`
 
 Converts PPTX files to Documents.
 
@@ -1061,7 +1085,7 @@ print(documents[0].content)
 # 'This is the text from the PPTX file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(store_full_path: bool = False)
@@ -1074,7 +1098,7 @@ Create an PPTXToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1100,13 +1124,15 @@ Converts PPTX files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `PyPDFExtractionMode`
+## `pypdf`
+
+### `PyPDFExtractionMode`
 
 Bases: <code>Enum</code>
 
 The mode to use for extracting text from a PDF.
 
-### `from_str`
+#### `from_str`
 
 ```python
 from_str(string: str) -> PyPDFExtractionMode
@@ -1114,7 +1140,7 @@ from_str(string: str) -> PyPDFExtractionMode
 
 Convert a string to a PyPDFExtractionMode enum.
 
-## `PyPDFToDocument`
+### `PyPDFToDocument`
 
 Converts PDF files to documents your pipeline can query.
 
@@ -1133,7 +1159,7 @@ print(documents[0].content)
 # 'This is a text from the PDF file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1171,7 +1197,7 @@ Create an PyPDFToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict()
@@ -1183,7 +1209,7 @@ Serializes the component to a dictionary.
 
 - – Dictionary with serialized data.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data)
@@ -1199,7 +1225,7 @@ Deserializes the component from a dictionary.
 
 - – Deserialized component.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1224,13 +1250,15 @@ Converts PDF files to documents.
 - – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
-## `XHTMLParser`
+## `tika`
+
+### `XHTMLParser`
 
 Bases: <code>HTMLParser</code>
 
 Custom parser to extract pages from Tika XHTML content.
 
-### `handle_starttag`
+#### `handle_starttag`
 
 ```python
 handle_starttag(tag: str, attrs: list[tuple])
@@ -1238,7 +1266,7 @@ handle_starttag(tag: str, attrs: list[tuple])
 
 Identify the start of a page div.
 
-### `handle_endtag`
+#### `handle_endtag`
 
 ```python
 handle_endtag(tag: str)
@@ -1246,7 +1274,7 @@ handle_endtag(tag: str)
 
 Identify the end of a page div.
 
-### `handle_data`
+#### `handle_data`
 
 ```python
 handle_data(data: str)
@@ -1254,7 +1282,7 @@ handle_data(data: str)
 
 Populate the page content.
 
-## `TikaDocumentConverter`
+### `TikaDocumentConverter`
 
 Converts files of different types to Documents.
 
@@ -1278,7 +1306,7 @@ print(documents[0].content)
 # 'This is a text from the docx file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1294,7 +1322,7 @@ Create a TikaDocumentConverter component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1320,7 +1348,9 @@ Converts files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `TextFileToDocument`
+## `txt`
+
+### `TextFileToDocument`
 
 Converts text files to documents your pipeline can query.
 
@@ -1340,7 +1370,7 @@ print(documents[0].content)
 # 'This is the content from the txt file.'
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(encoding: str = 'utf-8', store_full_path: bool = False)
@@ -1356,7 +1386,7 @@ Creates a TextFileToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -1381,7 +1411,9 @@ Converts text files to documents.
 - – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
-## `XLSXToDocument`
+## `xlsx`
+
+### `XLSXToDocument`
 
 ````
 Converts XLSX (Excel) files into Documents.
@@ -1406,7 +1438,7 @@ print(documents[0].content)
 "
 \`\`\`
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -1435,7 +1467,7 @@ Creates a XLSXToDocument component.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
 
-### `run`
+#### `run`
 
 ```python
 run(

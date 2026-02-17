@@ -6,7 +6,9 @@ slug: "/agents-api"
 ---
 
 
-## `Agent`
+## `agent`
+
+### `Agent`
 
 A tool-using Agent powered by a large language model.
 
@@ -87,7 +89,7 @@ result = agent.run(
 print(result["messages"][-1].text)
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(
@@ -132,7 +134,7 @@ Initialize the agent component.
 - <code>TypeError</code> – If the chat_generator does not support tools parameter in its run method.
 - <code>ValueError</code> – If the exit_conditions are not valid.
 
-### `warm_up`
+#### `warm_up`
 
 ```python
 warm_up() -> None
@@ -140,7 +142,7 @@ warm_up() -> None
 
 Warm up the Agent.
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict() -> dict[str, Any]
@@ -152,7 +154,7 @@ Serialize the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any]) -> Agent
@@ -168,7 +170,7 @@ Deserialize the agent from a dictionary.
 
 - <code>Agent</code> – Deserialized agent
 
-### `run`
+#### `run`
 
 ```python
 run(
@@ -223,7 +225,7 @@ Process messages and execute tools until an exit condition is met.
 
 - <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
-### `run_async`
+#### `run_async`
 
 ```python
 run_async(
@@ -281,7 +283,9 @@ if available.
 
 - <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
-## `State`
+## `state`
+
+### `State`
 
 State is a container for storing shared information during the execution of an Agent and its tools.
 
@@ -316,7 +320,7 @@ my_state = State(
 )
 ```
 
-### `__init__`
+#### `__init__`
 
 ```python
 __init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
@@ -333,7 +337,7 @@ Initialize a State object with a schema and optional data.
   - For all other types: `haystack.agents.state.state_utils.replace_values`
 - **data** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of initial data to populate the state
 
-### `get`
+#### `get`
 
 ```python
 get(key: str, default: Any = None) -> Any
@@ -350,7 +354,7 @@ Retrieve a value from the state by key.
 
 - <code>Any</code> – Value associated with key or default if not found
 
-### `set`
+#### `set`
 
 ```python
 set(
@@ -373,7 +377,7 @@ Value is merged or overwritten according to these rules:
 - **value** (<code>Any</code>) – Value to store or merge
 - **handler_override** (<code>Callable\\[[Any, Any\], Any\] | None</code>) – Optional function to override the default merge behavior
 
-### `data`
+#### `data`
 
 ```python
 data
@@ -381,7 +385,7 @@ data
 
 All current data of the state.
 
-### `has`
+#### `has`
 
 ```python
 has(key: str) -> bool
@@ -397,7 +401,7 @@ Check if a key exists in the state.
 
 - <code>bool</code> – True if key exists in state, False otherwise
 
-### `to_dict`
+#### `to_dict`
 
 ```python
 to_dict()
@@ -405,7 +409,7 @@ to_dict()
 
 Convert the State object to a dictionary.
 
-### `from_dict`
+#### `from_dict`
 
 ```python
 from_dict(data: dict[str, Any])
