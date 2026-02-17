@@ -247,6 +247,7 @@ class TestAgent:
                 "exit_conditions": ["text", "weather_tool"],
                 "state_schema": {"foo": {"type": "str"}},
                 "max_agent_steps": 100,
+                "final_answer_on_max_steps": True,
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
                 "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
@@ -310,6 +311,7 @@ class TestAgent:
                 "exit_conditions": ["text"],
                 "state_schema": {},
                 "max_agent_steps": 100,
+                "final_answer_on_max_steps": True,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
                 "tool_invoker_kwargs": None,
@@ -1347,3 +1349,92 @@ class TestAgentToolSelection:
         assert isinstance(deserialized_agent.tools, list)
         assert len(deserialized_agent.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
+
+    def test_final_answer_on_max_steps(self, monkeypatch, weather_tool):
+        """When max_agent_steps is reached and last message is a tool result,
+        the agent should make a final LLM call without tools to produce a text response."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        tool_call_msg = ChatMessage.from_assistant(tool_calls=[tool_call])
+        tool_result_msg = ChatMessage.from_tool(
+            tool_result="{'weather': 'sunny', 'temperature': 20}",
+            origin=tool_call,
+        )
+        final_text_msg = ChatMessage.from_assistant("The weather in Berlin is sunny and 20°C.")
+
+        agent = Agent(
+            chat_generator=generator,
+            tools=[weather_tool],
+            max_agent_steps=1,
+            final_answer_on_max_steps=True,
+        )
+        agent.warm_up()
+
+        # First call returns a tool call, second call (the final answer call) returns text
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [tool_call_msg]},
+                {"replies": [final_text_msg]},
+            ]
+        )
+
+        result = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+
+        assert result["last_message"].text == "The weather in Berlin is sunny and 20°C."
+        # The final LLM call should have been made with tools=[]
+        last_call_kwargs = agent.chat_generator.run.call_args_list[-1]
+        assert last_call_kwargs.kwargs.get("tools") == [] or last_call_kwargs[1].get("tools") == []
+
+    def test_final_answer_on_max_steps_disabled(self, monkeypatch, weather_tool):
+        """When final_answer_on_max_steps=False and max steps is reached,
+        the agent should NOT make a final LLM call — the last message remains a tool result."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        tool_call_msg = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        agent = Agent(
+            chat_generator=generator,
+            tools=[weather_tool],
+            max_agent_steps=1,
+            final_answer_on_max_steps=False,
+        )
+        agent.warm_up()
+
+        agent.chat_generator.run = MagicMock(return_value={"replies": [tool_call_msg]})
+
+        result = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+
+        # Last message should be a tool result (not a text response)
+        assert result["last_message"].tool_call_result is not None
+        # chat_generator.run should have been called exactly once (no final answer call)
+        assert agent.chat_generator.run.call_count == 1
+
+    def test_serialization_with_final_answer_on_max_steps(self, monkeypatch, weather_tool):
+        """Verify that final_answer_on_max_steps survives a to_dict/from_dict round-trip."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(),
+            tools=[weather_tool],
+            final_answer_on_max_steps=False,
+        )
+        serialized = agent.to_dict()
+        assert serialized["init_parameters"]["final_answer_on_max_steps"] is False
+
+        deserialized_agent = Agent.from_dict(serialized)
+        assert deserialized_agent.final_answer_on_max_steps is False
+
+        # Also verify default (True) round-trips correctly
+        agent_default = Agent(
+            chat_generator=OpenAIChatGenerator(),
+            tools=[weather_tool],
+        )
+        serialized_default = agent_default.to_dict()
+        assert serialized_default["init_parameters"]["final_answer_on_max_steps"] is True
+
+        deserialized_default = Agent.from_dict(serialized_default)
+        assert deserialized_default.final_answer_on_max_steps is True

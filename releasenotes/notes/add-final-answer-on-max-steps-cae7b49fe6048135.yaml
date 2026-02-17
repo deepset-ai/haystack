@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Added `final_answer_on_max_steps` parameter to the `Agent` component. When set to `True` (the default),
+    the Agent will make a final LLM call without tools to generate a human-readable text response when
+    `max_agent_steps` is reached and the last message is a tool result. This prevents returning raw tool
+    output to users in user-facing applications.

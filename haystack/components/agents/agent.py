@@ -177,6 +177,7 @@ class Agent:
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
+        final_answer_on_max_steps: bool = True,
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
         tool_invoker_kwargs: dict[str, Any] | None = None,
@@ -194,6 +195,9 @@ class Agent:
         :param state_schema: The schema for the runtime state used by the tools.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
             If the agent exceeds this number of steps, it will stop and return the current state.
+        :param final_answer_on_max_steps: If True, the agent will make a final LLM call without tools to generate
+            a human-readable text response when max_agent_steps is reached and the last message is a tool result.
+            Defaults to True.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
@@ -237,6 +241,7 @@ class Agent:
         self.system_prompt = system_prompt
         self.exit_conditions = exit_conditions
         self.max_agent_steps = max_agent_steps
+        self.final_answer_on_max_steps = final_answer_on_max_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
 
@@ -294,6 +299,7 @@ class Agent:
             # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
             max_agent_steps=self.max_agent_steps,
+            final_answer_on_max_steps=self.final_answer_on_max_steps,
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_invoker_kwargs=self.tool_invoker_kwargs,
@@ -760,6 +766,36 @@ class Agent:
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
+                if self.final_answer_on_max_steps and exe_context.state.data.get("messages"):
+                    last_msg = exe_context.state.data["messages"][-1]
+                    if hasattr(last_msg, "tool_call_result") and last_msg.tool_call_result is not None:
+                        try:
+                            # Call LLM without tools to force a text response
+                            final_inputs: dict[str, Any] = {
+                                "messages": exe_context.state.data["messages"],
+                                "tools": [],
+                            }
+                            if "streaming_callback" in exe_context.chat_generator_inputs:
+                                final_inputs["streaming_callback"] = exe_context.chat_generator_inputs[
+                                    "streaming_callback"
+                                ]
+                            if "generation_kwargs" in exe_context.chat_generator_inputs:
+                                final_inputs["generation_kwargs"] = exe_context.chat_generator_inputs[
+                                    "generation_kwargs"
+                                ]
+                            result = Pipeline._run_component(
+                                component_name="chat_generator",
+                                component={"instance": self.chat_generator},
+                                inputs=final_inputs,
+                                component_visits=exe_context.component_visits,
+                                parent_span=span,
+                            )
+                            exe_context.state.set("messages", result["replies"])
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to generate final answer after max steps: {error}",
+                                error=e,
+                            )
             span.set_content_tag("haystack.agent.output", exe_context.state.data)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
@@ -960,6 +996,36 @@ class Agent:
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
+                if self.final_answer_on_max_steps and exe_context.state.data.get("messages"):
+                    last_msg = exe_context.state.data["messages"][-1]
+                    if hasattr(last_msg, "tool_call_result") and last_msg.tool_call_result is not None:
+                        try:
+                            # Call LLM without tools to force a text response
+                            final_inputs: dict[str, Any] = {
+                                "messages": exe_context.state.data["messages"],
+                                "tools": [],
+                            }
+                            if "streaming_callback" in exe_context.chat_generator_inputs:
+                                final_inputs["streaming_callback"] = exe_context.chat_generator_inputs[
+                                    "streaming_callback"
+                                ]
+                            if "generation_kwargs" in exe_context.chat_generator_inputs:
+                                final_inputs["generation_kwargs"] = exe_context.chat_generator_inputs[
+                                    "generation_kwargs"
+                                ]
+                            result = await AsyncPipeline._run_component_async(
+                                component_name="chat_generator",
+                                component={"instance": self.chat_generator},
+                                component_inputs=final_inputs,
+                                component_visits=exe_context.component_visits,
+                                parent_span=span,
+                            )
+                            exe_context.state.set("messages", result["replies"])
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to generate final answer after max steps: {error}",
+                                error=e,
+                            )
             span.set_content_tag("haystack.agent.output", exe_context.state.data)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
