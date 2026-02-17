@@ -14,6 +14,7 @@ from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
+    from pptx.text.text import _Paragraph
 
 
 logger = logging.getLogger(__name__)
@@ -38,19 +39,19 @@ class PPTXToDocument:
 
     def __init__(
         self,
-        link_format: Literal["markdown", "plain", "none"] = "none",
         store_full_path: bool = False,
+        link_format: Literal["markdown", "plain", "none"] = "none",
     ):
         """
         Create a PPTXToDocument component.
 
+        :param store_full_path:
+            If True, the full path of the file is stored in the metadata of the document.
+            If False, only the file name is stored.
         :param link_format: The format for link output. Possible options:
             - ``"markdown"``: ``[text](url)``
             - ``"plain"``: ``text (url)``
             - ``"none"``: Only the text is extracted, link addresses are ignored.
-        :param store_full_path:
-            If True, the full path of the file is stored in the metadata of the document.
-            If False, only the file name is stored.
         """
         pptx_import.check()
         if link_format not in ("markdown", "plain", "none"):
@@ -88,7 +89,7 @@ class PPTXToDocument:
         text = "\f".join(text_all_slides)
         return text
 
-    def _process_paragraph(self, paragraph) -> str:
+    def _process_paragraph(self, paragraph: "_Paragraph") -> str:
         """
         Processes a paragraph and formats hyperlinks according to the specified link format.
 
