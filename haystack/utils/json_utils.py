@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import logging
 from typing import Any
+
+from haystack import logging
 
 logger = logging.getLogger(__name__)
 

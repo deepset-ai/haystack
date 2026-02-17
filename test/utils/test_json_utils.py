@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import logging
+from unittest.mock import patch
 
 import pytest
 
@@ -50,16 +50,20 @@ class TestJsonUtils:
         # Should pass without validation if expected_keys is empty list
         assert _parse_json_from_text(text, expected_keys=[]) == {"key": "value"}
 
-    def test__parse_json_from_text_invalid_raise_false(self, caplog):
+    def test__parse_json_from_text_invalid_raise_false(self):
         text = "invalid json"
-        with caplog.at_level(logging.WARNING):
+        with patch("haystack.utils.json_utils.logger") as mock_logger:
             result = _parse_json_from_text(text, raise_on_failure=False)
             assert result is None
-            assert "Failed to parse JSON from text" in caplog.text
+            mock_logger.warning.assert_called_once()
+            args, _ = mock_logger.warning.call_args
+            assert "Failed to parse JSON from text" in args[0]
 
-    def test__parse_json_from_text_missing_keys_raise_false(self, caplog):
+    def test__parse_json_from_text_missing_keys_raise_false(self):
         text = '{"key1": "value1"}'
-        with caplog.at_level(logging.WARNING):
+        with patch("haystack.utils.json_utils.logger") as mock_logger:
             result = _parse_json_from_text(text, expected_keys=["key1", "key2"], raise_on_failure=False)
             assert result is None
-            assert "Failed to parse JSON from text" in caplog.text
+            mock_logger.warning.assert_called_once()
+            args, _ = mock_logger.warning.call_args
+            assert "Failed to parse JSON from text" in args[0]
