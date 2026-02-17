@@ -5,13 +5,10 @@ description: "Storage for the chat messages."
 slug: "/experimental-chatmessage-store-api"
 ---
 
-<a id="haystack_experimental.chat_message_stores.in_memory"></a>
 
-## Module haystack\_experimental.chat\_message\_stores.in\_memory
+## `haystack-experimental.haystack_experimental.chat_message_stores.in_memory`
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore"></a>
-
-### InMemoryChatMessageStore
+### `InMemoryChatMessageStore`
 
 Stores chat messages in-memory.
 
@@ -24,6 +21,7 @@ whenever you write, read, or delete messages. This ensures that chat messages fr
 conversations do not overlap.
 
 Usage example:
+
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack_experimental.chat_message_stores.in_memory import InMemoryChatMessageStore
@@ -40,142 +38,124 @@ retrieved_messages = message_store.retrieve_messages(chat_history_id="user_456_s
 print(retrieved_messages)
 ```
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.__init__"></a>
-
-#### InMemoryChatMessageStore.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(skip_system_messages: bool = True,
-             last_k: int | None = 10) -> None
+__init__(skip_system_messages: bool = True, last_k: int | None = 10) -> None
 ```
 
 Create an InMemoryChatMessageStore.
 
-**Arguments**:
+**Parameters:**
 
-- `skip_system_messages`: Whether to skip storing system messages. Defaults to True.
-- `last_k`: The number of last messages to retrieve. Defaults to 10 messages if not specified.
+- **skip_system_messages** (<code>bool</code>) – Whether to skip storing system messages. Defaults to True.
+- **last_k** (<code>int | None</code>) – The number of last messages to retrieve. Defaults to 10 messages if not specified.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.to_dict"></a>
-
-#### InMemoryChatMessageStore.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.from_dict"></a>
-
-#### InMemoryChatMessageStore.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "InMemoryChatMessageStore"
+from_dict(data: dict[str, Any]) -> InMemoryChatMessageStore
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>InMemoryChatMessageStore</code> – The deserialized component.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.count_messages"></a>
-
-#### InMemoryChatMessageStore.count\_messages
+#### `count_messages`
 
 ```python
-def count_messages(chat_history_id: str) -> int
+count_messages(chat_history_id: str) -> int
 ```
 
 Returns the number of chat messages stored in this store.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_history_id`: The chat history id for which to count messages.
+- **chat_history_id** (<code>str</code>) – The chat history id for which to count messages.
 
-**Returns**:
+**Returns:**
 
-The number of messages.
+- <code>int</code> – The number of messages.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.write_messages"></a>
-
-#### InMemoryChatMessageStore.write\_messages
+#### `write_messages`
 
 ```python
-def write_messages(chat_history_id: str, messages: list[ChatMessage]) -> int
+write_messages(chat_history_id: str, messages: list[ChatMessage]) -> int
 ```
 
 Writes chat messages to the ChatMessageStore.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_history_id`: The chat history id under which to store the messages.
-- `messages`: A list of ChatMessages to write.
+- **chat_history_id** (<code>str</code>) – The chat history id under which to store the messages.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessages to write.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If messages is not a list of ChatMessages.
+- <code>int</code> – The number of messages written.
 
-**Returns**:
+**Raises:**
 
-The number of messages written.
+- <code>ValueError</code> – If messages is not a list of ChatMessages.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.retrieve_messages"></a>
-
-#### InMemoryChatMessageStore.retrieve\_messages
+#### `retrieve_messages`
 
 ```python
-def retrieve_messages(chat_history_id: str,
-                      last_k: int | None = None) -> list[ChatMessage]
+retrieve_messages(
+    chat_history_id: str, last_k: int | None = None
+) -> list[ChatMessage]
 ```
 
 Retrieves all stored chat messages.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_history_id`: The chat history id from which to retrieve messages.
-- `last_k`: The number of last messages to retrieve. If unspecified, the last_k parameter passed
-to the constructor will be used.
+- **chat_history_id** (<code>str</code>) – The chat history id from which to retrieve messages.
+- **last_k** (<code>int | None</code>) – The number of last messages to retrieve. If unspecified, the last_k parameter passed
+  to the constructor will be used.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If last_k is not None and is less than 0.
+- <code>list\[ChatMessage\]</code> – A list of chat messages.
 
-**Returns**:
+**Raises:**
 
-A list of chat messages.
+- <code>ValueError</code> – If last_k is not None and is less than 0.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.delete_messages"></a>
-
-#### InMemoryChatMessageStore.delete\_messages
+#### `delete_messages`
 
 ```python
-def delete_messages(chat_history_id: str) -> None
+delete_messages(chat_history_id: str) -> None
 ```
 
 Deletes all stored chat messages.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_history_id`: The chat history id from which to delete messages.
+- **chat_history_id** (<code>str</code>) – The chat history id from which to delete messages.
 
-<a id="haystack_experimental.chat_message_stores.in_memory.InMemoryChatMessageStore.delete_all_messages"></a>
-
-#### InMemoryChatMessageStore.delete\_all\_messages
+#### `delete_all_messages`
 
 ```python
-def delete_all_messages() -> None
+delete_all_messages() -> None
 ```
 
 Deletes all stored chat messages from all chat history ids.
-

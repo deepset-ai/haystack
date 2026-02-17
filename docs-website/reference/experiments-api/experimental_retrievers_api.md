@@ -5,17 +5,15 @@ description: "Sweep through Document Stores and return a set of candidate docume
 slug: "/experimental-retrievers-api"
 ---
 
-<a id="haystack_experimental.components.retrievers.chat_message_retriever"></a>
 
-## Module haystack\_experimental.components.retrievers.chat\_message\_retriever
+## `haystack-experimental.haystack_experimental.components.retrievers.chat_message_retriever`
 
-<a id="haystack_experimental.components.retrievers.chat_message_retriever.ChatMessageRetriever"></a>
-
-### ChatMessageRetriever
+### `ChatMessageRetriever`
 
 Retrieves chat messages from the underlying ChatMessageStore.
 
 Usage example:
+
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack_experimental.components.retrievers import ChatMessageRetriever
@@ -35,61 +33,51 @@ result = retriever.run(chat_history_id="user_456_session_123")
 print(result["messages"])
 ```
 
-<a id="haystack_experimental.components.retrievers.chat_message_retriever.ChatMessageRetriever.__init__"></a>
-
-#### ChatMessageRetriever.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(chat_message_store: ChatMessageStore, last_k: int | None = 10)
+__init__(chat_message_store: ChatMessageStore, last_k: int | None = 10)
 ```
 
 Create the ChatMessageRetriever component.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_message_store`: An instance of a ChatMessageStore.
-- `last_k`: The number of last messages to retrieve. Defaults to 10 messages if not specified.
+- **chat_message_store** (<code>ChatMessageStore</code>) – An instance of a ChatMessageStore.
+- **last_k** (<code>int | None</code>) – The number of last messages to retrieve. Defaults to 10 messages if not specified.
 
-<a id="haystack_experimental.components.retrievers.chat_message_retriever.ChatMessageRetriever.to_dict"></a>
-
-#### ChatMessageRetriever.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_experimental.components.retrievers.chat_message_retriever.ChatMessageRetriever.from_dict"></a>
-
-#### ChatMessageRetriever.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChatMessageRetriever"
+from_dict(data: dict[str, Any]) -> ChatMessageRetriever
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>ChatMessageRetriever</code> – The deserialized component.
 
-<a id="haystack_experimental.components.retrievers.chat_message_retriever.ChatMessageRetriever.run"></a>
-
-#### ChatMessageRetriever.run
+#### `run`
 
 ```python
-@component.output_types(messages=list[ChatMessage])
-def run(
+run(
     chat_history_id: str,
     *,
     last_k: int | None = None,
@@ -99,26 +87,25 @@ def run(
 
 Run the ChatMessageRetriever
 
-**Arguments**:
+**Parameters:**
 
-- `chat_history_id`: A unique identifier for the chat session or conversation whose messages should be retrieved.
-Each `chat_history_id` corresponds to a distinct chat history stored in the underlying ChatMessageStore.
-For example, use a session ID or conversation ID to isolate messages from different chat sessions.
-- `last_k`: The number of last messages to retrieve. This parameter takes precedence over the last_k
-parameter passed to the ChatMessageRetriever constructor. If unspecified, the last_k parameter passed
-to the constructor will be used.
-- `current_messages`: A list of incoming chat messages to combine with the retrieved messages. System messages from this list
-are prepended before the retrieved history, while all other messages (e.g., user messages) are appended
-after. This is useful for including new conversational context alongside stored history so the output
-can be directly used as input to a ChatGenerator or an Agent. If not provided, only the stored messages
-will be returned.
+- **chat_history_id** (<code>str</code>) – A unique identifier for the chat session or conversation whose messages should be retrieved.
+  Each `chat_history_id` corresponds to a distinct chat history stored in the underlying ChatMessageStore.
+  For example, use a session ID or conversation ID to isolate messages from different chat sessions.
+- **last_k** (<code>int | None</code>) – The number of last messages to retrieve. This parameter takes precedence over the last_k
+  parameter passed to the ChatMessageRetriever constructor. If unspecified, the last_k parameter passed
+  to the constructor will be used.
+- **current_messages** (<code>list\[ChatMessage\] | None</code>) – A list of incoming chat messages to combine with the retrieved messages. System messages from this list
+  are prepended before the retrieved history, while all other messages (e.g., user messages) are appended
+  after. This is useful for including new conversational context alongside stored history so the output
+  can be directly used as input to a ChatGenerator or an Agent. If not provided, only the stored messages
+  will be returned.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If last_k is not None and is less than 0.
-
-**Returns**:
-
-A dictionary with the following key:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `messages` - The retrieved chat messages combined with any provided current messages.
 
+**Raises:**
+
+- <code>ValueError</code> – If last_k is not None and is less than 0.

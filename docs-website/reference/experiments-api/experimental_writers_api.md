@@ -5,17 +5,15 @@ description: "Writers for Haystack."
 slug: "/experimental-writers-api"
 ---
 
-<a id="haystack_experimental.components.writers.chat_message_writer"></a>
 
-## Module haystack\_experimental.components.writers.chat\_message\_writer
+## `haystack-experimental.haystack_experimental.components.writers.chat_message_writer`
 
-<a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter"></a>
-
-### ChatMessageWriter
+### `ChatMessageWriter`
 
 Writes chat messages to an underlying ChatMessageStore.
 
 Usage example:
+
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack_experimental.components.writers import ChatMessageWriter
@@ -30,76 +28,65 @@ writer = ChatMessageWriter(message_store)
 writer.run(chat_history_id="user_456_session_123", messages=messages)
 ```
 
-<a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter.__init__"></a>
-
-#### ChatMessageWriter.\_\_init\_\_
+#### `__init__`
 
 ```python
-def __init__(chat_message_store: ChatMessageStore) -> None
+__init__(chat_message_store: ChatMessageStore) -> None
 ```
 
 Create a ChatMessageWriter component.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_message_store`: The ChatMessageStore where the chat messages are to be written.
+- **chat_message_store** (<code>ChatMessageStore</code>) – The ChatMessageStore where the chat messages are to be written.
 
-<a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter.to_dict"></a>
-
-#### ChatMessageWriter.to\_dict
+#### `to_dict`
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter.from_dict"></a>
-
-#### ChatMessageWriter.from\_dict
+#### `from_dict`
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChatMessageWriter"
+from_dict(data: dict[str, Any]) -> ChatMessageWriter
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Raises**:
+**Returns:**
 
-- `DeserializationError`: If the message store is not properly specified in the serialization data or its type cannot be imported.
+- <code>ChatMessageWriter</code> – The deserialized component.
 
-**Returns**:
+**Raises:**
 
-The deserialized component.
+- <code>DeserializationError</code> – If the message store is not properly specified in the serialization data or its type cannot be imported.
 
-<a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter.run"></a>
-
-#### ChatMessageWriter.run
+#### `run`
 
 ```python
-@component.output_types(messages_written=int)
-def run(chat_history_id: str, messages: list[ChatMessage]) -> dict[str, int]
+run(chat_history_id: str, messages: list[ChatMessage]) -> dict[str, int]
 ```
 
 Run the ChatMessageWriter on the given input data.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_history_id`: A unique identifier for the chat session or conversation whose messages should be retrieved.
-Each `chat_history_id` corresponds to a distinct chat history stored in the underlying ChatMessageStore.
-For example, use a session ID or conversation ID to isolate messages from different chat sessions.
-- `messages`: A list of chat messages to write to the store.
+- **chat_history_id** (<code>str</code>) – A unique identifier for the chat session or conversation whose messages should be retrieved.
+  Each `chat_history_id` corresponds to a distinct chat history stored in the underlying ChatMessageStore.
+  For example, use a session ID or conversation ID to isolate messages from different chat sessions.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of chat messages to write to the store.
 
-**Returns**:
+**Returns:**
 
-- `messages_written`: Number of messages written to the ChatMessageStore.
-
+- <code>dict\[str, int\]</code> – - `messages_written`: Number of messages written to the ChatMessageStore.
