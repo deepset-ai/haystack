@@ -100,6 +100,7 @@ class TestAgent:
                 "exit_conditions": ["text"],
                 "state_schema": {},
                 "max_agent_steps": 100,
+                "final_answer_on_max_steps": True,
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
                 "tool_invoker_kwargs": None,
