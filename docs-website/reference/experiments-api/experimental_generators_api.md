@@ -12,7 +12,6 @@ slug: "/experimental-generators-api"
 
 Bases: <code>OpenAIChatGenerator</code>
 
-````
 An OpenAI chat-based text generator component that supports hallucination risk scoring.
 
 This is based on the paper
@@ -31,28 +30,21 @@ llm = OpenAIChatGenerator(model="gpt-4o")
 rag_result = llm.run(
     messages=[
         ChatMessage.from_user(
-            text="Task: Answer strictly based on the evidence provided below.
-````
-
-"
-"Question: Who won the Nobel Prize in Physics in 2019?
-"
-"Evidence:
-"
-"- Nobel Prize press release (2019): James Peebles (1/2); Michel Mayor & Didier Queloz (1/2).
-"
-"Constraints: If evidence is insufficient or conflicting, refuse."
-)
-\],
-hallucination_score_config=HallucinationScoreConfig(skeleton_policy="evidence_erase"),
+            text="Task: Answer strictly based on the evidence provided below.\n"
+            "Question: Who won the Nobel Prize in Physics in 2019?\n"
+            "Evidence:\n"
+            "- Nobel Prize press release (2019): James Peebles (1/2); Michel Mayor & Didier Queloz (1/2).\n"
+            "Constraints: If evidence is insufficient or conflicting, refuse."
+        )
+    ],
+    hallucination_score_config=HallucinationScoreConfig(skeleton_policy="evidence_erase"),
 )
 print(f"Decision: {rag_result['replies'][0].meta['hallucination_decision']}")
-print(f"Risk bound: {rag_result['replies'][0].meta\['hallucination_risk'\]:.3f}")
+print(f"Risk bound: {rag_result['replies'][0].meta['hallucination_risk']:.3f}")
 print(f"Rationale: {rag_result['replies'][0].meta['hallucination_rationale']}")
-print(f"Answer:
-{rag_result['replies'][0].text}")
+print(f"Answer:\n{rag_result['replies'][0].text}")
 print("---")
-\`\`\`
+```
 
 #### `run`
 

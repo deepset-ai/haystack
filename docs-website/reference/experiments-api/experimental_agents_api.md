@@ -221,7 +221,6 @@ if available.
   can use for non-blocking user interaction.
 - **chat_message_store_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of keyword arguments to pass to the ChatMessageStore.
   For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
-- **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
 - **memory_store_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of keyword arguments to pass to the MemoryStore.
   It can include:
 - `user_id`: The user ID to search and add memories from.
@@ -235,6 +234,8 @@ if available.
     ignored for memory retrieval.
   - `top_k`: The number of memories to return.
   - `include_memory_metadata`: Whether to include the memory metadata in the ChatMessage.
+- **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
+  The keys must match the schema defined in the Agent's `state_schema`.
 
 **Returns:**
 
