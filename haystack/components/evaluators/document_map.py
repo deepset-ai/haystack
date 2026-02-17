@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from haystack import Document, component
+from haystack import Document, component, default_to_dict
 
 
 @component
@@ -43,6 +43,45 @@ class DocumentMAPEvaluator:
     ```
     """
 
+    def __init__(self, document_comparison_field: str = "content"):
+        """
+        Create a DocumentMAPEvaluator component.
+
+        :param document_comparison_field:
+            The Document field to use for comparison. Possible options:
+            - ``"content"``: uses ``doc.content``
+            - ``"id"``: uses ``doc.id``
+            - A ``meta.`` prefix followed by a key name: uses ``doc.meta["<key>"]``
+              (e.g. ``"meta.file_id"``, ``"meta.page_number"``)
+        """
+        self.document_comparison_field = document_comparison_field
+
+    def _get_comparison_value(self, doc: Document) -> Any:
+        """
+        Extract the comparison value from a document based on the configured field.
+        """
+        if self.document_comparison_field == "content":
+            return doc.content
+        if self.document_comparison_field == "id":
+            return doc.id
+        if self.document_comparison_field.startswith("meta."):
+            meta_key = self.document_comparison_field[5:]
+            return doc.meta.get(meta_key)
+        msg = (
+            f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
+            "Use 'content', 'id', or 'meta.<key>'."
+        )
+        raise ValueError(msg)
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, document_comparison_field=self.document_comparison_field)
+
     # Refer to https://www.pinecone.io/learn/offline-evaluation/ for the algorithm.
     @component.output_types(score=float, individual_scores=list[float])
     def run(
@@ -74,12 +113,15 @@ class DocumentMAPEvaluator:
             average_precision_numerator = 0.0
             relevant_documents = 0
 
-            ground_truth_contents = [doc.content for doc in ground_truth if doc.content is not None]
+            ground_truth_values = [
+                self._get_comparison_value(doc) for doc in ground_truth if self._get_comparison_value(doc) is not None
+            ]
             for rank, retrieved_document in enumerate(retrieved):
-                if retrieved_document.content is None:
+                retrieved_value = self._get_comparison_value(retrieved_document)
+                if retrieved_value is None:
                     continue
 
-                if retrieved_document.content in ground_truth_contents:
+                if retrieved_value in ground_truth_values:
                     relevant_documents += 1
                     average_precision_numerator += relevant_documents / (rank + 1)
             if relevant_documents > 0:

@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Added ``document_comparison_field`` parameter to ``DocumentMRREvaluator``,
+    ``DocumentMAPEvaluator``, and ``DocumentRecallEvaluator``.
+
+    This allows users to compare documents using fields other than ``content``,
+    such as ``id`` or metadata keys (via ``meta.<key>`` syntax).
+
+    Previously, all three evaluators hardcoded ``doc.content`` for comparison,
+    which did not work well when documents were chunked or when ground truth
+    was identified by composite keys.

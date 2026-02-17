@@ -22,6 +22,33 @@ def test_init_with_string_mode():
     assert evaluator.mode == RecallMode.MULTI_HIT
 
 
+def test_init_default_comparison_field():
+    evaluator = DocumentRecallEvaluator()
+    assert evaluator.document_comparison_field == "content"
+
+
+def test_run_with_id_comparison():
+    evaluator = DocumentRecallEvaluator(mode=RecallMode.SINGLE_HIT, document_comparison_field="id")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(id="doc1", content="foo")], [Document(id="doc2", content="bar")]],
+        retrieved_documents=[[Document(id="doc1", content="different")], [Document(id="wrong", content="bar")]],
+    )
+    assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
+
+
+def test_run_with_meta_comparison():
+    evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, document_comparison_field="meta.file_id")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="x", meta={"file_id": "a"}), Document(content="y", meta={"file_id": "b"})],
+        ],
+        retrieved_documents=[
+            [Document(content="z", meta={"file_id": "a"}), Document(content="w", meta={"file_id": "c"})],
+        ],
+    )
+    assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
 class TestDocumentRecallEvaluatorSingleHit:
     @pytest.fixture
     def evaluator(self):
@@ -95,7 +122,7 @@ class TestDocumentRecallEvaluatorSingleHit:
         data = evaluator.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
-            "init_parameters": {"mode": "single_hit"},
+            "init_parameters": {"mode": "single_hit", "document_comparison_field": "content"},
         }
 
     def test_from_dict(self):
@@ -185,7 +212,7 @@ class TestDocumentRecallEvaluatorMultiHit:
         data = evaluator.to_dict()
         assert data == {
             "type": "haystack.components.evaluators.document_recall.DocumentRecallEvaluator",
-            "init_parameters": {"mode": "multi_hit"},
+            "init_parameters": {"mode": "multi_hit", "document_comparison_field": "content"},
         }
 
     def test_from_dict(self):

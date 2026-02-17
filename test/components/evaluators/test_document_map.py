@@ -4,8 +4,50 @@
 
 import pytest
 
-from haystack import Document
+from haystack import Document, default_from_dict
 from haystack.components.evaluators.document_map import DocumentMAPEvaluator
+
+
+def test_to_dict():
+    evaluator = DocumentMAPEvaluator()
+    data = evaluator.to_dict()
+    assert data == {
+        "type": "haystack.components.evaluators.document_map.DocumentMAPEvaluator",
+        "init_parameters": {"document_comparison_field": "content"},
+    }
+
+
+def test_from_dict():
+    data = {
+        "type": "haystack.components.evaluators.document_map.DocumentMAPEvaluator",
+        "init_parameters": {"document_comparison_field": "id"},
+    }
+    evaluator = default_from_dict(DocumentMAPEvaluator, data)
+    assert evaluator.document_comparison_field == "id"
+
+
+def test_run_with_id_comparison():
+    evaluator = DocumentMAPEvaluator(document_comparison_field="id")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(id="doc1", content="foo")], [Document(id="doc2", content="bar")]],
+        retrieved_documents=[[Document(id="doc1", content="different")], [Document(id="wrong", content="bar")]],
+    )
+    assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
+
+
+def test_run_with_meta_comparison():
+    evaluator = DocumentMAPEvaluator(document_comparison_field="meta.file_id")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="x", meta={"file_id": "a"})],
+            [Document(content="y", meta={"file_id": "b"})],
+        ],
+        retrieved_documents=[
+            [Document(content="z", meta={"file_id": "a"})],
+            [Document(content="w", meta={"file_id": "c"})],
+        ],
+    )
+    assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
 def test_run_with_all_matching():
