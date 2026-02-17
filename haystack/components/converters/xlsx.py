@@ -48,6 +48,7 @@ class XLSXToDocument:
     def __init__(
         self,
         table_format: Literal["csv", "markdown"] = "csv",
+        link_format: Literal["markdown", "plain", "none"] = "none",
         sheet_name: str | int | list[str | int] | None = None,
         read_excel_kwargs: dict[str, Any] | None = None,
         table_format_kwargs: dict[str, Any] | None = None,
@@ -58,6 +59,10 @@ class XLSXToDocument:
         Creates a XLSXToDocument component.
 
         :param table_format: The format to convert the Excel file to.
+        :param link_format: The format for link output. Possible options:
+            - ``"markdown"``: ``[text](url)``
+            - ``"plain"``: ``text (url)``
+            - ``"none"``: Only the text is extracted, link addresses are ignored.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
@@ -74,8 +79,12 @@ class XLSXToDocument:
         self.table_format = table_format
         if table_format not in ["csv", "markdown"]:
             raise ValueError(f"Unsupported export format: {table_format}. Choose either 'csv' or 'markdown'.")
+        if link_format not in ("markdown", "plain", "none"):
+            msg = f"Unknown link format '{link_format}'. Supported formats are: 'markdown', 'plain', 'none'"
+            raise ValueError(msg)
         if table_format == "markdown":
             tabulate_import.check()
+        self.link_format = link_format
         self.sheet_name = sheet_name
         self.read_excel_kwargs = read_excel_kwargs or {}
         self.table_format_kwargs = table_format_kwargs or {}
@@ -149,17 +158,39 @@ class XLSXToDocument:
 
     def _extract_tables(self, bytestream: ByteStream) -> tuple[list[str], list[dict]]:
         """
-        Extract tables from a Excel file.
+        Extract tables from an Excel file.
         """
+        file_bytes = io.BytesIO(bytestream.data)
         resolved_read_excel_kwargs = {
             **self.read_excel_kwargs,
             "sheet_name": self.sheet_name,
             "header": None,  # Don't assign any pandas column labels
             "engine": "openpyxl",  # Use openpyxl as the engine to read the Excel file
         }
-        sheet_to_dataframe = pd.read_excel(io=io.BytesIO(bytestream.data), **resolved_read_excel_kwargs)
+        sheet_to_dataframe = pd.read_excel(io=file_bytes, **resolved_read_excel_kwargs)
         if isinstance(sheet_to_dataframe, pd.DataFrame):
             sheet_to_dataframe = {self.sheet_name: sheet_to_dataframe}
+
+        # If link extraction is enabled, load the workbook with openpyxl to read hyperlinks
+        hyperlinks_by_sheet: dict[str | int | None, dict[tuple[int, int], str]] = {}
+        if self.link_format != "none":
+            file_bytes.seek(0)
+            wb = openpyxl.load_workbook(file_bytes, data_only=True)
+            for sheet_key in sheet_to_dataframe:
+                if isinstance(sheet_key, int):
+                    ws = wb.worksheets[sheet_key]
+                elif sheet_key is None:
+                    ws = wb.active
+                else:
+                    ws = wb[sheet_key]
+                cell_links: dict[tuple[int, int], str] = {}
+                for row in ws.iter_rows():
+                    for cell in row:
+                        if cell.hyperlink and cell.hyperlink.target:
+                            # Convert to 0-based indices to match DataFrame positions
+                            cell_links[(cell.row - 1, cell.column - 1)] = cell.hyperlink.target
+                hyperlinks_by_sheet[sheet_key] = cell_links
+            wb.close()
 
         updated_sheet_to_dataframe = {}
         for key in sheet_to_dataframe:
@@ -169,6 +200,18 @@ class XLSXToDocument:
             # Excel column names are Alphabet Characters
             header = self._generate_excel_column_names(df.shape[1])
             df.columns = header
+
+            # Apply hyperlinks to cell values
+            if key in hyperlinks_by_sheet:
+                for (row_idx, col_idx), url in hyperlinks_by_sheet[key].items():
+                    if row_idx < len(df) and col_idx < len(df.columns):
+                        cell_value = df.iat[row_idx, col_idx]
+                        text = str(cell_value) if pd.notna(cell_value) else ""
+                        if self.link_format == "markdown":
+                            df.iat[row_idx, col_idx] = f"[{text}]({url})"
+                        else:
+                            df.iat[row_idx, col_idx] = f"{text} ({url})"
+
             updated_sheet_to_dataframe[key] = df
 
         tables = []
