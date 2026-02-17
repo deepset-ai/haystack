@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Restrict package metadata ``requires-python`` to ``>=3.10,<3.14`` so unsupported Python 3.14 environments are
-    rejected early during setup.
