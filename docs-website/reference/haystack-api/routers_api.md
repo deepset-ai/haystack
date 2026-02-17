@@ -8,19 +8,19 @@ slug: "/routers-api"
 
 ## `haystack.components.routers.conditional_router`
 
-### `haystack.components.routers.conditional_router.NoRouteSelectedException`
+### `NoRouteSelectedException`
 
 Bases: <code>Exception</code>
 
 Exception raised when no route is selected in ConditionalRouter.
 
-### `haystack.components.routers.conditional_router.RouteConditionException`
+### `RouteConditionException`
 
 Bases: <code>Exception</code>
 
 Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter.
 
-### `haystack.components.routers.conditional_router.ConditionalRouter`
+### `ConditionalRouter`
 
 Routes data based on specific conditions.
 
@@ -237,7 +237,7 @@ order they are listed. The method directs the flow of data to the output specifi
 
 ## `haystack.components.routers.document_length_router`
 
-### `haystack.components.routers.document_length_router.DocumentLengthRouter`
+### `DocumentLengthRouter`
 
 Categorizes documents based on the length of the `content` field and routes them to the appropriate output.
 
@@ -303,7 +303,7 @@ Categorize input documents into groups based on the length of the `content` fiel
 
 ## `haystack.components.routers.document_type_router`
 
-### `haystack.components.routers.document_type_router.DocumentTypeRouter`
+### `DocumentTypeRouter`
 
 Routes documents by their MIME types.
 
@@ -396,7 +396,7 @@ standard Python `mimetypes` module and custom mappings.
 
 ## `haystack.components.routers.file_type_router`
 
-### `haystack.components.routers.file_type_router.FileTypeRouter`
+### `FileTypeRouter`
 
 Categorizes files or byte streams by their MIME types, helping in context-based routing.
 
@@ -510,7 +510,7 @@ Categorize files or byte streams according to their MIME types.
 
 ## `haystack.components.routers.llm_messages_router`
 
-### `haystack.components.routers.llm_messages_router.LLMMessagesRouter`
+### `LLMMessagesRouter`
 
 ````
 Routes Chat Messages to different connections using a generative Language Model to perform classification.
@@ -641,7 +641,7 @@ Deserialize this component from a dictionary.
 
 ## `haystack.components.routers.metadata_router`
 
-### `haystack.components.routers.metadata_router.MetadataRouter`
+### `MetadataRouter`
 
 Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -785,7 +785,7 @@ Deserialize this component from a dictionary.
 
 ## `haystack.components.routers.text_language_router`
 
-### `haystack.components.routers.text_language_router.TextLanguageRouter`
+### `TextLanguageRouter`
 
 Routes text strings to different output connections based on their language.
 
@@ -856,7 +856,7 @@ If the document's text doesn't match any of the specified languages, the metadat
 
 ## `haystack.components.routers.transformers_text_router`
 
-### `haystack.components.routers.transformers_text_router.TransformersTextRouter`
+### `TransformersTextRouter`
 
 Routes the text strings to different connections based on a category label.
 
@@ -993,7 +993,7 @@ Routes the text strings to different connections based on a category label.
 
 ## `haystack.components.routers.zero_shot_text_router`
 
-### `haystack.components.routers.zero_shot_text_router.TransformersZeroShotTextRouter`
+### `TransformersZeroShotTextRouter`
 
 Routes the text strings to different connections based on a category label.
 

@@ -8,7 +8,7 @@ slug: "/image-converters-api"
 
 ## `haystack.components.converters.image.document_to_image`
 
-### `haystack.components.converters.image.document_to_image.DocumentToImageContent`
+### `DocumentToImageContent`
 
 Converts documents sourced from PDF and image files into ImageContents.
 
@@ -108,7 +108,7 @@ into ImageContent objects.
 
 ## `haystack.components.converters.image.file_to_document`
 
-### `haystack.components.converters.image.file_to_document.ImageFileToDocument`
+### `ImageFileToDocument`
 
 Converts image file references into empty Document objects with associated metadata.
 
@@ -181,7 +181,7 @@ user-provided metadata.
 
 ## `haystack.components.converters.image.file_to_image`
 
-### `haystack.components.converters.image.file_to_image.ImageFileToImageContent`
+### `ImageFileToImageContent`
 
 Converts image files to ImageContent objects.
 
@@ -261,7 +261,7 @@ Converts files to ImageContent objects.
 
 ## `haystack.components.converters.image.pdf_to_image`
 
-### `haystack.components.converters.image.pdf_to_image.PDFToImageContent`
+### `PDFToImageContent`
 
 Converts PDF files to ImageContent objects.
 

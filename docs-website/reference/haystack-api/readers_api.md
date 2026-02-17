@@ -8,7 +8,7 @@ slug: "/readers-api"
 
 ## `haystack.components.readers.extractive`
 
-### `haystack.components.readers.extractive.ExtractiveReader`
+### `ExtractiveReader`
 
 Locates and extracts answers to a given query from Documents.
 

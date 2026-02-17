@@ -8,7 +8,7 @@ slug: "/rankers-api"
 
 ## `haystack.components.rankers.hugging_face_tei`
 
-### `haystack.components.rankers.hugging_face_tei.TruncationDirection`
+### `TruncationDirection`
 
 Bases: <code>str</code>, <code>Enum</code>
 
@@ -18,7 +18,7 @@ Attributes:
 LEFT: Truncate text from the left side (start of text).
 RIGHT: Truncate text from the right side (end of text).
 
-### `haystack.components.rankers.hugging_face_tei.HuggingFaceTEIRanker`
+### `HuggingFaceTEIRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -179,7 +179,7 @@ if a score is present.
 
 ## `haystack.components.rankers.lost_in_the_middle`
 
-### `haystack.components.rankers.lost_in_the_middle.LostInTheMiddleRanker`
+### `LostInTheMiddleRanker`
 
 A LostInTheMiddle Ranker.
 
@@ -258,7 +258,7 @@ if a score is present.
 
 ## `haystack.components.rankers.meta_field`
 
-### `haystack.components.rankers.meta_field.MetaFieldRanker`
+### `MetaFieldRanker`
 
 Ranks Documents based on the value of their specific meta field.
 
@@ -407,7 +407,7 @@ if a score is present.
 
 ## `haystack.components.rankers.meta_field_grouping_ranker`
 
-### `haystack.components.rankers.meta_field_grouping_ranker.MetaFieldGroupingRanker`
+### `MetaFieldGroupingRanker`
 
 Reorders the documents by grouping them based on metadata keys.
 
@@ -498,7 +498,7 @@ The output is a list of documents reordered based on how they were grouped.
 
 ## `haystack.components.rankers.sentence_transformers_diversity`
 
-### `haystack.components.rankers.sentence_transformers_diversity.DiversityRankingStrategy`
+### `DiversityRankingStrategy`
 
 Bases: <code>Enum</code>
 
@@ -512,7 +512,7 @@ from_str(string: str) -> DiversityRankingStrategy
 
 Convert a string to a Strategy enum.
 
-### `haystack.components.rankers.sentence_transformers_diversity.DiversityRankingSimilarity`
+### `DiversityRankingSimilarity`
 
 Bases: <code>Enum</code>
 
@@ -526,7 +526,7 @@ from_str(string: str) -> DiversityRankingSimilarity
 
 Convert a string to a Similarity enum.
 
-### `haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker`
+### `SentenceTransformersDiversityRanker`
 
 A Diversity Ranker based on Sentence Transformers.
 
@@ -697,7 +697,7 @@ Rank the documents based on their diversity.
 
 ## `haystack.components.rankers.sentence_transformers_similarity`
 
-### `haystack.components.rankers.sentence_transformers_similarity.SentenceTransformersSimilarityRanker`
+### `SentenceTransformersSimilarityRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -860,7 +860,7 @@ if a score is present.
 
 ## `haystack.components.rankers.transformers_similarity`
 
-### `haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker`
+### `TransformersSimilarityRanker`
 
 Ranks documents based on their semantic similarity to the query.
 

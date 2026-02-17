@@ -8,7 +8,7 @@ slug: "/pipeline-api"
 
 ## `haystack.core.pipeline.async_pipeline`
 
-### `haystack.core.pipeline.async_pipeline.AsyncPipeline`
+### `AsyncPipeline`
 
 Bases: <code>PipelineBase</code>
 
@@ -833,7 +833,7 @@ Validate the pipeline to check if it is blocked or has no valid entry point.
 
 ## `haystack.core.pipeline.pipeline`
 
-### `haystack.core.pipeline.pipeline.Pipeline`
+### `Pipeline`
 
 Bases: <code>PipelineBase</code>
 

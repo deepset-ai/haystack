@@ -8,7 +8,7 @@ slug: "/preprocessors-api"
 
 ## `haystack.components.preprocessors.csv_document_cleaner`
 
-### `haystack.components.preprocessors.csv_document_cleaner.CSVDocumentCleaner`
+### `CSVDocumentCleaner`
 
 A component for cleaning CSV documents by removing empty rows and columns.
 
@@ -71,7 +71,7 @@ Processing steps:
 
 ## `haystack.components.preprocessors.csv_document_splitter`
 
-### `haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter`
+### `CSVDocumentSplitter`
 
 A component for splitting CSV documents into sub-tables based on split arguments.
 
@@ -146,7 +146,7 @@ Processes and splits a list of CSV documents into multiple sub-tables.
 
 ## `haystack.components.preprocessors.document_cleaner`
 
-### `haystack.components.preprocessors.document_cleaner.DocumentCleaner`
+### `DocumentCleaner`
 
 Cleans the text in the documents.
 
@@ -233,7 +233,7 @@ Cleans up the documents.
 
 ## `haystack.components.preprocessors.document_preprocessor`
 
-### `haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor`
+### `DocumentPreprocessor`
 
 A SuperComponent that first splits and then cleans documents.
 
@@ -339,7 +339,7 @@ Deserializes the SuperComponent from a dictionary.
 
 ## `haystack.components.preprocessors.document_splitter`
 
-### `haystack.components.preprocessors.document_splitter.DocumentSplitter`
+### `DocumentSplitter`
 
 Splits long documents into smaller chunks.
 
@@ -473,7 +473,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.preprocessors.embedding_based_document_splitter`
 
-### `haystack.components.preprocessors.embedding_based_document_splitter.EmbeddingBasedDocumentSplitter`
+### `EmbeddingBasedDocumentSplitter`
 
 Splits documents based on embedding similarity using cosine distances between sequential sentence groups.
 
@@ -616,7 +616,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.preprocessors.hierarchical_document_splitter`
 
-### `haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter`
+### `HierarchicalDocumentSplitter`
 
 Splits a documents into different block sizes building a hierarchical tree structure of blocks of different sizes.
 
@@ -724,7 +724,7 @@ Deserialize this component from a dictionary.
 
 ## `haystack.components.preprocessors.markdown_header_splitter`
 
-### `haystack.components.preprocessors.markdown_header_splitter.MarkdownHeaderSplitter`
+### `MarkdownHeaderSplitter`
 
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
@@ -798,7 +798,7 @@ Run the markdown header splitter with optional secondary splitting.
 
 ## `haystack.components.preprocessors.recursive_splitter`
 
-### `haystack.components.preprocessors.recursive_splitter.RecursiveDocumentSplitter`
+### `RecursiveDocumentSplitter`
 
 Recursively chunk text into smaller chunks.
 
@@ -899,7 +899,7 @@ Split a list of documents into documents with smaller chunks of text.
 
 ## `haystack.components.preprocessors.text_cleaner`
 
-### `haystack.components.preprocessors.text_cleaner.TextCleaner`
+### `TextCleaner`
 
 Cleans text strings.
 

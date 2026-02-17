@@ -8,7 +8,7 @@ slug: "/classifiers-api"
 
 ## `haystack.components.classifiers.document_language_classifier`
 
-### `haystack.components.classifiers.document_language_classifier.DocumentLanguageClassifier`
+### `DocumentLanguageClassifier`
 
 Classifies the language of each document and adds it to its metadata.
 
@@ -93,7 +93,7 @@ sets the metadata value to "unmatched".
 
 ## `haystack.components.classifiers.zero_shot_document_classifier`
 
-### `haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier`
+### `TransformersZeroShotDocumentClassifier`
 
 Performs zero-shot classification of documents based on given labels and adds the predicted label to their metadata.
 

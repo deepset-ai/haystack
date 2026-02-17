@@ -8,7 +8,7 @@ slug: "/evaluators-api"
 
 ## `haystack.components.evaluators.answer_exact_match`
 
-### `haystack.components.evaluators.answer_exact_match.AnswerExactMatchEvaluator`
+### `AnswerExactMatchEvaluator`
 
 An answer exact match evaluator class.
 
@@ -61,7 +61,7 @@ The `ground_truth_answers` and `retrieved_answers` must have the same length.
 
 ## `haystack.components.evaluators.context_relevance`
 
-### `haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator`
+### `ContextRelevanceEvaluator`
 
 Bases: <code>LLMEvaluator</code>
 
@@ -315,7 +315,7 @@ Output must be a valid JSON with the expected keys.
 
 ## `haystack.components.evaluators.document_map`
 
-### `haystack.components.evaluators.document_map.DocumentMAPEvaluator`
+### `DocumentMAPEvaluator`
 
 A Mean Average Precision (MAP) evaluator for documents.
 
@@ -377,7 +377,7 @@ All lists must have the same length.
 
 ## `haystack.components.evaluators.document_mrr`
 
-### `haystack.components.evaluators.document_mrr.DocumentMRREvaluator`
+### `DocumentMRREvaluator`
 
 Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
@@ -437,7 +437,7 @@ Run the DocumentMRREvaluator on the given inputs.
 
 ## `haystack.components.evaluators.document_ndcg`
 
-### `haystack.components.evaluators.document_ndcg.DocumentNDCGEvaluator`
+### `DocumentNDCGEvaluator`
 
 Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
@@ -542,7 +542,7 @@ Calculate the ideal discounted cumulative gain (IDCG) of the ground truth docume
 
 ## `haystack.components.evaluators.document_recall`
 
-### `haystack.components.evaluators.document_recall.RecallMode`
+### `RecallMode`
 
 Bases: <code>Enum</code>
 
@@ -556,7 +556,7 @@ from_str(string: str) -> RecallMode
 
 Convert a string to a RecallMode enum.
 
-### `haystack.components.evaluators.document_recall.DocumentRecallEvaluator`
+### `DocumentRecallEvaluator`
 
 Evaluator that calculates the Recall score for a list of documents.
 
@@ -634,7 +634,7 @@ Serializes the component to a dictionary.
 
 ## `haystack.components.evaluators.faithfulness`
 
-### `haystack.components.evaluators.faithfulness.FaithfulnessEvaluator`
+### `FaithfulnessEvaluator`
 
 Bases: <code>LLMEvaluator</code>
 
@@ -870,7 +870,7 @@ Output must be a valid JSON with the expected keys.
 
 ## `haystack.components.evaluators.llm_evaluator`
 
-### `haystack.components.evaluators.llm_evaluator.LLMEvaluator`
+### `LLMEvaluator`
 
 Uses an LLM to evaluate inputs based on a prompt containing instructions and examples.
 
@@ -1097,7 +1097,7 @@ Output must be a valid JSON with the expected keys.
 
 ## `haystack.components.evaluators.sas_evaluator`
 
-### `haystack.components.evaluators.sas_evaluator.SASEvaluator`
+### `SASEvaluator`
 
 SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 

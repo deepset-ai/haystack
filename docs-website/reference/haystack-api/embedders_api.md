@@ -8,7 +8,7 @@ slug: "/embedders-api"
 
 ## `haystack.components.embedders.azure_document_embedder`
 
-### `haystack.components.embedders.azure_document_embedder.AzureOpenAIDocumentEmbedder`
+### `AzureOpenAIDocumentEmbedder`
 
 Bases: <code>OpenAIDocumentEmbedder</code>
 
@@ -166,7 +166,7 @@ Embeds a list of documents asynchronously.
 
 ## `haystack.components.embedders.azure_text_embedder`
 
-### `haystack.components.embedders.azure_text_embedder.AzureOpenAITextEmbedder`
+### `AzureOpenAITextEmbedder`
 
 Bases: <code>OpenAITextEmbedder</code>
 
@@ -316,7 +316,7 @@ but can be used with `await` in async code.
 
 ## `haystack.components.embedders.hugging_face_api_document_embedder`
 
-### `haystack.components.embedders.hugging_face_api_document_embedder.HuggingFaceAPIDocumentEmbedder`
+### `HuggingFaceAPIDocumentEmbedder`
 
 Embeds documents using Hugging Face APIs.
 
@@ -493,7 +493,7 @@ Embeds a list of documents asynchronously.
 
 ## `haystack.components.embedders.hugging_face_api_text_embedder`
 
-### `haystack.components.embedders.hugging_face_api_text_embedder.HuggingFaceAPITextEmbedder`
+### `HuggingFaceAPITextEmbedder`
 
 Embeds strings using Hugging Face APIs.
 
@@ -650,7 +650,7 @@ Embeds a single string asynchronously.
 
 ## `haystack.components.embedders.image.sentence_transformers_doc_image_embedder`
 
-### `haystack.components.embedders.image.sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder`
+### `SentenceTransformersDocumentImageEmbedder`
 
 A component for computing Document embeddings based on images using Sentence Transformers models.
 
@@ -807,7 +807,7 @@ Embed a list of documents.
 
 ## `haystack.components.embedders.openai_document_embedder`
 
-### `haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder`
+### `OpenAIDocumentEmbedder`
 
 Computes document embeddings using OpenAI models.
 
@@ -950,7 +950,7 @@ Embeds a list of documents asynchronously.
 
 ## `haystack.components.embedders.openai_text_embedder`
 
-### `haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder`
+### `OpenAITextEmbedder`
 
 Embeds strings using OpenAI models.
 
@@ -1086,7 +1086,7 @@ but can be used with `await` in async code.
 
 ## `haystack.components.embedders.sentence_transformers_document_embedder`
 
-### `haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder`
+### `SentenceTransformersDocumentEmbedder`
 
 Calculates document embeddings using Sentence Transformers models.
 
@@ -1238,7 +1238,7 @@ Embed a list of documents.
 
 ## `haystack.components.embedders.sentence_transformers_sparse_document_embedder`
 
-### `haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder`
+### `SentenceTransformersSparseDocumentEmbedder`
 
 Calculates document sparse embeddings using sparse embedding models from Sentence Transformers.
 
@@ -1373,7 +1373,7 @@ Embed a list of documents.
 
 ## `haystack.components.embedders.sentence_transformers_sparse_text_embedder`
 
-### `haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder`
+### `SentenceTransformersSparseTextEmbedder`
 
 Embeds strings using sparse embedding models from Sentence Transformers.
 
@@ -1496,7 +1496,7 @@ Embed a single string.
 
 ## `haystack.components.embedders.sentence_transformers_text_embedder`
 
-### `haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder`
+### `SentenceTransformersTextEmbedder`
 
 Embeds strings using Sentence Transformers models.
 

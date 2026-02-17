@@ -8,7 +8,7 @@ slug: "/query-api"
 
 ## `haystack.components.query.query_expander`
 
-### `haystack.components.query.query_expander.QueryExpander`
+### `QueryExpander`
 
 A component that returns a list of semantically similar queries to improve retrieval recall in RAG systems.
 

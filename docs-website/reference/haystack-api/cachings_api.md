@@ -8,7 +8,7 @@ slug: "/caching-api"
 
 ## `haystack.components.caching.cache_checker`
 
-### `haystack.components.caching.cache_checker.CacheChecker`
+### `CacheChecker`
 
 Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 

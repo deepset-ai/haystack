@@ -8,7 +8,7 @@ slug: "/converters-api"
 
 ## `haystack.components.converters.azure`
 
-### `haystack.components.converters.azure.AzureOCRDocumentConverter`
+### `AzureOCRDocumentConverter`
 
 Converts files to documents using Azure's Document Intelligence service.
 
@@ -135,7 +135,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.converters.csv`
 
-### `haystack.components.converters.csv.CSVToDocument`
+### `CSVToDocument`
 
 Converts CSV files to Documents.
 
@@ -214,7 +214,7 @@ Converts CSV files to a Document (file mode) or to one Document per row (row mod
 
 ## `haystack.components.converters.docx`
 
-### `haystack.components.converters.docx.DOCXMetadata`
+### `DOCXMetadata`
 
 Describes the metadata of Docx file.
 
@@ -236,7 +236,7 @@ Describes the metadata of Docx file.
 - **title** (<code>str</code>) – The title
 - **version** (<code>str</code>) – The version
 
-### `haystack.components.converters.docx.DOCXTableFormat`
+### `DOCXTableFormat`
 
 Bases: <code>Enum</code>
 
@@ -250,7 +250,7 @@ from_str(string: str) -> DOCXTableFormat
 
 Convert a string to a DOCXTableFormat enum.
 
-### `haystack.components.converters.docx.DOCXLinkFormat`
+### `DOCXLinkFormat`
 
 Bases: <code>Enum</code>
 
@@ -264,7 +264,7 @@ from_str(string: str) -> DOCXLinkFormat
 
 Convert a string to a DOCXLinkFormat enum.
 
-### `haystack.components.converters.docx.DOCXToDocument`
+### `DOCXToDocument`
 
 Converts DOCX files to Documents.
 
@@ -362,7 +362,7 @@ Converts DOCX files to Documents.
 
 ## `haystack.components.converters.html`
 
-### `haystack.components.converters.html.HTMLToDocument`
+### `HTMLToDocument`
 
 Converts an HTML file to a Document.
 
@@ -455,7 +455,7 @@ Converts a list of HTML files to Documents.
 
 ## `haystack.components.converters.json`
 
-### `haystack.components.converters.json.JSONConverter`
+### `JSONConverter`
 
 Converts one or more JSON files into a text document.
 
@@ -625,7 +625,7 @@ Converts a list of JSON files to documents.
 
 ## `haystack.components.converters.markdown`
 
-### `haystack.components.converters.markdown.MarkdownToDocument`
+### `MarkdownToDocument`
 
 Converts a Markdown file into a text Document.
 
@@ -689,7 +689,7 @@ Converts a list of Markdown files to Documents.
 
 ## `haystack.components.converters.msg`
 
-### `haystack.components.converters.msg.MSGToDocument`
+### `MSGToDocument`
 
 Converts Microsoft Outlook .msg files into Haystack Documents.
 
@@ -752,7 +752,7 @@ Converts MSG files to Documents.
 
 ## `haystack.components.converters.multi_file_converter`
 
-### `haystack.components.converters.multi_file_converter.MultiFileConverter`
+### `MultiFileConverter`
 
 A file converter that handles conversion of multiple file types.
 
@@ -792,7 +792,7 @@ Initialize the MultiFileConverter.
 
 ## `haystack.components.converters.openapi_functions`
 
-### `haystack.components.converters.openapi_functions.OpenAPIServiceToFunctions`
+### `OpenAPIServiceToFunctions`
 
 Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
 
@@ -849,13 +849,13 @@ Converts OpenAPI definitions in OpenAI function calling format.
 
 ## `haystack.components.converters.output_adapter`
 
-### `haystack.components.converters.output_adapter.OutputAdaptationException`
+### `OutputAdaptationException`
 
 Bases: <code>Exception</code>
 
 Exception raised when there is an error during output adaptation.
 
-### `haystack.components.converters.output_adapter.OutputAdapter`
+### `OutputAdapter`
 
 Adapts output of a Component using Jinja templates.
 
@@ -954,7 +954,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.converters.pdfminer`
 
-### `haystack.components.converters.pdfminer.PDFMinerToDocument`
+### `PDFMinerToDocument`
 
 Converts PDF files to Documents.
 
@@ -1069,7 +1069,7 @@ Converts PDF files to Documents.
 
 ## `haystack.components.converters.pptx`
 
-### `haystack.components.converters.pptx.PPTXToDocument`
+### `PPTXToDocument`
 
 Converts PPTX files to Documents.
 
@@ -1126,7 +1126,7 @@ Converts PPTX files to Documents.
 
 ## `haystack.components.converters.pypdf`
 
-### `haystack.components.converters.pypdf.PyPDFExtractionMode`
+### `PyPDFExtractionMode`
 
 Bases: <code>Enum</code>
 
@@ -1140,7 +1140,7 @@ from_str(string: str) -> PyPDFExtractionMode
 
 Convert a string to a PyPDFExtractionMode enum.
 
-### `haystack.components.converters.pypdf.PyPDFToDocument`
+### `PyPDFToDocument`
 
 Converts PDF files to documents your pipeline can query.
 
@@ -1252,7 +1252,7 @@ Converts PDF files to documents.
 
 ## `haystack.components.converters.tika`
 
-### `haystack.components.converters.tika.XHTMLParser`
+### `XHTMLParser`
 
 Bases: <code>HTMLParser</code>
 
@@ -1282,7 +1282,7 @@ handle_data(data: str)
 
 Populate the page content.
 
-### `haystack.components.converters.tika.TikaDocumentConverter`
+### `TikaDocumentConverter`
 
 Converts files of different types to Documents.
 
@@ -1350,7 +1350,7 @@ Converts files to Documents.
 
 ## `haystack.components.converters.txt`
 
-### `haystack.components.converters.txt.TextFileToDocument`
+### `TextFileToDocument`
 
 Converts text files to documents your pipeline can query.
 
@@ -1413,7 +1413,7 @@ Converts text files to documents.
 
 ## `haystack.components.converters.xlsx`
 
-### `haystack.components.converters.xlsx.XLSXToDocument`
+### `XLSXToDocument`
 
 ````
 Converts XLSX (Excel) files into Documents.

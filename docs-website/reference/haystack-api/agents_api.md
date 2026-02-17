@@ -8,7 +8,7 @@ slug: "/agents-api"
 
 ## `haystack.components.agents.agent`
 
-### `haystack.components.agents.agent.Agent`
+### `Agent`
 
 A tool-using Agent powered by a large language model.
 
@@ -285,7 +285,7 @@ if available.
 
 ## `haystack.components.agents.state.state`
 
-### `haystack.components.agents.state.state.State`
+### `State`
 
 State is a container for storing shared information during the execution of an Agent and its tools.
 

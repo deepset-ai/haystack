@@ -8,31 +8,31 @@ slug: "/tool-components-api"
 
 ## `haystack.components.tools.tool_invoker`
 
-### `haystack.components.tools.tool_invoker.ToolInvokerError`
+### `ToolInvokerError`
 
 Bases: <code>Exception</code>
 
 Base exception class for ToolInvoker errors.
 
-### `haystack.components.tools.tool_invoker.ToolNotFoundException`
+### `ToolNotFoundException`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when a tool is not found in the list of available tools.
 
-### `haystack.components.tools.tool_invoker.StringConversionError`
+### `StringConversionError`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when the conversion of a tool result to a string fails.
 
-### `haystack.components.tools.tool_invoker.ResultConversionError`
+### `ResultConversionError`
 
 Bases: <code>ToolInvokerError</code>
 
 Exception raised when the conversion of a tool output to a result fails.
 
-### `haystack.components.tools.tool_invoker.ToolOutputMergeError`
+### `ToolOutputMergeError`
 
 Bases: <code>ToolInvokerError</code>
 
@@ -46,7 +46,7 @@ from_exception(tool_name: str, error: Exception) -> ToolOutputMergeError
 
 Create a ToolOutputMergeError from an exception.
 
-### `haystack.components.tools.tool_invoker.ToolInvoker`
+### `ToolInvoker`
 
 Invokes tools based on prepared tool calls and returns the results as a list of ChatMessage objects.
 

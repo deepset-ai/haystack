@@ -8,7 +8,7 @@ slug: "/websearch-api"
 
 ## `haystack.components.websearch.searchapi`
 
-### `haystack.components.websearch.searchapi.SearchApiWebSearch`
+### `SearchApiWebSearch`
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
@@ -128,7 +128,7 @@ This is the asynchronous version of the `run` method with the same parameters an
 
 ## `haystack.components.websearch.serper_dev`
 
-### `haystack.components.websearch.serper_dev.SerperDevWebSearch`
+### `SerperDevWebSearch`
 
 Uses [Serper](https://serper.dev/) to search the web for relevant documents.
 

@@ -8,7 +8,7 @@ slug: "/retrievers-api"
 
 ## `haystack.components.retrievers.auto_merging_retriever`
 
-### `haystack.components.retrievers.auto_merging_retriever.AutoMergingRetriever`
+### `AutoMergingRetriever`
 
 A retriever which returns parent documents of the matched leaf nodes documents, based on a threshold setting.
 
@@ -142,7 +142,7 @@ continuing up the hierarchy until no more merges are possible.
 
 ## `haystack.components.retrievers.filter_retriever`
 
-### `haystack.components.retrievers.filter_retriever.FilterRetriever`
+### `FilterRetriever`
 
 Retrieves documents that match the provided filters.
 
@@ -245,7 +245,7 @@ Asynchronously run the FilterRetriever on the given input data.
 
 ## `haystack.components.retrievers.in_memory.bm25_retriever`
 
-### `haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever`
+### `InMemoryBM25Retriever`
 
 Retrieves documents that are most similar to the query using keyword-based algorithm.
 
@@ -391,7 +391,7 @@ Run the InMemoryBM25Retriever on the given input data.
 
 ## `haystack.components.retrievers.in_memory.embedding_retriever`
 
-### `haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever`
+### `InMemoryEmbeddingRetriever`
 
 Retrieves documents that are most semantically similar to the query.
 
@@ -559,7 +559,7 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 ## `haystack.components.retrievers.multi_query_embedding_retriever`
 
-### `haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever`
+### `MultiQueryEmbeddingRetriever`
 
 A component that retrieves documents using multiple queries in parallel with an embedding-based retriever.
 
@@ -695,7 +695,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.retrievers.multi_query_text_retriever`
 
-### `haystack.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever`
+### `MultiQueryTextRetriever`
 
 A component that retrieves documents using multiple queries in parallel with a text-based retriever.
 
@@ -810,7 +810,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.retrievers.sentence_window_retriever`
 
-### `haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever`
+### `SentenceWindowRetriever`
 
 Retrieves neighboring documents from a DocumentStore to provide context for query results.
 

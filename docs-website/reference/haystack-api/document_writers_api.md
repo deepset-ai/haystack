@@ -8,7 +8,7 @@ slug: "/document-writers-api"
 
 ## `haystack.components.writers.document_writer`
 
-### `haystack.components.writers.document_writer.DocumentWriter`
+### `DocumentWriter`
 
 Writes documents to a DocumentStore.
 

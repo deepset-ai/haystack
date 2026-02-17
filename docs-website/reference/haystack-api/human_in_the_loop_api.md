@@ -8,7 +8,7 @@ slug: "/human-in-the-loop-api"
 
 ## `haystack.human_in_the_loop.dataclasses`
 
-### `haystack.human_in_the_loop.dataclasses.ConfirmationUIResult`
+### `ConfirmationUIResult`
 
 Result of the confirmation UI interaction.
 
@@ -21,7 +21,7 @@ Result of the confirmation UI interaction.
 - **new_tool_params** (<code>dict\[str, Any\] | None</code>) – Optional set of new parameters for the tool. For example, if the user chooses to modify the tool parameters,
   they can provide a new set of parameters here.
 
-### `haystack.human_in_the_loop.dataclasses.ToolExecutionDecision`
+### `ToolExecutionDecision`
 
 Decision made regarding tool execution.
 
@@ -66,7 +66,7 @@ Populate the ToolExecutionDecision from a dictionary representation.
 
 ## `haystack.human_in_the_loop.policies`
 
-### `haystack.human_in_the_loop.policies.AlwaysAskPolicy`
+### `AlwaysAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
@@ -121,7 +121,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-### `haystack.human_in_the_loop.policies.NeverAskPolicy`
+### `NeverAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
@@ -176,7 +176,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-### `haystack.human_in_the_loop.policies.AskOncePolicy`
+### `AskOncePolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
@@ -243,7 +243,7 @@ tool with the given parameters.
 
 ## `haystack.human_in_the_loop.strategies`
 
-### `haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy`
+### `BlockingConfirmationStrategy`
 
 Confirmation strategy that blocks execution to gather user feedback.
 
@@ -359,7 +359,7 @@ Deserializes the BlockingConfirmationStrategy from a dictionary.
 
 ## `haystack.human_in_the_loop.user_interfaces`
 
-### `haystack.human_in_the_loop.user_interfaces.RichConsoleUI`
+### `RichConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 
@@ -405,7 +405,7 @@ Serializes the RichConsoleConfirmationUI to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI`
+### `SimpleConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 

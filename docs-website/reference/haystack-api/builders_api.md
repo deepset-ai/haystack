@@ -8,7 +8,7 @@ slug: "/builders-api"
 
 ## `haystack.components.builders.answer_builder`
 
-### `haystack.components.builders.answer_builder.AnswerBuilder`
+### `AnswerBuilder`
 
 Converts a query and Generator replies into a `GeneratedAnswer` object.
 
@@ -145,7 +145,7 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 
 ## `haystack.components.builders.chat_prompt_builder`
 
-### `haystack.components.builders.chat_prompt_builder.ChatPromptBuilder`
+### `ChatPromptBuilder`
 
 Renders a chat prompt from a template using Jinja2 syntax.
 
@@ -339,7 +339,7 @@ Deserialize this component from a dictionary.
 
 ## `haystack.components.builders.prompt_builder`
 
-### `haystack.components.builders.prompt_builder.PromptBuilder`
+### `PromptBuilder`
 
 Renders a prompt filling in any variables so that it can send it to a Generator.
 

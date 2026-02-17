@@ -8,7 +8,7 @@ slug: "/generators-api"
 
 ## `haystack.components.generators.azure`
 
-### `haystack.components.generators.azure.AzureOpenAIGenerator`
+### `AzureOpenAIGenerator`
 
 Bases: <code>OpenAIGenerator</code>
 
@@ -176,7 +176,7 @@ Deserialize this component from a dictionary.
 
 ## `haystack.components.generators.chat.azure`
 
-### `haystack.components.generators.chat.azure.AzureOpenAIChatGenerator`
+### `AzureOpenAIChatGenerator`
 
 Bases: <code>OpenAIChatGenerator</code>
 
@@ -418,7 +418,7 @@ but can be used with `await` in async code.
 
 ## `haystack.components.generators.chat.azure_responses`
 
-### `haystack.components.generators.chat.azure_responses.AzureOpenAIResponsesChatGenerator`
+### `AzureOpenAIResponsesChatGenerator`
 
 Bases: <code>OpenAIResponsesChatGenerator</code>
 
@@ -648,7 +648,7 @@ but can be used with `await` in async code.
 
 ## `haystack.components.generators.chat.fallback`
 
-### `haystack.components.generators.chat.fallback.FallbackChatGenerator`
+### `FallbackChatGenerator`
 
 A chat generator wrapper that tries multiple chat generators sequentially.
 
@@ -781,7 +781,7 @@ Asynchronously execute chat generators sequentially until one succeeds.
 
 ## `haystack.components.generators.chat.hugging_face_api`
 
-### `haystack.components.generators.chat.hugging_face_api.HuggingFaceAPIChatGenerator`
+### `HuggingFaceAPIChatGenerator`
 
 Completes chats using Hugging Face APIs.
 
@@ -1013,7 +1013,7 @@ and return values but can be used with `await` in an async code.
 
 ## `haystack.components.generators.chat.hugging_face_local`
 
-### `haystack.components.generators.chat.hugging_face_local.default_tool_parser`
+### `default_tool_parser`
 
 ```python
 default_tool_parser(text: str) -> list[ToolCall] | None
@@ -1031,7 +1031,7 @@ Uses DEFAULT_TOOL_PATTERN to extract tool calls.
 
 - <code>list\[ToolCall\] | None</code> – A list containing a single ToolCall if a valid tool call is found, None otherwise.
 
-### `haystack.components.generators.chat.hugging_face_local.HuggingFaceLocalChatGenerator`
+### `HuggingFaceLocalChatGenerator`
 
 Generates chat responses using models from Hugging Face that run locally.
 
@@ -1265,7 +1265,7 @@ and return values but can be used with `await` in an async code.
 
 ## `haystack.components.generators.chat.openai`
 
-### `haystack.components.generators.chat.openai.OpenAIChatGenerator`
+### `OpenAIChatGenerator`
 
 Completes chats using OpenAI's large language models (LLMs).
 
@@ -1496,7 +1496,7 @@ but can be used with `await` in async code.
 
 ## `haystack.components.generators.chat.openai_responses`
 
-### `haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator`
+### `OpenAIResponsesChatGenerator`
 
 Completes chats using OpenAI's Responses API.
 
@@ -1727,7 +1727,7 @@ but can be used with `await` in async code.
 
 ## `haystack.components.generators.hugging_face_api`
 
-### `haystack.components.generators.hugging_face_api.HuggingFaceAPIGenerator`
+### `HuggingFaceAPIGenerator`
 
 Generates text using Hugging Face APIs.
 
@@ -1871,7 +1871,7 @@ Invoke the text generation inference for the given prompt and generation paramet
 
 ## `haystack.components.generators.hugging_face_local`
 
-### `haystack.components.generators.hugging_face_local.HuggingFaceLocalGenerator`
+### `HuggingFaceLocalGenerator`
 
 Generates text using models from Hugging Face that run locally.
 
@@ -2003,7 +2003,7 @@ Run the text generation model on the given prompt.
 
 ## `haystack.components.generators.openai`
 
-### `haystack.components.generators.openai.OpenAIGenerator`
+### `OpenAIGenerator`
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -2150,7 +2150,7 @@ Invoke the text generation inference based on the provided messages and generati
 
 ## `haystack.components.generators.openai_dalle`
 
-### `haystack.components.generators.openai_dalle.DALLEImageGenerator`
+### `DALLEImageGenerator`
 
 Generates images using OpenAI's DALL-E model.
 
@@ -2273,7 +2273,7 @@ Deserialize this component from a dictionary.
 
 ## `haystack.components.generators.utils`
 
-### `haystack.components.generators.utils.print_streaming_chunk`
+### `print_streaming_chunk`
 
 ```python
 print_streaming_chunk(chunk: StreamingChunk) -> None

@@ -8,7 +8,7 @@ slug: "/tools-api"
 
 ## `haystack.tools.component_tool`
 
-### `haystack.tools.component_tool.ComponentTool`
+### `ComponentTool`
 
 Bases: <code>Tool</code>
 
@@ -194,7 +194,7 @@ Deserializes the ComponentTool from a dictionary.
 
 ## `haystack.tools.from_function`
 
-### `haystack.tools.from_function.create_tool_from_function`
+### `create_tool_from_function`
 
 ```python
 create_tool_from_function(
@@ -317,7 +317,7 @@ Example:
 - <code>ValueError</code> – If any parameter of the function lacks a type hint.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
-### `haystack.tools.from_function.tool`
+### `tool`
 
 ```python
 tool(
@@ -436,7 +436,7 @@ Example:
 
 ## `haystack.tools.pipeline_tool`
 
-### `haystack.tools.pipeline_tool.PipelineTool`
+### `PipelineTool`
 
 Bases: <code>ComponentTool</code>
 
@@ -678,7 +678,7 @@ Prepare the ComponentTool for use.
 
 ## `haystack.tools.tool`
 
-### `haystack.tools.tool.Tool`
+### `Tool`
 
 Data class representing a Tool that Language Models can prepare a call for.
 
@@ -810,7 +810,7 @@ Deserializes the Tool from a dictionary.
 
 ## `haystack.tools.toolset`
 
-### `haystack.tools.toolset.Toolset`
+### `Toolset`
 
 A collection of related Tools that can be used and managed as a cohesive unit.
 

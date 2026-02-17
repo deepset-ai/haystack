@@ -8,7 +8,7 @@ slug: "/joiners-api"
 
 ## `haystack.components.joiners.answer_joiner`
 
-### `haystack.components.joiners.answer_joiner.JoinMode`
+### `JoinMode`
 
 Bases: <code>Enum</code>
 
@@ -22,7 +22,7 @@ from_str(string: str) -> JoinMode
 
 Convert a string to a JoinMode enum.
 
-### `haystack.components.joiners.answer_joiner.AnswerJoiner`
+### `AnswerJoiner`
 
 Merges multiple lists of `Answer` objects into a single list.
 
@@ -134,7 +134,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.joiners.branch`
 
-### `haystack.components.joiners.branch.BranchJoiner`
+### `BranchJoiner`
 
 A component that merges multiple input branches of a pipeline into a single output stream.
 
@@ -271,7 +271,7 @@ Executes the `BranchJoiner`, selecting the first available input value and passi
 
 ## `haystack.components.joiners.document_joiner`
 
-### `haystack.components.joiners.document_joiner.JoinMode`
+### `JoinMode`
 
 Bases: <code>Enum</code>
 
@@ -285,7 +285,7 @@ from_str(string: str) -> JoinMode
 
 Convert a string to a JoinMode enum.
 
-### `haystack.components.joiners.document_joiner.DocumentJoiner`
+### `DocumentJoiner`
 
 Joins multiple lists of documents into a single list.
 
@@ -405,7 +405,7 @@ Deserializes the component from a dictionary.
 
 ## `haystack.components.joiners.list_joiner`
 
-### `haystack.components.joiners.list_joiner.ListJoiner`
+### `ListJoiner`
 
 A component that joins multiple lists into a single flat list.
 
@@ -518,7 +518,7 @@ Joins multiple lists into a single flat list.
 
 ## `haystack.components.joiners.string_joiner`
 
-### `haystack.components.joiners.string_joiner.StringJoiner`
+### `StringJoiner`
 
 Component to join strings from different components to a list of strings.
 
