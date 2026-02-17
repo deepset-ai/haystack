@@ -48,21 +48,17 @@ class XLSXToDocument:
     def __init__(
         self,
         table_format: Literal["csv", "markdown"] = "csv",
-        link_format: Literal["markdown", "plain", "none"] = "none",
         sheet_name: str | int | list[str | int] | None = None,
         read_excel_kwargs: dict[str, Any] | None = None,
         table_format_kwargs: dict[str, Any] | None = None,
         *,
+        link_format: Literal["markdown", "plain", "none"] = "none",
         store_full_path: bool = False,
     ):
         """
         Creates a XLSXToDocument component.
 
         :param table_format: The format to convert the Excel file to.
-        :param link_format: The format for link output. Possible options:
-            - `"markdown"`: `[text](url)`
-            - `"plain"`: `text (url)`
-            - `"none"`: Only the text is extracted, link addresses are ignored.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
@@ -71,6 +67,10 @@ class XLSXToDocument:
               See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html#pandas-dataframe-to-csv
             - If `table_format` is "markdown", these arguments are passed to `pandas.DataFrame.to_markdown`.
               See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_markdown.html#pandas-dataframe-to-markdown
+        :param link_format: The format for link output. Possible options:
+            - `"markdown"`: `[text](url)`
+            - `"plain"`: `text (url)`
+            - `"none"`: Only the text is extracted, link addresses are ignored.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
