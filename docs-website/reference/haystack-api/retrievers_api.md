@@ -462,7 +462,6 @@ docs = [
     Document(content="python ist eine beliebte Programmiersprache"),
 ]
 doc_embedder = SentenceTransformersDocumentEmbedder()
-doc_embedder.warm_up()
 docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
 doc_store = InMemoryDocumentStore()
@@ -471,7 +470,6 @@ retriever = InMemoryEmbeddingRetriever(doc_store)
 
 query="Programmiersprache"
 text_embedder = SentenceTransformersTextEmbedder()
-text_embedder.warm_up()
 query_embedding = text_embedder.run(query)["embedding"]
 
 result = retriever.run(query_embedding=query_embedding)
@@ -651,7 +649,6 @@ documents = [
 # Populate the document store
 doc_store = InMemoryDocumentStore()
 doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-doc_embedder.warm_up()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 documents = doc_embedder.run(documents)["documents"]
 doc_writer.run(documents=documents)

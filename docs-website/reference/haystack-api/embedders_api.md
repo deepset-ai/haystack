@@ -714,7 +714,6 @@ from haystack import Document
 from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
 
 embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
-embedder.warm_up()
 
 documents = [
     Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
@@ -1197,7 +1196,6 @@ from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersDocumentEmbedder()
-doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
 print(result['documents'][0].embedding)
@@ -1363,7 +1361,6 @@ from haystack.components.embedders import SentenceTransformersSparseDocumentEmbe
 
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersSparseDocumentEmbedder()
-doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
 print(result['documents'][0].sparse_embedding)
@@ -1509,7 +1506,6 @@ from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 text_to_embed = "I love pizza!"
 
 text_embedder = SentenceTransformersSparseTextEmbedder()
-text_embedder.warm_up()
 
 print(text_embedder.run(text_to_embed))
 
@@ -1645,7 +1641,6 @@ from haystack.components.embedders import SentenceTransformersTextEmbedder
 text_to_embed = "I love pizza!"
 
 text_embedder = SentenceTransformersTextEmbedder()
-text_embedder.warm_up()
 
 print(text_embedder.run(text_to_embed))
 
