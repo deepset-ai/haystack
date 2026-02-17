@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
@@ -261,21 +260,9 @@ class QueryExpander:
         :param generator_response: The raw text response from the generator.
         :return: List of parsed expanded queries.
         """
-        try:
-            parsed = _parse_json_from_text(generator_response)
-        except json.JSONDecodeError as e:
-            logger.warning(
-                "Failed to parse JSON response: {error}. Response: {response}",
-                error=str(e),
-                response=generator_response[:100],
-            )
-            return []
+        parsed = _parse_json_from_text(generator_response, expected_keys=["queries"], raise_on_failure=False)
 
-        if not isinstance(parsed, dict) or "queries" not in parsed:
-            logger.warning(
-                "Generator response is not a JSON object containing a 'queries' array: {response}",
-                response=generator_response[:100],
-            )
+        if parsed is None:
             return []
 
         queries = []

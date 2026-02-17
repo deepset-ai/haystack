@@ -219,22 +219,14 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            try:
-                parsed_result = _parse_json_from_text(result["replies"][0].text, expected_keys=self.outputs)
-                results.append(parsed_result)
-            except (ValueError, json.JSONDecodeError):
-                # The utility raises ValueError if expected keys are missing or if it's not a dict
-                # It raises JSONDecodeError if it's not valid JSON
-                if self.raise_on_failure:
-                    raise
-                logger.warning(
-                    "Response from LLM evaluator is not a valid JSON or missing expected keys. "
-                    "Expected keys: {expected}. Received: {received}",
-                    expected=self.outputs,
-                    received=result["replies"][0].text[:100],
-                )
+            parsed_result = _parse_json_from_text(
+                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
+            )
+            if parsed_result is None:
                 results.append(None)
                 errors += 1
+            else:
+                results.append(parsed_result)
 
             if result["replies"][0].meta:
                 metadata.append(result["replies"][0].meta)
