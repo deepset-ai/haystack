@@ -35,6 +35,67 @@ class Answer:
     meta: Dict[str, Any]
 ```
 
+## ImageContent
+
+The `ImageContent` dataclass represents an image object in Haystack pipelines. It encapsulates the **image data**, **metadata**, and a **unique identifier**, making it easy for pipeline components to process images consistently and modularly. It works seamlessly with other Haystack data classes like `ByteStream` and `Document` and can be used directly in pipelines for image processing.
+
+**Key Features**
+- Encapsulates image binary data and metadata.
+- Provides utility methods for serialization and deserialization.
+- Immutable — create new instances for modifications.
+- Can be used in Haystack pipelines with nodes like `ImageToTextNode`.
+
+**Attributes**
+
+| Attribute  | Type          | Description |
+|------------|---------------|-------------|
+| `image_id` | `str`         | Unique identifier for the image. |
+| `data`     | `bytes`       | Raw binary image data. |
+| `metadata` | `Dict[str, Any]` | Optional metadata such as format, size, tags, or description. |
+
+**Methods**
+
+```python
+# Returns the size of the image in bytes
+img.get_size()  
+
+# Returns the image format from metadata
+img.get_format()  
+
+# Converts the ImageContent instance to a dictionary
+img.to_dict()  
+
+# Creates a new ImageContent instance from a dictionary
+restored_image = ImageContent.from_dict(img.to_dict())  
+```
+
+### Example Usage + Pipeline Integration
+```python
+from haystack.dataclasses.image_content import ImageContent
+from haystack import Pipeline
+from haystack.nodes import ImageToTextNode
+
+# Create an ImageContent instance
+image = ImageContent(
+    image_id="img_001",
+    data=open("cat.jpg", "rb").read(),
+    metadata={"format": "JPEG", "description": "Cute cat image"}
+)
+
+# Check size
+print(image.get_size())
+
+# Serialize and restore
+image_dict = image.to_dict()
+restored_image = ImageContent.from_dict(image_dict)
+print(restored_image.image_id)
+
+# Run in a pipeline
+pipeline = Pipeline()
+pipeline.add_node(ImageToTextNode(), name="image_to_text")
+result = pipeline.run(images=[image], query="What's in this image?")
+```
+
 ### ExtractedAnswer
 
 #### Overview
