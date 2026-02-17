@@ -144,7 +144,7 @@ class PDFMinerToDocument:
 
         see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-values-in-the-textual-output
 
-        :param: text: The text to check for undecoded CID characters
+        :param text: The text to check for undecoded CID characters
         :returns:
             A dictionary containing detection results
         """

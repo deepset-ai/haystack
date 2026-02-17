@@ -8,7 +8,7 @@ from typing import Any
 
 from haystack import Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret
+from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
@@ -110,7 +110,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.tokenizer = None
+        self.tokenizer: Any = None
         self.device: ComponentDevice | None = None
         self.token = token
         self.max_seq_length = max_seq_length
@@ -186,8 +186,13 @@ class ExtractiveReader:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name_or_path, token=self.token.resolve_value() if self.token else None
             )
-            assert self.model is not None
-            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
+            assert self.model is not None  # mypy doesn't know this is set in the line above
+            # hf_device_map appears to only be set now when mixed devices are actually used.
+            # So if it's missing then we can use the device attribute which is set even for single-device models.
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
+            else:
+                self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
     @staticmethod
     def _flatten_documents(
@@ -223,7 +228,7 @@ class ExtractiveReader:
             document_contents.append(doc.content)
 
         # mypy doesn't know this is set in warm_up
-        encodings_pt = self.tokenizer(  # type: ignore[misc]
+        encodings_pt = self.tokenizer(
             queries,
             document_contents,
             padding=True,

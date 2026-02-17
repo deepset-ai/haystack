@@ -66,10 +66,10 @@ result = tool.invoke(
         "path": "src/example.py",
         "original": "def old_function():",
         "replacement": "def new_function():",
-        "message": "Renamed function for clarity"
+        "message": "Renamed function for clarity",
     },
     repo="owner/repo",
-    branch="main"
+    branch="main",
 )
 
 print(result)
@@ -94,12 +94,16 @@ editor_tool = GitHubFileEditorTool(repo="owner/repo")
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[editor_tool],
-    exit_conditions=["text"]
+    exit_conditions=["text"],
 )
 
-response = agent.run(messages=[
-    ChatMessage.from_user("Edit the file README.md in the repository \"owner/repo\" and replace the original string 'tpyo' with the replacement 'typo'. This is all context you need.")
-])
+response = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Edit the file README.md in the repository \"owner/repo\" and replace the original string 'tpyo' with the replacement 'typo'. This is all context you need.",
+        ),
+    ],
+)
 
 print(response["last_message"].text)
 ```

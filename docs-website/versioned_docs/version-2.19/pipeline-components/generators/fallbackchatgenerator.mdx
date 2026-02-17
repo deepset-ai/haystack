@@ -37,7 +37,10 @@ Timeout enforcement is delegated to the underlying Chat Generators. To control l
 The `meta` dictionary in the output contains useful information for monitoring:
 
 ```python
-from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 ## Set up generators
@@ -49,10 +52,18 @@ generator = FallbackChatGenerator(chat_generators=[primary, backup])
 result = generator.run(messages=[ChatMessage.from_user("Hello")])
 
 meta = result["meta"]
-print(f"Successful generator index: {meta['successful_chat_generator_index']}")  # 0 for first, 1 for second, etc.
-print(f"Successful generator class: {meta['successful_chat_generator_class']}")  # e.g., "OpenAIChatGenerator"
-print(f"Total attempts made: {meta['total_attempts']}")  # How many Generators were tried
-print(f"Failed generators: {meta['failed_chat_generators']}")  # List of failed Generator names
+print(
+    f"Successful generator index: {meta['successful_chat_generator_index']}",
+)  # 0 for first, 1 for second, etc.
+print(
+    f"Successful generator class: {meta['successful_chat_generator_class']}",
+)  # e.g., "OpenAIChatGenerator"
+print(
+    f"Total attempts made: {meta['total_attempts']}",
+)  # How many Generators were tried
+print(
+    f"Failed generators: {meta['failed_chat_generators']}",
+)  # List of failed Generator names
 ```
 
 You can use this metadata to:
@@ -73,7 +84,10 @@ You can use this metadata to:
 Basic usage with fallback from a primary to a backup model:
 
 ```python
-from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 ## Create primary and backup generators
@@ -90,7 +104,6 @@ result = generator.run(messages=messages)
 print(result["replies"][0].text)
 print(f"Successful generator: {result['meta']['successful_chat_generator_class']}")
 print(f"Total attempts: {result['meta']['total_attempts']}")
-
 ```
 
 With multiple providers:
@@ -99,7 +112,7 @@ With multiple providers:
 from haystack.components.generators.chat import (
     FallbackChatGenerator,
     OpenAIChatGenerator,
-    AzureOpenAIChatGenerator
+    AzureOpenAIChatGenerator,
 )
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
@@ -108,14 +121,14 @@ from haystack.utils import Secret
 openai_gen = OpenAIChatGenerator(
     model="gpt-4o-mini",
     api_key=Secret.from_env_var("OPENAI_API_KEY"),
-    timeout=30
+    timeout=30,
 )
 
 azure_gen = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint>",
     api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
     azure_deployment="gpt-4o-mini",
-    timeout=30
+    timeout=30,
 )
 
 ## Fallback will try OpenAI first, then Azure
@@ -130,20 +143,21 @@ print(result["replies"][0].text)
 With streaming:
 
 ```python
-from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 primary = OpenAIChatGenerator(model="gpt-4o")
 backup = OpenAIChatGenerator(model="gpt-4o-mini")
 
-generator = FallbackChatGenerator(
-    chat_generators=[primary, backup]
-)
+generator = FallbackChatGenerator(chat_generators=[primary, backup])
 
 messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 result = generator.run(
     messages=messages,
-    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True)
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
 )
 
 print("\n", result["meta"])
@@ -154,7 +168,10 @@ print("\n", result["meta"])
 ```python
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 ## Create primary and backup generators with timeouts
@@ -174,17 +191,19 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 ## Run pipeline
 messages = [
-    ChatMessage.from_system("You are a helpful assistant that provides concise answers."),
-    ChatMessage.from_user("Tell me about {{location}}")
+    ChatMessage.from_system(
+        "You are a helpful assistant that provides concise answers.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
 ]
 
 result = pipe.run(
     data={
         "prompt_builder": {
             "template": messages,
-            "template_variables": {"location": "Paris"}
-        }
-    }
+            "template_variables": {"location": "Paris"},
+        },
+    },
 )
 
 print(result["llm"]["replies"][0].text)
@@ -196,7 +215,10 @@ print(f"Generator used: {result['llm']['meta']['successful_chat_generator_class'
 If all Generators fail, `FallbackChatGenerator` raises a `RuntimeError` with details about which Generators failed and the last error encountered:
 
 ```python
-from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 

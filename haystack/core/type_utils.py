@@ -176,6 +176,15 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
             return strategies.pop()
         return None
 
+    # If receiver is a Union, it's compatible if ANY of its types are compatible.
+    # We prefer strategies that don't require type conversion if possible.
+    if _safe_get_origin(receiver) is Union:
+        strategies = {_get_conversion_strategy(sender, arg) for arg in get_args(receiver)} - {None}
+        for preferred in (ConversionStrategy.WRAP, ConversionStrategy.UNWRAP):
+            if preferred in strategies:
+                return preferred
+        return strategies.pop() if strategies else None
+
     # ChatMessage -> str
     if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
         return ConversionStrategy.CHAT_MESSAGE_TO_STR

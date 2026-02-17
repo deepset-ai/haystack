@@ -153,7 +153,7 @@ class ChatPromptBuilder:
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
             If a variable listed as required is not provided, an exception is raised.
-            If set to "*", all variables found in the prompt are required. Optional.
+            If set to `"*"`, all variables found in the prompt are required. Optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present

@@ -454,7 +454,7 @@ Convert the ByteStream to a string, metadata will not be included.
 
 **Raises**:
 
-- `None`: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
+- `UnicodeDecodeError`: If the ByteStream data cannot be decoded with the specified encoding.
 
 **Returns**:
 
@@ -1247,7 +1247,7 @@ The file content of a chat message.
 
 **Arguments**:
 
-- `base64_file`: A base64 string representing the file.
+- `base64_data`: A base64 string representing the file.
 - `mime_type`: The MIME type of the file (e.g. "application/pdf").
 Providing this value is recommended, as most LLM providers require it.
 If not provided, the MIME type is guessed from the base64 string, which can be slow and not always reliable.

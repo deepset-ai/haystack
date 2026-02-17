@@ -17,6 +17,7 @@ on:
       - "test/**/*.py"
       - "pyproject.toml"
       - ".github/utils/*.py"
+      - "scripts/*.py"
 
 jobs:
   check_if_changed:
@@ -40,6 +41,7 @@ jobs:
               - "test/**/*.py"
               - "pyproject.toml"
               - ".github/utils/*.py"
+              - "scripts/*.py"
 
   trigger-catch-all:
     name: Tests completed

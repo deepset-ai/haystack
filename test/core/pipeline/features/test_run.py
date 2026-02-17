@@ -4985,6 +4985,50 @@ def pipeline_that_performs_automatic_conversion_between_list_of_ChatMessage_and_
     )
 
 
+@given(
+    "a pipeline that performs automatic conversion wrapping ChatMessage for a Union receiver",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_performs_automatic_conversion_wrapping_ChatMessage_for_Union_receiver(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeAgent:
+        @component.output_types(last_message=ChatMessage)
+        def run(self, messages: list[ChatMessage]) -> dict[str, ChatMessage]:
+            return {"last_message": ChatMessage.from_assistant("Pisa tower is 55 meters tall")}
+
+    @component
+    class FakeAnswerBuilder:
+        @component.output_types(answers=list[str])
+        def run(self, query: str, replies: list[str] | list[ChatMessage]) -> dict[str, list[str]]:
+            return {"answers": [r.text or "" if isinstance(r, ChatMessage) else r for r in replies]}
+
+    pipe.add_component("agent", FakeAgent())
+    pipe.add_component("answer_builder", FakeAnswerBuilder())
+    pipe.connect("agent.last_message", "answer_builder.replies")
+
+    user_query = "How tall is the tower of Pisa?"
+    messages = [ChatMessage.from_user(user_query)]
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"agent": {"messages": messages}, "answer_builder": {"query": user_query}},
+                expected_outputs={"answer_builder": {"answers": ["Pisa tower is 55 meters tall"]}},
+                expected_component_calls={
+                    ("agent", 1): {"messages": messages},
+                    ("answer_builder", 1): {
+                        "query": user_query,
+                        "replies": [ChatMessage.from_assistant("Pisa tower is 55 meters tall")],
+                    },
+                },
+            )
+        ],
+    )
+
+
 @given("a pipeline that fails automatic conversion between list of ChatMessage and str", target_fixture="pipeline_data")
 def pipeline_that_fails_automatic_conversion_between_list_of_ChatMessage_and_str(pipeline_class):
     pipe = pipeline_class(max_runs_per_component=1)

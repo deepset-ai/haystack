@@ -22,7 +22,7 @@ class FileContent:
     """
     The file content of a chat message.
 
-    :param base64_file: A base64 string representing the file.
+    :param base64_data: A base64 string representing the file.
     :param mime_type: The MIME type of the file (e.g. "application/pdf").
         Providing this value is recommended, as most LLM providers require it.
         If not provided, the MIME type is guessed from the base64 string, which can be slow and not always reliable.

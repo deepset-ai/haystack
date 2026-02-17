@@ -21,7 +21,7 @@ Returns if the given callable is usable inside a component's `run_async` method.
 
 **Arguments**:
 
-- `callable`: The callable to check.
+- `func`: The callable to check.
 
 **Returns**:
 

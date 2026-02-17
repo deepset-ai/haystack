@@ -41,16 +41,22 @@ from haystack.components.joiners import BranchJoiner
 from haystack.components.validators import JsonSchemaValidator
 from haystack.dataclasses import ChatMessage
 
+
 @component
 class MessageProducer:
-
     @component.output_types(messages=List[ChatMessage])
     def run(self, messages: List[ChatMessage]) -> dict:
         return {"messages": messages}
 
+
 p = Pipeline()
-p.add_component("llm", OpenAIChatGenerator(model="gpt-4-1106-preview",
-                                           generation_kwargs={"response_format": {"type": "json_object"}}))
+p.add_component(
+    "llm",
+    OpenAIChatGenerator(
+        model="gpt-4-1106-preview",
+        generation_kwargs={"response_format": {"type": "json_object"}},
+    ),
+)
 p.add_component("schema_validator", JsonSchemaValidator())
 p.add_component("branch_joiner", BranchJoiner(List[ChatMessage]))
 p.add_component("message_producer", MessageProducer())
@@ -61,11 +67,21 @@ p.connect("llm.replies", "schema_validator.messages")
 p.connect("schema_validator.validation_error", "branch_joiner")
 
 result = p.run(
-    data={"message_producer": {
-        "messages": [ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")]},
-          "schema_validator": {"json_schema": {"type": "object",
-                                               "properties": {"name": {"type": "string"},
-                                                              "age": {"type": "integer"}}}}})
+    data={
+        "message_producer": {
+            "messages": [
+                ChatMessage.from_user(
+                    "Generate JSON for person with name 'John' and age 30",
+                ),
+            ],
+        },
+        "schema_validator": {
+            "json_schema": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+            },
+        },
+    },
+)
 print(result)
-
 ```

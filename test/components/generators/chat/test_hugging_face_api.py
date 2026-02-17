@@ -183,7 +183,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert generator._async_client.model == model
 
     def test_init_serverless_invalid_model(self, mock_check_valid_model):
-        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id", response=MagicMock())
         with pytest.raises(RepositoryNotFoundError):
             HuggingFaceAPIChatGenerator(
                 api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "invalid_model_id"}
@@ -878,7 +878,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-VL-32B-Instruct", "provider": "fireworks-ai"},
+            api_params={"model": "Qwen/Qwen3-VL-8B-Instruct", "provider": "together"},
             generation_kwargs={"max_tokens": 20},
         )
 

@@ -48,13 +48,13 @@ from haystack.components.builders import PromptBuilder
 ## All variables optional (default to empty string)
 builder = PromptBuilder(
     template="Hello {{name}}! {{greeting}}",
-    required_variables=[]  # or omit this parameter entirely
+    required_variables=[],  # or omit this parameter entirely
 )
 
 ## Some variables required
 builder = PromptBuilder(
     template="Hello {{name}}! {{greeting}}",
-    required_variables=["name"]  # 'greeting' remains optional
+    required_variables=["name"],  # 'greeting' remains optional
 )
 ```
 
@@ -133,7 +133,9 @@ builder = PromptBuilder(template=template)
 result = builder.run()["prompt"]
 
 now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
-yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+yesterday = (
+    f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+)
 ```
 
 ## Usage
@@ -161,7 +163,10 @@ from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
 ## in a real world use case documents could come from a retriever, web, or any other source
-documents = [Document(content="Joe lives in Berlin"), Document(content="Joe is a software engineer")]
+documents = [
+    Document(content="Joe lives in Berlin"),
+    Document(content="Joe is a software engineer"),
+]
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -173,7 +178,10 @@ prompt_template = """
     """
 p = Pipeline()
 p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-p.add_component(instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.add_component(
+    instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
+    name="llm",
+)
 p.connect("prompt_builder", "llm")
 
 question = "Where does Joe live?"
@@ -203,13 +211,15 @@ new_template = """
     Question: {{ query }}
     Answer:
     """
-p.run({
-      "prompt_builder": {
-          "documents": documents,
-          "query": question,
-          "template": new_template,
-      },
-  })
+p.run(
+    {
+        "prompt_builder": {
+            "documents": documents,
+            "query": question,
+            "template": new_template,
+        },
+    },
+)
 ```
 
 If you want to use different variables during prompt engineering than in the default template, you can do so by setting `PromptBuilder`'s variables init parameter accordingly.
@@ -233,14 +243,16 @@ language_template = """
     Please provide your answer in {{ answer_language | default('English') }}
     Answer:
     """
-p.run({
-      "prompt_builder": {
-          "documents": documents,
-          "query": question,
-          "template": language_template,
-          "template_variables": {"answer_language": "German"},
-      },
-  })
+p.run(
+    {
+        "prompt_builder": {
+            "documents": documents,
+            "query": question,
+            "template": language_template,
+            "template_variables": {"answer_language": "German"},
+        },
+    },
+)
 ```
 
 Note that `language_template` introduces `answer_language` variable which is not bound to any pipeline variable. If not set otherwise, it would use its default value, "English". In this example, we overwrite its value to "German".
