@@ -1,22 +1,22 @@
 ---
 upgrade:
   - |
-    `PipelineRuntimeError` raised by `Agent` has changed in terms of `component_name`, `component_type`, and the rendered error message.
+    ``PipelineRuntimeError`` raised by ``Agent`` has changed in terms of ``component_name``, ``component_type``, and the rendered error message.
 
-    When an underlying `chat_generator` or `tool_invoker` fails, the `Agent` now raises a new `PipelineRuntimeError` that is raised from the original error.
+    When an underlying ``chat_generator`` or ``tool_invoker`` fails, the ``Agent`` now raises a new ``PipelineRuntimeError`` that is raised from the original error.
 
     As a result:
-    - `component_name` now resolves to the name of the `Agent` in the pipeline, instead of the underlying `chat_generator` or `tool_invoker`.
-    - `component_type` now resolves to `haystack.components.agents.agent.Agent` instead of the concrete generator class such as
-      `haystack.components.generators.chat.openai.OpenAIChatGenerator`.
-    - The error message now includes an additional outer section for the `Agent` component.
+    - ``component_name`` now resolves to the name of the ``Agent`` in the pipeline, instead of the underlying ``chat_generator`` or ``tool_invoker``.
+    - ``component_type`` now resolves to ``haystack.components.agents.agent.Agent`` instead of the concrete generator class such as
+      ``haystack.components.generators.chat.openai.OpenAIChatGenerator``.
+    - The error message now includes an additional outer section for the ``Agent`` component.
 
     Previous error message::
 
     The following component failed to run:
     Component name: 'chat_generator'
     Component type: 'OpenAIChatGenerator'
-    Error: Error code: 404 - {'error': {'message': 'The model `gpt-4.2-mini` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
+    Error: Error code: 404 - {'error': {'message': 'The model ``gpt-4.2-mini`` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
 
     New error message::
 
@@ -26,17 +26,17 @@ upgrade:
     Error: The following component failed to run:
     Component name: 'chat_generator'
     Component type: 'OpenAIChatGenerator'
-    Error: Error code: 404 - {'error': {'message': 'The model `gpt-4.2-mini` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
+    Error: Error code: 404 - {'error': {'message': 'The model ``gpt-4.2-mini`` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}
 
     You are affected if you:
-    - Assert on `component_name` or `component_type` in tests.
+    - Assert on ``component_name`` or ``component_type`` in tests.
     - Parse or pattern match the error message string.
     - Rely on the top-level failing component being the underlying generator.
 
     To handle this change:
-    - Update assertions to expect the `Agent` as the top-level failing component.
+    - Update assertions to expect the ``Agent`` as the top-level failing component.
     - Adjust any string-based error parsing to account for the additional outer error section.
 enhancements:
   - |
-    Errors originating from an `Agent` now provide clearer ownership by explicitly surfacing the `Agent` as the failing pipeline component,
+    Errors originating from an ``Agent`` now provide clearer ownership by explicitly surfacing the ``Agent`` as the failing pipeline component,
     making it easier for end users to identify which pipeline component triggered the failure.
