@@ -6,9 +6,9 @@ slug: "/rankers-api"
 ---
 
 
-## `hugging_face_tei`
+## `haystack.components.rankers.hugging_face_tei`
 
-### `TruncationDirection`
+### `haystack.components.rankers.hugging_face_tei.TruncationDirection`
 
 Bases: <code>str</code>, <code>Enum</code>
 
@@ -18,7 +18,7 @@ Attributes:
 LEFT: Truncate text from the left side (start of text).
 RIGHT: Truncate text from the right side (end of text).
 
-### `HuggingFaceTEIRanker`
+### `haystack.components.rankers.hugging_face_tei.HuggingFaceTEIRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -177,9 +177,9 @@ if a score is present.
 - <code>httpx.RequestError</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
 
-## `lost_in_the_middle`
+## `haystack.components.rankers.lost_in_the_middle`
 
-### `LostInTheMiddleRanker`
+### `haystack.components.rankers.lost_in_the_middle.LostInTheMiddleRanker`
 
 A LostInTheMiddle Ranker.
 
@@ -256,9 +256,9 @@ if a score is present.
 
 - <code>ValueError</code> – If any of the documents is not textual.
 
-## `meta_field`
+## `haystack.components.rankers.meta_field`
 
-### `MetaFieldRanker`
+### `haystack.components.rankers.meta_field.MetaFieldRanker`
 
 Ranks Documents based on the value of their specific meta field.
 
@@ -405,9 +405,9 @@ if a score is present.
   If `sort_order` is not 'ascending' or 'descending'.
   If `meta_value_type` is not 'float', 'int', 'date' or `None`.
 
-## `meta_field_grouping_ranker`
+## `haystack.components.rankers.meta_field_grouping_ranker`
 
-### `MetaFieldGroupingRanker`
+### `haystack.components.rankers.meta_field_grouping_ranker.MetaFieldGroupingRanker`
 
 Reorders the documents by grouping them based on metadata keys.
 
@@ -496,9 +496,9 @@ The output is a list of documents reordered based on how they were grouped.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
 
-## `sentence_transformers_diversity`
+## `haystack.components.rankers.sentence_transformers_diversity`
 
-### `DiversityRankingStrategy`
+### `haystack.components.rankers.sentence_transformers_diversity.DiversityRankingStrategy`
 
 Bases: <code>Enum</code>
 
@@ -512,7 +512,7 @@ from_str(string: str) -> DiversityRankingStrategy
 
 Convert a string to a Strategy enum.
 
-### `DiversityRankingSimilarity`
+### `haystack.components.rankers.sentence_transformers_diversity.DiversityRankingSimilarity`
 
 Bases: <code>Enum</code>
 
@@ -526,7 +526,7 @@ from_str(string: str) -> DiversityRankingSimilarity
 
 Convert a string to a Similarity enum.
 
-### `SentenceTransformersDiversityRanker`
+### `haystack.components.rankers.sentence_transformers_diversity.SentenceTransformersDiversityRanker`
 
 A Diversity Ranker based on Sentence Transformers.
 
@@ -695,9 +695,9 @@ Rank the documents based on their diversity.
 
 - <code>ValueError</code> – If the top_k value is less than or equal to 0.
 
-## `sentence_transformers_similarity`
+## `haystack.components.rankers.sentence_transformers_similarity`
 
-### `SentenceTransformersSimilarityRanker`
+### `haystack.components.rankers.sentence_transformers_similarity.SentenceTransformersSimilarityRanker`
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -858,9 +858,9 @@ if a score is present.
 
 - <code>ValueError</code> – If `top_k` is not > 0.
 
-## `transformers_similarity`
+## `haystack.components.rankers.transformers_similarity`
 
-### `TransformersSimilarityRanker`
+### `haystack.components.rankers.transformers_similarity.TransformersSimilarityRanker`
 
 Ranks documents based on their semantic similarity to the query.
 

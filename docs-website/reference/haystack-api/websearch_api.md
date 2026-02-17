@@ -6,9 +6,9 @@ slug: "/websearch-api"
 ---
 
 
-## `searchapi`
+## `haystack.components.websearch.searchapi`
 
-### `SearchApiWebSearch`
+### `haystack.components.websearch.searchapi.SearchApiWebSearch`
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
@@ -126,9 +126,9 @@ This is the asynchronous version of the `run` method with the same parameters an
 - <code>TimeoutError</code> – If the request to the SearchApi API times out.
 - <code>SearchApiError</code> – If an error occurs while querying the SearchApi API.
 
-## `serper_dev`
+## `haystack.components.websearch.serper_dev`
 
-### `SerperDevWebSearch`
+### `haystack.components.websearch.serper_dev.SerperDevWebSearch`
 
 Uses [Serper](https://serper.dev/) to search the web for relevant documents.
 

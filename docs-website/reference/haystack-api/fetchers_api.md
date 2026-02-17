@@ -6,9 +6,9 @@ slug: "/fetchers-api"
 ---
 
 
-## `link_content`
+## `haystack.components.fetchers.link_content`
 
-### `LinkContentFetcher`
+### `haystack.components.fetchers.link_content.LinkContentFetcher`
 
 Fetches and extracts content from URLs.
 

@@ -6,9 +6,9 @@ slug: "/samplers-api"
 ---
 
 
-## `top_p`
+## `haystack.components.samplers.top_p`
 
-### `TopPSampler`
+### `haystack.components.samplers.top_p.TopPSampler`
 
 Implements top-p (nucleus) sampling for document filtering based on cumulative probability scores.
 

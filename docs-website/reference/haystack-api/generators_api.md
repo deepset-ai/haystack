@@ -6,9 +6,9 @@ slug: "/generators-api"
 ---
 
 
-## `azure`
+## `haystack.components.generators.azure`
 
-### `AzureOpenAIGenerator`
+### `haystack.components.generators.azure.AzureOpenAIGenerator`
 
 Bases: <code>OpenAIGenerator</code>
 
@@ -174,9 +174,9 @@ Deserialize this component from a dictionary.
 
 - <code>AzureOpenAIGenerator</code> – The deserialized component instance.
 
-## `azure`
+## `haystack.components.generators.chat.azure`
 
-### `AzureOpenAIChatGenerator`
+### `haystack.components.generators.chat.azure.AzureOpenAIChatGenerator`
 
 Bases: <code>OpenAIChatGenerator</code>
 
@@ -416,9 +416,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `azure_responses`
+## `haystack.components.generators.chat.azure_responses`
 
-### `AzureOpenAIResponsesChatGenerator`
+### `haystack.components.generators.chat.azure_responses.AzureOpenAIResponsesChatGenerator`
 
 Bases: <code>OpenAIResponsesChatGenerator</code>
 
@@ -646,9 +646,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `fallback`
+## `haystack.components.generators.chat.fallback`
 
-### `FallbackChatGenerator`
+### `haystack.components.generators.chat.fallback.FallbackChatGenerator`
 
 A chat generator wrapper that tries multiple chat generators sequentially.
 
@@ -779,9 +779,9 @@ Asynchronously execute chat generators sequentially until one succeeds.
 
 - <code>RuntimeError</code> – If all chat generators fail.
 
-## `hugging_face_api`
+## `haystack.components.generators.chat.hugging_face_api`
 
-### `HuggingFaceAPIChatGenerator`
+### `haystack.components.generators.chat.hugging_face_api.HuggingFaceAPIChatGenerator`
 
 Completes chats using Hugging Face APIs.
 
@@ -1011,9 +1011,9 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage objects.
 
-## `hugging_face_local`
+## `haystack.components.generators.chat.hugging_face_local`
 
-### `default_tool_parser`
+### `haystack.components.generators.chat.hugging_face_local.default_tool_parser`
 
 ```python
 default_tool_parser(text: str) -> list[ToolCall] | None
@@ -1031,7 +1031,7 @@ Uses DEFAULT_TOOL_PATTERN to extract tool calls.
 
 - <code>list\[ToolCall\] | None</code> – A list containing a single ToolCall if a valid tool call is found, None otherwise.
 
-### `HuggingFaceLocalChatGenerator`
+### `haystack.components.generators.chat.hugging_face_local.HuggingFaceLocalChatGenerator`
 
 Generates chat responses using models from Hugging Face that run locally.
 
@@ -1263,9 +1263,9 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `openai`
+## `haystack.components.generators.chat.openai`
 
-### `OpenAIChatGenerator`
+### `haystack.components.generators.chat.openai.OpenAIChatGenerator`
 
 Completes chats using OpenAI's large language models (LLMs).
 
@@ -1494,9 +1494,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `openai_responses`
+## `haystack.components.generators.chat.openai_responses`
 
-### `OpenAIResponsesChatGenerator`
+### `haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator`
 
 Completes chats using OpenAI's Responses API.
 
@@ -1725,9 +1725,9 @@ but can be used with `await` in async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-## `hugging_face_api`
+## `haystack.components.generators.hugging_face_api`
 
-### `HuggingFaceAPIGenerator`
+### `haystack.components.generators.hugging_face_api.HuggingFaceAPIGenerator`
 
 Generates text using Hugging Face APIs.
 
@@ -1869,9 +1869,9 @@ Invoke the text generation inference for the given prompt and generation paramet
 - – A dictionary with the generated replies and metadata. Both are lists of length n.
 - replies: A list of strings representing the generated replies.
 
-## `hugging_face_local`
+## `haystack.components.generators.hugging_face_local`
 
-### `HuggingFaceLocalGenerator`
+### `haystack.components.generators.hugging_face_local.HuggingFaceLocalGenerator`
 
 Generates text using models from Hugging Face that run locally.
 
@@ -2001,9 +2001,9 @@ Run the text generation model on the given prompt.
 - – A dictionary containing the generated replies.
 - replies: A list of strings representing the generated replies.
 
-## `openai`
+## `haystack.components.generators.openai`
 
-### `OpenAIGenerator`
+### `haystack.components.generators.openai.OpenAIGenerator`
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -2148,9 +2148,9 @@ Invoke the text generation inference based on the provided messages and generati
 - <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A list of strings containing the generated responses and a list of dictionaries containing the metadata
   for each response.
 
-## `openai_dalle`
+## `haystack.components.generators.openai_dalle`
 
-### `DALLEImageGenerator`
+### `haystack.components.generators.openai_dalle.DALLEImageGenerator`
 
 Generates images using OpenAI's DALL-E model.
 
@@ -2271,9 +2271,9 @@ Deserialize this component from a dictionary.
 
 - <code>DALLEImageGenerator</code> – The deserialized component instance.
 
-## `utils`
+## `haystack.components.generators.utils`
 
-### `print_streaming_chunk`
+### `haystack.components.generators.utils.print_streaming_chunk`
 
 ```python
 print_streaming_chunk(chunk: StreamingChunk) -> None

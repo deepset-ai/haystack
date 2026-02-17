@@ -6,9 +6,9 @@ slug: "/data-classes-api"
 ---
 
 
-## `answer`
+## `haystack.dataclasses.answer`
 
-### `ExtractedAnswer`
+### `haystack.dataclasses.answer.ExtractedAnswer`
 
 #### `to_dict`
 
@@ -38,7 +38,7 @@ Deserialize the object from a dictionary.
 
 - <code>ExtractedAnswer</code> – Deserialized object.
 
-### `GeneratedAnswer`
+### `haystack.dataclasses.answer.GeneratedAnswer`
 
 #### `to_dict`
 
@@ -68,9 +68,9 @@ Deserialize the object from a dictionary.
 
 - <code>GeneratedAnswer</code> – Deserialized object.
 
-## `breakpoints`
+## `haystack.dataclasses.breakpoints`
 
-### `Breakpoint`
+### `haystack.dataclasses.breakpoints.Breakpoint`
 
 A dataclass to hold a breakpoint for a component.
 
@@ -110,7 +110,7 @@ Populate the Breakpoint from a dictionary representation.
 
 - <code>Breakpoint</code> – An instance of Breakpoint.
 
-### `ToolBreakpoint`
+### `haystack.dataclasses.breakpoints.ToolBreakpoint`
 
 Bases: <code>Breakpoint</code>
 
@@ -151,7 +151,7 @@ Populate the Breakpoint from a dictionary representation.
 
 - <code>Breakpoint</code> – An instance of Breakpoint.
 
-### `AgentBreakpoint`
+### `haystack.dataclasses.breakpoints.AgentBreakpoint`
 
 A dataclass representing a breakpoint tied to an Agent’s execution.
 
@@ -197,7 +197,7 @@ Populate the AgentBreakpoint from a dictionary representation.
 
 - <code>AgentBreakpoint</code> – An instance of AgentBreakpoint.
 
-### `AgentSnapshot`
+### `haystack.dataclasses.breakpoints.AgentSnapshot`
 
 #### `to_dict`
 
@@ -227,7 +227,7 @@ Populate the AgentSnapshot from a dictionary representation.
 
 - <code>AgentSnapshot</code> – An instance of AgentSnapshot.
 
-### `PipelineState`
+### `haystack.dataclasses.breakpoints.PipelineState`
 
 A dataclass to hold the state of the pipeline at a specific point in time.
 
@@ -267,7 +267,7 @@ Populate the PipelineState from a dictionary representation.
 
 - <code>PipelineState</code> – An instance of PipelineState.
 
-### `PipelineSnapshot`
+### `haystack.dataclasses.breakpoints.PipelineSnapshot`
 
 A dataclass to hold a snapshot of the pipeline at a specific point in time.
 
@@ -307,9 +307,9 @@ Populate the PipelineSnapshot from a dictionary representation.
 - **data** (<code>dict</code>) – A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input
   data, ordered component names, include_outputs_from, and pipeline outputs.
 
-## `byte_stream`
+## `haystack.dataclasses.byte_stream`
 
-### `ByteStream`
+### `haystack.dataclasses.byte_stream.ByteStream`
 
 Base data class representing a binary object in the Haystack API.
 
@@ -419,9 +419,9 @@ Create a ByteStream from a dictionary representation.
 
 - <code>ByteStream</code> – A ByteStream instance.
 
-## `chat_message`
+## `haystack.dataclasses.chat_message`
 
-### `ChatRole`
+### `haystack.dataclasses.chat_message.ChatRole`
 
 Bases: <code>str</code>, <code>Enum</code>
 
@@ -435,7 +435,7 @@ from_str(string: str) -> ChatRole
 
 Convert a string to a ChatRole enum.
 
-### `TextContent`
+### `haystack.dataclasses.chat_message.TextContent`
 
 The textual content of a chat message.
 
@@ -459,7 +459,7 @@ from_dict(data: dict[str, Any]) -> TextContent
 
 Create a TextContent from a dictionary.
 
-### `ToolCall`
+### `haystack.dataclasses.chat_message.ToolCall`
 
 Represents a Tool call prepared by the model, usually contained in an assistant message.
 
@@ -499,7 +499,7 @@ Creates a new ToolCall object from a dictionary.
 
 - <code>ToolCall</code> – The created object.
 
-### `ToolCallResult`
+### `haystack.dataclasses.chat_message.ToolCallResult`
 
 Represents the result of a Tool invocation.
 
@@ -537,7 +537,7 @@ Creates a ToolCallResult from a dictionary.
 
 - <code>ToolCallResult</code> – The created object.
 
-### `ReasoningContent`
+### `haystack.dataclasses.chat_message.ReasoningContent`
 
 Represents the optional reasoning content prepared by the model, usually contained in an assistant message.
 
@@ -575,7 +575,7 @@ Creates a new ReasoningContent object from a dictionary.
 
 - <code>ReasoningContent</code> – The created object.
 
-### `ChatMessage`
+### `haystack.dataclasses.chat_message.ChatMessage`
 
 Represents a message in a LLM chat conversation.
 
@@ -890,9 +890,9 @@ encounter validation errors.
 
 - <code>ValueError</code> – If the message dictionary is missing required fields.
 
-## `document`
+## `haystack.dataclasses.document`
 
-### `Document`
+### `haystack.dataclasses.document.Document`
 
 Base data class containing some data to be queried.
 
@@ -943,9 +943,9 @@ Returns the type of the content for the document.
 
 This is necessary to keep backward compatibility with 1.x.
 
-## `file_content`
+## `haystack.dataclasses.file_content`
 
-### `FileContent`
+### `haystack.dataclasses.file_content.FileContent`
 
 The file content of a chat message.
 
@@ -1033,9 +1033,9 @@ Create an FileContent object from a URL. The file is downloaded and converted to
 
 - <code>FileContent</code> – An FileContent object.
 
-## `image_content`
+## `haystack.dataclasses.image_content`
 
-### `ImageContent`
+### `haystack.dataclasses.image_content.ImageContent`
 
 The image content of a chat message.
 
@@ -1146,9 +1146,9 @@ For PDF to ImageContent conversion, use the `PDFToImageContent` component.
 
 - <code>ValueError</code> – If the URL does not point to an image or if it points to a PDF file.
 
-## `sparse_embedding`
+## `haystack.dataclasses.sparse_embedding`
 
-### `SparseEmbedding`
+### `haystack.dataclasses.sparse_embedding.SparseEmbedding`
 
 Class representing a sparse embedding.
 
@@ -1185,9 +1185,9 @@ Deserializes the sparse embedding from a dictionary.
 
 - <code>SparseEmbedding</code> – Deserialized sparse embedding.
 
-## `streaming_chunk`
+## `haystack.dataclasses.streaming_chunk`
 
-### `ToolCallDelta`
+### `haystack.dataclasses.streaming_chunk.ToolCallDelta`
 
 Represents a Tool call prepared by the model, usually contained in an assistant message.
 
@@ -1228,7 +1228,7 @@ Creates a ToolCallDelta from a serialized representation.
 
 - <code>ToolCallDelta</code> – A ToolCallDelta instance.
 
-### `ComponentInfo`
+### `haystack.dataclasses.streaming_chunk.ComponentInfo`
 
 The `ComponentInfo` class encapsulates information about a component.
 
@@ -1281,7 +1281,7 @@ Creates a ComponentInfo from a serialized representation.
 
 - <code>ComponentInfo</code> – A ComponentInfo instance.
 
-### `StreamingChunk`
+### `haystack.dataclasses.streaming_chunk.StreamingChunk`
 
 The `StreamingChunk` class encapsulates a segment of streamed content along with associated metadata.
 
@@ -1332,7 +1332,7 @@ Creates a deserialized StreamingChunk instance from a serialized representation.
 
 - <code>StreamingChunk</code> – A StreamingChunk instance.
 
-### `select_streaming_callback`
+### `haystack.dataclasses.streaming_chunk.select_streaming_callback`
 
 ```python
 select_streaming_callback(

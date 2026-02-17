@@ -6,9 +6,9 @@ slug: "/converters-api"
 ---
 
 
-## `azure`
+## `haystack.components.converters.azure`
 
-### `AzureOCRDocumentConverter`
+### `haystack.components.converters.azure.AzureOCRDocumentConverter`
 
 Converts files to documents using Azure's Document Intelligence service.
 
@@ -133,9 +133,9 @@ Deserializes the component from a dictionary.
 
 - <code>AzureOCRDocumentConverter</code> – The deserialized component.
 
-## `csv`
+## `haystack.components.converters.csv`
 
-### `CSVToDocument`
+### `haystack.components.converters.csv.CSVToDocument`
 
 Converts CSV files to Documents.
 
@@ -212,9 +212,9 @@ Converts CSV files to a Document (file mode) or to one Document per row (row mod
 - – A dictionary with the following keys:
 - `documents`: Created documents
 
-## `docx`
+## `haystack.components.converters.docx`
 
-### `DOCXMetadata`
+### `haystack.components.converters.docx.DOCXMetadata`
 
 Describes the metadata of Docx file.
 
@@ -236,7 +236,7 @@ Describes the metadata of Docx file.
 - **title** (<code>str</code>) – The title
 - **version** (<code>str</code>) – The version
 
-### `DOCXTableFormat`
+### `haystack.components.converters.docx.DOCXTableFormat`
 
 Bases: <code>Enum</code>
 
@@ -250,7 +250,7 @@ from_str(string: str) -> DOCXTableFormat
 
 Convert a string to a DOCXTableFormat enum.
 
-### `DOCXLinkFormat`
+### `haystack.components.converters.docx.DOCXLinkFormat`
 
 Bases: <code>Enum</code>
 
@@ -264,7 +264,7 @@ from_str(string: str) -> DOCXLinkFormat
 
 Convert a string to a DOCXLinkFormat enum.
 
-### `DOCXToDocument`
+### `haystack.components.converters.docx.DOCXToDocument`
 
 Converts DOCX files to Documents.
 
@@ -360,9 +360,9 @@ Converts DOCX files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `html`
+## `haystack.components.converters.html`
 
-### `HTMLToDocument`
+### `haystack.components.converters.html.HTMLToDocument`
 
 Converts an HTML file to a Document.
 
@@ -453,9 +453,9 @@ Converts a list of HTML files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `json`
+## `haystack.components.converters.json`
 
-### `JSONConverter`
+### `haystack.components.converters.json.JSONConverter`
 
 Converts one or more JSON files into a text document.
 
@@ -623,9 +623,9 @@ Converts a list of JSON files to documents.
 - – A dictionary with the following keys:
 - `documents`: A list of created documents.
 
-## `markdown`
+## `haystack.components.converters.markdown`
 
-### `MarkdownToDocument`
+### `haystack.components.converters.markdown.MarkdownToDocument`
 
 Converts a Markdown file into a text Document.
 
@@ -687,9 +687,9 @@ Converts a list of Markdown files to Documents.
 - – A dictionary with the following keys:
 - `documents`: List of created Documents
 
-## `msg`
+## `haystack.components.converters.msg`
 
-### `MSGToDocument`
+### `haystack.components.converters.msg.MSGToDocument`
 
 Converts Microsoft Outlook .msg files into Haystack Documents.
 
@@ -750,9 +750,9 @@ Converts MSG files to Documents.
 - `documents`: Created Documents.
 - `attachments`: Created ByteStream objects from file attachments.
 
-## `multi_file_converter`
+## `haystack.components.converters.multi_file_converter`
 
-### `MultiFileConverter`
+### `haystack.components.converters.multi_file_converter.MultiFileConverter`
 
 A file converter that handles conversion of multiple file types.
 
@@ -790,9 +790,9 @@ Initialize the MultiFileConverter.
 - **encoding** (<code>str</code>) – The encoding to use when reading files.
 - **json_content_key** (<code>str</code>) – The key to use in a content field in a document when converting JSON files.
 
-## `openapi_functions`
+## `haystack.components.converters.openapi_functions`
 
-### `OpenAPIServiceToFunctions`
+### `haystack.components.converters.openapi_functions.OpenAPIServiceToFunctions`
 
 Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
 
@@ -847,15 +847,15 @@ Converts OpenAPI definitions in OpenAI function calling format.
 - <code>RuntimeError</code> – If the OpenAPI definitions cannot be downloaded or processed.
 - <code>ValueError</code> – If the source type is not recognized or no functions are found in the OpenAPI definitions.
 
-## `output_adapter`
+## `haystack.components.converters.output_adapter`
 
-### `OutputAdaptationException`
+### `haystack.components.converters.output_adapter.OutputAdaptationException`
 
 Bases: <code>Exception</code>
 
 Exception raised when there is an error during output adaptation.
 
-### `OutputAdapter`
+### `haystack.components.converters.output_adapter.OutputAdapter`
 
 Adapts output of a Component using Jinja templates.
 
@@ -952,9 +952,9 @@ Deserializes the component from a dictionary.
 
 - <code>OutputAdapter</code> – The deserialized component.
 
-## `pdfminer`
+## `haystack.components.converters.pdfminer`
 
-### `PDFMinerToDocument`
+### `haystack.components.converters.pdfminer.PDFMinerToDocument`
 
 Converts PDF files to Documents.
 
@@ -1067,9 +1067,9 @@ Converts PDF files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `pptx`
+## `haystack.components.converters.pptx`
 
-### `PPTXToDocument`
+### `haystack.components.converters.pptx.PPTXToDocument`
 
 Converts PPTX files to Documents.
 
@@ -1124,9 +1124,9 @@ Converts PPTX files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `pypdf`
+## `haystack.components.converters.pypdf`
 
-### `PyPDFExtractionMode`
+### `haystack.components.converters.pypdf.PyPDFExtractionMode`
 
 Bases: <code>Enum</code>
 
@@ -1140,7 +1140,7 @@ from_str(string: str) -> PyPDFExtractionMode
 
 Convert a string to a PyPDFExtractionMode enum.
 
-### `PyPDFToDocument`
+### `haystack.components.converters.pypdf.PyPDFToDocument`
 
 Converts PDF files to documents your pipeline can query.
 
@@ -1250,9 +1250,9 @@ Converts PDF files to documents.
 - – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
-## `tika`
+## `haystack.components.converters.tika`
 
-### `XHTMLParser`
+### `haystack.components.converters.tika.XHTMLParser`
 
 Bases: <code>HTMLParser</code>
 
@@ -1282,7 +1282,7 @@ handle_data(data: str)
 
 Populate the page content.
 
-### `TikaDocumentConverter`
+### `haystack.components.converters.tika.TikaDocumentConverter`
 
 Converts files of different types to Documents.
 
@@ -1348,9 +1348,9 @@ Converts files to Documents.
 - – A dictionary with the following keys:
 - `documents`: Created Documents
 
-## `txt`
+## `haystack.components.converters.txt`
 
-### `TextFileToDocument`
+### `haystack.components.converters.txt.TextFileToDocument`
 
 Converts text files to documents your pipeline can query.
 
@@ -1411,9 +1411,9 @@ Converts text files to documents.
 - – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
-## `xlsx`
+## `haystack.components.converters.xlsx`
 
-### `XLSXToDocument`
+### `haystack.components.converters.xlsx.XLSXToDocument`
 
 ````
 Converts XLSX (Excel) files into Documents.

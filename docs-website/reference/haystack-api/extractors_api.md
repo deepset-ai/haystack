@@ -6,9 +6,9 @@ slug: "/extractors-api"
 ---
 
 
-## `llm_document_content_extractor`
+## `haystack.components.extractors.image.llm_document_content_extractor`
 
-### `LLMDocumentContentExtractor`
+### `haystack.components.extractors.image.llm_document_content_extractor.LLMDocumentContentExtractor`
 
 Extracts textual content and optionally metadata from image-based documents using a vision-enabled LLM.
 
@@ -157,9 +157,9 @@ Run extraction on image-based documents. One LLM call per document.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
-## `llm_metadata_extractor`
+## `haystack.components.extractors.llm_metadata_extractor`
 
-### `LLMMetadataExtractor`
+### `haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor`
 
 Extracts metadata from documents using a Large Language Model (LLM).
 
@@ -382,9 +382,9 @@ The original documents will be returned updated with the extracted metadata.
   "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
   re-run with the extractor to extract metadata.
 
-## `named_entity_extractor`
+## `haystack.components.extractors.named_entity_extractor`
 
-### `NamedEntityExtractorBackend`
+### `haystack.components.extractors.named_entity_extractor.NamedEntityExtractorBackend`
 
 Bases: <code>Enum</code>
 
@@ -398,7 +398,7 @@ from_str(string: str) -> NamedEntityExtractorBackend
 
 Convert a string to a NamedEntityExtractorBackend enum.
 
-### `NamedEntityAnnotation`
+### `haystack.components.extractors.named_entity_extractor.NamedEntityAnnotation`
 
 Describes a single NER annotation.
 
@@ -409,7 +409,7 @@ Describes a single NER annotation.
 - **end** (<code>int</code>) – End index of the entity in the document.
 - **score** (<code>float | None</code>) – Score calculated by the model.
 
-### `NamedEntityExtractor`
+### `haystack.components.extractors.named_entity_extractor.NamedEntityExtractor`
 
 Annotates named entities in a collection of documents.
 
@@ -555,9 +555,9 @@ Returns the document's named entity annotations stored in its metadata, if any.
 
 - <code>list\[NamedEntityAnnotation\] | None</code> – The stored annotations.
 
-## `regex_text_extractor`
+## `haystack.components.extractors.regex_text_extractor`
 
-### `RegexTextExtractor`
+### `haystack.components.extractors.regex_text_extractor.RegexTextExtractor`
 
 Extracts text from chat message or string input using a regex pattern.
 

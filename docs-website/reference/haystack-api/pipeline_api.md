@@ -6,9 +6,9 @@ slug: "/pipeline-api"
 ---
 
 
-## `async_pipeline`
+## `haystack.core.pipeline.async_pipeline`
 
-### `AsyncPipeline`
+### `haystack.core.pipeline.async_pipeline.AsyncPipeline`
 
 Bases: <code>PipelineBase</code>
 
@@ -831,9 +831,9 @@ Validate the pipeline to check if it is blocked or has no valid entry point.
 
 - <code>PipelineRuntimeError</code> – If the pipeline is blocked or has no valid entry point.
 
-## `pipeline`
+## `haystack.core.pipeline.pipeline`
 
-### `Pipeline`
+### `haystack.core.pipeline.pipeline.Pipeline`
 
 Bases: <code>PipelineBase</code>
 

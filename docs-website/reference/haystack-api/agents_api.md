@@ -6,9 +6,9 @@ slug: "/agents-api"
 ---
 
 
-## `agent`
+## `haystack.components.agents.agent`
 
-### `Agent`
+### `haystack.components.agents.agent.Agent`
 
 A tool-using Agent powered by a large language model.
 
@@ -283,9 +283,9 @@ if available.
 
 - <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
-## `state`
+## `haystack.components.agents.state.state`
 
-### `State`
+### `haystack.components.agents.state.state.State`
 
 State is a container for storing shared information during the execution of an Agent and its tools.
 

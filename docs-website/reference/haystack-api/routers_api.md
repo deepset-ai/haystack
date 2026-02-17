@@ -6,21 +6,21 @@ slug: "/routers-api"
 ---
 
 
-## `conditional_router`
+## `haystack.components.routers.conditional_router`
 
-### `NoRouteSelectedException`
+### `haystack.components.routers.conditional_router.NoRouteSelectedException`
 
 Bases: <code>Exception</code>
 
 Exception raised when no route is selected in ConditionalRouter.
 
-### `RouteConditionException`
+### `haystack.components.routers.conditional_router.RouteConditionException`
 
 Bases: <code>Exception</code>
 
 Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter.
 
-### `ConditionalRouter`
+### `haystack.components.routers.conditional_router.ConditionalRouter`
 
 Routes data based on specific conditions.
 
@@ -235,9 +235,9 @@ order they are listed. The method directs the flow of data to the output specifi
 - <code>RouteConditionException</code> – If there is an error parsing or evaluating the `condition` expression in the routes.
 - <code>ValueError</code> – If type validation is enabled and route type doesn't match actual value type.
 
-## `document_length_router`
+## `haystack.components.routers.document_length_router`
 
-### `DocumentLengthRouter`
+### `haystack.components.routers.document_length_router.DocumentLengthRouter`
 
 Categorizes documents based on the length of the `content` field and routes them to the appropriate output.
 
@@ -301,9 +301,9 @@ Categorize input documents into groups based on the length of the `content` fiel
   equal to the threshold.
 - `long_documents`: A list of documents where the length of `content` is greater than the threshold.
 
-## `document_type_router`
+## `haystack.components.routers.document_type_router`
 
-### `DocumentTypeRouter`
+### `haystack.components.routers.document_type_router.DocumentTypeRouter`
 
 Routes documents by their MIME types.
 
@@ -394,9 +394,9 @@ standard Python `mimetypes` module and custom mappings.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of documents.
 
-## `file_type_router`
+## `haystack.components.routers.file_type_router`
 
-### `FileTypeRouter`
+### `haystack.components.routers.file_type_router.FileTypeRouter`
 
 Categorizes files or byte streams by their MIME types, helping in context-based routing.
 
@@ -508,9 +508,9 @@ Categorize files or byte streams according to their MIME types.
   Two extra keys may be returned: `"unclassified"` when a source's MIME type doesn't match any pattern
   and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
 
-## `llm_messages_router`
+## `haystack.components.routers.llm_messages_router`
 
-### `LLMMessagesRouter`
+### `haystack.components.routers.llm_messages_router.LLMMessagesRouter`
 
 ````
 Routes Chat Messages to different connections using a generative Language Model to perform classification.
@@ -639,9 +639,9 @@ Deserialize this component from a dictionary.
 
 - <code>LLMMessagesRouter</code> – The deserialized component instance.
 
-## `metadata_router`
+## `haystack.components.routers.metadata_router`
 
-### `MetadataRouter`
+### `haystack.components.routers.metadata_router.MetadataRouter`
 
 Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -783,9 +783,9 @@ Deserialize this component from a dictionary.
 
 - <code>MetadataRouter</code> – The deserialized component instance.
 
-## `text_language_router`
+## `haystack.components.routers.text_language_router`
 
-### `TextLanguageRouter`
+### `haystack.components.routers.text_language_router.TextLanguageRouter`
 
 Routes text strings to different output connections based on their language.
 
@@ -854,9 +854,9 @@ If the document's text doesn't match any of the specified languages, the metadat
 
 - <code>TypeError</code> – If the input is not a string.
 
-## `transformers_text_router`
+## `haystack.components.routers.transformers_text_router`
 
-### `TransformersTextRouter`
+### `haystack.components.routers.transformers_text_router.TransformersTextRouter`
 
 Routes the text strings to different connections based on a category label.
 
@@ -991,9 +991,9 @@ Routes the text strings to different connections based on a category label.
 
 - <code>TypeError</code> – If the input is not a str.
 
-## `zero_shot_text_router`
+## `haystack.components.routers.zero_shot_text_router`
 
-### `TransformersZeroShotTextRouter`
+### `haystack.components.routers.zero_shot_text_router.TransformersZeroShotTextRouter`
 
 Routes the text strings to different connections based on a category label.
 

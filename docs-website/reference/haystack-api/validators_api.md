@@ -6,9 +6,9 @@ slug: "/validators-api"
 ---
 
 
-## `json_schema`
+## `haystack.components.validators.json_schema`
 
-### `is_valid_json`
+### `haystack.components.validators.json_schema.is_valid_json`
 
 ```python
 is_valid_json(s: str) -> bool
@@ -24,7 +24,7 @@ Check if the provided string is a valid JSON.
 
 - <code>bool</code> – `True` if the string is a valid JSON; otherwise, `False`.
 
-### `JsonSchemaValidator`
+### `haystack.components.validators.json_schema.JsonSchemaValidator`
 
 Validates JSON content of `ChatMessage` against a specified [JSON Schema](https://json-schema.org/).
 

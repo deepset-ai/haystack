@@ -6,9 +6,9 @@ slug: "/human-in-the-loop-api"
 ---
 
 
-## `dataclasses`
+## `haystack.human_in_the_loop.dataclasses`
 
-### `ConfirmationUIResult`
+### `haystack.human_in_the_loop.dataclasses.ConfirmationUIResult`
 
 Result of the confirmation UI interaction.
 
@@ -21,7 +21,7 @@ Result of the confirmation UI interaction.
 - **new_tool_params** (<code>dict\[str, Any\] | None</code>) – Optional set of new parameters for the tool. For example, if the user chooses to modify the tool parameters,
   they can provide a new set of parameters here.
 
-### `ToolExecutionDecision`
+### `haystack.human_in_the_loop.dataclasses.ToolExecutionDecision`
 
 Decision made regarding tool execution.
 
@@ -64,9 +64,9 @@ Populate the ToolExecutionDecision from a dictionary representation.
 
 - <code>ToolExecutionDecision</code> – An instance of ToolExecutionDecision.
 
-## `policies`
+## `haystack.human_in_the_loop.policies`
 
-### `AlwaysAskPolicy`
+### `haystack.human_in_the_loop.policies.AlwaysAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
@@ -121,7 +121,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-### `NeverAskPolicy`
+### `haystack.human_in_the_loop.policies.NeverAskPolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
@@ -176,7 +176,7 @@ from_dict(data: dict[str, Any]) -> ConfirmationPolicy
 
 Deserialize the policy from a dictionary.
 
-### `AskOncePolicy`
+### `haystack.human_in_the_loop.policies.AskOncePolicy`
 
 Bases: <code>ConfirmationPolicy</code>
 
@@ -241,9 +241,9 @@ tool with the given parameters.
 - **tool_params** (<code>dict\[str, Any\]</code>) – The parameters that were passed to the tool.
 - **confirmation_result** (<code>ConfirmationUIResult</code>) – The result from the confirmation UI.
 
-## `strategies`
+## `haystack.human_in_the_loop.strategies`
 
-### `BlockingConfirmationStrategy`
+### `haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy`
 
 Confirmation strategy that blocks execution to gather user feedback.
 
@@ -357,9 +357,9 @@ Deserializes the BlockingConfirmationStrategy from a dictionary.
 
 - <code>BlockingConfirmationStrategy</code> – Deserialized BlockingConfirmationStrategy.
 
-## `user_interfaces`
+## `haystack.human_in_the_loop.user_interfaces`
 
-### `RichConsoleUI`
+### `haystack.human_in_the_loop.user_interfaces.RichConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 
@@ -405,7 +405,7 @@ Serializes the RichConsoleConfirmationUI to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-### `SimpleConsoleUI`
+### `haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI`
 
 Bases: <code>ConfirmationUI</code>
 

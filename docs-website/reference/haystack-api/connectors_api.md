@@ -6,9 +6,9 @@ slug: "/connectors-api"
 ---
 
 
-## `openapi`
+## `haystack.components.connectors.openapi`
 
-### `OpenAPIConnector`
+### `haystack.components.connectors.openapi.OpenAPIConnector`
 
 OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
 
@@ -94,9 +94,9 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 
 - <code>dict\[str, Any\]</code> – Dictionary containing the service response
 
-## `openapi_service`
+## `haystack.components.connectors.openapi_service`
 
-### `patch_request`
+### `haystack.components.connectors.openapi_service.patch_request`
 
 ```python
 patch_request(
@@ -132,7 +132,7 @@ Sends an HTTP request as described by this path.
 
 - <code>Any | None</code> – The response data, either raw or processed depending on raw_response flag.
 
-### `OpenAPIServiceConnector`
+### `haystack.components.connectors.openapi_service.OpenAPIServiceConnector`
 
 A component which connects the Haystack framework to OpenAPI services.
 

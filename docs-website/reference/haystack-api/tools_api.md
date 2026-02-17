@@ -6,9 +6,9 @@ slug: "/tools-api"
 ---
 
 
-## `component_tool`
+## `haystack.tools.component_tool`
 
-### `ComponentTool`
+### `haystack.tools.component_tool.ComponentTool`
 
 Bases: <code>Tool</code>
 
@@ -192,9 +192,9 @@ from_dict(data: dict[str, Any]) -> ComponentTool
 
 Deserializes the ComponentTool from a dictionary.
 
-## `from_function`
+## `haystack.tools.from_function`
 
-### `create_tool_from_function`
+### `haystack.tools.from_function.create_tool_from_function`
 
 ```python
 create_tool_from_function(
@@ -317,7 +317,7 @@ Example:
 - <code>ValueError</code> – If any parameter of the function lacks a type hint.
 - <code>SchemaGenerationError</code> – If there is an error generating the JSON schema for the Tool.
 
-### `tool`
+### `haystack.tools.from_function.tool`
 
 ```python
 tool(
@@ -434,9 +434,9 @@ Example:
 
 - <code>Tool | Callable\\[[Callable\], Tool\]</code> – Either a Tool instance or a decorator function that will create one
 
-## `pipeline_tool`
+## `haystack.tools.pipeline_tool`
 
-### `PipelineTool`
+### `haystack.tools.pipeline_tool.PipelineTool`
 
 Bases: <code>ComponentTool</code>
 
@@ -676,9 +676,9 @@ warm_up()
 
 Prepare the ComponentTool for use.
 
-## `tool`
+## `haystack.tools.tool`
 
-### `Tool`
+### `haystack.tools.tool.Tool`
 
 Data class representing a Tool that Language Models can prepare a call for.
 
@@ -808,9 +808,9 @@ Deserializes the Tool from a dictionary.
 
 - <code>Tool</code> – Deserialized Tool.
 
-## `toolset`
+## `haystack.tools.toolset`
 
-### `Toolset`
+### `haystack.tools.toolset.Toolset`
 
 A collection of related Tools that can be used and managed as a cohesive unit.
 

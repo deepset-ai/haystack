@@ -6,9 +6,9 @@ slug: "/document-stores-api"
 ---
 
 
-## `document_store`
+## `haystack.document_stores.in_memory.document_store`
 
-### `BM25DocumentStats`
+### `haystack.document_stores.in_memory.document_store.BM25DocumentStats`
 
 A dataclass for managing document statistics for BM25 retrieval.
 
@@ -17,7 +17,7 @@ A dataclass for managing document statistics for BM25 retrieval.
 - **freq_token** (<code>dict\[str, int\]</code>) – A Counter of token frequencies in the document.
 - **doc_len** (<code>int</code>) – Number of tokens in the document.
 
-### `InMemoryDocumentStore`
+### `haystack.document_stores.in_memory.document_store.InMemoryDocumentStore`
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 

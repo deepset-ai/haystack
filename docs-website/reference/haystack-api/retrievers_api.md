@@ -6,9 +6,9 @@ slug: "/retrievers-api"
 ---
 
 
-## `auto_merging_retriever`
+## `haystack.components.retrievers.auto_merging_retriever`
 
-### `AutoMergingRetriever`
+### `haystack.components.retrievers.auto_merging_retriever.AutoMergingRetriever`
 
 A retriever which returns parent documents of the matched leaf nodes documents, based on a threshold setting.
 
@@ -140,9 +140,9 @@ continuing up the hierarchy until no more merges are possible.
 
 - – List of documents (could be a mix of different hierarchy levels)
 
-## `filter_retriever`
+## `haystack.components.retrievers.filter_retriever`
 
-### `FilterRetriever`
+### `haystack.components.retrievers.filter_retriever.FilterRetriever`
 
 Retrieves documents that match the provided filters.
 
@@ -243,9 +243,9 @@ Asynchronously run the FilterRetriever on the given input data.
 
 - – A list of retrieved documents.
 
-## `bm25_retriever`
+## `haystack.components.retrievers.in_memory.bm25_retriever`
 
-### `InMemoryBM25Retriever`
+### `haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever`
 
 Retrieves documents that are most similar to the query using keyword-based algorithm.
 
@@ -389,9 +389,9 @@ Run the InMemoryBM25Retriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not a InMemoryDocumentStore instance.
 
-## `embedding_retriever`
+## `haystack.components.retrievers.in_memory.embedding_retriever`
 
-### `InMemoryEmbeddingRetriever`
+### `haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever`
 
 Retrieves documents that are most semantically similar to the query.
 
@@ -557,9 +557,9 @@ Run the InMemoryEmbeddingRetriever on the given input data.
 
 - <code>ValueError</code> – If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
 
-## `multi_query_embedding_retriever`
+## `haystack.components.retrievers.multi_query_embedding_retriever`
 
-### `MultiQueryEmbeddingRetriever`
+### `haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever`
 
 A component that retrieves documents using multiple queries in parallel with an embedding-based retriever.
 
@@ -693,9 +693,9 @@ Deserializes the component from a dictionary.
 
 - <code>MultiQueryEmbeddingRetriever</code> – The deserialized component.
 
-## `multi_query_text_retriever`
+## `haystack.components.retrievers.multi_query_text_retriever`
 
-### `MultiQueryTextRetriever`
+### `haystack.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever`
 
 A component that retrieves documents using multiple queries in parallel with a text-based retriever.
 
@@ -808,9 +808,9 @@ Deserializes the component from a dictionary.
 
 - <code>MultiQueryTextRetriever</code> – The deserialized component.
 
-## `sentence_window_retriever`
+## `haystack.components.retrievers.sentence_window_retriever`
 
-### `SentenceWindowRetriever`
+### `haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever`
 
 Retrieves neighboring documents from a DocumentStore to provide context for query results.
 

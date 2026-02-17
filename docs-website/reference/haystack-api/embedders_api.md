@@ -6,9 +6,9 @@ slug: "/embedders-api"
 ---
 
 
-## `azure_document_embedder`
+## `haystack.components.embedders.azure_document_embedder`
 
-### `AzureOpenAIDocumentEmbedder`
+### `haystack.components.embedders.azure_document_embedder.AzureOpenAIDocumentEmbedder`
 
 Bases: <code>OpenAIDocumentEmbedder</code>
 
@@ -164,9 +164,9 @@ Embeds a list of documents asynchronously.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-## `azure_text_embedder`
+## `haystack.components.embedders.azure_text_embedder`
 
-### `AzureOpenAITextEmbedder`
+### `haystack.components.embedders.azure_text_embedder.AzureOpenAITextEmbedder`
 
 Bases: <code>OpenAITextEmbedder</code>
 
@@ -314,9 +314,9 @@ but can be used with `await` in async code.
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-## `hugging_face_api_document_embedder`
+## `haystack.components.embedders.hugging_face_api_document_embedder`
 
-### `HuggingFaceAPIDocumentEmbedder`
+### `haystack.components.embedders.hugging_face_api_document_embedder.HuggingFaceAPIDocumentEmbedder`
 
 Embeds documents using Hugging Face APIs.
 
@@ -491,9 +491,9 @@ Embeds a list of documents asynchronously.
 - – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 
-## `hugging_face_api_text_embedder`
+## `haystack.components.embedders.hugging_face_api_text_embedder`
 
-### `HuggingFaceAPITextEmbedder`
+### `haystack.components.embedders.hugging_face_api_text_embedder.HuggingFaceAPITextEmbedder`
 
 Embeds strings using Hugging Face APIs.
 
@@ -648,9 +648,9 @@ Embeds a single string asynchronously.
 - – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
-## `sentence_transformers_doc_image_embedder`
+## `haystack.components.embedders.image.sentence_transformers_doc_image_embedder`
 
-### `SentenceTransformersDocumentImageEmbedder`
+### `haystack.components.embedders.image.sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder`
 
 A component for computing Document embeddings based on images using Sentence Transformers models.
 
@@ -805,9 +805,9 @@ Embed a list of documents.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
-## `openai_document_embedder`
+## `haystack.components.embedders.openai_document_embedder`
 
-### `OpenAIDocumentEmbedder`
+### `haystack.components.embedders.openai_document_embedder.OpenAIDocumentEmbedder`
 
 Computes document embeddings using OpenAI models.
 
@@ -948,9 +948,9 @@ Embeds a list of documents asynchronously.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-## `openai_text_embedder`
+## `haystack.components.embedders.openai_text_embedder`
 
-### `OpenAITextEmbedder`
+### `haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder`
 
 Embeds strings using OpenAI models.
 
@@ -1084,9 +1084,9 @@ but can be used with `await` in async code.
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-## `sentence_transformers_document_embedder`
+## `haystack.components.embedders.sentence_transformers_document_embedder`
 
-### `SentenceTransformersDocumentEmbedder`
+### `haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder`
 
 Calculates document embeddings using Sentence Transformers models.
 
@@ -1236,9 +1236,9 @@ Embed a list of documents.
 - – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
-## `sentence_transformers_sparse_document_embedder`
+## `haystack.components.embedders.sentence_transformers_sparse_document_embedder`
 
-### `SentenceTransformersSparseDocumentEmbedder`
+### `haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder`
 
 Calculates document sparse embeddings using sparse embedding models from Sentence Transformers.
 
@@ -1371,9 +1371,9 @@ Embed a list of documents.
 - – A dictionary with the following keys:
 - `documents`: Documents with sparse embeddings under the `sparse_embedding` field.
 
-## `sentence_transformers_sparse_text_embedder`
+## `haystack.components.embedders.sentence_transformers_sparse_text_embedder`
 
-### `SentenceTransformersSparseTextEmbedder`
+### `haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder`
 
 Embeds strings using sparse embedding models from Sentence Transformers.
 
@@ -1494,9 +1494,9 @@ Embed a single string.
 - – A dictionary with the following keys:
 - `sparse_embedding`: The sparse embedding of the input text.
 
-## `sentence_transformers_text_embedder`
+## `haystack.components.embedders.sentence_transformers_text_embedder`
 
-### `SentenceTransformersTextEmbedder`
+### `haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder`
 
 Embeds strings using Sentence Transformers models.
 

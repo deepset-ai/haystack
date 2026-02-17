@@ -6,9 +6,9 @@ slug: "/evaluators-api"
 ---
 
 
-## `answer_exact_match`
+## `haystack.components.evaluators.answer_exact_match`
 
-### `AnswerExactMatchEvaluator`
+### `haystack.components.evaluators.answer_exact_match.AnswerExactMatchEvaluator`
 
 An answer exact match evaluator class.
 
@@ -59,9 +59,9 @@ The `ground_truth_answers` and `retrieved_answers` must have the same length.
 - `score` - A number from 0.0 to 1.0 that represents the proportion of questions where any predicted
   answer matched one of the ground truth answers.
 
-## `context_relevance`
+## `haystack.components.evaluators.context_relevance`
 
-### `ContextRelevanceEvaluator`
+### `haystack.components.evaluators.context_relevance.ContextRelevanceEvaluator`
 
 Bases: <code>LLMEvaluator</code>
 
@@ -313,9 +313,9 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `document_map`
+## `haystack.components.evaluators.document_map`
 
-### `DocumentMAPEvaluator`
+### `haystack.components.evaluators.document_map.DocumentMAPEvaluator`
 
 A Mean Average Precision (MAP) evaluator for documents.
 
@@ -375,9 +375,9 @@ All lists must have the same length.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high retrieved documents
   are ranked.
 
-## `document_mrr`
+## `haystack.components.evaluators.document_mrr`
 
-### `DocumentMRREvaluator`
+### `haystack.components.evaluators.document_mrr.DocumentMRREvaluator`
 
 Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
@@ -435,9 +435,9 @@ Run the DocumentMRREvaluator on the given inputs.
 - `individual_scores` - A list of numbers from 0.0 to 1.0 that represents how high the first retrieved
   document is ranked.
 
-## `document_ndcg`
+## `haystack.components.evaluators.document_ndcg`
 
-### `DocumentNDCGEvaluator`
+### `haystack.components.evaluators.document_ndcg.DocumentNDCGEvaluator`
 
 Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
@@ -540,9 +540,9 @@ Calculate the ideal discounted cumulative gain (IDCG) of the ground truth docume
 
 - <code>float</code> – The ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
-## `document_recall`
+## `haystack.components.evaluators.document_recall`
 
-### `RecallMode`
+### `haystack.components.evaluators.document_recall.RecallMode`
 
 Bases: <code>Enum</code>
 
@@ -556,7 +556,7 @@ from_str(string: str) -> RecallMode
 
 Convert a string to a RecallMode enum.
 
-### `DocumentRecallEvaluator`
+### `haystack.components.evaluators.document_recall.DocumentRecallEvaluator`
 
 Evaluator that calculates the Recall score for a list of documents.
 
@@ -632,9 +632,9 @@ Serializes the component to a dictionary.
 
 - <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-## `faithfulness`
+## `haystack.components.evaluators.faithfulness`
 
-### `FaithfulnessEvaluator`
+### `haystack.components.evaluators.faithfulness.FaithfulnessEvaluator`
 
 Bases: <code>LLMEvaluator</code>
 
@@ -868,9 +868,9 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `llm_evaluator`
+## `haystack.components.evaluators.llm_evaluator`
 
-### `LLMEvaluator`
+### `haystack.components.evaluators.llm_evaluator.LLMEvaluator`
 
 Uses an LLM to evaluate inputs based on a prompt containing instructions and examples.
 
@@ -1095,9 +1095,9 @@ Output must be a valid JSON with the expected keys.
 - with `raise_on_failure` set to True a ValueError is raised.
 - with `raise_on_failure` set to False a warning is issued and False is returned.
 
-## `sas_evaluator`
+## `haystack.components.evaluators.sas_evaluator`
 
-### `SASEvaluator`
+### `haystack.components.evaluators.sas_evaluator.SASEvaluator`
 
 SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 

@@ -6,9 +6,9 @@ slug: "/audio-api"
 ---
 
 
-## `whisper_local`
+## `haystack.components.audio.whisper_local`
 
-### `LocalWhisperTranscriber`
+### `haystack.components.audio.whisper_local.LocalWhisperTranscriber`
 
 Transcribes audio files using OpenAI's Whisper model on your local machine.
 
@@ -131,9 +131,9 @@ For the supported audio formats, languages, and other parameters, see the
 
 - <code>list\[Document\]</code> – A list of Documents, one for each file.
 
-## `whisper_remote`
+## `haystack.components.audio.whisper_remote`
 
-### `RemoteWhisperTranscriber`
+### `haystack.components.audio.whisper_remote.RemoteWhisperTranscriber`
 
 Transcribes audio files using the OpenAI's Whisper API.
 

@@ -6,9 +6,9 @@ slug: "/preprocessors-api"
 ---
 
 
-## `csv_document_cleaner`
+## `haystack.components.preprocessors.csv_document_cleaner`
 
-### `CSVDocumentCleaner`
+### `haystack.components.preprocessors.csv_document_cleaner.CSVDocumentCleaner`
 
 A component for cleaning CSV documents by removing empty rows and columns.
 
@@ -69,9 +69,9 @@ Processing steps:
 1. Returns the cleaned CSV content as a new `Document` object, with an option to retain the original
    document ID.
 
-## `csv_document_splitter`
+## `haystack.components.preprocessors.csv_document_splitter`
 
-### `CSVDocumentSplitter`
+### `haystack.components.preprocessors.csv_document_splitter.CSVDocumentSplitter`
 
 A component for splitting CSV documents into sub-tables based on split arguments.
 
@@ -144,9 +144,9 @@ Processes and splits a list of CSV documents into multiple sub-tables.
 
 - The `meta` field from the original document is preserved in the split documents.
 
-## `document_cleaner`
+## `haystack.components.preprocessors.document_cleaner`
 
-### `DocumentCleaner`
+### `haystack.components.preprocessors.document_cleaner.DocumentCleaner`
 
 Cleans the text in the documents.
 
@@ -231,9 +231,9 @@ Cleans up the documents.
 
 - <code>TypeError</code> – if documents is not a list of Documents.
 
-## `document_preprocessor`
+## `haystack.components.preprocessors.document_preprocessor`
 
-### `DocumentPreprocessor`
+### `haystack.components.preprocessors.document_preprocessor.DocumentPreprocessor`
 
 A SuperComponent that first splits and then cleans documents.
 
@@ -337,9 +337,9 @@ Deserializes the SuperComponent from a dictionary.
 
 - <code>DocumentPreprocessor</code> – Deserialized SuperComponent.
 
-## `document_splitter`
+## `haystack.components.preprocessors.document_splitter`
 
-### `DocumentSplitter`
+### `haystack.components.preprocessors.document_splitter.DocumentSplitter`
 
 Splits long documents into smaller chunks.
 
@@ -471,9 +471,9 @@ from_dict(data: dict[str, Any]) -> DocumentSplitter
 
 Deserializes the component from a dictionary.
 
-## `embedding_based_document_splitter`
+## `haystack.components.preprocessors.embedding_based_document_splitter`
 
-### `EmbeddingBasedDocumentSplitter`
+### `haystack.components.preprocessors.embedding_based_document_splitter.EmbeddingBasedDocumentSplitter`
 
 Splits documents based on embedding similarity using cosine distances between sequential sentence groups.
 
@@ -614,9 +614,9 @@ Deserializes the component from a dictionary.
 
 - <code>EmbeddingBasedDocumentSplitter</code> – The deserialized component.
 
-## `hierarchical_document_splitter`
+## `haystack.components.preprocessors.hierarchical_document_splitter`
 
-### `HierarchicalDocumentSplitter`
+### `haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter`
 
 Splits a documents into different block sizes building a hierarchical tree structure of blocks of different sizes.
 
@@ -722,9 +722,9 @@ Deserialize this component from a dictionary.
 
 - <code>HierarchicalDocumentSplitter</code> – The deserialized component.
 
-## `markdown_header_splitter`
+## `haystack.components.preprocessors.markdown_header_splitter`
 
-### `MarkdownHeaderSplitter`
+### `haystack.components.preprocessors.markdown_header_splitter.MarkdownHeaderSplitter`
 
 Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
@@ -796,9 +796,9 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
-## `recursive_splitter`
+## `haystack.components.preprocessors.recursive_splitter`
 
-### `RecursiveDocumentSplitter`
+### `haystack.components.preprocessors.recursive_splitter.RecursiveDocumentSplitter`
 
 Recursively chunk text into smaller chunks.
 
@@ -897,9 +897,9 @@ Split a list of documents into documents with smaller chunks of text.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
   to the input documents.
 
-## `text_cleaner`
+## `haystack.components.preprocessors.text_cleaner`
 
-### `TextCleaner`
+### `haystack.components.preprocessors.text_cleaner.TextCleaner`
 
 Cleans text strings.
 

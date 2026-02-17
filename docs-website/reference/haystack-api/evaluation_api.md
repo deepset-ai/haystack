@@ -6,9 +6,9 @@ slug: "/evaluation-api"
 ---
 
 
-## `eval_run_result`
+## `haystack.evaluation.eval_run_result`
 
-### `EvaluationRunResult`
+### `haystack.evaluation.eval_run_result.EvaluationRunResult`
 
 Contains the inputs and the outputs of an evaluation pipeline and provides methods to inspect them.
 

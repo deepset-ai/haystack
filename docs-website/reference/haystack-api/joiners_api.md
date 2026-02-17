@@ -6,9 +6,9 @@ slug: "/joiners-api"
 ---
 
 
-## `answer_joiner`
+## `haystack.components.joiners.answer_joiner`
 
-### `JoinMode`
+### `haystack.components.joiners.answer_joiner.JoinMode`
 
 Bases: <code>Enum</code>
 
@@ -22,7 +22,7 @@ from_str(string: str) -> JoinMode
 
 Convert a string to a JoinMode enum.
 
-### `AnswerJoiner`
+### `haystack.components.joiners.answer_joiner.AnswerJoiner`
 
 Merges multiple lists of `Answer` objects into a single list.
 
@@ -132,9 +132,9 @@ Deserializes the component from a dictionary.
 
 - <code>AnswerJoiner</code> – The deserialized component.
 
-## `branch`
+## `haystack.components.joiners.branch`
 
-### `BranchJoiner`
+### `haystack.components.joiners.branch.BranchJoiner`
 
 A component that merges multiple input branches of a pipeline into a single output stream.
 
@@ -269,9 +269,9 @@ Executes the `BranchJoiner`, selecting the first available input value and passi
 
 - <code>dict\[str, Any\]</code> – A dictionary with a single key `value`, containing the first input received.
 
-## `document_joiner`
+## `haystack.components.joiners.document_joiner`
 
-### `JoinMode`
+### `haystack.components.joiners.document_joiner.JoinMode`
 
 Bases: <code>Enum</code>
 
@@ -285,7 +285,7 @@ from_str(string: str) -> JoinMode
 
 Convert a string to a JoinMode enum.
 
-### `DocumentJoiner`
+### `haystack.components.joiners.document_joiner.DocumentJoiner`
 
 Joins multiple lists of documents into a single list.
 
@@ -403,9 +403,9 @@ Deserializes the component from a dictionary.
 
 - <code>DocumentJoiner</code> – The deserialized component.
 
-## `list_joiner`
+## `haystack.components.joiners.list_joiner`
 
-### `ListJoiner`
+### `haystack.components.joiners.list_joiner.ListJoiner`
 
 A component that joins multiple lists into a single flat list.
 
@@ -516,9 +516,9 @@ Joins multiple lists into a single flat list.
 
 - <code>dict\[str, list\[Any\]\]</code> – Dictionary with 'values' key containing the joined list.
 
-## `string_joiner`
+## `haystack.components.joiners.string_joiner`
 
-### `StringJoiner`
+### `haystack.components.joiners.string_joiner.StringJoiner`
 
 Component to join strings from different components to a list of strings.
 
