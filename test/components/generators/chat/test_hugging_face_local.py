@@ -164,6 +164,12 @@ class TestHuggingFaceLocalChatGenerator:
         with pytest.raises(ValueError, match="is not supported."):
             HuggingFaceLocalChatGenerator(task="text-classification")
 
+    def test_init_text2text_generation_raises_error(self):
+        with pytest.raises(
+            ValueError, match="Task 'text2text-generation' is not supported with transformers v5 or higher."
+        ):
+            HuggingFaceLocalChatGenerator(task="text2text-generation")
+
     def test_to_dict(self, model_info_mock, tools):
         generator = HuggingFaceLocalChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
