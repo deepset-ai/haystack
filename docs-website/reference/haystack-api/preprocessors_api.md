@@ -618,7 +618,7 @@ Split documents based on embedding similarity.
 
 **Raises**:
 
-- `None`: - `RuntimeError`: If the component wasn't warmed up.
+- `RuntimeError`: If the component wasn't warmed up.
 - `TypeError`: If the input is not a list of Documents.
 - `ValueError`: If the document content is None or empty.
 

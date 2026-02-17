@@ -10,7 +10,7 @@ def is_callable_async_compatible(func: Callable) -> bool:
     """
     Returns if the given callable is usable inside a component's `run_async` method.
 
-    :param callable:
+    :param func:
         The callable to check.
     :returns:
         True if the callable is compatible, False otherwise.

@@ -714,7 +714,7 @@ Extracts text from input using the configured regex pattern.
 
 **Raises**:
 
-- `None`: - ValueError: if receiving a list the last element is not a ChatMessage instance.
+- `ValueError`: if receiving a list the last element is not a ChatMessage instance.
 
 **Returns**:
 

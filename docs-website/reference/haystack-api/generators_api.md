@@ -1171,7 +1171,8 @@ format.
 If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
 - `task`: The task for the Hugging Face pipeline. Possible options:
 - `text-generation`: Supported by decoder models, like GPT.
-- `text2text-generation`: Supported by encoder-decoder models, like T5.
+- `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
+  Previously supported by encoder–decoder models such as T5.
 If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
 If not specified, the component calls the Hugging Face API to infer the task from the model name.
 - `device`: The device for loading the model. If `None`, automatically selects the default device.
@@ -2013,11 +2014,10 @@ LLMs running locally may need powerful hardware.
 from haystack.components.generators import HuggingFaceLocalGenerator
 
 generator = HuggingFaceLocalGenerator(
-    model="google/flan-t5-large",
-    task="text2text-generation",
-    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
-
-generator.warm_up()
+    model="Qwen/Qwen3-0.6B",
+    task="text-generation",
+    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9}
+)
 
 print(generator.run("Who is the best American actor?"))
 # {'replies': ['John Cusack']}
@@ -2028,7 +2028,7 @@ print(generator.run("Who is the best American actor?"))
 #### HuggingFaceLocalGenerator.\_\_init\_\_
 
 ```python
-def __init__(model: str = "google/flan-t5-base",
+def __init__(model: str = "Qwen/Qwen3-0.6B",
              task: Literal["text-generation", "text2text-generation"]
              | None = None,
              device: ComponentDevice | None = None,
@@ -2047,7 +2047,8 @@ Creates an instance of a HuggingFaceLocalGenerator.
 - `model`: The Hugging Face text generation model name or path.
 - `task`: The task for the Hugging Face pipeline. Possible options:
 - `text-generation`: Supported by decoder models, like GPT.
-- `text2text-generation`: Supported by encoder-decoder models, like T5.
+- `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
+  Previously supported by encoder–decoder models such as T5.
 If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
 If not specified, the component calls the Hugging Face API to infer the task from the model name.
 - `device`: The device for loading the model. If `None`, automatically selects the default device.

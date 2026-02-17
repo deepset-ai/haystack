@@ -18,6 +18,37 @@ Here are the requirements for all custom components:
 - `@component`: This decorator marks a class as a component, allowing it to be used in a pipeline.
 - `run()`: This is a required method in every component. It accepts input arguments and returns a `dict`. The inputs can either come from the pipeline when it’s executed, or from the output of another component when connected using `connect()`. The `run()` method should be compatible with the input/output definitions declared for the component. See an [Extended Example](#extended-example) below to check how it works.
 
+
+:::note Avoid in-place input mutation
+
+When building custom components, do not change the component's inputs directly. Instead, work on a copy or a new version of the input, modify that, and return it. The reason for this is that the original input values might be reused by other components or by later pipeline steps. Mutating the input directly can lead to unintended side effects and bugs in the pipeline, as other components might rely on the original input values.
+
+When only one or a few fields of the input need to be changed (for example, `meta` on a `Document`), use `dataclasses.replace()` to create a new instance with the updated fields. This is simpler and more efficient than deep-copying the whole object:
+
+```python
+from dataclasses import replace
+
+
+def run(self, documents):
+    updated = [replace(doc, meta={**doc.meta, "processed": True}) for doc in documents]
+    return {"documents": updated}
+```
+
+When you need to modify nested mutable structures, for example `list` or `dict` attributes, or update many fields of the dataclass instance, use a full deep copy instead:
+
+```python
+import copy
+
+
+def run(self, documents):
+    documents_copy = copy.deepcopy(documents)
+    # mutate documents_copy safely here
+    return {"documents": documents_copy}
+```
+
+:::
+
+
 ### Inputs and Outputs
 
 Next, define the inputs and outputs for your component.
