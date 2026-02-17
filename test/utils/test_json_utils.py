@@ -1,4 +1,5 @@
 import json
+import logging
 
 import pytest
 
@@ -44,3 +45,17 @@ class TestJsonUtils:
         text = '{"key": "value"}'
         # Should pass without validation if expected_keys is empty list
         assert _parse_json_from_text(text, expected_keys=[]) == {"key": "value"}
+
+    def test__parse_json_from_text_invalid_raise_false(self, caplog):
+        text = "invalid json"
+        with caplog.at_level(logging.WARNING):
+            result = _parse_json_from_text(text, raise_on_failure=False)
+            assert result is None
+            assert "Failed to parse JSON from text" in caplog.text
+
+    def test__parse_json_from_text_missing_keys_raise_false(self, caplog):
+        text = '{"key1": "value1"}'
+        with caplog.at_level(logging.WARNING):
+            result = _parse_json_from_text(text, expected_keys=["key1", "key2"], raise_on_failure=False)
+            assert result is None
+            assert "Failed to parse JSON from text" in caplog.text
