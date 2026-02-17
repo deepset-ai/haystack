@@ -60,9 +60,9 @@ class XLSXToDocument:
 
         :param table_format: The format to convert the Excel file to.
         :param link_format: The format for link output. Possible options:
-            - ``"markdown"``: ``[text](url)``
-            - ``"plain"``: ``text (url)``
-            - ``"none"``: Only the text is extracted, link addresses are ignored.
+            - `"markdown"`: `[text](url)`
+            - `"plain"`: `text (url)`
+            - `"none"`: Only the text is extracted, link addresses are ignored.
         :param sheet_name: The name of the sheet to read. If None, all sheets are read.
         :param read_excel_kwargs: Additional arguments to pass to `pandas.read_excel`.
             See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel

@@ -45,9 +45,9 @@ class PPTXToDocument:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         :param link_format: The format for link output. Possible options:
-            - ``"markdown"``: ``[text](url)``
-            - ``"plain"``: ``text (url)``
-            - ``"none"``: Only the text is extracted, link addresses are ignored.
+            - `"markdown"`: `[text](url)`
+            - `"plain"`: `text (url)`
+            - `"none"`: Only the text is extracted, link addresses are ignored.
         """
         pptx_import.check()
         if link_format not in ("markdown", "plain", "none"):
