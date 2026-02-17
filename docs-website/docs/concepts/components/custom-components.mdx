@@ -46,10 +46,7 @@ def run(self, documents):
     return {"documents": documents_copy}
 ```
 
-When your inputs may contain `Component`, `Tool`, or `Toolset` or other non-copyable objects, use Haystack's [`_deepcopy_with_exceptions`](https://github.com/deepset-ai/haystack/blob/main/haystack/core/pipeline/utils.py) from `haystack.core.pipeline.utils` instead of `copy.deepcopy`. It recursively copies containers but leaves those types by reference and returns the original object on a copy failure logging the error.
 :::
-
-
 
 
 ### Inputs and Outputs
