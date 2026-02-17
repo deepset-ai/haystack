@@ -474,7 +474,6 @@ documents = [
                 "electricity supply system."
     ),
 ]
-document_embedder.warm_up()
 docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
 document_store.write_documents(docs_with_embeddings)
 
