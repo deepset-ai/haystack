@@ -9,7 +9,6 @@ import pytest
 from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.fetchers import LinkContentFetcher
-from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -100,9 +99,17 @@ def test_pipeline_with_chat_generator_crash():
     with pytest.raises(PipelineRuntimeError) as exception_info:
         _ = pipe.run(data=test_data)
 
-    assert "Error in chat generator component" in str(exception_info.value)
-    assert exception_info.value.component_name == "chat_generator"
-    assert exception_info.value.component_type == MockChatGenerator
+    assert str(exception_info.value) == (
+        "The following component failed to run:"
+        "\nComponent name: 'math_agent'"
+        "\nComponent type: 'Agent'"
+        "\nError: The following component failed to run:"
+        "\nComponent name: 'chat_generator'"
+        "\nComponent type: 'MockChatGenerator'"
+        "\nError: Error in chat generator component"
+    )
+    assert exception_info.value.component_name == "math_agent"
+    assert exception_info.value.component_type == Agent
     # File saving is disabled by default, so pipeline_snapshot_file_path is None
     assert exception_info.value.pipeline_snapshot_file_path is None
 
@@ -154,9 +161,17 @@ def test_pipeline_with_tool_call_crash():
     with pytest.raises(PipelineRuntimeError) as exception_info:
         _ = pipe.run(data=test_data)
 
-    assert "Error in factorial tool" in str(exception_info.value), "Exception message should contain tool error"
-    assert exception_info.value.component_name == "tool_invoker"
-    assert exception_info.value.component_type == ToolInvoker
+    assert str(exception_info.value) == (
+        "The following component failed to run:"
+        "\nComponent name: 'math_agent'"
+        "\nComponent type: 'Agent'"
+        "\nError: The following component failed to run:"
+        "\nComponent name: 'tool_invoker'"
+        "\nComponent type: 'ToolInvoker'"
+        "\nError: Failed to invoke Tool `factorial` with parameters {'n': 5}. Error: Error in factorial tool"
+    )
+    assert exception_info.value.component_name == "math_agent"
+    assert exception_info.value.component_type == Agent
     # File saving is disabled by default, so pipeline_snapshot_file_path is None
     assert exception_info.value.pipeline_snapshot_file_path is None
 
