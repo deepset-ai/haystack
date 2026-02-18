@@ -7,7 +7,7 @@ import mimetypes
 import tempfile
 from math import inf
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from numpy import exp, ndarray
 
@@ -145,6 +145,18 @@ def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
     return list(highest_scoring_docs.values())
 
 
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: Literal[True] = ...
+) -> dict[str, Any]: ...
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: Literal[False] = ...
+) -> dict[str, Any] | None: ...
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: bool = ...
+) -> dict[str, Any] | None: ...
 def _parse_dict_from_json(
     text: str, expected_keys: list[str] | None = None, raise_on_failure: bool = True
 ) -> dict[str, Any] | None:
