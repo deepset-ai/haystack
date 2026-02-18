@@ -96,7 +96,6 @@ class NamedEntityExtractor:
         Document(content="My name is Clara and I live in Berkeley, California."),
     ]
     extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-    extractor.warm_up()
     results = extractor.run(documents=documents)["documents"]
     annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
     print(annotations)

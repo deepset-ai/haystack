@@ -620,7 +620,6 @@ from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
 
 ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
-ranker.warm_up()
 
 docs = [Document(content="Paris"), Document(content="Berlin")]
 query = "What is the capital of germany?"
@@ -785,7 +784,6 @@ from haystack.components.rankers import SentenceTransformersSimilarityRanker
 ranker = SentenceTransformersSimilarityRanker()
 docs = [Document(content="Paris"), Document(content="Berlin")]
 query = "City in Germany"
-ranker.warm_up()
 result = ranker.run(query=query, documents=docs)
 docs = result["documents"]
 print(docs[0].content)
@@ -967,7 +965,6 @@ from haystack.components.rankers import TransformersSimilarityRanker
 ranker = TransformersSimilarityRanker()
 docs = [Document(content="Paris"), Document(content="Berlin")]
 query = "City in Germany"
-ranker.warm_up()
 result = ranker.run(query=query, documents=docs)
 docs = result["documents"]
 print(docs[0].content)

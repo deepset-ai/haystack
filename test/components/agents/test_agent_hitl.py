@@ -157,8 +157,6 @@ class TestAgent:
                 )
             },
         )
-        agent.warm_up()
-
         result = agent.run([ChatMessage.from_user("What is 2+2?")])
 
         assert isinstance(result["last_message"], ChatMessage)
@@ -181,8 +179,6 @@ class TestAgent:
                 )
             },
         )
-        agent.warm_up()
-
         result = await agent.run_async([ChatMessage.from_user("What is 2+2?")])
 
         assert isinstance(result["last_message"], ChatMessage)

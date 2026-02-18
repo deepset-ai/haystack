@@ -43,7 +43,6 @@ class RecursiveDocumentSplitter:
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
     AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
-    chunker.warm_up()
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
     print(doc_chunks["documents"])

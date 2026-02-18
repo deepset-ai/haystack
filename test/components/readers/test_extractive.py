@@ -286,7 +286,6 @@ def test_from_dict_no_token():
 
 
 def test_run_no_docs(mock_reader: ExtractiveReader):
-    mock_reader.warm_up()
     assert mock_reader.run(query="hello", documents=[]) == {"answers": []}
 
 
@@ -780,7 +779,6 @@ class TestDeduplication:
 def test_t5(monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
     reader = ExtractiveReader("sjrhuschlee/flan-t5-base-squad2")
-    reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching support is reintroduced
@@ -806,7 +804,6 @@ def test_t5(monkeypatch):
 def test_roberta(monkeypatch):
     monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
-    reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching is reintroduced
@@ -839,7 +836,6 @@ def test_matches_hf_pipeline(monkeypatch):
     reader = ExtractiveReader(
         "deepset/tinyroberta-squad2", device=ComponentDevice.from_str("cpu"), overlap_threshold=None
     )
-    reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced

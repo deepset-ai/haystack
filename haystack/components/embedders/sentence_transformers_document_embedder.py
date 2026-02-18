@@ -31,7 +31,6 @@ class SentenceTransformersDocumentEmbedder:
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
     doc = Document(content="I love pizza!")
     doc_embedder = SentenceTransformersDocumentEmbedder()
-    doc_embedder.warm_up()
 
     result = doc_embedder.run([doc])
     print(result['documents'][0].embedding)

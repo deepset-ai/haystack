@@ -880,7 +880,6 @@ class TestIntegration:
         )
 
         # Run the Agent
-        agent.warm_up()
         response = agent.run(
             messages=[
                 ChatMessage.from_user("What is 7 * (4 + 2)? Make sure to call the calculator tool to get the answer.")
