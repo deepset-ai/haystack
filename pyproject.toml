@@ -79,7 +79,7 @@ dependencies = [
 release-note = "reno new {args}"
 fmt = "ruff check --fix {args}; ruff format {args}"
 fmt-check = "ruff check {args} && ruff format --check {args}"
-docs = "./.github/utils/pydoc-markdown.sh"
+docs = "haystack-pydoc pydoc tmp_api_reference"
 
 [tool.hatch.envs.test]
 
