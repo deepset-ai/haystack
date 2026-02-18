@@ -23,7 +23,8 @@ description: "`FileToFileContent` reads local files and converts them into `File
 
 ## Overview
 
-`FileToFileContent` processes a list of file sources and converts them into `FileContent` objects.
+`FileToFileContent` processes a list of file sources and converts them into `FileContent` objects that can be embedded
+into a `ChatMessage` and passed to a Language Model.
 
 Each source can be:
 
@@ -32,7 +33,8 @@ Each source can be:
 
 Optionally, you can provide extra provider-specific information using the `extra` parameter. This can be a single dictionary (applied to all files) or a list matching the length of `sources`.
 
-Support for this feature differs by LLM provider. Some providers do not support it, some restrict it to PDF files, and others allow a wider range of file types.
+Support for passing files to LLMs varies by provider. Some providers do not support file inputs, some restrict support
+to PDF files, and others accept a wider range of file types.
 
 This component is often used in query pipelines just before a `ChatPromptBuilder`.
 
