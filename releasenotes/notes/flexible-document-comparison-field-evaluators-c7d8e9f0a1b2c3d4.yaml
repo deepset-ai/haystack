@@ -9,4 +9,4 @@ features:
 
     Previously, all three evaluators hardcoded ``doc.content`` for comparison,
     which did not work well when documents were chunked or when ground truth
-    was identified by composite keys.
+    was identified by custom metadata fields.

@@ -68,11 +68,7 @@ class DocumentRecallEvaluator:
     ```
     """
 
-    def __init__(
-        self,
-        mode: str | RecallMode = RecallMode.SINGLE_HIT,
-        document_comparison_field: str = "content",
-    ):
+    def __init__(self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content"):
         """
         Create a DocumentRecallEvaluator component.
 
@@ -80,10 +76,11 @@ class DocumentRecallEvaluator:
             Mode to use for calculating the recall score.
         :param document_comparison_field:
             The Document field to use for comparison. Possible options:
-            - ``"content"``: uses ``doc.content``
-            - ``"id"``: uses ``doc.id``
-            - A ``meta.`` prefix followed by a key name: uses ``doc.meta["<key>"]``
-              (e.g. ``"meta.file_id"``, ``"meta.page_number"``)
+            - `"content"`: uses `doc.content`
+            - `"id"`: uses `doc.id`
+            - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+              (e.g. `"meta.file_id"`, `"meta.page_number"`)
+              Nested keys are supported (e.g. `"meta.source.url"`).
         """
         if isinstance(mode, str):
             mode = RecallMode.from_str(mode)
@@ -100,8 +97,13 @@ class DocumentRecallEvaluator:
         if self.document_comparison_field == "id":
             return doc.id
         if self.document_comparison_field.startswith("meta."):
-            meta_key = self.document_comparison_field[5:]
-            return doc.meta.get(meta_key)
+            parts = self.document_comparison_field[5:].split(".")
+            value = doc.meta
+            for part in parts:
+                if not isinstance(value, dict) or part not in value:
+                    return None
+                value = value[part]
+            return value
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -120,16 +122,16 @@ class DocumentRecallEvaluator:
         unique_retrievals = {self._get_comparison_value(p) for p in retrieved_documents}
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
 
-        if not unique_truths or unique_truths == {""}:
+        if not unique_truths or unique_truths <= {"", None}:
             logger.warning(
-                "There are no ground truth documents or all of them have an empty comparison value. "
+                "There are no ground truth documents or none of them contain a valid comparison value. "
                 "Score will be set to 0."
             )
             return 0.0
 
-        if not unique_retrievals or unique_retrievals == {""}:
+        if not unique_retrievals or unique_retrievals <= {"", None}:
             logger.warning(
-                "There are no retrieved documents or all of them have an empty comparison value. "
+                "There are no retrieved documents or none of them contain a valid comparison value. "
                 "Score will be set to 0."
             )
             return 0.0
@@ -158,16 +160,12 @@ class DocumentRecallEvaluator:
             msg = "The length of ground_truth_documents and retrieved_documents must be the same."
             raise ValueError(msg)
 
-        mode_functions = {
-            RecallMode.SINGLE_HIT: self._recall_single_hit,
-            RecallMode.MULTI_HIT: self._recall_multi_hit,
-        }
-        mode_function = mode_functions[self.mode]
+        if self.mode == RecallMode.SINGLE_HIT:
+            mode_function = self._recall_single_hit
+        elif self.mode == RecallMode.MULTI_HIT:
+            mode_function = self._recall_multi_hit
 
-        scores = []
-        for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
-            score = mode_function(ground_truth, retrieved)
-            scores.append(score)
+        scores = [mode_function(gt, ret) for gt, ret in zip(ground_truth_documents, retrieved_documents)]
 
         return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
 
@@ -178,6 +176,4 @@ class DocumentRecallEvaluator:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(
-            self, mode=str(self.mode), document_comparison_field=self.document_comparison_field
-        )
+        return default_to_dict(self, mode=str(self.mode), document_comparison_field=self.document_comparison_field)

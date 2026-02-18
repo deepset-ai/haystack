@@ -47,10 +47,11 @@ class DocumentMRREvaluator:
 
         :param document_comparison_field:
             The Document field to use for comparison. Possible options:
-            - ``"content"``: uses ``doc.content``
-            - ``"id"``: uses ``doc.id``
-            - A ``meta.`` prefix followed by a key name: uses ``doc.meta["<key>"]``
-              (e.g. ``"meta.file_id"``, ``"meta.page_number"``)
+            - `"content"`: uses `doc.content`
+            - `"id"`: uses `doc.id`
+            - A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+              (e.g. `"meta.file_id"`, `"meta.page_number"`)
+              Nested keys are supported (e.g. `"meta.source.url"`).
         """
         self.document_comparison_field = document_comparison_field
 
@@ -63,8 +64,13 @@ class DocumentMRREvaluator:
         if self.document_comparison_field == "id":
             return doc.id
         if self.document_comparison_field.startswith("meta."):
-            meta_key = self.document_comparison_field[5:]
-            return doc.meta.get(meta_key)
+            parts = self.document_comparison_field[5:].split(".")
+            value = doc.meta
+            for part in parts:
+                if not isinstance(value, dict) or part not in value:
+                    return None
+                value = value[part]
+            return value
         msg = (
             f"Unsupported document_comparison_field: '{self.document_comparison_field}'. "
             "Use 'content', 'id', or 'meta.<key>'."
@@ -109,9 +115,7 @@ class DocumentMRREvaluator:
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
             reciprocal_rank = 0.0
 
-            ground_truth_values = [
-                self._get_comparison_value(doc) for doc in ground_truth if self._get_comparison_value(doc) is not None
-            ]
+            ground_truth_values = [val for doc in ground_truth if (val := self._get_comparison_value(doc)) is not None]
             for rank, retrieved_document in enumerate(retrieved):
                 retrieved_value = self._get_comparison_value(retrieved_document)
                 if retrieved_value is None:
