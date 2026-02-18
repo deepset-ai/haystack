@@ -40,10 +40,10 @@ def test_run_with_meta_comparison():
     evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, document_comparison_field="meta.file_id")
     result = evaluator.run(
         ground_truth_documents=[
-            [Document(content="x", meta={"file_id": "a"}), Document(content="y", meta={"file_id": "b"})],
+            [Document(content="x", meta={"file_id": "a"}), Document(content="y", meta={"file_id": "b"})]
         ],
         retrieved_documents=[
-            [Document(content="z", meta={"file_id": "a"}), Document(content="w", meta={"file_id": "c"})],
+            [Document(content="z", meta={"file_id": "a"}), Document(content="w", meta={"file_id": "c"})]
         ],
     )
     assert result == {"individual_scores": [0.5], "score": 0.5}
