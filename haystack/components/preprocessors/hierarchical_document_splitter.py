@@ -72,7 +72,6 @@ class HierarchicalDocumentSplitter:
             self.splitters[block_size] = DocumentSplitter(
                 split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by
             )
-            self.splitters[block_size].warm_up()
 
     @staticmethod
     def _add_meta_data(document: Document):

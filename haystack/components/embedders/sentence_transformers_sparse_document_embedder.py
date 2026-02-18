@@ -32,7 +32,6 @@ class SentenceTransformersSparseDocumentEmbedder:
 
     doc = Document(content="I love pizza!")
     doc_embedder = SentenceTransformersSparseDocumentEmbedder()
-    doc_embedder.warm_up()
 
     result = doc_embedder.run([doc])
     print(result['documents'][0].sparse_embedding)

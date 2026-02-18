@@ -421,7 +421,6 @@ class TestSentenceTransformersTextEmbedder:
         text = "a nice text to embed"
 
         embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
-        embedder_def.warm_up()
         result_def = embedder_def.run(text=text)
         embedding_def = result_def["embedding"]
 

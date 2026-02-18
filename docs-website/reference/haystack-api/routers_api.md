@@ -1090,7 +1090,6 @@ from haystack.components.retrievers import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore()
 doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
-doc_embedder.warm_up()
 docs = [
     Document(
         content="Germany, officially the Federal Republic of Germany, is a country in the western region of "

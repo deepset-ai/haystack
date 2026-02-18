@@ -223,7 +223,6 @@ class TestSimilarityRanker:
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
         embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -255,7 +254,6 @@ class TestSimilarityRanker:
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
         embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -371,7 +369,6 @@ class TestSimilarityRanker:
         Test if the component ranks documents correctly.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -397,7 +394,6 @@ class TestSimilarityRanker:
         Test if the component ranks documents correctly with a custom top_k.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2)
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -420,7 +416,6 @@ class TestSimilarityRanker:
         Test if the component runs with a single document.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None)
-        ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]

@@ -31,7 +31,6 @@ docs = [
 ]
 
 reader = ExtractiveReader()
-reader.warm_up()
 
 question = "What is a popular programming language?"
 result = reader.run(query=question, documents=docs)

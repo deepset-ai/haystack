@@ -131,7 +131,6 @@ class LLMMetadataExtractor:
         raise_on_failure=False,
     )
 
-    extractor.warm_up()
     extractor.run(documents=docs)
     >> {'documents': [
         Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',

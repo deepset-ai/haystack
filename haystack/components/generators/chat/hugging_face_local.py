@@ -100,7 +100,6 @@ class HuggingFaceLocalChatGenerator:
     from haystack.dataclasses import ChatMessage
 
     generator = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B")
-    generator.warm_up()
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
     ```

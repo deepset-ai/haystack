@@ -64,7 +64,6 @@ class DocumentJoiner:
     document_store = InMemoryDocumentStore()
     docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="London")]
     embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    embedder.warm_up()
     docs_embeddings = embedder.run(docs)
     document_store.write_documents(docs_embeddings['documents'])
 

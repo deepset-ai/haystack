@@ -90,6 +90,9 @@ class MultiQueryTextRetriever:
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
 
+        if not self._is_warmed_up:
+            self.warm_up()
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)
             for result in queries_results:
