@@ -1,26 +1,13 @@
 loaders:
-  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../haystack/human_in_the_loop]
-    modules:
-      ["dataclasses", "policies", "strategies", "user_interfaces"]
-    ignore_when_discovered: ["__init__"]
+  - search_path: [../haystack/human_in_the_loop]
+    modules: ["dataclasses", "policies", "strategies", "user_interfaces"]
 processors:
   - type: filter
-    expression:
     documented_only: true
-    do_not_filter_modules: false
     skip_empty_modules: true
-  - type: smart
-  - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
-  description: Abstractions for integrating human feedback and interaction into Agent workflows.
   title: Human-in-the-Loop
   id: human-in-the-loop-api
-  markdown:
-    descriptive_class_title: false
-    classdef_code_block: false
-    descriptive_module_title: true
-    add_method_class_prefix: true
-    add_member_class_prefix: false
-    filename: human_in_the_loop_api.md
+  description: Abstractions for integrating human feedback and interaction into Agent
+    workflows.
+  filename: human_in_the_loop_api.md

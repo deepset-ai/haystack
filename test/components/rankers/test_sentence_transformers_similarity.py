@@ -413,7 +413,10 @@ class TestSentenceTransformersSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run(self):
+    def test_run(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
         ranker = SentenceTransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
 
         query = "City in Bosnia and Herzegovina"
@@ -438,7 +441,10 @@ class TestSentenceTransformersSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_top_k(self):
+    def test_run_top_k(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2
         )
@@ -462,7 +468,10 @@ class TestSentenceTransformersSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_single_document(self):
+    def test_run_single_document(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None
         )

@@ -5,11 +5,8 @@ description: "Components to extract specific elements from textual data."
 slug: "/extractors-api"
 ---
 
-<a id="image/llm_document_content_extractor"></a>
 
-## Module image/llm\_document\_content\_extractor
-
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor"></a>
+## image/llm_document_content_extractor
 
 ### LLMDocumentContentExtractor
 
@@ -19,17 +16,19 @@ One prompt and one LLM call per document. The component converts each document t
 DocumentToImageContent and sends it to the ChatGenerator. The prompt must not contain Jinja variables.
 
 Response handling:
+
 - If the LLM returns a **plain string** (non-JSON or not a JSON object), it is written to the document's content.
 - If the LLM returns a **JSON object with only the key** `document_content`, that value is written to content.
-- If the LLM returns a **JSON object with multiple keys**, the value of ``document_content`` (if present) is
+- If the LLM returns a **JSON object with multiple keys**, the value of `document_content` (if present) is
   written to content and all other keys are merged into the document's metadata.
 
-The ChatGenerator can be configured to return JSON (e.g. ``response_format={"type": "json_object"}``
-in ``generation_kwargs``).
+The ChatGenerator can be configured to return JSON (e.g. `response_format={"type": "json_object"}`
+in `generation_kwargs`).
 
-Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
+Documents that fail extraction are returned in `failed_documents` with `content_extraction_error` in metadata.
 
 ### Usage example
+
 ```python
 from haystack import Document
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -75,105 +74,90 @@ result = extractor.run(documents=documents)
 updated_documents = result["documents"]
 ```
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.__init__"></a>
-
-#### LLMDocumentContentExtractor.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(*,
-             chat_generator: ChatGenerator,
-             prompt: str = DEFAULT_PROMPT_TEMPLATE,
-             file_path_meta_field: str = "file_path",
-             root_path: str | None = None,
-             detail: Literal["auto", "high", "low"] | None = None,
-             size: tuple[int, int] | None = None,
-             raise_on_failure: bool = False,
-             max_workers: int = 3)
+__init__(
+    *,
+    chat_generator: ChatGenerator,
+    prompt: str = DEFAULT_PROMPT_TEMPLATE,
+    file_path_meta_field: str = "file_path",
+    root_path: str | None = None,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    raise_on_failure: bool = False,
+    max_workers: int = 3
+)
 ```
 
 Initialize the LLMDocumentContentExtractor component.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_generator`: A ChatGenerator that supports vision input. Optionally configured for JSON
-(e.g. ``response_format={"type": "json_object"}`` in ``generation_kwargs``).
-- `prompt`: Prompt for extraction. Must not contain Jinja variables.
-- `file_path_meta_field`: The metadata field in the Document that contains the file path to the image or PDF.
-- `root_path`: The root directory path where document files are located. If provided, file paths in
-document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
-- `detail`: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
-- `size`: If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
-- `raise_on_failure`: If True, exceptions from the LLM are raised. If False, failed documents are returned.
-- `max_workers`: Maximum number of threads for parallel LLM calls.
+- **chat_generator** (<code>ChatGenerator</code>) – A ChatGenerator that supports vision input. Optionally configured for JSON
+  (e.g. `response_format={"type": "json_object"}` in `generation_kwargs`).
+- **prompt** (<code>str</code>) – Prompt for extraction. Must not contain Jinja variables.
+- **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
+- **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
+  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+- **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within (width, height) while keeping aspect ratio.
+- **raise_on_failure** (<code>bool</code>) – If True, exceptions from the LLM are raised. If False, failed documents are returned.
+- **max_workers** (<code>int</code>) – Maximum number of threads for parallel LLM calls.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.warm_up"></a>
-
-#### LLMDocumentContentExtractor.warm\_up
+#### warm_up
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Warm up the ChatGenerator if it has a warm_up method.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.to_dict"></a>
-
-#### LLMDocumentContentExtractor.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.from_dict"></a>
-
-#### LLMDocumentContentExtractor.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "LLMDocumentContentExtractor"
+from_dict(data: dict[str, Any]) -> LLMDocumentContentExtractor
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary with serialized data.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with serialized data.
 
-**Returns**:
+**Returns:**
 
-An instance of the component.
+- <code>LLMDocumentContentExtractor</code> – An instance of the component.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.run"></a>
-
-#### LLMDocumentContentExtractor.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document],
-                        failed_documents=list[Document])
-def run(documents: list[Document]) -> dict[str, list[Document]]
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Run extraction on image-based documents. One LLM call per document.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of image-based documents to process. Each must have a valid file path in its metadata.
+- **documents** (<code>list\[Document\]</code>) – A list of image-based documents to process. Each must have a valid file path in its metadata.
 
-**Returns**:
+**Returns:**
 
-A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
 
-<a id="llm_metadata_extractor"></a>
-
-## Module llm\_metadata\_extractor
-
-<a id="llm_metadata_extractor.LLMMetadataExtractor"></a>
+## llm_metadata_extractor
 
 ### LLMMetadataExtractor
 
@@ -298,88 +282,77 @@ extractor.run(documents=docs)
 >>
 ```
 
-<a id="llm_metadata_extractor.LLMMetadataExtractor.__init__"></a>
-
-#### LLMMetadataExtractor.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(prompt: str,
-             chat_generator: ChatGenerator,
-             expected_keys: list[str] | None = None,
-             page_range: list[str | int] | None = None,
-             raise_on_failure: bool = False,
-             max_workers: int = 3)
+__init__(
+    prompt: str,
+    chat_generator: ChatGenerator,
+    expected_keys: list[str] | None = None,
+    page_range: list[str | int] | None = None,
+    raise_on_failure: bool = False,
+    max_workers: int = 3,
+)
 ```
 
 Initializes the LLMMetadataExtractor.
 
-**Arguments**:
+**Parameters:**
 
-- `prompt`: The prompt to be used for the LLM.
-- `chat_generator`: a ChatGenerator instance which represents the LLM. In order for the component to work,
-the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
-should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
-- `expected_keys`: The keys expected in the JSON output from the LLM.
-- `page_range`: A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
-metadata from the first and third pages of each document. It also accepts printable range strings, e.g.:
-['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,11, 12.
-If None, metadata will be extracted from the entire document for each document in the documents list.
-This parameter is optional and can be overridden in the `run` method.
-- `raise_on_failure`: Whether to raise an error on failure during the execution of the Generator or
-validation of the JSON output.
-- `max_workers`: The maximum number of workers to use in the thread pool executor.
+- **prompt** (<code>str</code>) – The prompt to be used for the LLM.
+- **chat_generator** (<code>ChatGenerator</code>) – a ChatGenerator instance which represents the LLM. In order for the component to work,
+  the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
+  should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
+- **expected_keys** (<code>list\[str\] | None</code>) – The keys expected in the JSON output from the LLM.
+- **page_range** (<code>list\[str | int\] | None</code>) – A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
+  metadata from the first and third pages of each document. It also accepts printable range strings, e.g.:
+  ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,11, 12.
+  If None, metadata will be extracted from the entire document for each document in the documents list.
+  This parameter is optional and can be overridden in the `run` method.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an error on failure during the execution of the Generator or
+  validation of the JSON output.
+- **max_workers** (<code>int</code>) – The maximum number of workers to use in the thread pool executor.
 
-<a id="llm_metadata_extractor.LLMMetadataExtractor.warm_up"></a>
-
-#### LLMMetadataExtractor.warm\_up
+#### warm_up
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Warm up the LLM provider component.
 
-<a id="llm_metadata_extractor.LLMMetadataExtractor.to_dict"></a>
-
-#### LLMMetadataExtractor.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="llm_metadata_extractor.LLMMetadataExtractor.from_dict"></a>
-
-#### LLMMetadataExtractor.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "LLMMetadataExtractor"
+from_dict(data: dict[str, Any]) -> LLMMetadataExtractor
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary with serialized data.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with serialized data.
 
-**Returns**:
+**Returns:**
 
-An instance of the component.
+- <code>LLMMetadataExtractor</code> – An instance of the component.
 
-<a id="llm_metadata_extractor.LLMMetadataExtractor.run"></a>
-
-#### LLMMetadataExtractor.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document],
-                        failed_documents=list[Document])
-def run(documents: list[Document], page_range: list[str | int] | None = None)
+run(documents: list[Document], page_range: list[str | int] | None = None)
 ```
 
 Extract metadata from documents using a Large Language Model.
@@ -388,73 +361,52 @@ If `page_range` is provided, the metadata will be extracted from the specified r
 will split the documents into pages and extract metadata from the specified range of pages. The metadata will be
 extracted from the entire document if `page_range` is not provided.
 
-The original documents will be returned  updated with the extracted metadata.
+The original documents will be returned updated with the extracted metadata.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: List of documents to extract metadata from.
-- `page_range`: A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
-metadata from the first and third pages of each document. It also accepts printable range
-strings, e.g.: ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,
-11, 12.
-If None, metadata will be extracted from the entire document for each document in the
-documents list.
+- **documents** (<code>list\[Document\]</code>) – List of documents to extract metadata from.
+- **page_range** (<code>list\[str | int\] | None</code>) – A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
+  metadata from the first and third pages of each document. It also accepts printable range
+  strings, e.g.: ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,
+  11, 12.
+  If None, metadata will be extracted from the entire document for each document in the
+  documents list.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the keys:
+- – A dictionary with the keys:
 - "documents": A list of documents that were successfully updated with the extracted metadata.
 - "failed_documents": A list of documents that failed to extract metadata. These documents will have
-"metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
-re-run with the extractor to extract metadata.
+  "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
+  re-run with the extractor to extract metadata.
 
-<a id="named_entity_extractor"></a>
-
-## Module named\_entity\_extractor
-
-<a id="named_entity_extractor.NamedEntityExtractorBackend"></a>
+## named_entity_extractor
 
 ### NamedEntityExtractorBackend
 
+Bases: <code>Enum</code>
+
 NLP backend to use for Named Entity Recognition.
 
-<a id="named_entity_extractor.NamedEntityExtractorBackend.HUGGING_FACE"></a>
-
-#### HUGGING\_FACE
-
-Uses an Hugging Face model and pipeline.
-
-<a id="named_entity_extractor.NamedEntityExtractorBackend.SPACY"></a>
-
-#### SPACY
-
-Uses a spaCy model and pipeline.
-
-<a id="named_entity_extractor.NamedEntityExtractorBackend.from_str"></a>
-
-#### NamedEntityExtractorBackend.from\_str
+#### from_str
 
 ```python
-@staticmethod
-def from_str(string: str) -> "NamedEntityExtractorBackend"
+from_str(string: str) -> NamedEntityExtractorBackend
 ```
 
 Convert a string to a NamedEntityExtractorBackend enum.
-
-<a id="named_entity_extractor.NamedEntityAnnotation"></a>
 
 ### NamedEntityAnnotation
 
 Describes a single NER annotation.
 
-**Arguments**:
+**Parameters:**
 
-- `entity`: Entity label.
-- `start`: Start index of the entity in the document.
-- `end`: End index of the entity in the document.
-- `score`: Score calculated by the model.
-
-<a id="named_entity_extractor.NamedEntityExtractor"></a>
+- **entity** (<code>str</code>) – Entity label.
+- **start** (<code>int</code>) – Start index of the entity in the document.
+- **end** (<code>int</code>) – End index of the entity in the document.
+- **score** (<code>float | None</code>) – Score calculated by the model.
 
 ### NamedEntityExtractor
 
@@ -468,6 +420,7 @@ that contains an NER component. Annotations are stored as metadata
 in the documents.
 
 Usage example:
+
 ```python
 from haystack import Document
 from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
@@ -482,145 +435,125 @@ annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in resul
 print(annotations)
 ```
 
-<a id="named_entity_extractor.NamedEntityExtractor.__init__"></a>
-
-#### NamedEntityExtractor.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(
+__init__(
     *,
     backend: str | NamedEntityExtractorBackend,
     model: str,
     pipeline_kwargs: dict[str, Any] | None = None,
     device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                               strict=False)
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    )
 ) -> None
 ```
 
 Create a Named Entity extractor component.
 
-**Arguments**:
+**Parameters:**
 
-- `backend`: Backend to use for NER.
-- `model`: Name of the model or a path to the model on
-the local disk. Dependent on the backend.
-- `pipeline_kwargs`: Keyword arguments passed to the pipeline. The
-pipeline can override these arguments. Dependent on the backend.
-- `device`: The device on which the model is loaded. If `None`,
-the default device is automatically selected. If a
-device/device map is specified in `pipeline_kwargs`,
-it overrides this parameter (only applicable to the
-HuggingFace backend).
-- `token`: The API token to download private models from Hugging Face.
+- **backend** (<code>str | NamedEntityExtractorBackend</code>) – Backend to use for NER.
+- **model** (<code>str</code>) – Name of the model or a path to the model on
+  the local disk. Dependent on the backend.
+- **pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments passed to the pipeline. The
+  pipeline can override these arguments. Dependent on the backend.
+- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`,
+  the default device is automatically selected. If a
+  device/device map is specified in `pipeline_kwargs`,
+  it overrides this parameter (only applicable to the
+  HuggingFace backend).
+- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
 
-<a id="named_entity_extractor.NamedEntityExtractor.warm_up"></a>
-
-#### NamedEntityExtractor.warm\_up
+#### warm_up
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Initialize the component.
 
-**Raises**:
+**Raises:**
 
-- `ComponentError`: If the backend fails to initialize successfully.
+- <code>ComponentError</code> – If the backend fails to initialize successfully.
 
-<a id="named_entity_extractor.NamedEntityExtractor.run"></a>
-
-#### NamedEntityExtractor.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
+run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
 ```
 
 Annotate named entities in each document and store the annotations in the document's metadata.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: Documents to process.
-- `batch_size`: Batch size used for processing the documents.
+- **documents** (<code>list\[Document\]</code>) – Documents to process.
+- **batch_size** (<code>int</code>) – Batch size used for processing the documents.
 
-**Raises**:
+**Returns:**
 
-- `ComponentError`: If the backend fails to process a document.
+- <code>dict\[str, Any\]</code> – Processed documents.
 
-**Returns**:
+**Raises:**
 
-Processed documents.
+- <code>ComponentError</code> – If the backend fails to process a document.
 
-<a id="named_entity_extractor.NamedEntityExtractor.to_dict"></a>
-
-#### NamedEntityExtractor.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="named_entity_extractor.NamedEntityExtractor.from_dict"></a>
-
-#### NamedEntityExtractor.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "NamedEntityExtractor"
+from_dict(data: dict[str, Any]) -> NamedEntityExtractor
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>NamedEntityExtractor</code> – Deserialized component.
 
-<a id="named_entity_extractor.NamedEntityExtractor.initialized"></a>
-
-#### NamedEntityExtractor.initialized
+#### initialized
 
 ```python
-@property
-def initialized() -> bool
+initialized: bool
 ```
 
 Returns if the extractor is ready to annotate text.
 
-<a id="named_entity_extractor.NamedEntityExtractor.get_stored_annotations"></a>
-
-#### NamedEntityExtractor.get\_stored\_annotations
+#### get_stored_annotations
 
 ```python
-@classmethod
-def get_stored_annotations(
-        cls, document: Document) -> list[NamedEntityAnnotation] | None
+get_stored_annotations(
+    document: Document,
+) -> list[NamedEntityAnnotation] | None
 ```
 
 Returns the document's named entity annotations stored in its metadata, if any.
 
-**Arguments**:
+**Parameters:**
 
-- `document`: Document whose annotations are to be fetched.
+- **document** (<code>Document</code>) – Document whose annotations are to be fetched.
 
-**Returns**:
+**Returns:**
 
-The stored annotations.
+- <code>list\[NamedEntityAnnotation\] | None</code> – The stored annotations.
 
-<a id="regex_text_extractor"></a>
-
-## Module regex\_text\_extractor
-
-<a id="regex_text_extractor.RegexTextExtractor"></a>
+## regex_text_extractor
 
 ### RegexTextExtractor
 
@@ -646,76 +579,65 @@ result = parser.run(text_or_messages=messages)
 # result: {"captured_text": "github.com/hahahaha"}
 ```
 
-<a id="regex_text_extractor.RegexTextExtractor.__init__"></a>
-
-#### RegexTextExtractor.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(regex_pattern: str)
+__init__(regex_pattern: str)
 ```
 
 Creates an instance of the RegexTextExtractor component.
 
-**Arguments**:
+**Parameters:**
 
-- `regex_pattern`: The regular expression pattern used to extract text.
-The pattern should include a capture group to extract the desired text.
-Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
+- **regex_pattern** (<code>str</code>) – The regular expression pattern used to extract text.
+  The pattern should include a capture group to extract the desired text.
+  Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
 
-<a id="regex_text_extractor.RegexTextExtractor.to_dict"></a>
-
-#### RegexTextExtractor.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="regex_text_extractor.RegexTextExtractor.from_dict"></a>
-
-#### RegexTextExtractor.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "RegexTextExtractor"
+from_dict(data: dict[str, Any]) -> RegexTextExtractor
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>RegexTextExtractor</code> – The deserialized component.
 
-<a id="regex_text_extractor.RegexTextExtractor.run"></a>
-
-#### RegexTextExtractor.run
+#### run
 
 ```python
-@component.output_types(captured_text=str)
-def run(text_or_messages: str | list[ChatMessage]) -> dict[str, str]
+run(text_or_messages: str | list[ChatMessage]) -> dict[str, str]
 ```
 
 Extracts text from input using the configured regex pattern.
 
-**Arguments**:
+**Parameters:**
 
-- `text_or_messages`: Either a string or a list of ChatMessage objects to search through.
+- **text_or_messages** (<code>str | list\[ChatMessage\]</code>) – Either a string or a list of ChatMessage objects to search through.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: if receiving a list the last element is not a ChatMessage instance.
-
-**Returns**:
-
-- `{"captured_text": "matched text"}` if a match is found
+- <code>dict\[str, str\]</code> – - `{"captured_text": "matched text"}` if a match is found
 - `{"captured_text": ""}` if no match is found
 
+**Raises:**
+
+- <code>ValueError</code> – if receiving a list the last element is not a ChatMessage instance.

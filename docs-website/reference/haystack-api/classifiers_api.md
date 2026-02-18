@@ -5,11 +5,8 @@ description: "Classify documents based on the provided labels."
 slug: "/classifiers-api"
 ---
 
-<a id="document_language_classifier"></a>
 
-## Module document\_language\_classifier
-
-<a id="document_language_classifier.DocumentLanguageClassifier"></a>
+## document_language_classifier
 
 ### DocumentLanguageClassifier
 
@@ -56,29 +53,24 @@ assert len(written_docs) == 1
 assert written_docs[0] == Document(id="1", content="This is an English document", meta={"language": "en"})
 ```
 
-<a id="document_language_classifier.DocumentLanguageClassifier.__init__"></a>
-
-#### DocumentLanguageClassifier.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(languages: list[str] | None = None)
+__init__(languages: list[str] | None = None)
 ```
 
 Initializes the DocumentLanguageClassifier component.
 
-**Arguments**:
+**Parameters:**
 
-- `languages`: A list of ISO language codes.
-See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-If not specified, defaults to ["en"].
+- **languages** (<code>list\[str\] | None</code>) – A list of ISO language codes.
+  See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
+  If not specified, defaults to ["en"].
 
-<a id="document_language_classifier.DocumentLanguageClassifier.run"></a>
-
-#### DocumentLanguageClassifier.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(documents: list[Document])
+run(documents: list[Document])
 ```
 
 Classifies the language of each document and adds it to its metadata.
@@ -86,24 +78,20 @@ Classifies the language of each document and adds it to its metadata.
 If the document's text doesn't match any of the languages specified at initialization,
 sets the metadata value to "unmatched".
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents for language classification.
+- **documents** (<code>list\[Document\]</code>) – A list of documents for language classification.
 
-**Raises**:
+**Returns:**
 
-- `TypeError`: if the input is not a list of Documents.
-
-**Returns**:
-
-A dictionary with the following key:
+- – A dictionary with the following key:
 - `documents`: A list of documents with an added `language` metadata field.
 
-<a id="zero_shot_document_classifier"></a>
+**Raises:**
 
-## Module zero\_shot\_document\_classifier
+- <code>TypeError</code> – if the input is not a list of Documents.
 
-<a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier"></a>
+## zero_shot_document_classifier
 
 ### TransformersZeroShotDocumentClassifier
 
@@ -117,9 +105,9 @@ Classification is run on the document's content field by default. If you want it
 `classification_field` to one of the document's metadata fields.
 
 Available models for the task of zero-shot-classification include:
-    - `valhalla/distilbart-mnli-12-3`
-    - `cross-encoder/nli-distilroberta-base`
-    - `cross-encoder/nli-deberta-v3-xsmall`
+\- `valhalla/distilbart-mnli-12-3`
+\- `cross-encoder/nli-distilroberta-base`
+\- `cross-encoder/nli-deberta-v3-xsmall`
 
 ### Usage example
 
@@ -160,19 +148,20 @@ for idx, query in enumerate(queries):
             == expected_predictions[idx])
 ```
 
-<a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier.__init__"></a>
-
-#### TransformersZeroShotDocumentClassifier.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(model: str,
-             labels: list[str],
-             multi_label: bool = False,
-             classification_field: str | None = None,
-             device: ComponentDevice | None = None,
-             token: Secret | None = Secret.from_env_var(
-                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             huggingface_pipeline_kwargs: dict[str, Any] | None = None)
+__init__(
+    model: str,
+    labels: list[str],
+    multi_label: bool = False,
+    classification_field: str | None = None,
+    device: ComponentDevice | None = None,
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    ),
+    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+)
 ```
 
 Initializes the TransformersZeroShotDocumentClassifier.
@@ -180,76 +169,65 @@ Initializes the TransformersZeroShotDocumentClassifier.
 See the Hugging Face [website](https://huggingface.co/models?pipeline_tag=zero-shot-classification&sort=downloads&search=nli)
 for the full list of zero-shot classification models (NLI) models.
 
-**Arguments**:
+**Parameters:**
 
-- `model`: The name or path of a Hugging Face model for zero shot document classification.
-- `labels`: The set of possible class labels to classify each document into, for example,
-["positive", "negative"]. The labels depend on the selected model.
-- `multi_label`: Whether or not multiple candidate labels can be true.
-If `False`, the scores are normalized such that
-the sum of the label likelihoods for each sequence is 1. If `True`, the labels are considered
-independent and probabilities are normalized for each candidate by doing a softmax of the entailment
-score vs. the contradiction score.
-- `classification_field`: Name of document's meta field to be used for classification.
-If not set, `Document.content` is used by default.
-- `device`: The device on which the model is loaded. If `None`, the default device is automatically
-selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- `token`: The Hugging Face token to use as HTTP bearer authorization.
-Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-- `huggingface_pipeline_kwargs`: Dictionary containing keyword arguments used to initialize the
-Hugging Face pipeline for text classification.
+- **model** (<code>str</code>) – The name or path of a Hugging Face model for zero shot document classification.
+- **labels** (<code>list\[str\]</code>) – The set of possible class labels to classify each document into, for example,
+  ["positive", "negative"]. The labels depend on the selected model.
+- **multi_label** (<code>bool</code>) – Whether or not multiple candidate labels can be true.
+  If `False`, the scores are normalized such that
+  the sum of the label likelihoods for each sequence is 1. If `True`, the labels are considered
+  independent and probabilities are normalized for each candidate by doing a softmax of the entailment
+  score vs. the contradiction score.
+- **classification_field** (<code>str | None</code>) – Name of document's meta field to be used for classification.
+  If not set, `Document.content` is used by default.
+- **device** (<code>ComponentDevice | None</code>) – The device on which the model is loaded. If `None`, the default device is automatically
+  selected. If a device/device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization.
+  Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
+- **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing keyword arguments used to initialize the
+  Hugging Face pipeline for text classification.
 
-<a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier.warm_up"></a>
-
-#### TransformersZeroShotDocumentClassifier.warm\_up
+#### warm_up
 
 ```python
-def warm_up()
+warm_up()
 ```
 
 Initializes the component.
 
-<a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier.to_dict"></a>
-
-#### TransformersZeroShotDocumentClassifier.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier.from_dict"></a>
-
-#### TransformersZeroShotDocumentClassifier.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(
-        cls, data: dict[str, Any]) -> "TransformersZeroShotDocumentClassifier"
+from_dict(data: dict[str, Any]) -> TransformersZeroShotDocumentClassifier
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>TransformersZeroShotDocumentClassifier</code> – Deserialized component.
 
-<a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier.run"></a>
-
-#### TransformersZeroShotDocumentClassifier.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(documents: list[Document], batch_size: int = 1)
+run(documents: list[Document], batch_size: int = 1)
 ```
 
 Classifies the documents based on the provided labels and adds them to their metadata.
@@ -258,13 +236,12 @@ The classification results are stored in the `classification` dict within
 each document's metadata. If `multi_label` is set to `True`, the scores for each label are available under
 the `details` key within the `classification` dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: Documents to process.
-- `batch_size`: Batch size used for processing the content in each document.
+- **documents** (<code>list\[Document\]</code>) – Documents to process.
+- **batch_size** (<code>int</code>) – Batch size used for processing the content in each document.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following key:
+- – A dictionary with the following key:
 - `documents`: A list of documents with an added metadata field called `classification`.
-
