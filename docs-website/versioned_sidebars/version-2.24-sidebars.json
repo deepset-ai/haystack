@@ -133,7 +133,7 @@
         {
           "type": "link",
           "label": "ValkeyDocumentStore",
-          "href": "https://haystack.deepset.ai/integrations/valkey",
+          "href": "https://haystack.deepset.ai/integrations/valkey"
         },
         "document-stores/weaviatedocumentstore"
       ]
