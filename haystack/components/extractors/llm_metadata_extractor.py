@@ -18,7 +18,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
-from haystack.utils.json_utils import _parse_json_from_text
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +235,7 @@ class LLMMetadataExtractor:
 
     def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
         try:
-            parsed_metadata = _parse_json_from_text(llm_answer, expected_keys=self.expected_keys)
+            parsed_metadata = _parse_dict_from_json(llm_answer, expected_keys=self.expected_keys, raise_on_failure=True)
         except (ValueError, json.JSONDecodeError) as e:
             logger.warning(
                 "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",

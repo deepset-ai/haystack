@@ -12,7 +12,7 @@ from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
-from haystack.utils.json_utils import _parse_json_from_text
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +260,7 @@ class QueryExpander:
         :param generator_response: The raw text response from the generator.
         :return: List of parsed expanded queries.
         """
-        parsed = _parse_json_from_text(generator_response, expected_keys=["queries"], raise_on_failure=False)
+        parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=False)
 
         if parsed is None:
             return []

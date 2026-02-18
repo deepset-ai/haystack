@@ -14,7 +14,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
-from haystack.utils.json_utils import _parse_json_from_text
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +219,7 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            parsed_result = _parse_json_from_text(
+            parsed_result = _parse_dict_from_json(
                 result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
             )
             if parsed_result is None:

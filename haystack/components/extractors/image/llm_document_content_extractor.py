@@ -17,6 +17,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -226,11 +227,10 @@ class LLMDocumentContentExtractor:
         - Valid JSON but not an object (e.g. array or primitive), report an error;
         """
         try:
-            parsed = json.loads(response_text)
+            parsed = _parse_dict_from_json(response_text, raise_on_failure=True)
         except json.JSONDecodeError:
             return response_text, {}, None
-
-        if not isinstance(parsed, dict):
+        except ValueError:
             return None, {}, "Response must be a JSON object, not an array or primitive."
 
         content = parsed.get(DOCUMENT_CONTENT_KEY)
