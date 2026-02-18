@@ -134,6 +134,11 @@ export default {
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
+        {
+          type: 'link',
+          label: 'ValkeyDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/valkey',
+        },
         'document-stores/weaviatedocumentstore',
       ],
     },
