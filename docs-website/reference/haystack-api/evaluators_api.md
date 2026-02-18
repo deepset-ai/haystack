@@ -309,32 +309,6 @@ Validate the input parameters.
 - `ValueError`: If not all expected inputs are present in the received inputs
 If the received inputs are not lists or have different lengths
 
-<a id="context_relevance.ContextRelevanceEvaluator.is_valid_json_and_has_expected_keys"></a>
-
-#### ContextRelevanceEvaluator.is\_valid\_json\_and\_has\_expected\_keys
-
-```python
-def is_valid_json_and_has_expected_keys(expected: list[str],
-                                        received: str) -> bool
-```
-
-Output must be a valid JSON with the expected keys.
-
-**Arguments**:
-
-- `expected`: Names of expected outputs
-- `received`: Names of received outputs
-
-**Raises**:
-
-- `ValueError`: If the output is not a valid JSON with the expected keys:
-- with `raise_on_failure` set to True a ValueError is raised.
-- with `raise_on_failure` set to False a warning is issued and False is returned.
-
-**Returns**:
-
-True if the received output is a valid JSON with the expected keys, False otherwise.
-
 <a id="document_map"></a>
 
 ## Module document\_map
@@ -916,32 +890,6 @@ Validate the input parameters.
 - `ValueError`: If not all expected inputs are present in the received inputs
 If the received inputs are not lists or have different lengths
 
-<a id="faithfulness.FaithfulnessEvaluator.is_valid_json_and_has_expected_keys"></a>
-
-#### FaithfulnessEvaluator.is\_valid\_json\_and\_has\_expected\_keys
-
-```python
-def is_valid_json_and_has_expected_keys(expected: list[str],
-                                        received: str) -> bool
-```
-
-Output must be a valid JSON with the expected keys.
-
-**Arguments**:
-
-- `expected`: Names of expected outputs
-- `received`: Names of received outputs
-
-**Raises**:
-
-- `ValueError`: If the output is not a valid JSON with the expected keys:
-- with `raise_on_failure` set to True a ValueError is raised.
-- with `raise_on_failure` set to False a warning is issued and False is returned.
-
-**Returns**:
-
-True if the received output is a valid JSON with the expected keys, False otherwise.
-
 <a id="llm_evaluator"></a>
 
 ## Module llm\_evaluator
@@ -1163,32 +1111,6 @@ Validate the input parameters.
 
 - `ValueError`: If not all expected inputs are present in the received inputs
 If the received inputs are not lists or have different lengths
-
-<a id="llm_evaluator.LLMEvaluator.is_valid_json_and_has_expected_keys"></a>
-
-#### LLMEvaluator.is\_valid\_json\_and\_has\_expected\_keys
-
-```python
-def is_valid_json_and_has_expected_keys(expected: list[str],
-                                        received: str) -> bool
-```
-
-Output must be a valid JSON with the expected keys.
-
-**Arguments**:
-
-- `expected`: Names of expected outputs
-- `received`: Names of received outputs
-
-**Raises**:
-
-- `ValueError`: If the output is not a valid JSON with the expected keys:
-- with `raise_on_failure` set to True a ValueError is raised.
-- with `raise_on_failure` set to False a warning is issued and False is returned.
-
-**Returns**:
-
-True if the received output is a valid JSON with the expected keys, False otherwise.
 
 <a id="sas_evaluator"></a>
 
