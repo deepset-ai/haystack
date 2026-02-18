@@ -5,11 +5,8 @@ description: "Checks if any document coming from the given URL is already presen
 slug: "/caching-api"
 ---
 
-<a id="cache_checker"></a>
 
-## Module cache\_checker
-
-<a id="cache_checker.CacheChecker"></a>
+## cache_checker
 
 ### CacheChecker
 
@@ -38,73 +35,62 @@ results = checker.run(items=["https://example.com/1", "https://example.com/5"])
 assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
 ```
 
-<a id="cache_checker.CacheChecker.__init__"></a>
-
-#### CacheChecker.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(document_store: DocumentStore, cache_field: str)
+__init__(document_store: DocumentStore, cache_field: str)
 ```
 
 Creates a CacheChecker component.
 
-**Arguments**:
+**Parameters:**
 
-- `document_store`: Document Store to check for the presence of specific documents.
-- `cache_field`: Name of the document's metadata field
-to check for cache hits.
+- **document_store** (<code>DocumentStore</code>) – Document Store to check for the presence of specific documents.
+- **cache_field** (<code>str</code>) – Name of the document's metadata field
+  to check for cache hits.
 
-<a id="cache_checker.CacheChecker.to_dict"></a>
-
-#### CacheChecker.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="cache_checker.CacheChecker.from_dict"></a>
-
-#### CacheChecker.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "CacheChecker"
+from_dict(data: dict[str, Any]) -> CacheChecker
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>CacheChecker</code> – Deserialized component.
 
-<a id="cache_checker.CacheChecker.run"></a>
-
-#### CacheChecker.run
+#### run
 
 ```python
-@component.output_types(hits=list[Document], misses=list)
-def run(items: list[Any])
+run(items: list[Any])
 ```
 
 Checks if any document associated with the specified cache field is already present in the store.
 
-**Arguments**:
+**Parameters:**
 
-- `items`: Values to be checked against the cache field.
+- **items** (<code>list\[Any\]</code>) – Values to be checked against the cache field.
 
-**Returns**:
+**Returns:**
 
-A dictionary with two keys:
+- – A dictionary with two keys:
 - `hits` - Documents that matched with at least one of the items.
 - `misses` - Items that were not present in any documents.
-
