@@ -5,17 +5,15 @@ description: "Web search engine for Haystack."
 slug: "/websearch-api"
 ---
 
-<a id="searchapi"></a>
 
-## Module searchapi
-
-<a id="searchapi.SearchApiWebSearch"></a>
+## searchapi
 
 ### SearchApiWebSearch
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
 Usage example:
+
 ```python
 from haystack.components.websearch import SearchApiWebSearch
 from haystack.utils import Secret
@@ -27,123 +25,108 @@ assert results["documents"]
 assert results["links"]
 ```
 
-<a id="searchapi.SearchApiWebSearch.__init__"></a>
-
-#### SearchApiWebSearch.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
-             top_k: int | None = 10,
-             allowed_domains: list[str] | None = None,
-             search_params: dict[str, Any] | None = None) -> None
+__init__(
+    api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
+    top_k: int | None = 10,
+    allowed_domains: list[str] | None = None,
+    search_params: dict[str, Any] | None = None,
+) -> None
 ```
 
 Initialize the SearchApiWebSearch component.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: API key for the SearchApi API
-- `top_k`: Number of documents to return.
-- `allowed_domains`: List of domains to limit the search to.
-- `search_params`: Additional parameters passed to the SearchApi API.
-For example, you can set 'num' to 100 to increase the number of search results.
-See the [SearchApi website](https://www.searchapi.io/) for more details.
+- **api_key** (<code>Secret</code>) – API key for the SearchApi API
+- **top_k** (<code>int | None</code>) – Number of documents to return.
+- **allowed_domains** (<code>list\[str\] | None</code>) – List of domains to limit the search to.
+- **search_params** (<code>dict\[str, Any\] | None</code>) – Additional parameters passed to the SearchApi API.
+  For example, you can set 'num' to 100 to increase the number of search results.
+  See the [SearchApi website](https://www.searchapi.io/) for more details.
 
 The default search engine is Google, however, users can change it by setting the `engine`
 parameter in the `search_params`.
 
-<a id="searchapi.SearchApiWebSearch.to_dict"></a>
-
-#### SearchApiWebSearch.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="searchapi.SearchApiWebSearch.from_dict"></a>
-
-#### SearchApiWebSearch.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "SearchApiWebSearch"
+from_dict(data: dict[str, Any]) -> SearchApiWebSearch
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>SearchApiWebSearch</code> – The deserialized component.
 
-<a id="searchapi.SearchApiWebSearch.run"></a>
-
-#### SearchApiWebSearch.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document], links=list[str])
-def run(query: str) -> dict[str, list[Document] | list[str]]
+run(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: Search query.
+- **query** (<code>str</code>) – Search query.
 
-**Raises**:
+**Returns:**
 
-- `TimeoutError`: If the request to the SearchApi API times out.
-- `SearchApiError`: If an error occurs while querying the SearchApi API.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\] | list\[str\]\]</code> – A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
 
-<a id="searchapi.SearchApiWebSearch.run_async"></a>
+**Raises:**
 
-#### SearchApiWebSearch.run\_async
+- <code>TimeoutError</code> – If the request to the SearchApi API times out.
+- <code>SearchApiError</code> – If an error occurs while querying the SearchApi API.
+
+#### run_async
 
 ```python
-@component.output_types(documents=list[Document], links=list[str])
-async def run_async(query: str) -> dict[str, list[Document] | list[str]]
+run_async(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Asynchronously uses [SearchApi](https://www.searchapi.io/) to search the web.
 
 This is the asynchronous version of the `run` method with the same parameters and return values.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: Search query.
+- **query** (<code>str</code>) – Search query.
 
-**Raises**:
+**Returns:**
 
-- `TimeoutError`: If the request to the SearchApi API times out.
-- `SearchApiError`: If an error occurs while querying the SearchApi API.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\] | list\[str\]\]</code> – A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
 
-<a id="serper_dev"></a>
+**Raises:**
 
-## Module serper\_dev
+- <code>TimeoutError</code> – If the request to the SearchApi API times out.
+- <code>SearchApiError</code> – If an error occurs while querying the SearchApi API.
 
-<a id="serper_dev.SerperDevWebSearch"></a>
+## serper_dev
 
 ### SerperDevWebSearch
 
@@ -152,6 +135,7 @@ Uses [Serper](https://serper.dev/) to search the web for relevant documents.
 See the [Serper Dev website](https://serper.dev/) for more details.
 
 Usage example:
+
 ```python
 from haystack.components.websearch import SerperDevWebSearch
 from haystack.utils import Secret
@@ -172,117 +156,105 @@ websearch_filtered = SerperDevWebSearch(
 results_filtered = websearch_filtered.run(query="search query")
 ```
 
-<a id="serper_dev.SerperDevWebSearch.__init__"></a>
-
-#### SerperDevWebSearch.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
-             top_k: int | None = 10,
-             allowed_domains: list[str] | None = None,
-             search_params: dict[str, Any] | None = None,
-             *,
-             exclude_subdomains: bool = False) -> None
+__init__(
+    api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
+    top_k: int | None = 10,
+    allowed_domains: list[str] | None = None,
+    search_params: dict[str, Any] | None = None,
+    *,
+    exclude_subdomains: bool = False
+) -> None
 ```
 
 Initialize the SerperDevWebSearch component.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: API key for the Serper API.
-- `top_k`: Number of documents to return.
-- `allowed_domains`: List of domains to limit the search to.
-- `exclude_subdomains`: Whether to exclude subdomains when filtering by allowed_domains.
-If True, only results from the exact domains in allowed_domains will be returned.
-If False, results from subdomains will also be included. Defaults to False.
-- `search_params`: Additional parameters passed to the Serper API.
-For example, you can set 'num' to 20 to increase the number of search results.
-See the [Serper website](https://serper.dev/) for more details.
+- **api_key** (<code>Secret</code>) – API key for the Serper API.
+- **top_k** (<code>int | None</code>) – Number of documents to return.
+- **allowed_domains** (<code>list\[str\] | None</code>) – List of domains to limit the search to.
+- **exclude_subdomains** (<code>bool</code>) – Whether to exclude subdomains when filtering by allowed_domains.
+  If True, only results from the exact domains in allowed_domains will be returned.
+  If False, results from subdomains will also be included. Defaults to False.
+- **search_params** (<code>dict\[str, Any\] | None</code>) – Additional parameters passed to the Serper API.
+  For example, you can set 'num' to 20 to increase the number of search results.
+  See the [Serper website](https://serper.dev/) for more details.
 
-<a id="serper_dev.SerperDevWebSearch.to_dict"></a>
-
-#### SerperDevWebSearch.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="serper_dev.SerperDevWebSearch.from_dict"></a>
-
-#### SerperDevWebSearch.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "SerperDevWebSearch"
+from_dict(data: dict[str, Any]) -> SerperDevWebSearch
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>SerperDevWebSearch</code> – The deserialized component.
 
-<a id="serper_dev.SerperDevWebSearch.run"></a>
-
-#### SerperDevWebSearch.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document], links=list[str])
-def run(query: str) -> dict[str, list[Document] | list[str]]
+run(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Use [Serper](https://serper.dev/) to search the web.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: Search query.
+- **query** (<code>str</code>) – Search query.
 
-**Raises**:
+**Returns:**
 
-- `SerperDevError`: If an error occurs while querying the SerperDev API.
-- `TimeoutError`: If the request to the SerperDev API times out.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\] | list\[str\]\]</code> – A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
 
-<a id="serper_dev.SerperDevWebSearch.run_async"></a>
+**Raises:**
 
-#### SerperDevWebSearch.run\_async
+- <code>SerperDevError</code> – If an error occurs while querying the SerperDev API.
+- <code>TimeoutError</code> – If the request to the SerperDev API times out.
+
+#### run_async
 
 ```python
-@component.output_types(documents=list[Document], links=list[str])
-async def run_async(query: str) -> dict[str, list[Document] | list[str]]
+run_async(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Asynchronously uses [Serper](https://serper.dev/) to search the web.
 
 This is the asynchronous version of the `run` method with the same parameters and return values.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: Search query.
+- **query** (<code>str</code>) – Search query.
 
-**Raises**:
+**Returns:**
 
-- `SerperDevError`: If an error occurs while querying the SerperDev API.
-- `TimeoutError`: If the request to the SerperDev API times out.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\] | list\[str\]\]</code> – A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
 
+**Raises:**
+
+- <code>SerperDevError</code> – If an error occurs while querying the SerperDev API.
+- <code>TimeoutError</code> – If the request to the SerperDev API times out.

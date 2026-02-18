@@ -5,11 +5,8 @@ description: "Extract the output of a Generator to an Answer format, and build p
 slug: "/builders-api"
 ---
 
-<a id="answer_builder"></a>
 
-## Module answer\_builder
-
-<a id="answer_builder.AnswerBuilder"></a>
+## answer_builder
 
 ### AnswerBuilder
 
@@ -22,15 +19,15 @@ AnswerBuilder works with both non-chat and chat Generators.
 
 ### Usage example
 
-
-### Usage example with documents and reference pattern
-
 ```python
 from haystack.components.builders import AnswerBuilder
 
 builder = AnswerBuilder(pattern="Answer: (.*)")
 builder.run(query="What's the answer?", replies=["This is an argument. Answer: This is the answer."])
 ```
+
+### Usage example with documents and reference pattern
+
 ```python
 from haystack import Document
 from haystack.components.builders import AnswerBuilder
@@ -64,94 +61,89 @@ for doc in result.documents:
 # [3] Rome is the capital of Italy.
 ```
 
-<a id="answer_builder.AnswerBuilder.__init__"></a>
-
-#### AnswerBuilder.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(pattern: str | None = None,
-             reference_pattern: str | None = None,
-             last_message_only: bool = False,
-             *,
-             return_only_referenced_documents: bool = True)
+__init__(
+    pattern: str | None = None,
+    reference_pattern: str | None = None,
+    last_message_only: bool = False,
+    *,
+    return_only_referenced_documents: bool = True
+)
 ```
 
 Creates an instance of the AnswerBuilder component.
 
-**Arguments**:
+**Parameters:**
 
-- `pattern`: The regular expression pattern to extract the answer text from the Generator.
-If not specified, the entire response is used as the answer.
-The regular expression can have one capture group at most.
-If present, the capture group text
-is used as the answer. If no capture group is present, the whole match is used as the answer.
-Examples:
-    `[^\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
-    `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
-- `reference_pattern`: The regular expression pattern used for parsing the document references.
-If not specified, no parsing is done, and all documents are returned.
-References need to be specified as indices of the input documents and start at [1].
-Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
-If this parameter is provided, documents metadata will contain a "referenced" key with a boolean value.
-- `last_message_only`: If False (default value), all messages are used as the answer.
-If True, only the last message is used as the answer.
-- `return_only_referenced_documents`: To be used in conjunction with `reference_pattern`.
-If True (default value), only the documents that were actually referenced in `replies` are returned.
-If False, all documents are returned.
-If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
+- **pattern** (<code>str | None</code>) – The regular expression pattern to extract the answer text from the Generator.
+  If not specified, the entire response is used as the answer.
+  The regular expression can have one capture group at most.
+  If present, the capture group text
+  is used as the answer. If no capture group is present, the whole match is used as the answer.
+  Examples:
+  `[^\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
+  `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
+- **reference_pattern** (<code>str | None</code>) – The regular expression pattern used for parsing the document references.
+  If not specified, no parsing is done, and all documents are returned.
+  References need to be specified as indices of the input documents and start at [1].
+  Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
+  If this parameter is provided, documents metadata will contain a "referenced" key with a boolean value.
+- **last_message_only** (<code>bool</code>) – If False (default value), all messages are used as the answer.
+  If True, only the last message is used as the answer.
+- **return_only_referenced_documents** (<code>bool</code>) – To be used in conjunction with `reference_pattern`.
+  If True (default value), only the documents that were actually referenced in `replies` are returned.
+  If False, all documents are returned.
+  If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
 
-<a id="answer_builder.AnswerBuilder.run"></a>
-
-#### AnswerBuilder.run
+#### run
 
 ```python
-@component.output_types(answers=list[GeneratedAnswer])
-def run(query: str,
-        replies: list[str] | list[ChatMessage],
-        meta: list[dict[str, Any]] | None = None,
-        documents: list[Document] | None = None,
-        pattern: str | None = None,
-        reference_pattern: str | None = None)
+run(
+    query: str,
+    replies: list[str] | list[ChatMessage],
+    meta: list[dict[str, Any]] | None = None,
+    documents: list[Document] | None = None,
+    pattern: str | None = None,
+    reference_pattern: str | None = None,
+)
 ```
 
 Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
 
-**Arguments**:
+**Parameters:**
 
-- `query`: The input query used as the Generator prompt.
-- `replies`: The output of the Generator. Can be a list of strings or a list of `ChatMessage` objects.
-- `meta`: The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
-- `documents`: The documents used as the Generator inputs. If specified, they are added to
-the `GeneratedAnswer` objects.
-Each Document.meta includes a "source_index" key, representing its 1-based position in the input list.
-When `reference_pattern` is provided:
+- **query** (<code>str</code>) – The input query used as the Generator prompt.
+- **replies** (<code>list\[str\] | list\[ChatMessage\]</code>) – The output of the Generator. Can be a list of strings or a list of `ChatMessage` objects.
+- **meta** (<code>list\[dict\[str, Any\]\] | None</code>) – The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
+- **documents** (<code>list\[Document\] | None</code>) – The documents used as the Generator inputs. If specified, they are added to
+  the `GeneratedAnswer` objects.
+  Each Document.meta includes a "source_index" key, representing its 1-based position in the input list.
+  When `reference_pattern` is provided:
 - "referenced" key is added to the Document.meta, indicating if the document was referenced in the output.
 - `return_only_referenced_documents` init parameter controls if all or only referenced documents are
-returned.
-- `pattern`: The regular expression pattern to extract the answer text from the Generator.
-If not specified, the entire response is used as the answer.
-The regular expression can have one capture group at most.
-If present, the capture group text
-is used as the answer. If no capture group is present, the whole match is used as the answer.
-    Examples:
-        `[^\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
-        `Answer: (.*)` finds "this is an answer" in a string
-        "this is an argument. Answer: this is an answer".
-- `reference_pattern`: The regular expression pattern used for parsing the document references.
-If not specified, no parsing is done, and all documents are returned.
-References need to be specified as indices of the input documents and start at [1].
-Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
+  returned.
+- **pattern** (<code>str | None</code>) – The regular expression pattern to extract the answer text from the Generator.
+  If not specified, the entire response is used as the answer.
+  The regular expression can have one capture group at most.
+  If present, the capture group text
+  is used as the answer. If no capture group is present, the whole match is used as the answer.
+  Examples:
+  `[^\n]+$` finds "this is an answer" in a string "this is an argument.\\nthis is an answer".
+  `Answer: (.*)` finds "this is an answer" in a string
+  "this is an argument. Answer: this is an answer".
+- **reference_pattern** (<code>str | None</code>) – The regular expression pattern used for parsing the document references.
+  If not specified, no parsing is done, and all documents are returned.
+  References need to be specified as indices of the input documents and start at [1].
+  Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `answers`: The answers received from the output of the Generator.
 
-<a id="chat_prompt_builder"></a>
-
-## Module chat\_prompt\_builder
-
-<a id="chat_prompt_builder.ChatPromptBuilder"></a>
+## chat_prompt_builder
 
 ### ChatPromptBuilder
 
@@ -235,6 +227,7 @@ print(res)
 ```
 
 #### String prompt template
+
 ```python
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses.image_content import ImageContent
@@ -259,39 +252,38 @@ builder = ChatPromptBuilder(template=template)
 builder.run(user_name="John", images=images)
 ```
 
-<a id="chat_prompt_builder.ChatPromptBuilder.__init__"></a>
-
-#### ChatPromptBuilder.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(template: list[ChatMessage] | str | None = None,
-             required_variables: list[str] | Literal["*"] | None = None,
-             variables: list[str] | None = None)
+__init__(
+    template: list[ChatMessage] | str | None = None,
+    required_variables: list[str] | Literal["*"] | None = None,
+    variables: list[str] | None = None,
+)
 ```
 
 Constructs a ChatPromptBuilder component.
 
-**Arguments**:
+**Parameters:**
 
-- `template`: A list of `ChatMessage` objects or a string template. The component looks for Jinja2 template syntax and
-renders the prompt with the provided variables. Provide the template in either
-the `init` method` or the `run` method.
-- `required_variables`: List variables that must be provided as input to ChatPromptBuilder.
-If a variable listed as required is not provided, an exception is raised.
-If set to `"*"`, all variables found in the prompt are required. Optional.
-- `variables`: List input variables to use in prompt templates instead of the ones inferred from the
-`template` parameter. For example, to use more variables during prompt engineering than the ones present
-in the default template, you can provide them here.
+- **template** (<code>list\[ChatMessage\] | str | None</code>) – A list of `ChatMessage` objects or a string template. The component looks for Jinja2 template syntax and
+  renders the prompt with the provided variables. Provide the template in either
+  the `init` method`or the`run\` method.
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to ChatPromptBuilder.
+  If a variable listed as required is not provided, an exception is raised.
+  If set to `"*"`, all variables found in the prompt are required. Optional.
+- **variables** (<code>list\[str\] | None</code>) – List input variables to use in prompt templates instead of the ones inferred from the
+  `template` parameter. For example, to use more variables during prompt engineering than the ones present
+  in the default template, you can provide them here.
 
-<a id="chat_prompt_builder.ChatPromptBuilder.run"></a>
-
-#### ChatPromptBuilder.run
+#### run
 
 ```python
-@component.output_types(prompt=list[ChatMessage])
-def run(template: list[ChatMessage] | str | None = None,
-        template_variables: dict[str, Any] | None = None,
-        **kwargs)
+run(
+    template: list[ChatMessage] | str | None = None,
+    template_variables: dict[str, Any] | None = None,
+    **kwargs: dict[str, Any] | None
+)
 ```
 
 Renders the prompt template with the provided variables.
@@ -300,61 +292,52 @@ It applies the template variables to render the final prompt. You can provide va
 To overwrite the default template, you can set the `template` parameter.
 To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
-**Arguments**:
+**Parameters:**
 
-- `template`: An optional list of `ChatMessage` objects or string template to overwrite ChatPromptBuilder's default
-template.
-If `None`, the default template provided at initialization is used.
-- `template_variables`: An optional dictionary of template variables to overwrite the pipeline variables.
-- `kwargs`: Pipeline variables used for rendering the prompt.
+- **template** (<code>list\[ChatMessage\] | str | None</code>) – An optional list of `ChatMessage` objects or string template to overwrite ChatPromptBuilder's default
+  template.
+  If `None`, the default template provided at initialization is used.
+- **template_variables** (<code>dict\[str, Any\] | None</code>) – An optional dictionary of template variables to overwrite the pipeline variables.
+- **kwargs** – Pipeline variables used for rendering the prompt.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
-
-**Returns**:
-
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `prompt`: The updated list of `ChatMessage` objects after rendering the templates.
 
-<a id="chat_prompt_builder.ChatPromptBuilder.to_dict"></a>
+**Raises:**
 
-#### ChatPromptBuilder.to\_dict
+- <code>ValueError</code> – If `chat_messages` is empty or contains elements that are not instances of `ChatMessage`.
+
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Returns a dictionary representation of the component.
 
-**Returns**:
+**Returns:**
 
-Serialized dictionary representation of the component.
+- <code>dict\[str, Any\]</code> – Serialized dictionary representation of the component.
 
-<a id="chat_prompt_builder.ChatPromptBuilder.from_dict"></a>
-
-#### ChatPromptBuilder.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "ChatPromptBuilder"
+from_dict(data: dict[str, Any]) -> ChatPromptBuilder
 ```
 
 Deserialize this component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize and create the component.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize and create the component.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>ChatPromptBuilder</code> – The deserialized component.
 
-<a id="prompt_builder"></a>
-
-## Module prompt\_builder
-
-<a id="prompt_builder.PromptBuilder"></a>
+## prompt_builder
 
 ### PromptBuilder
 
@@ -373,6 +356,7 @@ providing a template for each pipeline run invocation.
 This example uses PromptBuilder to render a prompt template and fill it with `target_language`
 and `snippet`. PromptBuilder returns a prompt with the string "Translate the following context to Spanish.
 Context: I can't speak Spanish.; Translation:".
+
 ```python
 from haystack.components.builders import PromptBuilder
 
@@ -385,6 +369,7 @@ builder.run(target_language="spanish", snippet="I can't speak spanish.")
 
 This is an example of a RAG pipeline where PromptBuilder renders a custom prompt template and fills it
 with the contents of the retrieved documents and a query. The rendered prompt is then sent to a Generator.
+
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret
@@ -416,6 +401,7 @@ print(result)
 #### Changing the template at runtime (prompt engineering)
 
 You can change the prompt template of an existing pipeline, like in this example:
+
 ```python
 documents = [
     Document(content="Joe lives in Berlin", meta={"name": "doc1"}),
@@ -442,12 +428,14 @@ p.run({
     },
 })
 ```
+
 To replace the variables in the default template when testing your prompt,
 pass the new variables in the `variables` parameter.
 
 #### Overwriting variables at runtime
 
 To overwrite the values of variables, use `template_variables` during runtime:
+
 ```python
 language_template = """
 You are a helpful assistant.
@@ -472,61 +460,59 @@ p.run({
     },
 })
 ```
+
 Note that `language_template` introduces variable `answer_language` which is not bound to any pipeline variable.
 If not set otherwise, it will use its default value 'English'.
 This example overwrites its value to 'German'.
 Use `template_variables` to overwrite pipeline variables (such as documents) as well.
 
-<a id="prompt_builder.PromptBuilder.__init__"></a>
-
-#### PromptBuilder.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(template: str,
-             required_variables: list[str] | Literal["*"] | None = None,
-             variables: list[str] | None = None)
+__init__(
+    template: str,
+    required_variables: list[str] | Literal["*"] | None = None,
+    variables: list[str] | None = None,
+)
 ```
 
 Constructs a PromptBuilder component.
 
-**Arguments**:
+**Parameters:**
 
-- `template`: A prompt template that uses Jinja2 syntax to add variables. For example:
-`"Summarize this document: {{ documents[0].content }}\nSummary:"`
-It's used to render the prompt.
-The variables in the default template are input for PromptBuilder and are all optional,
-unless explicitly specified.
-If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
-- `required_variables`: List variables that must be provided as input to PromptBuilder.
-If a variable listed as required is not provided, an exception is raised.
-If set to `"*"`, all variables found in the prompt are required. Optional.
-- `variables`: List input variables to use in prompt templates instead of the ones inferred from the
-`template` parameter. For example, to use more variables during prompt engineering than the ones present
-in the default template, you can provide them here.
+- **template** (<code>str</code>) – A prompt template that uses Jinja2 syntax to add variables. For example:
+  `"Summarize this document: {{ documents[0].content }}\nSummary:"`
+  It's used to render the prompt.
+  The variables in the default template are input for PromptBuilder and are all optional,
+  unless explicitly specified.
+  If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to PromptBuilder.
+  If a variable listed as required is not provided, an exception is raised.
+  If set to `"*"`, all variables found in the prompt are required. Optional.
+- **variables** (<code>list\[str\] | None</code>) – List input variables to use in prompt templates instead of the ones inferred from the
+  `template` parameter. For example, to use more variables during prompt engineering than the ones present
+  in the default template, you can provide them here.
 
-<a id="prompt_builder.PromptBuilder.to_dict"></a>
-
-#### PromptBuilder.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Returns a dictionary representation of the component.
 
-**Returns**:
+**Returns:**
 
-Serialized dictionary representation of the component.
+- <code>dict\[str, Any\]</code> – Serialized dictionary representation of the component.
 
-<a id="prompt_builder.PromptBuilder.run"></a>
-
-#### PromptBuilder.run
+#### run
 
 ```python
-@component.output_types(prompt=str)
-def run(template: str | None = None,
-        template_variables: dict[str, Any] | None = None,
-        **kwargs)
+run(
+    template: str | None = None,
+    template_variables: dict[str, Any] | None = None,
+    **kwargs: dict[str, Any] | None
+)
 ```
 
 Renders the prompt template with the provided variables.
@@ -535,19 +521,18 @@ It applies the template variables to render the final prompt. You can provide va
 In order to overwrite the default template, you can set the `template` parameter.
 In order to overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
-**Arguments**:
+**Parameters:**
 
-- `template`: An optional string template to overwrite PromptBuilder's default template. If None, the default template
-provided at initialization is used.
-- `template_variables`: An optional dictionary of template variables to overwrite the pipeline variables.
-- `kwargs`: Pipeline variables used for rendering the prompt.
+- **template** (<code>str | None</code>) – An optional string template to overwrite PromptBuilder's default template. If None, the default template
+  provided at initialization is used.
+- **template_variables** (<code>dict\[str, Any\] | None</code>) – An optional dictionary of template variables to overwrite the pipeline variables.
+- **kwargs** – Pipeline variables used for rendering the prompt.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If any of the required template variables is not provided.
-
-**Returns**:
-
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `prompt`: The updated prompt text after rendering the prompt template.
 
+**Raises:**
+
+- <code>ValueError</code> – If any of the required template variables is not provided.
