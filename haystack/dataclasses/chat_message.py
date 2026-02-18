@@ -705,7 +705,9 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                     "type": "file",
                     "file": {
                         "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
-                        "filename": part.filename,
+                        # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.
+                        # We use a dummy filename.
+                        "filename": part.filename or "filename",
                     },
                 }
                 content.append(file_item)

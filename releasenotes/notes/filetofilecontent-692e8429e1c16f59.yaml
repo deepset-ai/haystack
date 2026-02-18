@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added the `FileToFileContent` component, which converts local files into ``FileContent`` objects. These can be
+    embedded into ``ChatMessage`` to pass to an LLM.
+fixes:
+  - |
+    Fixed an issue in ``OpenAIChatGenerator`` and ``OpenAIResponsesChatGenerator`` where passing a ``FileContent``
+    object without a filename would raise an error. A fallback filename is now automatically used instead.

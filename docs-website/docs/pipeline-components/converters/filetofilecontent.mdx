@@ -1,0 +1,109 @@
+---
+title: "FileToFileContent"
+id: filetofilecontent
+slug: "/filetofilecontent"
+description: "`FileToFileContent` reads local files and converts them into `FileContent` objects"
+---
+
+# FileToFileContent
+
+`FileToFileContent` reads local files and converts them into `FileContent` objects. These are ready for multimodal AI pipelines that need to pass PDFs and other file types to an LLM.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a `ChatPromptBuilder` in a query pipeline                                                      |
+| **Mandatory run variables**            | `sources`: A list of file paths or ByteStreams                                                        |
+| **Output variables**                   | `file_contents`: A list of `FileContent` objects                                                      |
+| **API reference**                      | [Converters](/reference/converters-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/file_to_file_content.py |
+
+</div>
+
+## Overview
+
+`FileToFileContent` processes a list of file sources and converts them into `FileContent` objects.
+
+Each source can be:
+
+- A file path (string or `Path`), or
+- A `ByteStream` object.
+
+Optionally, you can provide extra provider-specific information using the `extra` parameter. This can be a single dictionary (applied to all files) or a list matching the length of `sources`.
+
+Support for this feature differs by LLM provider. Some providers do not support it, some restrict it to PDF files, and others allow a wider range of file types.
+
+This component is often used in query pipelines just before a `ChatPromptBuilder`.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.converters import FileToFileContent
+
+converter = FileToFileContent()
+
+sources = ["document.pdf", "recording.mp3"]
+
+result = converter.run(sources=sources)
+file_contents = result["file_contents"]
+print(file_contents)
+
+## [
+## FileContent(
+##     base64_data='JVBERi0x...', mime_type='application/pdf',
+##     filename='document.pdf', extra={}
+## ),
+## FileContent(
+##     base64_data='SUQzBA...', mime_type='audio/mpeg',
+##     filename='recording.mp3', extra={}
+## )
+## ]
+```
+
+### In a pipeline
+
+Use `FileToFileContent` together with a `LinkContentFetcher` and a `ChatPromptBuilder` to build a pipeline that fetches a remote file, converts it, and passes it to an LLM.
+
+```python
+from haystack.components.converters import FileToFileContent
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.builders import ChatPromptBuilder
+
+from haystack import Pipeline
+
+template = """
+{% message role="user"%}
+{% for file in files %}
+{{ file | templatize_part }}
+{% endfor %}
+What's the main takeaway of the following document? Just one sentence.
+{% endmessage %}
+"""
+
+pipeline = Pipeline()
+pipeline.add_component("fetcher", LinkContentFetcher())
+pipeline.add_component("converter", FileToFileContent())
+pipeline.add_component("prompt_builder", ChatPromptBuilder(template=template))
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4.1-mini"))
+
+pipeline.connect("fetcher", "converter")
+pipeline.connect("converter", "prompt_builder")
+pipeline.connect("prompt_builder", "llm")
+
+results = pipeline.run({
+    "fetcher": {
+        "urls": ["https://arxiv.org/pdf/2309.08632"]
+    }
+})
+
+print(results["llm"]["replies"][0].text)
+
+# The document is a satirical paper humorously claiming that pretraining a
+small language model exclusively on evaluation benchmark test sets can achieve
+perfect performance, highlighting issues of data contamination in model
+evaluation.
+```
