@@ -322,9 +322,7 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
 
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import StoppingCriteria, TextStreamer
-    from transformers.tokenization_utils import PreTrainedTokenizer
-    from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+    from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteria, TextStreamer
 
     torch_import.check()
     transformers_import.check()
@@ -395,12 +393,12 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+            tokenizer: AutoTokenizer,
             stream_handler: SyncStreamingCallbackT,
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ):
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info
@@ -429,12 +427,12 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+            tokenizer: AutoTokenizer,
             stream_handler: AsyncStreamingCallbackT,
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ):
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info

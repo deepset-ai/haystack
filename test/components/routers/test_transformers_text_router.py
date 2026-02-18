@@ -161,7 +161,6 @@ class TestTransformersTextRouter:
         mock_auto_config_from_pretrained.return_value = MagicMock(label2id={"en": 0, "de": 1})
         hf_pipeline_mock.return_value = MagicMock(model=MagicMock(config=MagicMock(label2id={"en": 0, "de": 1})))
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
-        router.warm_up()
         with pytest.raises(TypeError):
             router.run(text=["wrong_input"])
 
@@ -181,7 +180,6 @@ class TestTransformersTextRouter:
     def test_run(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         router = TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection")
-        router.warm_up()
         out = router.run("What is the color of the sky?")
         assert set(router.labels) == {
             "ar",

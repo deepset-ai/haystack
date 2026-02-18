@@ -104,7 +104,6 @@ class SentenceTransformersDiversityRanker:
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
     ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
-    ranker.warm_up()
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"

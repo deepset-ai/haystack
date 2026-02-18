@@ -96,7 +96,6 @@ class NamedEntityExtractor:
         Document(content="My name is Clara and I live in Berkeley, California."),
     ]
     extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-    extractor.warm_up()
     results = extractor.run(documents=documents)["documents"]
     annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
     print(annotations)
@@ -368,7 +367,7 @@ class _HfBackend(_NerBackend):
         transformers_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self.tokenizer: AutoTokenizer | None = None
+        self.tokenizer: Any = None
         self.model: AutoModelForTokenClassification | None = None
         self.pipeline: HfPipeline | None = None
 

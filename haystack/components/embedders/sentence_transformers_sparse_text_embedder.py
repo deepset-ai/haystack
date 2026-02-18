@@ -28,7 +28,6 @@ class SentenceTransformersSparseTextEmbedder:
     text_to_embed = "I love pizza!"
 
     text_embedder = SentenceTransformersSparseTextEmbedder()
-    text_embedder.warm_up()
 
     print(text_embedder.run(text_to_embed))
 

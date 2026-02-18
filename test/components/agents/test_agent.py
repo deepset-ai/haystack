@@ -630,7 +630,6 @@ class TestAgent:
             streaming_callback_called = True
 
         agent = Agent(chat_generator=chat_generator, streaming_callback=streaming_callback, tools=[weather_tool])
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("Hello")])
 
         # check we called the streaming callback
@@ -656,7 +655,6 @@ class TestAgent:
             streaming_callback_called = True
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("Hello")], streaming_callback=streaming_callback)
 
         # check we called the streaming callback
@@ -684,7 +682,6 @@ class TestAgent:
         )
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("Hello")])
 
         # check we called the streaming callback
@@ -718,7 +715,6 @@ class TestAgent:
         ]
 
         agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=0)
-        agent.warm_up()
 
         # Patch agent.chat_generator.run to return mock_messages
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
@@ -739,7 +735,6 @@ class TestAgent:
         ]
 
         agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["weather_tool"])
-        agent.warm_up()
 
         # Patch agent.chat_generator.run to return mock_messages
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
@@ -766,7 +761,6 @@ class TestAgent:
 
         with caplog.at_level("WARNING"):
             agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
-            agent.warm_up()
             assert "No tools provided to the Agent." in caplog.text
 
         # Patch agent.chat_generator.run to return mock_messages
@@ -788,7 +782,6 @@ class TestAgent:
     def test_run_with_system_prompt(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert response["messages"][0].text == "This is a system prompt."
 
@@ -797,7 +790,6 @@ class TestAgent:
         agent = Agent(
             chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is the init system prompt."
         )
-        agent.warm_up()
         response = agent.run(
             [ChatMessage.from_user("What is the weather in Berlin?")], system_prompt="This is the run system prompt."
         )
@@ -824,7 +816,6 @@ class TestAgent:
         agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
         tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
         monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.warm_up()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
         tool_invoker_run_mock.assert_called_once()
         assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
@@ -854,7 +845,6 @@ class TestAgent:
         )
         tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
         monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.warm_up()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
         tool_invoker_run_mock.assert_called_once()
         assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
@@ -872,14 +862,12 @@ class TestAgent:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[])
-        agent.warm_up()
         result = agent.run([])
         assert result["messages"] == []
 
     def test_run_only_system_prompt(self, caplog):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
-        agent.warm_up()
         _ = agent.run([])
         assert "All messages provided to the Agent component are system messages." in caplog.text
 
@@ -888,7 +876,6 @@ class TestAgent:
     def test_run(self, weather_tool):
         chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
         assert isinstance(response, dict)
@@ -920,7 +907,6 @@ class TestAgent:
         chat_generator = MockChatGeneratorWithoutRunAsync()
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
 
@@ -946,7 +932,6 @@ class TestAgent:
         chat_generator = MockChatGeneratorWithoutRunAsync()
 
         agent = Agent(chat_generator=chat_generator)
-        agent.warm_up()
 
         chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
 
@@ -963,7 +948,6 @@ class TestAgent:
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         chat_generator.run_async = AsyncMock(
             return_value={"replies": [ChatMessage.from_assistant("Hello from run_async")]}
@@ -991,7 +975,6 @@ class TestAgent:
     def test_agent_streaming_with_tool_call(self, weather_tool):
         chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -1011,7 +994,6 @@ class TestAgent:
     async def test_run_async_with_async_streaming_callback(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-        agent.warm_up()
 
         # This should not raise any exception
         result = await agent.run_async([ChatMessage.from_user("Hello")])
@@ -1023,7 +1005,6 @@ class TestAgent:
     def test_run_with_async_streaming_callback_fails(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-        agent.warm_up()
 
         with pytest.raises(ValueError, match="The init callback cannot be a coroutine"):
             agent.run([ChatMessage.from_user("Hello")])
@@ -1032,7 +1013,6 @@ class TestAgent:
     async def test_run_async_with_sync_streaming_callback_fails(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
-        agent.warm_up()
 
         with pytest.raises(ValueError, match="The init callback must be async compatible"):
             await agent.run_async([ChatMessage.from_user("Hello")])
@@ -1165,7 +1145,6 @@ class TestAgentTracing:
     def test_agent_tracing_in_pipeline(self, caplog, monkeypatch, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         tracing.tracer.is_content_tracing_enabled = True
         tracing.enable_tracing(LoggingTracer())
@@ -1233,7 +1212,6 @@ class TestAgentTracing:
         """Test that the agent's span has the component span as its parent when running in a pipeline."""
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         pipeline = Pipeline()
         pipeline.add_component(

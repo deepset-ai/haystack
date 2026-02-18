@@ -120,7 +120,6 @@ class TestTransformersZeroShotDocumentClassifier:
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
-        component.warm_up()
         text_list = ["That's good. I like it.", "That's bad. I don't like it."]
         with pytest.raises(TypeError):
             component.run(documents=text_list)
@@ -151,7 +150,6 @@ class TestTransformersZeroShotDocumentClassifier:
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
-        component.warm_up()
         positive_document = Document(content="That's good. I like it. " * 1000)
         negative_document = Document(content="That's bad. I don't like it.")
         result = component.run(documents=[positive_document, negative_document])

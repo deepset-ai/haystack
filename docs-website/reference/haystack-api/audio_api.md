@@ -25,7 +25,6 @@ For the supported audio formats, languages, and other parameters, see the
 from haystack.components.audio import LocalWhisperTranscriber
 
 whisper = LocalWhisperTranscriber(model="small")
-whisper.warm_up()
 transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ```
 
@@ -189,7 +188,7 @@ during initialization.
 - `model`: Name of the model to use. Currently accepts only `whisper-1`.
 - `organization`: Your OpenAI organization ID. See OpenAI's documentation on
 [Setting Up Your Organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-- `api_base`: An optional URL to use as the API base. For details, see the
+- `api_base_url`: An optional URL to use as the API base. For details, see the
 OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
 For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).

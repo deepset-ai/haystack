@@ -548,7 +548,6 @@ splitter = EmbeddingBasedDocumentSplitter(
     min_length=50,              # Merge splits shorter than 50 characters
     max_length=1000             # Further split chunks longer than 1000 characters
 )
-splitter.warm_up()
 result = splitter.run(documents=[doc])
 
 # The result contains a list of Document objects, each representing a semantic chunk
@@ -618,7 +617,7 @@ Split documents based on embedding similarity.
 
 **Raises**:
 
-- `None`: - `RuntimeError`: If the component wasn't warmed up.
+- `RuntimeError`: If the component wasn't warmed up.
 - `TypeError`: If the input is not a list of Documents.
 - `ValueError`: If the document content is None or empty.
 
@@ -903,7 +902,6 @@ text = ('''Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
 AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
-chunker.warm_up()
 doc = Document(content=text)
 doc_chunks = chunker.run([doc])
 print(doc_chunks["documents"])

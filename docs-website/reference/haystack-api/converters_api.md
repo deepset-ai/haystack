@@ -1129,10 +1129,13 @@ as is.
 
 see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-values-in-the-textual-output
 
-:param: text: The text to check for undecoded CID characters
-:returns:
-    A dictionary containing detection results
+**Arguments**:
 
+- `text`: The text to check for undecoded CID characters
+
+**Returns**:
+
+A dictionary containing detection results
 
 <a id="pdfminer.PDFMinerToDocument.run"></a>
 
@@ -1187,15 +1190,34 @@ print(documents[0].content)
 #### PPTXToDocument.\_\_init\_\_
 
 ```python
-def __init__(store_full_path: bool = False)
+def __init__(store_full_path: bool = False,
+             link_format: Literal["markdown", "plain", "none"] = "none")
 ```
 
-Create an PPTXToDocument component.
+Create a PPTXToDocument component.
 
 **Arguments**:
 
 - `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
 If False, only the file name is stored.
+- `link_format`: The format for link output. Possible options:
+- `"markdown"`: `[text](url)`
+- `"plain"`: `text (url)`
+- `"none"`: Only the text is extracted, link addresses are ignored.
+
+<a id="pptx.PPTXToDocument.to_dict"></a>
+
+#### PPTXToDocument.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
 
 <a id="pptx.PPTXToDocument.run"></a>
 
@@ -1591,6 +1613,7 @@ def __init__(table_format: Literal["csv", "markdown"] = "csv",
              read_excel_kwargs: dict[str, Any] | None = None,
              table_format_kwargs: dict[str, Any] | None = None,
              *,
+             link_format: Literal["markdown", "plain", "none"] = "none",
              store_full_path: bool = False)
 ```
 
@@ -1607,6 +1630,10 @@ See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-r
   See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html#pandas-dataframe-to-csv
 - If `table_format` is "markdown", these arguments are passed to `pandas.DataFrame.to_markdown`.
   See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_markdown.html#pandas-dataframe-to-markdown
+- `link_format`: The format for link output. Possible options:
+- `"markdown"`: `[text](url)`
+- `"plain"`: `text (url)`
+- `"none"`: Only the text is extracted, link addresses are ignored.
 - `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
 If False, only the file name is stored.
 

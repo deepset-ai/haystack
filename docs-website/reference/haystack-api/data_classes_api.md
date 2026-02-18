@@ -454,7 +454,7 @@ Convert the ByteStream to a string, metadata will not be included.
 
 **Raises**:
 
-- `None`: UnicodeDecodeError: If the ByteStream data cannot be decoded with the specified encoding.
+- `UnicodeDecodeError`: If the ByteStream data cannot be decoded with the specified encoding.
 
 **Returns**:
 

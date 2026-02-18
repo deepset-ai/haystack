@@ -243,7 +243,7 @@ For filter syntax, see filter_documents.
 
 **Raises**:
 
-- `None`: ValueError if filters have invalid syntax.
+- `ValueError`: if filters have invalid syntax.
 
 **Returns**:
 
@@ -266,7 +266,7 @@ For filter syntax, see filter_documents.
 
 **Raises**:
 
-- `None`: ValueError if filters have invalid syntax.
+- `ValueError`: if filters have invalid syntax.
 
 **Returns**:
 
@@ -323,7 +323,7 @@ initialization will be used. Default is False.
 
 **Raises**:
 
-- `None`: ValueError if filters have invalid syntax.
+- `ValueError`: if filters have invalid syntax.
 
 **Returns**:
 

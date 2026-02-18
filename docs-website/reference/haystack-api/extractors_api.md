@@ -282,7 +282,6 @@ extractor = LLMMetadataExtractor(
     raise_on_failure=False,
 )
 
-extractor.warm_up()
 extractor.run(documents=docs)
 >> {'documents': [
     Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
@@ -478,7 +477,6 @@ documents = [
     Document(content="My name is Clara and I live in Berkeley, California."),
 ]
 extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-extractor.warm_up()
 results = extractor.run(documents=documents)["documents"]
 annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
 print(annotations)
@@ -714,7 +712,7 @@ Extracts text from input using the configured regex pattern.
 
 **Raises**:
 
-- `None`: - ValueError: if receiving a list the last element is not a ChatMessage instance.
+- `ValueError`: if receiving a list the last element is not a ChatMessage instance.
 
 **Returns**:
 
