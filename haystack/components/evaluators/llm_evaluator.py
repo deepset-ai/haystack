@@ -14,6 +14,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -218,12 +219,14 @@ class LLMEvaluator:
                 errors += 1
                 continue
 
-            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].text):
-                parsed_result = json.loads(result["replies"][0].text)
-                results.append(parsed_result)
-            else:
+            parsed_result = _parse_dict_from_json(
+                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
+            )
+            if parsed_result is None:
                 results.append(None)
                 errors += 1
+            else:
+                results.append(parsed_result)
 
             if result["replies"][0].meta:
                 metadata.append(result["replies"][0].meta)
@@ -357,43 +360,3 @@ class LLMEvaluator:
                 f"{[len(_input) for _input in inputs]}."
             )
             raise ValueError(msg)
-
-    def is_valid_json_and_has_expected_keys(self, expected: list[str], received: str) -> bool:
-        """
-        Output must be a valid JSON with the expected keys.
-
-        :param expected:
-            Names of expected outputs
-        :param received:
-            Names of received outputs
-
-        :raises ValueError:
-            If the output is not a valid JSON with the expected keys:
-            - with `raise_on_failure` set to True a ValueError is raised.
-            - with `raise_on_failure` set to False a warning is issued and False is returned.
-
-        :returns:
-            True if the received output is a valid JSON with the expected keys, False otherwise.
-        """
-        try:
-            parsed_output = json.loads(received)
-        except json.JSONDecodeError:
-            msg = "Response from LLM evaluator is not a valid JSON."
-            if self.raise_on_failure:
-                raise ValueError(msg)
-            logger.warning(msg)
-            return False
-
-        if not all(output in parsed_output for output in expected):
-            if self.raise_on_failure:
-                raise ValueError(
-                    f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
-                )
-            logger.warning(
-                "Expected response from LLM evaluator to be JSON with keys {expected}, got {received}.",
-                expected=expected,
-                received=received,
-            )
-            return False
-
-        return True

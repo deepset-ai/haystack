@@ -112,7 +112,7 @@ class TestLLMMetadataExtractor:
             prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), expected_keys=["key1"]
         )
         extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert "Expected response from LLM to be a JSON with keys" in caplog.text
+        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
 
     def test_prepare_prompts(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

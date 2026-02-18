@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import mimetypes
 import tempfile
 from math import inf
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from numpy import exp, ndarray
+
+from haystack import logging
 
 if TYPE_CHECKING:
     from haystack.dataclasses import Document
@@ -21,6 +24,8 @@ CUSTOM_MIMETYPES = {
     # we add msg because it is not added by the mimetypes module
     ".msg": "application/vnd.ms-outlook",
 }
+
+logger = logging.getLogger(__name__)
 
 
 def expand_page_range(page_range: list[str | int]) -> list[int]:
@@ -138,3 +143,66 @@ def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
             highest_scoring_docs[doc.id] = doc
 
     return list(highest_scoring_docs.values())
+
+
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: Literal[True] = ...
+) -> dict[str, Any]: ...
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: Literal[False] = ...
+) -> dict[str, Any] | None: ...
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: bool = ...
+) -> dict[str, Any] | None: ...
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = None, raise_on_failure: bool = True
+) -> dict[str, Any] | None:
+    """
+    Parses a JSON string containing a dictionary.
+
+    :param text: The string to parse.
+    :param expected_keys: A list of keys that must be present in the parsed dictionary.
+    :param raise_on_failure: If True, raises an exception on failure. If False, logs a warning and returns None.
+
+    :return: The parsed dictionary, or None if parsing fails and raise_on_failure is False.
+    :raises json.JSONDecodeError: If the text is not valid JSON and raise_on_failure is True.
+    :raises ValueError: If the parsed object is not a dictionary or has missing expected keys,
+        and `raise_on_failure` is True.
+    """
+    cleaned_text = text.strip()
+
+    try:
+        parsed_json = json.loads(cleaned_text)
+    except json.JSONDecodeError as e:
+        if raise_on_failure:
+            raise e
+        logger.warning("Failed to parse JSON from text: {text}. Error: {error}", text=text, error=e)
+        return None
+
+    if not isinstance(parsed_json, dict):
+        if raise_on_failure:
+            raise ValueError(f"Expected a JSON object containing a dictionary but got {type(parsed_json).__name__}")
+        logger.warning(
+            "Expected a JSON object containing a dictionary but got {type}. Returning None",
+            type=type(parsed_json).__name__,
+        )
+        return None
+
+    if not expected_keys:
+        return parsed_json
+
+    missing_keys = [key for key in expected_keys if key not in parsed_json]
+    if missing_keys:
+        if raise_on_failure:
+            raise ValueError(f"Missing expected keys in JSON: {missing_keys}. Got keys: {list(parsed_json.keys())}")
+        logger.warning(
+            "Missing expected keys in JSON: {missing_keys}. Got keys: {keys}",
+            missing_keys=missing_keys,
+            keys=list(parsed_json.keys()),
+        )
+        return None
+
+    return parsed_json
