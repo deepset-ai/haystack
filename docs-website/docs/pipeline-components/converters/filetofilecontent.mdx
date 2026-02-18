@@ -94,16 +94,12 @@ pipeline.connect("fetcher", "converter")
 pipeline.connect("converter", "prompt_builder")
 pipeline.connect("prompt_builder", "llm")
 
-results = pipeline.run({
-    "fetcher": {
-        "urls": ["https://arxiv.org/pdf/2309.08632"]
-    }
-})
+results = pipeline.run({"fetcher": {"urls": ["https://arxiv.org/pdf/2309.08632"]}})
 
 print(results["llm"]["replies"][0].text)
 
 # The document is a satirical paper humorously claiming that pretraining a
-small language model exclusively on evaluation benchmark test sets can achieve
-perfect performance, highlighting issues of data contamination in model
-evaluation.
+# small language model exclusively on evaluation benchmark test sets can achieve
+# perfect performance, highlighting issues of data contamination in model
+# evaluation.
 ```
