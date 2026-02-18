@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Added the `FileToFileContent` component, which converts local files into ``FileContent`` objects. These can be
+    Added the ``FileToFileContent`` component, which converts local files into ``FileContent`` objects. These can be
     embedded into ``ChatMessage`` to pass to an LLM.
 fixes:
   - |
