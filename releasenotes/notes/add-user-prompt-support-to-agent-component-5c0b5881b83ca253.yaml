@@ -11,18 +11,17 @@ features:
     directly into the prompt.
 
     Example usage:
-    ```
     .. code:: python
-    agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
-        tools=tools,
-        system_prompt="You are a helpful translation assistant.",
-        user_prompt="Translate the following document to {{ language }}: {{ document }}",
-        required_variables=["language", "document"],
-    )
+      agent = Agent(
+          chat_generator=OpenAIChatGenerator(),
+          tools=tools,
+          system_prompt="You are a helpful translation assistant.",
+          user_prompt="Translate the following document to {{ language }}: {{ document }}",
+          required_variables=["language", "document"],
+      )
 
-    result = agent.run(language="French", document="The weather is lovely today.")
-    ```
+      result = agent.run(language="French", document="The weather is lovely today.")
+
 upgrade:
   - |
     Calling ``Agent.run()`` (or ``run_async()``) with an empty messages list and no
