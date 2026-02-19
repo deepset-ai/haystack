@@ -210,8 +210,9 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         # Guard against multi-level unwrap (e.g. list[list[str]] -> list[str])
         if _safe_get_origin(receiver) is not list and _strict_types_are_compatible(inner, receiver):
             return ConversionStrategy.UNWRAP
-        # Unwrap + conversion: we need to check if all possible types of the sender list are compatible with the
-        # receiver. We do this by recursively calling _get_conversion_strategy on the inner element type.
+        # Unwrap + conversion
+        # Check that all possible types in the sender list can be converted to the receiver type
+        # using the same strategy by recursively calling _get_conversion_strategy on each inner element type.
         inner_strategy = _get_conversion_strategy(inner, receiver)
         if inner_strategy == ConversionStrategy.STR_TO_CHAT_MESSAGE:
             return ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
