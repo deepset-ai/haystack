@@ -247,6 +247,35 @@ print(result["score"])
 # 0.9166666666666666
 ```
 
+#### __init__
+
+```python
+__init__(document_comparison_field: str = 'content')
+```
+
+Create a DocumentMAPEvaluator component.
+
+**Parameters:**
+
+- **document_comparison_field** (<code>str</code>) – The Document field to use for comparison. Possible options:
+- `"content"`: uses `doc.content`
+- `"id"`: uses `doc.id`
+- A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+  (e.g. `"meta.file_id"`, `"meta.page_number"`)
+  Nested keys are supported (e.g. `"meta.source.url"`).
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
 #### run
 
 ```python
@@ -306,6 +335,35 @@ print(result["individual_scores"])
 print(result["score"])
 # 1.0
 ```
+
+#### __init__
+
+```python
+__init__(document_comparison_field: str = 'content')
+```
+
+Create a DocumentMRREvaluator component.
+
+**Parameters:**
+
+- **document_comparison_field** (<code>str</code>) – The Document field to use for comparison. Possible options:
+- `"content"`: uses `doc.content`
+- `"id"`: uses `doc.id`
+- A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+  (e.g. `"meta.file_id"`, `"meta.page_number"`)
+  Nested keys are supported (e.g. `"meta.source.url"`).
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
 #### run
 
@@ -486,7 +544,10 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(mode: str | RecallMode = RecallMode.SINGLE_HIT)
+__init__(
+    mode: str | RecallMode = RecallMode.SINGLE_HIT,
+    document_comparison_field: str = "content",
+)
 ```
 
 Create a DocumentRecallEvaluator component.
@@ -494,6 +555,12 @@ Create a DocumentRecallEvaluator component.
 **Parameters:**
 
 - **mode** (<code>str | RecallMode</code>) – Mode to use for calculating the recall score.
+- **document_comparison_field** (<code>str</code>) – The Document field to use for comparison. Possible options:
+- `"content"`: uses `doc.content`
+- `"id"`: uses `doc.id`
+- A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+  (e.g. `"meta.file_id"`, `"meta.page_number"`)
+  Nested keys are supported (e.g. `"meta.source.url"`).
 
 #### run
 
