@@ -48,10 +48,24 @@ from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
+from ..builders import ChatPromptBuilder
 from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema, replace_values
 from .state.state_utils import merge_lists
 
 logger = logging.getLogger(__name__)
+
+_RUN_METHOD_PARAMS = [
+    "messages",
+    "streaming_callback",
+    "generation_kwargs",
+    "break_point",
+    "snapshot",
+    "system_prompt",
+    "user_prompt",
+    "tools",
+    "snapshot_callback",
+    "confirmation_strategy_context",
+]
 
 
 @dataclass(kw_only=True)
@@ -174,6 +188,7 @@ class Agent:
         chat_generator: ChatGenerator,
         tools: ToolsType | None = None,
         system_prompt: str | None = None,
+        user_prompt: str | None = None,
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
@@ -188,6 +203,7 @@ class Agent:
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
         :param system_prompt: System prompt for the agent.
+        :param user_prompt: User prompt for the agent. If provided this is appended to the messages provided at runtime.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -235,19 +251,37 @@ class Agent:
         self.chat_generator = chat_generator
         self.tools = tools or []
         self.system_prompt = system_prompt
+        self.user_prompt = user_prompt
         self.exit_conditions = exit_conditions
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
 
+        # Set input and output types for the component based on the State schema
         output_types = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
             output_types[param] = config["type"]
             # Skip setting input types for parameters that are already in the run method
-            if param in ["messages", "streaming_callback"]:
+            if param in _RUN_METHOD_PARAMS:
                 continue
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
+
+        # Additional input type setting for variables from ChatPromptBuilder
+        self._chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables="*")
+        prompt_variables = self._chat_prompt_builder.variables
+        for var_name in prompt_variables:
+            if var_name in self.state_schema:
+                raise ValueError(
+                    f"Variable '{var_name}' from the user prompt is already defined in the state schema. "
+                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                )
+            if var_name in _RUN_METHOD_PARAMS:
+                raise ValueError(
+                    f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
+                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                )
+            component.set_input_type(self, name=var_name, type=Any, default=None)
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
@@ -290,6 +324,7 @@ class Agent:
             chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
             tools=serialize_tools_or_toolset(self.tools),
             system_prompt=self.system_prompt,
+            user_prompt=self.user_prompt,
             exit_conditions=self.exit_conditions,
             # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
@@ -329,17 +364,14 @@ class Agent:
 
         if init_params.get("confirmation_strategies") is not None:
             restored: dict[str | tuple[str, ...], Any] = {}
-
             for raw_key in init_params["confirmation_strategies"].keys():
                 deserialize_component_inplace(init_params["confirmation_strategies"], key=raw_key)
                 strategy = init_params["confirmation_strategies"][raw_key]
-
                 if isinstance(raw_key, list):
                     key = tuple(raw_key)
                 else:
                     key = raw_key
                 restored[key] = strategy
-
             init_params["confirmation_strategies"] = restored
 
         return default_from_dict(cls, data)
@@ -370,6 +402,7 @@ class Agent:
         requires_async: bool,
         *,
         system_prompt: str | None = None,
+        user_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
@@ -382,6 +415,8 @@ class Agent:
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
+            appended to the messages provided at runtime.
         :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
@@ -390,6 +425,19 @@ class Agent:
             to confirmation strategies.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
+        user_prompt = user_prompt or self.user_prompt
+        if len(messages) == 0 and user_prompt is None:
+            raise ValueError(
+                "No messages provided to the Agent and user_prompt is not set. "
+                "Please provide at least one of these inputs."
+            )
+
+        if user_prompt is not None:
+            # Only forward the prompt kwargs to the prompt builder
+            prompt_kwargs = {var: kwargs[var] for var in self._chat_prompt_builder.variables if var in kwargs}
+            user_messages = self._chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
+            messages = messages + user_messages
+
         system_prompt = system_prompt or self.system_prompt
         if system_prompt is not None:
             messages = [ChatMessage.from_system(system_prompt)] + messages
@@ -544,13 +592,14 @@ class Agent:
 
     def run(  # noqa: PLR0915
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
         break_point: AgentBreakpoint | None = None,
         snapshot: AgentSnapshot | None = None,
         system_prompt: str | None = None,
+        user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         snapshot_callback: SnapshotCallback | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
@@ -569,6 +618,8 @@ class Agent:
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
             the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
+            appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
@@ -607,10 +658,11 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages,
+                messages=messages or [],
                 streaming_callback=streaming_callback,
                 requires_async=False,
                 system_prompt=system_prompt,
+                user_prompt=user_prompt,
                 generation_kwargs=generation_kwargs,
                 tools=tools,
                 confirmation_strategy_context=confirmation_strategy_context,
@@ -770,13 +822,14 @@ class Agent:
 
     async def run_async(  # noqa: PLR0915
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
         break_point: AgentBreakpoint | None = None,
         snapshot: AgentSnapshot | None = None,
         system_prompt: str | None = None,
+        user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         snapshot_callback: SnapshotCallback | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
@@ -799,6 +852,8 @@ class Agent:
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
             the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
+            appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
             The callback receives a `PipelineSnapshot` object and can return an optional string.
@@ -836,10 +891,11 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages,
+                messages=messages or [],
                 streaming_callback=streaming_callback,
                 requires_async=True,
                 system_prompt=system_prompt,
+                user_prompt=user_prompt,
                 tools=tools,
                 generation_kwargs=generation_kwargs,
                 confirmation_strategy_context=confirmation_strategy_context,
