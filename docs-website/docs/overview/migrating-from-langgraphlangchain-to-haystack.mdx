@@ -46,6 +46,99 @@ Here's a table of key concepts and their approximate equivalents between the two
 | Time travel (Checkpoints) | Breakpoints (Breakpoint, AgentBreakpoint, ToolBreakpoint, Snapshot) | [Breakpoints](../concepts/pipelines/pipeline-breakpoints.mdx) let you pause, inspect, modify, and resume a pipeline, agent, or tool for debugging or iterative development. |
 | Human-in-the-Loop (Interrupts / Commands) | Human-in-the-loop ( ConfirmationStrategy / ConfirmationPolicy) | (Experimental) Haystack uses [confirmation strategies](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent) to pause or block the execution to gather user feedback |
 
+## Quick migration recipes
+
+This section expands on three migration areas teams usually ask about first: agent creation, document stores, and MCP tools.
+
+### Agent creation: `create_agent` style flows
+
+The short version: LangChain often starts from `create_agent` plus a model and tools. In Haystack, you can start from the [`Agent`](../concepts/agents.mdx) component with the same model-and-tools mindset.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangChain">{`from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
+
+def get_weather(city: str) -> str:
+    return f"Weather in {city}: sunny"
+
+model = init_chat_model("gpt-4o-mini")
+agent = create_agent(model=model, tools=[get_weather])
+
+result = agent.invoke({"messages": [{"role": "user", "content": "weather in Berlin?"}]})`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import Tool
+
+def get_weather(city: str) -> str:
+    return f"Weather in {city}: sunny"
+
+weather_tool = Tool.from_function(get_weather)
+agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[weather_tool])
+
+result = agent.run(messages=["weather in Berlin?"])`}</CodeBlock>
+  </div>
+</div>
+
+### Connecting document stores
+
+In LangChain, vector stores are typically coupled directly to retrievers. In Haystack, a document store is paired with explicit retriever/writer components inside pipelines, which makes indexing and querying flows easy to inspect and evolve.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangChain">{`from langchain_qdrant import QdrantVectorStore
+
+vector_store = QdrantVectorStore(...)
+retriever = vector_store.as_retriever()
+docs = retriever.invoke("what is RAG?")`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.writers import DocumentWriter
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+
+document_store = InMemoryDocumentStore()
+
+indexing = Pipeline()
+indexing.add_component("writer", DocumentWriter(document_store=document_store))
+
+query = Pipeline()
+query.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+
+result = query.run({"retriever": {"query": "what is RAG?"}})`}</CodeBlock>
+  </div>
+</div>
+
+For backend-specific stores and retrievers, use the relevant integration page from [Document Stores](../concepts/document-store.mdx) and [Retrievers](../pipeline-components/retrievers.mdx).
+
+### MCP tools
+
+LangGraph/LangChain commonly use `MultiServerMCPClient` + `load_mcp_tools`. In Haystack, the closest mapping is `MCPTool`/`MCPToolset` with server descriptors like `StdioServerInfo` and `StreamableHttpServerInfo`.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + MCP Adapters">{`from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "time": {"transport": "streamable_http", "url": "http://localhost:8000/mcp"}
+})
+tools = await client.get_tools()`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack + MCP">{`from haystack_integrations.tools.mcp import MCPToolset, StreamableHttpServerInfo
+
+toolset = MCPToolset(
+    server_info=StreamableHttpServerInfo(url="http://localhost:8000/mcp")
+)
+tools = toolset.get_tools()`}</CodeBlock>
+  </div>
+</div>
+
+For production details and advanced examples, see [MCPTool](../tools/mcptool.mdx) and [MCPToolset](../tools/mcptoolset.mdx).
+
 ## Ecosystem and Tooling Mapping: LangChain → Haystack
 
 At deepset, we're building the tools to make LLMs truly usable in production, open source and beyond.
