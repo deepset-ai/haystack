@@ -107,4 +107,3 @@ def del_hf_env_vars(monkeypatch):
     """
     monkeypatch.delenv("HF_API_TOKEN", raising=False)
     monkeypatch.delenv("HF_TOKEN", raising=False)
-    yield
