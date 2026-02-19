@@ -62,7 +62,6 @@ docs = [
 ]
 
 reader = ExtractiveReader()
-reader.warm_up()
 
 reader.run(query="What is the capital of France?", documents=docs, top_k=2)
 ```
@@ -90,7 +89,6 @@ document_store.write_documents(docs)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 reader = ExtractiveReader()
-reader.warm_up()
 
 extractive_qa_pipeline = Pipeline()
 extractive_qa_pipeline.add_component(instance=retriever, name="retriever")

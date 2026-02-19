@@ -46,7 +46,7 @@ The component downloads multiple files in parallel using the `max_workers` param
 
 The component requires two critical configurations:
 
-1. `file_root_path` parameter or `FILE_ROOT_PATH` environment variable: Specifies where files will be downloaded. This directory will be created if it doesn't exist when `warm_up()` is called.
+1. `file_root_path` parameter or `FILE_ROOT_PATH` environment variable: Specifies where files will be downloaded. This directory will be created if it doesn't exist.
 2. `S3_DOWNLOADER_BUCKET` environment variable: Specifies which S3 bucket to download files from.
 :::
 
@@ -94,9 +94,6 @@ documents = [
 ## Initialize the downloader
 downloader = S3Downloader(file_root_path="/tmp/s3_downloads")
 
-## Warm up the component
-downloader.warm_up()
-
 ## Download the files
 result = downloader.run(documents=documents)
 
@@ -119,8 +116,6 @@ documents = [
 
 ## Only download PDF files
 downloader = S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf"])
-
-downloader.warm_up()
 
 result = downloader.run(documents=documents)
 
@@ -154,7 +149,6 @@ downloader = S3Downloader(
     s3_key_generation_function=custom_s3_key_function,
 )
 
-downloader.warm_up()
 result = downloader.run(documents=documents)
 ```
 

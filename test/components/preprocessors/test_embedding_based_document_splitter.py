@@ -304,10 +304,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_split_document_with_multiple_topics(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_split_document_with_multiple_topics(self, del_hf_env_vars, monkeypatch):
         import torch
 
         # Force CPU usage to avoid MPS memory issues
@@ -350,10 +347,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.slow
     @pytest.mark.integration
-    def test_trailing_whitespace_is_preserved(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_trailing_whitespace_is_preserved(self, del_hf_env_vars):
         embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
@@ -375,10 +369,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_no_extra_whitespaces_between_sentences(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_no_extra_whitespaces_between_sentences(self, del_hf_env_vars):
         embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 
         splitter = EmbeddingBasedDocumentSplitter(
@@ -407,15 +398,12 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_split_large_splits_recursion(self, monkeypatch):
+    def test_split_large_splits_recursion(self, del_hf_env_vars):
         """
         Test that _split_large_splits() works correctly without infinite loops.
         This test uses a longer text that will trigger the recursive splitting logic.
         If the chunk cannot be split further, it is allowed to be larger than max_length.
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
         embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
@@ -450,14 +438,11 @@ The history of software is closely tied to the development of digital computers 
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_split_large_splits_actually_splits(self, monkeypatch):
+    def test_split_large_splits_actually_splits(self, del_hf_env_vars):
         """
         Test that _split_large_splits() actually works and can split long texts into multiple chunks.
         This test uses a very long text that should be split into multiple chunks.
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
         embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder,

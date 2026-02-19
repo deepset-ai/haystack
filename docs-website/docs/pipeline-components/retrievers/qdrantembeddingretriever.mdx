@@ -94,7 +94,6 @@ documents = [
 ]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 
 document_store.write_documents(

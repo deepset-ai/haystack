@@ -84,7 +84,6 @@ from haystack.components.embedders import SentenceTransformersSparseDocumentEmbe
 doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
 embedder = SentenceTransformersSparseDocumentEmbedder(meta_fields_to_embed=["title"])
-embedder.warm_up()
 
 docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
 ```
@@ -99,7 +98,6 @@ from haystack.components.embedders import SentenceTransformersSparseDocumentEmbe
 
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersSparseDocumentEmbedder()
-doc_embedder.warm_up()
 
 result = doc_embedder.run([doc])
 print(result["documents"][0].sparse_embedding)

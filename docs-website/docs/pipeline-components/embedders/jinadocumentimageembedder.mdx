@@ -65,7 +65,6 @@ from haystack import Document
 from haystack_integrations.components.embedders.jina import JinaDocumentImageEmbedder
 
 embedder = JinaDocumentImageEmbedder(model="jina-clip-v2")
-embedder.warm_up()
 
 documents = [
     Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
