@@ -44,7 +44,6 @@ ranker = SentenceTransformersDiversityRanker(
     model="sentence-transformers/all-MiniLM-L6-v2",
     similarity="cosine",
 )
-ranker.warm_up()
 
 docs = [
     Document(content="Regular Exercise"),

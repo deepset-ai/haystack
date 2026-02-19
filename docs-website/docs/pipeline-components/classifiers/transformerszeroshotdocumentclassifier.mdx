@@ -57,7 +57,6 @@ document_classifier = TransformersZeroShotDocumentClassifier(
     labels=["animals", "food"],
 )
 
-document_classifier.warm_up()
 document_classifier.run(documents=documents)
 ```
 
