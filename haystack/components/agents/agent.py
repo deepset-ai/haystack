@@ -365,7 +365,7 @@ class Agent:
                     "The parameter required_variables is provided but user_prompt is not. "
                     "Either provide a user_prompt or remove required_variables, it has otherwise no effect."
                 )
-            return
+            return None
 
         chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables=required_variables)
         prompt_variables = chat_prompt_builder.variables
