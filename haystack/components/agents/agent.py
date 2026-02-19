@@ -272,21 +272,9 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        # Additional input type setting for variables from ChatPromptBuilder
-        self._chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables="*")
-        prompt_variables = self._chat_prompt_builder.variables
-        for var_name in prompt_variables:
-            if var_name in self.state_schema:
-                raise ValueError(
-                    f"Variable '{var_name}' from the user prompt is already defined in the state schema. "
-                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
-                )
-            if var_name in _RUN_METHOD_PARAMS:
-                raise ValueError(
-                    f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
-                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
-                )
-            component.set_input_type(self, name=var_name, type=Any, default=None)
+        self._chat_prompt_builder: ChatPromptBuilder | None = (
+            self._initialize_chat_prompt_builder(user_prompt) if user_prompt is not None else None
+        )
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
@@ -306,6 +294,26 @@ class Agent:
         self._confirmation_strategies = confirmation_strategies or {}
 
         self._is_warmed_up = False
+
+    def _initialize_chat_prompt_builder(self, user_prompt: str) -> ChatPromptBuilder | None:
+        """
+        Initialize the ChatPromptBuilder if a user prompt is provided.
+        """
+        chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables="*")
+        prompt_variables = chat_prompt_builder.variables
+        for var_name in prompt_variables:
+            if var_name in self.state_schema:
+                raise ValueError(
+                    f"Variable '{var_name}' from the user prompt is already defined in the state schema. "
+                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                )
+            if var_name in _RUN_METHOD_PARAMS:
+                raise ValueError(
+                    f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
+                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                )
+            component.set_input_type(self, name=var_name, type=Any, default=None)
+        return chat_prompt_builder
 
     def warm_up(self) -> None:
         """
@@ -438,6 +446,12 @@ class Agent:
             )
 
         if user_prompt is not None:
+            if self._chat_prompt_builder is None:
+                raise ValueError(
+                    "user_prompt is provided but the ChatPromptBuilder is not initialized."
+                    + "Please make sure a user_prompt is provided at initialization time."
+                )
+
             # Only forward the prompt kwargs to the prompt builder
             prompt_kwargs = {var: kwargs[var] for var in self._chat_prompt_builder.variables if var in kwargs}
             user_messages = self._chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
