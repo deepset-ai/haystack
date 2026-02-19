@@ -136,7 +136,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         self.outputs = ["statements", "statement_scores"]
         self.examples = examples or _DEFAULT_EXAMPLES
 
-        super(FaithfulnessEvaluator, self).__init__(
+        super(FaithfulnessEvaluator, self).__init__(  # noqa: UP008
             instructions=self.instructions,
             inputs=self.inputs,
             outputs=self.outputs,
@@ -163,7 +163,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `individual_scores`: A list of faithfulness scores for each input answer.
                 - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
         """
-        result = super(FaithfulnessEvaluator, self).run(**inputs)
+        result = super(FaithfulnessEvaluator, self).run(**inputs)  # noqa: UP008
 
         # calculate average statement faithfulness score per query
         for idx, res in enumerate(result["results"]):

@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Callable
+from typing import Any
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError

@@ -360,7 +360,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:  # noqa: ARG002
             """Check if any of the stop words are generated in the current text generation step."""
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)

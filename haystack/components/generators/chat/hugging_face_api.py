@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import AsyncIterable, Iterable
 from datetime import datetime
-from typing import Any, AsyncIterable, Iterable, Union
+from typing import Any, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message

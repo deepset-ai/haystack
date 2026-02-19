@@ -324,41 +324,41 @@ skip-magic-trailing-comma = true
 isort.split-on-trailing-comma = false
 exclude = ["e2e/**"]
 select = [
-  "ASYNC", # flake8-async
-  "C4",    # flake8-comprehensions
-  "C90",   # McCabe cyclomatic complexity
-  "E501",  # Long lines
-  "EXE",   # flake8-executable
-  "F",     # Pyflakes
-  "INT",   # flake8-gettext
-  "PERF",  # Perflint
-  "PL",    # Pylint
-  "Q",     # flake8-quotes
-  "SIM",   # flake8-simplify
-  "SLOT",  # flake8-slots
-  "T10",   # flake8-debugger
-  "UP006", # non-pep585-annotation (enforce list, dict, etc.)
-  "UP007", # non-pep604-annotation-union (enforce X | Y syntax)
-  "UP045", # non-pep604-annotation-optional (enforce X | None syntax)
-  "W",     # pycodestyle
-  "YTT",   # flake8-2020
-  "I",     # isort
-  # built-in shadowing
-  "A001", # builtin-variable-shadowing
-  "A002", # builtin-argument-shadowing
-  "A003", # builtin-attribute-shadowing
-  # docstring rules
-  "D102", # Missing docstring in public method
-  "D103", # Missing docstring in public function
-  "D209", # Closing triple quotes go to new line
-  "D205", # 1 blank line required between summary line and description
-  "D213", # summary lines must be positioned on the second physical line of the docstring
-  "D417", # undocumented-parameter
-  "D419", # undocumented-returns
+  "ASYNC",
+  "C4",
+  "C90",
+  "E501",
+  "EXE",
+  "F",
+  "INT",
+  "PERF",
+  "PL",
+  "Q",
+  "SIM",
+  "SLOT",
+  "T10",
+  "W",
+  "YTT",
+  "I",
+  # Builtin shadowing
+  "A001",
+  "A002",
+  "A003",
+  # Docstring checks (keep explicit)
+  "D102",
+  "D103",
+  "D205",
+  "D209",
+  "D213",
+  "D417",
+  "D419",
+  # Partial families for parity
+  "ARG",  # instead of ARG001
+  "TRY002", "TRY203",
+  "UP",   # instead of UP004, UP006, UP007, UP025, UP028, UP045
 ]
 
 extend-select = [
-  "ARG001",
   "B002", "B006", "B012", "B014", "B018", "B019", "B023", "B026", "B033", "B904",
   "COM818",
   "D210",
@@ -369,8 +369,6 @@ extend-select = [
   "RET505", "RET506", "RET507", "RET508",
   "S102", "S307",
   "TID252",
-  "TRY002", "TRY203",
-  "UP004", "UP025", "UP028",
 ]
 
 ignore = [
@@ -385,6 +383,7 @@ ignore = [
   # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
   "PLC0414", # useless-import-alias,
   "PLC0415", # import-outside-top-level,
+  "UP037", # Remove quotes from type annotation
 ]
 
 [tool.ruff.lint.mccabe]

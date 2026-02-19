@@ -51,7 +51,7 @@ def generate_color_variations(n: int, base_color: str | None = "#3498DB", variat
 
         # Convert back to RGB and then to hex
         new_r, new_g, new_b = colorsys.hsv_to_rgb(new_h, new_s, new_v)
-        hex_color = "#{:02x}{:02x}{:02x}".format(int(new_r * 255), int(new_g * 255), int(new_b * 255))
+        hex_color = f"#{int(new_r * 255):02x}{int(new_g * 255):02x}{int(new_b * 255):02x}"
 
         variations.append(hex_color)
 

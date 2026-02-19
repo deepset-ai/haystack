@@ -91,7 +91,7 @@ class EvaluationRunResult:
             return f"Data successfully written to {csv_file}"
         except PermissionError:
             return f"Error: Permission denied when writing to {csv_file}"
-        except IOError as e:
+        except OSError as e:
             return f"Error writing to {csv_file}: {str(e)}"
         except Exception as e:
             return f"Error: {str(e)}"

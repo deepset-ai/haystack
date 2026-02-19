@@ -5,10 +5,12 @@
 
 import itertools
 from collections import defaultdict
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, Sequence, TextIO, TypeVar
+from typing import Any, TextIO, TypeVar
 
 import networkx
 

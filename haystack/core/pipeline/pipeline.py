@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Mapping
+from typing import Any
 
 from haystack import logging, tracing
 from haystack.core.component import Component

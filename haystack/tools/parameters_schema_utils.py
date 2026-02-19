@@ -4,10 +4,11 @@
 
 import collections
 import types
+from collections.abc import Callable, Sequence
 from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Sequence, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model

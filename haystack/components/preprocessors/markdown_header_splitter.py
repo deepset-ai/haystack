@@ -297,10 +297,8 @@ class MarkdownHeaderSplitter:
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
-                    (
-                        "MarkdownHeaderSplitter only works with text documents but content for document ID"
-                        f" {doc.id} is None."
-                    )
+                    "MarkdownHeaderSplitter only works with text documents but content for document ID"
+                    f" {doc.id} is None."
                 )
             if not isinstance(doc.content, str):
                 raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")

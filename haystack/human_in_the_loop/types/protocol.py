@@ -39,10 +39,10 @@ class ConfirmationPolicy(Protocol):
 
     def update_after_confirmation(
         self,
-        tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        confirmation_result: ConfirmationUIResult,
+        tool_name: str,  # noqa: ARG002
+        tool_description: str,  # noqa: ARG002
+        tool_params: dict[str, Any],  # noqa: ARG002
+        confirmation_result: ConfirmationUIResult,  # noqa: ARG002
     ) -> None:
         """Update the policy based on the confirmation UI result."""
         return

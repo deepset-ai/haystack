@@ -70,21 +70,21 @@ if __name__ == "__main__":
     )
 
     # replace unstable version with stable version in versions.json
-    with open("docs-website/versions.json", "r") as f:
+    with open("docs-website/versions.json") as f:
         versions_list = json.load(f)
     versions_list[versions_list.index(target_unstable)] = target_version
     with open("docs-website/versions.json", "w") as f:
         json.dump(versions_list, f)
 
     # replace unstable version with stable version in reference_versions.json
-    with open("docs-website/reference_versions.json", "r") as f:
+    with open("docs-website/reference_versions.json") as f:
         reference_versions_list = json.load(f)
     reference_versions_list[reference_versions_list.index(target_unstable)] = target_version
     with open("docs-website/reference_versions.json", "w") as f:
         json.dump(reference_versions_list, f)
 
     # in docusaurus.config.js, replace previous stable version with the target version
-    with open("docs-website/docusaurus.config.js", "r") as f:
+    with open("docs-website/docusaurus.config.js") as f:
         config = f.read()
     config = config.replace(f"lastVersion: '{previous_stable}'", f"lastVersion: '{target_version}'")  # "2.19" -> "2.20"
     with open("docs-website/docusaurus.config.js", "w") as f:

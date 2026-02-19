@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import create_model
 

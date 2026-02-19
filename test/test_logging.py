@@ -7,9 +7,9 @@ import json
 import logging
 import os
 import sys
+from collections.abc import Generator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Generator
 from unittest.mock import ANY
 
 import pytest

@@ -6,9 +6,10 @@ import asyncio
 import contextvars
 import inspect
 import json
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable
+from typing import Any
 
 from haystack.components.agents import State
 from haystack.core.component.component import component

@@ -5,8 +5,9 @@
 import logging
 import os
 import re
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

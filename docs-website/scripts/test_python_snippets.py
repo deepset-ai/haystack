@@ -61,10 +61,10 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
 FENCE_END_RE = re.compile(r"^\s*```\s*$")
@@ -132,7 +132,7 @@ def find_markdown_files(paths: Iterable[str]) -> list[str]:
 
 def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
     """Extract runnable Python snippets from a Markdown/MDX file."""
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         lines = f.read().splitlines()
 
     snippets: list[Snippet] = []

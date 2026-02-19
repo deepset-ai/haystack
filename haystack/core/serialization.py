@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, TypeVar
+from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import _hook_component_init

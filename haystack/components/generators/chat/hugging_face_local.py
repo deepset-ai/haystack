@@ -6,9 +6,10 @@ import asyncio
 import json
 import re
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Literal, Union
+from typing import Any, Literal, Union
 
 from packaging.version import Version
 

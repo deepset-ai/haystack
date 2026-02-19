@@ -8,10 +8,11 @@ import math
 import re
 import uuid
 from collections import Counter
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -394,7 +395,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         """
         if Path(path).exists():
             try:
-                with open(path, "r") as f:
+                with open(path) as f:
                     data = json.load(f)
             except Exception as e:
                 raise DocumentStoreError(f"Error loading InMemoryDocumentStore from disk. error: {e}") from e

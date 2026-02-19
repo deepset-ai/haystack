@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Sequence
+from typing import Any
 
 from haystack import logging
 from haystack.dataclasses.file_content import FileContent
@@ -275,7 +276,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):  # noqa: ARG004
         """
         This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
         """
@@ -292,7 +293,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                 f"{general_msg}"
             )
 
-        return super(ChatMessage, cls).__new__(cls)
+        return super(ChatMessage, cls).__new__(cls)  # noqa: UP008
 
     def __getattribute__(self, name):
         """

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Generator
+from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest

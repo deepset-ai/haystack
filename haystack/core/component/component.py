@@ -75,13 +75,13 @@ method decorated with `@component.input`. This dataclass contains:
 
 import inspect
 import typing
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Iterator, Mapping, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
+from typing import Any, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError

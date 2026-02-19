@@ -77,9 +77,9 @@ class OpenAPIServiceToFunctions:
             if isinstance(source, (str, Path)):
                 if os.path.exists(source):
                     try:
-                        with open(source, "r") as f:
+                        with open(source) as f:
                             openapi_spec_content = f.read()
-                    except IOError as e:
+                    except OSError as e:
                         logger.warning(
                             "IO error reading OpenAPI specification file: {source}. Error: {e}", source=source, e=e
                         )

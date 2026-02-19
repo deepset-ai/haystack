@@ -4,7 +4,8 @@
 
 import contextlib
 import dataclasses
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from haystack import logging
 from haystack.tracing import Span, Tracer
@@ -51,7 +52,10 @@ class LoggingTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
+        self,
+        operation_name: str,
+        tags: dict[str, Any] | None = None,
+        parent_span: Span | None = None,  # noqa: ARG002
     ) -> Iterator[Span]:
         """
         Trace the execution of a block of code.

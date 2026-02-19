@@ -4,9 +4,10 @@
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
-from typing import Callable, cast
+from typing import cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -456,7 +457,7 @@ class LinkContentFetcher:
         # default handler
         return self.handlers["text/plain"]
 
-    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:
+    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:  # noqa: ARG002
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
 

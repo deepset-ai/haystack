@@ -66,7 +66,7 @@ class Telemetry:
         if CONFIG_PATH.exists():
             # Load the config file
             try:
-                with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
+                with open(CONFIG_PATH, encoding="utf-8") as config_file:
                     config = yaml.safe_load(config_file)
                     if "user_id" in config:
                         self.user_id = config["user_id"]
