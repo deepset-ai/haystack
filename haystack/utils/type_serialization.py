@@ -73,13 +73,13 @@ def serialize_type(target: Any) -> str:
     if args:
         # For typing generics, convert PEP 604 union types (X | Y) to typing.Union when serializing.
         # This avoids issues with Python's internal cache, where List[Union[str, int]] and List[str | int] are treated
-        # as the same key.
-        def _serialize_arg(a: Any) -> str:
-            if not isinstance(target, GenericAlias) and isinstance(a, UnionType):
-                a = Union[tuple(get_args(a))]  # noqa: UP007
-            return serialize_type(a)
-
-        args_str = ", ".join([_serialize_arg(a) for a in args if a is not NoneType])
+        # as the same key. GenericAlias (builtins like list[...]) can keep the PEP 604 syntax.
+        is_typing_generic = not isinstance(target, GenericAlias)
+        args_str = ", ".join(
+            serialize_type(Union[tuple(get_args(a))] if is_typing_generic and isinstance(a, UnionType) else a)  # noqa: UP007
+            for a in args
+            if a is not NoneType
+        )
         return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
 
     return f"{module_name}.{name}" if module_name else f"{name}"
