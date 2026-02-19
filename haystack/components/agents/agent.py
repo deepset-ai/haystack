@@ -315,7 +315,10 @@ class Agent:
                     f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
                     "Please rename the variable or remove it from the user prompt to avoid conflicts."
                 )
-            component.set_input_type(self, name=var_name, type=Any, default=None)
+            if required_variables == "*" or var_name in (required_variables or []):
+                component.set_input_type(self, name=var_name, type=Any)
+            else:
+                component.set_input_type(self, name=var_name, type=Any, default=None)
         return chat_prompt_builder
 
     def warm_up(self) -> None:
