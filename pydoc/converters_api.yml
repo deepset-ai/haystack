@@ -1,8 +1,8 @@
 loaders:
   - search_path: [../haystack/components/converters]
     modules: ["azure", "csv", "docx", "file_to_file_content", "html", "json", "markdown", "msg", "multi_file_converter",
-      "openapi_functions", "output_adapter", "pdfminer", "pptx", "pypdf", "tika",
-      "txt", "xlsx"]
+      "openapi_functions", "output_adapter", "pdfminer", "pptx", "pypdf", "tika", "txt", "xlsx",
+      "image/document_to_image", "image/file_to_document", "image/file_to_image", "image/pdf_to_image"]
 processors:
   - type: filter
     documented_only: true

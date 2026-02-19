@@ -227,6 +227,7 @@ export default {
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
+            'pipeline-components/converters/filetofilecontent',
             'pipeline-components/converters/htmltodocument',
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
