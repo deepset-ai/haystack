@@ -186,11 +186,11 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         return strategies.pop() if strategies else None
 
     # ChatMessage -> str
-    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+    if sender is ChatMessage and receiver is str:
         return ConversionStrategy.CHAT_MESSAGE_TO_STR
 
     # str -> ChatMessage
-    if _contains_type(sender, str) and _contains_type(receiver, ChatMessage):
+    if sender is str and receiver is ChatMessage:
         return ConversionStrategy.STR_TO_CHAT_MESSAGE
 
     # Wrap: T -> List[T]
@@ -207,14 +207,15 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
     # Unwrap: List[T] -> T - for str and ChatMessage only
     if _safe_get_origin(sender) is list and (args := get_args(sender)):
         inner = args[0]
-        if (_contains_type(inner, ChatMessage) and _contains_type(receiver, ChatMessage)) or (
-            _contains_type(inner, str) and _contains_type(receiver, str)
-        ):
+        # Guard against multi-level unwrap (e.g. list[list[str]] -> list[str])
+        if _safe_get_origin(receiver) is not list and _strict_types_are_compatible(inner, receiver):
             return ConversionStrategy.UNWRAP
-        # Unwrap + conversion
-        if _contains_type(inner, str) and _contains_type(receiver, ChatMessage):
+        # Unwrap + conversion: we need to check if all possible types of the sender list are compatible with the
+        # receiver. We do this by recursively calling _get_conversion_strategy on the inner element type.
+        inner_strategy = _get_conversion_strategy(inner, receiver)
+        if inner_strategy == ConversionStrategy.STR_TO_CHAT_MESSAGE:
             return ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
-        if _contains_type(inner, ChatMessage) and _contains_type(receiver, str):
+        if inner_strategy == ConversionStrategy.CHAT_MESSAGE_TO_STR:
             return ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR
 
     return None
