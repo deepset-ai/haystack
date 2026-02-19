@@ -467,7 +467,8 @@ class Agent:
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
-        state = State(schema=self.state_schema, data=kwargs)
+        state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
+        state = State(schema=self.state_schema, data=state_kwargs)
         state.set("messages", messages)
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
