@@ -92,3 +92,19 @@ def base64_image_string():
 def base64_pdf_string(test_files_path):
     with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
+
+
+@pytest.fixture
+def del_hf_env_vars(monkeypatch):
+    """
+    Delete Hugging Face environment variables for tests.
+
+    Prevents passing empty tokens to Hugging Face, which would cause API calls to fail.
+    This is particularly relevant for PRs opened from forks, where secrets are not available
+    and empty environment variables might be set instead of being removed.
+
+    See https://github.com/deepset-ai/haystack/issues/8811 for more details.
+    """
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+    yield

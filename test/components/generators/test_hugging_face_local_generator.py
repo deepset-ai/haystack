@@ -18,9 +18,7 @@ from haystack.utils.hf import HFTokenStreamingHandler
 
 class TestHuggingFaceLocalGenerator:
     @patch("haystack.utils.hf.model_info")
-    def test_init_default(self, model_info_mock, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_init_default(self, model_info_mock, del_hf_env_vars):
         model_info_mock.return_value.pipeline_tag = "text-generation"
         generator = HuggingFaceLocalGenerator()
 
@@ -444,9 +442,8 @@ class TestHuggingFaceLocalGenerator:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_hf_pipeline_runs_with_our_criteria(self, monkeypatch):
+    def test_hf_pipeline_runs_with_our_criteria(self, del_hf_env_vars):
         """Test that creating our own StopWordsCriteria and passing it to a Huggingface pipeline works."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         generator = HuggingFaceLocalGenerator(
             model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["unambiguously"]
         )
@@ -458,8 +455,7 @@ class TestHuggingFaceLocalGenerator:
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.slow
-    def test_live_run(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_live_run(self, del_hf_env_vars):
         llm = HuggingFaceLocalGenerator(model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50})
 
         # You must use the `apply_chat_template` method to add the generation prompt to properly include the instruction
