@@ -817,7 +817,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         elif isinstance(part, FileContent):
             return {
                 "type": "input_file",
-                "filename": part.filename,
+                # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.
+                # We use a dummy filename to avoid this issue.
+                "filename": part.filename or "filename",
                 "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
             }
         raise ValueError(f"Unsupported content type: {type(part)}")
