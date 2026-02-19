@@ -319,9 +319,7 @@ class TestSimilarityRanker:
 
     @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")
     @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
-    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
 
         class MockedModel:
@@ -364,13 +362,10 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run(self, monkeypatch):
+    def test_run(self, del_hf_env_vars):
         """
         Test if the component ranks documents correctly.
         """
-
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
 
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
 
@@ -393,13 +388,10 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_top_k(self, monkeypatch):
+    def test_run_top_k(self, del_hf_env_vars):
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2)
 
         query = "City in Bosnia and Herzegovina"
@@ -418,10 +410,7 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_single_document(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_run_single_document(self, del_hf_env_vars):
         """
         Test if the component runs with a single document.
         """
