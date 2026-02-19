@@ -123,7 +123,6 @@ generator = LlamaCppChatGenerator(
     n_batch=128,
     model_kwargs={"n_gpu_layers": -1},
 )
-generator.warm_up()
 messages = [ChatMessage.from_user("Who is the best American actor?")]
 result = generator.run(messages, generation_kwargs={"max_tokens": 128})
 generated_reply = result["replies"][0].content
@@ -150,7 +149,6 @@ generator = LlamaCppChatGenerator(
     n_batch=128,
     generation_kwargs={"max_tokens": 128, "temperature": 0.1},
 )
-generator.warm_up()
 messages = [ChatMessage.from_user("Who is the best American actor?")]
 result = generator.run(messages)
 ```
@@ -168,7 +166,6 @@ llm = LlamaCppChatGenerator(
     model_clip_path="mmproj-model-f16.gguf",  # CLIP model
     n_ctx=4096,  # Larger context for image processing
 )
-llm.warm_up()
 
 image = ImageContent.from_file_path("apple.jpg")
 user_message = ChatMessage.from_user(
@@ -192,7 +189,6 @@ generator = LlamaCppChatGenerator(
     n_ctx=512,
     n_batch=128,
 )
-generator.warm_up()
 messages = [ChatMessage.from_user("Who is the best American actor?")]
 result = generator.run(
     messages,

@@ -63,7 +63,6 @@ from haystack_integrations.components.embedders.cohere import (
 )
 
 embedder = CohereDocumentImageEmbedder(model="embed-v4.0")
-embedder.warm_up()
 
 documents = [
     Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),

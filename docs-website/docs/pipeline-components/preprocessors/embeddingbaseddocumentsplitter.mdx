@@ -58,7 +58,6 @@ splitter = EmbeddingBasedDocumentSplitter(
     min_length=50,  # Merge splits shorter than 50 characters
     max_length=1000,  # Further split chunks longer than 1000 characters
 )
-splitter.warm_up()
 result = splitter.run(documents=[doc])
 
 # The result contains a list of Document objects, each representing a semantic chunk

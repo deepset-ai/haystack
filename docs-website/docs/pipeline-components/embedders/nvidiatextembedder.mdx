@@ -55,7 +55,6 @@ embedder = NvidiaTextEmbedder(
     api_url="https://integrate.api.nvidia.com/v1",
     api_key=Secret.from_token("<your-api-key>"),
 )
-embedder.warm_up()
 
 result = embedder.run("A transformer is a deep learning architecture")
 print(result["embedding"])
@@ -72,7 +71,6 @@ embedder = NvidiaTextEmbedder(
     api_url="http://localhost:9999/v1",
     api_key=None,
 )
-embedder.warm_up()
 
 result = embedder.run("A transformer is a deep learning architecture")
 print(result["embedding"])

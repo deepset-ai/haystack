@@ -56,8 +56,6 @@ generator = NvidiaGenerator(
         "max_tokens": 1024,
     },
 )
-generator.warm_up()
-
 result = generator.run(prompt="What is the answer?")
 print(result["replies"])
 print(result["meta"])
@@ -76,8 +74,6 @@ generator = NvidiaGenerator(
         "temperature": 0.2,
     },
 )
-generator.warm_up()
-
 result = generator.run(prompt="What is the answer?")
 print(result["replies"])
 print(result["meta"])

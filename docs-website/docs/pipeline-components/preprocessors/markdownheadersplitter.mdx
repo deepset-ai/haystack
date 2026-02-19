@@ -91,7 +91,6 @@ splitter = MarkdownHeaderSplitter(
     split_length=20,
     split_overlap=2,
 )
-splitter.warm_up()  # required when using secondary_split
 result = splitter.run(documents=[doc])
 ```
 

@@ -87,7 +87,6 @@ document_store.write_documents(docs)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 ranker = HuggingFaceTEIRanker(url="http://localhost:8080")
-ranker.warm_up()
 
 document_ranker_pipeline = Pipeline()
 document_ranker_pipeline.add_component(instance=retriever, name="retriever")

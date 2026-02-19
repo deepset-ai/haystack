@@ -58,7 +58,6 @@ documents = [
     Document(content="New York State is home to the Empire State Building."),
 ]
 
-extractor.warm_up()
 extractor.run(documents)
 print(documents)
 ```
@@ -87,7 +86,6 @@ documents = [
     Document(content="New York State is home to the Empire State Building."),
 ]
 
-extractor.warm_up()
 extractor.run(documents)
 
 annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in documents]
