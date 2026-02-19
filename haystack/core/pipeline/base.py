@@ -889,17 +889,11 @@ class PipelineBase:  # noqa: PLW1641
                 "haystack.component.fully_qualified_type": generate_qualified_class_name(type(instance)),
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "senders": value.senders,
-                    }
+                    key: {"type": str(value.type), "senders": value.senders}
                     for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
                 },
                 "haystack.component.output_spec": {
-                    key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
-                        "receivers": value.receivers,
-                    }
+                    key: {"type": str(value.type), "receivers": value.receivers}
                     for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore
                 },
             },
