@@ -5,11 +5,8 @@ description: "Google GenAI integration for Haystack"
 slug: "/integrations-google-genai"
 ---
 
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder"></a>
 
-## Module haystack\_integrations.components.embedders.google\_genai.document\_embedder
-
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder"></a>
+## haystack_integrations.components.embedders.google_genai.document_embedder
 
 ### GoogleGenAIDocumentEmbedder
 
@@ -18,7 +15,8 @@ Computes document embeddings using Google AI models.
 ### Authentication examples
 
 **1. Gemini Developer API (API Key Authentication)**
-```python
+
+````python
 from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
@@ -28,22 +26,21 @@ document_embedder = GoogleGenAIDocumentEmbedder(model="gemini-embedding-001")
 ```python
 from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
-__Using Application Default Credentials (requires gcloud auth setup)__
-
+# Using Application Default Credentials (requires gcloud auth setup)
 document_embedder = GoogleGenAIDocumentEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
     model="gemini-embedding-001"
 )
-```
+````
 
 **3. Vertex AI (API Key Authentication)**
+
 ```python
 from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
 
-__export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)__
-
+# export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 document_embedder = GoogleGenAIDocumentEmbedder(
     api="vertex",
     model="gemini-embedding-001"
@@ -63,139 +60,123 @@ document_embedder = GoogleGenAIDocumentEmbedder()
 result = document_embedder.run([doc])
 print(result['documents'][0].embedding)
 
-__[0.017020374536514282, -0.023255806416273117, ...]__
-
+# [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder.__init__"></a>
-
-#### GoogleGenAIDocumentEmbedder.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var(
-                 ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False),
-             api: Literal["gemini", "vertex"] = "gemini",
-             vertex_ai_project: str | None = None,
-             vertex_ai_location: str | None = None,
-             model: str = "gemini-embedding-001",
-             prefix: str = "",
-             suffix: str = "",
-             batch_size: int = 32,
-             progress_bar: bool = True,
-             meta_fields_to_embed: list[str] | None = None,
-             embedding_separator: str = "\n",
-             config: dict[str, Any] | None = None) -> None
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var(
+        ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False
+    ),
+    api: Literal["gemini", "vertex"] = "gemini",
+    vertex_ai_project: str | None = None,
+    vertex_ai_location: str | None = None,
+    model: str = "gemini-embedding-001",
+    prefix: str = "",
+    suffix: str = "",
+    batch_size: int = 32,
+    progress_bar: bool = True,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    config: dict[str, Any] | None = None
+) -> None
 ```
 
 Creates an GoogleGenAIDocumentEmbedder component.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
-Not needed if using Vertex AI with Application Default Credentials.
-Go to https://aistudio.google.com/app/apikey for a Gemini API key.
-Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
-- `api`: Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
-- `vertex_ai_project`: Google Cloud project ID for Vertex AI. Required when using Vertex AI with
-Application Default Credentials.
-- `vertex_ai_location`: Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
-Required when using Vertex AI with Application Default Credentials.
-- `model`: The name of the model to use for calculating embeddings.
-The default model is `text-embedding-ada-002`.
-- `prefix`: A string to add at the beginning of each text.
-- `suffix`: A string to add at the end of each text.
-- `batch_size`: Number of documents to embed at once.
-- `progress_bar`: If `True`, shows a progress bar when running.
-- `meta_fields_to_embed`: List of metadata fields to embed along with the document text.
-- `embedding_separator`: Separator used to concatenate the metadata fields to the document text.
-- `config`: A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
-If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
-For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+- **api_key** (<code>Secret</code>) – Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
+  Not needed if using Vertex AI with Application Default Credentials.
+  Go to https://aistudio.google.com/app/apikey for a Gemini API key.
+  Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
+- **api** (<code>Literal['gemini', 'vertex']</code>) – Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
+- **vertex_ai_project** (<code>str | None</code>) – Google Cloud project ID for Vertex AI. Required when using Vertex AI with
+  Application Default Credentials.
+- **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
+  Required when using Vertex AI with Application Default Credentials.
+- **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
+  The default model is `text-embedding-ada-002`.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text.
+- **suffix** (<code>str</code>) – A string to add at the end of each text.
+- **batch_size** (<code>int</code>) – Number of documents to embed at once.
+- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
+- **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
+  If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
+  For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder.to_dict"></a>
-
-#### GoogleGenAIDocumentEmbedder.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder.from_dict"></a>
-
-#### GoogleGenAIDocumentEmbedder.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GoogleGenAIDocumentEmbedder"
+from_dict(data: dict[str, Any]) -> GoogleGenAIDocumentEmbedder
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GoogleGenAIDocumentEmbedder</code> – Deserialized component.
 
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder.run"></a>
-
-#### GoogleGenAIDocumentEmbedder.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-def run(documents: list[Document]
-        ) -> dict[str, list[Document]] | dict[str, Any]
+run(documents: list[Document]) -> dict[str, list[Document]] | dict[str, Any]
 ```
 
 Embeds a list of documents.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to embed.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-<a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder.run_async"></a>
-
-#### GoogleGenAIDocumentEmbedder.run\_async
+#### run_async
 
 ```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-async def run_async(
-        documents: list[Document]
+run_async(
+    documents: list[Document],
 ) -> dict[str, list[Document]] | dict[str, Any]
 ```
 
 Embeds a list of documents asynchronously.
 
-**Arguments**:
+**Parameters:**
 
-- `documents`: A list of documents to embed.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder"></a>
-
-## Module haystack\_integrations.components.embedders.google\_genai.text\_embedder
-
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder"></a>
+## haystack_integrations.components.embedders.google_genai.text_embedder
 
 ### GoogleGenAITextEmbedder
 
@@ -206,7 +187,8 @@ You can use it to embed user query and send it to an embedding Retriever.
 ### Authentication examples
 
 **1. Gemini Developer API (API Key Authentication)**
-```python
+
+````python
 from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
 
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
@@ -216,28 +198,26 @@ text_embedder = GoogleGenAITextEmbedder(model="gemini-embedding-001")
 ```python
 from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
 
-__Using Application Default Credentials (requires gcloud auth setup)__
-
+# Using Application Default Credentials (requires gcloud auth setup)
 text_embedder = GoogleGenAITextEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
     model="gemini-embedding-001"
 )
-```
+````
 
 **3. Vertex AI (API Key Authentication)**
+
 ```python
 from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
 
-__export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)__
-
+# export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 text_embedder = GoogleGenAITextEmbedder(
     api="vertex",
     model="gemini-embedding-001"
 )
 ```
-
 
 ### Usage example
 
@@ -250,113 +230,100 @@ text_embedder = GoogleGenAITextEmbedder()
 
 print(text_embedder.run(text_to_embed))
 
-__{'embedding': [0.017020374536514282, -0.023255806416273117, ...],__
-
-__'meta': {'model': 'gemini-embedding-001-v2',__
-
-__         'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}__
-
+# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+# 'meta': {'model': 'gemini-embedding-001-v2',
+#          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder.__init__"></a>
-
-#### GoogleGenAITextEmbedder.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var(
-                 ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False),
-             api: Literal["gemini", "vertex"] = "gemini",
-             vertex_ai_project: str | None = None,
-             vertex_ai_location: str | None = None,
-             model: str = "gemini-embedding-001",
-             prefix: str = "",
-             suffix: str = "",
-             config: dict[str, Any] | None = None) -> None
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var(
+        ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False
+    ),
+    api: Literal["gemini", "vertex"] = "gemini",
+    vertex_ai_project: str | None = None,
+    vertex_ai_location: str | None = None,
+    model: str = "gemini-embedding-001",
+    prefix: str = "",
+    suffix: str = "",
+    config: dict[str, Any] | None = None
+) -> None
 ```
 
 Creates an GoogleGenAITextEmbedder component.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
-Not needed if using Vertex AI with Application Default Credentials.
-Go to https://aistudio.google.com/app/apikey for a Gemini API key.
-Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
-- `api`: Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
-- `vertex_ai_project`: Google Cloud project ID for Vertex AI. Required when using Vertex AI with
-Application Default Credentials.
-- `vertex_ai_location`: Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
-Required when using Vertex AI with Application Default Credentials.
-- `model`: The name of the model to use for calculating embeddings.
-The default model is `gemini-embedding-001`.
-- `prefix`: A string to add at the beginning of each text to embed.
-- `suffix`: A string to add at the end of each text to embed.
-- `config`: A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
-If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
-For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+- **api_key** (<code>Secret</code>) – Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
+  Not needed if using Vertex AI with Application Default Credentials.
+  Go to https://aistudio.google.com/app/apikey for a Gemini API key.
+  Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
+- **api** (<code>Literal['gemini', 'vertex']</code>) – Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
+- **vertex_ai_project** (<code>str | None</code>) – Google Cloud project ID for Vertex AI. Required when using Vertex AI with
+  Application Default Credentials.
+- **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
+  Required when using Vertex AI with Application Default Credentials.
+- **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
+  The default model is `gemini-embedding-001`.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text to embed.
+- **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
+  If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
+  For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder.to_dict"></a>
-
-#### GoogleGenAITextEmbedder.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder.from_dict"></a>
-
-#### GoogleGenAITextEmbedder.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GoogleGenAITextEmbedder"
+from_dict(data: dict[str, Any]) -> GoogleGenAITextEmbedder
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GoogleGenAITextEmbedder</code> – Deserialized component.
 
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder.run"></a>
-
-#### GoogleGenAITextEmbedder.run
+#### run
 
 ```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-def run(text: str) -> dict[str, list[float]] | dict[str, Any]
+run(text: str) -> dict[str, list[float]] | dict[str, Any]
 ```
 
 Embeds a single string.
 
-**Arguments**:
+**Parameters:**
 
-- `text`: Text to embed.
+- **text** (<code>str</code>) – Text to embed.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[float\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-<a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder.run_async"></a>
-
-#### GoogleGenAITextEmbedder.run\_async
+#### run_async
 
 ```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-async def run_async(text: str) -> dict[str, list[float]] | dict[str, Any]
+run_async(text: str) -> dict[str, list[float]] | dict[str, Any]
 ```
 
 Asynchronously embed a single string.
@@ -364,21 +331,17 @@ Asynchronously embed a single string.
 This is the asynchronous version of the `run` method. It has the same parameters and return values
 but can be used with `await` in async code.
 
-**Arguments**:
+**Parameters:**
 
-- `text`: Text to embed.
+- **text** (<code>str</code>) – Text to embed.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[float\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator"></a>
-
-## Module haystack\_integrations.components.generators.google\_genai.chat.chat\_generator
-
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator"></a>
+## haystack_integrations.components.generators.google_genai.chat.chat_generator
 
 ### GoogleGenAIChatGenerator
 
@@ -388,26 +351,31 @@ Supports models like gemini-2.5-flash and other Gemini variants. For Gemini 2.5 
 enables thinking features via `generation_kwargs={"thinking_budget": value}`.
 
 ### Thinking Support (Gemini 2.5 Series)
+
 - **Reasoning transparency**: Models can show their reasoning process
 - **Thought signatures**: Maintains thought context across multi-turn conversations with tools
 - **Configurable thinking budgets**: Control token allocation for reasoning
 
 Configure thinking behavior:
+
 - `thinking_budget: -1`: Dynamic allocation (default)
 - `thinking_budget: 0`: Disable thinking (Flash/Flash-Lite only)
 - `thinking_budget: N`: Set explicit token budget
 
 ### Multi-Turn Thinking with Thought Signatures
+
 Gemini uses **thought signatures** when tools are present - encrypted "save states" that maintain
 context across turns. Include previous assistant responses in chat history for context preservation.
 
 ### Authentication
+
 **Gemini Developer API**: Set `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable
 **Vertex AI**: Use `api="vertex"` with Application Default Credentials or API key
 
 ### Authentication Examples
 
 **1. Gemini Developer API (API Key Authentication)**
+
 ```python
 from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
 
@@ -416,6 +384,7 @@ chat_generator = GoogleGenAIChatGenerator(model="gemini-2.5-flash")
 ```
 
 **2. Vertex AI (Application Default Credentials)**
+
 ```python
 from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
 
@@ -429,6 +398,7 @@ chat_generator = GoogleGenAIChatGenerator(
 ```
 
 **3. Vertex AI (API Key Authentication)**
+
 ```python
 from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
 
@@ -485,165 +455,158 @@ messages = [ChatMessage.from_user("What's the weather in Paris?")]
 response = chat_generator_with_tools.run(messages=messages)
 ```
 
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator.__init__"></a>
-
-#### GoogleGenAIChatGenerator.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(*,
-             api_key: Secret = Secret.from_env_var(
-                 ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False),
-             api: Literal["gemini", "vertex"] = "gemini",
-             vertex_ai_project: str | None = None,
-             vertex_ai_location: str | None = None,
-             model: str = "gemini-2.5-flash",
-             generation_kwargs: dict[str, Any] | None = None,
-             safety_settings: list[dict[str, Any]] | None = None,
-             streaming_callback: StreamingCallbackT | None = None,
-             tools: ToolsType | None = None)
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var(
+        ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False
+    ),
+    api: Literal["gemini", "vertex"] = "gemini",
+    vertex_ai_project: str | None = None,
+    vertex_ai_location: str | None = None,
+    model: str = "gemini-2.5-flash",
+    generation_kwargs: dict[str, Any] | None = None,
+    safety_settings: list[dict[str, Any]] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    tools: ToolsType | None = None
+)
 ```
 
 Initialize a GoogleGenAIChatGenerator instance.
 
-**Arguments**:
+**Parameters:**
 
-- `api_key`: Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
-Not needed if using Vertex AI with Application Default Credentials.
-Go to https://aistudio.google.com/app/apikey for a Gemini API key.
-Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
-- `api`: Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
-- `vertex_ai_project`: Google Cloud project ID for Vertex AI. Required when using Vertex AI with
-Application Default Credentials.
-- `vertex_ai_location`: Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
-Required when using Vertex AI with Application Default Credentials.
-- `model`: Name of the model to use (e.g., "gemini-2.5-flash")
-- `generation_kwargs`: Configuration for generation (temperature, max_tokens, etc.).
-For Gemini 2.5 series, supports `thinking_budget` to configure thinking behavior:
+- **api_key** (<code>Secret</code>) – Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
+  Not needed if using Vertex AI with Application Default Credentials.
+  Go to https://aistudio.google.com/app/apikey for a Gemini API key.
+  Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
+- **api** (<code>Literal['gemini', 'vertex']</code>) – Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
+- **vertex_ai_project** (<code>str | None</code>) – Google Cloud project ID for Vertex AI. Required when using Vertex AI with
+  Application Default Credentials.
+- **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
+  Required when using Vertex AI with Application Default Credentials.
+- **model** (<code>str</code>) – Name of the model to use (e.g., "gemini-2.5-flash")
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation (temperature, max_tokens, etc.).
+  For Gemini 2.5 series, supports `thinking_budget` to configure thinking behavior:
 - `thinking_budget`: int, controls thinking token allocation
   - `-1`: Dynamic (default for most models)
   - `0`: Disable thinking (Flash/Flash-Lite only)
   - Positive integer: Set explicit budget
-For Gemini 3 series and newer, supports `thinking_level` to configure thinking depth:
+    For Gemini 3 series and newer, supports `thinking_level` to configure thinking depth:
 - `thinking_level`: str, controls thinking (https://ai.google.dev/gemini-api/docs/thinking#levels-budgets)
   - `minimal`: Matches the "no thinking" setting for most queries. The model may think very minimally for
-        complex coding tasks. Minimizes latency for chat or high throughput applications.
+    complex coding tasks. Minimizes latency for chat or high throughput applications.
   - `low`: Minimizes latency and cost. Best for simple instruction following, chat, or high-throughput
-        applications.
+    applications.
   - `medium`: Balanced thinking for most tasks.
   - `high`: (Default, dynamic): Maximizes reasoning depth. The model may take significantly longer to reach
-        a first token, but the output will be more carefully reasoned.
-- `safety_settings`: Safety settings for content filtering
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-Each tool should have a unique name.
+    a first token, but the output will be more carefully reasoned.
+- **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  Each tool should have a unique name.
 
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator.to_dict"></a>
-
-#### GoogleGenAIChatGenerator.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator.from_dict"></a>
-
-#### GoogleGenAIChatGenerator.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "GoogleGenAIChatGenerator"
+from_dict(data: dict[str, Any]) -> GoogleGenAIChatGenerator
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>GoogleGenAIChatGenerator</code> – Deserialized component.
 
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator.run"></a>
-
-#### GoogleGenAIChatGenerator.run
+#### run
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        generation_kwargs: dict[str, Any] | None = None,
-        safety_settings: list[dict[str, Any]] | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
-        tools: ToolsType | None = None) -> dict[str, Any]
+run(
+    messages: list[ChatMessage],
+    generation_kwargs: dict[str, Any] | None = None,
+    safety_settings: list[dict[str, Any]] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    tools: ToolsType | None = None,
+) -> dict[str, Any]
 ```
 
 Run the Google Gen AI chat generator on the given input data.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `generation_kwargs`: Configuration for generation. If provided, it will override
-the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
-- `safety_settings`: Safety settings for content filtering. If provided, it will override the
-default settings.
-- `streaming_callback`: A callback function that is called when a new token is
-received from the stream.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If provided, it will override the tools set during initialization.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
+  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
+  default settings.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
+  received from the stream.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  If provided, it will override the tools set during initialization.
 
-**Raises**:
+**Returns:**
 
-- `RuntimeError`: If there is an error in the Google Gen AI chat generation.
-- `ValueError`: If a ChatMessage does not contain at least one of TextContent, ToolCall, or
-ToolCallResult or if the role in ChatMessage is different from User, System, Assistant.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated ChatMessage responses.
 
-<a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator.run_async"></a>
+**Raises:**
 
-#### GoogleGenAIChatGenerator.run\_async
+- <code>RuntimeError</code> – If there is an error in the Google Gen AI chat generation.
+- <code>ValueError</code> – If a ChatMessage does not contain at least one of TextContent, ToolCall, or
+  ToolCallResult or if the role in ChatMessage is different from User, System, Assistant.
+
+#### run_async
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    generation_kwargs: dict[str, Any] | None = None,
-                    safety_settings: list[dict[str, Any]] | None = None,
-                    streaming_callback: StreamingCallbackT | None = None,
-                    tools: ToolsType | None = None) -> dict[str, Any]
+run_async(
+    messages: list[ChatMessage],
+    generation_kwargs: dict[str, Any] | None = None,
+    safety_settings: list[dict[str, Any]] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    tools: ToolsType | None = None,
+) -> dict[str, Any]
 ```
 
 Async version of the run method. Run the Google Gen AI chat generator on the given input data.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `generation_kwargs`: Configuration for generation. If provided, it will override
-the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
-See https://ai.google.dev/gemini-api/docs/thinking for possible values.
-- `safety_settings`: Safety settings for content filtering. If provided, it will override the
-default settings.
-- `streaming_callback`: A callback function that is called when a new token is
-received from the stream.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If provided, it will override the tools set during initialization.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
+  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+  See https://ai.google.dev/gemini-api/docs/thinking for possible values.
+- **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
+  default settings.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
+  received from the stream.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  If provided, it will override the tools set during initialization.
 
-**Raises**:
+**Returns:**
 
-- `RuntimeError`: If there is an error in the async Google Gen AI chat generation.
-- `ValueError`: If a ChatMessage does not contain at least one of TextContent, ToolCall, or
-ToolCallResult or if the role in ChatMessage is different from User, System, Assistant.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated ChatMessage responses.
 
+**Raises:**
+
+- <code>RuntimeError</code> – If there is an error in the async Google Gen AI chat generation.
+- <code>ValueError</code> – If a ChatMessage does not contain at least one of TextContent, ToolCall, or
+  ToolCallResult or if the role in ChatMessage is different from User, System, Assistant.
