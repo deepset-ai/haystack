@@ -368,7 +368,7 @@ class Agent:
         if user_prompt is None:
             if required_variables is not None:
                 logger.warning(
-                    "The parameter required_variables is provided but user_prompt is not."
+                    "The parameter required_variables is provided but user_prompt is not. "
                     "Either provide a user_prompt or remove required_variables, it has otherwise no effect."
                 )
             return
@@ -526,8 +526,8 @@ class Agent:
         if user_prompt is not None:
             if self._chat_prompt_builder is None:
                 raise ValueError(
-                    "user_prompt is provided but the ChatPromptBuilder is not initialized."
-                    + "Please make sure a user_prompt is provided at initialization time."
+                    "user_prompt is provided but the ChatPromptBuilder is not initialized. "
+                    "Please make sure a user_prompt is provided at initialization time."
                 )
 
             # Only forward the prompt kwargs to the prompt builder
