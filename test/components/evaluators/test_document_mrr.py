@@ -59,6 +59,21 @@ def test_run_with_meta_comparison():
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
+def test_run_with_nested_meta_comparison():
+    evaluator = DocumentMRREvaluator(document_comparison_field="meta.source.url")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="x", meta={"source": {"url": "https://a.com"}})],
+            [Document(content="y", meta={"source": {"url": "https://b.com"}})],
+        ],
+        retrieved_documents=[
+            [Document(content="z", meta={"source": {"url": "https://a.com"}})],
+            [Document(content="w", meta={"source": {"url": "https://c.com"}})],
+        ],
+    )
+    assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
+
+
 def test_run_with_all_matching():
     evaluator = DocumentMRREvaluator()
     result = evaluator.run(
