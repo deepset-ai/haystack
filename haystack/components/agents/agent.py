@@ -7,6 +7,15 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from haystack import Pipeline, component, logging, tracing
+from haystack.components.agents.state.state import (
+    State,
+    _schema_from_dict,
+    _schema_to_dict,
+    _validate_schema,
+    replace_values,
+)
+from haystack.components.agents.state.state_utils import merge_lists
+from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.errors import BreakpointException, PipelineRuntimeError
@@ -47,10 +56,6 @@ from haystack.tools import (
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
-
-from ..builders import ChatPromptBuilder
-from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema, replace_values
-from .state.state_utils import merge_lists
 
 logger = logging.getLogger(__name__)
 
