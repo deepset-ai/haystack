@@ -59,18 +59,11 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
-_RUN_METHOD_PARAMS = [
-    "messages",
-    "streaming_callback",
-    "generation_kwargs",
-    "break_point",
-    "snapshot",
-    "system_prompt",
-    "user_prompt",
-    "tools",
-    "snapshot_callback",
-    "confirmation_strategy_context",
-]
+
+def _get_run_method_params(instance: "Agent") -> set[str]:
+    """Derive the parameter names of the Agent.run method via introspection."""
+    sig = inspect.signature(instance.run)
+    return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
 
 
 @dataclass(kw_only=True)
@@ -327,11 +320,12 @@ class Agent:
         self.streaming_callback = streaming_callback
 
         # Set input and output types for the component based on the State schema
+        self._run_method_params = _get_run_method_params(self)
         output_types = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
             output_types[param] = config["type"]
             # Skip setting input types for parameters that are already in the run method
-            if param in _RUN_METHOD_PARAMS:
+            if param in self._run_method_params:
                 continue
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
@@ -381,7 +375,7 @@ class Agent:
                     f"Variable '{var_name}' from the user prompt is already defined in the state schema. "
                     "Please rename the variable or remove it from the user prompt to avoid conflicts."
                 )
-            if var_name in _RUN_METHOD_PARAMS:
+            if var_name in self._run_method_params:
                 raise ValueError(
                     f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
                     "Please rename the variable or remove it from the user prompt to avoid conflicts."
