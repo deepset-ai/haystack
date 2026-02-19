@@ -138,21 +138,20 @@ def pipeline_with_agent(monkeypatch):
                     )
                 ]
             }
-        else:
-            return {
-                "replies": [
-                    ChatMessage.from_assistant(
-                        "I have successfully extracted and stored information about the following people:\n\n"
-                        "1. **Malte Pietsch** - Chief Executive Officer\n"
-                        "   - CEO and co-founder of Deepset\n"
-                        "   - Extensive experience in machine learning and natural language processing\n\n"
-                        "2. **Milos Rusic** - Chief Technology Officer\n"
-                        "   - CTO and co-founder of Deepset\n"
-                        "   - Specializes in building scalable AI systems and NLP projects\n\n"
-                        "Both individuals have been added to the knowledge base with their respective information."
-                    )
-                ]
-            }
+        return {
+            "replies": [
+                ChatMessage.from_assistant(
+                    "I have successfully extracted and stored information about the following people:\n\n"
+                    "1. **Malte Pietsch** - Chief Executive Officer\n"
+                    "   - CEO and co-founder of Deepset\n"
+                    "   - Extensive experience in machine learning and natural language processing\n\n"
+                    "2. **Milos Rusic** - Chief Technology Officer\n"
+                    "   - CTO and co-founder of Deepset\n"
+                    "   - Specializes in building scalable AI systems and NLP projects\n\n"
+                    "Both individuals have been added to the knowledge base with their respective information."
+                )
+            ]
+        }
 
     generator.run = mock_run
 

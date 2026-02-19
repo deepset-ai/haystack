@@ -330,8 +330,8 @@ class ExtractiveReader:
 
         if not isinstance(answer.document.meta["page_number"], int):
             logger.warning(
-                f"Document's page_number must be int but is {type(answer.document.meta['page_number'])}. "
-                f"No page number will be added to the answer."
+                "Document's page_number must be int but is {type}. No page number will be added to the answer.",
+                type=type(answer.document.meta["page_number"]),
             )
             return answer
 

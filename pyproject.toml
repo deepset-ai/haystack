@@ -290,12 +290,17 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
+
   "D102", # Missing docstring in public method
   "D103", # Missing docstring in public function
   "D205", # 1 blank line required between summary line and description
   "PLC0206", # Extracting value from dictionary without calling `.items()`
   "SIM105", # try-except-pass instead of contextlib-suppress
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+  "B018", # Found useless attribute access
+  "TRY002", # Create your own exception
+  "ARG001", # Unused function argument
+  "E731", # Do not assign a `lambda` expression, use a `def`
 ]
 # in the following files, we still allow old type hints to handle and test them
 # UP006: generics like typing.List, typing.Dict
@@ -350,6 +355,22 @@ select = [
   "D213", # summary lines must be positioned on the second physical line of the docstring
   "D417", # undocumented-parameter
   "D419", # undocumented-returns
+]
+
+extend-select = [
+  "ARG001",
+  "B002", "B006", "B012", "B014", "B018", "B019", "B023", "B026", "B033", "B904",
+  "COM818",
+  "D210",
+  "E401", "E703", "E722", "E731",
+  "G001", "G002", "G004",
+  "ISC001",
+  "N805", "N815", "N999",
+  "RET505", "RET506", "RET507", "RET508",
+  "S102", "S307",
+  "TID252",
+  "TRY002", "TRY203",
+  "UP004", "UP025", "UP028",
 ]
 
 ignore = [

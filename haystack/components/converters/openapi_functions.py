@@ -184,11 +184,11 @@ class OpenAPIServiceToFunctions:
 
         if function_name and description and schema["properties"]:
             return {"name": function_name, "description": description, "parameters": schema}
-        else:
-            logger.warning(
-                "Invalid OpenAPI spec format provided. Could not extract function from {spec}", spec=resolved_spec
-            )
-            return {}
+
+        logger.warning(
+            "Invalid OpenAPI spec format provided. Could not extract function from {spec}", spec=resolved_spec
+        )
+        return {}
 
     def _parse_property_attributes(
         self, property_schema: dict[str, Any], include_attributes: list[str] | None = None
@@ -247,11 +247,11 @@ class OpenAPIServiceToFunctions:
 
         try:
             open_api_spec_content = yaml.safe_load(content)
-        except yaml.YAMLError:
+        except yaml.YAMLError as e:
             error_message = (
                 "Failed to parse the OpenAPI specification. The content does not appear to be valid JSON or YAML.\n\n"
             )
-            raise RuntimeError(error_message, content)
+            raise RuntimeError(error_message, content) from e
 
         # Replace references in the object with their resolved values, if any
         return jsonref.replace_refs(open_api_spec_content)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+from ast import literal_eval
 from typing import Annotated, Any
 
 import pytest
@@ -22,7 +23,7 @@ from haystack.tools import Tool, create_tool_from_function
 def calculate(expression: Annotated[str, "Math expression to evaluate"]) -> dict:
     """Calculate the result of a mathematical expression."""
     try:
-        result = eval(expression, {"__builtins__": {}})
+        result = literal_eval(expression, {"__builtins__": {}})
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}

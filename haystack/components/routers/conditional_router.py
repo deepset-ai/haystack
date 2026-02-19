@@ -382,8 +382,8 @@ class ConditionalRouter:
         for route in routes:
             try:
                 keys = set(route.keys())
-            except AttributeError:
-                raise ValueError(f"Route must be a dictionary, got: {route}")
+            except AttributeError as e:
+                raise ValueError(f"Route must be a dictionary, got: {route}") from e
 
             mandatory_fields = {"condition", "output", "output_type", "output_name"}
             has_all_mandatory_fields = mandatory_fields.issubset(keys)

@@ -14,6 +14,8 @@ with LazyImport(message='Run "pip install arrow>=1.3.0"') as arrow_import:
 
 
 class Jinja2TimeExtension(Extension):
+    """A Jinja2 extension for formatting dates and times."""
+
     # Syntax for current date
     tags = {"now"}
 
@@ -47,7 +49,7 @@ class Jinja2TimeExtension(Extension):
         try:
             dt = arrow.now(timezone)
         except Exception as e:
-            raise ValueError(f"Invalid timezone {timezone}: {e}")
+            raise ValueError(f"Invalid timezone {timezone}: {e}") from e
 
         if offset and operator:
             try:
@@ -60,7 +62,7 @@ class Jinja2TimeExtension(Extension):
                 # Shift the datetime fields based on the parsed offset
                 dt = dt.shift(**replace_params)
             except (ValueError, AttributeError) as e:
-                raise ValueError(f"Invalid offset or operator {offset}, {operator}: {e}")
+                raise ValueError(f"Invalid offset or operator {offset}, {operator}: {e}") from e
 
         # Use the provided format or fallback to the default one
         datetime_format = datetime_format or "%Y-%m-%d %H:%M:%S"

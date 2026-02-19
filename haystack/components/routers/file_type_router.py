@@ -88,8 +88,8 @@ class FileTypeRouter:
         for mime_type in mime_types:
             try:
                 pattern = re.compile(mime_type)
-            except re.error:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.")
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
@@ -162,7 +162,7 @@ class FileTypeRouter:
                 if not source.exists():
                     if self._raise_on_failure:
                         raise FileNotFoundError(f"File not found: {source}")
-                    logger.warning(f"File not found: {source}. Skipping it.", source=source)
+                    logger.warning("File not found: {source}. Skipping it.", source=source)
                     mime_types["failed"].append(source)
                     continue
 

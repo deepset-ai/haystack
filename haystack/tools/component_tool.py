@@ -211,7 +211,11 @@ class ComponentTool(Tool):
                     resolved_param_value = type_adapter.validate_python(param_value)
 
                 converted_kwargs[param_name] = resolved_param_value
-            logger.debug(f"Invoking component {type(component)} with kwargs: {converted_kwargs}")
+            logger.debug(
+                "Invoking component {type(component)} with kwargs: {converted_kwargs}",
+                component_type=type(component),
+                converted_kwargs=converted_kwargs,
+            )
             return component.run(**converted_kwargs)
 
         # Generate a name for the tool if not provided

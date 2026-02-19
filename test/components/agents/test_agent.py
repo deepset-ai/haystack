@@ -75,7 +75,7 @@ def component_tool():
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
     def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
         client = client or MagicMock()
-        super().__init__(client=client, *args, **kwargs)
+        super().__init__(client=client, *args, **kwargs)  # noqa: B026
         self.mock_chunk = mock_chunk
 
     def __stream__(self) -> Iterator[ChatCompletionChunk]:

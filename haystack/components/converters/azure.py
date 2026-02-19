@@ -401,7 +401,8 @@ class AzureOCRDocumentConverter:
             else:
                 logger.info(
                     "Polygon information for lines on page {page_idx} is not available so it is not possible "
-                    "to enforce a single column page layout.".format(page_idx=page_idx)
+                    "to enforce a single column page layout.",
+                    page_idx=page_idx,
                 )
                 for i in range(len(lines)):
                     pairs_by_page[page_idx].append([i, i])

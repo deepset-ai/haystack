@@ -147,19 +147,19 @@ def load_pipeline_snapshot(file_path: str | Path) -> PipelineSnapshot:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             pipeline_snapshot_dict = json.load(f)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_path}")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"File not found: {file_path}") from e
     except json.JSONDecodeError as e:
-        raise json.JSONDecodeError(f"Invalid JSON file {file_path}: {str(e)}", e.doc, e.pos)
+        raise json.JSONDecodeError(f"Invalid JSON file {file_path}: {str(e)}", e.doc, e.pos) from e
     except IOError as e:
-        raise IOError(f"Error reading {file_path}: {str(e)}")
+        raise IOError(f"Error reading {file_path}: {str(e)}") from e
 
     try:
         pipeline_snapshot = PipelineSnapshot.from_dict(pipeline_snapshot_dict)
     except ValueError as e:
-        raise ValueError(f"Invalid pipeline snapshot from {file_path}: {str(e)}")
+        raise ValueError(f"Invalid pipeline snapshot from {file_path}: {str(e)}") from e
 
-    logger.info(f"Successfully loaded the pipeline snapshot from: {file_path}")
+    logger.info("Successfully loaded the pipeline snapshot from: {file_path}", file_path=file_path)
     return pipeline_snapshot
 
 

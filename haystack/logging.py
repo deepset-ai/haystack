@@ -194,7 +194,7 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
         fn: str,
         lno: int,
         msg: str,
-        args: Any,
+        args: Any,  # noqa: ARG001
         exc_info: Any,
         func: Any = None,
         extra: Any = None,
@@ -221,8 +221,7 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
             return
 
         # completely copied from structlog. We only add `haystack.logging` to the list of ignored frames
-        # pylint: disable=unused-variable
-        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, str | None]:
+        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, str | None]:  # noqa: ARG001
             try:
                 sinfo: str | None
                 # we need to exclude `haystack.logging` from the stack

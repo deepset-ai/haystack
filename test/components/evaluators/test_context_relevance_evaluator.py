@@ -145,8 +145,7 @@ class TestContextRelevanceEvaluator:
         def chat_generator_run(self, *args, **kwargs):
             if "Football" in kwargs["messages"][0].text:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["a", "b"], "score": 1}')]}
-            else:
-                return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
@@ -179,8 +178,7 @@ class TestContextRelevanceEvaluator:
         def chat_generator_run(self, *args, **kwargs):
             if "Football" in kwargs["messages"][0].text:
                 return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["a", "b"], "score": 1}')]}
-            else:
-                return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
@@ -215,8 +213,7 @@ class TestContextRelevanceEvaluator:
         def chat_generator_run(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
                 raise Exception("OpenAI API request failed.")
-            else:
-                return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 

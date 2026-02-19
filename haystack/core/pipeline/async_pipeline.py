@@ -272,16 +272,13 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
-                try:
-                    component_pipeline_outputs = await self._run_component_async(
-                        component_name=component_name,
-                        component=comp_dict,
-                        component_inputs=component_inputs,
-                        component_visits=component_visits,
-                        parent_span=parent_span,
-                    )
-                except PipelineRuntimeError as error:
-                    raise error
+                component_pipeline_outputs = await self._run_component_async(
+                    component_name=component_name,
+                    component=comp_dict,
+                    component_inputs=component_inputs,
+                    component_visits=component_visits,
+                    parent_span=parent_span,
+                )
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
@@ -319,17 +316,14 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
                 async def _runner():
-                    try:
-                        async with ready_sem:
-                            component_pipeline_outputs = await self._run_component_async(
-                                component_name=component_name,
-                                component=comp_dict,
-                                component_inputs=component_inputs,
-                                component_visits=component_visits,
-                                parent_span=parent_span,
-                            )
-                    except PipelineRuntimeError as error:
-                        raise error
+                    async with ready_sem:
+                        component_pipeline_outputs = await self._run_component_async(
+                            component_name=component_name,
+                            component=comp_dict,
+                            component_inputs=component_inputs,
+                            component_visits=component_visits,
+                            parent_span=parent_span,
+                        )
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(

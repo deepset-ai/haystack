@@ -89,7 +89,7 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: dis
         return {"serialization_schema": {"type": type_name}, "serialized_data": payload.model_dump()}
 
     # Handle dictionary case - iterate through fields
-    elif isinstance(payload, dict):
+    if isinstance(payload, dict):
         schema: dict[str, Any] = {}
         data: dict[str, Any] = {}
 
@@ -102,7 +102,7 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: dis
         return {"serialization_schema": {"type": "object", "properties": schema}, "serialized_data": data}
 
     # Handle array case - iterate through elements
-    elif isinstance(payload, (list, tuple, set)):
+    if isinstance(payload, (list, tuple, set)):
         # Serialize each item in the array
         serialized_list = []
         for item in payload:
@@ -128,23 +128,23 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: dis
         return {"serialization_schema": base_schema, "serialized_data": serialized_list}
 
     # Handle Haystack style objects (e.g. dataclasses and Components)
-    elif hasattr(payload, "to_dict") and callable(payload.to_dict):
+    if hasattr(payload, "to_dict") and callable(payload.to_dict):
         type_name = generate_qualified_class_name(type(payload))
         schema = {"type": type_name}
         return {"serialization_schema": schema, "serialized_data": payload.to_dict()}
 
     # Handle callable functions serialization
-    elif callable(payload) and not isinstance(payload, type):
+    if callable(payload) and not isinstance(payload, type):
         serialized = serialize_callable(payload)
         return {"serialization_schema": {"type": "typing.Callable"}, "serialized_data": serialized}
 
     # Handle Enums
-    elif isinstance(payload, Enum):
+    if isinstance(payload, Enum):
         type_name = generate_qualified_class_name(type(payload))
         return {"serialization_schema": {"type": type_name}, "serialized_data": payload.name}
 
     # Handle arbitrary objects with __dict__
-    elif hasattr(payload, "__dict__"):
+    if hasattr(payload, "__dict__"):
         type_name = generate_qualified_class_name(type(payload))
         schema = {"type": type_name}
         serialized_data = {}
@@ -154,9 +154,8 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: dis
         return {"serialization_schema": schema, "serialized_data": serialized_data}
 
     # Handle primitives
-    else:
-        schema = {"type": _primitive_schema_type(payload)}
-        return {"serialization_schema": schema, "serialized_data": payload}
+    schema = {"type": _primitive_schema_type(payload)}
+    return {"serialization_schema": schema, "serialized_data": payload}
 
 
 def _primitive_schema_type(value: Any) -> str:

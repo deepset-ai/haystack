@@ -76,9 +76,10 @@ def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     for param in parsed_doc.params:
         if not param.description:
             logger.warning(
-                "Missing description for parameter '%s'. Please add a description in the component's "
-                "run() method docstring using the format ':param %%s: <description>'. "
-                "This description helps the LLM understand how to use this parameter." % param.arg_name
+                "Missing description for parameter '{arg_name}'. Please add a description in the component's "
+                "run() method docstring using the format ':param {arg_name}: <description>'. "
+                "This description helps the LLM understand how to use this parameter.",
+                arg_name=param.arg_name,
             )
         param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
     return parsed_doc.short_description or "", param_descriptions
@@ -128,7 +129,12 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
                     if input_param_mapping := run_param_descriptions.get(socket_name):
                         descriptions.append(f"Provided to the '{comp_name}' component as: '{input_param_mapping}'")
                 except Exception as e:
-                    logger.debug(f"Error extracting description for {super_param_name} from {path}: {str(e)}")
+                    logger.debug(
+                        "Error extracting description for {super_param_name} from {path}: {e}",
+                        super_param_name=super_param_name,
+                        path=path,
+                        e=str(e),
+                    )
 
             # We don't only handle a one to one description mapping of input parameters, but a one to many mapping.
             # i.e. for a combined_input parameter description:

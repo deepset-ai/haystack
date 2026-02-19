@@ -357,8 +357,10 @@ class EmbeddingBasedDocumentSplitter:
                 # Stop splitting if no further split is possible or continue with recursion
                 if len(sub_splits) == 1:
                     logger.warning(
-                        f"Could not split a chunk further below max_length={self.max_length}. "
-                        f"Returning chunk of length {len(split)}."
+                        "Could not split a chunk further below max_length={max_length}. "
+                        "Returning chunk of length {length}.",
+                        max_length=self.max_length,
+                        length=len(split),
                     )
                     final_splits.append(split)
                 else:

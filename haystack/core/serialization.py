@@ -242,7 +242,7 @@ def _is_serialized_component_device(value: Any) -> bool:
     type_value = value.get("type")
     if type_value == "single":
         return "device" in value and isinstance(value["device"], str)
-    elif type_value == "multiple":
+    if type_value == "multiple":
         return "device_map" in value and isinstance(value["device_map"], dict)
     return False
 

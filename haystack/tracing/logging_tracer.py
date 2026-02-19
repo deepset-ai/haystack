@@ -66,7 +66,7 @@ class LoggingTracer(Tracer):
 
         try:
             yield custom_span
-        except Exception as e:
+        except Exception as e:  # noqa: TRY203
             raise e
         # we make sure to log the operation name and tags of the span when the context manager exits
         # both in case of success and error

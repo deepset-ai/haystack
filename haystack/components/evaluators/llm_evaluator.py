@@ -213,7 +213,7 @@ class LLMEvaluator:
                 result = self._chat_generator.run(messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
-                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
+                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
                 logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
                 results.append(None)
                 errors += 1

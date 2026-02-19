@@ -88,18 +88,18 @@ def document_store_class(
     elif documents_count is None:
         documents_count = 0
 
-    def count_documents(self) -> int | None:
+    def count_documents(self) -> int | None:  # noqa: ARG001
         return documents_count
 
-    def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
+    def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:  # noqa: ARG001
         if documents is not None:
             return documents
         return []
 
-    def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:
+    def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> None:  # noqa: ARG001
         return
 
-    def delete_documents(self, document_ids: list[str]) -> None:
+    def delete_documents(self, document_ids: list[str]) -> None:  # noqa: ARG001
         return
 
     def to_dict(self) -> dict[str, Any]:
@@ -211,7 +211,7 @@ def component_class(  # pylint: disable=too-many-positional-arguments
     # Both arguments are necessary to correctly define
     # run but pylint doesn't like that we don't use them.
     # It's fine ignoring the warning here.
-    def run(self, **kwargs):  # pylint: disable=unused-argument
+    def run(self, **kwargs):  # noqa: ARG001
         if output is not None:
             return output
         return dict.fromkeys(output_types.keys())

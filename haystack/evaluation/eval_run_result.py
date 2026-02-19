@@ -108,17 +108,16 @@ class EvaluationRunResult:
         if output_format == "json":
             return data
 
-        elif output_format == "df":
+        if output_format == "df":
             pandas_import.check()
             return DataFrame(data)
 
-        elif output_format == "csv":
+        if output_format == "csv":
             if not csv_file:
                 raise ValueError("A file path must be provided in 'csv_file' parameter to save the CSV output.")
             return EvaluationRunResult._write_to_csv(csv_file, data)
 
-        else:
-            raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
+        raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
 
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: str | None = None

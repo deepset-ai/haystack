@@ -862,7 +862,7 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             An iterator of tuples of component name and component instance.
         """
-        for component_name, instance in self.graph.nodes(data="instance"):
+        for component_name, instance in self.graph.nodes(data="instance"):  # noqa: UP028
             yield component_name, instance
 
     def warm_up(self) -> None:
@@ -1043,7 +1043,7 @@ class PipelineBase:  # noqa: PLW1641
         except Exception as e:
             msg = f"Error unmarshalling pipeline: {e}\n"
             msg += f"Source:\n{rendered}"
-            raise PipelineUnmarshalError(msg)
+            raise PipelineUnmarshalError(msg) from e
 
     def _find_receivers_from(
         self, component_name: str
@@ -1175,17 +1175,16 @@ class PipelineBase:  # noqa: PLW1641
         """
         if not can_component_run(comp, inputs):
             return ComponentPriority.BLOCKED
-        elif is_any_greedy_socket_ready(comp, inputs) and are_all_sockets_ready(comp, inputs):
+        if is_any_greedy_socket_ready(comp, inputs) and are_all_sockets_ready(comp, inputs):
             # This priority is explicitly used in AsyncPipeline + implicitly in _is_queue_stale
             # Implicit b/c it checks via ">" operator if there is a component with HIGHEST priority
             return ComponentPriority.HIGHEST
-        elif all_predecessors_executed(comp, inputs):
+        if all_predecessors_executed(comp, inputs):
             # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
             return ComponentPriority.READY
-        elif are_all_lazy_variadic_sockets_resolved(comp, inputs):
+        if are_all_lazy_variadic_sockets_resolved(comp, inputs):
             return ComponentPriority.DEFER
-        else:
-            return ComponentPriority.DEFER_LAST
+        return ComponentPriority.DEFER_LAST
 
     def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> dict[str, Any]:
         """

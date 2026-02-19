@@ -589,7 +589,8 @@ class ToolInvoker:
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
             logger.debug(
-                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+                "For this invocation, overriding constructor tools with: {tools}",
+                tools=", ".join(tools_with_names.keys()),
             )
 
         if state is None:
@@ -724,7 +725,8 @@ class ToolInvoker:
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
             logger.debug(
-                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+                "For this invocation, overriding constructor tools with: {tools}",
+                tools=", ".join(tools_with_names.keys()),
             )
 
         if state is None:

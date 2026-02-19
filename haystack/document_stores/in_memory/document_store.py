@@ -397,7 +397,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
                 with open(path, "r") as f:
                     data = json.load(f)
             except Exception as e:
-                raise Exception(f"Error loading InMemoryDocumentStore from disk. error: {e}")
+                raise DocumentStoreError(f"Error loading InMemoryDocumentStore from disk. error: {e}") from e
 
             documents = data.pop("documents")
             cls_object = default_from_dict(cls, data)
@@ -406,8 +406,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             )
             return cls_object
 
-        else:
-            raise FileNotFoundError(f"File {path} not found.")
+        raise FileNotFoundError(f"File {path} not found.")
 
     def count_documents(self) -> int:
         """
@@ -647,7 +646,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
                 "To generate embeddings, use a DocumentEmbedder."
             )
             return []
-        elif len(documents_with_embeddings) < len(all_documents):
+        if len(documents_with_embeddings) < len(all_documents):
             logger.info(
                 "Skipping some Documents that don't have an embedding. To generate embeddings, use a DocumentEmbedder."
             )

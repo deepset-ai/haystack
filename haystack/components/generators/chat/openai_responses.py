@@ -808,13 +808,13 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     def convert_part(part) -> dict[str, str | None]:
         if isinstance(part, TextContent):
             return {"type": "input_text", "text": part.text}
-        elif isinstance(part, ImageContent):
+        if isinstance(part, ImageContent):
             return {
                 "type": "input_image",
                 # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
                 "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
             }
-        elif isinstance(part, FileContent):
+        if isinstance(part, FileContent):
             return {
                 "type": "input_file",
                 # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.

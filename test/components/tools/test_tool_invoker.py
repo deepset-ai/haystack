@@ -1063,7 +1063,7 @@ class TestToolInvokerUtilities:
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
 
     def test_merge_tool_outputs_with_output_mapping_and_handler(self):
-        handler = lambda old, new: f"{new}"
+        handler = lambda old, new: f"{new}"  # noqa: E731
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",

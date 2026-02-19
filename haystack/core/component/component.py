@@ -353,10 +353,9 @@ def _component_run_has_kwargs(component_cls: type) -> bool:
     run_method = getattr(component_cls, "run", None)
     if run_method is None:
         return False
-    else:
-        return any(
-            param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
-        )
+    return any(
+        param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
+    )
 
 
 def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: inspect.Signature) -> str:
