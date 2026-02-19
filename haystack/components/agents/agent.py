@@ -511,9 +511,10 @@ class Agent:
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         user_prompt = user_prompt or self.user_prompt
-        if len(messages) == 0 and user_prompt is None:
+        resolved_system_prompt = system_prompt or self.system_prompt
+        if len(messages) == 0 and user_prompt is None and resolved_system_prompt is None:
             raise ValueError(
-                "No messages provided to the Agent and user_prompt is not set. "
+                "No messages provided to the Agent and neither user_prompt nor system_prompt is set. "
                 "Please provide at least one of these inputs."
             )
 

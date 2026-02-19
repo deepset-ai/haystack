@@ -872,8 +872,10 @@ class TestAgent:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[])
-        result = agent.run([])
-        assert result["messages"] == []
+        with pytest.raises(
+            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
+        ):
+            agent.run([])
 
     def test_run_only_system_prompt(self, caplog):
         chat_generator = MockChatGeneratorWithoutRunAsync()
@@ -1368,7 +1370,9 @@ def _make_agent_with_user_prompt(
 class TestAgentInitialization:
     def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
         agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
-        with pytest.raises(ValueError, match="No messages provided to the Agent and user_prompt is not set"):
+        with pytest.raises(
+            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
+        ):
             agent.run()
 
     def test_user_prompt_conflict_with_state_schema_raises(self, weather_tool):
