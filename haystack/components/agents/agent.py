@@ -285,6 +285,7 @@ class Agent:
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
+        :raises ValueError: If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
         """
         # Check if chat_generator supports tools parameter
         chat_generator_run_method = inspect.signature(chat_generator.run)
