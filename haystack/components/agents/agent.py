@@ -185,6 +185,63 @@ class Agent:
     print(result["messages"][-1].text)
     ```
 
+    #### Using a `user_prompt` template with variables
+
+    You can define a reusable `user_prompt` with Jinja2 template variables so the Agent can be invoked
+    with different inputs without manually constructing `ChatMessage` objects each time.
+    This is especially useful when embedding the Agent in a pipeline or calling it in a loop.
+
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.tools import Tool
+
+    def translate(text: str, target_language: str) -> str:
+        '''Translate text to a target language.'''
+        # Placeholder: would call an actual translation API
+        return f"[Translated '{text}' to {target_language}]"
+
+    tools = [
+        Tool(
+            name="translate",
+            description="Translates text to a target language",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "The text to translate"},
+                    "target_language": {"type": "string", "description": "The language to translate to"},
+                },
+                "required": ["text", "target_language"],
+            },
+            function=translate,
+        )
+    ]
+
+    agent = Agent(
+        chat_generator=OpenAIChatGenerator(),
+        tools=tools,
+        system_prompt="You are a helpful translation assistant.",
+        user_prompt="Translate the following document to {{ language }}: {{ document }}",
+        required_variables=["language", "document"],
+    )
+
+    # The template variables 'language' and 'document' become inputs to the run method
+    result = agent.run(
+        language="French",
+        document="The weather is lovely today and the sun is shining.",
+    )
+
+    print(result["messages"][-1].text)
+
+    # Reuse the same agent with different inputs
+    result = agent.run(
+        language="Japanese",
+        document="Please meet me at the train station at 3pm.",
+    )
+
+    print(result["messages"][-1].text)
+    ```
+
     """
 
     def __init__(
