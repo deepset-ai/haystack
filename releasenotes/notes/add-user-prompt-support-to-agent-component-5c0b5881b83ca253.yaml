@@ -1,18 +1,18 @@
 ---
 features:
   - |
-    Added `user_prompt` and `required_variables` parameters to the `Agent` component.
+    Added ``user_prompt`` and ``required_variables`` parameters to the ``Agent`` component.
     You can now define a reusable Jinja2-templated user prompt at initialization or at
     runtime, so the Agent can be invoked with different inputs without manually
-    constructing `ChatMessage` objects each time.
+    constructing ``ChatMessage`` objects each time.
 
     Template variables are automatically registered as component inputs, making the
     Agent compatible with Haystack pipelines where upstream components can feed values
     directly into the prompt.
 
     Example usage:
-
-    ```python
+    ```
+    .. code:: python
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
         tools=tools,
@@ -25,8 +25,8 @@ features:
     ```
 upgrade:
   - |
-    Calling `Agent.run()` (or `run_async()`) with an empty messages list and no
-    `user_prompt` or `system_prompt` configured now raises a `ValueError` instead of
-    silently proceeding. If you previously relied on calling `agent.run([])` with no
-    prompts set, you must now provide at least one of: non-empty `messages`, a
-    `user_prompt`, or a `system_prompt`.
+    Calling ``Agent.run()`` (or ``run_async()``) with an empty messages list and no
+    ``user_prompt`` or ``system_prompt`` configured now raises a ``ValueError`` instead of
+    silently proceeding. If you previously relied on calling ``agent.run([])`` with no
+    prompts set, you must now provide at least one of: non-empty ``messages``, a
+    ``user_prompt``, or a ``system_prompt``.
