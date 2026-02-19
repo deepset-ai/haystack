@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Previously, flexible pipeline connections were not robust when the sender component returned a list containing a
+    union of types. In flexible pipeline connections, if the receiver type is ``str`` or ``ChatMessage``, the first
+    element of the list sent by the sender component is extracted and converted to the receiver type.
+
+    In the previous version, ``list[str | int]`` was considered compatible with ``str``, which should not be the case.
+    In fact, the sender component can legitimately return a list where the first element has type ``int``, which the
+    receiver cannot handle.
+
+    This is now fixed by ensuring that all possible element types of the sender list are compatible with the receiver
+    type before considering the connection valid.
