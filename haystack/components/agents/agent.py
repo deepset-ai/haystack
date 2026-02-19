@@ -320,6 +320,7 @@ class Agent:
         self.tools = tools or []
         self.system_prompt = system_prompt
         self.user_prompt = user_prompt
+        self.required_variables = required_variables
         self.exit_conditions = exit_conditions
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
@@ -414,6 +415,7 @@ class Agent:
             tools=serialize_tools_or_toolset(self.tools),
             system_prompt=self.system_prompt,
             user_prompt=self.user_prompt,
+            required_variables=self.required_variables,
             exit_conditions=self.exit_conditions,
             # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
