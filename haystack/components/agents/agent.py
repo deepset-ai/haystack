@@ -210,6 +210,10 @@ class Agent:
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
         :param system_prompt: System prompt for the agent.
         :param user_prompt: User prompt for the agent. If provided this is appended to the messages provided at runtime.
+        :param required_variables:
+            List variables that must be provided as input to user_prompt.
+            If a variable listed as required is not provided, an exception is raised.
+            If set to `"*"`, all variables found in the prompt are required. Optional.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -273,8 +277,8 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        self._chat_prompt_builder: ChatPromptBuilder | None = (
-            self._initialize_chat_prompt_builder(user_prompt, required_variables) if user_prompt is not None else None
+        self._chat_prompt_builder: ChatPromptBuilder | None = self._initialize_chat_prompt_builder(
+            user_prompt, required_variables
         )
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
@@ -297,11 +301,19 @@ class Agent:
         self._is_warmed_up = False
 
     def _initialize_chat_prompt_builder(
-        self, user_prompt: str, required_variables: list[str] | Literal["*"] | None
+        self, user_prompt: str | None, required_variables: list[str] | Literal["*"] | None
     ) -> ChatPromptBuilder | None:
         """
         Initialize the ChatPromptBuilder if a user prompt is provided.
         """
+        if user_prompt is None:
+            if required_variables is not None:
+                logger.warning(
+                    "The parameter required_variables is provided but user_prompt is not."
+                    "Either provide a user_prompt or remove required_variables, it has otherwise no effect."
+                )
+            return
+
         chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables=required_variables)
         prompt_variables = chat_prompt_builder.variables
         for var_name in prompt_variables:
