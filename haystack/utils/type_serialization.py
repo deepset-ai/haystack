@@ -8,7 +8,7 @@ import inspect
 import sys
 import typing
 from threading import Lock
-from types import ModuleType, NoneType, UnionType
+from types import GenericAlias, ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
 
 from haystack.core.errors import DeserializationError
@@ -71,7 +71,15 @@ def serialize_type(target: Any) -> str:
         module_name = f"{module.__name__}"
 
     if args:
-        args_str = ", ".join([serialize_type(a) for a in args if a is not NoneType])
+        # For typing generics, convert PEP 604 union types (X | Y) to typing.Union when serializing.
+        # This avoids issues with Python's internal cache, where List[Union[str, int]] and List[str | int] are treated
+        # as the same key.
+        def _serialize_arg(a: Any) -> str:
+            if not isinstance(target, GenericAlias) and isinstance(a, UnionType):
+                a = Union[tuple(get_args(a))]  # noqa: UP007
+            return serialize_type(a)
+
+        args_str = ", ".join([_serialize_arg(a) for a in args if a is not NoneType])
         return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
 
     return f"{module_name}.{name}" if module_name else f"{name}"
