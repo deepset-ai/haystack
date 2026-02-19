@@ -216,6 +216,7 @@ def _make_rag_pipeline(
         ),
         tools=[weather_tool],
         system_prompt="You are a knowledgeable assistant.",
+        required_variables=["query", "documents"],
     )
 
     pp = Pipeline()

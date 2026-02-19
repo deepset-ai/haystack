@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from haystack import Pipeline, component, logging, tracing
 from haystack.components.agents.state.state import (
@@ -194,6 +194,7 @@ class Agent:
         tools: ToolsType | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
+        required_variables: list[str] | Literal["*"] | None = None,
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
@@ -273,7 +274,7 @@ class Agent:
         component.set_output_types(self, **output_types)
 
         self._chat_prompt_builder: ChatPromptBuilder | None = (
-            self._initialize_chat_prompt_builder(user_prompt) if user_prompt is not None else None
+            self._initialize_chat_prompt_builder(user_prompt, required_variables) if user_prompt is not None else None
         )
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
@@ -295,11 +296,13 @@ class Agent:
 
         self._is_warmed_up = False
 
-    def _initialize_chat_prompt_builder(self, user_prompt: str) -> ChatPromptBuilder | None:
+    def _initialize_chat_prompt_builder(
+        self, user_prompt: str, required_variables: list[str] | Literal["*"] | None
+    ) -> ChatPromptBuilder | None:
         """
         Initialize the ChatPromptBuilder if a user prompt is provided.
         """
-        chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables="*")
+        chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables=required_variables)
         prompt_variables = chat_prompt_builder.variables
         for var_name in prompt_variables:
             if var_name in self.state_schema:
