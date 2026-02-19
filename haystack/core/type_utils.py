@@ -43,6 +43,8 @@ def _type_name(type_: Any) -> str:
 
     args = get_args(type_)
 
+    # import pdb; pdb.set_trace()
+
     if isinstance(type_, UnionType):
         return " | ".join([_type_name(a) for a in args])
 
