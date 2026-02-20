@@ -294,7 +294,7 @@ select = [
 
   # Misc
   "S102", "S307",  # flake8-bandit
-  "TID252",        # banned-module-level-imports
+  "TID252",        # relative-imports
 ]
 
 ignore = [
@@ -357,34 +357,30 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
-
-  "PLC0206", # Extracting value from dictionary without calling `.items()`
-  "SIM105", # try-except-pass instead of contextlib-suppress
-  "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
-  "B018", # Found useless attribute access
-  "TRY002", # Create your own exception
-  "ARG001", # Unused function argument
-  "E731", # Do not assign a `lambda` expression, use a `def`
-  "E711",
-  "ARG002", # Unused method argument
-  "ARG003", # Unused class argument
+  "B018",    # useless-expression
+  "E711",    # none-comparison
+  "E731",    # lambda-assignment
+  "PLC0206", # dict-index-missing-items
+  "SIM105",  # suppressible-exception
+  "SIM117",  # multiple-with-statements
 ]
 # in the following files, we still allow old type hints to handle and test them
 # UP006: generics like typing.List, typing.Dict
 # UP007: Union[X, Y] syntax
+# UP035: Deprecated import
 # UP045: Optional[X] syntax
 "haystack/components/agents/state/state_utils.py" = ["UP007"]
 "haystack/core/super_component/utils.py" = ["UP007"]
 "haystack/core/type_utils.py" = ["UP007"]
 "haystack/tools/parameters_schema_utils.py" = ["UP007"]
-"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP045", "UP035"]
+"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP035", "UP045"]
 "test/components/converters/test_output_adapter.py" = ["UP006", "UP035"]
 "test/components/joiners/test_list_joiner.py" = ["UP006", "UP035"]
-"test/core/test_type_utils.py" = ["UP006", "UP007", "UP045", "UP035"]
 "test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
 "test/core/super_component/test_utils.py" = ["UP007", "UP045"]
+"test/core/test_type_utils.py" = ["UP006", "UP007", "UP035", "UP045"]
 "test/tools/test_parameters_schema_utils.py" = ["UP007"]
-"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045", "UP035"]
+"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP035", "UP045"]
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]
