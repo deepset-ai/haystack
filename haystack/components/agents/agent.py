@@ -266,10 +266,11 @@ class Agent:
         """
         # Check if chat_generator supports tools parameter
         chat_generator_run_method = inspect.signature(chat_generator.run)
-        if "tools" not in chat_generator_run_method.parameters:
+        self._chat_generator_supports_tools: bool = "tools" in chat_generator_run_method.parameters
+        if tools and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
-                "The Agent component requires a chat generator that supports tools."
+                "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
         valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
@@ -327,7 +328,7 @@ class Agent:
                 **(tool_invoker_kwargs or {}),
             }
             self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
-        else:
+        elif type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
@@ -532,7 +533,9 @@ class Agent:
 
         selected_tools = self._select_tools(tools)
         tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {}
+        if self._chat_generator_supports_tools:
+            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -631,7 +634,9 @@ class Agent:
 
         selected_tools = self._select_tools(tools)
         tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {}
+        if self._chat_generator_supports_tools:
+            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
