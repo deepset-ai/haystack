@@ -149,7 +149,6 @@ dependencies = [
   "coverage",
   "mypy",
   "pip",                     # mypy needs pip to install missing stub packages
-  "pylint",
   "ipython",
   "colorama==0.4.6",         # Pipeline checkpoints test
   "anyio",                   # needed for asynchronous Path testing
@@ -164,7 +163,6 @@ all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/}"
-lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]
 template = "test"
@@ -202,56 +200,6 @@ ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME"
 quiet-level = 3
 skip = "./test,./e2e"
 
-[tool.pylint.'MESSAGES CONTROL']
-max-line-length = 120
-disable = [
-  # To keep
-  "fixme",
-  "c-extension-no-member",
-  # we re-export symbols for correct type checking
-  # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
-  "useless-import-alias",
-
-  # To review:
-  "missing-docstring",
-  "unused-argument",
-  "line-too-long",
-  "protected-access",
-  "too-few-public-methods",
-  "raise-missing-from",
-  "invalid-name",
-  "duplicate-code",
-  "consider-using-f-string",
-  "no-else-return",
-  "attribute-defined-outside-init",
-  "super-with-arguments",
-  "redefined-builtin",
-  "unspecified-encoding",
-  "no-name-in-module",
-  "redefined-outer-name",
-  "arguments-renamed",
-  "unnecessary-pass",
-  "broad-except",
-  "consider-iterating-dictionary",
-  "consider-using-in",
-  "bare-except",
-  "unexpected-keyword-arg",
-  "broad-exception-raised",
-  "cyclic-import",
-  "import-outside-toplevel",
-]
-[tool.pylint.'DESIGN']
-max-args = 20           # Default is 5
-max-attributes = 22     # Default is 7
-max-branches = 22       # Default is 12
-max-locals = 39         # Default is 15
-max-module-lines = 1500 # Default is 1000
-max-nested-blocks = 6   # Default is 5
-max-statements = 102    # Default is 50
-
-[tool.pylint.'SIMILARITIES']
-min-similarity-lines = 6
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--strict-markers"
@@ -288,6 +236,126 @@ exclude = ["proposals"]
 [tool.ruff.format]
 skip-magic-trailing-comma = true
 
+[tool.ruff.lint.mccabe]
+max-complexity = 20
+
+[tool.ruff.lint.pylint]
+allow-magic-value-types = ["float", "int", "str"]
+max-args = 13                                     # Default is 5
+max-branches = 21                                 # Default is 12
+max-public-methods = 20                           # Default is 20
+max-returns = 7                                   # Default is 6
+max-statements = 56                               # Default is 50
+
+[tool.ruff.lint]
+isort.split-on-trailing-comma = false
+exclude = ["e2e/**"]
+select = [
+  # Pyflakes & pycodestyle
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "F",     # pyflakes
+
+  # Imports
+  "I",     # isort
+
+  # Code style
+  "C4",    # flake8-comprehensions
+  "C90",   # mccabe complexity
+  "Q",     # flake8-quotes
+  "SIM",   # flake8-simplify
+  "UP",    # pyupgrade
+
+  # Correctness / safety
+  "ASYNC", # flake8-async
+  "B",     # flake8-bugbear
+  "BLE",   # flake8-blind-except
+  "COM818", # trailing-comma-on-bare-tuple
+  "EXE",   # flake8-executable
+  "INT",   # flake8-gettext
+  "ISC001", # implicit-string-concatenation
+  "PIE",   # flake8-pie
+  "SLOT",  # flake8-slots
+  "T10",   # flake8-debugger
+  "YTT",   # flake8-2020
+
+  # Pylint
+  "PL",    # pylint
+
+  # Performance
+  "PERF",  # perflint
+
+  # Exception handling & control flow
+  "RET",   # flake8-return
+  "TRY",   # tryceratops
+
+  # Logging
+  "G001", "G002", "G004",  # flake8-logging-format
+
+  # Misc
+  "S102", "S307",  # flake8-bandit
+  "TID252",        # banned-module-level-imports
+]
+
+ignore = [
+  # Entire families intentionally disabled
+  "A",       # flake8-builtins (redefined-builtin)
+  "D",       # pydocstyle (docstring checks)
+  "N",       # pep8-naming
+
+  # pycodestyle
+  "E501",    # line-too-long (handled by formatter)
+  "E721",    # type-comparison
+  "E722",    # bare-except
+
+  # flake8-bugbear
+  "B008",    # function-call-as-argument-default
+  "B904",    # raise-without-from-inside-except
+
+  # flake8-blind-except
+  "BLE001",  # blind-except
+
+  # flake8-pie
+  "PIE790",  # unnecessary-pass
+
+  # flake8-return
+  "RET505",  # superfluous-else-return
+
+  # flake8-simplify
+  "SIM108",  # if-else-block-instead-of-ternary
+  "SIM109",  # multiple-comparisons-with-in
+  "SIM118",  # in-dict-keys
+
+  # perflint
+  "PERF203", # try-except-in-loop
+  "PERF401", # manual-list-comprehension
+
+  # pylint
+  # we re-export symbols for correct type checking
+  # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
+  "PLC0414", # useless-import-alias
+  "PLC0415", # import-outside-top-level
+  "PLR1714", # repeated-equality-comparison
+  "PLW0603", # global-statement
+  "PLW1514", # unspecified-encoding
+  "PLW2901", # redefined-loop-name
+
+  # pyupgrade
+  "UP008",   # super-with-arguments
+  "UP032",   # use-f-string
+  "UP037",   # quoted-annotation
+
+  # tryceratops
+  "TRY002",  # raise-vanilla-class
+  "TRY003",  # raise-vanilla-args
+  "TRY201",  # verbose-raise
+  "TRY300",  # try-consider-else
+
+  "RUF",   # ruff-specific rules
+  "TCH",   # flake8-type-checking
+  "PT",    # flake8-pytest-style
+]
+
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
 
@@ -321,125 +389,6 @@ skip-magic-trailing-comma = true
 "test/core/super_component/test_utils.py" = ["UP007", "UP045"]
 "test/tools/test_parameters_schema_utils.py" = ["UP007"]
 "test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045", "UP035"]
-
-
-[tool.ruff.lint]
-isort.split-on-trailing-comma = false
-exclude = ["e2e/**"]
-select = [
-  "ASYNC",
-  "C4",
-  "C90",
-  "E501",
-  "EXE",
-  "F",
-  "INT",
-  "PERF",
-  "PL",
-  "Q",
-  "SIM",
-  "SLOT",
-  "T10",
-  "W",
-  "YTT",
-  "I",
-  # Builtin shadowing
-  "A001",
-  "A002",
-  "A003",
-  # Docstring checks (keep explicit)
-  "D102",
-  "D103",
-  "D205",
-  "D209",
-  "D213",
-  "D417",
-  "D419",
-  # Partial families for parity
-  "ARG",  # instead of ARG001
-  "TRY002", "TRY203",
-  "UP",   # instead of UP004, UP006, UP007, UP025, UP028, UP045
-]
-
-extend-select = [
-  "B002", "B006", "B012", "B014", "B018", "B019", "B023", "B026", "B033", "B904",
-  "COM818",
-  "D210",
-  "E401", "E703", "E722", "E731",
-  "G001", "G002", "G004",
-  "ISC001",
-  "N805", "N815", "N999",
-  "RET505", "RET506", "RET507", "RET508",
-  "S102", "S307",
-  "TID252",
-    "E", "F",    # Flake8 base
-    "PL",        # Pylint equivalents
-    "UP",        # pyupgrade
-    "SIM",       # flake8-simplify
-    "B",         # flake8-bugbear
-    "A",         # flake8-builtins
-    "ARG",       # flake8-unused-arguments
-    "BLE",       # flake8-blind-except
-    "RET",       # flake8-return
-    "TRY",       # tryceratops
-    "PIE",       # flake8-pie
-    "SLF",       # flake8-self
-    "N",         # pep8-naming
-]
-
-ignore = [
-  "PERF203", # `try`-`except` within a loop incurs performance overhead
-  "PERF401", # Use a list comprehension to create a transformed list
-  "PLR1714", # repeated-equality-comparison
-  "PLW0603", # global-statement
-  "PLW2901", # redefined-loop-name
-  "SIM108",  # if-else-block-instead-of-if-exp
-  "SIM118",  # in-dict-keys
-  # we re-export symbols for correct type checking
-  # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
-  "PLC0414", # useless-import-alias,
-  "PLC0415", # import-outside-top-level,
-  "UP037", # Remove quotes from type annotation
-  "FIX",      # fixme
-  "PLC0414",  # useless-import-alias
-  "D",        # missing-docstring (Note: Ruff disables D by default, but ignored here to be safe)
-  "ARG",      # unused-argument
-  "E501",     # line-too-long
-  "SLF001",   # protected-access
-  "B904",     # raise-missing-from
-  "N",        # invalid-name
-  "UP032",    # consider-using-f-string
-  "RET505",   # no-else-return
-  "UP008",    # super-with-arguments
-  "A",        # redefined-builtin
-  "PLW1514",  # unspecified-encoding
-  "PIE790",   # unnecessary-pass
-  "BLE001",   # broad-except
-  "E722",     # bare-except
-  "SIM118",   # consider-iterating-dictionary
-  "PLR1714",  # consider-using-in (also covered by SIM109)
-  "SIM109",   # consider-using-in (flake8-simplify variant)
-  "TRY002",   # broad-exception-raised
-  "PLC0415",  # import-outside-toplevel
-  "TRY003",
-  "TRY201",
-  "TRY300",
-  "E721",
-  "B008",
-
-]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 20
-
-
-[tool.ruff.lint.pylint]
-allow-magic-value-types = ["float", "int", "str"]
-max-args = 13                                     # Default is 5
-max-branches = 21                                 # Default is 12
-max-public-methods = 20                           # Default is 20
-max-returns = 7                                   # Default is 6
-max-statements = 56                               # Default is 50
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]
