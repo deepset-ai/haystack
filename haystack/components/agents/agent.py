@@ -328,7 +328,7 @@ class Agent:
                 **(tool_invoker_kwargs or {}),
             }
             self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
-        else:
+        elif type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
