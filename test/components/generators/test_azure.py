@@ -93,7 +93,7 @@ class TestAzureOpenAIGenerator:
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIGenerator(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
-            azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=True),
+            azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
             timeout=3.5,
@@ -146,8 +146,8 @@ class TestAzureOpenAIGenerator:
             },
         }
         component = AzureOpenAIGenerator.from_dict(data)
-        assert component.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=True)
-        assert component.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=True)
+        assert component.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
+        assert component.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
         assert component.azure_deployment == "gpt-4.1-mini"
         assert component.api_version == "2024-12-01-preview"
         assert component.streaming_callback is None

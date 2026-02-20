@@ -6,8 +6,6 @@ from typing import Any, Protocol
 
 from haystack.dataclasses import ChatMessage
 
-# Ellipsis are needed to define the Protocol but pylint complains. See https://github.com/pylint-dev/pylint/issues/9319.
-
 
 class ChatGenerator(Protocol):
     """

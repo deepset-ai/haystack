@@ -208,7 +208,7 @@ def component_class(
         component.set_output_types(self, **output_types)
 
     # Both arguments are necessary to correctly define
-    # run but pylint doesn't like that we don't use them.
+    # run but ruff doesn't like that we don't use them.
     # It's fine ignoring the warning here.
     def run(self, **kwargs):  # noqa: ARG001
         if output is not None:

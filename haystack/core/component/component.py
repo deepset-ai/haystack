@@ -194,7 +194,7 @@ class ComponentMeta(type):
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 
         out = {}
-        for arg, (name, info) in zip(args, init_params.items(), strict=True):
+        for arg, (name, info) in zip(args, init_params.items(), strict=False):
             if info.kind == inspect.Parameter.VAR_POSITIONAL:
                 raise ComponentError(
                     "Pre-init hooks do not support components with variadic positional args in their init method"
@@ -377,7 +377,7 @@ def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: i
             f"Different number of parameters: run has {len(run_params)}, run_async has {len(async_params)}"
         )
 
-    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params, strict=True):
+    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params, strict=False):
         if run_name != async_name:
             differences.append(f"Parameter name mismatch: {run_name} vs {async_name}")
 

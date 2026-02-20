@@ -329,6 +329,7 @@ class TestSentenceTransformersDocumentEmbedder:
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)] for _ in range(5)]
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -348,6 +349,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_embed_encode_kwargs(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model", encode_kwargs={"task": "retrieval.passage"})
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)] for _ in range(5)]
         documents = [Document(content=f"document number {i}") for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -368,6 +370,7 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator="\n",
         )
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)] for _ in range(5)]
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(

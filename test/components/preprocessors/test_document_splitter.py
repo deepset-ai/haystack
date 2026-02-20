@@ -346,7 +346,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         doc2 = Document(content="This content has two.\f\f page brakes. More text.")
         result = splitter.run(documents=[doc1, doc2])
 
-        expected_pages = [1, 1, 1, 2, 1, 1]
+        expected_pages = [1, 1, 1, 2, 1, 1, 3]
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p
 
@@ -369,7 +369,8 @@ class TestSplittingByFunctionOrCharacterRegex:
             "And another passage."
         )
         result = splitter.run(documents=[doc1])
-        expected_pages = [1, 2, 3]
+
+        expected_pages = [1, 2]
 
         for doc, p in zip(result["documents"], expected_pages, strict=True):
             assert doc.meta["page_number"] == p

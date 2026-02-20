@@ -6,8 +6,6 @@ from typing import Any, Protocol
 
 from haystack import Document
 
-# See https://github.com/pylint-dev/pylint/issues/9319.
-
 
 class TextEmbedder(Protocol):
     """

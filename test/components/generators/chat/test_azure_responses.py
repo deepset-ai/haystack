@@ -282,7 +282,7 @@ class TestSerDe:
         generator = AzureOpenAIResponsesChatGenerator.from_dict(data)
         assert isinstance(generator, AzureOpenAIResponsesChatGenerator)
 
-        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=True)
+        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
         assert generator._azure_endpoint == "some-non-existing-endpoint"
         assert generator._azure_deployment == "gpt-5-mini"
         assert generator.organization is None

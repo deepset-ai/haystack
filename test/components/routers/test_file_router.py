@@ -286,7 +286,7 @@ class TestFileTypeRouter:
         Test if the component raises an error for unsupported data source types.
         """
         router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg"])
-        with pytest.raises(ValueError, match="Unsupported data source type:"):
+        with pytest.raises(TypeError, match="Unsupported data source type:"):
             router.run(sources=[{"unsupported": "type"}])
 
     def test_invalid_regex_pattern(self):

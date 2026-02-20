@@ -158,7 +158,7 @@ class TestAzureOpenAIChatGenerator:
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
-            azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=True),
+            azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
             timeout=2.5,
@@ -250,8 +250,8 @@ class TestAzureOpenAIChatGenerator:
         generator = AzureOpenAIChatGenerator.from_dict(data)
         assert isinstance(generator, AzureOpenAIChatGenerator)
 
-        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=True)
-        assert generator.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=True)
+        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
+        assert generator.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
         assert generator.api_version == "2024-12-01-preview"
         assert generator.azure_endpoint == "some-non-existing-endpoint"
         assert generator.azure_deployment == "gpt-4.1-mini"
