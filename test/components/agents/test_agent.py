@@ -872,10 +872,8 @@ class TestAgent:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[])
-        with pytest.raises(
-            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
-        ):
-            agent.run([])
+        result = agent.run([])
+        assert result["messages"] == []
 
     def test_run_only_system_prompt(self, caplog):
         chat_generator = MockChatGeneratorWithoutRunAsync()

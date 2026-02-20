@@ -482,7 +482,7 @@ class Agent:
 
     def _initialize_fresh_execution(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | None,
         streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
@@ -511,12 +511,14 @@ class Agent:
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         user_prompt = user_prompt or self.user_prompt
-        resolved_system_prompt = system_prompt or self.system_prompt
-        if len(messages) == 0 and user_prompt is None and resolved_system_prompt is None:
+        system_prompt = system_prompt or self.system_prompt
+        if messages is None and user_prompt is None and system_prompt is None:
             raise ValueError(
                 "No messages provided to the Agent and neither user_prompt nor system_prompt is set. "
                 "Please provide at least one of these inputs."
             )
+
+        messages = messages or []
 
         if user_prompt is not None:
             if self._chat_prompt_builder is None:
@@ -751,7 +753,7 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages or [],
+                messages=messages,
                 streaming_callback=streaming_callback,
                 requires_async=False,
                 system_prompt=system_prompt,
@@ -984,7 +986,7 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages or [],
+                messages=messages,
                 streaming_callback=streaming_callback,
                 requires_async=True,
                 system_prompt=system_prompt,
