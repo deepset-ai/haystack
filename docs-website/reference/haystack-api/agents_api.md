@@ -89,6 +89,47 @@ result = agent.run(
 print(result["messages"][-1].text)
 ```
 
+#### Using a `user_prompt` template with variables
+
+You can define a reusable `user_prompt` with Jinja2 template variables so the Agent can be invoked
+with different inputs without manually constructing `ChatMessage` objects each time.
+This is especially useful when embedding the Agent in a pipeline or calling it in a loop.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import tool
+from typing import Annotated
+
+
+@tool
+def translate(
+    text: Annotated[str, "The text to translate"],
+    target_language: Annotated[str, "The language to translate to"],
+) -> str:
+    """Translate text to a target language."""
+    # Placeholder: would call an actual translation API
+    return f"[Translated '{text}' to {target_language}]"
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[translate],
+    system_prompt="You are a helpful translation assistant.",
+    user_prompt="""{% message role="user"%}
+Translate the following document to {{ language }}: {{ document }}
+{% endmessage %}""",
+    required_variables=["language", "document"],
+)
+
+# The template variables 'language' and 'document' become inputs to the run method
+result = agent.run(
+    language="French",
+    document="The weather is lovely today and the sun is shining.",
+)
+
+print(result["last_message"].text)
+```
+
 #### __init__
 
 ```python
@@ -97,6 +138,8 @@ __init__(
     chat_generator: ChatGenerator,
     tools: ToolsType | None = None,
     system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    required_variables: list[str] | Literal["*"] | None = None,
     exit_conditions: list[str] | None = None,
     state_schema: dict[str, Any] | None = None,
     max_agent_steps: int = 100,
@@ -116,6 +159,10 @@ Initialize the agent component.
 - **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that your agent should use. It must support tools.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
 - **system_prompt** (<code>str | None</code>) – System prompt for the agent.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided this is appended to the messages provided at runtime.
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to user_prompt.
+  If a variable listed as required is not provided, an exception is raised.
+  If set to `"*"`, all variables found in the prompt are required. Optional.
 - **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
   Can include "text" if the agent should return when it generates a message without tool calls,
   or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -133,6 +180,7 @@ Initialize the agent component.
 
 - <code>TypeError</code> – If the chat_generator does not support tools parameter in its run method.
 - <code>ValueError</code> – If the exit_conditions are not valid.
+- <code>ValueError</code> – If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
 
 #### warm_up
 
@@ -174,13 +222,14 @@ Deserialize the agent from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     *,
     generation_kwargs: dict[str, Any] | None = None,
     break_point: AgentBreakpoint | None = None,
     snapshot: AgentSnapshot | None = None,
     system_prompt: str | None = None,
+    user_prompt: str | None = None,
     tools: ToolsType | list[str] | None = None,
     snapshot_callback: SnapshotCallback | None = None,
     confirmation_strategy_context: dict[str, Any] | None = None,
@@ -192,7 +241,7 @@ Process messages and execute tools until an exit condition is met.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
   The same callback can be configured to emit tool results when a tool is called.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
@@ -202,6 +251,8 @@ Process messages and execute tools until an exit condition is met.
 - **snapshot** (<code>AgentSnapshot | None</code>) – A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
   the relevant information to restart the Agent execution from where it left off.
 - **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
+  appended to the messages provided at runtime.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
   When passing tool names, tools are selected from the Agent's originally configured tools.
 - **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
@@ -229,13 +280,14 @@ Process messages and execute tools until an exit condition is met.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     *,
     generation_kwargs: dict[str, Any] | None = None,
     break_point: AgentBreakpoint | None = None,
     snapshot: AgentSnapshot | None = None,
     system_prompt: str | None = None,
+    user_prompt: str | None = None,
     tools: ToolsType | list[str] | None = None,
     snapshot_callback: SnapshotCallback | None = None,
     confirmation_strategy_context: dict[str, Any] | None = None,
@@ -251,7 +303,7 @@ if available.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed from the
   LLM. The same callback can be configured to emit tool results when a tool is called.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
@@ -261,6 +313,8 @@ if available.
 - **snapshot** (<code>AgentSnapshot | None</code>) – A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
   the relevant information to restart the Agent execution from where it left off.
 - **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
+  appended to the messages provided at runtime.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
 - **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
   The callback receives a `PipelineSnapshot` object and can return an optional string.

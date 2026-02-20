@@ -283,7 +283,7 @@ run(
     template: list[ChatMessage] | str | None = None,
     template_variables: dict[str, Any] | None = None,
     **kwargs: dict[str, Any] | None
-)
+) -> dict[str, list[ChatMessage]]
 ```
 
 Renders the prompt template with the provided variables.
@@ -302,7 +302,7 @@ To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `prompt`: The updated list of `ChatMessage` objects after rendering the templates.
 
 **Raises:**
