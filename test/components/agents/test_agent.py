@@ -1365,7 +1365,7 @@ def _make_agent_with_user_prompt(
     return Agent(chat_generator=chat_generator or MockChatGenerator(), user_prompt=user_prompt, **agent_kwargs)
 
 
-class TestAgentInitialization:
+class TestUserPromptInitialization:
     def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
         agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
         with pytest.raises(
