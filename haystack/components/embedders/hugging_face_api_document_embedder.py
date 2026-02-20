@@ -329,7 +329,7 @@ class HuggingFaceAPIDocumentEmbedder:
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=False):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}
@@ -357,7 +357,7 @@ class HuggingFaceAPIDocumentEmbedder:
         embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=False):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

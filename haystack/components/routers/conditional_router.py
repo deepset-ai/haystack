@@ -227,7 +227,7 @@ class ConditionalRouter:
                 route["output_type"] if isinstance(route["output_type"], list) else [route["output_type"]]
             )
 
-            output_types.update(dict(zip(output_names, output_types_list)))
+            output_types.update(dict(zip(output_names, output_types_list, strict=False)))
 
         # remove optional variables from mandatory input types
         mandatory_input_types = input_types - set(self.optional_variables)
@@ -344,7 +344,7 @@ class ConditionalRouter:
                 )
 
                 result = {}
-                for output, output_type, output_name in zip(outputs, output_types, output_names):
+                for output, output_type, output_name in zip(outputs, output_types, output_names, strict=False):
                     # Evaluate output template
                     t_output = self._env.from_string(output)
                     output_value = t_output.render(**kwargs)
@@ -359,7 +359,7 @@ class ConditionalRouter:
 
                     # Validate output type if needed
                     if self._validate_output_type and not self._output_matches_type(output_value, output_type):
-                        raise ValueError(f"Route '{output_name}' type doesn't match expected type")
+                        raise ValueError(f"Route '{output_name}' type doesn't match expected type")  # noqa: TRY301
 
                     result[output_name] = output_value
 

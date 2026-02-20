@@ -138,7 +138,7 @@ class AzureOCRDocumentConverter:
         documents = []
         azure_output = []
         meta_list: list[dict[str, Any]] = normalize_metadata(meta=meta, sources_count=len(sources))
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=False):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
@@ -209,8 +209,7 @@ class AzureOCRDocumentConverter:
         else:
             assert isinstance(self.threshold_y, float)
             text = self._convert_to_single_column_text(result=result, meta=meta, threshold_y=self.threshold_y)
-        docs = [*tables, text]
-        return docs
+        return [*tables, text]
 
     def _convert_tables(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> list[Document]:
         """

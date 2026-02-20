@@ -170,7 +170,7 @@ class ComponentTool(Tool):
                 f"Object {component!r} is not a Haystack component. "
                 "Use ComponentTool only with Haystack component instances."
             )
-            raise ValueError(message)
+            raise TypeError(message)
 
         if getattr(component, "__haystack_added_to_pipeline__", None):
             msg = (

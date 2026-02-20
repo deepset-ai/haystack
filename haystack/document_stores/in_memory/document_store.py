@@ -660,7 +660,9 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
 
         # create Documents with the similarity score for the top k results
         top_documents = []
-        for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
+        for doc, score in sorted(zip(documents_with_embeddings, scores, strict=True), key=lambda x: x[1], reverse=True)[
+            :top_k
+        ]:
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
             if resolved_return_embedding is False:

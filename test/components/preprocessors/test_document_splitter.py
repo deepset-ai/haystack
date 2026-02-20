@@ -272,7 +272,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=documents)
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
-        for doc, split_doc in zip(documents, result["documents"]):
+        for doc, split_doc in zip(documents, result["documents"], strict=False):
             assert doc.meta.items() <= split_doc.meta.items()
             assert split_doc.content == "Text."
 
@@ -283,7 +283,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 1, 2, 2, 2, 1, 1, 3]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_no_overlap_period_split(self):
@@ -293,7 +293,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 1, 1, 1]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_no_overlap_passage_split(self):
@@ -305,7 +305,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1])
 
         expected_pages = [1, 2, 2, 2]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_no_overlap_page_split(self):
@@ -316,7 +316,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         )
         result = splitter.run(documents=[doc1])
         expected_pages = [1, 2, 3]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
         splitter = DocumentSplitter(split_by="page", split_length=2)
@@ -327,7 +327,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1])
         expected_pages = [1, 3]
 
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_overlap_word_split(self):
@@ -337,7 +337,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 1, 1, 2, 2, 1, 1, 3]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_overlap_period_split(self):
@@ -347,7 +347,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1, doc2])
 
         expected_pages = [1, 1, 1, 2, 1, 1]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_overlap_passage_split(self):
@@ -359,7 +359,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1])
 
         expected_pages = [1, 2, 2]
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_page_number_to_metadata_with_overlap_page_split(self):
@@ -371,7 +371,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[doc1])
         expected_pages = [1, 2, 3]
 
-        for doc, p in zip(result["documents"], expected_pages):
+        for doc, p in zip(result["documents"], expected_pages, strict=False):
             assert doc.meta["page_number"] == p
 
     def test_add_split_overlap_information(self):
@@ -774,7 +774,7 @@ class TestSplittingNLTKSentenceSplitter:
     def test_respect_sentence_boundary_checks(self):
         # this combination triggers the warning
         splitter = DocumentSplitter(split_by="sentence", split_length=10, respect_sentence_boundary=True)
-        assert splitter.respect_sentence_boundary == False
+        assert splitter.respect_sentence_boundary is False
 
     def test_sentence_serialization(self):
         """Test serialization with NLTK sentence splitting configuration and using non-default values"""
@@ -791,9 +791,9 @@ class TestSplittingNLTKSentenceSplitter:
         assert deserialized.split_by == "sentence"
         assert hasattr(deserialized, "sentence_splitter")
         assert deserialized.language == "de"
-        assert deserialized.use_split_rules == False
-        assert deserialized.extend_abbreviations == False
-        assert deserialized.respect_sentence_boundary == False
+        assert deserialized.use_split_rules is False
+        assert deserialized.extend_abbreviations is False
+        assert deserialized.respect_sentence_boundary is False
 
     def test_nltk_serialization_roundtrip(self):
         """Test complete serialization roundtrip with actual document splitting"""
@@ -814,7 +814,7 @@ class TestSplittingNLTKSentenceSplitter:
         serialized = splitter.to_dict()
         deserialized = DocumentSplitter.from_dict(serialized)
 
-        assert deserialized.respect_sentence_boundary == True
+        assert deserialized.respect_sentence_boundary is True
         assert hasattr(deserialized, "sentence_splitter")
         assert deserialized.language == "de"
 

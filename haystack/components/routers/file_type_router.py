@@ -154,7 +154,7 @@ class FileTypeRouter:
         mime_types: defaultdict[str, list[Path | ByteStream]] = defaultdict(list)
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, meta_dict in zip(sources, meta_list):
+        for source, meta_dict in zip(sources, meta_list, strict=False):
             if isinstance(source, str):
                 source = Path(source)
 
@@ -171,7 +171,7 @@ class FileTypeRouter:
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
-                raise ValueError(f"Unsupported data source type: {type(source).__name__}")
+                raise TypeError(f"Unsupported data source type: {type(source).__name__}")
 
             # If we have metadata, we convert the source to ByteStream and add the metadata
             if meta_dict:

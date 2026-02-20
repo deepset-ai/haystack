@@ -120,8 +120,7 @@ def document_store_class(
     if bases is None:
         bases = (object,)
 
-    cls = type(name, bases, fields)
-    return cls
+    return type(name, bases, fields)
 
 
 def component_class(  # pylint: disable=too-many-positional-arguments

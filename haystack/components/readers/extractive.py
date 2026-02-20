@@ -200,7 +200,7 @@ class ExtractiveReader:
         """
         Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
         """
-        flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
+        flattened_queries = [query for documents_, query in zip(documents, queries, strict=False) for _ in documents_]
         flattened_documents = [document for documents_ in documents for document in documents_]
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
@@ -301,12 +301,14 @@ class ExtractiveReader:
 
         start_candidates_tokens_to_chars = []
         end_candidates_tokens_to_chars = []
-        for i, (s_candidates, e_candidates, encoding) in enumerate(zip(start_candidates, end_candidates, encodings)):
+        for i, (s_candidates, e_candidates, encoding) in enumerate(
+            zip(start_candidates, end_candidates, encodings, strict=False)
+        ):
             # Those with probabilities > 0 are valid
             valid = candidates_values[i] > 0
             s_char_spans = []
             e_char_spans = []
-            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid]):
+            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid], strict=False):
                 # token_to_chars returns `None` for special tokens
                 # But we shouldn't have special tokens in the answers at this point
                 # The whole span is given by the start of the start_token (index 0)
@@ -368,9 +370,9 @@ class ExtractiveReader:
         """
         answers_without_query = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
-            document_ids, start, end, probabilities
+            document_ids, start, end, probabilities, strict=False
         ):
-            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
+            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_, strict=False):
                 doc = flattened_documents[document_id]
                 answers_without_query.append(
                     ExtractedAnswer(

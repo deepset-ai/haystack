@@ -203,7 +203,7 @@ class NamedEntityExtractor:
             )
 
         new_documents = []
-        for doc, doc_annotations in zip(documents, annotations):
+        for doc, doc_annotations in zip(documents, annotations, strict=False):
             new_meta = {**doc.meta, self._METADATA_KEY: doc_annotations}
             new_documents.append(replace(doc, meta=new_meta))
 

@@ -99,6 +99,6 @@ def test_sparse_embedding_function(mock_sparse_encoder):
     ]
 
     assert len(sparse_embeddings) == len(expected_embeddings)
-    for got, exp in zip(sparse_embeddings, expected_embeddings):
+    for got, exp in zip(sparse_embeddings, expected_embeddings, strict=False):
         assert got.indices == exp.indices
         assert got.values == pytest.approx(exp.values)

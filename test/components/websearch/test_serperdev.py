@@ -380,12 +380,12 @@ class TestSerperDevSearchAPI:
         )
 
         # Should allow main domains and subdomains
-        assert ws_include._is_domain_allowed("https://example.com/page") == True
-        assert ws_include._is_domain_allowed("https://blog.example.com/post") == True
-        assert ws_include._is_domain_allowed("https://shop.example.com/product") == True
-        assert ws_include._is_domain_allowed("https://test.org/page") == True
-        assert ws_include._is_domain_allowed("https://sub.test.org/page") == True
-        assert ws_include._is_domain_allowed("https://other.com/page") == False
+        assert ws_include._is_domain_allowed("https://example.com/page") is True
+        assert ws_include._is_domain_allowed("https://blog.example.com/post") is True
+        assert ws_include._is_domain_allowed("https://shop.example.com/product") is True
+        assert ws_include._is_domain_allowed("https://test.org/page") is True
+        assert ws_include._is_domain_allowed("https://sub.test.org/page") is True
+        assert ws_include._is_domain_allowed("https://other.com/page") is False
 
         # Test with exclude_subdomains=True
         ws_exclude = SerperDevWebSearch(
@@ -395,13 +395,13 @@ class TestSerperDevSearchAPI:
         )
 
         # Should only allow exact domain matches
-        assert ws_exclude._is_domain_allowed("https://example.com/page") == True
-        assert ws_exclude._is_domain_allowed("https://blog.example.com/post") == False
-        assert ws_exclude._is_domain_allowed("https://shop.example.com/product") == False
-        assert ws_exclude._is_domain_allowed("https://test.org/page") == True
-        assert ws_exclude._is_domain_allowed("https://sub.test.org/page") == False
-        assert ws_exclude._is_domain_allowed("https://other.com/page") == False
+        assert ws_exclude._is_domain_allowed("https://example.com/page") is True
+        assert ws_exclude._is_domain_allowed("https://blog.example.com/post") is False
+        assert ws_exclude._is_domain_allowed("https://shop.example.com/product") is False
+        assert ws_exclude._is_domain_allowed("https://test.org/page") is True
+        assert ws_exclude._is_domain_allowed("https://sub.test.org/page") is False
+        assert ws_exclude._is_domain_allowed("https://other.com/page") is False
 
         # Test with no allowed_domains (should allow all)
         ws_no_filter = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), allowed_domains=None)
-        assert ws_no_filter._is_domain_allowed("https://any.domain.com/page") == True
+        assert ws_no_filter._is_domain_allowed("https://any.domain.com/page") is True

@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     if target_version in versions:
         sys.exit(f"{target_version} already exists (already released). Aborting.")
-    if not target_unstable in versions:
+    if target_unstable not in versions:
         sys.exit(f"Can't find version {target_unstable} to promote to {target_version}")
 
     print(f"Promoting unstable version {target_unstable} to stable version {target_version}")

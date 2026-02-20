@@ -236,7 +236,7 @@ class DeviceMap:
                 device_id = device.index
                 mapping[key] = Device(DeviceType.from_str(device_type), device_id)
             else:
-                raise ValueError(
+                raise TypeError(
                     f"Couldn't convert HuggingFace device map - unexpected device '{str(device)}' for '{key}'"
                 )
         return DeviceMap(mapping)
@@ -463,7 +463,7 @@ class ComponentDevice:
         if self._multiple_devices is not None:
             return {"type": "multiple", "device_map": self._multiple_devices.to_dict()}
         # Unreachable
-        assert False
+        raise AssertionError()
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> "ComponentDevice":  # noqa:A002

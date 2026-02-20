@@ -194,7 +194,7 @@ class ComponentMeta(type):
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 
         out = {}
-        for arg, (name, info) in zip(args, init_params.items()):
+        for arg, (name, info) in zip(args, init_params.items(), strict=False):
             if info.kind == inspect.Parameter.VAR_POSITIONAL:
                 raise ComponentError(
                     "Pre-init hooks do not support components with variadic positional args in their init method"
@@ -272,7 +272,7 @@ class ComponentMeta(type):
         if not hasattr(instance, "__haystack_input__"):
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
 
-        inner(getattr(component_cls, "run"), instance.__haystack_input__)
+        inner(getattr(component_cls, "run"), instance.__haystack_input__)  # noqa: B009
 
         # Ensure that the sockets are the same for the async method, if it exists.
         async_run = getattr(component_cls, "run_async", None)
@@ -282,7 +282,7 @@ class ComponentMeta(type):
 
             # Can't use the sockets from above as they might contain
             # values set with set_input_types().
-            run_sig = inner(getattr(component_cls, "run"), run_sockets)
+            run_sig = inner(getattr(component_cls, "run"), run_sockets)  # noqa: B009
             async_run_sig = inner(async_run, async_run_sockets)
 
             if async_run_sockets != run_sockets or run_sig != async_run_sig:
@@ -377,7 +377,7 @@ def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: i
             f"Different number of parameters: run has {len(run_params)}, run_async has {len(async_params)}"
         )
 
-    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params):
+    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params, strict=False):
         if run_name != async_name:
             differences.append(f"Parameter name mismatch: {run_name} vs {async_name}")
 
@@ -560,7 +560,7 @@ class _Component:
             if method_name not in ("run", "run_async"):
                 raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
 
-            setattr(
+            setattr(  # noqa: B010
                 run_method,
                 "_output_types_cache",
                 {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()},

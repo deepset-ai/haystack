@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
-from ast import literal_eval
 from typing import Annotated, Any
 
 import pytest
@@ -23,7 +22,7 @@ from haystack.tools import Tool, create_tool_from_function
 def calculate(expression: Annotated[str, "Math expression to evaluate"]) -> dict:
     """Calculate the result of a mathematical expression."""
     try:
-        result = literal_eval(expression, {"__builtins__": {}})
+        result = eval(expression, {"__builtins__": {}})  # noqa: S307
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}
@@ -65,15 +64,13 @@ def build_agent(chat_generator):
         function=calculate, name="calculator", outputs_to_state={"calc_result": {"source": "result"}}
     )
 
-    agent = Agent(
+    return Agent(
         chat_generator=chat_generator,
         tools=[calculator_tool, factorial_tool],
         exit_conditions=["calculator"],
         streaming_callback=print_streaming_chunk,
         state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
     )
-
-    return agent
 
 
 @component

@@ -201,10 +201,9 @@ class LinkContentFetcher:
         client defaults -> component defaults -> user-provided -> rotating UA
         """
         base = dict(self._client.headers)
-        headers = _merge_headers(
+        return _merge_headers(
             base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
         )
-        return headers
 
     def __del__(self):
         """

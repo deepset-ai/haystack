@@ -198,7 +198,7 @@ class TestFileTypeRouter:
         mime_types = [r"text/plain", r"text/plain", r"audio/x-wav", r"image/jpeg"]
         # Convert file paths to ByteStream objects and set metadata
         byte_streams = []
-        for path, mime_type in zip(file_paths, mime_types):
+        for path, mime_type in zip(file_paths, mime_types, strict=False):
             stream = ByteStream(path.read_bytes())
             stream.mime_type = mime_type
             byte_streams.append(stream)
@@ -229,7 +229,7 @@ class TestFileTypeRouter:
         ]
         mime_types = [r"text/plain", r"audio/x-wav", r"text/plain", r"image/jpeg", r"text/markdown"]
         byte_stream_sources = []
-        for path, mime_type in zip(file_paths, mime_types):
+        for path, mime_type in zip(file_paths, mime_types, strict=False):
             stream = ByteStream(path.read_bytes())
             stream.mime_type = mime_type
             byte_stream_sources.append(stream)

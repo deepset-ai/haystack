@@ -67,7 +67,7 @@ class InMemoryBM25Retriever:
             If the specified `top_k` is not > 0.
         """
         if not isinstance(document_store, InMemoryDocumentStore):
-            raise ValueError("document_store must be an instance of InMemoryDocumentStore")
+            raise TypeError("document_store must be an instance of InMemoryDocumentStore")
 
         self.document_store = document_store
 

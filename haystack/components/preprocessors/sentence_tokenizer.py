@@ -156,8 +156,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         if self.use_split_rules:
             sentence_spans = SentenceSplitter._apply_split_rules(text, sentence_spans)
 
-        sentences = [{"sentence": text[start:end], "start": start, "end": end} for start, end in sentence_spans]
-        return sentences
+        return [{"sentence": text[start:end], "start": start, "end": end} for start, end in sentence_spans]
 
     @staticmethod
     def _apply_split_rules(text: str, sentence_spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -235,5 +234,4 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             logger.warning("No abbreviations file found for {language}. Using default abbreviations.", language=lang)
             return []
 
-        abbreviations = abbreviations_file.read_text().split("\n")
-        return abbreviations
+        return abbreviations_file.read_text().split("\n")

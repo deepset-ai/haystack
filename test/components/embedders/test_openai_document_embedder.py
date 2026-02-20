@@ -280,7 +280,7 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc, new_doc in zip(docs, documents_with_embeddings):
+        for doc, new_doc in zip(docs, documents_with_embeddings, strict=False):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -312,7 +312,7 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc, new_doc in zip(docs, documents_with_embeddings):
+        for doc, new_doc in zip(docs, documents_with_embeddings, strict=False):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

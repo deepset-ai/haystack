@@ -91,7 +91,7 @@ def run_async_pipeline(
         except Exception as e:
             return e
 
-    return list(zip(results, pipeline_run_data))
+    return list(zip(results, pipeline_run_data, strict=False))
 
 
 def run_sync_pipeline(

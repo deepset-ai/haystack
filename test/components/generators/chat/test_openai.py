@@ -1744,7 +1744,7 @@ def streaming_chunks():
 class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(self, chat_completion_chunks, streaming_chunks):
         previous_chunks = []
-        for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks):
+        for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=False):
             stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
             )

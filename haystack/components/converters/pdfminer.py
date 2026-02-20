@@ -127,9 +127,7 @@ class PDFMinerToDocument:
             pages.append(text)
 
         # Add a page delimiter
-        delimited_pages = "\f".join(pages)
-
-        return delimited_pages
+        return "\f".join(pages)
 
     def detect_undecoded_cid_characters(self, text: str) -> dict[str, Any]:
         """
@@ -180,7 +178,7 @@ class PDFMinerToDocument:
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=False):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

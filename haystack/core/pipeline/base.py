@@ -216,7 +216,7 @@ class PipelineBase:  # noqa: PLW1641
                         type_serialization.thread_safe_import(module)
                         # ...then try again
                         if component_data["type"] not in component.registry:
-                            raise PipelineError(
+                            raise PipelineError(  # noqa: TRY301
                                 f"Successfully imported module '{module}' but couldn't find "
                                 f"'{component_data['type']}' in the component registry.\n"
                                 f"The component might be registered under a different path. "
@@ -374,8 +374,8 @@ class PipelineBase:  # noqa: PLW1641
             )
             raise PipelineError(msg)
 
-        setattr(instance, "__haystack_added_to_pipeline__", self)
-        setattr(instance, "__component_name__", name)
+        setattr(instance, "__haystack_added_to_pipeline__", self)  # noqa: B010
+        setattr(instance, "__component_name__", name)  # noqa: B010
 
         # Add component to the graph, disconnected
         logger.debug("Adding component '{component_name}' ({component})", component_name=name, component=instance)
@@ -426,7 +426,7 @@ class PipelineBase:  # noqa: PLW1641
             socket.receivers = []
 
         # Reset the Component's pipeline reference
-        setattr(instance, "__haystack_added_to_pipeline__", None)
+        setattr(instance, "__haystack_added_to_pipeline__", None)  # noqa: B010
 
         return instance
 
@@ -717,12 +717,11 @@ class PipelineBase:  # noqa: PLW1641
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             output sockets of that component.
         """
-        outputs = {
+        return {
             comp: {socket.name: {"type": socket.type} for socket in data}
             for comp, data in find_pipeline_outputs(self.graph, include_components_with_connected_outputs).items()
             if data
         }
-        return outputs
 
     def show(
         self,
@@ -1138,7 +1137,7 @@ class PipelineBase:  # noqa: PLW1641
         # We prune all inputs except for those that were provided from outside the pipeline (e.g. user inputs).
         pruned_inputs = {
             socket_name: [
-                sock for sock in socket if sock["sender"] is None and not socket_name in greedy_inputs_to_remove
+                sock for sock in socket if sock["sender"] is None and socket_name not in greedy_inputs_to_remove
             ]
             for socket_name, socket in component_inputs.items()
         }
@@ -1199,8 +1198,7 @@ class PipelineBase:  # noqa: PLW1641
         :returns: Dict including component instance, input/output-sockets and visits.
         """
         comp_dict = self.graph.nodes[component_name]
-        comp_dict = {**comp_dict, "visits": visits}
-        return comp_dict
+        return {**comp_dict, "visits": visits}
 
     def _get_next_runnable_component(
         self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int]
@@ -1392,9 +1390,7 @@ class PipelineBase:  # noqa: PLW1641
         # We prune outputs that were consumed by any receiving sockets.
         # All remaining outputs will be added to the final outputs of the pipeline.
         consumed_outputs = {sender_socket.name for _, sender_socket, __, ___ in receivers}
-        pruned_outputs = {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
-
-        return pruned_outputs
+        return {key: value for key, value in component_outputs.items() if key not in consumed_outputs}
 
     @staticmethod
     def _is_queue_stale(priority_queue: FIFOPriorityQueue) -> bool:

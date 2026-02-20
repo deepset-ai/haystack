@@ -301,6 +301,7 @@ skip-magic-trailing-comma = true
   "TRY002", # Create your own exception
   "ARG001", # Unused function argument
   "E731", # Do not assign a `lambda` expression, use a `def`
+  "E711",
   "ARG002", # Unused method argument
   "ARG003", # Unused class argument
 ]
@@ -371,6 +372,19 @@ extend-select = [
   "RET505", "RET506", "RET507", "RET508",
   "S102", "S307",
   "TID252",
+    "E", "F",    # Flake8 base
+    "PL",        # Pylint equivalents
+    "UP",        # pyupgrade
+    "SIM",       # flake8-simplify
+    "B",         # flake8-bugbear
+    "A",         # flake8-builtins
+    "ARG",       # flake8-unused-arguments
+    "BLE",       # flake8-blind-except
+    "RET",       # flake8-return
+    "TRY",       # tryceratops
+    "PIE",       # flake8-pie
+    "SLF",       # flake8-self
+    "N",         # pep8-naming
 ]
 
 ignore = [
@@ -386,6 +400,33 @@ ignore = [
   "PLC0414", # useless-import-alias,
   "PLC0415", # import-outside-top-level,
   "UP037", # Remove quotes from type annotation
+  "FIX",      # fixme
+  "PLC0414",  # useless-import-alias
+  "D",        # missing-docstring (Note: Ruff disables D by default, but ignored here to be safe)
+  "ARG",      # unused-argument
+  "E501",     # line-too-long
+  "SLF001",   # protected-access
+  "B904",     # raise-missing-from
+  "N",        # invalid-name
+  "UP032",    # consider-using-f-string
+  "RET505",   # no-else-return
+  "UP008",    # super-with-arguments
+  "A",        # redefined-builtin
+  "PLW1514",  # unspecified-encoding
+  "PIE790",   # unnecessary-pass
+  "BLE001",   # broad-except
+  "E722",     # bare-except
+  "SIM118",   # consider-iterating-dictionary
+  "PLR1714",  # consider-using-in (also covered by SIM109)
+  "SIM109",   # consider-using-in (flake8-simplify variant)
+  "TRY002",   # broad-exception-raised
+  "PLC0415",  # import-outside-toplevel
+  "TRY003",
+  "TRY201",
+  "TRY300",
+  "E721",
+  "B008",
+
 ]
 
 [tool.ruff.lint.mccabe]

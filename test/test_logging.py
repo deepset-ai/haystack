@@ -581,7 +581,7 @@ class TestCompositeLogger:
     def test_that_haystack_logger_is_used(self) -> None:
         """Forces the usage of the Haystack logger instead of the standard library logger."""
         allowed_list = [Path("haystack") / "logging.py"]
-        for root, dirs, files in os.walk("haystack"):
+        for root, _, files in os.walk("haystack"):
             for file in files:
                 path = Path(root) / file
 

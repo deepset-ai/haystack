@@ -43,7 +43,7 @@ def mock_tokenizer():
 
         tokens = Mock()
 
-        num_splits = [ceil(len(text + pair) / max_length) for text, pair in zip(texts, text_pairs)]
+        num_splits = [ceil(len(text + pair) / max_length) for text, pair in zip(texts, text_pairs, strict=False)]
         tokens.overflow_to_sample_mapping = [i for i, num in enumerate(num_splits) for _ in range(num)]
         num_samples = sum(num_splits)
         tokens.encodings = [Mock() for _ in range(num_samples)]
@@ -293,7 +293,7 @@ def test_output(mock_reader: ExtractiveReader):
     answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)["answers"]
     doc_ids = set()
     no_answer_prob = 1
-    for doc, answer in zip(example_documents[0], answers[:3]):
+    for doc, answer in zip(example_documents[0], answers[:3], strict=False):
         assert answer.document_offset is not None
         assert answer.document_offset.start == 11
         assert answer.document_offset.end == 16
@@ -412,11 +412,15 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         overlap_threshold=None,
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
-    for query, answers, expected_no_answer, probabilities in zip(
-        example_queries, nested_answers, expected_no_answers, [probabilities[:3, -1], probabilities[3:, -1]]
+    for query, answers, expected_no_answer, _ in zip(
+        example_queries,
+        nested_answers,
+        expected_no_answers,
+        [probabilities[:3, -1], probabilities[3:, -1]],
+        strict=False,
     ):
         assert len(answers) == 4
-        for doc, answer, score in zip(example_documents[0], reversed(answers[:3]), probabilities):
+        for doc, answer, score in zip(example_documents[0], reversed(answers[:3]), probabilities, strict=False):
             assert answer.query == query
             assert answer.document == doc
             assert answer.score == pytest.approx(score)
@@ -839,7 +843,7 @@ def test_matches_hf_pipeline(del_hf_env_vars):
         top_k=20,
     )  # We need to disable HF postprocessing features to make the results comparable. This is related to https://github.com/huggingface/transformers/issues/26286
     assert len(answers) == len(answers_hf) == 20
-    for answer, answer_hf in zip(answers, answers_hf):
+    for answer, answer_hf in zip(answers, answers_hf, strict=False):
         assert answer.document_offset.start == answer_hf["start"]
         assert answer.document_offset.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]

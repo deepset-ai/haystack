@@ -348,7 +348,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             super().__init__()
             # check if tokenizer is a valid tokenizer
             if not isinstance(tokenizer, (PreTrainedTokenizer, PreTrainedTokenizerFast)):
-                raise ValueError(
+                raise TypeError(
                     f"Invalid tokenizer provided for StopWordsCriteria - {tokenizer}. "
                     f"Please provide a valid tokenizer from the HuggingFace Transformers library."
                 )
@@ -378,8 +378,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
             len_stop_id = stop_id.size(0)
-            result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
-            return result
+            return all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
 
     class HFTokenStreamingHandler(TextStreamer):
         """

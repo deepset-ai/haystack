@@ -233,11 +233,11 @@ class TransformersZeroShotDocumentClassifier:
         )
 
         new_documents = []
-        for prediction, document in zip(predictions, documents):
+        for prediction, document in zip(predictions, documents, strict=False):
             formatted_prediction = {
                 "label": prediction["labels"][0],
                 "score": prediction["scores"][0],
-                "details": dict(zip(prediction["labels"], prediction["scores"])),
+                "details": dict(zip(prediction["labels"], prediction["scores"], strict=False)),
             }
             new_meta = {**document.meta, "classification": formatted_prediction}
             new_documents.append(replace(document, meta=new_meta))

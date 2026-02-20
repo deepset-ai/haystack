@@ -224,7 +224,7 @@ class PipelineSnapshot:
         :return: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input data,
                  ordered component names, include_outputs_from, and pipeline outputs.
         """
-        data = {
+        return {
             "pipeline_state": self.pipeline_state.to_dict(),
             "break_point": self.break_point.to_dict(),
             "agent_snapshot": self.agent_snapshot.to_dict() if self.agent_snapshot else None,
@@ -233,7 +233,6 @@ class PipelineSnapshot:
             "ordered_component_names": self.ordered_component_names,
             "include_outputs_from": list(self.include_outputs_from),
         }
-        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "PipelineSnapshot":

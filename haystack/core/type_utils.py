@@ -138,7 +138,7 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint:
         receiver_args = (Any,) * (len(sender_args) if sender_args else 1)
 
     return not (len(sender_args) > len(receiver_args)) and all(
-        _strict_types_are_compatible(*args) for args in zip(sender_args, receiver_args)
+        _strict_types_are_compatible(*args) for args in zip(sender_args, receiver_args, strict=True)
     )
 
 

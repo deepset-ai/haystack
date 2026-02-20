@@ -651,7 +651,7 @@ class HuggingFaceLocalChatGenerator:
             for stop_word in stop_words:
                 replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
-        chat_messages = [
+        return [
             self.create_message(
                 text=reply,
                 index=r_index,
@@ -662,4 +662,3 @@ class HuggingFaceLocalChatGenerator:
             )
             for r_index, reply in enumerate(replies)
         ]
-        return chat_messages

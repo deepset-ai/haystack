@@ -256,7 +256,7 @@ class LLMDocumentContentExtractor:
         except Exception as e:
             if self.raise_on_failure:
                 raise e
-            logger.error(
+            logger.exception(
                 "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
@@ -314,7 +314,7 @@ class LLMDocumentContentExtractor:
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results):
+        for document, result in zip(documents, results, strict=False):
             doc, success = self._process_llm_results(document, result)
             if success:
                 successful_documents.append(doc)

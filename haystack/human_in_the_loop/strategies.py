@@ -604,5 +604,4 @@ def _update_chat_history(
 
     insertion_point = max(last_user_idx, last_tool_idx)
 
-    new_chat_history = chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
-    return new_chat_history
+    return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages

@@ -168,8 +168,7 @@ class PyPDFToDocument:
                 layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             )
             texts.append(extracted_text)
-        text = "\f".join(texts)
-        return text
+        return "\f".join(texts)
 
     @component.output_types(documents=list[Document])
     def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
@@ -192,7 +191,7 @@ class PyPDFToDocument:
         documents = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=False):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

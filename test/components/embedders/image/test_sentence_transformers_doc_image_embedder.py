@@ -209,7 +209,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=False):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -332,7 +332,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         result = embedder.run(documents=documents)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=False):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

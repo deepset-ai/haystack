@@ -209,9 +209,7 @@ class EmbeddingBasedDocumentSplitter:
         sentence_groups = self._group_sentences(sentences=sentences)
         embeddings = self._calculate_embeddings(sentence_groups=sentence_groups)
         split_points = self._find_split_points(embeddings=embeddings)
-        sub_splits = self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
-
-        return sub_splits
+        return self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
 
     def _group_sentences(self, sentences: list[str]) -> list[str]:
         """
@@ -235,8 +233,7 @@ class EmbeddingBasedDocumentSplitter:
         group_docs = [Document(content=group) for group in sentence_groups]
         result = self.document_embedder.run(group_docs)
         embedded_docs = result["documents"]
-        embeddings = [doc.embedding for doc in embedded_docs]
-        return embeddings
+        return [doc.embedding for doc in embedded_docs]
 
     def _find_split_points(self, embeddings: list[list[float]]) -> list[int]:
         """

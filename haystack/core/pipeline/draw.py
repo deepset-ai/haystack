@@ -295,7 +295,7 @@ def _to_mermaid_text(
     if super_component_components:
         unique_super_components = set(super_component_mapping.values())  # type:ignore
         color_variations = generate_color_variations(n=len(unique_super_components))
-        super_component_colors = dict(zip(unique_super_components, color_variations))
+        super_component_colors = dict(zip(unique_super_components, color_variations, strict=False))
 
     # Generate style definitions for each super component
     style_definitions = []
@@ -338,7 +338,7 @@ def _to_mermaid_text(
     legend_nodes = []
     if super_component_colors:
         legend_nodes.append("subgraph Legend")
-        for super_comp, color in super_component_colors.items():
+        for super_comp in super_component_colors:
             legend_id = f"legend_{super_comp}"
             legend_nodes.append(f'{legend_id}["{super_comp}"]:::{super_comp}')
         legend_nodes.append("end")

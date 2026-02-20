@@ -82,7 +82,7 @@ class CSVDocumentCleaner:
             try:
                 df = pd.read_csv(StringIO(document.content), header=None, dtype=object)
             except Exception as e:
-                logger.error(
+                logger.exception(
                     "Error processing document {id}. Keeping it, but skipping cleaning. Error: {error}",
                     id=document.id,
                     error=e,

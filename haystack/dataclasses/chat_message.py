@@ -475,9 +475,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                 elif isinstance(part, (TextContent, ImageContent, FileContent)):
                     content.append(part)
                 else:
-                    raise ValueError(
-                        f"The user message must contain only text or image parts. Unsupported part: {part}"
-                    )
+                    raise TypeError(f"The user message must contain only text or image parts. Unsupported part: {part}")
             if len(content) == 0:
                 raise ValueError("The user message must contain at least one content part (text, image, file).")
 
@@ -608,7 +606,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         """
 
         # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
-        if not "role" in data and not "_role" in data:
+        if "role" not in data and "_role" not in data:
             raise ValueError(
                 "The `role` field is required in the message dictionary. "
                 f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "

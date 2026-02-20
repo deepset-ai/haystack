@@ -43,7 +43,7 @@ class EvaluationRunResult:
 
         if len(inputs) == 0:
             raise ValueError("No inputs provided.")
-        if len({len(l) for l in inputs.values()}) != 1:
+        if len({len(lst) for lst in inputs.values()}) != 1:
             raise ValueError("Lengths of the inputs should be the same.")
 
         expected_len = len(next(iter(inputs.values())))
@@ -183,7 +183,7 @@ class EvaluationRunResult:
         """
 
         if not isinstance(other, EvaluationRunResult):
-            raise ValueError("Comparative scores can only be computed between EvaluationRunResults.")
+            raise TypeError("Comparative scores can only be computed between EvaluationRunResults.")
 
         if not hasattr(other, "run_name") or not hasattr(other, "inputs") or not hasattr(other, "results"):
             raise ValueError("The 'other' parameter must have 'run_name', 'inputs', and 'results' attributes.")
@@ -205,7 +205,7 @@ class EvaluationRunResult:
 
         # ensure both detailed reports are in dictionaries format
         if not isinstance(detailed_a, dict) or not isinstance(detailed_b, dict):
-            raise ValueError("Detailed reports must be dictionaries.")
+            raise TypeError("Detailed reports must be dictionaries.")
 
         # determine which columns to ignore
         if keep_columns is None:

@@ -109,7 +109,7 @@ class CSVDocumentSplitter:
             try:
                 df = pd.read_csv(StringIO(document.content), **resolved_read_csv_kwargs)
             except Exception as e:
-                logger.error(
+                logger.exception(
                     "Error processing document {document_id}. Keeping it, but skipping splitting. Error: {error}",
                     document_id=document.id,
                     error=e,

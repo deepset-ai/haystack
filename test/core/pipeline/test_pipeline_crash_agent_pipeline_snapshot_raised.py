@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ast import literal_eval
 from typing import Any
 
 import pytest
@@ -22,7 +21,7 @@ from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_functi
 def calculate(expression: str) -> dict:
     """Calculate the result of a mathematical expression."""
     try:
-        result = literal_eval(expression, {"__builtins__": {}})
+        result = eval(expression, {"__builtins__": {}})  # noqa: S307
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}

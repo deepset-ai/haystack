@@ -294,8 +294,7 @@ class DocumentCleaner:
         logger.debug(
             "Removed header '{header}' and footer '{footer}' in document", header=found_header, footer=found_footer
         )
-        text = "\f".join(pages)
-        return text
+        return "\f".join(pages)
 
     def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
         """
@@ -312,11 +311,7 @@ class DocumentCleaner:
         seq = seq.replace("\t", " \t")
 
         words = seq.split(" ")
-        ngrams = (
-            " ".join(words[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(0, len(words) - n + 1)
-        )
-
-        return ngrams
+        return (" ".join(words[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(len(words) - n + 1))
 
     def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> set[str]:
         """
@@ -331,8 +326,7 @@ class DocumentCleaner:
         """
         lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
         ngrams = map(partial(self._ngram, seq), lengths)
-        res = set(chain.from_iterable(ngrams))
-        return res
+        return set(chain.from_iterable(ngrams))
 
     def _find_longest_common_ngram(self, sequences: list[str], min_ngram: int = 3, max_ngram: int = 30) -> str:
         """

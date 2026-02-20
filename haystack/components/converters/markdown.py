@@ -84,7 +84,7 @@ class MarkdownToDocument:
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, metadata in tqdm(
-            zip(sources, meta_list),
+            zip(sources, meta_list, strict=False),
             total=len(sources),
             desc="Converting markdown files to Documents",
             disable=not self.progress_bar,

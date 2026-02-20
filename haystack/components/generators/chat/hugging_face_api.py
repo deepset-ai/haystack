@@ -199,7 +199,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
     # Extract reasoning content if present
     reasoning = _extract_reasoning_content(choice.delta)
 
-    stream_chunk = StreamingChunk(
+    return StreamingChunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
         component_info=component_info,
@@ -210,7 +210,6 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         finish_reason=mapped_finish_reason,
         reasoning=reasoning,
     )
-    return stream_chunk
 
 
 @component

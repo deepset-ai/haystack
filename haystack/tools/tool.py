@@ -115,7 +115,7 @@ class Tool:
         if self.outputs_to_state is not None:
             for key, config in self.outputs_to_state.items():
                 if not isinstance(config, dict):
-                    raise ValueError(f"outputs_to_state configuration for key '{key}' must be a dictionary")
+                    raise TypeError(f"outputs_to_state configuration for key '{key}' must be a dictionary")
                 if "source" in config and not isinstance(config["source"], str):
                     raise ValueError(f"outputs_to_state source for key '{key}' must be a string.")
                 if "handler" in config and not callable(config["handler"]):
@@ -157,7 +157,7 @@ class Tool:
                 # Multiple outputs configuration
                 for key, config in self.outputs_to_string.items():
                     if not isinstance(config, dict):
-                        raise ValueError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
+                        raise TypeError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
                     if "raw_result" in config:
                         raise ValueError(
                             f"Invalid outputs_to_string configuration for key '{key}': "
@@ -178,7 +178,7 @@ class Tool:
             valid_inputs = self._get_valid_inputs()
             for state_key, param_name in self.inputs_from_state.items():
                 if not isinstance(param_name, str):
-                    raise ValueError(
+                    raise TypeError(
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )

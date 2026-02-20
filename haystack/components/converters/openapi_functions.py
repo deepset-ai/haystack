@@ -105,7 +105,7 @@ class OpenAPIServiceToFunctions:
                     all_extracted_fc_definitions.extend(functions)
                     all_openapi_specs.append(service_openapi_spec)
                 except Exception as e:
-                    logger.error(
+                    logger.exception(
                         "Error processing OpenAPI specification from source {source}: {error}", source=source, error=e
                     )
 

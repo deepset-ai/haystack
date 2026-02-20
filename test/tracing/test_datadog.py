@@ -22,18 +22,14 @@ def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     # for more details.
     monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function")
 
-    tracer = ddTracer()
-
-    return tracer
+    return ddTracer()
 
 
 def get_traces_from_console(capfd: CaptureFixture) -> list[dict]:
     output = capfd.readouterr().out
     parsed = json.loads(output)
     nested_traces = parsed["traces"]
-    flattened = list(functools.reduce(lambda x, y: x + y, nested_traces, []))
-
-    return flattened
+    return list(functools.reduce(lambda x, y: x + y, nested_traces, []))
 
 
 class TestDatadogTracer:

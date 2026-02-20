@@ -188,7 +188,7 @@ class PipelineTool(ComponentTool):
         :raises ValueError: If the provided pipeline is not a valid Haystack Pipeline instance.
         """
         if not isinstance(pipeline, (Pipeline, AsyncPipeline)):
-            raise ValueError(
+            raise TypeError(
                 "The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
                 f" Got {type(pipeline)} instead."
             )

@@ -205,7 +205,7 @@ def _save_pipeline_snapshot(
             logger.info("Pipeline snapshot handled by custom callback.")
             return result
         except Exception as error:
-            logger.error("Failed to handle pipeline snapshot with custom callback. Error: {error}", error=error)
+            logger.exception("Failed to handle pipeline snapshot with custom callback. Error: {error}", error=error)
             if raise_on_failure:
                 raise
             return None
@@ -251,7 +251,7 @@ def _save_pipeline_snapshot(
             full_path=full_path,
         )
     except Exception as error:
-        logger.error("Failed to save pipeline snapshot to '{full_path}'. Error: {e}", full_path=full_path, e=error)
+        logger.exception("Failed to save pipeline snapshot to '{full_path}'. Error: {e}", full_path=full_path, e=error)
         if raise_on_failure:
             raise
 
@@ -323,7 +323,7 @@ def _create_pipeline_snapshot(
         )
         serialized_pipeline_outputs = {}
 
-    pipeline_snapshot = PipelineSnapshot(
+    return PipelineSnapshot(
         pipeline_state=PipelineState(
             inputs=serialized_inputs, component_visits=component_visits, pipeline_outputs=serialized_pipeline_outputs
         ),
@@ -333,7 +333,6 @@ def _create_pipeline_snapshot(
         ordered_component_names=ordered_component_names,
         include_outputs_from=include_outputs_from,
     )
-    return pipeline_snapshot
 
 
 def _transform_json_structure(data: dict[str, Any] | list[Any] | Any) -> Any:

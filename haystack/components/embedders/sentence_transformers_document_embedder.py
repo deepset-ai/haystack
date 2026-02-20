@@ -263,7 +263,7 @@ class SentenceTransformersDocumentEmbedder:
         )
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=False):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

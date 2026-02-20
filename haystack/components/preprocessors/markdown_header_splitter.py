@@ -301,7 +301,7 @@ class MarkdownHeaderSplitter:
                     f" {doc.id} is None."
                 )
             if not isinstance(doc.content, str):
-                raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")
+                raise TypeError("MarkdownHeaderSplitter only works with text documents (str content).")
 
         final_docs = []
         for doc in documents:

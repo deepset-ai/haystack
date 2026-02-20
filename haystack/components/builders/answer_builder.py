@@ -174,7 +174,7 @@ class AnswerBuilder:
         meta_to_iterate = meta[-1:] if self.last_message_only and meta else meta
 
         all_answers = []
-        for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate):
+        for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate, strict=False):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
             extracted_reply = reply.text or "" if isinstance(reply, ChatMessage) else str(reply)
             extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else {}

@@ -592,14 +592,12 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     if logprobs:
         meta["logprobs"] = logprobs
 
-    chat_message = ChatMessage.from_assistant(
+    return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
         meta=meta,
     )
-
-    return chat_message
 
 
 def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
@@ -700,13 +698,12 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
         )
 
     # we return rest of the chunk as is
-    chunk_message = StreamingChunk(
+    return StreamingChunk(
         content="",
         component_info=component_info,
         index=getattr(chunk, "output_index", None),
         meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
     )
-    return chunk_message
 
 
 def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:

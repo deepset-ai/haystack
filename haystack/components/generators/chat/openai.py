@@ -588,9 +588,7 @@ def _convert_chat_completion_to_chat_message(
     if logprobs:
         meta["logprobs"] = logprobs
 
-    chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
-
-    return chat_message
+    return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
 
 def _convert_chat_completion_chunk_to_streaming_chunk(
@@ -645,7 +643,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     arguments=function.arguments if function and function.arguments else None,
                 )
             )
-        chunk_message = StreamingChunk(
+        return StreamingChunk(
             content=choice.delta.content or "",
             component_info=component_info,
             # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
@@ -662,7 +660,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 "usage": _serialize_object(chunk.usage),
             },
         )
-        return chunk_message
 
     # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
     # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
@@ -695,7 +692,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if choice.delta and choice.delta.content:
         content = choice.delta.content
 
-    chunk_message = StreamingChunk(
+    return StreamingChunk(
         content=content,
         component_info=component_info,
         index=resolved_index,
@@ -705,4 +702,3 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
         meta=meta,
     )
-    return chunk_message
