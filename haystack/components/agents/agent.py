@@ -516,7 +516,6 @@ class Agent:
             user_messages = self._chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
             messages = messages + user_messages
 
-        system_prompt = system_prompt or self.system_prompt
         if system_prompt is not None:
             messages = [ChatMessage.from_system(system_prompt)] + messages
 
