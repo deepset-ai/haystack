@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``Agent.run_async`` to mirror ``Agent.run`` crash handling for internal ``chat_generator`` and
+    ``tool_invoker`` failures.
+    Async runs now wrap internal ``PipelineRuntimeError`` exceptions with Agent context and attach pipeline snapshots
+    so standalone async failures can be debugged and resumed consistently.
