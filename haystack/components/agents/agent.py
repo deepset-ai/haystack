@@ -187,34 +187,26 @@ class Agent:
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.tools import Tool
+    from haystack.tools import tool
+    from typing import Annotated
 
-    def translate(text: str, target_language: str) -> str:
-        '''Translate text to a target language.'''
+
+    @tool
+    def translate(
+        text: Annotated[str, "The text to translate"],
+        target_language: Annotated[str, "The language to translate to"],
+    ) -> str:
+        \"\"\"Translate text to a target language.\"\"\"
         # Placeholder: would call an actual translation API
         return f"[Translated '{text}' to {target_language}]"
 
-    tools = [
-        Tool(
-            name="translate",
-            description="Translates text to a target language",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "text": {"type": "string", "description": "The text to translate"},
-                    "target_language": {"type": "string", "description": "The language to translate to"},
-                },
-                "required": ["text", "target_language"],
-            },
-            function=translate,
-        )
-    ]
-
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
-        tools=tools,
+        tools=[translate],
         system_prompt="You are a helpful translation assistant.",
-        user_prompt="Translate the following document to {{ language }}: {{ document }}",
+        user_prompt=\"\"\"{% message role="user"%}
+    Translate the following document to {{ language }}: {{ document }}
+    {% endmessage %}\"\"\",
         required_variables=["language", "document"],
     )
 
@@ -224,15 +216,7 @@ class Agent:
         document="The weather is lovely today and the sun is shining.",
     )
 
-    print(result["messages"][-1].text)
-
-    # Reuse the same agent with different inputs
-    result = agent.run(
-        language="Japanese",
-        document="Please meet me at the train station at 3pm.",
-    )
-
-    print(result["messages"][-1].text)
+    print(result["last_message"].text)
     ```
 
     """

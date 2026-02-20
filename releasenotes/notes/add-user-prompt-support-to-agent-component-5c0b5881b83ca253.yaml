@@ -12,7 +12,9 @@ features:
           chat_generator=OpenAIChatGenerator(),
           tools=tools,
           system_prompt="You are a helpful translation assistant.",
-          user_prompt="Translate the following document to {{ language }}: {{ document }}",
+          user_prompt="""{% message role="user"%}
+          Translate the following document to {{ language }}: {{ document }}
+          {% endmessage %}""",
           required_variables=["language", "document"],
       )
 
@@ -28,7 +30,9 @@ features:
           chat_generator=OpenAIChatGenerator(),
           tools=tools,
           system_prompt="You are a helpful translation assistant.",
-          user_prompt="Now summarize the conversation in {{ language }}.",
+          user_prompt="""{% message role="user"%}
+          Now summarize the conversation in {{ language }}.
+          {% endmessage %}""",
           required_variables=["language"],
       )
 
