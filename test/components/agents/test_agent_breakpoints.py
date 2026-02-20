@@ -13,7 +13,7 @@ import pytest
 from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.core.errors import BreakpointException
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
@@ -842,3 +842,75 @@ class TestAsyncAgentBreakpoints:
         # Verify no file was saved to disk
         all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
         assert all_paths == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_chat_generator_runtime_error_includes_snapshot(self, weather_tool):
+        @component
+        class FailingChatGenerator:
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+            ) -> dict[str, Any]:
+                raise Exception("Error in chat generator component")
+
+            @component.output_types(replies=list[ChatMessage])
+            async def run_async(
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+            ) -> dict[str, Any]:
+                raise Exception("Error in chat generator component")
+
+        agent = Agent(chat_generator=FailingChatGenerator(), tools=[weather_tool])
+
+        with pytest.raises(PipelineRuntimeError) as exc_info:
+            await agent.run_async(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
+
+        assert exc_info.value.component_name == "Agent"
+        assert exc_info.value.component_type == Agent
+        assert "chat_generator" in str(exc_info.value)
+        assert exc_info.value.pipeline_snapshot_file_path is None
+
+        pipeline_snapshot = exc_info.value.pipeline_snapshot
+        assert pipeline_snapshot is not None
+        assert isinstance(pipeline_snapshot.break_point, AgentBreakpoint)
+        assert pipeline_snapshot.break_point.agent_name == "agent"
+        assert pipeline_snapshot.break_point.break_point.component_name == "chat_generator"
+        assert pipeline_snapshot.agent_snapshot is not None
+        assert pipeline_snapshot.agent_snapshot.component_visits == {"chat_generator": 0, "tool_invoker": 0}
+
+    @pytest.mark.asyncio
+    async def test_run_async_tool_invoker_runtime_error_includes_snapshot(self, weather_tool):
+        def fail_weather_tool(location: str) -> dict[str, Any]:
+            raise Exception("Error in weather tool")
+
+        weather_tool.function = fail_weather_tool
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(
+                [
+                    ChatMessage.from_assistant(
+                        tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                    )
+                ]
+            ),
+            tools=[weather_tool],
+            raise_on_tool_invocation_failure=True,
+        )
+
+        with pytest.raises(PipelineRuntimeError) as exc_info:
+            await agent.run_async(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
+
+        assert exc_info.value.component_name == "Agent"
+        assert exc_info.value.component_type == Agent
+        assert "tool_invoker" in str(exc_info.value)
+        assert "weather_tool" in str(exc_info.value)
+        assert exc_info.value.pipeline_snapshot_file_path is None
+
+        pipeline_snapshot = exc_info.value.pipeline_snapshot
+        assert pipeline_snapshot is not None
+        assert isinstance(pipeline_snapshot.break_point, AgentBreakpoint)
+        assert pipeline_snapshot.break_point.agent_name == "agent"
+        assert isinstance(pipeline_snapshot.break_point.break_point, ToolBreakpoint)
+        assert pipeline_snapshot.break_point.break_point.component_name == "tool_invoker"
+        assert pipeline_snapshot.break_point.break_point.tool_name == "weather_tool"
+        assert pipeline_snapshot.agent_snapshot is not None
+        assert pipeline_snapshot.agent_snapshot.component_visits == {"chat_generator": 1, "tool_invoker": 0}
