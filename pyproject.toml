@@ -230,11 +230,15 @@ module = ["haystack.components.*", "haystack.testing.*"]
 disallow_incomplete_defs = false
 
 [tool.ruff]
+exclude = ["e2e/**", "proposals"]
 line-length = 120
-exclude = ["proposals"]
+
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
 
 [tool.ruff.lint.mccabe]
 max-complexity = 20
@@ -248,115 +252,88 @@ max-returns = 7                                   # Default is 6
 max-statements = 56                               # Default is 50
 
 [tool.ruff.lint]
-isort.split-on-trailing-comma = false
-exclude = ["e2e/**"]
 select = [
-  # Pyflakes & pycodestyle
-  "E",     # pycodestyle errors
-  "W",     # pycodestyle warnings
-  "F",     # pyflakes
-
-  # Imports
-  "I",     # isort
-
-  # Code style
-  "C4",    # flake8-comprehensions
-  "C90",   # mccabe complexity
-  "Q",     # flake8-quotes
-  "SIM",   # flake8-simplify
-  "UP",    # pyupgrade
-
-  # Correctness / safety
-  "ASYNC", # flake8-async
-  "B",     # flake8-bugbear
-  "BLE",   # flake8-blind-except
+  "A001",   # builtin-variable-shadowing
+  "A002",   # builtin-argument-shadowing
+  "A003",   # builtin-attribute-shadowing
+  "ARG",    # flake8-unused-arguments
+  "ASYNC",  # flake8-async
+  "B",      # flake8-bugbear
+  "BLE",    # flake8-blind-except
+  "C4",     # flake8-comprehensions
+  "C90",    # mccabe complexity
   "COM818", # trailing-comma-on-bare-tuple
-  "EXE",   # flake8-executable
-  "INT",   # flake8-gettext
-  "ISC001", # implicit-string-concatenation
-  "PIE",   # flake8-pie
-  "SLOT",  # flake8-slots
-  "T10",   # flake8-debugger
-  "YTT",   # flake8-2020
-
-  # Pylint
-  "PL",    # pylint
-
-  # Performance
-  "PERF",  # perflint
-
-  # Exception handling & control flow
-  "RET",   # flake8-return
-  "TRY",   # tryceratops
-
-  # Logging
-  "G001", "G002", "G004",  # flake8-logging-format
-
-  # Misc
-  "S102", "S307",  # flake8-bandit
-  "TID252",        # relative-imports
-  "ARG",           # flake8-unused-arguments
-  "RUF104",	       # unmatched-suppression-comment
+  "D102",   # Missing docstring in public method
+  "D103",   # Missing docstring in public function
+  "D205",   # 1 blank line required between summary line and description
+  "D209",   # Closing triple quotes go to new line
+  "D213",   # summary lines must be positioned on the second physical line of the docstring
+  "D417",   # undocumented-parameter
+  "D419",   # undocumented-returns
+  "E",      # pycodestyle errors
+  "EXE",    # flake8-executable
+  "F",      # pyflakes
+  "G001",   # logging-format-interpolation
+  "G002",   # logging-percent-format
+  "G004",   # logging-f-string
+  "I",      # isort
+  "INT",    # flake8-gettext
+  "PERF",   # perflint
+  "PIE",    # flake8-pie
+  "PL",     # pylint
+  "Q",      # flake8-quotes
+  "RET",    # flake8-return
+  "RUF104", # unmatched-suppression-comment
+  "S102",   # flake8-bandit (exec-builtin)
+  "S307",   # flake8-bandit (eval)
+  "SIM",    # flake8-simplify
+  "SLOT",   # flake8-slots
+  "T10",    # flake8-debugger
+  "TID252", # relative-imports
+  "TRY",    # tryceratops
+  "UP",     # pyupgrade
+  "W",      # pycodestyle warnings
+  "YTT",    # flake8-2020
 ]
 
 ignore = [
-  "A",       # flake8-builtins (redefined-builtin)
-  "D",       # pydocstyle (docstring checks)
-  "N",       # pep8-naming
-
-  # pycodestyle
-  "E501",    # line-too-long (handled by formatter)
-  "E721",    # type-comparison
-  "E722",    # bare-except
-
-  # flake8-bugbear
   "B008",    # function-call-as-argument-default
   "B904",    # raise-without-from-inside-except
-
-  # flake8-blind-except
   "BLE001",  # blind-except
-
-  # flake8-pie
-  "PIE790",  # unnecessary-pass
-
-  # flake8-return
-  "RET505",  # superfluous-else-return
-
-  # flake8-simplify
-  "SIM108",  # if-else-block-instead-of-ternary
-  "SIM109",  # multiple-comparisons-with-in
-  "SIM118",  # in-dict-keys
-
-  # perflint
+  "E721",    # type-comparison
+  "E722",    # bare-except
+  "N",       # pep8-naming
   "PERF203", # try-except-in-loop
   "PERF401", # manual-list-comprehension
+  "PIE790",  # unnecessary-pass
 
-  # pylint
-  # we re-export symbols for correct type checking
+  # we re-export symbols in __init__ for correct type checking
   # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
   "PLC0414", # useless-import-alias
+
   "PLC0415", # import-outside-top-level
   "PLR1714", # repeated-equality-comparison
   "PLW0603", # global-statement
   "PLW1514", # unspecified-encoding
   "PLW2901", # redefined-loop-name
-
-  # pyupgrade
-  "UP008",   # super-with-arguments
-  "UP032",   # use-f-string
-  "UP037",   # quoted-annotation
-
-  # tryceratops
+  "RET505",  # superfluous-else-return
+  "SIM108",  # if-else-block-instead-of-ternary
+  "SIM109",  # multiple-comparisons-with-in
+  "SIM118",  # in-dict-keys
   "TRY002",  # raise-vanilla-class
   "TRY003",  # raise-vanilla-args
   "TRY201",  # verbose-raise
   "TRY300",  # try-consider-else
+  "UP008",   # super-with-arguments
+  "UP032",   # use-f-string
+  "UP037",   # quoted-annotation
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
   "ARG",     # flake8-unused-arguments
   "B018",    # useless-expression
+  "D",       # pydocstyle (docstring checks)
   "E711",    # none-comparison
   "E731",    # lambda-assignment
   "PLC0206", # dict-index-missing-items
