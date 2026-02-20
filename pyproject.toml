@@ -277,11 +277,11 @@ select = [
   "G002",   # logging-percent-format
   "G004",   # logging-f-string
   "I",      # isort
+  "ISC001", # implicit-string-concatenation
   "INT",    # flake8-gettext
   "PERF",   # perflint
   "PIE",    # flake8-pie
   "PL",     # pylint
-  "Q",      # flake8-quotes
   "RET",    # flake8-return
   "RUF104", # unmatched-suppression-comment
   "S102",   # flake8-bandit (exec-builtin)
@@ -302,7 +302,6 @@ ignore = [
   "BLE001",  # blind-except
   "E721",    # type-comparison
   "E722",    # bare-except
-  "N",       # pep8-naming
   "PERF203", # try-except-in-loop
   "PERF401", # manual-list-comprehension
   "PIE790",  # unnecessary-pass
