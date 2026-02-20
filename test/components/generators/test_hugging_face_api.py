@@ -141,7 +141,7 @@ class TestHuggingFaceAPIGenerator:
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
             api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
             streaming_callback=streaming_callback_handler,
@@ -152,7 +152,7 @@ class TestHuggingFaceAPIGenerator:
         generator_2 = HuggingFaceAPIGenerator.from_dict(result)
         assert generator_2.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
         assert generator_2.api_params == {"model": "HuggingFaceH4/zephyr-7b-beta"}
-        assert generator_2.token == Secret.from_env_var("ENV_VAR", strict=False)
+        assert generator_2.token == Secret.from_env_var("ENV_VAR", strict=True)
         assert generator_2.generation_kwargs == {
             "temperature": 0.6,
             "stop_sequences": ["stop", "words"],
@@ -166,7 +166,7 @@ class TestHuggingFaceAPIGenerator:
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
             api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             generation_kwargs={"temperature": 0.6},
             stop_words=["stop", "words"],
             streaming_callback=None,

@@ -109,7 +109,7 @@ def test_to_dict_with_parameters():
         model="dslim/bert-base-NER",
         device=ComponentDevice.from_str("mps"),
         pipeline_kwargs={"model_kwargs": {"load_in_4bit": True}},
-        token=Secret.from_env_var("ENV_VAR", strict=False),
+        token=Secret.from_env_var("ENV_VAR", strict=True),
     )
     data = component.to_dict()
 

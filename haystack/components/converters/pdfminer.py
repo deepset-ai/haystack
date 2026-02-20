@@ -178,7 +178,7 @@ class PDFMinerToDocument:
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list, strict=False):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

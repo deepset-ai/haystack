@@ -272,7 +272,7 @@ class ToolInvoker:
         if duplicates:
             raise ValueError(f"Duplicate tool names found: {duplicates}")
 
-        return dict(zip(tool_names, converted_tools, strict=False))
+        return dict(zip(tool_names, converted_tools, strict=True))
 
     def _default_output_to_string_handler(self, result: Any) -> str:
         """
@@ -634,7 +634,7 @@ class ToolInvoker:
                 futures.append(executor.submit(callable_))
 
             # 3) Gather and process results: handle errors and merge outputs into state
-            for future, tool_call in zip(futures, tool_calls, strict=False):
+            for future, tool_call in zip(futures, tool_calls, strict=True):
                 result = future.result()
 
                 if isinstance(result, ToolInvocationError):
@@ -772,7 +772,7 @@ class ToolInvoker:
 
             # 3) Gather and process results: handle errors and merge outputs into state
             tool_results = await asyncio.gather(*tool_call_tasks)
-            for tool_result, tool_call in zip(tool_results, tool_calls, strict=False):
+            for tool_result, tool_call in zip(tool_results, tool_calls, strict=True):
                 # a) This is an error, create error Tool message
                 if isinstance(tool_result, ToolInvocationError):
                     if self.raise_on_failure:

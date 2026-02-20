@@ -53,7 +53,7 @@ class ExtractiveReader:
         self,
         model: Path | str = "deepset/roberta-base-squad2-distilled",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         top_k: int = 20,
         score_threshold: float | None = None,
         max_seq_length: int = 384,
@@ -200,7 +200,7 @@ class ExtractiveReader:
         """
         Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
         """
-        flattened_queries = [query for documents_, query in zip(documents, queries, strict=False) for _ in documents_]
+        flattened_queries = [query for documents_, query in zip(documents, queries, strict=True) for _ in documents_]
         flattened_documents = [document for documents_ in documents for document in documents_]
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
@@ -302,13 +302,13 @@ class ExtractiveReader:
         start_candidates_tokens_to_chars = []
         end_candidates_tokens_to_chars = []
         for i, (s_candidates, e_candidates, encoding) in enumerate(
-            zip(start_candidates, end_candidates, encodings, strict=False)
+            zip(start_candidates, end_candidates, encodings, strict=True)
         ):
             # Those with probabilities > 0 are valid
             valid = candidates_values[i] > 0
             s_char_spans = []
             e_char_spans = []
-            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid], strict=False):
+            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid], strict=True):
                 # token_to_chars returns `None` for special tokens
                 # But we shouldn't have special tokens in the answers at this point
                 # The whole span is given by the start of the start_token (index 0)
@@ -370,9 +370,9 @@ class ExtractiveReader:
         """
         answers_without_query = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
-            document_ids, start, end, probabilities, strict=False
+            document_ids, start, end, probabilities, strict=True
         ):
-            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_, strict=False):
+            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_, strict=True):
                 doc = flattened_documents[document_id]
                 answers_without_query.append(
                     ExtractedAnswer(

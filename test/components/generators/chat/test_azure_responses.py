@@ -144,7 +144,7 @@ class TestSerDe:
     def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(
-            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            api_key=Secret.from_env_var("ENV_VAR", strict=True),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
             timeout=2.5,
@@ -282,7 +282,7 @@ class TestSerDe:
         generator = AzureOpenAIResponsesChatGenerator.from_dict(data)
         assert isinstance(generator, AzureOpenAIResponsesChatGenerator)
 
-        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
+        assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=True)
         assert generator._azure_endpoint == "some-non-existing-endpoint"
         assert generator._azure_deployment == "gpt-5-mini"
         assert generator.organization is None

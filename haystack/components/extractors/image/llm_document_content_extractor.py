@@ -314,7 +314,7 @@ class LLMDocumentContentExtractor:
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results, strict=False):
+        for document, result in zip(documents, results, strict=True):
             doc, success = self._process_llm_results(document, result)
             if success:
                 successful_documents.append(doc)

@@ -79,7 +79,7 @@ class TransformersZeroShotDocumentClassifier:
         multi_label: bool = False,
         classification_field: str | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """
@@ -233,11 +233,11 @@ class TransformersZeroShotDocumentClassifier:
         )
 
         new_documents = []
-        for prediction, document in zip(predictions, documents, strict=False):
+        for prediction, document in zip(predictions, documents, strict=True):
             formatted_prediction = {
                 "label": prediction["labels"][0],
                 "score": prediction["scores"][0],
-                "details": dict(zip(prediction["labels"], prediction["scores"], strict=False)),
+                "details": dict(zip(prediction["labels"], prediction["scores"], strict=True)),
             }
             new_meta = {**document.meta, "classification": formatted_prediction}
             new_documents.append(replace(document, meta=new_meta))

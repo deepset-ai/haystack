@@ -29,7 +29,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.top_k == 10
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.similarity == DiversityRankingSimilarity.COSINE
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert component.query_prefix == ""
         assert component.document_prefix == ""
         assert component.query_suffix == ""
@@ -113,7 +113,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == DiversityRankingSimilarity.COSINE
-        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
         assert ranker.query_suffix == ""
@@ -144,7 +144,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == DiversityRankingSimilarity.COSINE
-        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
         assert ranker.query_suffix == ""
@@ -163,7 +163,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 10
         assert ranker.device == ComponentDevice.resolve_device(None)
         assert ranker.similarity == DiversityRankingSimilarity.COSINE
-        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert ranker.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert ranker.query_prefix == ""
         assert ranker.document_prefix == ""
         assert ranker.query_suffix == ""
@@ -176,7 +176,7 @@ class TestSentenceTransformersDiversityRanker:
             model="sentence-transformers/msmarco-distilbert-base-v4",
             top_k=5,
             device=ComponentDevice.from_str("cuda:0"),
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             similarity="dot_product",
             query_prefix="query:",
             document_prefix="document:",
@@ -227,7 +227,7 @@ class TestSentenceTransformersDiversityRanker:
         assert ranker.top_k == 5
         assert ranker.device == ComponentDevice.from_str("cuda:0")
         assert ranker.similarity == DiversityRankingSimilarity.DOT_PRODUCT
-        assert ranker.token == Secret.from_env_var("ENV_VAR", strict=False)
+        assert ranker.token == Secret.from_env_var("ENV_VAR", strict=True)
         assert ranker.query_prefix == "query:"
         assert ranker.document_prefix == "document:"
         assert ranker.query_suffix == "query suffix"

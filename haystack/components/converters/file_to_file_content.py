@@ -68,7 +68,7 @@ class FileToFileContent:
 
         extra_list = normalize_metadata(extra, sources_count=len(sources))
 
-        for source, extra_dict in zip(sources, extra_list, strict=False):
+        for source, extra_dict in zip(sources, extra_list, strict=True):
             if isinstance(source, str):
                 source = Path(source)
 

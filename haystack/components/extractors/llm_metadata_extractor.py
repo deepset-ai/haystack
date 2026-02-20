@@ -338,7 +338,7 @@ class LLMMetadataExtractor:
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results, strict=False):
+        for document, result in zip(documents, results, strict=True):
             new_meta = {**document.meta}
             if "error" in result:
                 new_meta["metadata_extraction_error"] = result["error"]

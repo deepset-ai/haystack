@@ -57,7 +57,7 @@ class SASEvaluator:
         model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
         batch_size: int = 32,
         device: ComponentDevice | None = None,
-        token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
     ) -> None:
         """
         Creates a new instance of SASEvaluator.
@@ -155,7 +155,7 @@ class SASEvaluator:
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels
-            sentence_pairs = list(zip(predicted_answers, ground_truth_answers, strict=False))
+            sentence_pairs = list(zip(predicted_answers, ground_truth_answers, strict=True))
             similarity_scores = self._similarity_model.predict(
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
@@ -180,7 +180,7 @@ class SASEvaluator:
             # Compute cosine-similarities
             similarity_scores = [
                 float(util.cos_sim(pred_embedding, label_embedding).cpu().squeeze().numpy())
-                for pred_embedding, label_embedding in zip(predictions_embeddings, label_embeddings, strict=False)
+                for pred_embedding, label_embedding in zip(predictions_embeddings, label_embeddings, strict=True)
             ]
 
         sas_score = np_mean(similarity_scores)

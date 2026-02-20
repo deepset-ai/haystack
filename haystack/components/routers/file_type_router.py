@@ -154,7 +154,7 @@ class FileTypeRouter:
         mime_types: defaultdict[str, list[Path | ByteStream]] = defaultdict(list)
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, meta_dict in zip(sources, meta_list, strict=False):
+        for source, meta_dict in zip(sources, meta_list, strict=True):
             if isinstance(source, str):
                 source = Path(source)
 

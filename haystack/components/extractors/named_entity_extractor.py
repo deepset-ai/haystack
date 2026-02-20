@@ -111,7 +111,7 @@ class NamedEntityExtractor:
         model: str,
         pipeline_kwargs: dict[str, Any] | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
     ) -> None:
         """
         Create a Named Entity extractor component.
@@ -203,7 +203,7 @@ class NamedEntityExtractor:
             )
 
         new_documents = []
-        for doc, doc_annotations in zip(documents, annotations, strict=False):
+        for doc, doc_annotations in zip(documents, annotations, strict=True):
             new_meta = {**doc.meta, self._METADATA_KEY: doc_annotations}
             new_documents.append(replace(doc, meta=new_meta))
 

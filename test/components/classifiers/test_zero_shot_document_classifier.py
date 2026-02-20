@@ -19,7 +19,7 @@ class TestTransformersZeroShotDocumentClassifier:
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
         assert component.labels == ["positive", "negative"]
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert component.multi_label is False
         assert component.pipeline is None
         assert component.classification_field is None

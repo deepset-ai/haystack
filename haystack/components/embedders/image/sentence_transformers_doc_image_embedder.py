@@ -63,7 +63,7 @@ class SentenceTransformersDocumentImageEmbedder:
         root_path: str | None = None,
         model: str = "sentence-transformers/clip-ViT-B-32",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
@@ -277,7 +277,7 @@ class SentenceTransformersDocumentImageEmbedder:
         )
 
         docs_with_embeddings = []
-        for doc, emb in zip(documents, embeddings, strict=False):
+        for doc, emb in zip(documents, embeddings, strict=True):
             # we store this information for later inspection
             new_meta = {
                 **doc.meta,

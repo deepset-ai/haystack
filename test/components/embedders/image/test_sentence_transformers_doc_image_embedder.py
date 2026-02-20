@@ -28,7 +28,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
         assert embedder.root_path == ""
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.resolve_device(None)
-        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert embedder.batch_size == 32
         assert embedder.progress_bar is True
         assert embedder.trust_remote_code is False
@@ -117,7 +117,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
         assert component.root_path == "root_path"
         assert component.model == "model"
         assert component.device == ComponentDevice.from_str("cuda:0")
-        assert component.token == Secret.from_env_var("ENV_VAR", strict=False)
+        assert component.token == Secret.from_env_var("ENV_VAR", strict=True)
         assert component.batch_size == 64
         assert component.progress_bar is False
         assert component.normalize_embeddings is True
@@ -149,7 +149,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
         assert component.root_path == "root_path"
         assert component.model == "model"
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.token == Secret.from_env_var("ENV_VAR", strict=False)
+        assert component.token == Secret.from_env_var("ENV_VAR", strict=True)
         assert component.batch_size == 64
         assert component.progress_bar is False
         assert component.trust_remote_code
@@ -209,7 +209,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"], strict=False):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -332,7 +332,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         result = embedder.run(documents=documents)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"], strict=False):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

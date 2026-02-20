@@ -612,7 +612,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         results = await asyncio.gather(*tasks)
 
         # Verify each result matches the expected content
-        for query, result in zip(queries, results, strict=False):
+        for query, result in zip(queries, results, strict=True):
             assert len(result) == 1
             assert result[0].content == f"{query} is a popular programming language"
 
@@ -640,7 +640,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
         # Verify each result matches the expected content
         expected_contents = ["Python programming", "Java programming", "JavaScript programming", "Ruby programming"]
-        for result, expected in zip(results, expected_contents, strict=False):
+        for result, expected in zip(results, expected_contents, strict=True):
             assert len(result) == 1
             assert result[0].content == expected
 

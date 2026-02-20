@@ -138,7 +138,7 @@ class AzureOCRDocumentConverter:
         documents = []
         azure_output = []
         meta_list: list[dict[str, Any]] = normalize_metadata(meta=meta, sources_count=len(sources))
-        for source, metadata in zip(sources, meta_list, strict=False):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:

@@ -95,7 +95,7 @@ class TestOpenAITextEmbedder:
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "fake-api-key")
         component = OpenAITextEmbedder(
-            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            api_key=Secret.from_env_var("ENV_VAR", strict=True),
             model="model",
             api_base_url="https://my-custom-base-url.com",
             organization="fake-organization",

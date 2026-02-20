@@ -43,7 +43,7 @@ class SentenceTransformersDocumentEmbedder:
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
@@ -263,7 +263,7 @@ class SentenceTransformersDocumentEmbedder:
         )
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings, strict=False):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

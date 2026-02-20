@@ -295,7 +295,7 @@ class MetaFieldRanker:
 
         # If meta_value_type is provided try to parse the meta values
         parsed_meta = self._parse_meta(docs_with_meta_field=docs_with_meta_field, meta_value_type=meta_value_type)
-        tuple_parsed_meta_and_docs = list(zip(parsed_meta, docs_with_meta_field, strict=False))
+        tuple_parsed_meta_and_docs = list(zip(parsed_meta, docs_with_meta_field, strict=True))
 
         # Sort the documents by self.meta_field
         reverse = sort_order == "descending"
@@ -381,11 +381,11 @@ class MetaFieldRanker:
         scores_map: dict = defaultdict(int)
 
         if ranking_mode == "reciprocal_rank_fusion":
-            for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents, strict=False)):
+            for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents, strict=True)):
                 scores_map[document.id] += self._calculate_rrf(rank=i) * (1 - weight)
                 scores_map[sorted_doc.id] += self._calculate_rrf(rank=i) * weight
         elif ranking_mode == "linear_score":
-            for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents, strict=False)):
+            for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents, strict=True)):
                 score = float(0)
                 if document.score is None:
                     logger.warning("The score wasn't provided; defaulting to 0.")

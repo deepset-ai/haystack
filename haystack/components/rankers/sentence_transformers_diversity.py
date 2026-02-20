@@ -117,7 +117,7 @@ class SentenceTransformersDiversityRanker:
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         similarity: str | DiversityRankingSimilarity = "cosine",
         query_prefix: str = "",
         query_suffix: str = "",

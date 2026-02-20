@@ -74,7 +74,7 @@ class TransformersTextRouter:
         model: str,
         labels: list[str] | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """

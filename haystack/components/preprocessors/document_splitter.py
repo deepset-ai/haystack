@@ -318,7 +318,7 @@ class DocumentSplitter:
         """
         documents: list[Document] = []
 
-        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs, strict=False)):
+        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs, strict=True)):
             copied_meta = deepcopy(meta)
             copied_meta["page_number"] = splits_pages[i]
             copied_meta["split_id"] = i

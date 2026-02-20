@@ -43,7 +43,7 @@ class TestSimilarityRanker:
         component = TransformersSimilarityRanker(
             model="my_model",
             device=ComponentDevice.from_str("cuda:0"),
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             top_k=5,
             query_prefix="query_instruction: ",
             document_prefix="document_instruction: ",
@@ -196,7 +196,7 @@ class TestSimilarityRanker:
         component = TransformersSimilarityRanker.from_dict(data)
         assert component.device is None
         assert component.model_name_or_path == "cross-encoder/ms-marco-MiniLM-L-6-v2"
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert component.top_k == 10
         assert component.query_prefix == ""
         assert component.document_prefix == ""

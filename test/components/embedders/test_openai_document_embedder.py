@@ -116,7 +116,7 @@ class TestOpenAIDocumentEmbedder:
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "fake-api-key")
         component = OpenAIDocumentEmbedder(
-            api_key=Secret.from_env_var("ENV_VAR", strict=False),
+            api_key=Secret.from_env_var("ENV_VAR", strict=True),
             model="model",
             organization="my-org",
             http_client_kwargs={"proxy": "http://localhost:8080"},
@@ -280,7 +280,7 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc, new_doc in zip(docs, documents_with_embeddings, strict=False):
+        for doc, new_doc in zip(docs, documents_with_embeddings, strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -312,7 +312,7 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc, new_doc in zip(docs, documents_with_embeddings, strict=False):
+        for doc, new_doc in zip(docs, documents_with_embeddings, strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

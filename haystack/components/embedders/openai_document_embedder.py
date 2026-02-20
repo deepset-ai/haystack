@@ -229,7 +229,7 @@ class OpenAIDocumentEmbedder:
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=False)))
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -272,7 +272,7 @@ class OpenAIDocumentEmbedder:
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=False)))
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
 
             if "model" not in meta:
                 meta["model"] = response.model

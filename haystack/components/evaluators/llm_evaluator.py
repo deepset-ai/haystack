@@ -200,8 +200,8 @@ class LLMEvaluator:
 
         # inputs is a dictionary with keys being input names and values being a list of input values
         # We need to iterate through the lists in parallel for all keys of the dictionary
-        input_names, values = inputs.keys(), list(zip(*inputs.values(), strict=False))
-        list_of_input_names_to_values = [dict(zip(input_names, v, strict=False)) for v in values]
+        input_names, values = inputs.keys(), list(zip(*inputs.values(), strict=True))
+        list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
 
         results: list[dict[str, Any] | None] = []
         metadata = []

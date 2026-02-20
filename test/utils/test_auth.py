@@ -51,7 +51,7 @@ def test_env_var_secret():
     with pytest.raises(ValueError, match="None of the following .* variables are set"):
         secret.resolve_value()
 
-    secret = Secret.from_env_var("TEST_ENV_VAR2", strict=False)
+    secret = Secret.from_env_var("TEST_ENV_VAR2", strict=True)
     assert secret._strict is False
     assert secret.resolve_value() == None
 

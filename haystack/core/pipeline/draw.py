@@ -295,7 +295,7 @@ def _to_mermaid_text(
     if super_component_components:
         unique_super_components = set(super_component_mapping.values())  # type:ignore
         color_variations = generate_color_variations(n=len(unique_super_components))
-        super_component_colors = dict(zip(unique_super_components, color_variations, strict=False))
+        super_component_colors = dict(zip(unique_super_components, color_variations, strict=True))
 
     # Generate style definitions for each super component
     style_definitions = []

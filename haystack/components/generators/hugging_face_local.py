@@ -53,7 +53,7 @@ class HuggingFaceLocalGenerator:
         model: str = "Qwen/Qwen3-0.6B",
         task: Literal["text-generation", "text2text-generation"] | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         generation_kwargs: dict[str, Any] | None = None,
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
         stop_words: list[str] | None = None,

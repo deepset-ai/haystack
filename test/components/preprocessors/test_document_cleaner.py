@@ -130,7 +130,7 @@ class TestDocumentCleaner:
         result = cleaner.run(documents=documents)
         assert len(result["documents"]) == 2
         assert result["documents"][0].id != result["documents"][1].id
-        for doc, cleaned_doc in zip(documents, result["documents"], strict=False):
+        for doc, cleaned_doc in zip(documents, result["documents"], strict=True):
             assert doc.meta == cleaned_doc.meta
             assert cleaned_doc.content == "Text."
 

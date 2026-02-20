@@ -900,7 +900,7 @@ class TestConversionToStreamingChunks:
                                 "required": ["city"],
                                 "additionalProperties": False,
                             },
-                            strict=False,
+                            strict=True,
                             type="function",
                             description="useful to determine the weather in a given location",
                         )
@@ -996,7 +996,7 @@ class TestConversionToStreamingChunks:
                                 "required": ["city"],
                                 "additionalProperties": False,
                             },
-                            strict=False,
+                            strict=True,
                             type="function",
                             description="useful to determine the weather in a given location",
                         )

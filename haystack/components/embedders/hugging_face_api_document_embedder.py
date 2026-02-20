@@ -94,7 +94,7 @@ class HuggingFaceAPIDocumentEmbedder:
         self,
         api_type: HFEmbeddingAPIType | str,
         api_params: dict[str, str],
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         prefix: str = "",
         suffix: str = "",
         truncate: bool | None = True,
@@ -329,7 +329,7 @@ class HuggingFaceAPIDocumentEmbedder:
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings, strict=False):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}
@@ -357,7 +357,7 @@ class HuggingFaceAPIDocumentEmbedder:
         embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings, strict=False):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

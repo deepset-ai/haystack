@@ -173,7 +173,7 @@ class TestHuggingFaceLocalChatGenerator:
     def test_to_dict(self, model_info_mock, tools):
         generator = HuggingFaceLocalChatGenerator(
             model="NousResearch/Llama-2-7b-chat-hf",
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             generation_kwargs={"n": 5},
             stop_words=["stop", "words"],
             streaming_callback=None,
@@ -229,7 +229,7 @@ class TestHuggingFaceLocalChatGenerator:
 
         generator_2 = HuggingFaceLocalChatGenerator.from_dict(result)
 
-        assert generator_2.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert generator_2.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert generator_2.generation_kwargs == {
             "max_new_tokens": 512,
             "n": 5,

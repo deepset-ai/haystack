@@ -23,7 +23,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         embedder = SentenceTransformersSparseTextEmbedder(model="model")
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.resolve_device(None)
-        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.trust_remote_code is False
@@ -75,7 +75,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         component = SentenceTransformersSparseTextEmbedder(
             model="model",
             device=ComponentDevice.from_str("cuda:0"),
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             prefix="prefix",
             suffix="suffix",
             trust_remote_code=True,
@@ -128,7 +128,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         component = SentenceTransformersSparseTextEmbedder.from_dict(data)
         assert component.model == "model"
         assert component.device == ComponentDevice.from_str("cpu")
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.trust_remote_code is False
@@ -143,7 +143,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         component = SentenceTransformersSparseTextEmbedder.from_dict(data)
         assert component.model == "prithivida/Splade_PP_en_v2"
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.trust_remote_code is False
@@ -166,7 +166,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         component = SentenceTransformersSparseTextEmbedder.from_dict(data)
         assert component.model == "model"
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.trust_remote_code is False

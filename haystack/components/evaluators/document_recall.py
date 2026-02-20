@@ -165,7 +165,7 @@ class DocumentRecallEvaluator:
         elif self.mode == RecallMode.MULTI_HIT:
             mode_function = self._recall_multi_hit
 
-        scores = [mode_function(gt, ret) for gt, ret in zip(ground_truth_documents, retrieved_documents, strict=False)]
+        scores = [mode_function(gt, ret) for gt, ret in zip(ground_truth_documents, retrieved_documents, strict=True)]
 
         return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
 

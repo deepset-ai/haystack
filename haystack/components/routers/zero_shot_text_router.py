@@ -98,7 +98,7 @@ class TransformersZeroShotTextRouter:
         multi_label: bool = False,
         model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """

@@ -169,7 +169,7 @@ class TestHuggingFaceLocalGenerator:
             model="gpt2",
             task="text-generation",
             device=ComponentDevice.from_str("cuda:0"),
-            token=Secret.from_env_var("ENV_VAR", strict=False),
+            token=Secret.from_env_var("ENV_VAR", strict=True),
             generation_kwargs={"max_new_tokens": 100},
             stop_words=["coca", "cola"],
             huggingface_pipeline_kwargs={

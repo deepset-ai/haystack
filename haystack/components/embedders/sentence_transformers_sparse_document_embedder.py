@@ -45,7 +45,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         *,
         model: str = "prithivida/Splade_PP_en_v2",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
@@ -230,7 +230,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         )
 
         documents_with_embeddings = []
-        for doc, emb in zip(documents, embeddings, strict=False):
+        for doc, emb in zip(documents, embeddings, strict=True):
             documents_with_embeddings.append(replace(doc, sparse_embedding=emb))
 
         return {"documents": documents_with_embeddings}
