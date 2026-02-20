@@ -6,10 +6,6 @@ features:
     runtime, so the Agent can be invoked with different inputs without manually
     constructing ``ChatMessage`` objects each time.
 
-    Template variables are automatically registered as component inputs, making the
-    Agent compatible with Haystack pipelines where upstream components can feed values
-    directly into the prompt.
-
     Example usage:
     .. code:: python
       agent = Agent(
@@ -22,10 +18,27 @@ features:
 
       result = agent.run(language="French", document="The weather is lovely today.")
 
-upgrade:
-  - |
-    Calling ``Agent.run()`` (or ``run_async()``) with an empty messages list and no
-    ``user_prompt`` or ``system_prompt`` configured now raises a ``ValueError`` instead of
-    silently proceeding. If you previously relied on calling ``agent.run([])`` with no
-    prompts set, you must now provide at least one of: non-empty ``messages``, a
-    ``user_prompt``, or a ``system_prompt``.
+    You can also combine ``messages`` with ``user_prompt``. The rendered user prompt
+    is appended to the provided messages, which is useful for passing prior conversation
+    context alongside a new templated query:
+    .. code:: python
+      from haystack.dataclasses import ChatMessage
+
+      agent = Agent(
+          chat_generator=OpenAIChatGenerator(),
+          tools=tools,
+          system_prompt="You are a helpful translation assistant.",
+          user_prompt="Now summarize the conversation in {{ language }}.",
+          required_variables=["language"],
+      )
+
+      result = agent.run(
+          messages=[
+              ChatMessage.from_user("What are the main benefits of renewable energy?"),
+              ChatMessage.from_assistant(
+                  "Renewable energy reduces greenhouse gas emissions, decreases dependence "
+                  "on fossil fuels, and can lower long-term energy costs."
+              ),
+          ],
+          language="Spanish",
+      )
