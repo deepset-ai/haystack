@@ -528,19 +528,21 @@ class Agent:
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
-    def _runtime_checks(self, break_point: AgentBreakpoint | None) -> None:
+    def _runtime_checks(self, break_point: AgentBreakpoint | None, tools: ToolsType) -> None:
         """
         Perform runtime checks before running the agent.
 
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
+        :param tools: Tools selected for this run. This can differ from initialization-time tools when runtime tools
+            are provided to `run`/`run_async`.
         :raises ValueError: If the break_point is invalid.
         """
         if not self._is_warmed_up:
             self.warm_up()
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
-            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
+            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=tools)
 
     def run(  # noqa: PLR0915
         self,
@@ -594,7 +596,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point)
+        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -823,7 +825,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point)
+        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(

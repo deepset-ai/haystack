@@ -598,6 +598,43 @@ class TestAgentBreakpoints:
         Path(debug_path).mkdir(parents=True, exist_ok=True)
         assert list(Path(debug_path).glob("*.json")) == []
 
+    def test_run_with_runtime_tools_validates_tool_breakpoint_against_runtime_tools(self, weather_tool):
+        def runtime_weather(location: str) -> dict[str, Any]:
+            return {"weather": "windy", "temperature": 6, "unit": "celsius"}
+
+        runtime_tool = Tool(
+            name="runtime_weather_tool",
+            description="Provides weather information for a given location.",
+            parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+            function=runtime_weather,
+        )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(
+                [
+                    ChatMessage.from_assistant(
+                        tool_calls=[ToolCall(tool_name="runtime_weather_tool", arguments={"location": "Berlin"})]
+                    )
+                ]
+            ),
+            tools=[weather_tool],
+        )
+
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="runtime_weather_tool"),
+            agent_name="test_agent",
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            agent.run(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                tools=[runtime_tool],
+            )
+
+        assert exc_info.value.component == "tool_invoker"
+        assert exc_info.value.pipeline_snapshot is not None
+
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_live_resume_from_tool_invoker(self, tmp_path, weather_tool, monkeypatch):
@@ -842,6 +879,44 @@ class TestAsyncAgentBreakpoints:
         # Verify no file was saved to disk
         all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
         assert all_paths == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_runtime_tools_validates_tool_breakpoint_against_runtime_tools(self, weather_tool):
+        def runtime_weather(location: str) -> dict[str, Any]:
+            return {"weather": "windy", "temperature": 6, "unit": "celsius"}
+
+        runtime_tool = Tool(
+            name="runtime_weather_tool",
+            description="Provides weather information for a given location.",
+            parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+            function=runtime_weather,
+        )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(
+                [
+                    ChatMessage.from_assistant(
+                        tool_calls=[ToolCall(tool_name="runtime_weather_tool", arguments={"location": "Berlin"})]
+                    )
+                ]
+            ),
+            tools=[weather_tool],
+        )
+
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="runtime_weather_tool"),
+            agent_name="test_agent",
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            await agent.run_async(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                tools=[runtime_tool],
+            )
+
+        assert exc_info.value.component == "tool_invoker"
+        assert exc_info.value.pipeline_snapshot is not None
 
     @pytest.mark.asyncio
     async def test_run_async_chat_generator_runtime_error_includes_snapshot(self, weather_tool):

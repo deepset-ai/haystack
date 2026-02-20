@@ -5,3 +5,6 @@ fixes:
     ``tool_invoker`` failures.
     Async runs now wrap internal ``PipelineRuntimeError`` exceptions with Agent context and attach pipeline snapshots
     so standalone async failures can be debugged and resumed consistently.
+  - |
+    Fixed ToolBreakpoint validation in ``Agent.run`` and ``Agent.run_async`` to validate against tools selected for
+    the current run. This allows breakpoints for runtime tool overrides to work correctly.
