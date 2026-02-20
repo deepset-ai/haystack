@@ -1018,6 +1018,18 @@ class TestConversion:
             ConversionStrategy.WRAP,
         )
 
+        ### Union inner types in list sender
+        assert _types_are_compatible(sender=list[str | int], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=List[str | int], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=list[Union[str, int]], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=List[Union[str, int]], receiver=str) == (False, None)
+
+        assert _types_are_compatible(sender=list[str | int], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=list[str | ChatMessage], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=list[str | ChatMessage], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=list[str | None], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=List[Optional[str]], receiver=str) == (False, None)
+
     def test_convert_value(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
             _convert_value(
