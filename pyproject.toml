@@ -295,6 +295,8 @@ select = [
   # Misc
   "S102", "S307",  # flake8-bandit
   "TID252",        # relative-imports
+  "ARG",           # flake8-unused-arguments
+  "RUF104",	       # unmatched-suppression-comment
 ]
 
 ignore = [
@@ -349,14 +351,11 @@ ignore = [
   "TRY003",  # raise-vanilla-args
   "TRY201",  # verbose-raise
   "TRY300",  # try-consider-else
-
-  "RUF",   # ruff-specific rules
-  "TCH",   # flake8-type-checking
-  "PT",    # flake8-pytest-style
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
+  "ARG",     # flake8-unused-arguments
   "B018",    # useless-expression
   "E711",    # none-comparison
   "E731",    # lambda-assignment

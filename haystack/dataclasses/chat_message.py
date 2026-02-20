@@ -264,7 +264,7 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
 
 
 @dataclass
-class ChatMessage:  # it's OK since we expose several properties
+class ChatMessage:
     """
     Represents a message in a LLM chat conversation.
 
