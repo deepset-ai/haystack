@@ -1,11 +1,11 @@
 ---
 features:
   - |
-    Added a new `LLM` component (`haystack.components.generators.chat.LLM`) that provides a simplified
-    interface for text generation powered by a large language model. The `LLM` component is a streamlined
-    version of the `Agent` that focuses solely on single-turn text generation without tool usage.
+    Added a new ```LLM``` component (```haystack.components.generators.chat.LLM```) that provides a simplified
+    interface for text generation powered by a large language model. The ```LLM``` component is a streamlined
+    version of the ```Agent``` that focuses solely on single-turn text generation without tool usage.
     It supports system prompts, templated user prompts with required variables, streaming callbacks,
-    and both synchronous (`run`) and asynchronous (`run_async`) execution.
+    and both synchronous (```run```) and asynchronous (```run_async```) execution.
 
     Usage example:
     .. code:: python
