@@ -293,9 +293,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_run(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
-        ]
+        embedder.embedding_backend.embed = lambda x, **_: [[random.random() for _ in range(16)] for _ in range(len(x))]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
 

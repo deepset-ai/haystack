@@ -1806,7 +1806,7 @@ class TestChatCompletionChunkConversion:
     def test_handle_stream_response(self, chat_completion_chunks, chat_completion_chunk_delta_none):
         openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        result = comp._handle_stream_response(openai_chunks, callback=lambda chunk: None)[0]  # type: ignore
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore
 
         assert not result.texts
         assert not result.text

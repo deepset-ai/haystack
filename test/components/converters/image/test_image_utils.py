@@ -165,7 +165,7 @@ class TestBatchConvertPdfPagesToImages:
 
         result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=False)
 
-        pdf_bytestream = ByteStream.from_file_path((pdf_path))
+        pdf_bytestream = ByteStream.from_file_path(pdf_path)
 
         mocked_convert_pdf_to_images.assert_called_once_with(
             bytestream=pdf_bytestream, page_range=[1, 2], size=None, return_base64=False
@@ -187,7 +187,7 @@ class TestBatchConvertPdfPagesToImages:
 
         result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=True)
 
-        pdf_bytestream = ByteStream.from_file_path((pdf_path))
+        pdf_bytestream = ByteStream.from_file_path(pdf_path)
 
         mocked_convert_pdf_to_images.assert_called_once_with(
             bytestream=pdf_bytestream, page_range=[1, 2], size=None, return_base64=True

@@ -301,6 +301,8 @@ skip-magic-trailing-comma = true
   "TRY002", # Create your own exception
   "ARG001", # Unused function argument
   "E731", # Do not assign a `lambda` expression, use a `def`
+  "ARG002", # Unused method argument
+  "ARG003", # Unused class argument
 ]
 # in the following files, we still allow old type hints to handle and test them
 # UP006: generics like typing.List, typing.Dict
@@ -310,14 +312,14 @@ skip-magic-trailing-comma = true
 "haystack/core/super_component/utils.py" = ["UP007"]
 "haystack/core/type_utils.py" = ["UP007"]
 "haystack/tools/parameters_schema_utils.py" = ["UP007"]
-"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP045"]
-"test/components/converters/test_output_adapter.py" = ["UP006"]
-"test/components/joiners/test_list_joiner.py" = ["UP006"]
-"test/core/test_type_utils.py" = ["UP006", "UP007", "UP045"]
+"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP045", "UP035"]
+"test/components/converters/test_output_adapter.py" = ["UP006", "UP035"]
+"test/components/joiners/test_list_joiner.py" = ["UP006", "UP035"]
+"test/core/test_type_utils.py" = ["UP006", "UP007", "UP045", "UP035"]
 "test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
 "test/core/super_component/test_utils.py" = ["UP007", "UP045"]
 "test/tools/test_parameters_schema_utils.py" = ["UP007"]
-"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045"]
+"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045", "UP035"]
 
 
 [tool.ruff.lint]

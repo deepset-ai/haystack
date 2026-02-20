@@ -707,7 +707,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
             await generator.run_async(
                 messages=[ChatMessage.from_user("test")],
-                streaming_callback=lambda x: None,
+                streaming_callback=lambda _: None,
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
 
