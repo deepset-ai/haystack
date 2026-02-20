@@ -76,7 +76,6 @@ from haystack.components.embedders import SentenceTransformersTextEmbedder
 text_to_embed = "I love pizza!"
 
 text_embedder = SentenceTransformersTextEmbedder()
-text_embedder.warm_up()
 
 print(text_embedder.run(text_to_embed))
 
@@ -104,7 +103,6 @@ documents = [
 ]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 

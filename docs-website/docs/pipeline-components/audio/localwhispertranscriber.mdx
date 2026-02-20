@@ -53,7 +53,6 @@ with open("kennedy_speech.mp3", "wb") as file:
     file.write(response.content)
 
 transcriber = LocalWhisperTranscriber(model="tiny")
-transcriber.warm_up()
 
 transcription = transcriber.run(sources=["./kennedy_speech.mp3"])
 print(transcription["documents"][0].content)

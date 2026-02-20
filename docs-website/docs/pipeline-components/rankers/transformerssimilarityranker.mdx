@@ -61,7 +61,6 @@ from haystack.components.rankers import TransformersSimilarityRanker
 docs = [Document(content="Paris"), Document(content="Berlin")]
 
 ranker = TransformersSimilarityRanker()
-ranker.warm_up()
 
 ranker.run(query="City in France", documents=docs, top_k=1)
 ```
@@ -88,7 +87,6 @@ document_store.write_documents(docs)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 ranker = TransformersSimilarityRanker()
-ranker.warm_up()
 
 document_ranker_pipeline = Pipeline()
 document_ranker_pipeline.add_component(instance=retriever, name="retriever")
