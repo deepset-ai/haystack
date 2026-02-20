@@ -198,7 +198,7 @@ class TestFileTypeRouter:
         mime_types = [r"text/plain", r"text/plain", r"audio/x-wav", r"image/jpeg"]
         # Convert file paths to ByteStream objects and set metadata
         byte_streams = []
-        for path, mime_type in zip(file_paths, mime_types):
+        for path, mime_type in zip(file_paths, mime_types, strict=True):
             stream = ByteStream(path.read_bytes())
             stream.mime_type = mime_type
             byte_streams.append(stream)
@@ -229,7 +229,7 @@ class TestFileTypeRouter:
         ]
         mime_types = [r"text/plain", r"audio/x-wav", r"text/plain", r"image/jpeg", r"text/markdown"]
         byte_stream_sources = []
-        for path, mime_type in zip(file_paths, mime_types):
+        for path, mime_type in zip(file_paths, mime_types, strict=True):
             stream = ByteStream(path.read_bytes())
             stream.mime_type = mime_type
             byte_stream_sources.append(stream)
@@ -286,7 +286,7 @@ class TestFileTypeRouter:
         Test if the component raises an error for unsupported data source types.
         """
         router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg"])
-        with pytest.raises(ValueError, match="Unsupported data source type:"):
+        with pytest.raises(TypeError, match="Unsupported data source type:"):
             router.run(sources=[{"unsupported": "type"}])
 
     def test_invalid_regex_pattern(self):

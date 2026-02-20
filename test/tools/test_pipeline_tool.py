@@ -96,7 +96,7 @@ def sample_pipeline_dict():
 class TestPipelineTool:
     def test_init_invalid_pipeline(self):
         with pytest.raises(
-            ValueError, match="The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
+            TypeError, match="The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
         ):
             PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")
 
@@ -376,7 +376,7 @@ class TestPipelineTool:
 
     def test_pipeline_tool_with_invalid_inputs_from_state_nested_dict(self, sample_pipeline):
         """Test that PipelineTool rejects nested dict format for inputs_from_state"""
-        with pytest.raises(ValueError, match="must be str, not dict"):
+        with pytest.raises(TypeError, match="must be str, not dict"):
             PipelineTool(
                 pipeline=sample_pipeline,
                 input_mapping={"query": ["bm25_retriever.query"]},

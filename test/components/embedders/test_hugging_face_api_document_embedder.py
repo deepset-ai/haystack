@@ -27,8 +27,7 @@ def mock_check_valid_model():
 
 
 def mock_embedding_generation(text, **kwargs):
-    response = array([[random.random() for _ in range(384)] for _ in range(len(text))])
-    return response
+    return array([[random.random() for _ in range(384)] for _ in range(len(text))])
 
 
 class TestHuggingFaceAPIDocumentEmbedder:
@@ -316,7 +315,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc, new_doc in zip(docs, documents_with_embeddings):
+        for doc, new_doc in zip(docs, documents_with_embeddings, strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

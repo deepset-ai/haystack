@@ -56,7 +56,6 @@ class TestTool:
     @pytest.mark.parametrize(
         "outputs_to_state",
         [
-            pytest.param({"documents": ["some_value"]}, id="config-not-a-dict"),
             pytest.param({"documents": {"source": get_weather_report}}, id="source-not-a-string"),
             pytest.param({"documents": {"handler": "some_string", "source": "docs"}}, id="handler-not-callable"),
         ],
@@ -71,13 +70,22 @@ class TestTool:
                 outputs_to_state=outputs_to_state,
             )
 
+    def test_init_invalid_output_structure_config_not_dict(self):
+        with pytest.raises(TypeError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_state={"documents": ["some_value"]},
+            )
+
     @pytest.mark.parametrize(
         "outputs_to_string",
         [
             pytest.param({"source": get_weather_report}, id="source-not-a-string"),
             pytest.param({"handler": "some_string"}, id="handler-not-callable"),
             pytest.param({"raw_result": "not-a-bool"}, id="raw_result-not-a-bool"),
-            pytest.param({"documents": ["some_value"]}, id="multi-value-config-not-a-dict"),
             pytest.param({"documents": {"source": get_weather_report}}, id="multi-value-source-not-a-string"),
             pytest.param({"documents": {"handler": "some_string"}}, id="multi-value-handler-not-callable"),
             pytest.param(
@@ -93,6 +101,16 @@ class TestTool:
                 parameters={"type": "object", "properties": {"city": {"type": "string"}}},
                 function=get_weather_report,
                 outputs_to_string=outputs_to_string,
+            )
+
+    def test_init_invalid_outputs_to_string_structure_config_not_dict(self):
+        with pytest.raises(TypeError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_string={"documents": ["some_value"]},
             )
 
     def test_tool_spec(self):
@@ -234,7 +252,7 @@ class TestTool:
 
     def test_inputs_from_state_validation_with_non_string_value(self):
         """Test that inputs_from_state values must be strings"""
-        with pytest.raises(ValueError, match=re.escape("inputs_from_state values must be str, not dict")):
+        with pytest.raises(TypeError, match=re.escape("inputs_from_state values must be str, not dict")):
             Tool(
                 name="weather",
                 description="Get weather report",

@@ -114,7 +114,7 @@ class Sockets:  # noqa: PLW1641
         return self._sockets_dict.get(key, default)
 
     def _component_name(self) -> str:
-        if pipeline := getattr(self._component, "__haystack_added_to_pipeline__"):
+        if pipeline := self._component.__haystack_added_to_pipeline__:
             # This Component has been added in a Pipeline, let's get the name from there.
             return pipeline.get_component_name(self._component)
 

@@ -296,7 +296,7 @@ class TestDocumentJoiner:
 
         joiners = [joiner_1, joiner_2, joiner_3, joiner_4, joiner_5]
 
-        for index, joiner in enumerate(joiners):
+        for joiner in joiners:
             join_results = joiner.run(documents=document_lists)
             is_sorted = all(
                 join_results["documents"][i].score >= join_results["documents"][i + 1].score

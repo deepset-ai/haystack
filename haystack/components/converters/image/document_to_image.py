@@ -164,8 +164,8 @@ class DocumentToImageContent:
         ]
         if none_image_contents_doc_ids:
             logger.warning(
-                "Conversion failed for some documents. Their output will be None. "
-                f"Document IDs: {none_image_contents_doc_ids}"
+                "Conversion failed for some documents. Their output will be None. Document IDs: {document_ids}",
+                document_ids=none_image_contents_doc_ids,
             )
 
         return {"image_contents": image_contents}

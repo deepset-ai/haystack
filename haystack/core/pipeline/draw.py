@@ -51,7 +51,7 @@ def generate_color_variations(n: int, base_color: str | None = "#3498DB", variat
 
         # Convert back to RGB and then to hex
         new_r, new_g, new_b = colorsys.hsv_to_rgb(new_h, new_s, new_v)
-        hex_color = "#{:02x}{:02x}{:02x}".format(int(new_r * 255), int(new_g * 255), int(new_b * 255))
+        hex_color = f"#{int(new_r * 255):02x}{int(new_g * 255):02x}{int(new_b * 255):02x}"
 
         variations.append(hex_color)
 
@@ -245,7 +245,7 @@ def _to_mermaid_image(
             logger.warning("No pipeline diagram will be saved.")
             resp.raise_for_status()
 
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         logger.warning(
             "Failed to draw the pipeline: could not connect to {server_url} ({error})", server_url=server_url, error=exc
         )
@@ -295,7 +295,7 @@ def _to_mermaid_text(
     if super_component_components:
         unique_super_components = set(super_component_mapping.values())  # type:ignore
         color_variations = generate_color_variations(n=len(unique_super_components))
-        super_component_colors = dict(zip(unique_super_components, color_variations))
+        super_component_colors = dict(zip(unique_super_components, color_variations, strict=True))
 
     # Generate style definitions for each super component
     style_definitions = []
@@ -338,7 +338,7 @@ def _to_mermaid_text(
     legend_nodes = []
     if super_component_colors:
         legend_nodes.append("subgraph Legend")
-        for super_comp, color in super_component_colors.items():
+        for super_comp in super_component_colors:
             legend_id = f"legend_{super_comp}"
             legend_nodes.append(f'{legend_id}["{super_comp}"]:::{super_comp}')
         legend_nodes.append("end")

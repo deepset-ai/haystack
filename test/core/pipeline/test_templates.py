@@ -12,7 +12,7 @@ from haystack.core.pipeline.template import PipelineTemplate, PredefinedPipeline
 
 @pytest.fixture
 def random_valid_template():
-    template = """
+    return """
 components:
   generator:
     {{ generator | indent }}
@@ -24,7 +24,6 @@ connections:
   - receiver: generator.prompt
     sender: prompt_builder.prompt
 """
-    return template
 
 
 class TestPipelineTemplate:

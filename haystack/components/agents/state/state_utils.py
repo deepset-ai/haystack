@@ -70,7 +70,7 @@ def merge_lists(current: Union[list[T], T, None], new: Union[list[T], T]) -> lis
     return current_list + new_list
 
 
-def replace_values(current: Any, new: Any) -> Any:
+def replace_values(current: Any, new: Any) -> Any:  # noqa: ARG001
     """
     Replace the `current` value with the `new` value.
 

@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, get_args, get_origin
+from collections.abc import Callable
+from typing import Any, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -169,7 +170,7 @@ class ComponentTool(Tool):
                 f"Object {component!r} is not a Haystack component. "
                 "Use ComponentTool only with Haystack component instances."
             )
-            raise ValueError(message)
+            raise TypeError(message)
 
         if getattr(component, "__haystack_added_to_pipeline__", None):
             msg = (
@@ -211,7 +212,11 @@ class ComponentTool(Tool):
                     resolved_param_value = type_adapter.validate_python(param_value)
 
                 converted_kwargs[param_name] = resolved_param_value
-            logger.debug(f"Invoking component {type(component)} with kwargs: {converted_kwargs}")
+            logger.debug(
+                "Invoking component {type(component)} with kwargs: {converted_kwargs}",
+                component_type=type(component),
+                converted_kwargs=converted_kwargs,
+            )
             return component.run(**converted_kwargs)
 
         # Generate a name for the tool if not provided

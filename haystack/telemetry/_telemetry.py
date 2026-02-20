@@ -66,7 +66,7 @@ class Telemetry:
         if CONFIG_PATH.exists():
             # Load the config file
             try:
-                with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
+                with open(CONFIG_PATH, encoding="utf-8") as config_file:
                     config = yaml.safe_load(config_file)
                     if "user_id" in config:
                         self.user_id = config["user_id"]
@@ -158,7 +158,7 @@ def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> tuple[str,
     for component_name, instance in pipeline.walk():
         component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
-            telemetry_data = getattr(instance, "_get_telemetry_data")()
+            telemetry_data = instance._get_telemetry_data()
             if not isinstance(telemetry_data, dict):
                 raise TypeError(
                     f"Telemetry data for component {component_name} must be a dictionary but is {type(telemetry_data)}."

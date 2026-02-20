@@ -39,7 +39,7 @@ class SentenceTransformersDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments,too-many-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: ComponentDevice | None = None,
@@ -263,7 +263,7 @@ class SentenceTransformersDocumentEmbedder:
         )
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

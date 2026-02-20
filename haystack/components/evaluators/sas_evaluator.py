@@ -155,7 +155,7 @@ class SASEvaluator:
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels
-            sentence_pairs = list(zip(predicted_answers, ground_truth_answers))
+            sentence_pairs = list(zip(predicted_answers, ground_truth_answers, strict=True))
             similarity_scores = self._similarity_model.predict(
                 sentence_pairs, batch_size=self._batch_size, convert_to_numpy=True
             )
@@ -179,8 +179,8 @@ class SASEvaluator:
 
             # Compute cosine-similarities
             similarity_scores = [
-                float(util.cos_sim(p, l).cpu().squeeze().numpy())
-                for p, l in zip(predictions_embeddings, label_embeddings)
+                float(util.cos_sim(pred_embedding, label_embedding).cpu().squeeze().numpy())
+                for pred_embedding, label_embedding in zip(predictions_embeddings, label_embeddings, strict=True)
             ]
 
         sas_score = np_mean(similarity_scores)

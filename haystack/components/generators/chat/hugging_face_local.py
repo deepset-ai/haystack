@@ -6,9 +6,10 @@ import asyncio
 import json
 import re
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Literal, Union
+from typing import Any, Literal, Union
 
 from packaging.version import Version
 
@@ -36,7 +37,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     from transformers import Pipeline as HfPipeline
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+    from haystack.utils.hf import (
         AsyncHFTokenStreamingHandler,
         HFTokenStreamingHandler,
         StopWordsCriteria,
@@ -121,7 +122,7 @@ class HuggingFaceLocalChatGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str = "Qwen/Qwen3-0.6B",
         task: Literal["text-generation", "text2text-generation"] | None = None,
@@ -392,7 +393,7 @@ class HuggingFaceLocalChatGenerator:
 
         return {"replies": chat_messages}
 
-    def create_message(  # pylint: disable=too-many-positional-arguments
+    def create_message(
         self,
         text: str,
         index: int,
@@ -650,7 +651,7 @@ class HuggingFaceLocalChatGenerator:
             for stop_word in stop_words:
                 replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
-        chat_messages = [
+        return [
             self.create_message(
                 text=reply,
                 index=r_index,
@@ -661,4 +662,3 @@ class HuggingFaceLocalChatGenerator:
             )
             for r_index, reply in enumerate(replies)
         ]
-        return chat_messages

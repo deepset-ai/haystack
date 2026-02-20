@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Sequence
+from typing import Any
 
 from haystack import logging
 from haystack.dataclasses.file_content import FileContent
@@ -263,7 +264,7 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
 
 
 @dataclass
-class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we expose several properties
+class ChatMessage:
     """
     Represents a message in a LLM chat conversation.
 
@@ -275,7 +276,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):  # noqa: ARG004
         """
         This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
         """
@@ -292,7 +293,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                 f"{general_msg}"
             )
 
-        return super(ChatMessage, cls).__new__(cls)
+        return super(ChatMessage, cls).__new__(cls)  # noqa: UP008
 
     def __getattribute__(self, name):
         """
@@ -474,9 +475,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                 elif isinstance(part, (TextContent, ImageContent, FileContent)):
                     content.append(part)
                 else:
-                    raise ValueError(
-                        f"The user message must contain only text or image parts. Unsupported part: {part}"
-                    )
+                    raise TypeError(f"The user message must contain only text or image parts. Unsupported part: {part}")
             if len(content) == 0:
                 raise ValueError("The user message must contain at least one content part (text, image, file).")
 
@@ -607,7 +606,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         """
 
         # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
-        if not "role" in data and not "_role" in data:
+        if "role" not in data and "_role" not in data:
             raise ValueError(
                 "The `role` field is required in the message dictionary. "
                 f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "

@@ -19,7 +19,7 @@ with LazyImport("Run 'pip install tika'") as tika_import:
 logger = logging.getLogger(__name__)
 
 
-class XHTMLParser(HTMLParser):  # pylint: disable=abstract-method
+class XHTMLParser(HTMLParser):
     """
     Custom parser to extract pages from Tika XHTML content.
     """
@@ -110,7 +110,7 @@ class TikaDocumentConverter:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from more_itertools import windowed
 
@@ -51,7 +52,7 @@ class DocumentSplitter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence"] = "word",
         split_length: int = 200,
@@ -317,7 +318,7 @@ class DocumentSplitter:
         """
         documents: list[Document] = []
 
-        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs)):
+        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs, strict=True)):
             copied_meta = deepcopy(meta)
             copied_meta["page_number"] = splits_pages[i]
             copied_meta["split_id"] = i

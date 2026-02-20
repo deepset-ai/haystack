@@ -101,8 +101,8 @@ class DocumentTypeRouter:
         for mime_type in mime_types:
             try:
                 pattern = re.compile(mime_type)
-            except re.error:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.")
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
             self._mime_type_patterns.append(pattern)
 
         component.set_output_types(self, unclassified=list[Document], **dict.fromkeys(mime_types, list[Document]))

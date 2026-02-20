@@ -97,7 +97,7 @@ class FallbackChatGenerator:
 
         self._is_warmed_up = True
 
-    def _run_single_sync(  # pylint: disable=too-many-positional-arguments
+    def _run_single_sync(
         self,
         gen: Any,
         messages: list[ChatMessage],
@@ -109,7 +109,7 @@ class FallbackChatGenerator:
             messages=messages, generation_kwargs=generation_kwargs, tools=tools, streaming_callback=streaming_callback
         )
 
-    async def _run_single_async(  # pylint: disable=too-many-positional-arguments
+    async def _run_single_async(
         self,
         gen: Any,
         messages: list[ChatMessage],

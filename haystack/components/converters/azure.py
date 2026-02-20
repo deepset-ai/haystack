@@ -59,7 +59,7 @@ class AzureOCRDocumentConverter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         endpoint: str,
         api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
@@ -138,7 +138,7 @@ class AzureOCRDocumentConverter:
         documents = []
         azure_output = []
         meta_list: list[dict[str, Any]] = normalize_metadata(meta=meta, sources_count=len(sources))
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
@@ -192,7 +192,6 @@ class AzureOCRDocumentConverter:
         """
         return default_from_dict(cls, data)
 
-    # pylint: disable=line-too-long
     def _convert_tables_and_text(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> list[Document]:
         """
         Converts the tables and text extracted by Azure's Document Intelligence service into Haystack Documents.
@@ -209,8 +208,7 @@ class AzureOCRDocumentConverter:
         else:
             assert isinstance(self.threshold_y, float)
             text = self._convert_to_single_column_text(result=result, meta=meta, threshold_y=self.threshold_y)
-        docs = [*tables, text]
-        return docs
+        return [*tables, text]
 
     def _convert_tables(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> list[Document]:
         """
@@ -247,9 +245,9 @@ class AzureOCRDocumentConverter:
                     continue
 
                 column_span = cell.column_span if cell.column_span else 0
-                for c in range(column_span):  # pylint: disable=invalid-name
+                for c in range(column_span):
                     row_span = cell.row_span if cell.row_span else 0
-                    for r in range(row_span):  # pylint: disable=invalid-name
+                    for r in range(row_span):
                         if (
                             self.merge_multiple_column_headers
                             and cell.kind == "columnHeader"
@@ -388,11 +386,11 @@ class AzureOCRDocumentConverter:
             lines = page.lines if page.lines else []
             # Only works if polygons is available
             if all(line.polygon is not None for line in lines):
-                for i in range(len(lines)):  # pylint: disable=consider-using-enumerate
+                for i in range(len(lines)):
                     # left_upi, right_upi, right_lowi, left_lowi = lines[i].polygon
                     left_upi, _, _, _ = lines[i].polygon
                     pairs_by_page[page_idx].append([i, i])
-                    for j in range(i + 1, len(lines)):  # pylint: disable=invalid-name
+                    for j in range(i + 1, len(lines)):
                         left_upj, _, _, _ = lines[j].polygon
                         close_on_y_axis = abs(left_upi[1] - left_upj[1]) < threshold_y
                         if close_on_y_axis:
@@ -401,7 +399,8 @@ class AzureOCRDocumentConverter:
             else:
                 logger.info(
                     "Polygon information for lines on page {page_idx} is not available so it is not possible "
-                    "to enforce a single column page layout.".format(page_idx=page_idx)
+                    "to enforce a single column page layout.",
+                    page_idx=page_idx,
                 )
                 for i in range(len(lines)):
                     pairs_by_page[page_idx].append([i, i])

@@ -264,7 +264,7 @@ class TestAzureOpenAIChatGenerator:
         assert generator.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
         ]
-        assert generator.tools_strict == False
+        assert generator.tools_strict is False
         assert generator.http_client_kwargs is None
 
     def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):

@@ -361,7 +361,7 @@ class OpenAPIServiceConnector:
         # openapi3 specific method to call the operation, do we have it?
         method_to_call = getattr(openapi_service, f"call_{name}", None)
         if not callable(method_to_call):
-            raise RuntimeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
+            raise TypeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
 
         # get the operation reference from the method_to_call
         operation = method_to_call.operation.__self__

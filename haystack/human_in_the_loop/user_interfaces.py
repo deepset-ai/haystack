@@ -76,11 +76,11 @@ class RichConsoleUI(ConfirmationUI):
         """
         if choice == "y":
             return ConfirmationUIResult(action="confirm")
-        elif choice == "m":
+        if choice == "m":
             return self._modify_params(tool_params)
-        else:  # reject
-            feedback = Prompt.ask("Feedback message (optional)", default="", console=self.console)
-            return ConfirmationUIResult(action="reject", feedback=feedback or None)
+        # reject
+        feedback = Prompt.ask("Feedback message (optional)", default="", console=self.console)
+        return ConfirmationUIResult(action="reject", feedback=feedback or None)
 
     def _modify_params(self, tool_params: dict[str, Any]) -> ConfirmationUIResult:
         """
@@ -173,11 +173,11 @@ class SimpleConsoleUI(ConfirmationUI):
         """
         if choice in ("y", "yes"):
             return ConfirmationUIResult(action="confirm")
-        elif choice in ("m", "modify"):
+        if choice in ("m", "modify"):
             return self._modify_params(tool_params)
-        else:  # reject
-            feedback = input("Feedback message (optional): ").strip()
-            return ConfirmationUIResult(action="reject", feedback=feedback or None)
+        # reject
+        feedback = input("Feedback message (optional): ").strip()
+        return ConfirmationUIResult(action="reject", feedback=feedback or None)
 
     def _modify_params(self, tool_params: dict[str, Any]) -> ConfirmationUIResult:
         """

@@ -117,7 +117,7 @@ class TestRegexTextExtractor:
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern)
         messages = ["not a ChatMessage object"]
-        with pytest.raises(ValueError, match="Expected ChatMessage object, got <class 'str'>"):
+        with pytest.raises(TypeError, match="Expected ChatMessage object, got <class 'str'>"):
             extractor.run(text_or_messages=messages)
 
     def test_extract_from_chat_messages_last_message_no_text(self):

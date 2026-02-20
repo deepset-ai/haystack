@@ -257,7 +257,7 @@ class TestHuggingFaceTEIRanker:
 
         # Test unexpected response format
         mock_response.json.return_value = {"unexpected": "format"}
-        with pytest.raises(RuntimeError, match="Unexpected response format from text-embeddings-inference rerank API"):
+        with pytest.raises(TypeError, match="Unexpected response format from text-embeddings-inference rerank API"):
             ranker.run(query="test query", documents=docs)
 
     @pytest.mark.asyncio

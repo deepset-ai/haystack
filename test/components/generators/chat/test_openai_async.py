@@ -314,7 +314,7 @@ class TestOpenAIChatGeneratorAsync:
                 )
                 await asyncio.sleep(0.005)  # delay between chunks
 
-        mock_stream.__aiter__ = lambda self: mock_chunk_generator()
+        mock_stream.__aiter__ = lambda _: mock_chunk_generator()
 
         received_chunks = []
 

@@ -112,7 +112,7 @@ class DocumentMRREvaluator:
 
         individual_scores = []
 
-        for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents):
+        for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents, strict=True):
             reciprocal_rank = 0.0
 
             ground_truth_values = [val for doc in ground_truth if (val := self._get_comparison_value(doc)) is not None]

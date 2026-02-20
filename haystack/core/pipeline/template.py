@@ -113,7 +113,7 @@ class PipelineTemplate:
         :param file_path: The path to the file containing the template. Must contain valid Jinja2 syntax.
         :returns: An instance of `PipelineTemplate`.
         """
-        with open(file_path, "r") as file:
+        with open(file_path) as file:
             return cls(file.read())
 
     @classmethod

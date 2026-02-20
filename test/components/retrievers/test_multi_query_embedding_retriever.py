@@ -222,8 +222,7 @@ class TestMultiQueryEmbeddingRetriever:
                 nonlocal call_count
                 if call_count == 1:
                     return {"documents": [doc1, doc2]}
-                else:
-                    return {"documents": [doc3, doc2]}
+                return {"documents": [doc3, doc2]}
 
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=MockRetriever(), query_embedder=MockQueryEmbedder(), max_workers=1
