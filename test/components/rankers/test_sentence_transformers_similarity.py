@@ -114,7 +114,7 @@ class TestSentenceTransformersSimilarityRanker:
         component = SentenceTransformersSimilarityRanker(
             model="my_model",
             device=ComponentDevice.from_str("cuda:0"),
-            token=Secret.from_env_var("ENV_VAR", strict=True),
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             top_k=5,
             query_prefix="query_instruction: ",
             query_suffix="\n",
@@ -240,7 +240,7 @@ class TestSentenceTransformersSimilarityRanker:
         component = SentenceTransformersSimilarityRanker.from_dict(data)
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.model == "cross-encoder/ms-marco-MiniLM-L-6-v2"
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.top_k == 10
         assert component.query_prefix == ""
         assert component.document_prefix == ""

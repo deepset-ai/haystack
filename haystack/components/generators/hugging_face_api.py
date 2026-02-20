@@ -93,11 +93,11 @@ class HuggingFaceAPIGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         api_type: HFGenerationAPIType | str,
         api_params: dict[str, str],
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: dict[str, Any] | None = None,
         stop_words: list[str] | None = None,
         streaming_callback: StreamingCallbackT | None = None,

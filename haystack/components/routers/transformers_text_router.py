@@ -11,11 +11,7 @@ from haystack.utils import ComponentDevice, Secret
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoConfig, Pipeline, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        deserialize_hf_model_kwargs,
-        resolve_hf_pipeline_kwargs,
-        serialize_hf_model_kwargs,
-    )
+    from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 
 @component
@@ -69,12 +65,12 @@ class TransformersTextRouter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str,
         labels: list[str] | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """

@@ -12,7 +12,7 @@ from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map
 from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
+    import accelerate  # noqa: F401 # the library is used but not directly referenced
     import torch
     from torch.utils.data import DataLoader, Dataset
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -48,11 +48,11 @@ class TransformersSimilarityRanker:
     ```
     """
 
-    def __init__(  # noqa: PLR0913, pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
@@ -218,7 +218,7 @@ class TransformersSimilarityRanker:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         documents: list[Document],

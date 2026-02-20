@@ -144,7 +144,7 @@ class TestSerDe:
     def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(
-            api_key=Secret.from_env_var("ENV_VAR", strict=True),
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
             timeout=2.5,

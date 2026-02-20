@@ -38,7 +38,7 @@ class InMemoryBM25Retriever:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         document_store: InMemoryDocumentStore,
         filters: dict[str, Any] | None = None,

@@ -23,7 +23,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
     _instances: dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
 
     @staticmethod
-    def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
+    def get_embedding_backend(
         *,
         model: str,
         device: str | None = None,
@@ -79,7 +79,7 @@ class _SentenceTransformersEmbeddingBackend:
     Class to manage Sentence Transformers embeddings.
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         *,
         model: str,

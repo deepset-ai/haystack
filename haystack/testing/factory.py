@@ -123,7 +123,7 @@ def document_store_class(
     return type(name, bases, fields)
 
 
-def component_class(  # pylint: disable=too-many-positional-arguments
+def component_class(
     name: str,
     input_types: dict[str, Any] | None = None,
     output_types: dict[str, Any] | None = None,

@@ -12,7 +12,7 @@ from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
+    import accelerate  # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -49,11 +49,11 @@ class ExtractiveReader:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: Path | str = "deepset/roberta-base-squad2-distilled",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 20,
         score_threshold: float | None = None,
         max_seq_length: int = 384,
@@ -205,7 +205,7 @@ class ExtractiveReader:
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
 
-    def _preprocess(  # pylint: disable=too-many-positional-arguments
+    def _preprocess(
         self, *, queries: list[str], documents: list[Document], max_seq_length: int, query_ids: list[int], stride: int
     ) -> tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", list["Encoding"], list[int], list[int]]:
         """
@@ -531,7 +531,7 @@ class ExtractiveReader:
         return deduplicated_answers
 
     @component.output_types(answers=list[ExtractedAnswer])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         documents: list[Document],

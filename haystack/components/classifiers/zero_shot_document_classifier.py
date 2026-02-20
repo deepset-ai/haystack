@@ -72,14 +72,14 @@ class TransformersZeroShotDocumentClassifier:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str,
         labels: list[str],
         multi_label: bool = False,
         classification_field: str | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """

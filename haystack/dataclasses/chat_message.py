@@ -264,7 +264,7 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
 
 
 @dataclass
-class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we expose several properties
+class ChatMessage:  # it's OK since we expose several properties
     """
     Represents a message in a LLM chat conversation.
 

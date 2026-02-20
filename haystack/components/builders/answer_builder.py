@@ -114,7 +114,7 @@ class AnswerBuilder:
         self.return_only_referenced_documents = return_only_referenced_documents
 
     @component.output_types(answers=list[GeneratedAnswer])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         replies: list[str] | list[ChatMessage],

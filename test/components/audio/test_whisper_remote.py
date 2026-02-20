@@ -76,7 +76,7 @@ class TestRemoteWhisperTranscriber:
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
         transcriber = RemoteWhisperTranscriber(
-            api_key=Secret.from_env_var("ENV_VAR", strict=True),
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
             model="whisper-1",
             organization="test-org",
             api_base_url="test_api_url",

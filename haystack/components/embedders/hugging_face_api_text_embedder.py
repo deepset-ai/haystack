@@ -76,12 +76,12 @@ class HuggingFaceAPITextEmbedder:
         self,
         api_type: HFEmbeddingAPIType | str,
         api_params: dict[str, str],
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
         truncate: bool | None = True,
         normalize: bool | None = False,
-    ):  # pylint: disable=too-many-positional-arguments
+    ):
         """
         Creates a HuggingFaceAPITextEmbedder component.
 

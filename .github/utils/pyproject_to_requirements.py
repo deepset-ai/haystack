@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 # toml is available in the default environment but not in the test environment, so pylint complains
-import toml  # pylint: disable=import-error
+import toml
 
 matcher = re.compile(r"farm-haystack\[(.+)\]")
 parser = argparse.ArgumentParser(

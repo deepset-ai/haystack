@@ -245,7 +245,7 @@ def _to_mermaid_image(
             logger.warning("No pipeline diagram will be saved.")
             resp.raise_for_status()
 
-    except Exception as exc:  # pylint: disable=broad-except
+    except Exception as exc:
         logger.warning(
             "Failed to draw the pipeline: could not connect to {server_url} ({error})", server_url=server_url, error=exc
         )

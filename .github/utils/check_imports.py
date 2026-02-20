@@ -4,7 +4,7 @@ import sys
 import traceback
 from pathlib import Path
 
-from haystack import logging  # pylint: disable=unused-import  # noqa: F401 # this is needed to avoid circular imports
+from haystack import logging  # noqa: F401 # this is needed to avoid circular imports
 
 
 def validate_module_imports(root_dir: str, exclude_subdirs: list[str] | None = None) -> tuple[list, list]:

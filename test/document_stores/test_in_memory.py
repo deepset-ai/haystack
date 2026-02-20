@@ -16,7 +16,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import DocumentStoreBaseTests
 
 
-class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
+class TestMemoryDocumentStore(DocumentStoreBaseTests):
     """
     Test InMemoryDocumentStore's specific features
     """

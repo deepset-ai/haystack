@@ -63,7 +63,7 @@ class SentenceTransformersDocumentImageEmbedder:
         root_path: str | None = None,
         model: str = "sentence-transformers/clip-ViT-B-32",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,

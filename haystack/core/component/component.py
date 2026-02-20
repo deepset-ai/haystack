@@ -180,7 +180,7 @@ class Component(Protocol):
     # [arg-type]
     # note: Protocol member Component.run expected settable variable, got read-only attribute
 
-    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # pylint: disable=missing-function-docstring # noqa: D102
+    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # noqa: D102
         ...
 
 

@@ -68,7 +68,7 @@ class HuggingFaceTEIRanker:
         timeout: int | None = 30,
         max_retries: int = 3,
         retry_status_codes: list[int] | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Initializes the TEI reranker component.

@@ -37,7 +37,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     from transformers import Pipeline as HfPipeline
     from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+    from haystack.utils.hf import (
         AsyncHFTokenStreamingHandler,
         HFTokenStreamingHandler,
         StopWordsCriteria,
@@ -122,12 +122,12 @@ class HuggingFaceLocalChatGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str = "Qwen/Qwen3-0.6B",
         task: Literal["text-generation", "text2text-generation"] | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         chat_template: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
@@ -393,7 +393,7 @@ class HuggingFaceLocalChatGenerator:
 
         return {"replies": chat_messages}
 
-    def create_message(  # pylint: disable=too-many-positional-arguments
+    def create_message(
         self,
         text: str,
         index: int,

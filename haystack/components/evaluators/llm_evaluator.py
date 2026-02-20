@@ -51,7 +51,7 @@ class LLMEvaluator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         instructions: str,
         inputs: list[tuple[str, type[list]]],

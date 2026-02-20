@@ -18,7 +18,7 @@ with LazyImport(
     "Image resizing will be applied, which requires the Pillow library. "
     "Run 'pip install pillow'"
 ) as pillow_import:
-    import PIL  # pylint: disable=unused-import # noqa: F401
+    import PIL  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

@@ -19,8 +19,8 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
     from transformers import Pipeline as HfPipeline
 
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
-    import spacy  # pylint: disable=import-error
-    from spacy import Language as SpacyPipeline  # pylint: disable=import-error
+    import spacy
+    from spacy import Language as SpacyPipeline
 
 
 class NamedEntityExtractorBackend(Enum):
@@ -111,7 +111,7 @@ class NamedEntityExtractor:
         model: str,
         pipeline_kwargs: dict[str, Any] | None = None,
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Create a Named Entity extractor component.

@@ -107,7 +107,7 @@ class Pipeline(PipelineBase):
 
             return component_output
 
-    def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
+    def run(  # noqa: PLR0915, PLR0912, C901
         self,
         data: dict[str, Any],
         include_outputs_from: set[str] | None = None,

@@ -48,7 +48,7 @@ class InMemoryEmbeddingRetriever:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         document_store: InMemoryDocumentStore,
         filters: dict[str, Any] | None = None,
@@ -133,7 +133,7 @@ class InMemoryEmbeddingRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,
@@ -184,7 +184,7 @@ class InMemoryEmbeddingRetriever:
         return {"documents": docs}
 
     @component.output_types(documents=list[Document])
-    async def run_async(  # pylint: disable=too-many-positional-arguments
+    async def run_async(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,

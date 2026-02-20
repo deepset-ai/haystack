@@ -148,7 +148,7 @@ class LLMMetadataExtractor:
     ```
     """  # noqa: E501
 
-    def __init__(  # pylint: disable=R0917
+    def __init__(
         self,
         prompt: str,
         chat_generator: ChatGenerator,

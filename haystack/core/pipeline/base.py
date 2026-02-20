@@ -1,4 +1,3 @@
-# pylint: disable=too-many-lines
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -430,7 +429,7 @@ class PipelineBase:  # noqa: PLW1641
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912 C901 pylint: disable=too-many-branches
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912 C901
         """
         Connects two components together.
 
@@ -891,14 +890,14 @@ class PipelineBase:  # noqa: PLW1641
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
                     key: {
-                        "type": value.type.__name__ if type(value.type) is type else str(value.type),  # pylint: disable=unidiomatic-typecheck
+                        "type": value.type.__name__ if type(value.type) is type else str(value.type),
                         "senders": value.senders,
                     }
                     for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
                 },
                 "haystack.component.output_spec": {
                     key: {
-                        "type": value.type.__name__ if type(value.type) is type else str(value.type),  # pylint: disable=unidiomatic-typecheck
+                        "type": value.type.__name__ if type(value.type) is type else str(value.type),
                         "receivers": value.receivers,
                     }
                     for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore

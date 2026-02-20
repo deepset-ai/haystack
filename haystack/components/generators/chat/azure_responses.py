@@ -55,7 +55,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         self,
         *,
         api_key: Secret | Callable[[], str] | Callable[[], Awaitable[str]] = Secret.from_env_var(
-            "AZURE_OPENAI_API_KEY", strict=True
+            "AZURE_OPENAI_API_KEY", strict=False
         ),
         azure_endpoint: str | None = None,
         azure_deployment: str = "gpt-5-mini",

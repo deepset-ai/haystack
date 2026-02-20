@@ -111,7 +111,7 @@ class LinkContentFetcher:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         raise_on_failure: bool = True,
         user_agents: list[str] | None = None,

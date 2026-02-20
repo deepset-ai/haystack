@@ -37,15 +37,14 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
     ```
     """
 
-    # pylint: disable=super-init-not-called
-    def __init__(  # noqa: PLR0913 (too-many-arguments) # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 (too-many-arguments)
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2023-05-15",
         azure_deployment: str = "text-embedding-ada-002",
         dimensions: int | None = None,
-        api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=True),
-        azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=True),
+        api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: str | None = None,
         prefix: str = "",
         suffix: str = "",

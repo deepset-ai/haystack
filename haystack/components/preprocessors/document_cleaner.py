@@ -39,7 +39,7 @@ class DocumentCleaner:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         remove_empty_lines: bool = True,
         remove_extra_whitespaces: bool = True,

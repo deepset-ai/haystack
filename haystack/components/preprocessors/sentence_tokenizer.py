@@ -113,7 +113,7 @@ if nltk_imports.is_successful():
                 return self._re_period_context
 
 
-class SentenceSplitter:  # pylint: disable=too-few-public-methods
+class SentenceSplitter:
     """
     SentenceSplitter splits a text into sentences using the nltk sentence tokenizer
     """
@@ -138,7 +138,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         nltk_imports.check()
         self.language = language
         # after checking nltk_imports, we are sure that load_sentence_tokenizer is defined
-        self.sentence_tokenizer = load_sentence_tokenizer(language, keep_white_spaces=keep_white_spaces)  # pylint: disable=possibly-used-before-assignment
+        self.sentence_tokenizer = load_sentence_tokenizer(language, keep_white_spaces=keep_white_spaces)
         self.use_split_rules = use_split_rules
         if extend_abbreviations:
             abbreviations = SentenceSplitter._read_abbreviations(language)

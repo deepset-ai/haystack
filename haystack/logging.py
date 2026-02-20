@@ -188,7 +188,7 @@ def patch_make_records_to_use_kwarg_string_interpolation(original_make_records: 
     """A decorator to ensure string interpolation is used."""
 
     @functools.wraps(original_make_records)
-    def _wrapper(  # pylint: disable=too-many-positional-arguments
+    def _wrapper(
         name: str,
         level: int | str,
         fn: str,

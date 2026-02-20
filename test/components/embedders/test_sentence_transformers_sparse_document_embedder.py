@@ -25,7 +25,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
         assert embedder.model == "model"
         assert embedder.device == ComponentDevice.resolve_device(None)
-        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
+        assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.batch_size == 32
@@ -93,7 +93,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersSparseDocumentEmbedder(
             model="model",
             device=ComponentDevice.from_str("cuda:0"),
-            token=Secret.from_env_var("ENV_VAR", strict=True),
+            token=Secret.from_env_var("ENV_VAR", strict=False),
             prefix="prefix",
             suffix="suffix",
             batch_size=64,
@@ -153,7 +153,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         assert component.model == "model"
         assert component.device == ComponentDevice.from_str("cuda:0")
-        assert component.token == Secret.from_env_var("ENV_VAR", strict=True)
+        assert component.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert component.prefix == "prefix"
         assert component.suffix == "suffix"
         assert component.batch_size == 64
@@ -171,7 +171,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersSparseDocumentEmbedder.from_dict({"type": TYPE_NAME, "init_parameters": {}})
         assert component.model == "prithivida/Splade_PP_en_v2"
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True)
+        assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.batch_size == 32
@@ -201,7 +201,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         assert component.model == "model"
         assert component.device == ComponentDevice.resolve_device(None)
-        assert component.token == Secret.from_env_var("ENV_VAR", strict=True)
+        assert component.token == Secret.from_env_var("ENV_VAR", strict=False)
         assert component.prefix == "prefix"
         assert component.suffix == "suffix"
         assert component.batch_size == 64

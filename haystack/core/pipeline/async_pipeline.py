@@ -99,7 +99,7 @@ class AsyncPipeline(PipelineBase):
 
             return outputs
 
-    async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
+    async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncIterator[dict[str, Any]]:
         """

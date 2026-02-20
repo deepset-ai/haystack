@@ -139,7 +139,7 @@ def _parse_pep604_union_args(union_str: str) -> list[str]:
     return args
 
 
-def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements
+def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string, including nested generic types.
 

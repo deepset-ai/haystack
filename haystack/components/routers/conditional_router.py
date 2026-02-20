@@ -118,7 +118,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         routes: list[Route],
         custom_filters: dict[str, Callable] | None = None,
@@ -457,7 +457,7 @@ class ConditionalRouter:
         except TemplateSyntaxError:
             return False
 
-    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911 # pylint: disable=too-many-return-statements
+    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911
         """
         Checks whether `value` type matches the `expected_type`.
         """

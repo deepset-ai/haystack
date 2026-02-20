@@ -92,7 +92,7 @@ class TestAzureOpenAIGenerator:
     def test_to_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIGenerator(
-            api_key=Secret.from_env_var("ENV_VAR", strict=True),
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
             azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=True),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,

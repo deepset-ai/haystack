@@ -59,7 +59,7 @@ class AzureOCRDocumentConverter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         endpoint: str,
         api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
@@ -192,7 +192,6 @@ class AzureOCRDocumentConverter:
         """
         return default_from_dict(cls, data)
 
-    # pylint: disable=line-too-long
     def _convert_tables_and_text(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> list[Document]:
         """
         Converts the tables and text extracted by Azure's Document Intelligence service into Haystack Documents.
@@ -246,9 +245,9 @@ class AzureOCRDocumentConverter:
                     continue
 
                 column_span = cell.column_span if cell.column_span else 0
-                for c in range(column_span):  # pylint: disable=invalid-name
+                for c in range(column_span):
                     row_span = cell.row_span if cell.row_span else 0
-                    for r in range(row_span):  # pylint: disable=invalid-name
+                    for r in range(row_span):
                         if (
                             self.merge_multiple_column_headers
                             and cell.kind == "columnHeader"
@@ -387,11 +386,11 @@ class AzureOCRDocumentConverter:
             lines = page.lines if page.lines else []
             # Only works if polygons is available
             if all(line.polygon is not None for line in lines):
-                for i in range(len(lines)):  # pylint: disable=consider-using-enumerate
+                for i in range(len(lines)):
                     # left_upi, right_upi, right_lowi, left_lowi = lines[i].polygon
                     left_upi, _, _, _ = lines[i].polygon
                     pairs_by_page[page_idx].append([i, i])
-                    for j in range(i + 1, len(lines)):  # pylint: disable=invalid-name
+                    for j in range(i + 1, len(lines)):
                         left_upj, _, _, _ = lines[j].polygon
                         close_on_y_axis = abs(left_upi[1] - left_upj[1]) < threshold_y
                         if close_on_y_axis:

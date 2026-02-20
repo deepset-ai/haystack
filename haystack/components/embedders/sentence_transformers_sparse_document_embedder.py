@@ -45,7 +45,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         *,
         model: str = "prithivida/Splade_PP_en_v2",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,

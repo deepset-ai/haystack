@@ -20,9 +20,6 @@ def _random_embeddings(n):
     return [random.random() for _ in range(n)]
 
 
-# pylint: disable=too-many-public-methods
-
-
 # These are random embedding that are used to test filters.
 # We declare them here as they're used both in the `filterable_docs` fixture
 # and the body of several `filter_documents` tests.
@@ -940,7 +937,7 @@ class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocu
         raise NotImplementedError()
 
 
-class DocumentStoreBaseExtendedTests(DocumentStoreBaseTests, DeleteAllTest, DeleteByFilterTest, UpdateByFilterTest):  # pylint: disable=too-many-ancestors
+class DocumentStoreBaseExtendedTests(DocumentStoreBaseTests, DeleteAllTest, DeleteByFilterTest, UpdateByFilterTest):
     """
     Extended tests for Document Stores.
 

@@ -94,7 +94,7 @@ class OpenAIChatGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
@@ -497,7 +497,7 @@ class OpenAIChatGenerator:
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        for chunk in chat_completion:  # pylint: disable=not-an-iterable
+        for chunk in chat_completion:
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
             chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=chunk, previous_chunks=chunks, component_info=component_info
@@ -512,7 +512,7 @@ class OpenAIChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
         try:
-            async for chunk in chat_completion:  # pylint: disable=not-an-iterable
+            async for chunk in chat_completion:
                 assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
                 chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
                     chunk=chunk, previous_chunks=chunks, component_info=component_info

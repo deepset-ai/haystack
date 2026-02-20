@@ -509,7 +509,7 @@ class OpenAIResponsesChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
 
-        for openai_chunk in responses:  # pylint: disable=not-an-iterable
+        for openai_chunk in responses:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
@@ -523,7 +523,7 @@ class OpenAIResponsesChatGenerator:
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        async for openai_chunk in responses:  # pylint: disable=not-an-iterable
+        async for openai_chunk in responses:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
@@ -600,7 +600,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     )
 
 
-def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
+def _convert_response_chunk_to_streaming_chunk(
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """

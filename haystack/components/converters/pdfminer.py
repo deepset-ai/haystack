@@ -42,7 +42,7 @@ class PDFMinerToDocument:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         line_overlap: float = 0.5,
         char_margin: float = 2.0,

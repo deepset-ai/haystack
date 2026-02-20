@@ -13,7 +13,7 @@ from .parameters_schema_utils import _contains_callable_type
 from .tool import Tool
 
 
-def create_tool_from_function(  # pylint: disable=too-many-positional-arguments
+def create_tool_from_function(
     function: Callable,
     name: str | None = None,
     description: str | None = None,

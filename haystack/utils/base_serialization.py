@@ -63,7 +63,7 @@ def deserialize_class_instance(data: dict[str, Any]) -> Any:
     return obj_class.from_dict(data["data"])
 
 
-def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR0911
     """
     Serializes a value into a schema-aware format suitable for storage or transmission.
 

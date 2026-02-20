@@ -57,7 +57,7 @@ class SASEvaluator:
         model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
         batch_size: int = 32,
         device: ComponentDevice | None = None,
-        token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Creates a new instance of SASEvaluator.

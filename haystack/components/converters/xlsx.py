@@ -19,9 +19,7 @@ with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
     import pandas as pd
 
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
-    from tabulate import (  # pylint: disable=unused-import
-        tabulate,  # noqa: F401 # the library is used but not directly referenced
-    )
+    from tabulate import tabulate  # noqa: F401 # the library is used but not directly referenced
 
 
 @component

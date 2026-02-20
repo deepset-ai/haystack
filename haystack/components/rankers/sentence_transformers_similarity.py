@@ -44,7 +44,7 @@ class SentenceTransformersSimilarityRanker:
         *,
         model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: ComponentDevice | None = None,
-        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=True),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         query_suffix: str = "",

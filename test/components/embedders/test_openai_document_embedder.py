@@ -116,7 +116,7 @@ class TestOpenAIDocumentEmbedder:
     def test_to_dict_with_custom_init_parameters(self, monkeypatch):
         monkeypatch.setenv("ENV_VAR", "fake-api-key")
         component = OpenAIDocumentEmbedder(
-            api_key=Secret.from_env_var("ENV_VAR", strict=True),
+            api_key=Secret.from_env_var("ENV_VAR", strict=False),
             model="model",
             organization="my-org",
             http_client_kwargs={"proxy": "http://localhost:8080"},

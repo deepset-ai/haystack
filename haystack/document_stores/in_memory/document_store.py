@@ -56,12 +56,12 @@ _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
 
 
-class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
+class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
@@ -231,7 +231,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             doc_len = doc_stats.doc_len
 
             score = 0.0
-            for tok in idf.keys():  # pylint: disable=consider-using-dict-items
+            for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
@@ -339,7 +339,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             doc_len = doc_stats.doc_len
 
             score = 0.0
-            for tok in idf.keys():  # pylint: disable=consider-using-dict-items
+            for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
@@ -608,7 +608,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
 
         return return_documents
 
-    def embedding_retrieval(  # pylint: disable=too-many-positional-arguments
+    def embedding_retrieval(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,
@@ -781,7 +781,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             lambda: self.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score),
         )
 
-    async def embedding_retrieval_async(  # pylint: disable=too-many-positional-arguments
+    async def embedding_retrieval_async(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,
