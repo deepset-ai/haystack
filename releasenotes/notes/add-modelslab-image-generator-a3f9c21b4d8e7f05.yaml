@@ -1,0 +1,33 @@
+---
+features:
+  - |
+    Added a new **ModelsLabImageGenerator** component that generates images using
+    `ModelsLab's text-to-image API <https://docs.modelslab.com/image-generation/community-models/text2img>`_.
+
+    ModelsLab provides access to 200+ AI models including Flux, SDXL, Stable Diffusion,
+    and thousands of community fine-tunes via a single unified API.
+
+    **Basic usage:**
+
+    .. code-block:: python
+
+        from haystack.components.generators import ModelsLabImageGenerator
+
+        generator = ModelsLabImageGenerator(model="flux", width=1024, height=1024)
+        result = generator.run("A breathtaking sunset over snow-capped mountains.")
+        print(result["images"])  # list of image URLs
+
+    **Pipeline usage:**
+
+    .. code-block:: python
+
+        from haystack import Pipeline
+        from haystack.components.generators import ModelsLabImageGenerator
+
+        pipeline = Pipeline()
+        pipeline.add_component("image_gen", ModelsLabImageGenerator(model="flux"))
+        result = pipeline.run({"image_gen": {"prompt": "A futuristic city at night"}})
+        print(result["image_gen"]["images"])
+
+    Set the ``MODELSLAB_API_KEY`` environment variable or pass ``api_key`` explicitly.
+    The component handles ModelsLab's async generation flow (polling) automatically.

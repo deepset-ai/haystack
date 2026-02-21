@@ -13,6 +13,7 @@ _import_structure = {
     "hugging_face_local": ["HuggingFaceLocalGenerator"],
     "hugging_face_api": ["HuggingFaceAPIGenerator"],
     "openai_dalle": ["DALLEImageGenerator"],
+    "modelslab": ["ModelsLabImageGenerator"],
 }
 
 if TYPE_CHECKING:
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from .hugging_face_local import HuggingFaceLocalGenerator as HuggingFaceLocalGenerator
     from .openai import OpenAIGenerator as OpenAIGenerator
     from .openai_dalle import DALLEImageGenerator as DALLEImageGenerator
+    from .modelslab import ModelsLabImageGenerator as ModelsLabImageGenerator
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
