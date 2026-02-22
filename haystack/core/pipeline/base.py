@@ -22,7 +22,6 @@ from haystack.core.errors import (
     PipelineError,
     PipelineMaxComponentRuns,
     PipelineRuntimeError,
-    PipelineUnmarshalError,
     PipelineValidationError,
 )
 from haystack.core.pipeline.component_checks import (
