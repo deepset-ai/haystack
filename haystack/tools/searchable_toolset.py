@@ -140,7 +140,10 @@ class SearchableToolset(Toolset):
             if not tool_keywords.strip():
                 return "No tools found matching these keywords. Try different keywords."
 
-            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)  # type: ignore[union-attr]
+            if self._document_store is None:
+                raise RuntimeError("SearchableToolset has not been warmed up. Call warm_up() before using search.")
+
+            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)
 
             if not results:
                 return "No tools found matching these keywords. Try different keywords."
