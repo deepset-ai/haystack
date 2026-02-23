@@ -1,0 +1,29 @@
+---
+deprecations:
+  - |
+    In-place mutation of Haystack dataclass instances (e.g. `Document`, `ChatMessage`, `StreamingChunk`,
+    `ByteStream`, `SparseEmbedding`, and others) is deprecated and will be removed in a future version.
+    Mutating an attribute directly will emit a `DeprecationWarning`.
+
+    Instead of modifying attributes in place:
+
+    .. code-block:: python
+
+        from haystack.dataclasses import Document
+
+        doc = Document(content="old text", meta={"key": "value"})
+
+        # Deprecated: will emit a DeprecationWarning
+        doc.content = "new text"
+
+    Use ``dataclasses.replace`` to create a new instance with the updated values:
+
+    .. code-block:: python
+
+        from dataclasses import replace
+        from haystack.dataclasses import Document
+
+        doc = Document(content="old text", meta={"key": "value"})
+
+        # Recommended: creates a new Document with updated content
+        doc = replace(doc, content="new text")
