@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from types import UnionType
+from types import NoneType, UnionType
 from typing import Any, Callable, Union, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
@@ -358,7 +358,7 @@ class ComponentTool(Tool):
             The underlying type if `t` is `Optional[X]`, otherwise returns `t` unchanged.
         """
         if get_origin(_type) is Union or get_origin(_type) is UnionType:
-            non_none = [a for a in get_args(_type) if a is not type(None)]
+            non_none = [a for a in get_args(_type) if a is not NoneType]
             if len(non_none) == 1:
                 return non_none[0]
         return _type
