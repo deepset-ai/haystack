@@ -49,9 +49,6 @@ class SearchableToolset(Toolset):
     ```
     """
 
-    # Don't use dataclass fields - we manage our own state
-    tools: list[Tool]
-
     def __init__(self, catalog: "ToolsType", *, top_k: int = 3, search_threshold: int = 8):
         """
         Initialize the SearchableToolset.
@@ -138,15 +135,12 @@ class SearchableToolset(Toolset):
             'things to do in X', 'user question'); matching is keyword-based. Returns loaded
             tool names; they become available immediately.
             """
-            if self._document_store is None:
-                return "Error: Document store not initialized. Call warm_up() first."
-
             num_results = k if k is not None else self._top_k
 
             if not tool_keywords.strip():
                 return "No tools found matching these keywords. Try different keywords."
 
-            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)
+            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)  # type: ignore[union-attr]
 
             if not results:
                 return "No tools found matching these keywords. Try different keywords."
@@ -179,7 +173,6 @@ class SearchableToolset(Toolset):
         if self.is_passthrough:
             yield from self._catalog
         else:
-            # Auto warm-up to ensure bootstrap tool is available
             if not self._warmed_up:
                 self.warm_up()
             if self._bootstrap_tool is not None:
@@ -187,46 +180,20 @@ class SearchableToolset(Toolset):
             yield from self._discovered_tools.values()
 
     def __len__(self) -> int:
-        """
-        Return the number of currently available tools.
-
-        In passthrough mode, returns catalog size.
-        Otherwise, returns 1 (bootstrap) + discovered count.
-        Automatically calls warm_up() if needed to ensure accurate count.
-        """
-        if self.is_passthrough:
-            return len(self._catalog)
-        # Auto warm-up to ensure bootstrap tool is counted
-        if not self._warmed_up:
-            self.warm_up()
-        bootstrap_count = 1 if self._bootstrap_tool is not None else 0
-        return bootstrap_count + len(self._discovered_tools)
+        """Return the number of currently available tools."""
+        return sum(1 for _ in self)
 
     def __contains__(self, item: Any) -> bool:
         """
-        Check if a tool is available.
-
-        Supports checking by Tool instance or tool name string.
-        Automatically calls warm_up() if needed.
+        Check if a tool is available by Tool instance or tool name string.
 
         :param item: Tool instance or tool name string.
         :returns: True if the tool is available, False otherwise.
         """
-        if self.is_passthrough:
-            if isinstance(item, str):
-                return any(tool.name == item for tool in self._catalog)
-            return item in self._catalog if isinstance(item, Tool) else False
-
-        # Auto warm-up to ensure bootstrap tool is available for checking
-        if not self._warmed_up:
-            self.warm_up()
-
         if isinstance(item, str):
-            is_bootstrap = self._bootstrap_tool is not None and item == self._bootstrap_tool.name
-            return is_bootstrap or item in self._discovered_tools
+            return any(tool.name == item for tool in self)
         if isinstance(item, Tool):
-            is_bootstrap = self._bootstrap_tool is not None and item == self._bootstrap_tool
-            return is_bootstrap or item in self._discovered_tools.values()
+            return any(tool == item for tool in self)
         return False
 
     def __getitem__(self, index: int) -> Tool:

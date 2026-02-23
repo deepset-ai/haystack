@@ -1,7 +1,7 @@
 ---
 highlights: >
     Introducing SearchableToolset - a new toolset that enables agents to dynamically
-    discover tools from large catalogs using semantic search. Instead of exposing all
+    discover tools from large catalogs using keyword-based (BM25) search. Instead of exposing all
     tools upfront (which can overwhelm LLMs with large tool definitions), agents start
     with a single ``search_tools`` function and progressively discover relevant tools
     as needed. For smaller catalogs, it operates in passthrough mode exposing all tools
