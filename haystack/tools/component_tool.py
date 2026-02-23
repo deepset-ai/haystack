@@ -374,11 +374,13 @@ class ComponentTool(Tool):
             The converted parameter value.
         """
         # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
-        param_type = self._unwrap_optional(param_type)
+        unwrapped_param_type = self._unwrap_optional(param_type)
 
         # We support calling from_dict on target types that have it, even if they are wrapped in a list.
         # This allows us to support lists of dataclasses as well as single dataclass inputs.
-        target_type = get_args(param_type)[0] if get_origin(param_type) is list else param_type
+        target_type = (
+            get_args(unwrapped_param_type)[0] if get_origin(unwrapped_param_type) is list else unwrapped_param_type
+        )
         if hasattr(target_type, "from_dict"):
             if isinstance(param_value, list):
                 return [target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value]
@@ -386,4 +388,5 @@ class ComponentTool(Tool):
                 return target_type.from_dict(param_value)
             return param_value
 
+        # Use the original type for pydantic validation
         return TypeAdapter(param_type).validate_python(param_value)

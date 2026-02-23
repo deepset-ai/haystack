@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Improved ``ComponentTool`` to correctly handle components whose ``run`` method parameters are declared as top-level ``Optional`` types such as ``list[ChatMessage] | None``.
+    The optional wrapper is now unwrapped before checking for a ``from_dict`` method on the underlying type.
+    As a result, when a parameter is typed as ``list[ChatMessage] | None`` and receives a list of dictionaries, ``ComponentTool`` will automatically coerce the input into a list of `ChatMessage` objects using `ChatMessage.from_dict`.
+    If the provided value is ``None``, the parameter is preserved as ``None``.
