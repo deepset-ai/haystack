@@ -247,9 +247,7 @@ class PipelineBase:  # noqa: PLW1641
                         f"with the following data:\n{data_str}\n\n"
                         f"Original error: {e}\n\n"
                     )
-                    raise DeserializationError(
-                        message=msg, component_name=name, component_type=component_class, component_data=component_data
-                    ) from e
+                    raise DeserializationError(msg) from e
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):

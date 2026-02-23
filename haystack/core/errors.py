@@ -96,17 +96,7 @@ class ComponentDeserializationError(Exception):
 
 
 class DeserializationError(Exception):
-    def __init__(
-        self,
-        message: str,
-        component_name: str | None = None,
-        component_type: type | None = None,
-        component_data: dict | None = None,
-    ) -> None:
-        self.component_name = component_name
-        self.component_type = component_type
-        self.component_data = component_data
-        super().__init__(message)
+    pass
 
 
 class SerializationError(Exception):
