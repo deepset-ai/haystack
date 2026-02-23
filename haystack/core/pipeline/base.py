@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import json
 from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager as ContextManager
@@ -231,14 +232,24 @@ class PipelineBase:  # noqa: PLW1641
                 try:
                     instance = component_from_dict(component_class, component_data, name, callbacks)
                 except Exception as e:
+                    # Convert to JSON with indentation, truncate if too long
+                    try:
+                        data_str = json.dumps(component_data, default=str, indent=2)
+                    except Exception:
+                        data_str = str(component_data)
+
+                    max_len = 1000
+                    if len(data_str) > max_len:
+                        data_str = data_str[:max_len] + "\n... (truncated)"
+
                     msg = (
                         f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
-                        f"with the following data: {str(component_data)}. Possible reasons include "
-                        "malformed serialized data, mismatch between the serialized component and the "
-                        "loaded one (due to a breaking change, see "
-                        "https://github.com/deepset-ai/haystack/releases), etc."
+                        f"with the following data:\n{data_str}\n\n"
+                        f"Original error: {e}\n\n"
                     )
-                    raise DeserializationError(msg) from e
+                    raise DeserializationError(
+                        message=msg, component_name=name, component_type=component_class, component_data=component_data
+                    ) from e
             pipe.add_component(name=name, instance=instance)
 
         for connection in data.get("connections", []):
