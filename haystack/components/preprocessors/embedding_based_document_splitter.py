@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from asyncio import gather
 from copy import deepcopy
-from typing import Any
+from itertools import chain
+from typing import Any, Awaitable
 
 import numpy as np
 
@@ -75,7 +77,7 @@ class EmbeddingBasedDocumentSplitter:
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
-    ):
+    ) -> None:
         """
         Initialize EmbeddingBasedDocumentSplitter.
 
@@ -169,6 +171,50 @@ class EmbeddingBasedDocumentSplitter:
 
         return {"documents": split_docs}
 
+    @component.output_types(documents=list[Document])
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+        """
+        Asynchronously split documents based on embedding similarity.
+
+        This is the asynchronous version of the `run` method with the same parameters and return values.
+
+
+        :param documents: The documents to split.
+        :returns: A dictionary with the following key:
+            - `documents`: List of documents with the split texts. Each document includes:
+                - A metadata field `source_id` to track the original document.
+                - A metadata field `split_id` to track the split number.
+                - A metadata field `page_number` to track the original page number.
+                - All other metadata copied from the original document.
+
+        :raises RuntimeError: If the component wasn't warmed up.
+        :raises TypeError: If the input is not a list of Documents.
+        :raises ValueError: If the document content is None or empty.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        if not hasattr(self.document_embedder, "run_async"):
+            raise AttributeError(f"{type(self.document_embedder).__name__} must implement method 'run_async'.")
+
+        if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
+            raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
+
+        tasks: list[Awaitable[list[Document]]] = []
+        for doc in documents:
+            if doc.content is None:
+                raise ValueError(
+                    f"EmbeddingBasedDocumentSplitter only works with text documents but content for "
+                    f"document ID {doc.id} is None."
+                )
+            if doc.content == "":
+                logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
+                continue
+
+            tasks.append(self._split_document_async(doc=doc))
+
+        return {"documents": [*chain.from_iterable(await gather(*tasks))]}
+
     def _split_document(self, doc: Document) -> list[Document]:
         """
         Split a single document based on embedding similarity.
@@ -176,6 +222,23 @@ class EmbeddingBasedDocumentSplitter:
         # Create an initial split of the document content into smaller chunks
         # doc.content is validated in `run`
         splits = self._split_text(text=doc.content)  # type: ignore
+
+        # Merge splits smaller than min_length
+        merged_splits = self._merge_small_splits(splits=splits)
+
+        # Recursively split splits larger than max_length
+        final_splits = self._split_large_splits(splits=merged_splits)
+
+        # Create Document objects from the final splits
+        return EmbeddingBasedDocumentSplitter._create_documents_from_splits(splits=final_splits, original_doc=doc)
+
+    async def _split_document_async(self, doc: Document) -> list[Document]:
+        """
+        Split a single document based on embedding similarity.
+        """
+        # Create an initial split of the document content into smaller chunks
+        # doc.content is validated in `run`
+        splits = await self._split_text_async(text=doc.content)  # type: ignore
 
         # Merge splits smaller than min_length
         merged_splits = self._merge_small_splits(splits=splits)
@@ -211,6 +274,33 @@ class EmbeddingBasedDocumentSplitter:
         split_points = self._find_split_points(embeddings=embeddings)
         return self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
 
+    async def _split_text_async(self, text: str) -> list[str]:
+        """
+        Asynchronously split a text into smaller chunks based on embedding similarity.
+        """
+
+        # NOTE: `self.sentence_splitter.split_sentences` strips all white space types (e.g. new lines, page breaks,
+        # etc.) at the end of the provided text. So to not lose them, we need keep track of them and add them back to
+        # the last sentence.
+        rstripped_text = text.rstrip()
+        trailing_whitespaces = text[len(rstripped_text) :]
+
+        # Split the text into sentences
+        sentences_result = self.sentence_splitter.split_sentences(rstripped_text)  # type: ignore[union-attr]
+
+        # Add back the stripped white spaces to the last sentence
+        if sentences_result and trailing_whitespaces:
+            sentences_result[-1]["sentence"] += trailing_whitespaces
+            sentences_result[-1]["end"] += len(trailing_whitespaces)
+
+        sentences = [sentence["sentence"] for sentence in sentences_result]
+        sentence_groups = self._group_sentences(sentences=sentences)
+        embeddings = await self._calculate_embeddings_async(sentence_groups=sentence_groups)
+        split_points = self._find_split_points(embeddings=embeddings)
+        sub_splits = self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
+
+        return sub_splits
+
     def _group_sentences(self, sentences: list[str]) -> list[str]:
         """
         Group sentences into groups of sentences_per_group.
@@ -234,6 +324,17 @@ class EmbeddingBasedDocumentSplitter:
         result = self.document_embedder.run(group_docs)
         embedded_docs = result["documents"]
         return [doc.embedding for doc in embedded_docs]
+
+    async def _calculate_embeddings_async(self, sentence_groups: list[str]) -> list[list[float]]:
+        """
+        Asynchronously Calculate embeddings for each sentence group using the DocumentEmbedder.
+        """
+        # Create Document objects for each group
+        group_docs = [Document(content=group) for group in sentence_groups]
+        result = await self.document_embedder.run_async(group_docs)  # type: ignore[attr-defined]
+        embedded_docs = result["documents"]
+        embeddings = [doc.embedding for doc in embedded_docs]
+        return embeddings
 
     def _find_split_points(self, embeddings: list[list[float]]) -> list[int]:
         """
