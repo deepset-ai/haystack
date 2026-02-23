@@ -10,6 +10,7 @@ from numpy import ndarray
 
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 LEGACY_FIELDS = ["content_type", "id_hash_keys", "dataframe"]
 
@@ -42,6 +43,7 @@ class _BackwardCompatible(type):
         return super().__call__(*args, **kwargs)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     """
