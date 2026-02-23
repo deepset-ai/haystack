@@ -3,7 +3,7 @@ deprecations:
   - |
     In-place mutation of Haystack dataclass instances (e.g. ``Document``, ``ChatMessage``, ``StreamingChunk``,
     ``ByteStream``, ``SparseEmbedding``, and others) is deprecated and will be removed in a future version.
-    Mutating an attribute directly will emit a `DeprecationWarning`.
+    Mutating an attribute directly will emit a ``DeprecationWarning``.
 
     Instead of modifying attributes in place:
 
