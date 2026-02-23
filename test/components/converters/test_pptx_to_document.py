@@ -5,6 +5,8 @@
 import logging
 import os
 
+import pytest
+
 from haystack.components.converters.pptx import PPTXToDocument
 from haystack.dataclasses import ByteStream
 
@@ -78,3 +80,44 @@ class TestPPTXToDocument:
         document = output["documents"][0]
 
         assert document.meta == {"file_path": "sample_pptx.pptx", "key": "value", "language": "it"}
+
+    def test_to_dict(self):
+        converter = PPTXToDocument(link_format="markdown", store_full_path=True)
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pptx.PPTXToDocument",
+            "init_parameters": {"link_format": "markdown", "store_full_path": True},
+        }
+
+    def test_to_dict_defaults(self):
+        converter = PPTXToDocument()
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pptx.PPTXToDocument",
+            "init_parameters": {"link_format": "none", "store_full_path": False},
+        }
+
+    def test_link_format_invalid(self):
+        with pytest.raises(ValueError, match="Unknown link format"):
+            PPTXToDocument(link_format="invalid")
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_link_extraction(self, test_files_path, link_format):
+        converter = PPTXToDocument(link_format=link_format)
+        paths = [test_files_path / "pptx" / "sample_pptx_with_link.pptx"]
+        output = converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        if link_format == "markdown":
+            assert "[Example](https://example.com)" in content
+        else:
+            assert "Example (https://example.com)" in content
+
+    def test_no_link_extraction(self, test_files_path):
+        converter = PPTXToDocument()
+        paths = [test_files_path / "pptx" / "sample_pptx_with_link.pptx"]
+        output = converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        assert "https://example.com" not in content
+        assert "Example" in content

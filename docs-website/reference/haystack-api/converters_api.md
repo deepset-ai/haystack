@@ -5,11 +5,8 @@ description: "Various converters to transform data from one format to another."
 slug: "/converters-api"
 ---
 
-<a id="azure"></a>
 
-## Module azure
-
-<a id="azure.AzureOCRDocumentConverter"></a>
+## azure
 
 ### AzureOCRDocumentConverter
 
@@ -42,112 +39,101 @@ print(documents[0].content)
 # 'This is a text from the PDF file.'
 ```
 
-<a id="azure.AzureOCRDocumentConverter.__init__"></a>
-
-#### AzureOCRDocumentConverter.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(endpoint: str,
-             api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
-             model_id: str = "prebuilt-read",
-             preceding_context_len: int = 3,
-             following_context_len: int = 3,
-             merge_multiple_column_headers: bool = True,
-             page_layout: Literal["natural", "single_column"] = "natural",
-             threshold_y: float | None = 0.05,
-             store_full_path: bool = False)
+__init__(
+    endpoint: str,
+    api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
+    model_id: str = "prebuilt-read",
+    preceding_context_len: int = 3,
+    following_context_len: int = 3,
+    merge_multiple_column_headers: bool = True,
+    page_layout: Literal["natural", "single_column"] = "natural",
+    threshold_y: float | None = 0.05,
+    store_full_path: bool = False,
+)
 ```
 
 Creates an AzureOCRDocumentConverter component.
 
-**Arguments**:
+**Parameters:**
 
-- `endpoint`: The endpoint of your Azure resource.
-- `api_key`: The API key of your Azure resource.
-- `model_id`: The ID of the model you want to use. For a list of available models, see [Azure documentation]
-(https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature).
-- `preceding_context_len`: Number of lines before a table to include as preceding context
-(this will be added to the metadata).
-- `following_context_len`: Number of lines after a table to include as subsequent context (
-this will be added to the metadata).
-- `merge_multiple_column_headers`: If `True`, merges multiple column header rows into a single row.
-- `page_layout`: The type reading order to follow. Possible options:
+- **endpoint** (<code>str</code>) – The endpoint of your Azure resource.
+- **api_key** (<code>Secret</code>) – The API key of your Azure resource.
+- **model_id** (<code>str</code>) – The ID of the model you want to use. For a list of available models, see [Azure documentation]
+  (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature).
+- **preceding_context_len** (<code>int</code>) – Number of lines before a table to include as preceding context
+  (this will be added to the metadata).
+- **following_context_len** (<code>int</code>) – Number of lines after a table to include as subsequent context (
+  this will be added to the metadata).
+- **merge_multiple_column_headers** (<code>bool</code>) – If `True`, merges multiple column header rows into a single row.
+- **page_layout** (<code>Literal['natural', 'single_column']</code>) – The type reading order to follow. Possible options:
 - `natural`: Uses the natural reading order determined by Azure.
 - `single_column`: Groups all lines with the same height on the page based on a threshold
-determined by `threshold_y`.
-- `threshold_y`: Only relevant if `single_column` is set to `page_layout`.
-The threshold, in inches, to determine if two recognized PDF elements are grouped into a
-single line. This is crucial for section headers or numbers which may be spatially separated
-from the remaining text on the horizontal axis.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+  determined by `threshold_y`.
+- **threshold_y** (<code>float | None</code>) – Only relevant if `single_column` is set to `page_layout`.
+  The threshold, in inches, to determine if two recognized PDF elements are grouped into a
+  single line. This is crucial for section headers or numbers which may be spatially separated
+  from the remaining text on the horizontal axis.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="azure.AzureOCRDocumentConverter.run"></a>
-
-#### AzureOCRDocumentConverter.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document],
-                        raw_azure_response=list[dict])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will be
-zipped. If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will be
+  zipped. If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: List of created Documents
 - `raw_azure_response`: List of raw Azure responses used to create the Documents
 
-<a id="azure.AzureOCRDocumentConverter.to_dict"></a>
-
-#### AzureOCRDocumentConverter.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="azure.AzureOCRDocumentConverter.from_dict"></a>
-
-#### AzureOCRDocumentConverter.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AzureOCRDocumentConverter"
+from_dict(data: dict[str, Any]) -> AzureOCRDocumentConverter
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>AzureOCRDocumentConverter</code> – The deserialized component.
 
-<a id="csv"></a>
-
-## Module csv
-
-<a id="csv.CSVToDocument"></a>
+## csv
 
 ### CSVToDocument
 
@@ -168,128 +154,115 @@ print(documents[0].content)
 # 'col1,col2\nrow1,row1\nrow2,row2\n'
 ```
 
-<a id="csv.CSVToDocument.__init__"></a>
-
-#### CSVToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(encoding: str = "utf-8",
-             store_full_path: bool = False,
-             *,
-             conversion_mode: Literal["file", "row"] = "file",
-             delimiter: str = ",",
-             quotechar: str = '"')
+__init__(
+    encoding: str = "utf-8",
+    store_full_path: bool = False,
+    *,
+    conversion_mode: Literal["file", "row"] = "file",
+    delimiter: str = ",",
+    quotechar: str = '"'
+)
 ```
 
 Creates a CSVToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `encoding`: The encoding of the csv files to convert.
-If the encoding is specified in the metadata of a source ByteStream,
-it overrides this value.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
-- `conversion_mode`: - "file" (default): one Document per CSV file whose content is the raw CSV text.
+- **encoding** (<code>str</code>) – The encoding of the csv files to convert.
+  If the encoding is specified in the metadata of a source ByteStream,
+  it overrides this value.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
+- **conversion_mode** (<code>Literal['file', 'row']</code>) – - "file" (default): one Document per CSV file whose content is the raw CSV text.
 - "row": convert each CSV row to its own Document (requires `content_column` in `run()`).
-- `delimiter`: CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
-- `quotechar`: CSV quote character used when parsing in row mode (passed to ``csv.DictReader``).
+- **delimiter** (<code>str</code>) – CSV delimiter used when parsing in row mode (passed to `csv.DictReader`).
+- **quotechar** (<code>str</code>) – CSV quote character used when parsing in row mode (passed to `csv.DictReader`).
 
-<a id="csv.CSVToDocument.run"></a>
-
-#### CSVToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        *,
-        content_column: str | None = None,
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    *,
+    content_column: str | None = None,
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+)
 ```
 
 Converts CSV files to a Document (file mode) or to one Document per row (row mode).
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `content_column`: **Required when** ``conversion_mode="row"``.
-The column name whose values become ``Document.content`` for each row.
-The column must exist in the CSV header.
-- `meta`: Optional metadata to attach to the documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **content_column** (<code>str | None</code>) – **Required when** `conversion_mode="row"`.
+  The column name whose values become `Document.content` for each row.
+  The column must exist in the CSV header.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Created documents
 
-<a id="docx"></a>
-
-## Module docx
-
-<a id="docx.DOCXMetadata"></a>
+## docx
 
 ### DOCXMetadata
 
 Describes the metadata of Docx file.
 
-**Arguments**:
+**Parameters:**
 
-- `author`: The author
-- `category`: The category
-- `comments`: The comments
-- `content_status`: The content status
-- `created`: The creation date (ISO formatted string)
-- `identifier`: The identifier
-- `keywords`: Available keywords
-- `language`: The language of the document
-- `last_modified_by`: User who last modified the document
-- `last_printed`: The last printed date (ISO formatted string)
-- `modified`: The last modification date (ISO formatted string)
-- `revision`: The revision number
-- `subject`: The subject
-- `title`: The title
-- `version`: The version
-
-<a id="docx.DOCXTableFormat"></a>
+- **author** (<code>str</code>) – The author
+- **category** (<code>str</code>) – The category
+- **comments** (<code>str</code>) – The comments
+- **content_status** (<code>str</code>) – The content status
+- **created** (<code>str | None</code>) – The creation date (ISO formatted string)
+- **identifier** (<code>str</code>) – The identifier
+- **keywords** (<code>str</code>) – Available keywords
+- **language** (<code>str</code>) – The language of the document
+- **last_modified_by** (<code>str</code>) – User who last modified the document
+- **last_printed** (<code>str | None</code>) – The last printed date (ISO formatted string)
+- **modified** (<code>str | None</code>) – The last modification date (ISO formatted string)
+- **revision** (<code>int</code>) – The revision number
+- **subject** (<code>str</code>) – The subject
+- **title** (<code>str</code>) – The title
+- **version** (<code>str</code>) – The version
 
 ### DOCXTableFormat
 
+Bases: <code>Enum</code>
+
 Supported formats for storing DOCX tabular data in a Document.
 
-<a id="docx.DOCXTableFormat.from_str"></a>
-
-#### DOCXTableFormat.from\_str
+#### from_str
 
 ```python
-@staticmethod
-def from_str(string: str) -> "DOCXTableFormat"
+from_str(string: str) -> DOCXTableFormat
 ```
 
 Convert a string to a DOCXTableFormat enum.
 
-<a id="docx.DOCXLinkFormat"></a>
-
 ### DOCXLinkFormat
+
+Bases: <code>Enum</code>
 
 Supported formats for storing DOCX link information in a Document.
 
-<a id="docx.DOCXLinkFormat.from_str"></a>
-
-#### DOCXLinkFormat.from\_str
+#### from_str
 
 ```python
-@staticmethod
-def from_str(string: str) -> "DOCXLinkFormat"
+from_str(string: str) -> DOCXLinkFormat
 ```
 
 Convert a string to a DOCXLinkFormat enum.
-
-<a id="docx.DOCXToDocument"></a>
 
 ### DOCXToDocument
 
@@ -299,6 +272,7 @@ Uses `python-docx` library to convert the DOCX file to a document.
 This component does not preserve page breaks in the original document.
 
 Usage example:
+
 ```python
 from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
 
@@ -309,100 +283,143 @@ print(documents[0].content)
 # 'This is a text from the DOCX file.'
 ```
 
-<a id="docx.DOCXToDocument.__init__"></a>
-
-#### DOCXToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
-             link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
-             store_full_path: bool = False)
+__init__(
+    table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
+    link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
+    store_full_path: bool = False,
+)
 ```
 
 Create a DOCXToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `table_format`: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
-DOCXTableFormat.CSV, "markdown", or "csv".
-- `link_format`: The format for link output. Can be either:
-DOCXLinkFormat.MARKDOWN or "markdown" to get `[text](address)`,
-DOCXLinkFormat.PLAIN or "plain" to get text (address),
-DOCXLinkFormat.NONE or "none" to get text without links.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **table_format** (<code>str | DOCXTableFormat</code>) – The format for table output. Can be either DOCXTableFormat.MARKDOWN,
+  DOCXTableFormat.CSV, "markdown", or "csv".
+- **link_format** (<code>str | DOCXLinkFormat</code>) – The format for link output. Can be either:
+  DOCXLinkFormat.MARKDOWN or "markdown" to get `[text](address)`,
+  DOCXLinkFormat.PLAIN or "plain" to get text (address),
+  DOCXLinkFormat.NONE or "none" to get text without links.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="docx.DOCXToDocument.to_dict"></a>
-
-#### DOCXToDocument.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="docx.DOCXToDocument.from_dict"></a>
-
-#### DOCXToDocument.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "DOCXToDocument"
+from_dict(data: dict[str, Any]) -> DOCXToDocument
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>DOCXToDocument</code> – The deserialized component.
 
-<a id="docx.DOCXToDocument.run"></a>
-
-#### DOCXToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts DOCX files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Created Documents
 
-<a id="html"></a>
+## file_to_file_content
 
-## Module html
+### FileToFileContent
 
-<a id="html.HTMLToDocument"></a>
+Converts files to FileContent objects to be included in ChatMessage objects.
+
+### Usage example
+
+```python
+from haystack.components.converters import FileToFileContent
+
+converter = FileToFileContent()
+
+sources = ["document.pdf", "video.mp4"]
+
+file_contents = converter.run(sources=sources)["file_contents"]
+print(file_contents)
+
+# [FileContent(base64_data='...',
+#              mime_type='application/pdf',
+#              filename='document.pdf',
+#              extra={}),
+#  ...]
+```
+
+#### run
+
+```python
+run(
+    sources: list[str | Path | ByteStream],
+    *,
+    extra: dict[str, Any] | list[dict[str, Any]] | None = None
+) -> dict[str, list[FileContent]]
+```
+
+Converts files to FileContent objects.
+
+**Parameters:**
+
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects to convert.
+- **extra** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional extra information to attach to the FileContent objects. Can be used to store provider-specific
+  information.
+  To avoid serialization issues, values should be JSON serializable.
+  This value can be a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the extra of all produced FileContent objects.
+  If it's a list, its length must match the number of sources as they're zipped together.
+
+**Returns:**
+
+- <code>dict\[str, list\[FileContent\]\]</code> – A dictionary with the following keys:
+- `file_contents`: A list of FileContent objects.
+
+## html
 
 ### HTMLToDocument
 
 Converts an HTML file to a Document.
 
 Usage example:
+
 ```python
 from haystack.components.converters import HTMLToDocument
 
@@ -413,92 +430,428 @@ print(documents[0].content)
 # 'This is a text from the HTML file.'
 ```
 
-<a id="html.HTMLToDocument.__init__"></a>
-
-#### HTMLToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(extraction_kwargs: dict[str, Any] | None = None,
-             store_full_path: bool = False)
+__init__(
+    extraction_kwargs: dict[str, Any] | None = None,
+    store_full_path: bool = False,
+)
 ```
 
 Create an HTMLToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `extraction_kwargs`: A dictionary containing keyword arguments to customize the extraction process. These
-are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see
-the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **extraction_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary containing keyword arguments to customize the extraction process. These
+  are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see
+  the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="html.HTMLToDocument.to_dict"></a>
-
-#### HTMLToDocument.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="html.HTMLToDocument.from_dict"></a>
-
-#### HTMLToDocument.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "HTMLToDocument"
+from_dict(data: dict[str, Any]) -> HTMLToDocument
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>HTMLToDocument</code> – The deserialized component.
 
-<a id="html.HTMLToDocument.run"></a>
-
-#### HTMLToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-        extraction_kwargs: dict[str, Any] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    extraction_kwargs: dict[str, Any] | None = None,
+)
 ```
 
 Converts a list of HTML files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of HTML file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
-- `extraction_kwargs`: Additional keyword arguments to customize the extraction process.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of HTML file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **extraction_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to customize the extraction process.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Created Documents
 
-<a id="json"></a>
+## image/document_to_image
 
-## Module json
+### DocumentToImageContent
 
-<a id="json.JSONConverter"></a>
+Converts documents sourced from PDF and image files into ImageContents.
+
+This component processes a list of documents and extracts visual content from supported file formats, converting
+them into ImageContents that can be used for multimodal AI tasks. It handles both direct image files and PDF
+documents by extracting specific pages as images.
+
+Documents are expected to have metadata containing:
+
+- The `file_path_meta_field` key with a valid file path that exists when combined with `root_path`
+- A supported image format (MIME type must be one of the supported image types)
+- For PDF files, a `page_number` key specifying which page to extract
+
+### Usage example
+
+````
+```python
+from haystack import Document
+from haystack.components.converters.image.document_to_image import DocumentToImageContent
+
+converter = DocumentToImageContent(
+    file_path_meta_field="file_path",
+    root_path="/data/files",
+    detail="high",
+    size=(800, 600)
+)
+
+documents = [
+    Document(content="Optional description of image.jpg", meta={"file_path": "image.jpg"}),
+    Document(content="Text content of page 1 of doc.pdf", meta={"file_path": "doc.pdf", "page_number": 1})
+]
+
+result = converter.run(documents)
+image_contents = result["image_contents"]
+# [ImageContent(
+#    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'image.jpg'}
+#  ),
+#  ImageContent(
+#    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
+#    meta={'page_number': 1, 'file_path': 'doc.pdf'}
+#  )]
+```
+````
+
+#### __init__
+
+```python
+__init__(
+    *,
+    file_path_meta_field: str = "file_path",
+    root_path: str | None = None,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None
+)
+```
+
+Initialize the DocumentToImageContent component.
+
+**Parameters:**
+
+- **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
+- **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
+  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+- **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
+  This will be passed to the created ImageContent objects.
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
+  maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+  when working with models that have resolution constraints or when transmitting images to remote services.
+
+#### run
+
+```python
+run(documents: list[Document]) -> dict[str, list[ImageContent | None]]
+```
+
+Convert documents with image or PDF sources into ImageContent objects.
+
+This method processes the input documents, extracting images from supported file formats and converting them
+into ImageContent objects.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of documents to process. Each document should have metadata containing at minimum
+  a 'file_path_meta_field' key. PDF documents additionally require a 'page_number' key to specify which
+  page to convert.
+
+**Returns:**
+
+- <code>dict\[str, list\[ImageContent | None\]\]</code> – Dictionary containing one key:
+- "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
+  data and metadata. The order corresponds to order of input documents.
+
+**Raises:**
+
+- <code>ValueError</code> – If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
+  MIME type. The error message will specify which document and what information is missing or incorrect.
+
+## image/file_to_document
+
+### ImageFileToDocument
+
+Converts image file references into empty Document objects with associated metadata.
+
+This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be
+processed by downstream components such as the `SentenceTransformersImageDocumentEmbedder`.
+
+It does **not** extract any content from the image files, instead it creates `Document` objects with `None` as
+their content and attaches metadata such as file path and any user-provided values.
+
+### Usage example
+
+```python
+from haystack.components.converters.image import ImageFileToDocument
+
+converter = ImageFileToDocument()
+
+sources = ["image.jpg", "another_image.png"]
+
+result = converter.run(sources=sources)
+documents = result["documents"]
+
+print(documents)
+
+# [Document(id=..., meta: {'file_path': 'image.jpg'}),
+# Document(id=..., meta: {'file_path': 'another_image.png'})]
+```
+
+#### __init__
+
+```python
+__init__(*, store_full_path: bool = False)
+```
+
+Initialize the ImageFileToDocument component.
+
+**Parameters:**
+
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
+
+#### run
+
+```python
+run(
+    *,
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+) -> dict[str, list[Document]]
+```
+
+Convert image files into empty Document objects with metadata.
+
+This method accepts image file references (as file paths or ByteStreams) and creates `Document` objects
+without content. These documents are enriched with metadata derived from the input source and optional
+user-provided metadata.
+
+**Parameters:**
+
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects to convert.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the documents.
+  This value can be a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced documents.
+  If it's a list, its length must match the number of sources, as they are zipped together.
+  For ByteStream objects, their `meta` is added to the output documents.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
+- `documents`: A list of `Document` objects with empty content and associated metadata.
+
+## image/file_to_image
+
+### ImageFileToImageContent
+
+Converts image files to ImageContent objects.
+
+### Usage example
+
+```python
+from haystack.components.converters.image import ImageFileToImageContent
+
+converter = ImageFileToImageContent()
+
+sources = ["image.jpg", "another_image.png"]
+
+image_contents = converter.run(sources=sources)["image_contents"]
+print(image_contents)
+
+# [ImageContent(base64_image='...',
+#               mime_type='image/jpeg',
+#               detail=None,
+#               meta={'file_path': 'image.jpg'}),
+#  ...]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None
+)
+```
+
+Create the ImageFileToImageContent component.
+
+**Parameters:**
+
+- **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+  This will be passed to the created ImageContent objects.
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
+  maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+  when working with models that have resolution constraints or when transmitting images to remote services.
+
+#### run
+
+```python
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None
+) -> dict[str, list[ImageContent]]
+```
+
+Converts files to ImageContent objects.
+
+**Parameters:**
+
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects to convert.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the ImageContent objects.
+  This value can be a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced ImageContent objects.
+  If it's a list, its length must match the number of sources as they're zipped together.
+  For ByteStream objects, their `meta` is added to the output ImageContent objects.
+- **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+  This will be passed to the created ImageContent objects.
+  If not provided, the detail level will be the one set in the constructor.
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
+  maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+  when working with models that have resolution constraints or when transmitting images to remote services.
+  If not provided, the size value will be the one set in the constructor.
+
+**Returns:**
+
+- <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
+- `image_contents`: A list of ImageContent objects.
+
+## image/pdf_to_image
+
+### PDFToImageContent
+
+Converts PDF files to ImageContent objects.
+
+### Usage example
+
+```python
+from haystack.components.converters.image import PDFToImageContent
+
+converter = PDFToImageContent()
+
+sources = ["file.pdf", "another_file.pdf"]
+
+image_contents = converter.run(sources=sources)["image_contents"]
+print(image_contents)
+
+# [ImageContent(base64_image='...',
+#               mime_type='application/pdf',
+#               detail=None,
+#               meta={'file_path': 'file.pdf', 'page_number': 1}),
+#  ...]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    page_range: list[str | int] | None = None
+)
+```
+
+Create the PDFToImageContent component.
+
+**Parameters:**
+
+- **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+  This will be passed to the created ImageContent objects.
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
+  maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+  when working with models that have resolution constraints or when transmitting images to remote services.
+- **page_range** (<code>list\[str | int\] | None</code>) – List of page numbers and/or page ranges to convert to images. Page numbers start at 1.
+  If None, all pages in the PDF will be converted. Pages outside the valid range (1 to number of pages)
+  will be skipped with a warning. For example, page_range=[1, 3] will convert only the first and third
+  pages of the document. It also accepts printable range strings, e.g.: ['1-3', '5', '8', '10-12']
+  will convert pages 1, 2, 3, 5, 8, 10, 11, 12.
+
+#### run
+
+```python
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    *,
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    page_range: list[str | int] | None = None
+) -> dict[str, list[ImageContent]]
+```
+
+Converts files to ImageContent objects.
+
+**Parameters:**
+
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects to convert.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the ImageContent objects.
+  This value can be a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced ImageContent objects.
+  If it's a list, its length must match the number of sources as they're zipped together.
+  For ByteStream objects, their `meta` is added to the output ImageContent objects.
+- **detail** (<code>Literal['auto', 'high', 'low'] | None</code>) – Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+  This will be passed to the created ImageContent objects.
+  If not provided, the detail level will be the one set in the constructor.
+- **size** (<code>tuple\[int, int\] | None</code>) – If provided, resizes the image to fit within the specified dimensions (width, height) while
+  maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+  when working with models that have resolution constraints or when transmitting images to remote services.
+  If not provided, the size value will be the one set in the constructor.
+- **page_range** (<code>list\[str | int\] | None</code>) – List of page numbers and/or page ranges to convert to images. Page numbers start at 1.
+  If None, all pages in the PDF will be converted. Pages outside the valid range (1 to number of pages)
+  will be skipped with a warning. For example, page_range=[1, 3] will convert only the first and third
+  pages of the document. It also accepts printable range strings, e.g.: ['1-3', '5', '8', '10-12']
+  will convert pages 1, 2, 3, 5, 8, 10, 11, 12.
+  If not provided, the page_range value will be the one set in the constructor.
+
+**Returns:**
+
+- <code>dict\[str, list\[ImageContent\]\]</code> – A dictionary with the following keys:
+- `image_contents`: A list of ImageContent objects.
+
+## json
 
 ### JSONConverter
 
@@ -568,15 +921,15 @@ print(documents[1].meta)
 # {'firstname': 'Rita', 'surname': 'Levi-Montalcini'}
 ```
 
-<a id="json.JSONConverter.__init__"></a>
-
-#### JSONConverter.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(jq_schema: str | None = None,
-             content_key: str | None = None,
-             extra_meta_fields: set[str] | Literal["*"] | None = None,
-             store_full_path: bool = False)
+__init__(
+    jq_schema: str | None = None,
+    content_key: str | None = None,
+    extra_meta_fields: set[str] | Literal["*"] | None = None,
+    store_full_path: bool = False,
+)
 ```
 
 Creates a JSONConverter component.
@@ -604,87 +957,78 @@ be saved as metadata.
 
 Initialization will fail if neither `jq_schema` nor `content_key` are set.
 
-**Arguments**:
+**Parameters:**
 
-- `jq_schema`: Optional jq filter string to extract content.
-If not specified, whole JSON object will be used to extract information.
-- `content_key`: Optional key to extract document content.
-If `jq_schema` is specified, the `content_key` will be extracted from that object.
-- `extra_meta_fields`: An optional set of meta keys to extract from the content.
-If `jq_schema` is specified, all keys will be extracted from that object.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **jq_schema** (<code>str | None</code>) – Optional jq filter string to extract content.
+  If not specified, whole JSON object will be used to extract information.
+- **content_key** (<code>str | None</code>) – Optional key to extract document content.
+  If `jq_schema` is specified, the `content_key` will be extracted from that object.
+- **extra_meta_fields** (<code>set\[str\] | Literal['\*'] | None</code>) – An optional set of meta keys to extract from the content.
+  If `jq_schema` is specified, all keys will be extracted from that object.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="json.JSONConverter.to_dict"></a>
-
-#### JSONConverter.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="json.JSONConverter.from_dict"></a>
-
-#### JSONConverter.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "JSONConverter"
+from_dict(data: dict[str, Any]) -> JSONConverter
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- <code>JSONConverter</code> – Deserialized component.
 
-<a id="json.JSONConverter.run"></a>
-
-#### JSONConverter.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts a list of JSON files to documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: A list of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced documents.
-If it's a list, the length of the list must match the number of sources.
-If `sources` contain ByteStream objects, their `meta` will be added to the output documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – A list of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced documents.
+  If it's a list, the length of the list must match the number of sources.
+  If `sources` contain ByteStream objects, their `meta` will be added to the output documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: A list of created documents.
 
-<a id="markdown"></a>
-
-## Module markdown
-
-<a id="markdown.MarkdownToDocument"></a>
+## markdown
 
 ### MarkdownToDocument
 
 Converts a Markdown file into a text Document.
 
 Usage example:
+
 ```python
 from haystack.components.converters import MarkdownToDocument
 from datetime import datetime
@@ -696,57 +1040,52 @@ print(documents[0].content)
 # 'This is a text from the markdown file.'
 ```
 
-<a id="markdown.MarkdownToDocument.__init__"></a>
-
-#### MarkdownToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(table_to_single_line: bool = False,
-             progress_bar: bool = True,
-             store_full_path: bool = False)
+__init__(
+    table_to_single_line: bool = False,
+    progress_bar: bool = True,
+    store_full_path: bool = False,
+)
 ```
 
 Create a MarkdownToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `table_to_single_line`: If True converts table contents into a single line.
-- `progress_bar`: If True shows a progress bar when running.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **table_to_single_line** (<code>bool</code>) – If True converts table contents into a single line.
+- **progress_bar** (<code>bool</code>) – If True shows a progress bar when running.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="markdown.MarkdownToDocument.run"></a>
-
-#### MarkdownToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts a list of Markdown files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: List of created Documents
 
-<a id="msg"></a>
-
-## Module msg
-
-<a id="msg.MSGToDocument"></a>
+## msg
 
 ### MSGToDocument
 
@@ -769,62 +1108,54 @@ attachments = results["attachments"]
 print(documents[0].content)
 ```
 
-<a id="msg.MSGToDocument.__init__"></a>
-
-#### MSGToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(store_full_path: bool = False) -> None
+__init__(store_full_path: bool = False) -> None
 ```
 
 Creates a MSGToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="msg.MSGToDocument.run"></a>
-
-#### MSGToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document], attachments=list[ByteStream])
-def run(
+run(
     sources: list[str | Path | ByteStream],
-    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
 ) -> dict[str, list[Document] | list[ByteStream]]
 ```
 
 Converts MSG files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\] | list\[ByteStream\]\]</code> – A dictionary with the following keys:
 - `documents`: Created Documents.
 - `attachments`: Created ByteStream objects from file attachments.
 
-<a id="multi_file_converter"></a>
-
-## Module multi\_file\_converter
-
-<a id="multi_file_converter.MultiFileConverter"></a>
+## multi_file_converter
 
 ### MultiFileConverter
 
 A file converter that handles conversion of multiple file types.
 
 The MultiFileConverter handles the following file types:
+
 - CSV
 - DOCX
 - HTML
@@ -836,6 +1167,7 @@ The MultiFileConverter handles the following file types:
 - XLSX
 
 Usage example:
+
 ```
 from haystack.super_components.converters import MultiFileConverter
 
@@ -843,27 +1175,20 @@ converter = MultiFileConverter()
 converter.run(sources=["test.txt", "test.pdf"], meta={})
 ```
 
-<a id="multi_file_converter.MultiFileConverter.__init__"></a>
-
-#### MultiFileConverter.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(encoding: str = "utf-8",
-             json_content_key: str = "content") -> None
+__init__(encoding: str = 'utf-8', json_content_key: str = 'content') -> None
 ```
 
 Initialize the MultiFileConverter.
 
-**Arguments**:
+**Parameters:**
 
-- `encoding`: The encoding to use when reading files.
-- `json_content_key`: The key to use in a content field in a document when converting JSON files.
+- **encoding** (<code>str</code>) – The encoding to use when reading files.
+- **json_content_key** (<code>str</code>) – The key to use in a content field in a document when converting JSON files.
 
-<a id="openapi_functions"></a>
-
-## Module openapi\_functions
-
-<a id="openapi_functions.OpenAPIServiceToFunctions"></a>
+## openapi_functions
 
 ### OpenAPIServiceToFunctions
 
@@ -872,14 +1197,15 @@ Converts OpenAPI service definitions to a format suitable for OpenAI function ca
 The definition must respect OpenAPI specification 3.0.0 or higher.
 It can be specified in JSON or YAML format.
 Each function must have:
-    - unique operationId
-    - description
-    - requestBody and/or parameters
-    - schema for the requestBody and/or parameters
+\- unique operationId
+\- description
+\- requestBody and/or parameters
+\- schema for the requestBody and/or parameters
 For more details on OpenAPI specification see the [official documentation](https://github.com/OAI/OpenAPI-Specification).
 For more details on OpenAI function calling see the [official documentation](https://platform.openai.com/docs/guides/function-calling).
 
 Usage example:
+
 ```python
 from haystack.components.converters import OpenAPIServiceToFunctions
 
@@ -888,60 +1214,51 @@ result = converter.run(sources=["path/to/openapi_definition.yaml"])
 assert result["functions"]
 ```
 
-<a id="openapi_functions.OpenAPIServiceToFunctions.__init__"></a>
-
-#### OpenAPIServiceToFunctions.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__()
+__init__()
 ```
 
 Create an OpenAPIServiceToFunctions component.
 
-<a id="openapi_functions.OpenAPIServiceToFunctions.run"></a>
-
-#### OpenAPIServiceToFunctions.run
+#### run
 
 ```python
-@component.output_types(functions=list[dict[str, Any]],
-                        openapi_specs=list[dict[str, Any]])
-def run(sources: list[str | Path | ByteStream]) -> dict[str, Any]
+run(sources: list[str | Path | ByteStream]) -> dict[str, Any]
 ```
 
 Converts OpenAPI definitions in OpenAI function calling format.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: File paths or ByteStream objects of OpenAPI definitions (in JSON or YAML format).
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – File paths or ByteStream objects of OpenAPI definitions (in JSON or YAML format).
 
-**Raises**:
+**Returns:**
 
-- `RuntimeError`: If the OpenAPI definitions cannot be downloaded or processed.
-- `ValueError`: If the source type is not recognized or no functions are found in the OpenAPI definitions.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - functions: Function definitions in JSON object format
 - openapi_specs: OpenAPI specs in JSON/YAML object format with resolved references
 
-<a id="output_adapter"></a>
+**Raises:**
 
-## Module output\_adapter
+- <code>RuntimeError</code> – If the OpenAPI definitions cannot be downloaded or processed.
+- <code>ValueError</code> – If the source type is not recognized or no functions are found in the OpenAPI definitions.
 
-<a id="output_adapter.OutputAdaptationException"></a>
+## output_adapter
 
 ### OutputAdaptationException
 
-Exception raised when there is an error during output adaptation.
+Bases: <code>Exception</code>
 
-<a id="output_adapter.OutputAdapter"></a>
+Exception raised when there is an error during output adaptation.
 
 ### OutputAdapter
 
 Adapts output of a Component using Jinja templates.
 
 Usage example:
+
 ```python
 from haystack import Document
 from haystack.components.converters import OutputAdapter
@@ -953,101 +1270,87 @@ result = adapter.run(documents=documents)
 assert result["output"] == "Test content"
 ```
 
-<a id="output_adapter.OutputAdapter.__init__"></a>
-
-#### OutputAdapter.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(template: str,
-             output_type: TypeAlias,
-             custom_filters: dict[str, Callable] | None = None,
-             unsafe: bool = False) -> None
+__init__(
+    template: str,
+    output_type: TypeAlias,
+    custom_filters: dict[str, Callable] | None = None,
+    unsafe: bool = False,
+) -> None
 ```
 
 Create an OutputAdapter component.
 
-**Arguments**:
+**Parameters:**
 
-- `template`: A Jinja template that defines how to adapt the input data.
-The variables in the template define the input of this instance.
-e.g.
-With this template:
+- **template** (<code>str</code>) – A Jinja template that defines how to adapt the input data.
+  The variables in the template define the input of this instance.
+  e.g.
+  With this template:
+
 ```
 {{ documents[0].content }}
 ```
+
 The Component input will be `documents`.
-- `output_type`: The type of output this instance will return.
-- `custom_filters`: A dictionary of custom Jinja filters used in the template.
-- `unsafe`: Enable execution of arbitrary code in the Jinja template.
-This should only be used if you trust the source of the template as it can be lead to remote code execution.
 
-<a id="output_adapter.OutputAdapter.run"></a>
+- **output_type** (<code>TypeAlias</code>) – The type of output this instance will return.
+- **custom_filters** (<code>dict\[str, Callable\] | None</code>) – A dictionary of custom Jinja filters used in the template.
+- **unsafe** (<code>bool</code>) – Enable execution of arbitrary code in the Jinja template.
+  This should only be used if you trust the source of the template as it can be lead to remote code execution.
 
-#### OutputAdapter.run
+#### run
 
 ```python
-def run(**kwargs)
+run(**kwargs)
 ```
 
 Renders the Jinja template with the provided inputs.
 
-**Arguments**:
+**Parameters:**
 
-- `kwargs`: Must contain all variables used in the `template` string.
+- **kwargs** – Must contain all variables used in the `template` string.
 
-**Raises**:
+**Returns:**
 
-- `OutputAdaptationException`: If template rendering fails.
-
-**Returns**:
-
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `output`: Rendered Jinja template.
 
-<a id="output_adapter.OutputAdapter.to_dict"></a>
+**Raises:**
 
-#### OutputAdapter.to\_dict
+- <code>OutputAdaptationException</code> – If template rendering fails.
+
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-<a id="output_adapter.OutputAdapter.from_dict"></a>
-
-#### OutputAdapter.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OutputAdapter"
+from_dict(data: dict[str, Any]) -> OutputAdapter
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: The dictionary to deserialize from.
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
 
-**Returns**:
+**Returns:**
 
-The deserialized component.
+- <code>OutputAdapter</code> – The deserialized component.
 
-<a id="pdfminer"></a>
-
-## Module pdfminer
-
-<a id="pdfminer.CID_PATTERN"></a>
-
-#### CID\_PATTERN
-
-regex pattern to detect CID characters
-
-<a id="pdfminer.PDFMinerToDocument"></a>
+## pdfminer
 
 ### PDFMinerToDocument
 
@@ -1056,6 +1359,7 @@ Converts PDF files to Documents.
 Uses `pdfminer` compatible converters to convert PDF files to Documents. https://pdfminersix.readthedocs.io/en/latest/
 
 Usage example:
+
 ```python
 from haystack.components.converters.pdfminer import PDFMinerToDocument
 
@@ -1066,55 +1370,53 @@ print(documents[0].content)
 # 'This is a text from the PDF file.'
 ```
 
-<a id="pdfminer.PDFMinerToDocument.__init__"></a>
-
-#### PDFMinerToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(line_overlap: float = 0.5,
-             char_margin: float = 2.0,
-             line_margin: float = 0.5,
-             word_margin: float = 0.1,
-             boxes_flow: float | None = 0.5,
-             detect_vertical: bool = True,
-             all_texts: bool = False,
-             store_full_path: bool = False) -> None
+__init__(
+    line_overlap: float = 0.5,
+    char_margin: float = 2.0,
+    line_margin: float = 0.5,
+    word_margin: float = 0.1,
+    boxes_flow: float | None = 0.5,
+    detect_vertical: bool = True,
+    all_texts: bool = False,
+    store_full_path: bool = False,
+) -> None
 ```
 
 Create a PDFMinerToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `line_overlap`: This parameter determines whether two characters are considered to be on
-the same line based on the amount of overlap between them.
-The overlap is calculated relative to the minimum height of both characters.
-- `char_margin`: Determines whether two characters are part of the same line based on the distance between them.
-If the distance is less than the margin specified, the characters are considered to be on the same line.
-The margin is calculated relative to the width of the character.
-- `word_margin`: Determines whether two characters on the same line are part of the same word
-based on the distance between them. If the distance is greater than the margin specified,
-an intermediate space will be added between them to make the text more readable.
-The margin is calculated relative to the width of the character.
-- `line_margin`: This parameter determines whether two lines are part of the same paragraph based on
-the distance between them. If the distance is less than the margin specified,
-the lines are considered to be part of the same paragraph.
-The margin is calculated relative to the height of a line.
-- `boxes_flow`: This parameter determines the importance of horizontal and vertical position when
-determining the order of text boxes. A value between -1.0 and +1.0 can be set,
-with -1.0 indicating that only horizontal position matters and +1.0 indicating
-that only vertical position matters. Setting the value to 'None' will disable advanced
-layout analysis, and text boxes will be ordered based on the position of their bottom left corner.
-- `detect_vertical`: This parameter determines whether vertical text should be considered during layout analysis.
-- `all_texts`: If layout analysis should be performed on text in figures.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **line_overlap** (<code>float</code>) – This parameter determines whether two characters are considered to be on
+  the same line based on the amount of overlap between them.
+  The overlap is calculated relative to the minimum height of both characters.
+- **char_margin** (<code>float</code>) – Determines whether two characters are part of the same line based on the distance between them.
+  If the distance is less than the margin specified, the characters are considered to be on the same line.
+  The margin is calculated relative to the width of the character.
+- **word_margin** (<code>float</code>) – Determines whether two characters on the same line are part of the same word
+  based on the distance between them. If the distance is greater than the margin specified,
+  an intermediate space will be added between them to make the text more readable.
+  The margin is calculated relative to the width of the character.
+- **line_margin** (<code>float</code>) – This parameter determines whether two lines are part of the same paragraph based on
+  the distance between them. If the distance is less than the margin specified,
+  the lines are considered to be part of the same paragraph.
+  The margin is calculated relative to the height of a line.
+- **boxes_flow** (<code>float | None</code>) – This parameter determines the importance of horizontal and vertical position when
+  determining the order of text boxes. A value between -1.0 and +1.0 can be set,
+  with -1.0 indicating that only horizontal position matters and +1.0 indicating
+  that only vertical position matters. Setting the value to 'None' will disable advanced
+  layout analysis, and text boxes will be ordered based on the position of their bottom left corner.
+- **detect_vertical** (<code>bool</code>) – This parameter determines whether vertical text should be considered during layout analysis.
+- **all_texts** (<code>bool</code>) – If layout analysis should be performed on text in figures.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="pdfminer.PDFMinerToDocument.detect_undecoded_cid_characters"></a>
-
-#### PDFMinerToDocument.detect\_undecoded\_cid\_characters
+#### detect_undecoded_cid_characters
 
 ```python
-def detect_undecoded_cid_characters(text: str) -> dict[str, Any]
+detect_undecoded_cid_characters(text: str) -> dict[str, Any]
 ```
 
 Look for character sequences of CID, i.e.: characters that haven't been properly decoded from their CID format.
@@ -1129,49 +1431,48 @@ as is.
 
 see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-values-in-the-textual-output
 
-:param: text: The text to check for undecoded CID characters
-:returns:
-    A dictionary containing detection results
+**Parameters:**
 
+- **text** (<code>str</code>) – The text to check for undecoded CID characters
 
-<a id="pdfminer.PDFMinerToDocument.run"></a>
+**Returns:**
 
-#### PDFMinerToDocument.run
+- <code>dict\[str, Any\]</code> – A dictionary containing detection results
+
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts PDF files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of PDF file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of PDF file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Created Documents
 
-<a id="pptx"></a>
-
-## Module pptx
-
-<a id="pptx.PPTXToDocument"></a>
+## pptx
 
 ### PPTXToDocument
 
 Converts PPTX files to Documents.
 
 Usage example:
+
 ```python
 from haystack.components.converters.pptx import PPTXToDocument
 
@@ -1182,80 +1483,79 @@ print(documents[0].content)
 # 'This is the text from the PPTX file.'
 ```
 
-<a id="pptx.PPTXToDocument.__init__"></a>
-
-#### PPTXToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(store_full_path: bool = False)
+__init__(
+    store_full_path: bool = False,
+    link_format: Literal["markdown", "plain", "none"] = "none",
+)
 ```
 
-Create an PPTXToDocument component.
+Create a PPTXToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
+- **link_format** (<code>Literal['markdown', 'plain', 'none']</code>) – The format for link output. Possible options:
+- `"markdown"`: `[text](url)`
+- `"plain"`: `text (url)`
+- `"none"`: Only the text is extracted, link addresses are ignored.
 
-<a id="pptx.PPTXToDocument.run"></a>
-
-#### PPTXToDocument.run
+#### to_dict
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### run
+
+```python
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts PPTX files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Created Documents
 
-<a id="pypdf"></a>
-
-## Module pypdf
-
-<a id="pypdf.PyPDFExtractionMode"></a>
+## pypdf
 
 ### PyPDFExtractionMode
 
+Bases: <code>Enum</code>
+
 The mode to use for extracting text from a PDF.
 
-<a id="pypdf.PyPDFExtractionMode.__str__"></a>
-
-#### PyPDFExtractionMode.\_\_str\_\_
+#### from_str
 
 ```python
-def __str__() -> str
-```
-
-Convert a PyPDFExtractionMode enum to a string.
-
-<a id="pypdf.PyPDFExtractionMode.from_str"></a>
-
-#### PyPDFExtractionMode.from\_str
-
-```python
-@staticmethod
-def from_str(string: str) -> "PyPDFExtractionMode"
+from_str(string: str) -> PyPDFExtractionMode
 ```
 
 Convert a string to a PyPDFExtractionMode enum.
-
-<a id="pypdf.PyPDFToDocument"></a>
 
 ### PyPDFToDocument
 
@@ -1276,145 +1576,128 @@ print(documents[0].content)
 # 'This is a text from the PDF file.'
 ```
 
-<a id="pypdf.PyPDFToDocument.__init__"></a>
-
-#### PyPDFToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(*,
-             extraction_mode: str
-             | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
-             plain_mode_orientations: tuple = (0, 90, 180, 270),
-             plain_mode_space_width: float = 200.0,
-             layout_mode_space_vertically: bool = True,
-             layout_mode_scale_weight: float = 1.25,
-             layout_mode_strip_rotated: bool = True,
-             layout_mode_font_height_weight: float = 1.0,
-             store_full_path: bool = False)
+__init__(
+    *,
+    extraction_mode: str | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
+    plain_mode_orientations: tuple = (0, 90, 180, 270),
+    plain_mode_space_width: float = 200.0,
+    layout_mode_space_vertically: bool = True,
+    layout_mode_scale_weight: float = 1.25,
+    layout_mode_strip_rotated: bool = True,
+    layout_mode_font_height_weight: float = 1.0,
+    store_full_path: bool = False
+)
 ```
 
 Create an PyPDFToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `extraction_mode`: The mode to use for extracting text from a PDF.
-Layout mode is an experimental mode that adheres to the rendered layout of the PDF.
-- `plain_mode_orientations`: Tuple of orientations to look for when extracting text from a PDF in plain mode.
-Ignored if `extraction_mode` is `PyPDFExtractionMode.LAYOUT`.
-- `plain_mode_space_width`: Forces default space width if not extracted from font.
-Ignored if `extraction_mode` is `PyPDFExtractionMode.LAYOUT`.
-- `layout_mode_space_vertically`: Whether to include blank lines inferred from y distance + font height.
-Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
-- `layout_mode_scale_weight`: Multiplier for string length when calculating weighted average character width.
-Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
-- `layout_mode_strip_rotated`: Layout mode does not support rotated text. Set to `False` to include rotated text anyway.
-If rotated text is discovered, layout will be degraded and a warning will be logged.
-Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
-- `layout_mode_font_height_weight`: Multiplier for font height when calculating blank line height.
-Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **extraction_mode** (<code>str | PyPDFExtractionMode</code>) – The mode to use for extracting text from a PDF.
+  Layout mode is an experimental mode that adheres to the rendered layout of the PDF.
+- **plain_mode_orientations** (<code>tuple</code>) – Tuple of orientations to look for when extracting text from a PDF in plain mode.
+  Ignored if `extraction_mode` is `PyPDFExtractionMode.LAYOUT`.
+- **plain_mode_space_width** (<code>float</code>) – Forces default space width if not extracted from font.
+  Ignored if `extraction_mode` is `PyPDFExtractionMode.LAYOUT`.
+- **layout_mode_space_vertically** (<code>bool</code>) – Whether to include blank lines inferred from y distance + font height.
+  Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
+- **layout_mode_scale_weight** (<code>float</code>) – Multiplier for string length when calculating weighted average character width.
+  Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
+- **layout_mode_strip_rotated** (<code>bool</code>) – Layout mode does not support rotated text. Set to `False` to include rotated text anyway.
+  If rotated text is discovered, layout will be degraded and a warning will be logged.
+  Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
+- **layout_mode_font_height_weight** (<code>float</code>) – Multiplier for font height when calculating blank line height.
+  Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="pypdf.PyPDFToDocument.to_dict"></a>
-
-#### PyPDFToDocument.to\_dict
+#### to_dict
 
 ```python
-def to_dict()
+to_dict()
 ```
 
 Serializes the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data.
+- – Dictionary with serialized data.
 
-<a id="pypdf.PyPDFToDocument.from_dict"></a>
-
-#### PyPDFToDocument.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data)
+from_dict(data)
 ```
 
 Deserializes the component from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary with serialized data.
+- **data** – Dictionary with serialized data.
 
-**Returns**:
+**Returns:**
 
-Deserialized component.
+- – Deserialized component.
 
-<a id="pypdf.PyPDFToDocument.run"></a>
-
-#### PyPDFToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts PDF files to documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects to convert.
-- `meta`: Optional metadata to attach to the documents.
-This value can be a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced documents.
-If it's a list, its length must match the number of sources, as they are zipped together.
-For ByteStream objects, their `meta` is added to the output documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects to convert.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the documents.
+  This value can be a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced documents.
+  If it's a list, its length must match the number of sources, as they are zipped together.
+  For ByteStream objects, their `meta` is added to the output documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
-<a id="tika"></a>
-
-## Module tika
-
-<a id="tika.XHTMLParser"></a>
+## tika
 
 ### XHTMLParser
 
+Bases: <code>HTMLParser</code>
+
 Custom parser to extract pages from Tika XHTML content.
 
-<a id="tika.XHTMLParser.handle_starttag"></a>
-
-#### XHTMLParser.handle\_starttag
+#### handle_starttag
 
 ```python
-def handle_starttag(tag: str, attrs: list[tuple])
+handle_starttag(tag: str, attrs: list[tuple])
 ```
 
 Identify the start of a page div.
 
-<a id="tika.XHTMLParser.handle_endtag"></a>
-
-#### XHTMLParser.handle\_endtag
+#### handle_endtag
 
 ```python
-def handle_endtag(tag: str)
+handle_endtag(tag: str)
 ```
 
 Identify the end of a page div.
 
-<a id="tika.XHTMLParser.handle_data"></a>
-
-#### XHTMLParser.handle\_data
+#### handle_data
 
 ```python
-def handle_data(data: str)
+handle_data(data: str)
 ```
 
 Populate the page content.
-
-<a id="tika.TikaDocumentConverter"></a>
 
 ### TikaDocumentConverter
 
@@ -1426,6 +1709,7 @@ For more options on running Tika,
 see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
 Usage example:
+
 ```python
 from haystack.components.converters.tika import TikaDocumentConverter
 
@@ -1439,55 +1723,49 @@ print(documents[0].content)
 # 'This is a text from the docx file.'
 ```
 
-<a id="tika.TikaDocumentConverter.__init__"></a>
-
-#### TikaDocumentConverter.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(tika_url: str = "http://localhost:9998/tika",
-             store_full_path: bool = False)
+__init__(
+    tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False
+)
 ```
 
 Create a TikaDocumentConverter component.
 
-**Arguments**:
+**Parameters:**
 
-- `tika_url`: Tika server URL.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **tika_url** (<code>str</code>) – Tika server URL.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="tika.TikaDocumentConverter.run"></a>
-
-#### TikaDocumentConverter.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts files to Documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of HTML file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the Documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced Documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of HTML file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced Documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: Created Documents
 
-<a id="txt"></a>
-
-## Module txt
-
-<a id="txt.TextFileToDocument"></a>
+## txt
 
 ### TextFileToDocument
 
@@ -1509,133 +1787,130 @@ print(documents[0].content)
 # 'This is the content from the txt file.'
 ```
 
-<a id="txt.TextFileToDocument.__init__"></a>
-
-#### TextFileToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(encoding: str = "utf-8", store_full_path: bool = False)
+__init__(encoding: str = 'utf-8', store_full_path: bool = False)
 ```
 
 Creates a TextFileToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `encoding`: The encoding of the text files to convert.
-If the encoding is specified in the metadata of a source ByteStream,
-it overrides this value.
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **encoding** (<code>str</code>) – The encoding of the text files to convert.
+  If the encoding is specified in the metadata of a source ByteStream,
+  it overrides this value.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="txt.TextFileToDocument.run"></a>
-
-#### TextFileToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
+run(
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+)
 ```
 
 Converts text files to documents.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of text file paths or ByteStream objects to convert.
-- `meta`: Optional metadata to attach to the documents.
-This value can be a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced documents.
-If it's a list, its length must match the number of sources as they're zipped together.
-For ByteStream objects, their `meta` is added to the output documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of text file paths or ByteStream objects to convert.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the documents.
+  This value can be a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced documents.
+  If it's a list, its length must match the number of sources as they're zipped together.
+  For ByteStream objects, their `meta` is added to the output documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
-<a id="xlsx"></a>
-
-## Module xlsx
-
-<a id="xlsx.XLSXToDocument"></a>
+## xlsx
 
 ### XLSXToDocument
 
+````
 Converts XLSX (Excel) files into Documents.
 
-    Supports reading data from specific sheets or all sheets in the Excel file. If all sheets are read, a Document is
-    created for each sheet. The content of the Document is the table which can be saved in CSV or Markdown format.
+Supports reading data from specific sheets or all sheets in the Excel file. If all sheets are read, a Document is
+created for each sheet. The content of the Document is the table which can be saved in CSV or Markdown format.
 
-    ### Usage example
+### Usage example
 
-    ```python
-    from haystack.components.converters.xlsx import XLSXToDocument
+```python
+from haystack.components.converters.xlsx import XLSXToDocument
 
-    converter = XLSXToDocument()
-    results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
-    documents = results["documents"]
-    print(documents[0].content)
-    # ",A,B
+converter = XLSXToDocument()
+results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+print(documents[0].content)
+# ",A,B
+````
+
 1,col_a,col_b
 2,1.5,test
 "
-    ```
+\`\`\`
 
-<a id="xlsx.XLSXToDocument.__init__"></a>
-
-#### XLSXToDocument.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(table_format: Literal["csv", "markdown"] = "csv",
-             sheet_name: str | int | list[str | int] | None = None,
-             read_excel_kwargs: dict[str, Any] | None = None,
-             table_format_kwargs: dict[str, Any] | None = None,
-             *,
-             store_full_path: bool = False)
+__init__(
+    table_format: Literal["csv", "markdown"] = "csv",
+    sheet_name: str | int | list[str | int] | None = None,
+    read_excel_kwargs: dict[str, Any] | None = None,
+    table_format_kwargs: dict[str, Any] | None = None,
+    *,
+    link_format: Literal["markdown", "plain", "none"] = "none",
+    store_full_path: bool = False
+)
 ```
 
 Creates a XLSXToDocument component.
 
-**Arguments**:
+**Parameters:**
 
-- `table_format`: The format to convert the Excel file to.
-- `sheet_name`: The name of the sheet to read. If None, all sheets are read.
-- `read_excel_kwargs`: Additional arguments to pass to `pandas.read_excel`.
-See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
-- `table_format_kwargs`: Additional keyword arguments to pass to the table format function.
+- **table_format** (<code>Literal['csv', 'markdown']</code>) – The format to convert the Excel file to.
+- **sheet_name** (<code>str | int | list\[str | int\] | None</code>) – The name of the sheet to read. If None, all sheets are read.
+- **read_excel_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional arguments to pass to `pandas.read_excel`.
+  See https://pandas.pydata.org/docs/reference/api/pandas.read_excel.html#pandas-read-excel
+- **table_format_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to the table format function.
 - If `table_format` is "csv", these arguments are passed to `pandas.DataFrame.to_csv`.
   See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html#pandas-dataframe-to-csv
 - If `table_format` is "markdown", these arguments are passed to `pandas.DataFrame.to_markdown`.
   See https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_markdown.html#pandas-dataframe-to-markdown
-- `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
-If False, only the file name is stored.
+- **link_format** (<code>Literal['markdown', 'plain', 'none']</code>) – The format for link output. Possible options:
+- `"markdown"`: `[text](url)`
+- `"plain"`: `text (url)`
+- `"none"`: Only the text is extracted, link addresses are ignored.
+- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
+  If False, only the file name is stored.
 
-<a id="xlsx.XLSXToDocument.run"></a>
-
-#### XLSXToDocument.run
+#### run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(
+run(
     sources: list[str | Path | ByteStream],
-    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
 ) -> dict[str, list[Document]]
 ```
 
 Converts a XLSX file to a Document.
 
-**Arguments**:
+**Parameters:**
 
-- `sources`: List of file paths or ByteStream objects.
-- `meta`: Optional metadata to attach to the documents.
-This value can be either a list of dictionaries or a single dictionary.
-If it's a single dictionary, its content is added to the metadata of all produced documents.
-If it's a list, the length of the list must match the number of sources, because the two lists will
-be zipped.
-If `sources` contains ByteStream objects, their `meta` will be added to the output documents.
+- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
+- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the documents.
+  This value can be either a list of dictionaries or a single dictionary.
+  If it's a single dictionary, its content is added to the metadata of all produced documents.
+  If it's a list, the length of the list must match the number of sources, because the two lists will
+  be zipped.
+  If `sources` contains ByteStream objects, their `meta` will be added to the output documents.
 
-**Returns**:
+**Returns:**
 
-A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Created documents
-

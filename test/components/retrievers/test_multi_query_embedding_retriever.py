@@ -238,7 +238,8 @@ class TestMultiQueryEmbeddingRetriever:
         assert contents.count("Wind energy is clean") == 1
 
     @pytest.mark.integration
-    def test_run_with_filters(self, document_store_with_embeddings):
+    @pytest.mark.slow
+    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
         query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
@@ -251,7 +252,8 @@ class TestMultiQueryEmbeddingRetriever:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_pipeline_integration(self, document_store_with_embeddings):
+    @pytest.mark.slow
+    def test_pipeline_integration(self, del_hf_env_vars, document_store_with_embeddings):
         expander = QueryExpander(
             chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), n_expansions=3, include_original_query=True
         )

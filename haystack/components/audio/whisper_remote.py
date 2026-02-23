@@ -57,7 +57,7 @@ class RemoteWhisperTranscriber:
         :param organization:
             Your OpenAI organization ID. See OpenAI's documentation on
             [Setting Up Your Organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
-        :param api_base:
+        :param api_base_url:
             An optional URL to use as the API base. For details, see the
             OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
         :param http_client_kwargs:

@@ -54,7 +54,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         assert embedder.embedding_separator == "\n"
 
     def test_init_serverless_invalid_model(self, mock_check_valid_model):
-        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id", response=MagicMock())
         with pytest.raises(RepositoryNotFoundError):
             HuggingFaceAPIDocumentEmbedder(
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "invalid_model_id"}

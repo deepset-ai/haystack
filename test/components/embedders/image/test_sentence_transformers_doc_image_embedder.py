@@ -319,9 +319,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
             "we prefer to avoid altering PYTORCH_MPS_HIGH_WATERMARK_RATIO"
         ),
     )
-    def test_live_run(self, test_files_path, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_live_run(self, test_files_path, del_hf_env_vars):
         embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
 
         documents = [

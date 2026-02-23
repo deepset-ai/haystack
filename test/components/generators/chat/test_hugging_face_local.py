@@ -39,7 +39,7 @@ def chat_messages():
 def model_info_mock():
     with patch(
         "haystack.components.generators.chat.hugging_face_local.model_info",
-        new=Mock(return_value=Mock(pipeline_tag="text2text-generation")),
+        new=Mock(return_value=Mock(pipeline_tag="text-generation")),
     ) as mock:
         yield mock
 
@@ -97,14 +97,14 @@ class TestHuggingFaceLocalChatGenerator:
     def test_init_custom_token(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
-            task="text2text-generation",
+            task="text-generation",
             token=Secret.from_token("test-token"),
             device=ComponentDevice.from_str("cpu"),
         )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "mistralai/Mistral-7B-Instruct-v0.2",
-            "task": "text2text-generation",
+            "task": "text-generation",
             "token": "test-token",
             "device": "cpu",
         }
@@ -112,40 +112,38 @@ class TestHuggingFaceLocalChatGenerator:
     def test_init_custom_device(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
-            task="text2text-generation",
+            task="text-generation",
             device=ComponentDevice.from_str("cpu"),
             token=None,
         )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "mistralai/Mistral-7B-Instruct-v0.2",
-            "task": "text2text-generation",
+            "task": "text-generation",
             "token": None,
             "device": "cpu",
         }
 
     def test_init_task_parameter(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
-            task="text2text-generation", device=ComponentDevice.from_str("cpu"), token=None
+            task="text-generation", device=ComponentDevice.from_str("cpu"), token=None
         )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "Qwen/Qwen3-0.6B",
-            "task": "text2text-generation",
+            "task": "text-generation",
             "token": None,
             "device": "cpu",
         }
 
     def test_init_task_in_huggingface_pipeline_kwargs(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
-            huggingface_pipeline_kwargs={"task": "text2text-generation"},
-            device=ComponentDevice.from_str("cpu"),
-            token=None,
+            huggingface_pipeline_kwargs={"task": "text-generation"}, device=ComponentDevice.from_str("cpu"), token=None
         )
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "Qwen/Qwen3-0.6B",
-            "task": "text2text-generation",
+            "task": "text-generation",
             "token": None,
             "device": "cpu",
         }
@@ -157,7 +155,7 @@ class TestHuggingFaceLocalChatGenerator:
 
         assert generator.huggingface_pipeline_kwargs == {
             "model": "mistralai/Mistral-7B-Instruct-v0.2",
-            "task": "text2text-generation",
+            "task": "text-generation",
             "token": None,
             "device": "cpu",
         }
@@ -165,6 +163,12 @@ class TestHuggingFaceLocalChatGenerator:
     def test_init_invalid_task(self):
         with pytest.raises(ValueError, match="is not supported."):
             HuggingFaceLocalChatGenerator(task="text-classification")
+
+    def test_init_text2text_generation_raises_error(self):
+        with pytest.raises(
+            ValueError, match="Task 'text2text-generation' is not supported with transformers v5 or higher."
+        ):
+            HuggingFaceLocalChatGenerator(task="text2text-generation")
 
     def test_to_dict(self, model_info_mock, tools):
         generator = HuggingFaceLocalChatGenerator(
@@ -186,7 +190,12 @@ class TestHuggingFaceLocalChatGenerator:
         assert init_params["token"] == {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"}
         assert init_params["huggingface_pipeline_kwargs"]["model"] == "NousResearch/Llama-2-7b-chat-hf"
         assert "token" not in init_params["huggingface_pipeline_kwargs"]
-        assert init_params["generation_kwargs"] == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
+        assert init_params["generation_kwargs"] == {
+            "max_new_tokens": 512,
+            "n": 5,
+            "stop_sequences": ["stop", "words"],
+            "return_full_text": False,
+        }
         assert init_params["streaming_callback"] is None
         assert init_params["chat_template"] == "irrelevant"
         assert init_params["enable_thinking"] is True
@@ -221,7 +230,12 @@ class TestHuggingFaceLocalChatGenerator:
         generator_2 = HuggingFaceLocalChatGenerator.from_dict(result)
 
         assert generator_2.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
-        assert generator_2.generation_kwargs == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
+        assert generator_2.generation_kwargs == {
+            "max_new_tokens": 512,
+            "n": 5,
+            "stop_sequences": ["stop", "words"],
+            "return_full_text": False,
+        }
         assert generator_2.streaming_callback is None
         assert generator_2.chat_template == "irrelevant"
         assert generator_2.enable_thinking is True
@@ -235,13 +249,9 @@ class TestHuggingFaceLocalChatGenerator:
         }
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up(self, pipeline_mock, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_warm_up(self, pipeline_mock, del_hf_env_vars):
         generator = HuggingFaceLocalChatGenerator(
-            model="mistralai/Mistral-7B-Instruct-v0.2",
-            task="text2text-generation",
-            device=ComponentDevice.from_str("cpu"),
+            model="mistralai/Mistral-7B-Instruct-v0.2", task="text-generation", device=ComponentDevice.from_str("cpu")
         )
 
         pipeline_mock.assert_not_called()
@@ -249,14 +259,12 @@ class TestHuggingFaceLocalChatGenerator:
         generator.warm_up()
 
         pipeline_mock.assert_called_once_with(
-            model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token=None, device="cpu"
+            model="mistralai/Mistral-7B-Instruct-v0.2", task="text-generation", token=None, device="cpu"
         )
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up_with_tools(self, pipeline_mock, monkeypatch):
+    def test_warm_up_with_tools(self, pipeline_mock, del_hf_env_vars):
         """Test that warm_up() calls warm_up on tools and is idempotent."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
 
         # Create a mock tool that tracks if warm_up() was called
         class MockTool(Tool):
@@ -280,7 +288,7 @@ class TestHuggingFaceLocalChatGenerator:
         # Create HuggingFaceLocalChatGenerator with the mock tool
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
-            task="text2text-generation",
+            task="text-generation",
             device=ComponentDevice.from_str("cpu"),
             tools=[mock_tool],
         )
@@ -309,15 +317,11 @@ class TestHuggingFaceLocalChatGenerator:
         pipeline_mock.assert_called_once()
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up_with_no_tools(self, pipeline_mock, monkeypatch):
+    def test_warm_up_with_no_tools(self, pipeline_mock, del_hf_env_vars):
         """Test that warm_up() works when no tools are provided."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
 
         generator = HuggingFaceLocalChatGenerator(
-            model="mistralai/Mistral-7B-Instruct-v0.2",
-            task="text2text-generation",
-            device=ComponentDevice.from_str("cpu"),
+            model="mistralai/Mistral-7B-Instruct-v0.2", task="text-generation", device=ComponentDevice.from_str("cpu")
         )
 
         # Verify initial state
@@ -338,10 +342,8 @@ class TestHuggingFaceLocalChatGenerator:
         pipeline_mock.assert_called_once()
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up_with_multiple_tools(self, pipeline_mock, monkeypatch):
+    def test_warm_up_with_multiple_tools(self, pipeline_mock, del_hf_env_vars):
         """Test that warm_up() works with multiple tools."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
 
         # Track warm_up calls
         warm_up_calls = []
@@ -364,7 +366,7 @@ class TestHuggingFaceLocalChatGenerator:
         # Use a LIST of tools, not a Toolset
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2",
-            task="text2text-generation",
+            task="text-generation",
             device=ComponentDevice.from_str("cpu"),
             tools=[mock_tool1, mock_tool2],
         )
@@ -477,7 +479,6 @@ class TestHuggingFaceLocalChatGenerator:
             mock_pipeline.tokenizer.apply_chat_template.return_value = "test prompt"
             mock_pipeline.return_value = [{"generated_text": "test response"}]
 
-            generator.warm_up()
             generator.run(messages)
 
         assert mock_convert.call_count == 2
@@ -487,9 +488,8 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run(self, monkeypatch):
+    def test_live_run(self, del_hf_env_vars):
         """Test live run with default behavior (no thinking)."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
 
         llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
@@ -503,9 +503,8 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_thinking(self, monkeypatch):
+    def test_live_run_thinking(self, del_hf_env_vars):
         """Test live run with enable_thinking=True."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
         messages = [ChatMessage.from_user("What is 2+2?")]
 
         llm = HuggingFaceLocalChatGenerator(
@@ -806,10 +805,8 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.asyncio
-    async def test_live_run_async_with_streaming(self, monkeypatch):
+    async def test_live_run_async_with_streaming(self, del_hf_env_vars):
         """Test async streaming with a live model."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-
         streaming_chunks = []
 
         async def streaming_callback(chunk: StreamingChunk) -> None:

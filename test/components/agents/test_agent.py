@@ -13,20 +13,26 @@ import pytest
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
-from haystack import Pipeline, component, tracing
+from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents import Agent
 from haystack.components.agents.state import merge_lists
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import ComponentTool, Tool, tool
 from haystack.tools.toolset import Toolset
 from haystack.tracing.logging_tracer import LoggingTracer
 from haystack.utils import Secret, serialize_callable
+
+
+def _user_msg(text: str) -> str:
+    return f'{{% message role="user" %}}{text}{{% endmessage %}}'
 
 
 def sync_streaming_callback(chunk: StreamingChunk) -> None:
@@ -244,6 +250,8 @@ class TestAgent:
                     },
                 ],
                 "system_prompt": None,
+                "user_prompt": None,
+                "required_variables": None,
                 "exit_conditions": ["text", "weather_tool"],
                 "state_schema": {"foo": {"type": "str"}},
                 "max_agent_steps": 100,
@@ -307,6 +315,8 @@ class TestAgent:
                     },
                 },
                 "system_prompt": None,
+                "user_prompt": None,
+                "required_variables": None,
                 "exit_conditions": ["text"],
                 "state_schema": {},
                 "max_agent_steps": 100,
@@ -630,7 +640,6 @@ class TestAgent:
             streaming_callback_called = True
 
         agent = Agent(chat_generator=chat_generator, streaming_callback=streaming_callback, tools=[weather_tool])
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("Hello")])
 
         # check we called the streaming callback
@@ -656,7 +665,6 @@ class TestAgent:
             streaming_callback_called = True
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("Hello")], streaming_callback=streaming_callback)
 
         # check we called the streaming callback
@@ -684,7 +692,6 @@ class TestAgent:
         )
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("Hello")])
 
         # check we called the streaming callback
@@ -718,7 +725,6 @@ class TestAgent:
         ]
 
         agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=0)
-        agent.warm_up()
 
         # Patch agent.chat_generator.run to return mock_messages
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
@@ -739,7 +745,6 @@ class TestAgent:
         ]
 
         agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["weather_tool"])
-        agent.warm_up()
 
         # Patch agent.chat_generator.run to return mock_messages
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
@@ -766,7 +771,6 @@ class TestAgent:
 
         with caplog.at_level("WARNING"):
             agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
-            agent.warm_up()
             assert "No tools provided to the Agent." in caplog.text
 
         # Patch agent.chat_generator.run to return mock_messages
@@ -788,7 +792,6 @@ class TestAgent:
     def test_run_with_system_prompt(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert response["messages"][0].text == "This is a system prompt."
 
@@ -797,7 +800,6 @@ class TestAgent:
         agent = Agent(
             chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is the init system prompt."
         )
-        agent.warm_up()
         response = agent.run(
             [ChatMessage.from_user("What is the weather in Berlin?")], system_prompt="This is the run system prompt."
         )
@@ -824,7 +826,6 @@ class TestAgent:
         agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
         tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
         monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.warm_up()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
         tool_invoker_run_mock.assert_called_once()
         assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
@@ -854,7 +855,6 @@ class TestAgent:
         )
         tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
         monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.warm_up()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
         tool_invoker_run_mock.assert_called_once()
         assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
@@ -872,14 +872,12 @@ class TestAgent:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[])
-        agent.warm_up()
         result = agent.run([])
         assert result["messages"] == []
 
     def test_run_only_system_prompt(self, caplog):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
-        agent.warm_up()
         _ = agent.run([])
         assert "All messages provided to the Agent component are system messages." in caplog.text
 
@@ -888,7 +886,6 @@ class TestAgent:
     def test_run(self, weather_tool):
         chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
-        agent.warm_up()
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
         assert isinstance(response, dict)
@@ -920,7 +917,6 @@ class TestAgent:
         chat_generator = MockChatGeneratorWithoutRunAsync()
 
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
 
@@ -946,7 +942,6 @@ class TestAgent:
         chat_generator = MockChatGeneratorWithoutRunAsync()
 
         agent = Agent(chat_generator=chat_generator)
-        agent.warm_up()
 
         chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
 
@@ -963,7 +958,6 @@ class TestAgent:
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         chat_generator.run_async = AsyncMock(
             return_value={"replies": [ChatMessage.from_assistant("Hello from run_async")]}
@@ -991,7 +985,6 @@ class TestAgent:
     def test_agent_streaming_with_tool_call(self, weather_tool):
         chat_generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -1011,7 +1004,6 @@ class TestAgent:
     async def test_run_async_with_async_streaming_callback(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-        agent.warm_up()
 
         # This should not raise any exception
         result = await agent.run_async([ChatMessage.from_user("Hello")])
@@ -1023,7 +1015,6 @@ class TestAgent:
     def test_run_with_async_streaming_callback_fails(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-        agent.warm_up()
 
         with pytest.raises(ValueError, match="The init callback cannot be a coroutine"):
             agent.run([ChatMessage.from_user("Hello")])
@@ -1032,7 +1023,6 @@ class TestAgent:
     async def test_run_async_with_sync_streaming_callback_fails(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
-        agent.warm_up()
 
         with pytest.raises(ValueError, match="The init callback must be async compatible"):
             await agent.run_async([ChatMessage.from_user("Hello")])
@@ -1079,8 +1069,8 @@ class TestAgentTracing:
             "MockChatGeneratorWithoutRunAsync",
             "test_agent.MockChatGeneratorWithoutRunAsync",
             '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
-            '{"replies": {"type": "list", "receivers": []}}',
+            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
+            '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
@@ -1141,8 +1131,8 @@ class TestAgentTracing:
             "MockChatGenerator",
             "test_agent.MockChatGenerator",
             '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
-            '{"replies": {"type": "list", "receivers": []}}',
+            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
+            '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
@@ -1165,7 +1155,6 @@ class TestAgentTracing:
     def test_agent_tracing_in_pipeline(self, caplog, monkeypatch, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         tracing.tracer.is_content_tracing_enabled = True
         tracing.enable_tracing(LoggingTracer())
@@ -1233,7 +1222,6 @@ class TestAgentTracing:
         """Test that the agent's span has the component span as its parent when running in a pipeline."""
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-        agent.warm_up()
 
         pipeline = Pipeline()
         pipeline.add_component(
@@ -1369,3 +1357,265 @@ class TestAgentToolSelection:
         assert isinstance(deserialized_agent.tools, list)
         assert len(deserialized_agent.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
+
+
+def _make_agent_with_user_prompt(
+    user_prompt: str, *, chat_generator: MockChatGenerator | None = None, **agent_kwargs
+) -> Agent:
+    return Agent(chat_generator=chat_generator or MockChatGenerator(), user_prompt=user_prompt, **agent_kwargs)
+
+
+class TestUserPromptInitialization:
+    def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
+        with pytest.raises(
+            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
+        ):
+            agent.run()
+
+    def test_user_prompt_conflict_with_state_schema_raises(self, weather_tool):
+        with pytest.raises(ValueError, match="already defined in the state schema"):
+            _make_agent_with_user_prompt(
+                _user_msg("Query: {{custom_field}}"), tools=[weather_tool], state_schema={"custom_field": {"type": str}}
+            )
+
+    def test_user_prompt_conflict_with_run_param_raises(self, weather_tool):
+        with pytest.raises(ValueError, match="conflicts with input names in the run method"):
+            _make_agent_with_user_prompt(_user_msg("{{system_prompt}} is the system prompt."), tools=[weather_tool])
+
+    def test_user_prompt_only_variables_forwarded_to_builder(self, weather_tool):
+        agent = _make_agent_with_user_prompt(_user_msg("Question: {{question}}"), tools=[weather_tool])
+        # 'irrelevant_kwarg' is not a template variable — must not raise
+        result = agent.run(question="Will it snow?", irrelevant_kwarg="unused")
+        assert "messages" in result
+
+
+class TestUserPromptOnly:
+    def test_simple_literal_user_prompt(self, weather_tool):
+        agent = _make_agent_with_user_prompt(_user_msg("Tell me the weather."), tools=[weather_tool])
+        result = agent.run()
+        messages = result["messages"]
+        # The rendered user_prompt should be the first (and only) non-system message
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        assert len(user_messages) == 1
+        assert user_messages[0].text == "Tell me the weather."
+
+    def test_user_prompt_with_template_variables(self, weather_tool):
+        agent = _make_agent_with_user_prompt(
+            _user_msg(
+                "Hello {{name|upper}}, check weather for: "
+                + "{% for c in cities %}{{c}}{% if not loop.last %}, {% endif %}{% endfor %}"
+                + " on {{date}}?"
+            ),
+            tools=[weather_tool],
+        )
+        result = agent.run(name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "name" in input_names
+        assert "cities" in input_names
+        assert "date" in input_names
+
+    def test_user_prompt_with_system_prompt(self, weather_tool):
+        agent = _make_agent_with_user_prompt(
+            _user_msg("What is the weather in {{city}}?"),
+            tools=[weather_tool],
+            system_prompt="You are a helpful weather assistant.",
+        )
+        result = agent.run(city="Berlin")
+        messages = result["messages"]
+        assert messages[0].is_from(ChatRole.SYSTEM)
+        assert messages[0].text == "You are a helpful weather assistant."
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "What is the weather in Berlin?"
+
+    def test_user_prompt_with_documents_variable(self, weather_tool):
+        agent = _make_agent_with_user_prompt(
+            _user_msg(
+                "Answer based on these documents:\n"
+                "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
+                "Question: {{question}}"
+            ),
+            tools=[weather_tool],
+        )
+        docs = [Document(content="Doc A"), Document(content="Doc B")]
+        result = agent.run(documents=docs, question="What is in the docs?")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert "Doc A" in user_messages[0].text
+        assert "Doc B" in user_messages[0].text
+        assert "What is in the docs?" in user_messages[0].text
+
+    def test_runtime_user_prompt_overrides_init_prompt(self, weather_tool):
+        agent = _make_agent_with_user_prompt(_user_msg("Default prompt for {{city}}."), tools=[weather_tool])
+        result = agent.run(user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "Runtime prompt for Berlin."
+
+
+class TestUserPromptWithMessages:
+    def test_user_prompt_appended_after_initial_messages(self, weather_tool):
+        agent = _make_agent_with_user_prompt(_user_msg("And now: {{query}}"), tools=[weather_tool])
+        initial_messages = [ChatMessage.from_user("First message")]
+        result = agent.run(messages=initial_messages, query="What is the weather?")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "First message"
+        assert user_messages[1].text == "And now: What is the weather?"
+
+    def test_runtime_user_prompt_appended_after_initial_messages(self, weather_tool):
+        agent = _make_agent_with_user_prompt(_user_msg("Init prompt: {{question}}"), tools=[weather_tool])
+        initial_messages = [ChatMessage.from_user("Context message")]
+        result = agent.run(
+            messages=initial_messages, user_prompt=_user_msg("Follow-up: {{question}}"), question="Is it raining?"
+        )
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert len(user_messages) == 2
+        assert user_messages[0].text == "Context message"
+        assert user_messages[1].text == "Follow-up: Is it raining?"
+
+    def test_messages_plus_user_prompt_with_multiple_kwargs(self, weather_tool):
+        agent = _make_agent_with_user_prompt(
+            _user_msg("Documents:\n{% for d in documents %}{{d.content}}\n{% endfor %}Q: {{question}}"),
+            tools=[weather_tool],
+            system_prompt="You are very smart.",
+        )
+        history = [ChatMessage.from_user("Previous question?"), ChatMessage.from_assistant("Previous answer.")]
+        docs = [Document(content="Fact A"), Document(content="Fact B")]
+        result = agent.run(messages=history, documents=docs, question="Summarise the facts.")
+        messages = result["messages"]
+        assert len(messages) == 5
+
+        assert messages[0].role.value == ChatRole.SYSTEM
+        assert messages[0].text == "You are very smart."
+
+        assert messages[1].role.value == ChatRole.USER
+        assert messages[1].text == "Previous question?"
+
+        assert messages[2].role.value == ChatRole.ASSISTANT
+        assert messages[2].text == "Previous answer."
+
+        assert messages[3].role.value == ChatRole.USER
+        rendered = messages[3].text
+        assert "Fact A" in rendered
+        assert "Fact B" in rendered
+        assert "Summarise the facts." in rendered
+
+        assert messages[4].role.value == ChatRole.ASSISTANT
+        assert messages[4].text == "Hello"
+
+
+def _make_rag_pipeline(
+    document_store_with_docs: InMemoryDocumentStore, weather_tool: Tool, *, user_prompt: str | None = None
+):
+    agent = _make_agent_with_user_prompt(
+        user_prompt=user_prompt
+        or _user_msg(
+            "Use the following documents to answer the question.\n"
+            "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}"
+            "Question: {{query}}"
+        ),
+        tools=[weather_tool],
+        system_prompt="You are a knowledgeable assistant.",
+        required_variables=["query", "documents"],
+    )
+
+    pp = Pipeline()
+    pp.add_component("retriever", InMemoryBM25Retriever(document_store=document_store_with_docs))
+    pp.add_component("agent", agent)
+    pp.connect("retriever.documents", "agent.documents")
+
+    return pp
+
+
+class TestAgentUserPromptInPipeline:
+    @pytest.fixture
+    def document_store_with_docs(self):
+        store = InMemoryDocumentStore()
+        store.write_documents(
+            [
+                Document(content="The Eiffel Tower is located in Paris."),
+                Document(content="The Brandenburg Gate is in Berlin."),
+                Document(content="The Colosseum is in Rome."),
+            ]
+        )
+        return store
+
+    def test_rag_pipeline_user_prompt_init_only(self, document_store_with_docs, weather_tool):
+        pipeline = _make_rag_pipeline(document_store_with_docs, weather_tool)
+        query = "Where is the Colosseum?"
+        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query}})
+        assert "agent" in result
+        agent_output = result["agent"]
+        assert "messages" in agent_output
+        assert "last_message" in agent_output
+
+        messages = agent_output["messages"]
+        assert messages[0].is_from(ChatRole.SYSTEM)
+        assert messages[0].text == "You are a knowledgeable assistant."
+
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        assert len(user_messages) == 1
+        rendered = user_messages[0].text
+        assert "Question: Where is the Colosseum?" in rendered
+        assert "Documents:" in rendered
+
+    def test_rag_pipeline_user_prompt_runtime_override(self, document_store_with_docs, weather_tool):
+        user_prompt = _user_msg(
+            "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}Question: {{query}}"
+        )
+        pipeline = _make_rag_pipeline(document_store_with_docs, weather_tool, user_prompt=user_prompt)
+
+        query = "Where is the Eiffel Tower?"
+        result = pipeline.run(
+            data={
+                "retriever": {"query": query},
+                "agent": {
+                    "user_prompt": _user_msg(
+                        "OVERRIDE: Using docs:\n"
+                        "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
+                        "Answer: {{query}}"
+                    ),
+                    "query": query,
+                },
+            }
+        )
+        messages = result["agent"]["messages"]
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        rendered = user_messages[0].text
+        assert "OVERRIDE:" in rendered
+        assert "Where is the Eiffel Tower?" in rendered
+
+    def test_rag_pipeline_messages_plus_user_prompt(self, document_store_with_docs, weather_tool):
+        from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+
+        chat_generator = MockChatGenerator()
+
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool],
+            user_prompt=_user_msg("Relevant docs:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}"),
+        )
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Berlin")]})
+
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "prompt_builder", ChatPromptBuilder(template=[ChatMessage.from_user("History: {{history_note}}")])
+        )
+        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store_with_docs))
+        pipeline.add_component("agent", agent)
+
+        pipeline.connect("prompt_builder.prompt", "agent.messages")
+        pipeline.connect("retriever.documents", "agent.documents")
+
+        result = pipeline.run(
+            data={
+                "prompt_builder": {"history_note": "User previously asked about European cities."},
+                "retriever": {"query": "Brandenburg Gate"},
+            }
+        )
+        messages = result["agent"]["messages"]
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        assert "History:" in user_messages[0].text
+        rendered = user_messages[1].text
+        assert "Relevant docs:" in rendered

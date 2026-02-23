@@ -107,7 +107,6 @@ class TestDocumentPreprocessor:
             Document(content="Another test document with some content."),
         ]
 
-        preprocessor.warm_up()
         result = preprocessor.run(documents=documents)
 
         # Check that we got processed documents back
@@ -128,7 +127,6 @@ class TestDocumentPreprocessor:
         preprocessor = DocumentPreprocessor(split_by="function", splitting_function=custom_split, split_length=1)
 
         documents = [Document(content="First sentence. Second sentence. Third sentence.")]
-        preprocessor.warm_up()
         result = preprocessor.run(documents=documents)
 
         processed_docs = result["documents"]

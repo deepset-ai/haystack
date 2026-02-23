@@ -888,14 +888,14 @@ class PipelineBase:  # noqa: PLW1641
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
                     key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
+                        "type": value.type.__name__ if type(value.type) is type else str(value.type),  # pylint: disable=unidiomatic-typecheck
                         "senders": value.senders,
                     }
                     for key, value in instance.__haystack_input__._sockets_dict.items()  # type: ignore
                 },
                 "haystack.component.output_spec": {
                     key: {
-                        "type": (value.type.__name__ if isinstance(value.type, type) else str(value.type)),
+                        "type": value.type.__name__ if type(value.type) is type else str(value.type),  # pylint: disable=unidiomatic-typecheck
                         "receivers": value.receivers,
                     }
                     for key, value in instance.__haystack_output__._sockets_dict.items()  # type: ignore

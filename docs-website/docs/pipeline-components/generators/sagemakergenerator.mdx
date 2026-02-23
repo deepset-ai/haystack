@@ -63,7 +63,6 @@ Basic usage:
 from haystack_integrations.components.generators.amazon_sagemaker import SagemakerGenerator
 
 client = SagemakerGenerator(model="jumpstart-dft-hf-llm-falcon-7b-instruct-bf16")
-client.warm_up()
 response = client.run("Briefly explain what NLP is in one sentence.")
 print(response)
 

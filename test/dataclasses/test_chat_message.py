@@ -732,6 +732,24 @@ class TestToOpenaiDictFormat:
             ],
         }
 
+    def test_to_openai_dict_format_user_message_with_file_content_no_filename(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf"),
+                TextContent("Is this document a paper about LLMs?"),
+            ]
+        )
+        assert message.to_openai_dict_format() == {
+            "role": "user",
+            "content": [
+                {
+                    "type": "file",
+                    "file": {"file_data": f"data:application/pdf;base64,{base64_pdf_string}", "filename": "filename"},
+                },
+                {"type": "text", "text": "Is this document a paper about LLMs?"},
+            ],
+        }
+
     def test_to_openai_dict_format_assistant_message(self):
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert message.to_openai_dict_format() == {"role": "assistant", "content": "I have an answer"}

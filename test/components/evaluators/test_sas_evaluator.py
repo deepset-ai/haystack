@@ -91,8 +91,7 @@ class TestSASEvaluator:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_bi_encoder_model(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_with_bi_encoder_model(self, del_hf_env_vars):
         evaluator = SASEvaluator("sentence-transformers-testing/stsb-bert-tiny-safetensors")
         ground_truths = [
             "US $2.3 billion",
@@ -111,8 +110,7 @@ class TestSASEvaluator:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_cross_encoder_model(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_with_cross_encoder_model(self, del_hf_env_vars):
         evaluator = SASEvaluator(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
         ground_truths = [
             "A construction budget of US $2.3 billion",
