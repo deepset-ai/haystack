@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
+
+import pytest
+
 from haystack.dataclasses import ChatMessage, Document
 from haystack.dataclasses.answer import Answer, ExtractedAnswer, GeneratedAnswer
 
@@ -96,6 +100,26 @@ class TestExtractedAnswer:
         assert answer.document_offset == ExtractedAnswer.Span(42, 44)
         assert answer.context_offset == ExtractedAnswer.Span(14, 16)
         assert answer.meta == {"meta_key": "meta_value"}
+
+    def test_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            ExtractedAnswer(query="q", score=1.0)
+
+    def test_warn_on_inplace_mutation(self):
+        answer = ExtractedAnswer(query="q", score=1.0)
+        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+            answer.query = "new"
+
+    def test_span_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            ExtractedAnswer.Span(start=0, end=5)
+
+    def test_span_warn_on_inplace_mutation(self):
+        span = ExtractedAnswer.Span(start=0, end=5)
+        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+            span.start = 1
 
 
 class TestGeneratedAnswer:
@@ -239,3 +263,13 @@ class TestGeneratedAnswer:
         ]
         assert answer.meta["meta_key"] == "meta_value"
         assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
+
+    def test_no_warning_on_init(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            GeneratedAnswer(data="42", query="q", documents=[])
+
+    def test_warn_on_inplace_mutation(self):
+        answer = GeneratedAnswer(data="42", query="q", documents=[])
+        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+            answer.data = "new"
