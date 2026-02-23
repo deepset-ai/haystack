@@ -103,6 +103,7 @@ class TestSearchableToolsetPassthrough:
     def test_passthrough_mode_detected(self, small_catalog):
         """Test that small catalogs trigger passthrough mode."""
         toolset = SearchableToolset(catalog=small_catalog)
+        toolset.warm_up()
 
         assert toolset.is_passthrough is True
 
@@ -144,6 +145,7 @@ class TestSearchableToolsetPassthrough:
         """Test that custom search_threshold changes passthrough behavior."""
         # With threshold of 10, 8 tools should be passthrough
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=10)
+        toolset.warm_up()
 
         assert toolset.is_passthrough is True
         assert len(list(toolset)) == 8
@@ -287,6 +289,7 @@ class TestSearchableToolsetSerialization:
 
         data = toolset.to_dict()
         restored = SearchableToolset.from_dict(data)
+        restored.warm_up()
 
         assert restored._top_k == 3
         assert len(restored._catalog) == len(large_catalog)
@@ -338,6 +341,7 @@ class TestSearchableToolsetWithToolset:
         """Test that a Toolset can be used as catalog."""
         base_toolset = Toolset(tools=small_catalog)
         search_toolset = SearchableToolset(catalog=base_toolset, search_threshold=10)
+        search_toolset.warm_up()
 
         assert len(search_toolset._catalog) == len(small_catalog)
 
@@ -356,6 +360,7 @@ class TestSearchableToolsetWithToolset:
         toolset2 = Toolset(tools=[multiply_tool, stock_tool])
 
         search_toolset = SearchableToolset(catalog=[toolset1, toolset2], search_threshold=10)
+        search_toolset.warm_up()
 
         assert len(search_toolset._catalog) == 4
         assert any(t.name == "get_weather" for t in search_toolset._catalog)
@@ -368,6 +373,7 @@ class TestSearchableToolsetWithToolset:
         toolset = Toolset(tools=[add_tool, multiply_tool])
 
         search_toolset = SearchableToolset(catalog=[weather_tool, toolset], search_threshold=10)
+        search_toolset.warm_up()
 
         assert len(search_toolset._catalog) == 3
         assert any(t.name == "get_weather" for t in search_toolset._catalog)
@@ -391,13 +397,17 @@ class TestSearchableToolsetWarmUp:
         # Should be the same instance
         assert first_bootstrap is second_bootstrap
 
-    def test_warm_up_not_required_for_passthrough(self, small_catalog):
-        """Test that passthrough works without warm_up."""
+    def test_catalog_empty_before_warm_up(self, small_catalog):
+        """Test that catalog is empty before warm_up (deferred flattening)."""
         toolset = SearchableToolset(catalog=small_catalog)
 
-        # Should work without warm_up
-        tools = list(toolset)
-        assert len(tools) == len(small_catalog)
+        # Before warm_up, _catalog is empty (flattening is deferred)
+        assert len(toolset._catalog) == 0
+        assert len(list(toolset)) == 0
+
+        # After warm_up, catalog is populated
+        toolset.warm_up()
+        assert len(list(toolset)) == len(small_catalog)
 
     def test_bootstrap_tool_before_warm_up(self, large_catalog):
         """Test that bootstrap tool is None before warm_up."""
@@ -438,6 +448,7 @@ class TestSearchableToolsetEdgeCases:
         ]
 
         toolset = SearchableToolset(catalog=tools, search_threshold=8)
+        toolset.warm_up()
 
         # Should NOT be passthrough (>= threshold triggers discovery)
         assert toolset.is_passthrough is False
@@ -455,6 +466,7 @@ class TestSearchableToolsetEdgeCases:
         ]
 
         toolset = SearchableToolset(catalog=tools, search_threshold=8)
+        toolset.warm_up()
 
         # Should be passthrough
         assert toolset.is_passthrough is True
@@ -472,6 +484,117 @@ class TestSearchableToolsetEdgeCases:
         # Should still only have discovered tools (may be multiple if they match "weather")
         assert "get_weather" in toolset._discovered_tools
         assert len(toolset) >= 2  # bootstrap + discovered tools
+
+
+class TestSearchableToolsetLazyToolset:
+    """Tests for lazy toolsets (e.g. MCPToolset with eager_connect=False)."""
+
+    def test_lazy_toolset_tools_available_after_warm_up(self):
+        """Test that a lazy toolset's tools become available after warm_up."""
+
+        class LazyToolset(Toolset):
+            """A toolset that only provides real tools after warm_up (like MCPToolset)."""
+
+            def __init__(self):
+                # Before warm_up, no real tools — mimics MCPToolset with eager_connect=False
+                super().__init__(tools=[])
+                self._connected = False
+
+            def warm_up(self) -> None:
+                if self._connected:
+                    return
+                # Simulate connecting and discovering tools
+                self.tools = [
+                    Tool(
+                        name=f"lazy_tool_{i}",
+                        description=f"Lazy tool number {i} for testing",
+                        parameters={"type": "object", "properties": {"x": {"type": "string"}}},
+                        function=lambda x: x,
+                    )
+                    for i in range(10)
+                ]
+                self._connected = True
+
+        lazy = LazyToolset()
+        # Before warm_up, iterating yields nothing
+        assert len(list(lazy)) == 0
+
+        toolset = SearchableToolset(catalog=lazy)
+        # Before warm_up, catalog is empty
+        assert len(toolset._catalog) == 0
+
+        toolset.warm_up()
+
+        # After warm_up, all 10 lazy tools should be in the catalog
+        assert len(toolset._catalog) == 10
+        # 10 tools >= 8 threshold -> BM25 mode
+        assert toolset.is_passthrough is False
+        assert toolset._bootstrap_tool is not None
+
+        # Search should find lazy tools
+        result = toolset._bootstrap_tool.invoke(tool_keywords="lazy tool testing")
+        assert "lazy_tool" in result
+
+    def test_lazy_toolset_passthrough_mode(self):
+        """Test lazy toolset with few tools ends up in passthrough mode."""
+
+        class SmallLazyToolset(Toolset):
+            def __init__(self):
+                super().__init__(tools=[])
+
+            def warm_up(self) -> None:
+                self.tools = [
+                    Tool(
+                        name="lazy_single",
+                        description="A single lazy tool",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: "result",
+                    )
+                ]
+
+        toolset = SearchableToolset(catalog=SmallLazyToolset())
+        toolset.warm_up()
+
+        assert toolset.is_passthrough is True
+        assert len(list(toolset)) == 1
+        assert "lazy_single" in toolset
+
+    def test_mixed_lazy_and_eager_toolsets(self):
+        """Test catalog with both lazy and eager toolsets."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                super().__init__(tools=[])
+
+            def warm_up(self) -> None:
+                self.tools = [
+                    Tool(
+                        name=f"lazy_{i}",
+                        description=f"Lazy tool {i}",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: None,
+                    )
+                    for i in range(5)
+                ]
+
+        eager_tools = [
+            Tool(
+                name=f"eager_{i}",
+                description=f"Eager tool {i}",
+                parameters={"type": "object", "properties": {}},
+                function=lambda: None,
+            )
+            for i in range(5)
+        ]
+
+        toolset = SearchableToolset(catalog=[LazyToolset()] + eager_tools)
+        toolset.warm_up()
+
+        # Should have 5 lazy + 5 eager = 10 tools
+        assert len(toolset._catalog) == 10
+        assert toolset.is_passthrough is False
+        assert any(t.name == "lazy_0" for t in toolset._catalog)
+        assert any(t.name == "eager_0" for t in toolset._catalog)
 
 
 # Integration tests requiring OPENAI_API_KEY

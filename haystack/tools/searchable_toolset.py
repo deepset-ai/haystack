@@ -11,7 +11,7 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
-from haystack.tools.utils import flatten_tools_or_toolsets
+from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
 if TYPE_CHECKING:
     from haystack.tools import ToolsType
@@ -59,8 +59,10 @@ class SearchableToolset(Toolset):
             If catalog has fewer tools, acts as passthrough (all tools visible).
             Default is 8.
         """
-        # Flatten catalog using standard utility
-        self._catalog: list[Tool] = flatten_tools_or_toolsets(catalog)
+        # Store raw catalog; flattening is deferred to warm_up() so that lazy
+        # toolsets (e.g. MCPToolset with eager_connect=False) can connect first.
+        self._raw_catalog: "ToolsType" = catalog
+        self._catalog: list[Tool] = []
 
         self._top_k = top_k
         self._search_threshold = search_threshold
@@ -84,12 +86,18 @@ class SearchableToolset(Toolset):
         """
         Prepare the toolset for use.
 
-        This method indexes the catalog and creates the search_tools bootstrap tool.
+        Warms up child toolsets first (so lazy toolsets like MCPToolset can connect),
+        then flattens the catalog, indexes it, and creates the search_tools bootstrap tool.
         In passthrough mode, it warms up all catalog tools directly.
         Must be called before using the toolset with an Agent.
         """
         if self._warmed_up:
             return
+
+        # Warm up child toolsets first (triggers lazy connections like MCPToolset)
+        warm_up_tools(self._raw_catalog)
+        # Now flatten — lazy toolsets will have their real tools available
+        self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
 
         if self.is_passthrough:
             for tool in self._catalog:
@@ -215,10 +223,20 @@ class SearchableToolset(Toolset):
 
         :returns: Dictionary representation of the toolset.
         """
+        # Serialize from _raw_catalog to preserve Toolset structure for lazy toolsets
+        raw = self._raw_catalog
+        catalog_items: list[Tool | Toolset]
+        if isinstance(raw, (Tool, Toolset)):
+            catalog_items = [raw]
+        elif isinstance(raw, list):
+            catalog_items = list(raw)
+        else:
+            catalog_items = []
+
         return {
             "type": generate_qualified_class_name(type(self)),
             "data": {
-                "catalog": [tool.to_dict() for tool in self._catalog],
+                "catalog": [item.to_dict() for item in catalog_items],
                 "top_k": self._top_k,
                 "search_threshold": self._search_threshold,
             },
@@ -234,14 +252,14 @@ class SearchableToolset(Toolset):
         """
         inner_data = data["data"]
 
-        # Deserialize catalog tools
+        # Deserialize catalog items (may be Tool or Toolset instances)
         catalog_data = inner_data.get("catalog", [])
-        catalog: list[Tool] = []
-        for tool_data in catalog_data:
-            tool_class = import_class_by_name(tool_data["type"])
-            if not issubclass(tool_class, Tool):
-                raise TypeError(f"Class '{tool_class}' is not a subclass of Tool")
-            catalog.append(tool_class.from_dict(tool_data))
+        catalog: list[Tool | Toolset] = []
+        for item_data in catalog_data:
+            item_class = import_class_by_name(item_data["type"])
+            if not (issubclass(item_class, Tool) or issubclass(item_class, Toolset)):
+                raise TypeError(f"Class '{item_class}' is not a subclass of Tool or Toolset")
+            catalog.append(item_class.from_dict(item_data))
 
         return cls(
             catalog=catalog, top_k=inner_data.get("top_k", 3), search_threshold=inner_data.get("search_threshold", 8)
