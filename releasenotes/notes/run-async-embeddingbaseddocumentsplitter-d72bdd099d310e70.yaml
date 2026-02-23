@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add run_async method to EmbeddingBasedDocumentSplitter
