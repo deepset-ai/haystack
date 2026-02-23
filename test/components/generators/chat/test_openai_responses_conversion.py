@@ -37,6 +37,7 @@ from haystack.components.generators.chat.openai_responses import (
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
+    FileContent,
     ImageContent,
     ReasoningContent,
     StreamingChunk,
@@ -1265,6 +1266,40 @@ class TestResponseToChatMessage:
                 }
             ],
         }
+
+    def test_convert_user_message_with_file_content(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")]
+        )
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_file",
+                        "filename": "test.pdf",
+                        "file_data": f"data:application/pdf;base64,{base64_pdf_string}",
+                    }
+                ],
+            }
+        ]
+
+    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf")]
+        )
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_file",
+                        "filename": "filename",
+                        "file_data": f"data:application/pdf;base64,{base64_pdf_string}",
+                    }
+                ],
+            }
+        ]
 
     def test_convert_assistant_message(self):
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})

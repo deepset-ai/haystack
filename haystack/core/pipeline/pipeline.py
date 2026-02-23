@@ -78,7 +78,7 @@ class Pipeline(PipelineBase):
             logger.info("Running component {component_name}", component_name=component_name)
 
             try:
-                component_output = instance.run(**inputs)
+                component_output = instance.run(**_deepcopy_with_exceptions(inputs))
             except BreakpointException as error:
                 # Re-raise BreakpointException to preserve the original exception context
                 # This is important when Agent components internally use Pipeline._run_component
@@ -295,7 +295,9 @@ class Pipeline(PipelineBase):
             while True:
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
-                # If there are no runnable components left, we can exit the loop
+                # If there are no runnable components left, we can exit the loop.
+                # In practice this rarely happens because the queue is constantly refilled even with components that
+                # have already run. They just get a BLOCKED priority since their inputs have already been consumed.
                 if candidate is None:
                     break
 

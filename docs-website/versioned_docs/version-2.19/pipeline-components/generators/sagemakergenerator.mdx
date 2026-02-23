@@ -42,8 +42,8 @@ One notable family of models that needs these custom parameters is Llama2, which
 
 ```python
 generator = SagemakerGenerator(
-	model="jumpstart-dft-meta-textgenerationneuron-llama-2-7b",
-	aws_custom_attributes={"accept_eula": True}
+    model="jumpstart-dft-meta-textgenerationneuron-llama-2-7b",
+    aws_custom_attributes={"accept_eula": True},
 )
 ```
 
@@ -75,7 +75,9 @@ print(response)
 In a RAG pipeline:
 
 ```python
-from haystack_integrations.components.generators.amazon_sagemaker import SagemakerGenerator
+from haystack_integrations.components.generators.amazon_sagemaker import (
+    SagemakerGenerator,
+)
 from haystack import Pipeline
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.builders import PromptBuilder
@@ -94,13 +96,12 @@ pipe = Pipeline()
 
 pipe.add_component("retriever", InMemoryBM25Retriever(document_store=docstore))
 pipe.add_component("prompt_builder", PromptBuilder(template=template))
-pipe.add_component("llm", SagemakerGenerator(model="jumpstart-dft-hf-llm-falcon-7b-instruct-bf16"))
+pipe.add_component(
+    "llm",
+    SagemakerGenerator(model="jumpstart-dft-hf-llm-falcon-7b-instruct-bf16"),
+)
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-pipe.run({
-    "prompt_builder": {
-        "country": "France"
-    }
-})
+pipe.run({"prompt_builder": {"country": "France"}})
 ```

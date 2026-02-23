@@ -9,7 +9,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -45,7 +45,6 @@ class MultiQueryEmbeddingRetriever:
     # Populate the document store
     doc_store = InMemoryDocumentStore()
     doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    doc_embedder.warm_up()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     documents = doc_embedder.run(documents)["documents"]
     doc_writer.run(documents=documents)
@@ -109,7 +108,6 @@ class MultiQueryEmbeddingRetriever:
                 - `documents`: List of retrieved documents sorted by relevance score.
         """
         docs: list[Document] = []
-        seen_contents = set()
         retriever_kwargs = retriever_kwargs or {}
 
         if not self._is_warmed_up:
@@ -120,12 +118,10 @@ class MultiQueryEmbeddingRetriever:
             for result in queries_results:
                 if not result:
                     continue
-                for doc in result:
-                    # deduplicate based on content
-                    if doc.content not in seen_contents:
-                        docs.append(doc)
-                        seen_contents.add(doc.content)
+                docs.extend(result)
 
+        # de-duplicate and sort
+        docs = _deduplicate_documents(docs)
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 
@@ -167,6 +163,4 @@ class MultiQueryEmbeddingRetriever:
         :returns:
             The deserialized component.
         """
-        deserialize_component_inplace(data["init_parameters"], key="retriever")
-        deserialize_component_inplace(data["init_parameters"], key="query_embedder")
         return default_from_dict(cls, data)

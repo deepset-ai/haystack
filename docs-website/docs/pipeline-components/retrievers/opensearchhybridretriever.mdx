@@ -57,7 +57,7 @@ retriever = OpenSearchHybridRetriever(
     document_store=document_store,
     embedder=embedder,
     bm25_retriever={"raise_on_failure": True},
-    embedding_retriever={"raise_on_failure": False}
+    embedding_retriever={"raise_on_failure": False},
 )
 ```
 
@@ -107,7 +107,6 @@ docs = [
 
 ## Embed the documents and add them to the document store
 doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-doc_embedder.warm_up()
 docs = doc_embedder.run(docs)
 doc_store.write_documents(docs['documents'])
 

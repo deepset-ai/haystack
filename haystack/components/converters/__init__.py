@@ -11,6 +11,7 @@ _import_structure = {
     "azure": ["AzureOCRDocumentConverter"],
     "csv": ["CSVToDocument"],
     "docx": ["DOCXToDocument"],
+    "file_to_file_content": ["FileToFileContent"],
     "html": ["HTMLToDocument"],
     "json": ["JSONConverter"],
     "markdown": ["MarkdownToDocument"],
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from .azure import AzureOCRDocumentConverter as AzureOCRDocumentConverter
     from .csv import CSVToDocument as CSVToDocument
     from .docx import DOCXToDocument as DOCXToDocument
+    from .file_to_file_content import FileToFileContent as FileToFileContent
     from .html import HTMLToDocument as HTMLToDocument
     from .json import JSONConverter as JSONConverter
     from .markdown import MarkdownToDocument as MarkdownToDocument

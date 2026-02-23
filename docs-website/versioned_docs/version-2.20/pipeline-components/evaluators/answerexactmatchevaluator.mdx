@@ -69,12 +69,16 @@ ground_truth_answers = ["Berlin", "Paris"]
 predicted_answers = ["Berlin", "Lyon"]
 
 result = pipeline.run(
-		{
-			"em_evaluator": {"ground_truth_answers": ground_truth_answers,
-	    "predicted_answers": predicted_answers},
-	    "sas_evaluator": {"ground_truth_answers": ground_truth_answers,
-	    "predicted_answers": predicted_answers}
-    }
+    {
+        "em_evaluator": {
+            "ground_truth_answers": ground_truth_answers,
+            "predicted_answers": predicted_answers,
+        },
+        "sas_evaluator": {
+            "ground_truth_answers": ground_truth_answers,
+            "predicted_answers": predicted_answers,
+        },
+    },
 )
 
 for evaluator in result:

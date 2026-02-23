@@ -37,7 +37,7 @@ jobs:
 
       - name: Sync generated API reference to docs folder
         run: |
-          SOURCE_PATH="pydoc/temp"
+          SOURCE_PATH="tmp_api_reference"
           DEST_PATH="docs-website/reference/haystack-api"
 
           echo "Syncing from $SOURCE_PATH to $DEST_PATH"

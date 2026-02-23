@@ -55,7 +55,7 @@ _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
 
 
-class InMemoryDocumentStore:
+class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
@@ -426,10 +426,7 @@ class InMemoryDocumentStore:
         :returns: A list of Documents that match the given filters.
         """
         if filters:
-            if "operator" not in filters and "conditions" not in filters:
-                raise ValueError(
-                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-                )
+            InMemoryDocumentStore._validate_filters(filters)
             docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
         else:
             docs = list(self.storage.values())
@@ -504,6 +501,54 @@ class InMemoryDocumentStore:
                 self._avg_doc_len = (self._avg_doc_len * (len(self._bm25_attr) + 1) - doc_len) / len(self._bm25_attr)
             except ZeroDivisionError:
                 self._avg_doc_len = 0
+
+    @staticmethod
+    def _validate_filters(filters: dict[str, Any] | None) -> None:
+        if filters and "operator" not in filters and "conditions" not in filters:
+            raise ValueError(
+                "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+            )
+
+    def delete_all_documents(self) -> None:
+        """
+        Deletes all documents in the document store.
+        """
+        _STORAGES[self.index] = {}
+        _BM25_STATS_STORAGES[self.index] = {}
+        _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+        _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+
+    def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
+        """
+        Updates the metadata of all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for updating.
+            For filter syntax, see filter_documents.
+        :param meta: The metadata fields to update. These will be merged with existing metadata.
+        :returns: The number of documents updated.
+        :raises ValueError: if filters have invalid syntax.
+        """
+        InMemoryDocumentStore._validate_filters(filters)
+        matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        for doc in matching:
+            doc.meta.update(meta)
+            self.storage[doc.id] = doc
+        return len(matching)
+
+    def delete_by_filter(self, filters: dict[str, Any]) -> int:
+        """
+        Deletes all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for deletion.
+            For filter syntax, see filter_documents.
+        :returns: The number of documents deleted.
+        :raises ValueError: if filters have invalid syntax.
+        """
+        InMemoryDocumentStore._validate_filters(filters)
+        matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        doc_ids = [doc.id for doc in matching]
+        self.delete_documents(doc_ids)
+        return len(doc_ids)
 
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
@@ -582,15 +627,13 @@ class InMemoryDocumentStore:
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
+        :raises ValueError: if filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
 
         if filters:
-            if "operator" not in filters and "conditions" not in filters:
-                raise ValueError(
-                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-                )
+            InMemoryDocumentStore._validate_filters(filters)
             all_documents = [
                 doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)
             ]

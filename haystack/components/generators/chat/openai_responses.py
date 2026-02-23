@@ -18,6 +18,7 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    FileContent,
     ImageContent,
     ReasoningContent,
     StreamingCallbackT,
@@ -804,7 +805,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         If the message format is invalid.
     """
 
-    def serialize_part(part) -> dict[str, str]:
+    def convert_part(part) -> dict[str, str | None]:
         if isinstance(part, TextContent):
             return {"type": "input_text", "text": part.text}
         elif isinstance(part, ImageContent):
@@ -813,6 +814,14 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
                 # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
                 "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
             }
+        elif isinstance(part, FileContent):
+            return {
+                "type": "input_file",
+                # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.
+                # We use a dummy filename to avoid this issue.
+                "filename": part.filename or "filename",
+                "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
+            }
         raise ValueError(f"Unsupported content type: {type(part)}")
 
     text_contents = message.texts
@@ -820,11 +829,12 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     tool_call_results = message.tool_call_results
     images = message.images
     reasonings = message.reasonings
+    files = message.files
 
-    if not text_contents and not tool_calls and not tool_call_results and not images and not reasonings:
+    if not any([text_contents, tool_calls, tool_call_results, images, reasonings, files]):
         raise ValueError(
             """A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`,
-              `ImageContent`, or `ReasoningContent`."""
+              `ImageContent`, `FileContent`, or `ReasoningContent`."""
         )
     if len(tool_call_results) > 0 and len(message._content) > 1:
         raise ValueError(
@@ -838,7 +848,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
 
     # user message
     if message._role.value == "user":
-        content = [serialize_part(part) for part in message._content]
+        content = [convert_part(part) for part in message._content]
         openai_msg["content"] = content
         return [openai_msg]
 
@@ -849,7 +859,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             if result.origin.id is not None:
                 # Handle multimodal tool results (list of TextContent/ImageContent)
                 if isinstance(result.result, list):
-                    output_content = [serialize_part(part) for part in result.result]
+                    output_content = [convert_part(part) for part in result.result]
                 elif isinstance(result.result, str):
                     output_content = [{"type": "input_text", "text": result.result}]
                 else:

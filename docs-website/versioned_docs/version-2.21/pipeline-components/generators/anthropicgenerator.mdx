@@ -85,5 +85,4 @@ pipe.connect("prompt_builder", "llm")
 query = "What language is spoke in Germany?"
 res = pipe.run(data={"prompt_builder": {"query": {query}}})
 print(res)
-
 ```

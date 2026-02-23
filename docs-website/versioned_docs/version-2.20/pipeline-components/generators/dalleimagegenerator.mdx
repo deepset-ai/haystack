@@ -66,7 +66,7 @@ prompt_builder = PromptBuilder(
                 Lighting: {lighting}
                 Color palette: {colors}
                 Composition: {composition}
-                Additional details: {details}"""
+                Additional details: {details}""",
 )
 
 image_generator = DALLEImageGenerator()
@@ -85,8 +85,8 @@ results = pipeline.run(
         "lighting": "dusk with warm lantern light glowing from within",
         "colors": "rich earth tones, deep greens, and golden accents",
         "composition": "wide angle view showing the entire structure nestled in an ancient oak tree",
-        "details": "spiral staircases wrapping around branches, stained glass windows, floating books, and magical fireflies providing ambient illumination"
-    }
+        "details": "spiral staircases wrapping around branches, stained glass windows, floating books, and magical fireflies providing ambient illumination",
+    },
 )
 
 generated_images = results["image_generator"]["images"]

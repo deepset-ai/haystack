@@ -1,0 +1,36 @@
+---
+upgrade:
+  - |
+    **Default Hugging Face pipeline task updated to ``text-generation``**
+
+    The default task used by ``HuggingFaceLocalGenerator`` has been changed from ``text2text-generation`` to ``text-generation``
+    and the default model has been changed from "google/flan-t5-base" to "Qwen/Qwen3-0.6B".
+
+    In ``transformers`` v5+, ``text2text-generation`` is no longer available as a valid pipeline task (see: https://github.com/huggingface/transformers/pull/43256).
+    While parts of the implementation still exist internally, it is no longer supported as a straightforward pipeline option.
+
+    **How to know if you are affected**
+
+    - You are using ``transformers>=5.0.0``.
+    - You explicitly set ``task="text2text-generation"`` in ``HuggingFaceLocalGenerator`` or ``HuggingFaceLocalChatGenerator``.
+
+    **How to handle this change**
+
+    - Replace ``task="text2text-generation"`` with ``task="text-generation"``.
+    - Ensure that the selected model is compatible with the ``text-generation`` pipeline (for example, causal language models).
+    - If you rely on older behavior, pin ``transformers<5``.
+    - ``text2text-generation`` is now considered deprecated in Haystack and may be removed in a future release.
+
+fixes:
+  - |
+    Improved device handling when loading Hugging Face models in ``TransformersSimilarityRanker`` and ``ExtractiveReader``.
+
+    ``hf_device_map`` is not always present anymore and is now only set when mixed-device loading is explicitly configured.
+    The code has been updated to:
+
+    - Check whether ``hf_device_map`` is available.
+    - Fall back to the standard ``device`` attribute when it is not.
+
+    This prevents attribute errors and ensures compatibility across different ``transformers`` configurations.
+  - |
+    Updated failing unit tests to align with recent mocking and ``transformers`` behavior changes.

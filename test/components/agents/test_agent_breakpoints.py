@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+import anyio
 import pytest
 
 from haystack import component
@@ -609,7 +610,6 @@ class TestAgentBreakpoints:
         )
 
         try:
-            agent.warm_up()
             agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
         except BreakpointException:
             pass
@@ -669,7 +669,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = list(Path(debug_path).glob("test_agent_chat_generator_*.json"))
+        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_chat_generator_*.json")]
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -695,7 +695,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
 
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
@@ -737,7 +737,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
         assert len(snapshot_files) > 0
         first_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -750,7 +750,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
         # Resume again
@@ -805,8 +805,8 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_callback_id"
 
         # Verify no file was saved to disk
-        Path(debug_path).mkdir(parents=True, exist_ok=True)
-        assert list(Path(debug_path).glob("*.json")) == []
+        all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
+        assert all_paths == []
 
     @pytest.mark.asyncio
     async def test_tool_invoker_breakpoint_with_snapshot_callback_async(self, agent, tmp_path):
@@ -840,5 +840,5 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_tool_callback_id"
 
         # Verify no file was saved to disk
-        Path(debug_path).mkdir(parents=True, exist_ok=True)
-        assert list(Path(debug_path).glob("*.json")) == []
+        all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
+        assert all_paths == []

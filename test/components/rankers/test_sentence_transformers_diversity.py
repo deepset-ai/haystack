@@ -255,12 +255,10 @@ class TestSentenceTransformersDiversityRanker:
             )
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_warm_up(self, similarity, monkeypatch):
+    def test_warm_up(self, similarity, del_hf_env_vars):
         """
         Test that ranker loads the SentenceTransformer model correctly during warm up.
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
         mock_model_class = MagicMock()
         mock_model_instance = MagicMock()
         mock_model_class.return_value = mock_model_instance
@@ -337,6 +335,21 @@ class TestSentenceTransformersDiversityRanker:
         assert isinstance(ranked_docs, list)
         assert len(ranked_docs) == 2
         assert all(isinstance(doc, Document) for doc in ranked_docs)
+
+    def test_run_deduplicates_documents(self):
+        ranker = SentenceTransformersDiversityRanker()
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_negative_top_k_at_init(self, similarity):
@@ -566,8 +579,7 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_real_world_use_case(self, similarity, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_real_world_use_case(self, similarity, del_hf_env_vars):
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers-testing/stsb-bert-tiny-safetensors", similarity=similarity
         )
@@ -640,8 +652,7 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity, del_hf_env_vars):
         query = "renewable energy sources"
         docs = [
             Document(content="18th-century French literature"),

@@ -96,8 +96,7 @@ class RegexTextExtractor:
           - `{"captured_text": "matched text"}` if a match is found
           - `{"captured_text": ""}` if no match is found
 
-        :raises:
-            - ValueError: if receiving a list the last element is not a ChatMessage instance.
+        :raises ValueError: if receiving a list the last element is not a ChatMessage instance.
         """
         if isinstance(text_or_messages, str):
             return self._build_result(self._extract_from_text(text_or_messages))

@@ -7,8 +7,9 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret
+from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
@@ -41,7 +42,6 @@ class TransformersSimilarityRanker:
     ranker = TransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
-    ranker.warm_up()
     result = ranker.run(query=query, documents=docs)
     docs = result["documents"]
     print(docs[0].content)
@@ -122,7 +122,7 @@ class TransformersSimilarityRanker:
         self.model = None
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
-        self.tokenizer = None
+        self.tokenizer: Any = None
         self.device: ComponentDevice | None = None
         self.top_k = top_k
         self.token = token
@@ -165,10 +165,13 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
-            # mypy doesn't know this is set right above
-            self.device = ComponentDevice.from_multiple(
-                device_map=DeviceMap.from_hf(self.model.hf_device_map)  # type: ignore[attr-defined]
-            )
+            assert self.model is not None  # mypy doesn't know this is set in the line above
+            # hf_device_map appears to only be set now when mixed devices are actually used.
+            # So if it's missing then we can use the device attribute which is set even for single-device models.
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
+            else:
+                self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -227,6 +230,9 @@ class TransformersSimilarityRanker:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
+
         :param query:
             The input query to compare the documents to.
         :param documents:
@@ -270,7 +276,8 @@ class TransformersSimilarityRanker:
             )
 
         query_doc_pairs = []
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
@@ -288,9 +295,7 @@ class TransformersSimilarityRanker:
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
         # mypy doesn't know this is set in warm_up
-        batch_enc = self.tokenizer(  # type: ignore[misc]
-            query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
-        ).to(
+        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
             self.device.first_device.to_torch()  # type: ignore[union-attr]
         )
         dataset = _Dataset(batch_enc)
@@ -313,8 +318,8 @@ class TransformersSimilarityRanker:
         ranked_docs = []
         for sorted_index in list_sorted_indices:
             i = sorted_index
-            documents[i].score = list_similarity_scores[i]
-            ranked_docs.append(documents[i])
+            deduplicated_documents[i].score = list_similarity_scores[i]
+            ranked_docs.append(deduplicated_documents[i])
 
         if score_threshold is not None:
             ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]

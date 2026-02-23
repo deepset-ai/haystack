@@ -32,7 +32,6 @@ class InMemoryEmbeddingRetriever:
         Document(content="python ist eine beliebte Programmiersprache"),
     ]
     doc_embedder = SentenceTransformersDocumentEmbedder()
-    doc_embedder.warm_up()
     docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
     doc_store = InMemoryDocumentStore()
@@ -41,7 +40,6 @@ class InMemoryEmbeddingRetriever:
 
     query="Programmiersprache"
     text_embedder = SentenceTransformersTextEmbedder()
-    text_embedder.warm_up()
     query_embedding = text_embedder.run(query)["embedding"]
 
     result = retriever.run(query_embedding=query_embedding)
@@ -142,7 +140,7 @@ class InMemoryEmbeddingRetriever:
         top_k: int | None = None,
         scale_score: bool | None = None,
         return_embedding: bool | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Run the InMemoryEmbeddingRetriever on the given input data.
 
@@ -193,7 +191,7 @@ class InMemoryEmbeddingRetriever:
         top_k: int | None = None,
         scale_score: bool | None = None,
         return_embedding: bool | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Run the InMemoryEmbeddingRetriever on the given input data.
 

@@ -72,8 +72,10 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
 
-        with pytest.raises(RuntimeError, match="wasn't warmed up"):
-            splitter.run(documents=[Document(content="test")])
+        with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
+            splitter.run(documents=[])
+            assert splitter._is_warmed_up
+            mock_warm_up.assert_called_once()
 
     def test_run_invalid_input(self):
         mock_embedder = Mock()
@@ -301,25 +303,21 @@ class TestEmbeddingBasedDocumentSplitter:
         assert "document_embedder" in result["init_parameters"]
 
     @pytest.mark.integration
-    def test_split_document_with_multiple_topics(self):
-        import os
-
+    @pytest.mark.slow
+    def test_split_document_with_multiple_topics(self, del_hf_env_vars, monkeypatch):
         import torch
 
         # Force CPU usage to avoid MPS memory issues
-        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        monkeypatch.setenv("PYTORCH_ENABLE_MPS_FALLBACK", "1")
         torch.backends.mps.is_available = lambda: False
 
         embedder = SentenceTransformersDocumentEmbedder(
             model="sentence-transformers/all-MiniLM-L6-v2", device=ComponentDevice.from_str("cpu")
         )
 
-        embedder.warm_up()
-
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=2, percentile=0.9, min_length=30, max_length=300
         )
-        splitter.warm_up()
 
         # A document with multiple topics
         text = (
@@ -347,13 +345,12 @@ class TestEmbeddingBasedDocumentSplitter:
         original = text
         assert combined in original or original in combined
 
+    @pytest.mark.slow
     @pytest.mark.integration
-    def test_trailing_whitespace_is_preserved(self):
+    def test_trailing_whitespace_is_preserved(self, del_hf_env_vars):
         embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-        embedder.warm_up()
 
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
-        splitter.warm_up()
 
         # Normal trailing whitespace
         text = "The weather today is beautiful.  "
@@ -371,14 +368,13 @@ class TestEmbeddingBasedDocumentSplitter:
         assert result["documents"][0].content == text
 
     @pytest.mark.integration
-    def test_no_extra_whitespaces_between_sentences(self):
+    @pytest.mark.slow
+    def test_no_extra_whitespaces_between_sentences(self, del_hf_env_vars):
         embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-        embedder.warm_up()
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=1, percentile=0.9, min_length=10, max_length=500
         )
-        splitter.warm_up()
 
         text = (
             "The weather today is beautiful. The sun is shining brightly. The temperature is perfect for a walk. "
@@ -401,7 +397,8 @@ class TestEmbeddingBasedDocumentSplitter:
         )  # noqa: E501
 
     @pytest.mark.integration
-    def test_split_large_splits_recursion(self):
+    @pytest.mark.slow
+    def test_split_large_splits_recursion(self, del_hf_env_vars):
         """
         Test that _split_large_splits() works correctly without infinite loops.
         This test uses a longer text that will trigger the recursive splitting logic.
@@ -411,7 +408,6 @@ class TestEmbeddingBasedDocumentSplitter:
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
         )
-        semantic_chunker.warm_up()
 
         text = """# Artificial intelligence and its Impact on Society
 ## Article from Wikipedia, the free encyclopedia
@@ -441,7 +437,8 @@ The history of software is closely tied to the development of digital computers 
             assert "page_number" in split_doc.meta
 
     @pytest.mark.integration
-    def test_split_large_splits_actually_splits(self):
+    @pytest.mark.slow
+    def test_split_large_splits_actually_splits(self, del_hf_env_vars):
         """
         Test that _split_large_splits() actually works and can split long texts into multiple chunks.
         This test uses a very long text that should be split into multiple chunks.
@@ -454,7 +451,6 @@ The history of software is closely tied to the development of digital computers 
             min_length=100,
             max_length=500,  # Smaller max_length to force more splits
         )
-        semantic_chunker.warm_up()
 
         # Create a very long text with multiple paragraphs and topics
         text = """# Comprehensive Guide to Machine Learning and Artificial Intelligence

@@ -13,7 +13,7 @@ Learn how to pause and resume Haystack pipeline or Agent execution using breakpo
 
 Haystack pipelines support breakpoints for debugging complex execution flows. A `Breakpoint` allows you to pause the execution at specific components, inspect the pipeline state, and resume execution from saved snapshots. This feature works for any regular component as well as an `Agent` component.
 
-You can set a `Breakpoint` on any component in a pipeline with a specific visit count. When triggered, the system stops the executions of the `Pipeline` and creates a JSON file containing a snapshot of the current pipeline state. You can inspect and modify the snapshot and use it to resume execution from the exact point where it stopped.
+You can set a `Breakpoint` on any component in a pipeline with a specific visit count. When triggered, the system stops the execution of the `Pipeline` and captures a snapshot of the current pipeline state. The state can be saved to a JSON file when snapshot file saving is enabled, see [Snapshot file saving](#snapshot-file-saving) below. You can inspect and modify the snapshot and use it to resume execution from the exact point where it stopped.
 
 You can also set breakpoints on an Agent, specifically on the `ChatGenerator` component or on any of the `Tool` specified in the `ToolInvoker` component .
 
@@ -27,9 +27,9 @@ from haystack.core.errors import BreakpointException
 
 ## Create a breakpoint that triggers on the first visit to the "llm" component
 break_point = Breakpoint(
-    component_name="llm", 
+    component_name="llm",
     visit_count=0,  # 0 = first visit, 1 = second visit, etc.
-    snapshot_file_path="/path/to/snapshots"  # Optional: save snapshot to file
+    snapshot_file_path="/path/to/snapshots",  # Optional: save snapshot to file
 )
 
 ## Run pipeline with breakpoint
@@ -43,15 +43,62 @@ except BreakpointException as e:
 
 A `BreakpointException` is raised containing the component inputs and the outputs of the pipeline up until the moment where the execution was interrupted, such as just before the execution of component associated with the breakpoint – the `llm` in the example above.
 
-If a `snapshot_file_path` is specified in the `Breakpoint`, the system saves a JSON snapshot with the same information as in the `BreakpointException` .
+If a `snapshot_file_path` is specified in the `Breakpoint` and snapshot file saving is enabled, the system saves a JSON snapshot with the same information as in the `BreakpointException`. Snapshot file saving to disk is disabled by default; see [Snapshot file saving](#snapshot-file-saving) below.
 
-To access the pipeline state during the breakpoint we can both catch the exception raised by the breakpoint as well as specify where the JSON file should be saved.
+To access the pipeline state during the breakpoint we can both catch the exception raised by the breakpoint as well as specify where the JSON file should be saved, note that file saving is enabled must be enabled.
+
+## Using a custom snapshot callback
+
+You can pass a `snapshot_callback` to `Pipeline.run()` or `Agent.run()` to handle snapshots yourself instead of saving to a file. When a breakpoint is triggered or a snapshot is created on error, the callback is invoked with the `PipelineSnapshot` object. This is useful for saving snapshots to a database, sending them to a remote service, or custom logging.
+
+```python
+from haystack.core.errors import BreakpointException
+from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
+
+
+def my_snapshot_callback(snapshot: PipelineSnapshot) -> None:
+    # Custom handling: e.g. save to DB, send to API, or log
+    print(f"Snapshot at component: {snapshot.break_point}")
+
+
+break_point = Breakpoint(component_name="llm", visit_count=0)
+try:
+    result = pipeline.run(
+        data=input_data,
+        break_point=break_point,
+        snapshot_callback=my_snapshot_callback,
+    )
+except BreakpointException as e:
+    print(f"Breakpoint triggered: {e.component}")
+```
+
+When `snapshot_callback` is provided, file-saving is skipped and the callback is responsible for handling the snapshot. The same parameter is available on `Agent.run()` for agent breakpoints.
+
+## Snapshot file saving
+
+Snapshot file saving to disk is **disabled by default**. To save snapshots as JSON files when a breakpoint is triggered or on pipeline failure, set the environment variable `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to `"true"` or `"1"` (case-insensitive). When enabled, snapshots are written to the path given by `snapshot_file_path` on the breakpoint, or to the default directory in [Error Recovery with Snapshots](#error-recovery-with-snapshots) when a run fails.
+
+Custom `snapshot_callback` functions are always invoked when provided, regardless of this setting.
+
+```python
+import os
+
+# Enable saving snapshot files to disk
+os.environ["HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED"] = "true"
+
+break_point = Breakpoint(
+    component_name="llm",
+    visit_count=0,
+    snapshot_file_path="/path/to/snapshots",
+)
+# When the breakpoint triggers, a JSON file will be written to /path/to/snapshots/
+```
 
 ## Resuming a Pipeline Execution from a Breakpoint
 
 To resume the execution of a pipeline from the breakpoint, pass the path to the generated JSON file at the run time of the pipeline, using the `pipeline_snapshot`.
 
-Use the `load_pipeline_snapshot()` to first load the JSON and then pass it to the pipeline. 
+Use the `load_pipeline_snapshot()` to first load the JSON and then pass it to the pipeline.
 
 ```python
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
@@ -78,10 +125,7 @@ from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBr
 
 ## Break at chat generator (LLM calls)
 chat_bp = Breakpoint(component_name="chat_generator", visit_count=0)
-agent_breakpoint = AgentBreakpoint(
-    break_point=chat_bp, 
-    agent_name="my_agent"
-)
+agent_breakpoint = AgentBreakpoint(break_point=chat_bp, agent_name="my_agent")
 ```
 
 To set a breakpoint on a Tool in an Agent, do the following:
@@ -95,14 +139,11 @@ from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBr
 
 ## Break at tool invoker (tool calls)
 tool_bp = ToolBreakpoint(
-    component_name="tool_invoker", 
-    visit_count=0, 
-    tool_name="weather_tool"  # Specific tool, or None for any tool
+    component_name="tool_invoker",
+    visit_count=0,
+    tool_name="weather_tool",  # Specific tool, or None for any tool
 )
-agent_breakpoint = AgentBreakpoint(
-    break_point=tool_bp, 
-    agent_name="my_agent"
-)
+agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="my_agent")
 ```
 
 ### Resuming Agent Execution
@@ -115,7 +156,7 @@ from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 ## Load the snapshot
 snapshot_file = "./agent_debug/agent_chat_generator_2025_07_11_23_23.json"
 snapshot = load_pipeline_snapshot(snapshot_file)
-    
+
 ## Resume pipeline execution
 result = pipeline.run(data={}, pipeline_snapshot=snapshot)
 print("Pipeline resumed successfully")
@@ -142,7 +183,8 @@ except PipelineRuntimeError as e:
         # Inspect intermediate_outputs to diagnose the failure
 ```
 
-Haystack also saves the same snapshot as a JSON file on disk. The directory is chosen automatically in this order:
+When snapshot file saving is enabled (see [Snapshot file saving](#snapshot-file-saving)), Haystack also saves the same snapshot as a JSON file on disk.
+The directory is chosen automatically in this order:
 
 - `~/.haystack/pipeline_snapshot`
 - `/tmp/haystack/pipeline_snapshot`
@@ -165,6 +207,8 @@ Resume from disk:
 ```python
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 
-snapshot = load_pipeline_snapshot("/path/to/.haystack/pipeline_snapshot/reader_0_2025_09_20_12_33_10.json")
+snapshot = load_pipeline_snapshot(
+    "/path/to/.haystack/pipeline_snapshot/reader_0_2025_09_20_12_33_10.json",
+)
 result = pipeline.run(data={}, pipeline_snapshot=snapshot)
 ```

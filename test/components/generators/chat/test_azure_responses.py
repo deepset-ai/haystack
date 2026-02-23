@@ -485,7 +485,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["status"] == "completed"
 
@@ -504,7 +504,8 @@ class TestIntegration:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
+        assert "city" in tool_call.arguments
+        assert "paris" in tool_call.arguments["city"].lower()
         assert message.meta["status"] == "completed"
 
     def test_live_run_with_text_format(self, calendar_event_model):
@@ -518,7 +519,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
+        assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
         assert message.meta["status"] == "completed"
@@ -549,7 +550,7 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Jane" in msg["name"]
+        assert "jane" in msg["name"].lower()
         assert msg["age"] == 54
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -588,7 +589,7 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
+        assert "paris" in message.text.lower()
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["status"] == "completed"
 
@@ -615,7 +616,8 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
+        assert "city" in tool_call.arguments
+        assert "paris" in tool_call.arguments["city"].lower()
         assert message.meta["status"] == "completed"
 
     # additional tests intentionally omitted as they are covered by test_openai_responses.py

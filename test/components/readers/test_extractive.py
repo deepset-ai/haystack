@@ -286,7 +286,6 @@ def test_from_dict_no_token():
 
 
 def test_run_no_docs(mock_reader: ExtractiveReader):
-    mock_reader.warm_up()
     assert mock_reader.run(query="hello", documents=[]) == {"answers": []}
 
 
@@ -517,9 +516,7 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer, initialize
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "auto"})
     auto_device = ComponentDevice.resolve_device(None)
 
@@ -536,9 +533,7 @@ def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_device_map_str(mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
 
     class MockedModel:
@@ -554,9 +549,7 @@ def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_device_map_dict(mocked_automodel, _mocked_autotokenizer, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_device_map_dict(mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
     reader = ExtractiveReader(
         "deepset/roberta-base-squad2", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}}
     )
@@ -777,10 +770,8 @@ class TestDeduplication:
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_t5(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+def test_t5(del_hf_env_vars):
     reader = ExtractiveReader("sjrhuschlee/flan-t5-base-squad2")
-    reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching support is reintroduced
@@ -803,10 +794,8 @@ def test_t5(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_roberta(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+def test_roberta(del_hf_env_vars):
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
-    reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching is reintroduced
@@ -834,12 +823,10 @@ def test_roberta(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_matches_hf_pipeline(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+def test_matches_hf_pipeline(del_hf_env_vars):
     reader = ExtractiveReader(
         "deepset/tinyroberta-squad2", device=ComponentDevice.from_str("cpu"), overlap_threshold=None
     )
-    reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced

@@ -64,7 +64,7 @@ generator = LlamaCppGenerator(
     n_ctx=512,
     n_batch=128,
     model_kwargs={"n_gpu_layers": -1},
-		generation_kwargs={"max_tokens": 128, "temperature": 0.1},
+    generation_kwargs={"max_tokens": 128, "temperature": 0.1},
 )
 generator.warm_up()
 prompt = f"Who is the best American actor?"
@@ -88,7 +88,7 @@ generator = LlamaCppGenerator(
     model="/content/openchat-3.5-1210.Q3_K_S.gguf",
     n_ctx=512,
     n_batch=128,
-    model_kwargs={"n_gpu_layers": -1}
+    model_kwargs={"n_gpu_layers": -1},
 )
 generator.warm_up()
 prompt = f"Who is the best American actor?"
@@ -149,7 +149,10 @@ from datasets import load_dataset
 from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -176,12 +179,17 @@ Index the documents to the `InMemoryDocumentStore` using the `SentenceTransforme
 
 ```python
 doc_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
 
 ## Indexing Pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component(instance=doc_embedder, name="DocEmbedder")
-indexing_pipeline.add_component(instance=DocumentWriter(document_store=doc_store), name="DocWriter")
+indexing_pipeline.add_component(
+    instance=DocumentWriter(document_store=doc_store),
+    name="DocWriter",
+)
 indexing_pipeline.connect(connect_from="DocEmbedder", connect_to="DocWriter")
 
 indexing_pipeline.run({"DocEmbedder": {"documents": docs}})
@@ -203,7 +211,9 @@ GPT4 Correct Assistant:
 
 rag_pipeline = Pipeline()
 
-text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+text_embedder = SentenceTransformersTextEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
 
 ## Load the LLM using LlamaCppGenerator
 model_path = "openchat-3.5-1210.Q3_K_S.gguf"
@@ -213,8 +223,14 @@ rag_pipeline.add_component(
     instance=text_embedder,
     name="text_embedder",
 )
-rag_pipeline.add_component(instance=InMemoryEmbeddingRetriever(document_store=doc_store, top_k=3), name="retriever")
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(
+    instance=InMemoryEmbeddingRetriever(document_store=doc_store, top_k=3),
+    name="retriever",
+)
+rag_pipeline.add_component(
+    instance=PromptBuilder(template=prompt_template),
+    name="prompt_builder",
+)
 rag_pipeline.add_component(instance=generator, name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 
@@ -235,7 +251,7 @@ result = rag_pipeline.run(
         "prompt_builder": {"question": question},
         "llm": {"generation_kwargs": {"max_tokens": 128, "temperature": 0.1}},
         "answer_builder": {"query": question},
-    }
+    },
 )
 
 generated_answer = result["answer_builder"]["answers"][0]

@@ -51,12 +51,12 @@ pip install openrouter-haystack
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 client = OpenRouterChatGenerator()
-response = client.run(
-    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
-)
+response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 print(response["replies"][0].text)
 ```
 
@@ -64,14 +64,16 @@ With streaming and model routing:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
-client = OpenRouterChatGenerator(model="openrouter/auto",
-streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
+client = OpenRouterChatGenerator(
+    model="openrouter/auto",
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
 
-response = client.run(
-    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
-    )
+response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 
 ## check the model used for the response
 print("\n\n Model used: ", response["replies"][0].meta["model"])
@@ -83,7 +85,9 @@ print("\n\n Model used: ", response["replies"][0].meta["model"])
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+from haystack_integrations.components.generators.openrouter import (
+    OpenRouterChatGenerator,
+)
 
 prompt_builder = ChatPromptBuilder()
 llm = OpenRouterChatGenerator(model="openai/gpt-4o-mini")
@@ -95,12 +99,11 @@ pipe.connect("builder.prompt", "llm.messages")
 
 messages = [
     ChatMessage.from_system("Give brief answers."),
-    ChatMessage.from_user("Tell me about {{city}}")
+    ChatMessage.from_user("Tell me about {{city}}"),
 ]
 
 response = pipe.run(
-    data={"builder": {"template": messages,
-                      "template_variables": {"city": "Berlin"}}}
+    data={"builder": {"template": messages, "template_variables": {"city": "Berlin"}}},
 )
 print(response)
 ```

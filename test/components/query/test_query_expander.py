@@ -76,14 +76,12 @@ class TestQueryExpander:
     def test_run_negative_expansions_raises_error(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         with pytest.raises(ValueError, match="n_expansions must be positive"):
             expander.run("test query", n_expansions=-1)
 
     def test_run_zero_expansions_raises_error(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander(n_expansions=4)
-        expander.warm_up()
         with pytest.raises(ValueError, match="n_expansions must be positive"):
             expander.run("test query", n_expansions=0)
 
@@ -93,7 +91,6 @@ class TestQueryExpander:
         }
 
         expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=4, include_original_query=False)
-        expander.warm_up()
         result = expander.run("test query", n_expansions=2)
 
         # should request 2 expansions
@@ -112,7 +109,6 @@ class TestQueryExpander:
         }
 
         expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3)
-        expander.warm_up()
         result = expander.run("original query")
 
         assert result["queries"] == [
@@ -129,7 +125,6 @@ class TestQueryExpander:
         }
 
         expander = QueryExpander(chat_generator=mock_chat_generator, include_original_query=False)
-        expander.warm_up()
         result = expander.run("original")
 
         assert result["queries"] == ["alt1", "alt2"]
@@ -137,7 +132,6 @@ class TestQueryExpander:
     def test_run_empty_query(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         result = expander.run("")
 
         assert result["queries"] == [""]
@@ -145,7 +139,6 @@ class TestQueryExpander:
     def test_run_empty_query_no_original(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander(include_original_query=False)
-        expander.warm_up()
         result = expander.run("   ")
 
         assert result["queries"] == []
@@ -153,7 +146,6 @@ class TestQueryExpander:
     def test_run_whitespace_only_query(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         with caplog.at_level(logging.WARNING):
             result = expander.run("\t\n  \r")
         assert result["queries"] == ["\t\n  \r"]
@@ -162,7 +154,6 @@ class TestQueryExpander:
     def test_run_generator_no_replies(self, mock_chat_generator):
         mock_chat_generator.run.return_value = {"replies": []}
         expander = QueryExpander(chat_generator=mock_chat_generator)
-        expander.warm_up()
         result = expander.run("test query")
 
         assert result["queries"] == ["test query"]
@@ -170,49 +161,42 @@ class TestQueryExpander:
     def test_run_generator_exception(self, mock_chat_generator):
         mock_chat_generator.run.side_effect = Exception("Generator error")
         expander = QueryExpander(chat_generator=mock_chat_generator)
-        expander.warm_up()
         result = expander.run("test query")
         assert result["queries"] == ["test query"]
 
     def test_run_invalid_json_response(self, mock_chat_generator):
         mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("invalid json response")]}
         expander = QueryExpander(chat_generator=mock_chat_generator)
-        expander.warm_up()
         result = expander.run("test query")
         assert result["queries"] == ["test query"]
 
     def test_parse_expanded_queries_valid_json(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         queries = expander._parse_expanded_queries('{"queries": ["query1", "query2", "query3"]}')
         assert queries == ["query1", "query2", "query3"]
 
     def test_parse_expanded_queries_invalid_json(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         queries = expander._parse_expanded_queries("not json")
         assert queries == []
 
     def test_parse_expanded_queries_empty_string(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         queries = expander._parse_expanded_queries("")
         assert queries == []
 
     def test_parse_expanded_queries_non_list_json(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         queries = expander._parse_expanded_queries('{"not": "a list"}')
         assert queries == []
 
     def test_parse_expanded_queries_mixed_types(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
         queries = expander._parse_expanded_queries('{"queries": ["valid query", 123, "", "another valid"]}')
         assert queries == ["valid query", "another valid"]
 
@@ -221,7 +205,6 @@ class TestQueryExpander:
             "replies": [ChatMessage.from_assistant('{"queries": ["original query", "alt1", "alt2"]}')]
         }
         expander = QueryExpander(chat_generator=mock_chat_generator, include_original_query=True)
-        expander.warm_up()
         result = expander.run("original query")
         assert result["queries"] == ["original query", "alt1", "alt2"]
         assert len(result["queries"]) == 3
@@ -231,7 +214,6 @@ class TestQueryExpander:
             "replies": [ChatMessage.from_assistant('{"queries": ["q1", "q2", "q3", "q4", "q5"]}')]
         }
         expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3, include_original_query=False)
-        expander.warm_up()
 
         with caplog.at_level(logging.WARNING):
             result = expander.run("test query")
@@ -257,7 +239,6 @@ class TestQueryExpander:
             n_expansions=2,
             include_original_query=False,
         )
-        expander.warm_up()
         result = expander.run("test query")
 
         assert result["queries"] == ["custom alt 1", "custom alt 2"]
@@ -270,7 +251,6 @@ class TestQueryExpander:
     def test_component_output_types(self, mock_chat_generator, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()
-        expander.warm_up()
 
         mock_chat_generator.run.return_value = {
             "replies": [ChatMessage.from_assistant('{"queries": ["test1", "test2"]}')]
@@ -367,16 +347,38 @@ class TestQueryExpander:
 
 @pytest.mark.integration
 class TestQueryExpanderIntegration:
+    @pytest.fixture
+    def chat_generator(self):
+        return OpenAIChatGenerator(
+            model="gpt-4.1-nano",
+            generation_kwargs={
+                "temperature": 0.7,
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "query_expansion",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "queries": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
+                            },
+                            "required": ["queries"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+            },
+        )
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_query_expansion(self):
-        expander = QueryExpander(n_expansions=3, chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
-        expander.warm_up()
+    def test_query_expansion(self, chat_generator):
+        expander = QueryExpander(n_expansions=2, chat_generator=chat_generator)
         result = expander.run("renewable energy sources")
 
-        assert len(result["queries"]) == 4
+        assert len(result["queries"]) == 3
         assert all(len(q.strip()) > 0 for q in result["queries"])
         assert "renewable energy sources" in result["queries"]
 
@@ -384,13 +386,10 @@ class TestQueryExpanderIntegration:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_different_domains(self):
+    def test_different_domains(self, chat_generator):
         test_queries = ["machine learning algorithms", "climate change effects", "quantum computing applications"]
 
-        expander = QueryExpander(
-            n_expansions=2, include_original_query=False, chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano")
-        )
-        expander.warm_up()
+        expander = QueryExpander(n_expansions=2, include_original_query=False, chat_generator=chat_generator)
 
         for query in test_queries:
             result = expander.run(query)

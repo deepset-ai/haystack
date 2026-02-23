@@ -17,11 +17,23 @@ repos:
         args: [--markdown-linebreak-ext=md, --markdown-linebreak-ext=mdx]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
+    rev: v0.15.0
     hooks:
     - id: ruff-check
       args: [ --fix ]
     - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: ruff-format-docs
+        name: ruff-format-docs
+        language: python
+        entry: python scripts/ruff_format_docs.py --line-length=88
+        files: ^docs-website/.*\.mdx$
+        types: [text]
+        additional_dependencies:
+          - ruff
+          - add-trailing-comma
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1

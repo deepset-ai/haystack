@@ -2838,6 +2838,16 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
     ]
 
 
+class AnyOrder:  # noqa: PLW1641 # Object does not implement `__hash__` method but it's ok
+    """List wrapper with order-insensitive equality"""
+
+    def __init__(self, items):
+        self.items = items
+
+    def __eq__(self, other):
+        return isinstance(other, list) and sorted(self.items) == sorted(other)
+
+
 @given("a pipeline that has a string variadic component", target_fixture="pipeline_data")
 def that_has_a_string_variadic_component(pipeline_class):
     string_1 = "What's Natural Language Processing?"
@@ -2858,7 +2868,9 @@ def that_has_a_string_variadic_component(pipeline_class):
                 inputs={"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}},
                 expected_outputs={
                     "string_joiner": {
-                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        "strings": AnyOrder(
+                            ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        )
                     }
                 },
                 expected_component_calls={
@@ -2869,7 +2881,9 @@ def that_has_a_string_variadic_component(pipeline_class):
                     },
                     ("prompt_builder_2", 1): {"query": "What's is life?", "template": None, "template_variables": None},
                     ("string_joiner", 1): {
-                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        "strings": AnyOrder(
+                            ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        )
                     },
                 },
             )
@@ -4941,6 +4955,122 @@ def pipeline_that_has_an_auto_joiner_that_takes_in_user_inputs(pipeline_class):
                     ("retriever", 1): {"query": "test query"},
                     ("ranker", 1): {"documents": [user_doc, Document(content="Document for query: test query")]},
                 },
+            )
+        ],
+    )
+
+
+@given(
+    "a pipeline that performs automatic conversion between list of ChatMessage and str", target_fixture="pipeline_data"
+)
+def pipeline_that_performs_automatic_conversion_between_list_of_ChatMessage_and_str(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeChatGenerator:
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+            return {"replies": [ChatMessage.from_assistant("Pisa tower height")]}
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
+            return {"documents": [Document(content="Pisa tower height is 55 meters")]}
+
+    pipe.add_component("chat_generator", FakeChatGenerator())
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.connect("chat_generator", "retriever")
+
+    user_query = "Rephrase the following question for a search engine: how tall is the tower of Pisa?"
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"chat_generator": {"messages": [ChatMessage.from_user(user_query)]}},
+                expected_outputs={"retriever": {"documents": [Document(content="Pisa tower height is 55 meters")]}},
+                expected_component_calls={
+                    ("chat_generator", 1): {"messages": [ChatMessage.from_user(user_query)]},
+                    ("retriever", 1): {"query": "Pisa tower height"},
+                },
+            )
+        ],
+    )
+
+
+@given(
+    "a pipeline that performs automatic conversion wrapping ChatMessage for a Union receiver",
+    target_fixture="pipeline_data",
+)
+def pipeline_that_performs_automatic_conversion_wrapping_ChatMessage_for_Union_receiver(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeAgent:
+        @component.output_types(last_message=ChatMessage)
+        def run(self, messages: list[ChatMessage]) -> dict[str, ChatMessage]:
+            return {"last_message": ChatMessage.from_assistant("Pisa tower is 55 meters tall")}
+
+    @component
+    class FakeAnswerBuilder:
+        @component.output_types(answers=list[str])
+        def run(self, query: str, replies: list[str] | list[ChatMessage]) -> dict[str, list[str]]:
+            return {"answers": [r.text or "" if isinstance(r, ChatMessage) else r for r in replies]}
+
+    pipe.add_component("agent", FakeAgent())
+    pipe.add_component("answer_builder", FakeAnswerBuilder())
+    pipe.connect("agent.last_message", "answer_builder.replies")
+
+    user_query = "How tall is the tower of Pisa?"
+    messages = [ChatMessage.from_user(user_query)]
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"agent": {"messages": messages}, "answer_builder": {"query": user_query}},
+                expected_outputs={"answer_builder": {"answers": ["Pisa tower is 55 meters tall"]}},
+                expected_component_calls={
+                    ("agent", 1): {"messages": messages},
+                    ("answer_builder", 1): {
+                        "query": user_query,
+                        "replies": [ChatMessage.from_assistant("Pisa tower is 55 meters tall")],
+                    },
+                },
+            )
+        ],
+    )
+
+
+@given("a pipeline that fails automatic conversion between list of ChatMessage and str", target_fixture="pipeline_data")
+def pipeline_that_fails_automatic_conversion_between_list_of_ChatMessage_and_str(pipeline_class):
+    pipe = pipeline_class(max_runs_per_component=1)
+
+    @component
+    class FakeChatGenerator:
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+            return {"replies": [ChatMessage.from_assistant()]}
+
+    @component
+    class FakeRetriever:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
+            return {"documents": [Document(content="A relevant document")]}
+
+    pipe.add_component("chat_generator", FakeChatGenerator())
+    pipe.add_component("retriever", FakeRetriever())
+    pipe.connect("chat_generator", "retriever")
+
+    user_query = "Find info on Milano Cortina Olympic Winter Games"
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"chat_generator": {"messages": [ChatMessage.from_user(user_query)]}},
+                expected_component_calls={("chat_generator", 1): {"messages": [ChatMessage.from_user(user_query)]}},
             )
         ],
     )

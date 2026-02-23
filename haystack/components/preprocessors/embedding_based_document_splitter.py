@@ -54,7 +54,6 @@ class EmbeddingBasedDocumentSplitter:
         min_length=50,              # Merge splits shorter than 50 characters
         max_length=1000             # Further split chunks longer than 1000 characters
     )
-    splitter.warm_up()
     result = splitter.run(documents=[doc])
 
     # The result contains a list of Document objects, each representing a semantic chunk
@@ -144,15 +143,12 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `page_number` to track the original page number.
                 - All other metadata copied from the original document.
 
-        :raises:
-            - `RuntimeError`: If the component wasn't warmed up.
-            - `TypeError`: If the input is not a list of Documents.
-            - `ValueError`: If the document content is None or empty.
+        :raises RuntimeError: If the component wasn't warmed up.
+        :raises TypeError: If the input is not a list of Documents.
+        :raises ValueError: If the document content is None or empty.
         """
         if not self._is_warmed_up:
-            raise RuntimeError(
-                "The component EmbeddingBasedDocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")

@@ -1,43 +1,14 @@
 loaders:
-  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
-    search_path: [../haystack/components/converters]
-    modules:
-      [
-        "azure",
-        "csv",
-        "docx",
-        "html",
-        "json",
-        "markdown",
-        "msg",
-        "multi_file_converter",
-        "openapi_functions",
-        "output_adapter",
-        "pdfminer",
-        "pptx",
-        "pypdf",
-        "tika",
-        "txt",
-        "xlsx",
-      ]
-    ignore_when_discovered: ["__init__"]
+  - search_path: [../haystack/components/converters]
+    modules: ["azure", "csv", "docx", "file_to_file_content", "html", "json", "markdown", "msg", "multi_file_converter",
+      "openapi_functions", "output_adapter", "pdfminer", "pptx", "pypdf", "tika", "txt", "xlsx",
+      "image/document_to_image", "image/file_to_document", "image/file_to_image", "image/pdf_to_image"]
 processors:
   - type: filter
-    expression:
     documented_only: true
-    do_not_filter_modules: false
     skip_empty_modules: true
-  - type: smart
-  - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
-  description: Various converters to transform data from one format to another.
   title: Converters
   id: converters-api
-  markdown:
-    descriptive_class_title: false
-    classdef_code_block: false
-    descriptive_module_title: true
-    add_method_class_prefix: true
-    add_member_class_prefix: false
-    filename: converters_api.md
+  description: Various converters to transform data from one format to another.
+  filename: converters_api.md

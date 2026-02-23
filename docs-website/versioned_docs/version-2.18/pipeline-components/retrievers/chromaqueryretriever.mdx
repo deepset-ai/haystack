@@ -39,7 +39,7 @@ document_store = ChromaDocumentStore()
 retriever = ChromaQueryTextRetriever(document_store=document_store)
 
 ## example run query
-retriever.run(query = "How does Chroma Retriever work?")
+retriever.run(query="How does Chroma Retriever work?")
 ```
 
 #### In a pipeline
@@ -66,8 +66,14 @@ document_store = ChromaDocumentStore()
 
 documents = [
     Document(content="This contains variable declarations", meta={"title": "one"}),
-    Document(content="This contains another sort of variable declarations", meta={"title": "two"}),
-    Document(content="This has nothing to do with variable declarations", meta={"title": "three"}),
+    Document(
+        content="This contains another sort of variable declarations",
+        meta={"title": "two"},
+    ),
+    Document(
+        content="This has nothing to do with variable declarations",
+        meta={"title": "three"},
+    ),
     Document(content="A random doc", meta={"title": "four"}),
 ]
 

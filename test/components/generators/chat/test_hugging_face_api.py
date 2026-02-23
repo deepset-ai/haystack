@@ -183,7 +183,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert generator._async_client.model == model
 
     def test_init_serverless_invalid_model(self, mock_check_valid_model):
-        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id", response=MagicMock())
         with pytest.raises(RepositoryNotFoundError):
             HuggingFaceAPIChatGenerator(
                 api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "invalid_model_id"}
@@ -831,13 +831,13 @@ class TestHuggingFaceAPIChatGenerator:
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (Qwen/Qwen2.5-72B-Instruct) is not gated and kept in a warm state.
+        The model used here (Qwen/Qwen3-Next-80B-A3B-Instruct) is not gated and kept in a warm state.
         """
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "together"},
+            api_params={"model": "Qwen/Qwen3-Next-80B-A3B-Instruct", "provider": "together"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -878,7 +878,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-VL-32B-Instruct", "provider": "fireworks-ai"},
+            api_params={"model": "Qwen/Qwen3-VL-8B-Instruct", "provider": "together"},
             generation_kwargs={"max_tokens": 20},
         )
 

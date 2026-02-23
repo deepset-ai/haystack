@@ -36,7 +36,7 @@ downloader = S3Downloader(
     aws_access_key_id=Secret.from_token("<your-access-key-id>"),
     aws_secret_access_key=Secret.from_token("<your-secret-access-key>"),
     aws_region_name=Secret.from_token("<your-region>"),
-    file_root_path="/path/to/download/directory"
+    file_root_path="/path/to/download/directory",
 )
 ```
 
@@ -46,7 +46,7 @@ The component downloads multiple files in parallel using the `max_workers` param
 
 The component requires two critical configurations:
 
-1. `file_root_path` parameter or `FILE_ROOT_PATH` environment variable: Specifies where files will be downloaded. This directory will be created if it doesn't exist when `warm_up()` is called.
+1. `file_root_path` parameter or `FILE_ROOT_PATH` environment variable: Specifies where files will be downloaded. This directory will be created if it doesn't exist.
 2. `S3_DOWNLOADER_BUCKET` environment variable: Specifies which S3 bucket to download files from.
 :::
 
@@ -94,9 +94,6 @@ documents = [
 ## Initialize the downloader
 downloader = S3Downloader(file_root_path="/tmp/s3_downloads")
 
-## Warm up the component
-downloader.warm_up()
-
 ## Download the files
 result = downloader.run(documents=documents)
 
@@ -118,12 +115,7 @@ documents = [
 ]
 
 ## Only download PDF files
-downloader = S3Downloader(
-    file_root_path="/tmp/s3_downloads",
-    file_extensions=[".pdf"]
-)
-
-downloader.warm_up()
+downloader = S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf"])
 
 result = downloader.run(documents=documents)
 
@@ -138,6 +130,7 @@ With custom S3 key generation:
 from haystack.dataclasses import Document
 from haystack_integrations.components.downloaders.s3 import S3Downloader
 
+
 def custom_s3_key_function(document: Document) -> str:
     """Generate S3 key from custom metadata."""
     folder = document.meta.get("folder", "default")
@@ -146,16 +139,16 @@ def custom_s3_key_function(document: Document) -> str:
         raise ValueError("Document must have 'file_name' in metadata")
     return f"{folder}/{file_name}"
 
+
 documents = [
     Document(meta={"file_name": "report.pdf", "folder": "reports/2025"}),
 ]
 
 downloader = S3Downloader(
     file_root_path="/tmp/s3_downloads",
-    s3_key_generation_function=custom_s3_key_function
+    s3_key_generation_function=custom_s3_key_function,
 )
 
-downloader.warm_up()
 result = downloader.run(documents=documents)
 ```
 
@@ -177,10 +170,7 @@ pipe = Pipeline()
 ## Add S3Downloader to download files from S3
 pipe.add_component(
     "downloader",
-    S3Downloader(
-        file_root_path="/tmp/s3_downloads",
-        file_extensions=[".pdf", ".txt"]
-    )
+    S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf", ".txt"]),
 )
 
 ## Route documents by file type
@@ -188,8 +178,8 @@ pipe.add_component(
     "router",
     DocumentTypeRouter(
         file_path_meta_field="file_path",
-        mime_types=["application/pdf", "text/plain"]
-    )
+        mime_types=["application/pdf", "text/plain"],
+    ),
 )
 
 ## Convert PDFs to documents
@@ -219,7 +209,9 @@ from haystack.components.routers import DocumentTypeRouter
 from haystack.dataclasses import Document
 
 from haystack_integrations.components.downloaders.s3 import S3Downloader
-from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack_integrations.components.generators.amazon_bedrock import (
+    AmazonBedrockChatGenerator,
+)
 
 ## Create documents with file names
 documents = [
@@ -231,18 +223,15 @@ documents = [
 pipe = Pipeline()
 
 ## Download files from S3
-pipe.add_component(
-    "downloader",
-    S3Downloader(file_root_path="/tmp/s3_downloads")
-)
+pipe.add_component("downloader", S3Downloader(file_root_path="/tmp/s3_downloads"))
 
 ## Route by document type
 pipe.add_component(
     "router",
     DocumentTypeRouter(
         file_path_meta_field="file_path",
-        mime_types=["image/png", "application/pdf"]
-    )
+        mime_types=["image/png", "application/pdf"],
+    ),
 )
 
 ## Convert images for LLM
@@ -259,15 +248,12 @@ Question: {{ question }}
 {% endfor %}
 {% endmessage %}"""
 
-pipe.add_component(
-    "prompt_builder",
-    ChatPromptBuilder(template=template)
-)
+pipe.add_component("prompt_builder", ChatPromptBuilder(template=template))
 
 ## Generate response
 pipe.add_component(
     "llm",
-    AmazonBedrockChatGenerator(model="anthropic.claude-3-haiku-20240307-v1:0")
+    AmazonBedrockChatGenerator(model="anthropic.claude-3-haiku-20240307-v1:0"),
 )
 
 ## Connect components
@@ -277,8 +263,10 @@ pipe.connect("image_converter.image_contents", "prompt_builder.image_contents")
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
 ## Run pipeline
-result = pipe.run({
-    "downloader": {"documents": documents},
-    "prompt_builder": {"question": "What information is shown in the chart?"}
-})
+result = pipe.run(
+    {
+        "downloader": {"documents": documents},
+        "prompt_builder": {"question": "What information is shown in the chart?"},
+    },
+)
 ```

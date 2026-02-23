@@ -9,6 +9,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
     import torch
@@ -94,13 +95,15 @@ class SentenceTransformersDiversityRanker:
         relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
         trade-off between relevance and diversity.
 
+    Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+    if a score is present.
+
     ### Usage example
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
     ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
-    ranker.warm_up()
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"
@@ -411,14 +414,15 @@ class SentenceTransformersDiversityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
+        deduplicated_documents = _deduplicate_documents(documents)
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold
             self._check_lambda_threshold(lambda_threshold, self.strategy)
             re_ranked_docs = self._maximum_margin_relevance(
-                query=query, documents=documents, lambda_threshold=lambda_threshold, top_k=top_k
+                query=query, documents=deduplicated_documents, lambda_threshold=lambda_threshold, top_k=top_k
             )
         else:
-            re_ranked_docs = self._greedy_diversity_order(query=query, documents=documents)
+            re_ranked_docs = self._greedy_diversity_order(query=query, documents=deduplicated_documents)
 
         return {"documents": re_ranked_docs[:top_k]}

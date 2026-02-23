@@ -83,8 +83,9 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# documentation
+# API reference
 pydoc/temp/
+tmp_api_reference/
 
 # PyBuilder
 target/
