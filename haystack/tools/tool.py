@@ -86,6 +86,10 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
+    :raises ValueError: If `function` is async, if `parameters` is not a valid JSON schema, or if the
+        `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
+    :raises TypeError: If any configuration value in `outputs_to_state`, `outputs_to_string`, or
+        `inputs_from_state` has the wrong type.
     """
 
     name: str

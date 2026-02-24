@@ -279,6 +279,8 @@ class ChatMessage:
     def __new__(cls, *args, **kwargs):  # noqa: ARG004
         """
         This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
+
+        :raises TypeError: If any legacy init parameters (`role`, `content`, `meta`, `name`) are passed.
         """
 
         general_msg = (
@@ -458,6 +460,8 @@ class ChatMessage:
         :param name: An optional name for the participant. This field is only supported by OpenAI.
         :param content_parts: A list of content parts to include in the message. Specify this or text.
         :returns: A new ChatMessage instance.
+        :raises ValueError: If neither or both of text and content_parts are provided, or if content_parts is empty.
+        :raises TypeError: If a content part is not a str, TextContent, ImageContent, or FileContent.
         """
         if text is None and content_parts is None:
             raise ValueError("Either text or content_parts must be provided.")
@@ -512,6 +516,7 @@ class ChatMessage:
         :param tool_calls: The Tool calls to include in the message.
         :param reasoning: The reasoning content to include in the message.
         :returns: A new ChatMessage instance.
+        :raises TypeError: If `reasoning` is not a string or ReasoningContent object.
         """
         content: list[ChatMessageContentT] = []
         if reasoning:
@@ -603,6 +608,8 @@ class ChatMessage:
             The dictionary to build the ChatMessage object.
         :returns:
             The created object.
+        :raises ValueError: If the `role` field is missing from the dictionary.
+        :raises TypeError: If the `content` field is not a list or string.
         """
 
         # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
