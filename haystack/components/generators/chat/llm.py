@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, override
+from typing import Any, Literal
 
 from haystack import component, logging
 from haystack.components.agents.agent import Agent
@@ -73,7 +73,6 @@ class LLM(Agent):
             streaming_callback=streaming_callback,
         )
 
-    @override
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the LLM component to a dictionary.
@@ -90,7 +89,6 @@ class LLM(Agent):
         )
 
     @classmethod
-    @override
     def from_dict(cls, data: dict[str, Any]) -> "LLM":
         """
         Deserialize the LLM from a dictionary.
@@ -107,7 +105,6 @@ class LLM(Agent):
 
         return default_from_dict(cls, data)
 
-    @override
     def run(
         self,
         messages: list[ChatMessage] | None = None,
@@ -141,7 +138,6 @@ class LLM(Agent):
             **kwargs,
         )
 
-    @override
     async def run_async(
         self,
         messages: list[ChatMessage] | None = None,
