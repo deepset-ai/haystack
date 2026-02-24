@@ -38,10 +38,10 @@ class TestSparseEmbedding:
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3])
 
     def test_warn_on_inplace_mutation(self):
         se = SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3])
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             se.indices = [1, 3, 5]

@@ -172,42 +172,42 @@ class TestContentParts:
 
     def test_text_content_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             TextContent(text="hello")
 
     def test_text_content_warn_on_inplace_mutation(self):
         tc = TextContent(text="hello")
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             tc.text = "world"
 
     def test_tool_call_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             ToolCall(tool_name="t", arguments={"a": 1})
 
     def test_tool_call_warn_on_inplace_mutation(self):
         tc = ToolCall(tool_name="t", arguments={"a": 1})
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             tc.tool_name = "other"
 
     def test_tool_call_result_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={}), error=False)
 
     def test_tool_call_result_warn_on_inplace_mutation(self):
         tcr = ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={}), error=False)
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             tcr.error = True
 
     def test_reasoning_content_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             ReasoningContent(reasoning_text="thinking")
 
     def test_reasoning_content_warn_on_inplace_mutation(self):
         rc = ReasoningContent(reasoning_text="thinking")
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             rc.reasoning_text = "new thinking"
 
 
@@ -498,12 +498,12 @@ class TestChatMessage:
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             ChatMessage.from_user("hello")
 
     def test_warn_on_inplace_mutation(self):
         msg = ChatMessage.from_user("hello")
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             msg._meta = {"new": "meta"}
 
 

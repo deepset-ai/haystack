@@ -266,10 +266,10 @@ class TestGeneratedAnswer:
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             GeneratedAnswer(data="42", query="q", documents=[])
 
     def test_warn_on_inplace_mutation(self):
         answer = GeneratedAnswer(data="42", query="q", documents=[])
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             answer.data = "new"

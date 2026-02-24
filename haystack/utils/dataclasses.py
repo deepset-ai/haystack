@@ -38,7 +38,7 @@ def _warn_on_inplace_mutation(cls: type) -> type:
                 f"'{type(self).__name__}' is deprecated. "
                 f"Use `dataclasses.replace(instance, {name}=new_value)` instead. "
                 "In-place modification of dataclass instances will be removed in a future version.",
-                DeprecationWarning,
+                Warning,
                 stacklevel=2,
             )
         return original_setattr(self, name, value)

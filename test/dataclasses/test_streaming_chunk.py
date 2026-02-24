@@ -336,35 +336,35 @@ def test_from_dict_reasoning():
 
 def test_tool_call_delta_no_warning_on_init():
     with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", Warning)
         ToolCallDelta(index=0, tool_name="t")
 
 
 def test_tool_call_delta_warn_on_inplace_mutation():
     tcd = ToolCallDelta(index=0, tool_name="t")
-    with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+    with pytest.warns(Warning, match="dataclasses.replace"):
         tcd.tool_name = "other"
 
 
 def test_component_info_no_warning_on_init():
     with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", Warning)
         ComponentInfo(type="test.component", name="my_component")
 
 
 def test_component_info_warn_on_inplace_mutation():
     ci = ComponentInfo(type="test.component", name="my_component")
-    with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+    with pytest.warns(Warning, match="dataclasses.replace"):
         ci.name = "other"
 
 
 def test_streaming_chunk_no_warning_on_init():
     with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", Warning)
         StreamingChunk(content="test")
 
 
 def test_streaming_chunk_warn_on_inplace_mutation():
     chunk = StreamingChunk(content="test")
-    with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+    with pytest.warns(Warning, match="dataclasses.replace"):
         chunk.content = "other"

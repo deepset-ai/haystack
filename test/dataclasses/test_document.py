@@ -350,11 +350,11 @@ def test_content_type():
 
 def test_no_warning_on_init():
     with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", Warning)
         Document(content="test")
 
 
 def test_warn_on_inplace_mutation():
     doc = Document(content="test")
-    with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+    with pytest.warns(Warning, match="dataclasses.replace"):
         doc.content = "other"

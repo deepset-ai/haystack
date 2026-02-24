@@ -161,11 +161,11 @@ def test_from_dict():
 
 def test_no_warning_on_init():
     with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
+        warnings.simplefilter("error", Warning)
         ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"})
 
 
 def test_warn_on_inplace_mutation():
     b = ByteStream(data=b"hello")
-    with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+    with pytest.warns(Warning, match="dataclasses.replace"):
         b.data = b"world"
