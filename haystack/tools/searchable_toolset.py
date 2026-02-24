@@ -75,7 +75,6 @@ class SearchableToolset(Toolset):
         self._discovered_tools: dict[str, Tool] = {}
         self._bootstrap_tool: Tool | None = None
         self._document_store: InMemoryDocumentStore | None = None
-        self._tool_by_name: dict[str, Tool] = {}
         self._warmed_up = False
 
         # Initialize parent with empty tools list - we manage tools dynamically
@@ -131,6 +130,8 @@ class SearchableToolset(Toolset):
     def _create_search_tool(self) -> Tool:
         """Create the search_tools bootstrap tool."""
 
+        tool_by_name = {tool.name: tool for tool in self._catalog}
+
         def search_tools(
             tool_keywords: Annotated[
                 str,
@@ -171,7 +172,7 @@ class SearchableToolset(Toolset):
             # by not returning the full tool definitions.
             tool_names = []
             for doc in results:
-                tool = self._tool_by_name[doc.meta["tool_name"]]
+                tool = tool_by_name[doc.meta["tool_name"]]
                 tool.warm_up()
                 self._discovered_tools[tool.name] = tool
                 tool_names.append(tool.name)

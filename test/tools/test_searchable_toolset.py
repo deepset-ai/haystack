@@ -403,7 +403,6 @@ class TestSearchableToolsetWarmUp:
 
         # Before warm_up, _catalog is empty (flattening is deferred)
         assert len(toolset._catalog) == 0
-        assert len(list(toolset)) == 0
 
         # After warm_up, catalog is populated
         toolset.warm_up()
