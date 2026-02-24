@@ -65,8 +65,7 @@ class LLM(Agent):
             If set to `"*"`, all variables found in the prompt are required. Optional.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
         """
-        Agent.__init__(
-            self,
+        super().__init__(
             chat_generator=chat_generator,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
@@ -134,8 +133,7 @@ class LLM(Agent):
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
         """
-        return Agent.run(
-            self,
+        return super().run(
             messages=messages,
             streaming_callback=streaming_callback,
             system_prompt=system_prompt,
@@ -170,8 +168,7 @@ class LLM(Agent):
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
         """
-        return await Agent.run_async(
-            self,
+        return await super().run_async(
             messages=messages,
             streaming_callback=streaming_callback,
             system_prompt=system_prompt,
