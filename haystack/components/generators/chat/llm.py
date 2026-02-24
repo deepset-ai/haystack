@@ -110,6 +110,7 @@ class LLM(Agent):
         messages: list[ChatMessage] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         *,
+        generation_kwargs: dict[str, Any] | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
         **kwargs: Any,
@@ -119,12 +120,13 @@ class LLM(Agent):
 
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+        :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
+            will override the parameters passed during component initialization.
         :param system_prompt: System prompt for the LLM. If provided, it overrides the default system prompt.
         :param user_prompt: User prompt for the LLM. If provided, it overrides the default user prompt and is
             appended to the messages provided at runtime.
         :param kwargs: Additional keyword arguments. These are used to fill template variables in the `user_prompt`
-            (the keys must match template variable names). You can also pass `generation_kwargs` to override
-            generation parameters for the underlying chat generator.
+            (the keys must match template variable names).
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
@@ -133,6 +135,7 @@ class LLM(Agent):
         return super().run(
             messages=messages,
             streaming_callback=streaming_callback,
+            generation_kwargs=generation_kwargs,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             **kwargs,
@@ -143,6 +146,7 @@ class LLM(Agent):
         messages: list[ChatMessage] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         *,
+        generation_kwargs: dict[str, Any] | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
         **kwargs: Any,
@@ -153,12 +157,13 @@ class LLM(Agent):
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed
             from the LLM.
+        :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
+            will override the parameters passed during component initialization.
         :param system_prompt: System prompt for the LLM. If provided, it overrides the default system prompt.
         :param user_prompt: User prompt for the LLM. If provided, it overrides the default user prompt and is
             appended to the messages provided at runtime.
         :param kwargs: Additional keyword arguments. These are used to fill template variables in the `user_prompt`
-            (the keys must match template variable names). You can also pass `generation_kwargs` to override
-            generation parameters for the underlying chat generator.
+            (the keys must match template variable names).
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
@@ -167,6 +172,7 @@ class LLM(Agent):
         return await super().run_async(
             messages=messages,
             streaming_callback=streaming_callback,
+            generation_kwargs=generation_kwargs,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             **kwargs,
