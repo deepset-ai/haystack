@@ -384,6 +384,7 @@ class PipelineBase:  # noqa: PLW1641
             instance=instance,
             input_sockets=instance.__haystack_input__._sockets_dict,  # type: ignore[attr-defined]
             output_sockets=instance.__haystack_output__._sockets_dict,  # type: ignore[attr-defined]
+            visits=0,
         )
 
     def remove_component(self, name: str) -> Component:
@@ -1300,21 +1301,15 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             The name of the component that is blocking the pipeline or None if no component is blocking.
         """
-        # TODO Figure out where this check would go best. Probably when writing outputs to inputs.
-        # - SIDE NOTE: There is an opportunity to check that all keys in comp_inputs are actually accepted by
-        #   the receiving component. This would have better caught misconfigurations in the pipeline that Jul had
-
         # 1. Go through all components in priority queue (should all be blocked at this point)
         comps_in_queue: list[str] = [comp_name for _, _, comp_name in priority_queue._queue]
 
         # 2. Check which components have non-empty inputs.
         comps_with_inputs = []
         for comp_name in comps_in_queue:
-            # comp = self._get_component_with_graph_metadata_and_visits(comp_name, component_visits[comp_name])
-            # comp_inputs = inputs.get(comp_name, {})
             # If components inputs is not empty it means that the component is waiting for some inputs to run, so it
             # could be blocking the pipeline.
-            if inputs.get(comp_name, {}):
+            if inputs.get(comp_name):
                 comps_with_inputs.append(comp_name)
 
         # TODO Handle edge case that possible_blocking_components is empty
