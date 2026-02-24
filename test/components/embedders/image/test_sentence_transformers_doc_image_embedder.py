@@ -191,7 +191,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
     def test_run(self, test_files_path):
         embedder = SentenceTransformersDocumentImageEmbedder(model="model")
         embedder._embedding_backend = MagicMock()
-        embedder._embedding_backend.embed = lambda data, **kwargs: [
+        embedder._embedding_backend.embed = lambda data, **_: [
             [random.random() for _ in range(16)] for _ in range(len(data))
         ]
 
@@ -209,7 +209,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -332,7 +332,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         result = embedder.run(documents=documents)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

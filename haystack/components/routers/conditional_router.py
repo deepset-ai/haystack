@@ -4,7 +4,8 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Mapping, Sequence, TypedDict, get_args, get_origin
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, TypedDict, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
@@ -117,7 +118,7 @@ class ConditionalRouter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         routes: list[Route],
         custom_filters: dict[str, Callable] | None = None,
@@ -226,7 +227,7 @@ class ConditionalRouter:
                 route["output_type"] if isinstance(route["output_type"], list) else [route["output_type"]]
             )
 
-            output_types.update(dict(zip(output_names, output_types_list)))
+            output_types.update(dict(zip(output_names, output_types_list, strict=True)))
 
         # remove optional variables from mandatory input types
         mandatory_input_types = input_types - set(self.optional_variables)
@@ -343,7 +344,7 @@ class ConditionalRouter:
                 )
 
                 result = {}
-                for output, output_type, output_name in zip(outputs, output_types, output_names):
+                for output, output_type, output_name in zip(outputs, output_types, output_names, strict=True):
                     # Evaluate output template
                     t_output = self._env.from_string(output)
                     output_value = t_output.render(**kwargs)
@@ -358,7 +359,7 @@ class ConditionalRouter:
 
                     # Validate output type if needed
                     if self._validate_output_type and not self._output_matches_type(output_value, output_type):
-                        raise ValueError(f"Route '{output_name}' type doesn't match expected type")
+                        raise ValueError(f"Route '{output_name}' type doesn't match expected type")  # noqa: TRY301
 
                     result[output_name] = output_value
 
@@ -382,8 +383,8 @@ class ConditionalRouter:
         for route in routes:
             try:
                 keys = set(route.keys())
-            except AttributeError:
-                raise ValueError(f"Route must be a dictionary, got: {route}")
+            except AttributeError as e:
+                raise ValueError(f"Route must be a dictionary, got: {route}") from e
 
             mandatory_fields = {"condition", "output", "output_type", "output_name"}
             has_all_mandatory_fields = mandatory_fields.issubset(keys)
@@ -456,7 +457,7 @@ class ConditionalRouter:
         except TemplateSyntaxError:
             return False
 
-    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911 # pylint: disable=too-many-return-statements
+    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911
         """
         Checks whether `value` type matches the `expected_type`.
         """

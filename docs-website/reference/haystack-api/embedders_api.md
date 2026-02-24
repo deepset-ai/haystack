@@ -1332,7 +1332,6 @@ __init__(
     model_kwargs: dict[str, Any] | None = None,
     tokenizer_kwargs: dict[str, Any] | None = None,
     config_kwargs: dict[str, Any] | None = None,
-    encode_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
     revision: str | None = None
 )

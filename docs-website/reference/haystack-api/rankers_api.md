@@ -143,6 +143,7 @@ if a score is present.
 
 - <code>requests.exceptions.RequestException</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
+- <code>TypeError</code> – - If the API response is not in the expected list format.
 
 #### run_async
 
@@ -176,6 +177,7 @@ if a score is present.
 
 - <code>httpx.RequestError</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
+- <code>TypeError</code> – - If the API response is not in the expected list format.
 
 ## lost_in_the_middle
 

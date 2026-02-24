@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel
@@ -132,7 +133,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             )
         self._azure_endpoint = azure_endpoint
         self._azure_deployment = azure_deployment
-        super(AzureOpenAIResponsesChatGenerator, self).__init__(
+        super(AzureOpenAIResponsesChatGenerator, self).__init__(  # noqa: UP008
             api_key=api_key,  # type: ignore[arg-type]
             model=self._azure_deployment,
             streaming_callback=streaming_callback,

@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any
 
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
+
 
 @dataclass(frozen=True)
 class Breakpoint:
@@ -113,6 +115,7 @@ class AgentBreakpoint:
         return cls(agent_name=data["agent_name"], break_point=break_point)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class AgentSnapshot:
     component_inputs: dict[str, Any]
@@ -149,6 +152,7 @@ class AgentSnapshot:
         )
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class PipelineState:
     """
@@ -184,6 +188,7 @@ class PipelineState:
         return cls(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class PipelineSnapshot:
     """
@@ -224,7 +229,7 @@ class PipelineSnapshot:
         :return: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input data,
                  ordered component names, include_outputs_from, and pipeline outputs.
         """
-        data = {
+        return {
             "pipeline_state": self.pipeline_state.to_dict(),
             "break_point": self.break_point.to_dict(),
             "agent_snapshot": self.agent_snapshot.to_dict() if self.agent_snapshot else None,
@@ -233,7 +238,6 @@ class PipelineSnapshot:
             "ordered_component_names": self.ordered_component_names,
             "include_outputs_from": list(self.include_outputs_from),
         }
-        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "PipelineSnapshot":

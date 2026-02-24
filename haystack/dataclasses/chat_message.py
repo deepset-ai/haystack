@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Sequence
+from typing import Any
 
 from haystack import logging
 from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import ImageContent
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,7 @@ class ChatRole(str, Enum):
         return role
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class TextContent:
     """
@@ -71,6 +74,7 @@ class TextContent:
         return TextContent(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ToolCall:
     """
@@ -112,6 +116,7 @@ class ToolCall:
 ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ToolCallResult:
     """
@@ -162,6 +167,7 @@ class ToolCallResult:
         return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ReasoningContent:
     """
@@ -262,8 +268,9 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     return {serialization_key: part.to_dict()}
 
 
+@_warn_on_inplace_mutation
 @dataclass
-class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we expose several properties
+class ChatMessage:
     """
     Represents a message in a LLM chat conversation.
 
@@ -275,9 +282,11 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):  # noqa: ARG004
         """
         This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
+
+        :raises TypeError: If any legacy init parameters (`role`, `content`, `meta`, `name`) are passed.
         """
 
         general_msg = (
@@ -292,7 +301,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                 f"{general_msg}"
             )
 
-        return super(ChatMessage, cls).__new__(cls)
+        return super(ChatMessage, cls).__new__(cls)  # noqa: UP008
 
     def __getattribute__(self, name):
         """
@@ -457,6 +466,8 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         :param name: An optional name for the participant. This field is only supported by OpenAI.
         :param content_parts: A list of content parts to include in the message. Specify this or text.
         :returns: A new ChatMessage instance.
+        :raises ValueError: If neither or both of text and content_parts are provided, or if content_parts is empty.
+        :raises TypeError: If a content part is not a str, TextContent, ImageContent, or FileContent.
         """
         if text is None and content_parts is None:
             raise ValueError("Either text or content_parts must be provided.")
@@ -474,9 +485,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
                 elif isinstance(part, (TextContent, ImageContent, FileContent)):
                     content.append(part)
                 else:
-                    raise ValueError(
-                        f"The user message must contain only text or image parts. Unsupported part: {part}"
-                    )
+                    raise TypeError(f"The user message must contain only text or image parts. Unsupported part: {part}")
             if len(content) == 0:
                 raise ValueError("The user message must contain at least one content part (text, image, file).")
 
@@ -513,6 +522,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         :param tool_calls: The Tool calls to include in the message.
         :param reasoning: The reasoning content to include in the message.
         :returns: A new ChatMessage instance.
+        :raises TypeError: If `reasoning` is not a string or ReasoningContent object.
         """
         content: list[ChatMessageContentT] = []
         if reasoning:
@@ -604,10 +614,12 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             The dictionary to build the ChatMessage object.
         :returns:
             The created object.
+        :raises ValueError: If the `role` field is missing from the dictionary.
+        :raises TypeError: If the `content` field is not a list or string.
         """
 
         # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
-        if not "role" in data and not "_role" in data:
+        if "role" not in data and "_role" not in data:
             raise ValueError(
                 "The `role` field is required in the message dictionary. "
                 f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "

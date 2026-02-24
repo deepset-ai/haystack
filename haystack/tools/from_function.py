@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import create_model
 
@@ -12,7 +13,7 @@ from .parameters_schema_utils import _contains_callable_type
 from .tool import Tool
 
 
-def create_tool_from_function(  # pylint: disable=too-many-positional-arguments
+def create_tool_from_function(
     function: Callable,
     name: str | None = None,
     description: str | None = None,

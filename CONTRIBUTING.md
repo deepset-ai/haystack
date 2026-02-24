@@ -253,15 +253,6 @@ hatch run fmt
 ```
 
 
-To run linting with Pylint, use:
-
-```sh
-hatch run test:lint
-```
-
-
-
-
 ## Requirements for Pull Requests
 
 To ease the review process, please follow the instructions in this paragraph when creating a Pull Request:

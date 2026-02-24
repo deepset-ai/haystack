@@ -6,9 +6,10 @@ import asyncio
 import contextvars
 import inspect
 import json
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable
+from typing import Any
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -271,7 +272,7 @@ class ToolInvoker:
         if duplicates:
             raise ValueError(f"Duplicate tool names found: {duplicates}")
 
-        return dict(zip(tool_names, converted_tools))
+        return dict(zip(tool_names, converted_tools, strict=True))
 
     def _default_output_to_string_handler(self, result: Any) -> str:
         """
@@ -371,7 +372,7 @@ class ToolInvoker:
         except (StringConversionError, ResultConversionError) as e:
             if self.raise_on_failure:
                 raise e
-            logger.error("{error_exception}", error_exception=e)
+            logger.exception("{error_exception}", error_exception=e)
             return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
 
     @staticmethod
@@ -589,7 +590,8 @@ class ToolInvoker:
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
             logger.debug(
-                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+                "For this invocation, overriding constructor tools with: {tools}",
+                tools=", ".join(tools_with_names.keys()),
             )
 
         if state is None:
@@ -632,7 +634,7 @@ class ToolInvoker:
                 futures.append(executor.submit(callable_))
 
             # 3) Gather and process results: handle errors and merge outputs into state
-            for future, tool_call in zip(futures, tool_calls):
+            for future, tool_call in zip(futures, tool_calls, strict=True):
                 result = future.result()
 
                 if isinstance(result, ToolInvocationError):
@@ -655,7 +657,7 @@ class ToolInvoker:
                         error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
                         if self.raise_on_failure:
                             raise error from e
-                        logger.error("{error_exception}", error_exception=error)
+                        logger.exception("{error_exception}", error_exception=error)
                         tool_messages.append(
                             ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
                         )
@@ -724,7 +726,8 @@ class ToolInvoker:
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
             logger.debug(
-                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+                "For this invocation, overriding constructor tools with: {tools}",
+                tools=", ".join(tools_with_names.keys()),
             )
 
         if state is None:
@@ -769,7 +772,7 @@ class ToolInvoker:
 
             # 3) Gather and process results: handle errors and merge outputs into state
             tool_results = await asyncio.gather(*tool_call_tasks)
-            for tool_result, tool_call in zip(tool_results, tool_calls):
+            for tool_result, tool_call in zip(tool_results, tool_calls, strict=True):
                 # a) This is an error, create error Tool message
                 if isinstance(tool_result, ToolInvocationError):
                     if self.raise_on_failure:
@@ -792,7 +795,7 @@ class ToolInvoker:
                         error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
                         if self.raise_on_failure:
                             raise error from e
-                        logger.error("{error_exception}", error_exception=error)
+                        logger.exception("{error_exception}", error_exception=error)
                         tool_messages.append(
                             ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
                         )

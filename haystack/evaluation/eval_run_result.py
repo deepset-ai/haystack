@@ -43,7 +43,7 @@ class EvaluationRunResult:
 
         if len(inputs) == 0:
             raise ValueError("No inputs provided.")
-        if len({len(l) for l in inputs.values()}) != 1:
+        if len({len(lst) for lst in inputs.values()}) != 1:
             raise ValueError("Lengths of the inputs should be the same.")
 
         expected_len = len(next(iter(inputs.values())))
@@ -91,7 +91,7 @@ class EvaluationRunResult:
             return f"Data successfully written to {csv_file}"
         except PermissionError:
             return f"Error: Permission denied when writing to {csv_file}"
-        except IOError as e:
+        except OSError as e:
             return f"Error writing to {csv_file}: {str(e)}"
         except Exception as e:
             return f"Error: {str(e)}"
@@ -108,17 +108,16 @@ class EvaluationRunResult:
         if output_format == "json":
             return data
 
-        elif output_format == "df":
+        if output_format == "df":
             pandas_import.check()
             return DataFrame(data)
 
-        elif output_format == "csv":
+        if output_format == "csv":
             if not csv_file:
                 raise ValueError("A file path must be provided in 'csv_file' parameter to save the CSV output.")
             return EvaluationRunResult._write_to_csv(csv_file, data)
 
-        else:
-            raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
+        raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
 
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: str | None = None
@@ -181,10 +180,13 @@ class EvaluationRunResult:
         :returns:
             JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
              a message confirming the successful write or an error message.
+        :raises TypeError: If `other` is not an EvaluationRunResult instance, or if the detailed reports are not
+            dictionaries.
+        :raises ValueError: If the `other` parameter is missing required attributes.
         """
 
         if not isinstance(other, EvaluationRunResult):
-            raise ValueError("Comparative scores can only be computed between EvaluationRunResults.")
+            raise TypeError("Comparative scores can only be computed between EvaluationRunResults.")
 
         if not hasattr(other, "run_name") or not hasattr(other, "inputs") or not hasattr(other, "results"):
             raise ValueError("The 'other' parameter must have 'run_name', 'inputs', and 'results' attributes.")
@@ -206,7 +208,7 @@ class EvaluationRunResult:
 
         # ensure both detailed reports are in dictionaries format
         if not isinstance(detailed_a, dict) or not isinstance(detailed_b, dict):
-            raise ValueError("Detailed reports must be dictionaries.")
+            raise TypeError("Detailed reports must be dictionaries.")
 
         # determine which columns to ignore
         if keep_columns is None:

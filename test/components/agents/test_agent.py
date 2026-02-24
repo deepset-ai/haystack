@@ -5,8 +5,9 @@
 import logging
 import os
 import re
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Any, Iterator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -81,7 +82,7 @@ def component_tool():
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
     def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
         client = client or MagicMock()
-        super().__init__(client=client, *args, **kwargs)
+        super().__init__(client=client, *args, **kwargs)  # noqa: B026
         self.mock_chunk = mock_chunk
 
     def __stream__(self) -> Iterator[ChatCompletionChunk]:
@@ -712,6 +713,19 @@ class TestAgent:
 
         with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
             Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+    def test_no_tools_with_chat_generator_without_tools_support(self):
+        chat_generator = MockChatGeneratorWithoutTools()
+        agent = Agent(chat_generator=chat_generator, max_agent_steps=1)
+
+        response = agent.run(messages=[ChatMessage.from_user("Hello")])
+
+        assert isinstance(response, dict)
+        assert "messages" in response
+        assert len(response["messages"]) == 2
+        assert response["messages"][0].text == "Hello"
+        assert response["messages"][1].text == "Hello"
+        assert response["last_message"] == response["messages"][-1]
 
     def test_exceed_max_steps(self, monkeypatch, weather_tool, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")

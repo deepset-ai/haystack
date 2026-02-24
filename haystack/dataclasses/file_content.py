@@ -13,10 +13,12 @@ from urllib.parse import unquote, urlparse
 import filetype
 
 from haystack import logging
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 logger = logging.getLogger(__name__)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class FileContent:
     """

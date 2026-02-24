@@ -109,7 +109,7 @@ class TestMemoryEmbeddingRetriever:
             "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
             "init_parameters": {"document_store": {"init_parameters": {}}},
         }
-        with pytest.raises(ValueError, match="document_store must be an instance of InMemoryDocumentStore"):
+        with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
@@ -139,7 +139,7 @@ class TestMemoryEmbeddingRetriever:
 
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
-        with pytest.raises(ValueError, match="document_store must be an instance of InMemoryDocumentStore"):
+        with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
             InMemoryEmbeddingRetriever(SomeOtherDocumentStore())
 
     @pytest.mark.integration

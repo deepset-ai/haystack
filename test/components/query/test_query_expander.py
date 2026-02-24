@@ -15,8 +15,7 @@ from haystack.dataclasses.chat_message import ChatMessage
 
 @pytest.fixture
 def mock_chat_generator():
-    mock_generator = Mock(spec=OpenAIChatGenerator)
-    return mock_generator
+    return Mock(spec=OpenAIChatGenerator)
 
 
 @pytest.fixture
@@ -339,7 +338,7 @@ class TestQueryExpander:
         expander = QueryExpander.from_dict(data)
 
         assert expander.n_expansions == 2
-        assert expander.include_original_query == False
+        assert expander.include_original_query is False
         assert expander.prompt_template == DEFAULT_PROMPT_TEMPLATE
         assert isinstance(expander.chat_generator, OpenAIChatGenerator)
         assert expander.chat_generator.model == "gpt-4.1-mini"

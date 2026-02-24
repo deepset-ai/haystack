@@ -150,7 +150,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If the component is invalid or schema generation fails.
+- <code>TypeError</code> – If the object passed is not a Haystack Component instance.
+- <code>ValueError</code> – If the component has already been added to a pipeline, or if schema generation fails.
 
 #### warm_up
 
@@ -710,6 +711,13 @@ Example:
     "documents": {"handler": custom_handler}
 }
 ```
+
+**Raises:**
+
+- <code>ValueError</code> – If `function` is async, if `parameters` is not a valid JSON schema, or if the
+  `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
+- <code>TypeError</code> – If any configuration value in `outputs_to_state`, `outputs_to_string`, or
+  `inputs_from_state` has the wrong type.
 
 #### tool_spec
 

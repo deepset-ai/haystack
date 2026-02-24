@@ -61,10 +61,10 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
 FENCE_END_RE = re.compile(r"^\s*```\s*$")
@@ -132,7 +132,7 @@ def find_markdown_files(paths: Iterable[str]) -> list[str]:
 
 def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
     """Extract runnable Python snippets from a Markdown/MDX file."""
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         lines = f.read().splitlines()
 
     snippets: list[Snippet] = []
@@ -312,8 +312,7 @@ def run_snippet(snippet: Snippet, timeout_seconds: int, cwd: str, skip_unsafe: b
             [sys.executable, temp_path],
             check=False,
             cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout_seconds,
             text=True,
             env={**os.environ, "PYTHONUNBUFFERED": "1"},
@@ -368,7 +367,7 @@ def print_failure_annotation(result: ExecutionResult) -> None:
     sys.stdout.write(f"::error file={rel},line={line}::{message} — see details below%0A{details}\n")
 
 
-def process_file_snippets(  # pylint: disable=too-many-positional-arguments
+def process_file_snippets(
     file_rel: str, snippets: list[Snippet], repo_root: str, timeout_seconds: int, allow_unsafe: bool, verbose: bool
 ) -> tuple[list[ExecutionResult], dict[str, int]]:
     """Process all snippets in a single markdown file and return results and statistics."""

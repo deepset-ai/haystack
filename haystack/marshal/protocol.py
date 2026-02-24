@@ -4,9 +4,6 @@
 
 from typing import Any, Protocol
 
-# Ellipsis are needed for the type checker, it's safe to disable module-wide
-# pylint: disable=unnecessary-ellipsis
-
 
 class Marshaller(Protocol):
     def marshal(self, dict_: dict[str, Any]) -> str:
