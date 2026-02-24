@@ -12,8 +12,10 @@ def _warn_on_inplace_mutation(cls: type) -> type:
     """
     initializing = set()
 
-    original_init = getattr(cls, "__init__")
-    original_setattr = getattr(cls, "__setattr__")
+    # mypy requires using getattr/setattr for dunder access, but ruff prefers
+    # direct attribute access. We silence mypy here in favor of the more explicit syntax.
+    original_init = cls.__init__  # type: ignore[misc]
+    original_setattr = cls.__setattr__
 
     @wraps(original_init)
     def __init_track__(self, *args, **kwargs):
@@ -41,8 +43,11 @@ def _warn_on_inplace_mutation(cls: type) -> type:
                 Warning,
                 stacklevel=2,
             )
-        return original_setattr(self, name, value)
+        # mypy infers original_setattr as bound to the type, expecting (str, Any), we call the unbound form
+        return original_setattr(self, name, value)  # type: ignore[call-arg]
 
-    setattr(cls, "__init__", __init_track__)
-    setattr(cls, "__setattr__", __setattr_warn__)
+    # mypy considers direct dunder access on a class unsound, ruff prefers direct access
+    cls.__init__ = __init_track__  # type: ignore[misc]
+    # mypy does not allow assigning to a method, ruff prefers direct access
+    cls.__setattr__ = __setattr_warn__  # type: ignore[method-assign, assignment]
     return cls
