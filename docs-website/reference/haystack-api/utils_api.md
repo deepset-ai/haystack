@@ -853,6 +853,8 @@ Jinja filter to convert an ChatMessageContentT object into JSON string wrapped i
 
 Bases: <code>Extension</code>
 
+A Jinja2 extension for formatting dates and times.
+
 #### __init__
 
 ```python
