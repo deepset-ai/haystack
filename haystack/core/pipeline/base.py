@@ -245,7 +245,7 @@ class PipelineBase:  # noqa: PLW1641
                     msg = (
                         f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
                         f"with the following data:\n{data_str}\n\n"
-                        f"Original error: {e}\n\n"
+                        f"Original error: {e}"
                     )
                     raise DeserializationError(msg) from e
             pipe.add_component(name=name, instance=instance)
