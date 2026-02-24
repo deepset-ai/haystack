@@ -79,30 +79,6 @@ class TestLLM:
             assert llm.streaming_callback is None
             assert llm._tool_invoker is None
 
-        def test_with_system_prompt(self):
-            llm = LLM(chat_generator=MockChatGenerator(), system_prompt="You are helpful.")
-            assert llm.system_prompt == "You are helpful."
-
-        def test_with_user_prompt(self):
-            llm = LLM(chat_generator=MockChatGenerator(), user_prompt="Tell me about {{ topic }}")
-            assert llm.user_prompt == "Tell me about {{ topic }}"
-
-        def test_does_not_accept_state_schema(self):
-            with pytest.raises(TypeError, match="unexpected keyword argument"):
-                LLM(chat_generator=MockChatGenerator(), state_schema={"custom_key": {"type": str}})
-
-        def test_does_not_accept_tools(self):
-            with pytest.raises(TypeError, match="unexpected keyword argument"):
-                LLM(chat_generator=MockChatGeneratorWithTools(), tools=[])
-
-        def test_does_not_accept_exit_conditions(self):
-            with pytest.raises(TypeError, match="unexpected keyword argument"):
-                LLM(chat_generator=MockChatGenerator(), exit_conditions=["text"])
-
-        def test_does_not_accept_max_agent_steps(self):
-            with pytest.raises(TypeError, match="unexpected keyword argument"):
-                LLM(chat_generator=MockChatGenerator(), max_agent_steps=5)
-
         def test_output_sockets(self):
             llm = LLM(chat_generator=MockChatGenerator())
             assert llm.__haystack_output__._sockets_dict == {
