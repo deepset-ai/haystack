@@ -1076,6 +1076,159 @@ and return values but can be used with `await` in an async code.
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
+## chat/llm
+
+### LLM
+
+Bases: <code>Agent</code>
+
+A text generation component powered by a large language model.
+
+The LLM component is a simplified version of the Agent that focuses solely on text generation
+without tool usage. It processes messages and returns a single response from the language model.
+
+### Usage examples
+
+```python
+from haystack.components.generators.chat import LLM
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+llm = LLM(
+    chat_generator=OpenAIChatGenerator(),
+    system_prompt="You are a helpful translation assistant.",
+    user_prompt="""{% message role="user"%}
+Summarize the following document: {{ document }}
+{% endmessage %}""",
+    required_variables=["document"],
+)
+
+result = llm.run(document="The weather is lovely today and the sun is shining. ")
+print(result["last_message"].text)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    chat_generator: ChatGenerator,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    required_variables: list[str] | Literal["*"] | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> None
+```
+
+Initialize the LLM component.
+
+**Parameters:**
+
+- **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that the LLM should use.
+- **system_prompt** (<code>str | None</code>) – System prompt for the LLM.
+- **user_prompt** (<code>str | None</code>) – User prompt for the LLM. If provided this is appended to the messages provided at runtime.
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to user_prompt.
+  If a variable listed as required is not provided, an exception is raised.
+  If set to `"*"`, all variables found in the prompt are required. Optional.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the LLM component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> LLM
+```
+
+Deserialize the LLM from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>LLM</code> – Deserialized LLM instance.
+
+#### run
+
+```python
+run(
+    messages: list[ChatMessage] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    generation_kwargs: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    **kwargs: Any
+) -> dict[str, Any]
+```
+
+Process messages and generate a response from the language model.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
+  will override the parameters passed during component initialization.
+- **system_prompt** (<code>str | None</code>) – System prompt for the LLM. If provided, it overrides the default system prompt.
+- **user_prompt** (<code>str | None</code>) – User prompt for the LLM. If provided, it overrides the default user prompt and is
+  appended to the messages provided at runtime.
+- **kwargs** (<code>Any</code>) – Additional keyword arguments. These are used to fill template variables in the `user_prompt`
+  (the keys must match template variable names).
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- "messages": List of all messages exchanged during the LLM's run.
+- "last_message": The last message exchanged during the LLM's run.
+
+#### run_async
+
+```python
+run_async(
+    messages: list[ChatMessage] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    generation_kwargs: dict[str, Any] | None = None,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    **kwargs: Any
+) -> dict[str, Any]
+```
+
+Asynchronously process messages and generate a response from the language model.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed
+  from the LLM.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
+  will override the parameters passed during component initialization.
+- **system_prompt** (<code>str | None</code>) – System prompt for the LLM. If provided, it overrides the default system prompt.
+- **user_prompt** (<code>str | None</code>) – User prompt for the LLM. If provided, it overrides the default user prompt and is
+  appended to the messages provided at runtime.
+- **kwargs** (<code>Any</code>) – Additional keyword arguments. These are used to fill template variables in the `user_prompt`
+  (the keys must match template variable names).
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- "messages": List of all messages exchanged during the LLM's run.
+- "last_message": The last message exchanged during the LLM's run.
+
 ## chat/openai
 
 ### OpenAIChatGenerator
