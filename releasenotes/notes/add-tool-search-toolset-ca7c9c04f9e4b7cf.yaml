@@ -1,14 +1,34 @@
 ---
-highlights: >
-    Introducing SearchableToolset - a new toolset that enables agents to dynamically
-    discover tools from large catalogs using keyword-based (BM25) search. Instead of exposing all
-    tools upfront (which can overwhelm LLMs with large tool definitions), agents start
-    with a single ``search_tools`` function and progressively discover relevant tools
-    as needed. For smaller catalogs, it operates in passthrough mode exposing all tools
-    directly.
 features:
   - |
-    Added ``SearchableToolset`` to ``haystack.tools`` module. This toolset wraps a catalog
-    of tools and provides on-demand tool discovery via BM25 search. Key features include:
+    Added ``SearchableToolset`` to ``haystack.tools`` module. This new toolset enables agents to dynamically discover
+    tools from large catalogs using keyword-based (BM25) search. Instead of exposing all tools upfront (which can
+    overwhelm LLMs with large tool definitions), agents start with a single ``search_tools`` function and progressively
+    discover relevant tools as needed. For smaller catalogs, it operates in passthrough mode exposing all tools
+    directly.
+
+    Key features include:
     configurable search threshold for automatic passthrough mode, top-k result limiting,
     and a ``clear()`` method to reset discovered tools between agent runs.
+
+    Example usage:
+
+    .. code:: python
+
+      from haystack.components.agents import Agent
+      from haystack.components.generators.chat import OpenAIChatGenerator
+      from haystack.dataclasses import ChatMessage
+      from haystack.tools import Tool, SearchableToolset
+
+      # Create a catalog of tools
+      catalog = [
+          Tool(name="get_weather", description="Get weather for a city", ...),
+          Tool(name="search_web", description="Search the web", ...),
+          # ... 100s more tools
+      ]
+      toolset = SearchableToolset(catalog=catalog)
+
+      agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+      # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
+      result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])

@@ -169,7 +169,7 @@ class Toolset:
         """
         return iter(self.tools)
 
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, item: str | Tool) -> bool:
         """
         Check if a tool is in this Toolset.
 

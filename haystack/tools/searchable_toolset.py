@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Annotated, Any, Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.dataclasses import Document
@@ -32,6 +33,9 @@ class SearchableToolset(Toolset):
     ### Usage Example
 
     ```python
+    from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
     from haystack.tools import Tool, SearchableToolset
 
     # Create a catalog of tools
@@ -40,12 +44,12 @@ class SearchableToolset(Toolset):
         Tool(name="search_web", description="Search the web", ...),
         # ... 100s more tools
     ]
-
     toolset = SearchableToolset(catalog=catalog)
-    toolset.warm_up()
 
-    agent = Agent(chat_generator=generator, tools=toolset)
-    # LLM will use search_tools("weather") to find relevant tools
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+    # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
+    result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
     ```
     """
 
@@ -146,7 +150,10 @@ class SearchableToolset(Toolset):
             num_results = k if k is not None else self._top_k
 
             if not tool_keywords.strip():
-                return "No tools found matching these keywords. Try different keywords."
+                return (
+                    "No tool keywords provided. Please provide space-separated words likely to appear in tool "
+                    "names/descriptions (e.g. 'route weather search')."
+                )
 
             if self._document_store is None:
                 raise RuntimeError("SearchableToolset has not been warmed up. Call warm_up() before using search.")
@@ -181,20 +188,21 @@ class SearchableToolset(Toolset):
         Otherwise, yields bootstrap tool + discovered tools.
         Automatically calls warm_up() if needed to ensure bootstrap tool is available.
         """
+        if not self._warmed_up:
+            self.warm_up()
         if self.is_passthrough:
             yield from self._catalog
         else:
-            if not self._warmed_up:
-                self.warm_up()
             if self._bootstrap_tool is not None:
                 yield self._bootstrap_tool
             yield from self._discovered_tools.values()
 
     def __len__(self) -> int:
         """Return the number of currently available tools."""
+        # the number of tools is computed by invoking __iter__ on the toolset
         return sum(1 for _ in self)
 
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, item: str | Tool) -> bool:
         """
         Check if a tool is available by Tool instance or tool name string.
 
@@ -261,6 +269,4 @@ class SearchableToolset(Toolset):
                 raise TypeError(f"Class '{item_class}' is not a subclass of Tool or Toolset")
             catalog.append(item_class.from_dict(item_data))
 
-        return cls(
-            catalog=catalog, top_k=inner_data.get("top_k", 3), search_threshold=inner_data.get("search_threshold", 8)
-        )
+        return cls(catalog=catalog, top_k=inner_data.get("top_k"), search_threshold=inner_data.get("search_threshold"))

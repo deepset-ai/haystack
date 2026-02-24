@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/tools]
-    modules: ["tool", "from_function", "component_tool", "pipeline_tool", "toolset"]
+    modules: ["tool", "from_function", "component_tool", "pipeline_tool", "searchable_toolset", "toolset"]
 processors:
   - type: filter
     documented_only: true

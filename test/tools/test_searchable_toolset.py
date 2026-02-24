@@ -597,9 +597,6 @@ class TestSearchableToolsetLazyToolset:
         assert any(t.name == "eager_0" for t in toolset._catalog)
 
 
-# Integration tests requiring OPENAI_API_KEY
-
-
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestSearchableToolsetAgentIntegration:
@@ -611,11 +608,19 @@ class TestSearchableToolsetAgentIntegration:
         from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.dataclasses import ChatMessage
 
-        toolset = SearchableToolset(catalog=large_catalog, top_k=2)
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, max_agent_steps=5)
-        result = agent.run(messages=[ChatMessage.from_user("Please add 15 and 27 together")])
+        toolset = SearchableToolset(catalog=large_catalog, top_k=2, search_threshold=3)
+        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=5)
 
+        assert len(agent.tools) == 1
+        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+
+        assert len(agent.tools) > 1
         assert "messages" in result
-        assert len(result["messages"]) > 1
-        full_conversation = " ".join(msg.text for msg in result["messages"] if msg.text)
-        assert "42" in full_conversation
+        messages = result["messages"]
+        assert len(messages) > 1
+
+        tool_calls = [tool_call for msg in messages if msg.tool_calls for tool_call in msg.tool_calls]
+        assert len(tool_calls) > 1
+        assert any(tool_call.tool_name == "search_tools" for tool_call in tool_calls)
+        assert any(tool_call.tool_name == "get_weather" for tool_call in tool_calls)
+        assert "22" in messages[-1].text
