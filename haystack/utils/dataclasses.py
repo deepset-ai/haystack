@@ -37,9 +37,10 @@ def _warn_on_inplace_mutation(cls: type) -> type:
             # We raise a warning if the attribute is a dataclass field and a dictionary key.
             warnings.warn(
                 f"Mutating attribute '{name}' on an instance of "
-                f"'{type(self).__name__}' is deprecated. "
+                f"'{type(self).__name__}' can lead to unexpected behavior by affecting other parts of the pipeline "
+                "that use the same dataclass instance. "
                 f"Use `dataclasses.replace(instance, {name}=new_value)` instead. "
-                "In-place modification of dataclass instances will be removed in a future version.",
+                "See https://docs.haystack.deepset.ai/docs/custom-components#requirements for details.",
                 Warning,
                 stacklevel=2,
             )
