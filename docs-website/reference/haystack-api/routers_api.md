@@ -508,6 +508,10 @@ Categorize files or byte streams according to their MIME types.
   Two extra keys may be returned: `"unclassified"` when a source's MIME type doesn't match any pattern
   and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
 
+**Raises:**
+
+- <code>TypeError</code> – If a source is not a Path, str, or ByteStream.
+
 ## llm_messages_router
 
 ### LLMMessagesRouter

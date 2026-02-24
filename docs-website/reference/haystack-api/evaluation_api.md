@@ -100,3 +100,9 @@ Generates a report with detailed scores for each metric from two evaluation runs
 
 - <code>Union\[str, DataFrame, None\]</code> – JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
   a message confirming the successful write or an error message.
+
+**Raises:**
+
+- <code>TypeError</code> – If `other` is not an EvaluationRunResult instance, or if the detailed reports are not
+  dictionaries.
+- <code>ValueError</code> – If the `other` parameter is missing required attributes.
