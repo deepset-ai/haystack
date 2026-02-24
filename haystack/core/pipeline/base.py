@@ -1304,7 +1304,7 @@ class PipelineBase:  # noqa: PLW1641
         # 1. Go through all components in priority queue (should all be blocked at this point)
         comps_in_queue: list[str] = [comp_name for _, _, comp_name in priority_queue._queue]
 
-        # 2. Check which components have non-empty inputs.
+        # 2. Check which components have entries in inputs.
         comps_with_inputs = []
         for comp_name in comps_in_queue:
             # If component has non-empty inputs and is blocked it means that the component is waiting for more inputs
