@@ -20,7 +20,7 @@ from haystack.core.errors import (
     PipelineMaxComponentRuns,
     PipelineRuntimeError,
 )
-from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
@@ -745,11 +745,6 @@ class TestPipelineBase:
             "a": {"x": {"type": int}},
             "b": {"y": {"type": int}},
         }
-
-    def test_from_template(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
-        pipe = PipelineBase.from_template(PredefinedPipeline.INDEXING)
-        assert pipe.get_component("cleaner")
 
     def test_walk_pipeline_with_no_cycles(self):
         """

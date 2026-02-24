@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
-from typing import Any, get_args, get_origin
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -190,30 +191,13 @@ class ComponentTool(Tool):
             :param kwargs: The keyword arguments to invoke the component with.
             :returns: The result of the component invocation.
             """
-            converted_kwargs = {}
             input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
-            for param_name, param_value in kwargs.items():
-                param_type = input_sockets[param_name].type
-
-                # Check if the type (or list element type) has from_dict
-                target_type = get_args(param_type)[0] if get_origin(param_type) is list else param_type
-                if hasattr(target_type, "from_dict"):
-                    if isinstance(param_value, list):
-                        resolved_param_value = [
-                            target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value
-                        ]
-                    elif isinstance(param_value, dict):
-                        resolved_param_value = target_type.from_dict(param_value)
-                    else:
-                        resolved_param_value = param_value
-                else:
-                    # Let TypeAdapter handle both single values and lists
-                    type_adapter = TypeAdapter(param_type)
-                    resolved_param_value = type_adapter.validate_python(param_value)
-
-                converted_kwargs[param_name] = resolved_param_value
+            converted_kwargs = {
+                param_name: self._convert_param(param_value, input_sockets[param_name].type)
+                for param_name, param_value in kwargs.items()
+            }
             logger.debug(
-                "Invoking component {type(component)} with kwargs: {converted_kwargs}",
+                "Invoking component {component_type} with kwargs: {converted_kwargs}",
                 component_type=type(component),
                 converted_kwargs=converted_kwargs,
             )
@@ -366,3 +350,44 @@ class ComponentTool(Tool):
         _remove_title_from_schema(parameters_schema)
 
         return parameters_schema
+
+    def _unwrap_optional(self, _type: type) -> type:
+        """
+        Unwrap Optional types to get the underlying type and whether it was originally optional.
+
+        :returns:
+            The underlying type if `t` is `Optional[X]`, otherwise returns `t` unchanged.
+        """
+        if get_origin(_type) is Union or get_origin(_type) is UnionType:
+            non_none = [a for a in get_args(_type) if a is not NoneType]
+            if len(non_none) == 1:
+                return non_none[0]
+        return _type
+
+    def _convert_param(self, param_value: Any, param_type: type) -> Any:
+        """
+        Converts a single parameter value to the expected type.
+
+        :param param_value: The value to convert.
+        :param param_type: The expected type of the parameter.
+
+        :returns:
+            The converted parameter value.
+        """
+        # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
+        unwrapped_param_type = self._unwrap_optional(param_type)
+
+        # We support calling from_dict on target types that have it, even if they are wrapped in a list.
+        # This allows us to support lists of dataclasses as well as single dataclass inputs.
+        target_type = (
+            get_args(unwrapped_param_type)[0] if get_origin(unwrapped_param_type) is list else unwrapped_param_type
+        )
+        if hasattr(target_type, "from_dict"):
+            if isinstance(param_value, list):
+                return [target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value]
+            if isinstance(param_value, dict):
+                return target_type.from_dict(param_value)
+            return param_value
+
+        # Use the original type for pydantic validation
+        return TypeAdapter(param_type).validate_python(param_value)
