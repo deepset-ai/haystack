@@ -5,15 +5,16 @@
 import io
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from haystack import Document, component, logging
+from haystack import Document, component, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install python-pptx'") as pptx_import:
     from pptx import Presentation
+    from pptx.text.text import _Paragraph
 
 
 logger = logging.getLogger(__name__)
@@ -36,16 +37,33 @@ class PPTXToDocument:
     ```
     """
 
-    def __init__(self, store_full_path: bool = False):
+    def __init__(self, store_full_path: bool = False, link_format: Literal["markdown", "plain", "none"] = "none"):
         """
-        Create an PPTXToDocument component.
+        Create a PPTXToDocument component.
 
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param link_format: The format for link output. Possible options:
+            - `"markdown"`: `[text](url)`
+            - `"plain"`: `text (url)`
+            - `"none"`: Only the text is extracted, link addresses are ignored.
         """
         pptx_import.check()
+        if link_format not in ("markdown", "plain", "none"):
+            msg = f"Unknown link format '{link_format}'. Supported formats are: 'markdown', 'plain', 'none'"
+            raise ValueError(msg)
+        self.link_format = link_format
         self.store_full_path = store_full_path
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, link_format=self.link_format, store_full_path=self.store_full_path)
 
     def _convert(self, file_content: io.BytesIO) -> str:
         """
@@ -56,11 +74,35 @@ class PPTXToDocument:
         for slide in pptx_presentation.slides:
             text_on_slide = []
             for shape in slide.shapes:
-                if hasattr(shape, "text"):
+                if shape.has_text_frame:
+                    paragraphs = []
+                    for paragraph in shape.text_frame.paragraphs:
+                        paragraphs.append(self._process_paragraph(paragraph))
+                    text_on_slide.append("\n".join(paragraphs))
+                elif hasattr(shape, "text"):
                     text_on_slide.append(shape.text)
             text_all_slides.append("\n".join(text_on_slide))
-        text = "\f".join(text_all_slides)
-        return text
+        return "\f".join(text_all_slides)
+
+    def _process_paragraph(self, paragraph: "_Paragraph") -> str:
+        """
+        Processes a paragraph and formats hyperlinks according to the specified link format.
+
+        :param paragraph: The PPTX paragraph to process.
+        :returns: A string with links formatted according to the specified format.
+        """
+        if self.link_format == "none":
+            return paragraph.text
+        parts = []
+        for run in paragraph.runs:
+            if run.hyperlink and run.hyperlink.address:
+                if self.link_format == "markdown":
+                    parts.append(f"[{run.text}]({run.hyperlink.address})")
+                else:
+                    parts.append(f"{run.text} ({run.hyperlink.address})")
+            else:
+                parts.append(run.text)
+        return "".join(parts)
 
     @component.output_types(documents=list[Document])
     def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
@@ -84,7 +126,7 @@ class PPTXToDocument:
         documents = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

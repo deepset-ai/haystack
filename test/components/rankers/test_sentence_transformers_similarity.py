@@ -413,7 +413,7 @@ class TestSentenceTransformersSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run(self):
+    def test_run(self, del_hf_env_vars):
         ranker = SentenceTransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
 
         query = "City in Bosnia and Herzegovina"
@@ -438,7 +438,7 @@ class TestSentenceTransformersSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_top_k(self):
+    def test_run_top_k(self, del_hf_env_vars):
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2
         )
@@ -462,7 +462,7 @@ class TestSentenceTransformersSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_single_document(self):
+    def test_run_single_document(self, del_hf_env_vars):
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None
         )

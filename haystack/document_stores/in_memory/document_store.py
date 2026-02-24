@@ -8,10 +8,11 @@ import math
 import re
 import uuid
 from collections import Counter
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -55,12 +56,12 @@ _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
 _FREQ_VOCAB_FOR_IDF_STORAGES: dict[str, Counter] = {}
 
 
-class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
+class InMemoryDocumentStore:
     """
     Stores data in-memory. It's ephemeral and cannot be saved to disk.
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
@@ -230,7 +231,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             doc_len = doc_stats.doc_len
 
             score = 0.0
-            for tok in idf.keys():  # pylint: disable=consider-using-dict-items
+            for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
@@ -338,7 +339,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             doc_len = doc_stats.doc_len
 
             score = 0.0
-            for tok in idf.keys():  # pylint: disable=consider-using-dict-items
+            for tok in idf.keys():
                 score += idf[tok] * _compute_tf(tok, freq, doc_len)
             ret.append((doc, score))
 
@@ -394,10 +395,10 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         """
         if Path(path).exists():
             try:
-                with open(path, "r") as f:
+                with open(path) as f:
                     data = json.load(f)
             except Exception as e:
-                raise Exception(f"Error loading InMemoryDocumentStore from disk. error: {e}")
+                raise DocumentStoreError(f"Error loading InMemoryDocumentStore from disk. error: {e}") from e
 
             documents = data.pop("documents")
             cls_object = default_from_dict(cls, data)
@@ -406,8 +407,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             )
             return cls_object
 
-        else:
-            raise FileNotFoundError(f"File {path} not found.")
+        raise FileNotFoundError(f"File {path} not found.")
 
     def count_documents(self) -> int:
         """
@@ -526,7 +526,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             For filter syntax, see filter_documents.
         :param meta: The metadata fields to update. These will be merged with existing metadata.
         :returns: The number of documents updated.
-        :raises: ValueError if filters have invalid syntax.
+        :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
@@ -542,7 +542,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
         :param filters: The filters to apply to select documents for deletion.
             For filter syntax, see filter_documents.
         :returns: The number of documents deleted.
-        :raises: ValueError if filters have invalid syntax.
+        :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
         matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
@@ -608,7 +608,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
 
         return return_documents
 
-    def embedding_retrieval(  # pylint: disable=too-many-positional-arguments
+    def embedding_retrieval(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,
@@ -627,7 +627,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             If not provided, the value of the `return_embedding` parameter set at component
             initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
-        :raises: ValueError if filters have invalid syntax.
+        :raises ValueError: if filters have invalid syntax.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
@@ -647,7 +647,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
                 "To generate embeddings, use a DocumentEmbedder."
             )
             return []
-        elif len(documents_with_embeddings) < len(all_documents):
+        if len(documents_with_embeddings) < len(all_documents):
             logger.info(
                 "Skipping some Documents that don't have an embedding. To generate embeddings, use a DocumentEmbedder."
             )
@@ -660,7 +660,9 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
 
         # create Documents with the similarity score for the top k results
         top_documents = []
-        for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
+        for doc, score in sorted(zip(documents_with_embeddings, scores, strict=True), key=lambda x: x[1], reverse=True)[
+            :top_k
+        ]:
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
             if resolved_return_embedding is False:
@@ -779,7 +781,7 @@ class InMemoryDocumentStore:  # pylint: disable=too-many-public-methods
             lambda: self.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score),
         )
 
-    async def embedding_retrieval_async(  # pylint: disable=too-many-positional-arguments
+    async def embedding_retrieval_async(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,

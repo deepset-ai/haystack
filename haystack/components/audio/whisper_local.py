@@ -45,7 +45,6 @@ class LocalWhisperTranscriber:
     from haystack.components.audio import LocalWhisperTranscriber
 
     whisper = LocalWhisperTranscriber(model="small")
-    whisper.warm_up()
     transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
     ```
     """
@@ -160,11 +159,10 @@ class LocalWhisperTranscriber:
         potential_path = source.meta.get("file_path")
         if potential_path is not None:
             return Path(potential_path)
-        else:
-            with tempfile.NamedTemporaryFile(delete=False) as fp:
-                path = Path(fp.name)
-                source.to_file(path)
-            return path
+        with tempfile.NamedTemporaryFile(delete=False) as fp:
+            path = Path(fp.name)
+            source.to_file(path)
+        return path
 
     def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> dict[Path, Any]:
         """

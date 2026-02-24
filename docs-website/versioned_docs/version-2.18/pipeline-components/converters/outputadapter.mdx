@@ -33,10 +33,7 @@ The `OutputAdapter` requires all template variables to be present before running
 ```python
 from haystack.components.converters import OutputAdapter
 
-adapter = OutputAdapter(
-    template="Hello {{name}}!",
-    output_type=str
-)
+adapter = OutputAdapter(template="Hello {{name}}!", output_type=str)
 ```
 
 ### Unsafe behavior
@@ -73,16 +70,21 @@ The example below demonstrates a straightforward pipeline that uses the `OutputA
 from haystack import Pipeline, component, Document
 from haystack.components.converters import OutputAdapter
 
+
 @component
 class DocumentProducer:
     @component.output_types(documents=dict)
     def run(self):
         return {"documents": [Document(content="haystack")]}
 
+
 pipe = Pipeline()
 pipe.add_component(
     name="output_adapter",
-    instance=OutputAdapter(template="{{ documents[0].content | capitalize}}", output_type=str),
+    instance=OutputAdapter(
+        template="{{ documents[0].content | capitalize}}",
+        output_type=str,
+    ),
 )
 pipe.add_component(name="document_producer", instance=DocumentProducer())
 pipe.connect("document_producer", "output_adapter")
@@ -98,8 +100,10 @@ You can also define your own custom filters, which can then be added to an `Outp
 from haystack import Pipeline, component, Document
 from haystack.components.converters import OutputAdapter
 
+
 def reverse_string(s):
     return s[::-1]
+
 
 @component
 class DocumentProducer:
@@ -107,12 +111,16 @@ class DocumentProducer:
     def run(self):
         return {"documents": [Document(content="haystack")]}
 
+
 pipe = Pipeline()
 pipe.add_component(
     name="output_adapter",
-    instance=OutputAdapter(template="{{ documents[0].content | reverse_string}}",
-                           output_type=str,
-                           custom_filters={"reverse_string": reverse_string}))
+    instance=OutputAdapter(
+        template="{{ documents[0].content | reverse_string}}",
+        output_type=str,
+        custom_filters={"reverse_string": reverse_string},
+    ),
+)
 
 pipe.add_component(name="document_producer", instance=DocumentProducer())
 pipe.connect("document_producer", "output_adapter")

@@ -223,7 +223,6 @@ class TestSimilarityRanker:
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
         embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -255,7 +254,6 @@ class TestSimilarityRanker:
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
         embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -321,9 +319,7 @@ class TestSimilarityRanker:
 
     @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")
     @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
-    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
 
         class MockedModel:
@@ -366,12 +362,12 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run(self):
+    def test_run(self, del_hf_env_vars):
         """
         Test if the component ranks documents correctly.
         """
+
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -392,12 +388,11 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_top_k(self):
+    def test_run_top_k(self, del_hf_env_vars):
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2)
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -415,12 +410,11 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_single_document(self):
+    def test_run_single_document(self, del_hf_env_vars):
         """
         Test if the component runs with a single document.
         """
         ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None)
-        ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]

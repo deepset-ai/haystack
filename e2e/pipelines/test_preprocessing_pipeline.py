@@ -12,10 +12,7 @@ from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
-def test_preprocessing_pipeline(tmp_path, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+def test_preprocessing_pipeline(tmp_path, del_hf_env_vars):
     # Create the pipeline and its components
     document_store = InMemoryDocumentStore()
     preprocessing_pipeline = Pipeline()

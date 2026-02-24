@@ -37,7 +37,6 @@ class SentenceTransformersDocumentImageEmbedder:
     from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
 
     embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
-    embedder.warm_up()
 
     documents = [
         Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
@@ -278,7 +277,7 @@ class SentenceTransformersDocumentImageEmbedder:
         )
 
         docs_with_embeddings = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             # we store this information for later inspection
             new_meta = {
                 **doc.meta,

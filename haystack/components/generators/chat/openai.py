@@ -94,7 +94,7 @@ class OpenAIChatGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
@@ -497,7 +497,7 @@ class OpenAIChatGenerator:
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        for chunk in chat_completion:  # pylint: disable=not-an-iterable
+        for chunk in chat_completion:
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
             chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=chunk, previous_chunks=chunks, component_info=component_info
@@ -512,7 +512,7 @@ class OpenAIChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
         try:
-            async for chunk in chat_completion:  # pylint: disable=not-an-iterable
+            async for chunk in chat_completion:
                 assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
                 chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
                     chunk=chunk, previous_chunks=chunks, component_info=component_info
@@ -588,9 +588,7 @@ def _convert_chat_completion_to_chat_message(
     if logprobs:
         meta["logprobs"] = logprobs
 
-    chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
-
-    return chat_message
+    return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
 
 def _convert_chat_completion_chunk_to_streaming_chunk(
@@ -645,7 +643,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     arguments=function.arguments if function and function.arguments else None,
                 )
             )
-        chunk_message = StreamingChunk(
+        return StreamingChunk(
             content=choice.delta.content or "",
             component_info=component_info,
             # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
@@ -662,7 +660,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 "usage": _serialize_object(chunk.usage),
             },
         )
-        return chunk_message
 
     # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
     # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
@@ -695,7 +692,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if choice.delta and choice.delta.content:
         content = choice.delta.content
 
-    chunk_message = StreamingChunk(
+    return StreamingChunk(
         content=content,
         component_info=component_info,
         index=resolved_index,
@@ -705,4 +702,3 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
         meta=meta,
     )
-    return chunk_message

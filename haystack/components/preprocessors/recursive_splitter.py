@@ -43,7 +43,6 @@ class RecursiveDocumentSplitter:
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
     AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
-    chunker.warm_up()
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
     print(doc_chunks["documents"])
@@ -136,17 +135,17 @@ class RecursiveDocumentSplitter:
             current_chunk = " ".join(words[: self.split_length])
             remaining_words = words[self.split_length :]
             return current_chunk, " ".join(remaining_words)
-        elif self.split_units == "char":
+        if self.split_units == "char":
             text = current_chunk
             current_chunk = text[: self.split_length]
             remaining_chars = text[self.split_length :]
             return current_chunk, remaining_chars
-        else:  # token
-            # at this point we know that the tokenizer is already initialized
-            tokens = self.tiktoken_tokenizer.encode(current_chunk)  # type: ignore
-            current_tokens = tokens[: self.split_length]
-            remaining_tokens = tokens[self.split_length :]
-            return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
+
+        # at this point we know that the tokenizer is already initialized
+        tokens = self.tiktoken_tokenizer.encode(current_chunk)  # type: ignore
+        current_tokens = tokens[: self.split_length]
+        remaining_tokens = tokens[self.split_length :]
+        return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
 
     def _apply_overlap(self, chunks: list[str]) -> list[str]:
         """
@@ -267,11 +266,11 @@ class RecursiveDocumentSplitter:
         if self.split_units == "word":
             words = [word for word in text.split(" ") if word]
             return len(words)
-        elif self.split_units == "char":
+        if self.split_units == "char":
             return len(text)
-        else:  # token
-            # at this point we know that the tokenizer is already initialized
-            return len(self.tiktoken_tokenizer.encode(text))  # type: ignore
+        # token
+        # at this point we know that the tokenizer is already initialized
+        return len(self.tiktoken_tokenizer.encode(text))  # type: ignore
 
     def _chunk_text(self, text: str) -> list[str]:
         """

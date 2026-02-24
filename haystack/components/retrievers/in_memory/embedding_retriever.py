@@ -32,7 +32,6 @@ class InMemoryEmbeddingRetriever:
         Document(content="python ist eine beliebte Programmiersprache"),
     ]
     doc_embedder = SentenceTransformersDocumentEmbedder()
-    doc_embedder.warm_up()
     docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
     doc_store = InMemoryDocumentStore()
@@ -41,7 +40,6 @@ class InMemoryEmbeddingRetriever:
 
     query="Programmiersprache"
     text_embedder = SentenceTransformersTextEmbedder()
-    text_embedder.warm_up()
     query_embedding = text_embedder.run(query)["embedding"]
 
     result = retriever.run(query_embedding=query_embedding)
@@ -50,7 +48,7 @@ class InMemoryEmbeddingRetriever:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         document_store: InMemoryDocumentStore,
         filters: dict[str, Any] | None = None,
@@ -83,7 +81,7 @@ class InMemoryEmbeddingRetriever:
             If the specified top_k is not > 0.
         """
         if not isinstance(document_store, InMemoryDocumentStore):
-            raise ValueError("document_store must be an instance of InMemoryDocumentStore")
+            raise TypeError("document_store must be an instance of InMemoryDocumentStore")
 
         self.document_store = document_store
 
@@ -135,7 +133,7 @@ class InMemoryEmbeddingRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,
@@ -186,7 +184,7 @@ class InMemoryEmbeddingRetriever:
         return {"documents": docs}
 
     @component.output_types(documents=list[Document])
-    async def run_async(  # pylint: disable=too-many-positional-arguments
+    async def run_async(
         self,
         query_embedding: list[float],
         filters: dict[str, Any] | None = None,

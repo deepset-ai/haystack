@@ -59,8 +59,9 @@ from haystack_integrations.components.embedders.optimum import OptimumDocumentEm
 
 doc = Document(content="I love pizza!")
 
-document_embedder = OptimumDocumentEmbedder(model="sentence-transformers/all-mpnet-base-v2")
-document_embedder.warm_up()
+document_embedder = OptimumDocumentEmbedder(
+    model="sentence-transformers/all-mpnet-base-v2",
+)
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)

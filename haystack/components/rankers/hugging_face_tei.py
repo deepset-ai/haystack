@@ -148,7 +148,7 @@ class HuggingFaceTEIRanker:
             # Expected list or dict, but encountered an unknown response format.
             error_msg = f"Expected a list of score dictionaries, but got `{type(result).__name__}`. "
             error_msg += f"Response content: {result}"
-            raise RuntimeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
+            raise TypeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
 
         # Determine number of docs to return
         final_k = min(top_k or self.top_k, len(result))

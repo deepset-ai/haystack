@@ -6,9 +6,12 @@ import asyncio
 import json
 import re
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Literal, Union
+from typing import Any, Literal, Union
+
+from packaging.version import Version
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
@@ -29,13 +32,12 @@ from haystack.utils import ComponentDevice, Secret, deserialize_callable, serial
 logger = logging.getLogger(__name__)
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_and_transformers_import:
+    import transformers
     from huggingface_hub import model_info
     from transformers import Pipeline as HfPipeline
-    from transformers import StoppingCriteriaList, pipeline
-    from transformers.tokenization_utils import PreTrainedTokenizer
-    from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+    from haystack.utils.hf import (
         AsyncHFTokenStreamingHandler,
         HFTokenStreamingHandler,
         StopWordsCriteria,
@@ -99,7 +101,6 @@ class HuggingFaceLocalChatGenerator:
     from haystack.dataclasses import ChatMessage
 
     generator = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B")
-    generator.warm_up()
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
     ```
@@ -121,7 +122,7 @@ class HuggingFaceLocalChatGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str = "Qwen/Qwen3-0.6B",
         task: Literal["text-generation", "text2text-generation"] | None = None,
@@ -148,7 +149,8 @@ class HuggingFaceLocalChatGenerator:
             If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
         :param task: The task for the Hugging Face pipeline. Possible options:
             - `text-generation`: Supported by decoder models, like GPT.
-            - `text2text-generation`: Supported by encoder-decoder models, like T5.
+            - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
+              Previously supported by encoder–decoder models such as T5.
             If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
             If not specified, the component calls the Hugging Face API to infer the task from the model name.
         :param device: The device for loading the model. If `None`, automatically selects the default device.
@@ -219,6 +221,8 @@ class HuggingFaceLocalChatGenerator:
             raise ValueError(
                 f"Task '{task}' is not supported. The supported tasks are: {', '.join(PIPELINE_SUPPORTED_TASKS)}."
             )
+        if task == "text2text-generation" and Version(transformers.__version__) >= Version("5.0.0"):
+            raise ValueError("Task 'text2text-generation' is not supported with transformers v5 or higher.")
         huggingface_pipeline_kwargs["task"] = task
 
         # if not specified, set return_full_text to False for text-generation
@@ -389,7 +393,7 @@ class HuggingFaceLocalChatGenerator:
 
         return {"replies": chat_messages}
 
-    def create_message(  # pylint: disable=too-many-positional-arguments
+    def create_message(
         self,
         text: str,
         index: int,
@@ -647,7 +651,7 @@ class HuggingFaceLocalChatGenerator:
             for stop_word in stop_words:
                 replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
-        chat_messages = [
+        return [
             self.create_message(
                 text=reply,
                 index=r_index,
@@ -658,4 +662,3 @@ class HuggingFaceLocalChatGenerator:
             )
             for r_index, reply in enumerate(replies)
         ]
-        return chat_messages

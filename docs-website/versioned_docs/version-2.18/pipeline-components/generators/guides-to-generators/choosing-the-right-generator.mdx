@@ -66,6 +66,7 @@ Handle the three chunk types in this order: tool calls, tool result, and text.
 ```python
 from haystack.dataclasses import StreamingChunk
 
+
 def my_stream(chunk: StreamingChunk):
     if chunk.start:
         on_start()  # e.g., open an SSE stream
@@ -132,9 +133,11 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 
-generator = OpenAIChatGenerator(api_key=Secret.from_env_var("ENVVAR_WITH_API_KEY"),
-		api_base_url="https://text.octoai.run/v1",
-		model="mixtral-8x7b-instruct-fp16")
+generator = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("ENVVAR_WITH_API_KEY"),
+    api_base_url="https://text.octoai.run/v1",
+    model="mixtral-8x7b-instruct-fp16",
+)
 
 generator.run(messages=[ChatMessage.from_user("What is the best French cheese?")])
 ```

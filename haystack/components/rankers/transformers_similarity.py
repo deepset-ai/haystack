@@ -7,12 +7,12 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret
+from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
+    import accelerate  # noqa: F401 # the library is used but not directly referenced
     import torch
     from torch.utils.data import DataLoader, Dataset
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -42,14 +42,13 @@ class TransformersSimilarityRanker:
     ranker = TransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
-    ranker.warm_up()
     result = ranker.run(query=query, documents=docs)
     docs = result["documents"]
     print(docs[0].content)
     ```
     """
 
-    def __init__(  # noqa: PLR0913, pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: ComponentDevice | None = None,
@@ -123,7 +122,7 @@ class TransformersSimilarityRanker:
         self.model = None
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
-        self.tokenizer = None
+        self.tokenizer: Any = None
         self.device: ComponentDevice | None = None
         self.top_k = top_k
         self.token = token
@@ -166,10 +165,13 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
-            # mypy doesn't know this is set right above
-            self.device = ComponentDevice.from_multiple(
-                device_map=DeviceMap.from_hf(self.model.hf_device_map)  # type: ignore[attr-defined]
-            )
+            assert self.model is not None  # mypy doesn't know this is set in the line above
+            # hf_device_map appears to only be set now when mixed devices are actually used.
+            # So if it's missing then we can use the device attribute which is set even for single-device models.
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
+            else:
+                self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -216,7 +218,7 @@ class TransformersSimilarityRanker:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         documents: list[Document],
@@ -293,9 +295,7 @@ class TransformersSimilarityRanker:
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
         # mypy doesn't know this is set in warm_up
-        batch_enc = self.tokenizer(  # type: ignore[misc]
-            query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
-        ).to(
+        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
             self.device.first_device.to_torch()  # type: ignore[union-attr]
         )
         dataset = _Dataset(batch_enc)

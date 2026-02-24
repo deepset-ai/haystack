@@ -1,0 +1,48 @@
+---
+features:
+  - |
+    Added ``user_prompt`` and ``required_variables`` parameters to the ``Agent`` component.
+    You can now define a reusable Jinja2-templated user prompt at initialization or at
+    runtime, so the Agent can be invoked with different inputs without manually
+    constructing ``ChatMessage`` objects each time.
+
+    Example usage:
+    .. code:: python
+      agent = Agent(
+          chat_generator=OpenAIChatGenerator(),
+          tools=tools,
+          system_prompt="You are a helpful translation assistant.",
+          user_prompt="""{% message role="user"%}
+          Translate the following document to {{ language }}: {{ document }}
+          {% endmessage %}""",
+          required_variables=["language", "document"],
+      )
+
+      result = agent.run(language="French", document="The weather is lovely today.")
+
+    You can also combine ``messages`` with ``user_prompt``. The rendered user prompt
+    is appended to the provided messages, which is useful for passing prior conversation
+    context alongside a new templated query:
+    .. code:: python
+      from haystack.dataclasses import ChatMessage
+
+      agent = Agent(
+          chat_generator=OpenAIChatGenerator(),
+          tools=tools,
+          system_prompt="You are a helpful translation assistant.",
+          user_prompt="""{% message role="user"%}
+          Now summarize the conversation in {{ language }}.
+          {% endmessage %}""",
+          required_variables=["language"],
+      )
+
+      result = agent.run(
+          messages=[
+              ChatMessage.from_user("What are the main benefits of renewable energy?"),
+              ChatMessage.from_assistant(
+                  "Renewable energy reduces greenhouse gas emissions, decreases dependence "
+                  "on fossil fuels, and can lower long-term energy costs."
+              ),
+          ],
+          language="Spanish",
+      )

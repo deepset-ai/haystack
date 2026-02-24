@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Callable
+from typing import Any
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
@@ -95,7 +96,7 @@ class Tool:
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
 
-    def __post_init__(self):  # noqa: C901, PLR0912  # pylint: disable=too-many-branches
+    def __post_init__(self):  # noqa: C901, PLR0912
         # Check that the function is not a coroutine (async function)
         if inspect.iscoroutinefunction(self.function):
             raise ValueError(
@@ -114,7 +115,7 @@ class Tool:
         if self.outputs_to_state is not None:
             for key, config in self.outputs_to_state.items():
                 if not isinstance(config, dict):
-                    raise ValueError(f"outputs_to_state configuration for key '{key}' must be a dictionary")
+                    raise TypeError(f"outputs_to_state configuration for key '{key}' must be a dictionary")
                 if "source" in config and not isinstance(config["source"], str):
                     raise ValueError(f"outputs_to_state source for key '{key}' must be a string.")
                 if "handler" in config and not callable(config["handler"]):
@@ -156,7 +157,7 @@ class Tool:
                 # Multiple outputs configuration
                 for key, config in self.outputs_to_string.items():
                     if not isinstance(config, dict):
-                        raise ValueError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
+                        raise TypeError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
                     if "raw_result" in config:
                         raise ValueError(
                             f"Invalid outputs_to_string configuration for key '{key}': "
@@ -177,7 +178,7 @@ class Tool:
             valid_inputs = self._get_valid_inputs()
             for state_key, param_name in self.inputs_from_state.items():
                 if not isinstance(param_name, str):
-                    raise ValueError(
+                    raise TypeError(
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )

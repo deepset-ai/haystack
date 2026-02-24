@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Mapping
+from typing import Any
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -78,7 +79,7 @@ class Pipeline(PipelineBase):
             logger.info("Running component {component_name}", component_name=component_name)
 
             try:
-                component_output = instance.run(**inputs)
+                component_output = instance.run(**_deepcopy_with_exceptions(inputs))
             except BreakpointException as error:
                 # Re-raise BreakpointException to preserve the original exception context
                 # This is important when Agent components internally use Pipeline._run_component
@@ -106,7 +107,7 @@ class Pipeline(PipelineBase):
 
             return component_output
 
-    def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
+    def run(  # noqa: PLR0915, PLR0912, C901
         self,
         data: dict[str, Any],
         include_outputs_from: set[str] | None = None,

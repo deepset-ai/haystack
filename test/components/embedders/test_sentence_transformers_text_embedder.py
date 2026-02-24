@@ -268,9 +268,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_run(self):
         embedder = SentenceTransformersTextEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
-        ]
+        embedder.embedding_backend.embed = lambda x, **_: [[random.random() for _ in range(16)] for _ in range(len(x))]
 
         text = "a nice text to embed"
 
@@ -390,13 +388,11 @@ class TestSentenceTransformersTextEmbedder:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_trunc(self, monkeypatch):
+    def test_run_trunc(self, del_hf_env_vars):
         """
         sentence-transformers-testing/stsb-bert-tiny-safetensors maps sentences & paragraphs to a 128 dimensional dense
         vector space
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
         text = "a nice text to embed"
 
@@ -409,19 +405,15 @@ class TestSentenceTransformersTextEmbedder:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_quantization(self, monkeypatch):
+    def test_run_quantization(self, del_hf_env_vars):
         """
         sentence-transformers-testing/stsb-bert-tiny-safetensors maps sentences & paragraphs to a 128 dimensional dense
         vector space
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
         checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
         text = "a nice text to embed"
 
         embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
-        embedder_def.warm_up()
         result_def = embedder_def.run(text=text)
         embedding_def = result_def["embedding"]
 

@@ -83,7 +83,6 @@ class TestSentenceTransformersSparseTextEmbedder:
             model_kwargs={"torch_dtype": torch.float32},
             tokenizer_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": False},
-            encode_kwargs={"task": "clustering"},
         )
         data = component.to_dict()
         assert data == {
@@ -324,9 +323,7 @@ class TestSentenceTransformersSparseTextEmbedder:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_sparse_text_embedder(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_live_run_sparse_text_embedder(self, del_hf_env_vars):
 
         text = "I love Nine Inch Nails"
         embedder = SentenceTransformersSparseTextEmbedder(

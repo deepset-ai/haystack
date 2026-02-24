@@ -54,7 +54,6 @@ class EmbeddingBasedDocumentSplitter:
         min_length=50,              # Merge splits shorter than 50 characters
         max_length=1000             # Further split chunks longer than 1000 characters
     )
-    splitter.warm_up()
     result = splitter.run(documents=[doc])
 
     # The result contains a list of Document objects, each representing a semantic chunk
@@ -144,15 +143,12 @@ class EmbeddingBasedDocumentSplitter:
                 - A metadata field `page_number` to track the original page number.
                 - All other metadata copied from the original document.
 
-        :raises:
-            - `RuntimeError`: If the component wasn't warmed up.
-            - `TypeError`: If the input is not a list of Documents.
-            - `ValueError`: If the document content is None or empty.
+        :raises RuntimeError: If the component wasn't warmed up.
+        :raises TypeError: If the input is not a list of Documents.
+        :raises ValueError: If the document content is None or empty.
         """
         if not self._is_warmed_up:
-            raise RuntimeError(
-                "The component EmbeddingBasedDocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
@@ -213,9 +209,7 @@ class EmbeddingBasedDocumentSplitter:
         sentence_groups = self._group_sentences(sentences=sentences)
         embeddings = self._calculate_embeddings(sentence_groups=sentence_groups)
         split_points = self._find_split_points(embeddings=embeddings)
-        sub_splits = self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
-
-        return sub_splits
+        return self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
 
     def _group_sentences(self, sentences: list[str]) -> list[str]:
         """
@@ -239,8 +233,7 @@ class EmbeddingBasedDocumentSplitter:
         group_docs = [Document(content=group) for group in sentence_groups]
         result = self.document_embedder.run(group_docs)
         embedded_docs = result["documents"]
-        embeddings = [doc.embedding for doc in embedded_docs]
-        return embeddings
+        return [doc.embedding for doc in embedded_docs]
 
     def _find_split_points(self, embeddings: list[list[float]]) -> list[int]:
         """
@@ -361,8 +354,10 @@ class EmbeddingBasedDocumentSplitter:
                 # Stop splitting if no further split is possible or continue with recursion
                 if len(sub_splits) == 1:
                     logger.warning(
-                        f"Could not split a chunk further below max_length={self.max_length}. "
-                        f"Returning chunk of length {len(split)}."
+                        "Could not split a chunk further below max_length={max_length}. "
+                        "Returning chunk of length {length}.",
+                        max_length=self.max_length,
+                        length=len(split),
                     )
                     final_splits.append(split)
                 else:

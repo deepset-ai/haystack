@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from haystack.lazy_imports import LazyImport
 from haystack.tracing import Span, Tracer
@@ -49,7 +50,10 @@ class OpenTelemetryTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
+        self,
+        operation_name: str,
+        tags: dict[str, Any] | None = None,
+        parent_span: Span | None = None,  # noqa: ARG002
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         with self._tracer.start_as_current_span(operation_name) as raw_span:

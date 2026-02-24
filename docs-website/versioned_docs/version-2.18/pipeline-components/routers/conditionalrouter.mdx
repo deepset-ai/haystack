@@ -41,21 +41,18 @@ routes = [
         "condition": '{{ path == "rag" }}',
         "output": "{{ question }}",
         "output_name": "rag_route",
-        "output_type": str
+        "output_type": str,
     },
     {
         "condition": "{{ True }}",  # fallback route
         "output": "{{ question }}",
         "output_name": "default_route",
-        "output_type": str
-    }
+        "output_type": str,
+    },
 ]
 
 ## 'path' is optional, 'question' is required
-router = ConditionalRouter(
-    routes=routes,
-    optional_variables=["path"]
-)
+router = ConditionalRouter(routes=routes, optional_variables=["path"])
 ```
 
 The component only waits for the required inputs before running. If you use an optional variable in a condition but don't provide it at runtime, it’s evaluated as `None`, which generally does not raise an error but can affect the condition’s outcome.

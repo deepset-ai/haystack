@@ -60,7 +60,7 @@ def _is_containerized() -> bool | None:
     """
     This code is based on the popular 'is-docker' package for node.js
     """
-    global _IS_DOCKER_CACHE  # pylint: disable=global-statement
+    global _IS_DOCKER_CACHE
 
     if _IS_DOCKER_CACHE is None:
         _IS_DOCKER_CACHE = _in_podman() or _has_dockerenv() or _has_docker_cgroup_v1() or _has_docker_cgroup_v2()
@@ -78,7 +78,7 @@ def collect_system_specs() -> dict[str, Any]:
     These values are highly unlikely to change during the runtime of the pipeline,
     so they're collected only once.
     """
-    specs = {
+    return {
         "libraries.haystack": __version__,
         "os.containerized": _is_containerized(),
         "os.version": platform.release(),
@@ -96,4 +96,3 @@ def collect_system_specs() -> dict[str, Any]:
         "libraries.torch": False,
         "libraries.cuda": False,
     }
-    return specs

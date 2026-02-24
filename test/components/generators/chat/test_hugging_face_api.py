@@ -149,7 +149,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         assert generator.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
         assert generator.api_params == {"model": model}
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop": ["stop"]}, **{"max_tokens": 512}}
+        assert generator.generation_kwargs == {**generation_kwargs, "stop": ["stop"], "max_tokens": 512}
         assert generator.streaming_callback == streaming_callback
         assert generator.tools is None
 
@@ -175,7 +175,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         assert generator.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
         assert generator.api_params == {"model": model}
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop": ["stop"]}, **{"max_tokens": 512}}
+        assert generator.generation_kwargs == {**generation_kwargs, "stop": ["stop"], "max_tokens": 512}
         assert generator.streaming_callback == streaming_callback
         assert generator.tools == tools
 
@@ -183,7 +183,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert generator._async_client.model == model
 
     def test_init_serverless_invalid_model(self, mock_check_valid_model):
-        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id")
+        mock_check_valid_model.side_effect = RepositoryNotFoundError("Invalid model id", response=MagicMock())
         with pytest.raises(RepositoryNotFoundError):
             HuggingFaceAPIChatGenerator(
                 api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API, api_params={"model": "invalid_model_id"}
@@ -212,7 +212,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         assert generator.api_type == HFGenerationAPIType.TEXT_GENERATION_INFERENCE
         assert generator.api_params == {"url": url}
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop": ["stop"]}, **{"max_tokens": 512}}
+        assert generator.generation_kwargs == {**generation_kwargs, "stop": ["stop"], "max_tokens": 512}
         assert generator.streaming_callback == streaming_callback
         assert generator.tools is None
 
@@ -434,7 +434,7 @@ class TestHuggingFaceAPIChatGenerator:
                 created=1710498504,
             )
 
-        mock_response = Mock(**{"__iter__": mock_iter})
+        mock_response = Mock(__iter__=mock_iter)
         mock_chat_completion.return_value = mock_response
 
         # Generate text response with streaming callback
@@ -503,7 +503,7 @@ class TestHuggingFaceAPIChatGenerator:
                 created=1710498504,
             )
 
-        mock_response = Mock(**{"__iter__": mock_iter})
+        mock_response = Mock(__iter__=mock_iter)
         mock_chat_completion.return_value = mock_response
 
         # Generate text response with streaming callback
@@ -878,7 +878,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-VL-32B-Instruct", "provider": "fireworks-ai"},
+            api_params={"model": "Qwen/Qwen3-VL-8B-Instruct", "provider": "together"},
             generation_kwargs={"max_tokens": 20},
         )
 
@@ -961,7 +961,7 @@ class TestHuggingFaceAPIChatGenerator:
                 created=1710498504,
             )
 
-        mock_response = Mock(**{"__aiter__": mock_aiter})
+        mock_response = Mock(__aiter__=mock_aiter)
         mock_chat_completion_async.return_value = mock_response
 
         generator = HuggingFaceAPIChatGenerator(
@@ -1463,7 +1463,7 @@ class TestHuggingFaceAPIChatGenerator:
                     created=1710498504,
                 )
 
-            mock_response = Mock(**{"__iter__": mock_iter})
+            mock_response = Mock(__iter__=mock_iter)
             mock_chat_completion.return_value = mock_response
 
             generator = HuggingFaceAPIChatGenerator(

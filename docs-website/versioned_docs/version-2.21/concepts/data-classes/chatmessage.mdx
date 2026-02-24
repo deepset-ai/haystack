@@ -30,6 +30,7 @@ class TextContent:
 
     text: str
 
+
 @dataclass
 class ToolCall:
     """
@@ -47,6 +48,7 @@ class ToolCall:
     id: Optional[str] = None  # noqa: A003
     extra: Optional[Dict[str, Any]] = None
 
+
 @dataclass
 class ToolCallResult:
     """
@@ -60,6 +62,7 @@ class ToolCallResult:
     result: str
     origin: ToolCall
     error: bool
+
 
 @dataclass
 class ImageContent:
@@ -85,6 +88,7 @@ class ImageContent:
     meta: Dict[str, Any] = field(default_factory=dict)
     validation: bool = True
 
+
 @dataclass
 class ReasoningContent:
     """
@@ -97,7 +101,6 @@ class ReasoningContent:
 
     reasoning_text: str
     extra: Dict[str, Any] = field(default_factory=dict)
-
 ```
 
 The `ImageContent` dataclass also provides two convenience class methods: `from_file_path` and `from_url`. For more details, refer to our [API documentation](/reference/data-classes-api#imagecontent).

@@ -4,9 +4,6 @@
 
 from typing import Any, Protocol
 
-# Ellipsis are needed to define the Protocol but pylint complains. See https://github.com/pylint-dev/pylint/issues/9319.
-# pylint: disable=unnecessary-ellipsis
-
 
 class TextRetriever(Protocol):
     """

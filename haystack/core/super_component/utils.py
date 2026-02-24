@@ -125,7 +125,7 @@ def _check_non_union_compatibility(
 
     # Check if all arguments are compatible
     common_args = []
-    for t1_arg, t2_arg in zip(type1_args, type2_args):
+    for t1_arg, t2_arg in zip(type1_args, type2_args, strict=True):
         is_compat, common = _types_are_compatible(t1_arg, t2_arg)
         if not is_compat:
             return False, None

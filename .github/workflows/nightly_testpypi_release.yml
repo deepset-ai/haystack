@@ -1,0 +1,45 @@
+name: Nightly release to TestPyPI
+
+on:
+  schedule:
+    # Run at midnight UTC every day
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+env:
+  HATCH_VERSION: "1.14.2"
+
+jobs:
+  nightly-release:
+    runs-on: ubuntu-latest
+    # Always build from main for consistency (scheduled and manual runs)
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 1
+
+      # Reads VERSION.txt, strips any -rcN suffix, and appends .devYYYYMMDDHHMMSS
+      # (e.g. 2.25.0.dev20250217000000) so each run gets a unique, PEP 440–valid pre-release version.
+      - name: Set nightly version
+        id: set-version
+        run: |
+          BASE_VERSION=$(sed 's/-rc[0-9]*$//' VERSION.txt)
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          NIGHTLY_VERSION="${BASE_VERSION}.dev${TIMESTAMP}"
+          echo "version=${NIGHTLY_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "${NIGHTLY_VERSION}" > VERSION.txt
+          echo "Building haystack-ai version: ${NIGHTLY_VERSION}"
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Build Haystack
+        run: hatch build
+
+      - name: Publish to TestPyPI
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_TESTPYPI_TOKEN }}
+        run: hatch publish -r test -y

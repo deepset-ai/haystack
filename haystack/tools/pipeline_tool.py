@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name
@@ -56,7 +57,6 @@ class PipelineTool(ComponentTool):
                     "electricity supply system."
         ),
     ]
-    document_embedder.warm_up()
     docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
     document_store.write_documents(docs_with_embeddings)
 
@@ -188,7 +188,7 @@ class PipelineTool(ComponentTool):
         :raises ValueError: If the provided pipeline is not a valid Haystack Pipeline instance.
         """
         if not isinstance(pipeline, (Pipeline, AsyncPipeline)):
-            raise ValueError(
+            raise TypeError(
                 "The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
                 f" Got {type(pipeline)} instead."
             )

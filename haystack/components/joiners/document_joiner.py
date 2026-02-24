@@ -64,7 +64,6 @@ class DocumentJoiner:
     document_store = InMemoryDocumentStore()
     docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="London")]
     embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    embedder.warm_up()
     docs_embeddings = embedder.run(docs)
     document_store.write_documents(docs_embeddings['documents'])
 
@@ -186,7 +185,7 @@ class DocumentJoiner:
         documents_map = {}
         weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
 
-        for documents, weight in zip(document_lists, weights):
+        for documents, weight in zip(document_lists, weights, strict=True):
             for doc in documents:
                 scores_map[doc.id] += (doc.score if doc.score else 0) * weight
                 documents_map[doc.id] = doc
@@ -214,7 +213,7 @@ class DocumentJoiner:
         weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
 
         # Calculate weighted reciprocal rank fusion score
-        for documents, weight in zip(document_lists, weights):
+        for documents, weight in zip(document_lists, weights, strict=True):
             for rank, doc in enumerate(documents):
                 scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
                 documents_map[doc.id] = doc
@@ -256,9 +255,7 @@ class DocumentJoiner:
                 doc.score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
                 # if all docs have the same score delta_score is 0, the docs are uninformative for the query
 
-        output = DocumentJoiner._concatenate(document_lists=document_lists)
-
-        return output
+        return DocumentJoiner._concatenate(document_lists=document_lists)
 
     def to_dict(self) -> dict[str, Any]:
         """

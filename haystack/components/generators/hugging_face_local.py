@@ -18,11 +18,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
     from transformers import Pipeline as HfPipeline
     from transformers import StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        HFTokenStreamingHandler,
-        StopWordsCriteria,
-        resolve_hf_pipeline_kwargs,
-    )
+    from haystack.utils.hf import HFTokenStreamingHandler, StopWordsCriteria, resolve_hf_pipeline_kwargs
 
 
 @component
@@ -38,20 +34,19 @@ class HuggingFaceLocalGenerator:
     from haystack.components.generators import HuggingFaceLocalGenerator
 
     generator = HuggingFaceLocalGenerator(
-        model="google/flan-t5-large",
-        task="text2text-generation",
-        generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
-
-    generator.warm_up()
+        model="Qwen/Qwen3-0.6B",
+        task="text-generation",
+        generation_kwargs={"max_new_tokens": 100, "temperature": 0.9}
+    )
 
     print(generator.run("Who is the best American actor?"))
     # {'replies': ['John Cusack']}
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
-        model: str = "google/flan-t5-base",
+        model: str = "Qwen/Qwen3-0.6B",
         task: Literal["text-generation", "text2text-generation"] | None = None,
         device: ComponentDevice | None = None,
         token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
@@ -66,7 +61,8 @@ class HuggingFaceLocalGenerator:
         :param model: The Hugging Face text generation model name or path.
         :param task: The task for the Hugging Face pipeline. Possible options:
             - `text-generation`: Supported by decoder models, like GPT.
-            - `text2text-generation`: Supported by encoder-decoder models, like T5.
+            - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
+              Previously supported by encoder–decoder models such as T5.
             If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
             If not specified, the component calls the Hugging Face API to infer the task from the model name.
         :param device: The device for loading the model. If `None`, automatically selects the default device.
@@ -253,7 +249,7 @@ class HuggingFaceLocalGenerator:
 
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                tokenizer=self.pipeline.tokenizer,
+                tokenizer=self.pipeline.tokenizer,  # type: ignore[arg-type]
                 stream_handler=streaming_callback,
                 stop_words=self.stop_words,
                 component_info=ComponentInfo.from_component(self),

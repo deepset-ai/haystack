@@ -36,7 +36,15 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_chunk_to_streaming_chunk,
 )
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall, ToolCallDelta
+from haystack.dataclasses import (
+    ChatMessage,
+    ChatRole,
+    FileContent,
+    ImageContent,
+    StreamingChunk,
+    ToolCall,
+    ToolCallDelta,
+)
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -1125,6 +1133,33 @@ class TestOpenAIChatGenerator:
         assert not message.tool_calls
         assert not message.tool_call_results
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_file_content(self, test_files_path):
+        pdf_path = test_files_path / "pdf" / "sample_pdf_3.pdf"
+
+        file_content = FileContent.from_file_path(file_path=pdf_path)
+
+        chat_messages = [
+            ChatMessage.from_user(
+                content_parts=[file_content, "Is this document a paper about LLMs? Respond with 'yes' or 'no' only."]
+            )
+        ]
+
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        results = generator.run(chat_messages)
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+
+        assert message.is_from(ChatRole.ASSISTANT)
+
+        assert message.text
+        assert "no" in message.text.lower()
+
     def test_init_with_list_of_toolsets(self, monkeypatch, tools):
         """Test initialization with a list of Toolsets."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -1709,7 +1744,7 @@ def streaming_chunks():
 class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(self, chat_completion_chunks, streaming_chunks):
         previous_chunks = []
-        for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks):
+        for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
             stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
             )
@@ -1771,7 +1806,7 @@ class TestChatCompletionChunkConversion:
     def test_handle_stream_response(self, chat_completion_chunks, chat_completion_chunk_delta_none):
         openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        result = comp._handle_stream_response(openai_chunks, callback=lambda chunk: None)[0]  # type: ignore
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore
 
         assert not result.texts
         assert not result.text

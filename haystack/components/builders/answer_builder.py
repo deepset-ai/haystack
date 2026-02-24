@@ -114,7 +114,7 @@ class AnswerBuilder:
         self.return_only_referenced_documents = return_only_referenced_documents
 
     @component.output_types(answers=list[GeneratedAnswer])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         replies: list[str] | list[ChatMessage],
@@ -174,7 +174,7 @@ class AnswerBuilder:
         meta_to_iterate = meta[-1:] if self.last_message_only and meta else meta
 
         all_answers = []
-        for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate):
+        for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate, strict=True):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
             extracted_reply = reply.text or "" if isinstance(reply, ChatMessage) else str(reply)
             extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else {}

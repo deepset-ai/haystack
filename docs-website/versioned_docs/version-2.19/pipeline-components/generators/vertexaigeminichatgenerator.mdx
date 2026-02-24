@@ -63,7 +63,9 @@ Basic usage:
 
 ```python
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiChatGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiChatGenerator,
+)
 
 gemini_chat = VertexAIGeminiChatGenerator()
 
@@ -84,12 +86,17 @@ When chatting with Gemini Pro, you can also easily use function calls. First, de
 from typing import Annotated
 from haystack.tools import create_tool_from_function
 
+
 ## example function to get the current weather
 def get_current_weather(
-    location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
+    location: Annotated[
+        str,
+        "The city for which to get the weather, e.g. 'San Francisco'",
+    ] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
+
 
 tool = create_tool_from_function(get_current_weather)
 ```
@@ -97,7 +104,9 @@ tool = create_tool_from_function(get_current_weather)
 Create a new instance of `VertexAIGeminiChatGenerator` to set the tools and a [ToolInvoker](../tools/toolinvoker.mdx) to invoke the tools.:
 
 ```python
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiChatGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiChatGenerator,
+)
 from haystack.components.tools import ToolInvoker
 
 gemini_chat = VertexAIGeminiChatGenerator(model="gemini-2.0-flash-exp", tools=[tool])
@@ -118,7 +127,9 @@ print(res["replies"][0].tool_calls)
 tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
 messages = user_message + replies + tool_messages
 
-messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
+messages += res["replies"][0] + [
+    ChatMessage.from_function(content=weather, name="get_current_weather"),
+]
 
 final_replies = gemini_chat.run(messages=messages)["replies"]
 print(final_replies[0].text)
@@ -130,7 +141,9 @@ print(final_replies[0].text)
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
-from haystack_integrations.components.generators.google_vertex import VertexAIGeminiChatGenerator
+from haystack_integrations.components.generators.google_vertex import (
+    VertexAIGeminiChatGenerator,
+)
 
 ## no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
@@ -143,10 +156,16 @@ pipe.connect("prompt_builder.prompt", "gemini.messages")
 
 location = "Rome"
 messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
-res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 
 print(res)
-
 ```
 
 ## Additional References

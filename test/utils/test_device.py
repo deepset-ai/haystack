@@ -56,7 +56,7 @@ def test_device_map():
         {"layer1": Device.gpu(0), "layer2": Device.cpu(), "layer3": Device.disk()}
     )
 
-    with pytest.raises(ValueError, match="unexpected device"):
+    with pytest.raises(TypeError, match="unexpected device"):
         DeviceMap.from_hf({"layer1": 0.1})
 
     assert device_map.first_device == Device.gpu(0)

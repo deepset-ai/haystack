@@ -56,47 +56,48 @@ tools = [
                 },
                 "required": ["location", "format"],
             },
-        }
-    }
+        },
+    },
 ]
 messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
 generator = OpenAIChatGenerator()
-response = generator.run(messages=messages, generation_kwargs= {"tools": tools})
+response = generator.run(messages=messages, generation_kwargs={"tools": tools})
 response_msg = response["replies"][0]
 
 messages.append(response_msg)
 print(response_msg)
-
 ```
 
 Let’s pretend that the hypothetical weather service responded with some JSON response of the current weather data in Berlin:
 
 ```python
-weather_response = [{
-  "id": "response_uhGNifLfopt5JrCUxXw1L3zo",
-  "status": "success",
-  "function": {
-    "name": "get_current_weather",
-    "arguments": {
-      "location": "Berlin",
-      "format": "celsius"
-    }
-  },
-  "data": {
-    "location": "Berlin",
-    "temperature": 18,
-    "weather_condition": "Partly Cloudy",
-    "humidity": "60%",
-    "wind_speed": "15 km/h",
-    "observation_time": "2024-03-05T14:00:00Z"
-  }
-}]
+weather_response = [
+    {
+        "id": "response_uhGNifLfopt5JrCUxXw1L3zo",
+        "status": "success",
+        "function": {
+            "name": "get_current_weather",
+            "arguments": {"location": "Berlin", "format": "celsius"},
+        },
+        "data": {
+            "location": "Berlin",
+            "temperature": 18,
+            "weather_condition": "Partly Cloudy",
+            "humidity": "60%",
+            "wind_speed": "15 km/h",
+            "observation_time": "2024-03-05T14:00:00Z",
+        },
+    },
+]
 ```
 
 We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) and add it to a list of messages:
 
 ```python
-fcm = ChatMessage.from_function(content=json.dumps(weather_response), name="get_current_weather")
+fcm = ChatMessage.from_function(
+    content=json.dumps(weather_response),
+    name="get_current_weather",
+)
 messages.append(fcm)
 ```
 
@@ -107,7 +108,6 @@ response = generator.run(messages=messages)
 response_msg = response["replies"][0]
 
 print(response_msg.content)
-
 ```
 
 ## Additional References

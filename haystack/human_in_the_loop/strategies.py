@@ -67,7 +67,7 @@ class BlockingConfirmationStrategy:
         tool_description: str,
         tool_params: dict[str, Any],
         tool_call_id: str | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> ToolExecutionDecision:
         """
         Run the human-in-the-loop strategy for a given tool and its parameters.
@@ -116,7 +116,7 @@ class BlockingConfirmationStrategy:
             return ToolExecutionDecision(
                 tool_name=tool_name, execute=False, tool_call_id=tool_call_id, feedback=explanation_text
             )
-        elif confirmation_ui_result.action == "modify" and confirmation_ui_result.new_tool_params:
+        if confirmation_ui_result.action == "modify" and confirmation_ui_result.new_tool_params:
             # Update the tool call params with the new params
             final_args.update(confirmation_ui_result.new_tool_params)
             explanation_text = self.modify_template.format(tool_name=tool_name, final_tool_params=final_args)
@@ -130,10 +130,10 @@ class BlockingConfirmationStrategy:
                 feedback=explanation_text,
                 final_tool_params=final_args,
             )
-        else:  # action == "confirm"
-            return ToolExecutionDecision(
-                tool_name=tool_name, execute=True, tool_call_id=tool_call_id, final_tool_params=tool_params
-            )
+        # action == "confirm"
+        return ToolExecutionDecision(
+            tool_name=tool_name, execute=True, tool_call_id=tool_call_id, final_tool_params=tool_params
+        )
 
     async def run_async(
         self,
@@ -201,6 +201,29 @@ class BlockingConfirmationStrategy:
         return default_from_dict(cls, data)
 
 
+def _get_confirmation_strategy(
+    *, tool_name: str, confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]
+) -> ConfirmationStrategy | None:
+    """
+    Get the confirmation strategy for a given tool name.
+
+    :param tool_name:
+        The name of the tool to look up.
+    :param confirmation_strategies:
+        Dictionary of confirmation strategies with string or tuple keys.
+    :returns:
+        The confirmation strategy if found, None otherwise.
+    """
+    if tool_name in confirmation_strategies:
+        return confirmation_strategies[tool_name]
+
+    for key, strategy in confirmation_strategies.items():
+        if isinstance(key, tuple) and tool_name in key:
+            return strategy
+
+    return None
+
+
 def _prepare_tool_args(
     *,
     tool: Tool,
@@ -241,7 +264,7 @@ def _prepare_tool_args(
 
 def _process_confirmation_strategies(
     *,
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
@@ -282,7 +305,7 @@ def _process_confirmation_strategies(
 
 async def _process_confirmation_strategies_async(
     *,
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
@@ -324,7 +347,7 @@ async def _process_confirmation_strategies_async(
 
 
 def _run_confirmation_strategies(
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> list[ToolExecutionDecision]:
@@ -365,7 +388,8 @@ def _run_confirmation_strategies(
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
-            if tool_name not in confirmation_strategies:
+            strategy = _get_confirmation_strategy(tool_name=tool_name, confirmation_strategies=confirmation_strategies)
+            if strategy is None:
                 teds.append(
                     ToolExecutionDecision(
                         tool_call_id=tool_call.id, tool_name=tool_name, execute=True, final_tool_params=final_args
@@ -378,7 +402,7 @@ def _run_confirmation_strategies(
 
             # If not, run the confirmation strategy
             if not ted:
-                ted = confirmation_strategies[tool_name].run(
+                ted = strategy.run(
                     tool_name=tool_name,
                     tool_description=tool_to_invoke.description,
                     tool_params=final_args,
@@ -391,7 +415,7 @@ def _run_confirmation_strategies(
 
 
 async def _run_confirmation_strategies_async(
-    confirmation_strategies: dict[str, ConfirmationStrategy],
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     execution_context: "_ExecutionContext",
 ) -> list[ToolExecutionDecision]:
@@ -401,6 +425,7 @@ async def _run_confirmation_strategies_async(
     Run confirmation strategies for tool calls in the provided chat messages.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
+        String keys map individual tools, tuple keys map multiple tools to the same strategy.
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param execution_context: The current execution context containing state and inputs
     :returns:
@@ -434,7 +459,8 @@ async def _run_confirmation_strategies_async(
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
-            if tool_name not in confirmation_strategies:
+            strategy = _get_confirmation_strategy(tool_name=tool_name, confirmation_strategies=confirmation_strategies)
+            if strategy is None:
                 teds.append(
                     ToolExecutionDecision(
                         tool_call_id=tool_call.id, tool_name=tool_name, execute=True, final_tool_params=final_args
@@ -447,7 +473,6 @@ async def _run_confirmation_strategies_async(
 
             # If not, run the confirmation strategy (async version)
             if not ted:
-                strategy = confirmation_strategies[tool_name]
                 # Use run_async if available, otherwise fall back to sync run
                 if hasattr(strategy, "run_async"):
                     ted = await strategy.run_async(
@@ -579,5 +604,4 @@ def _update_chat_history(
 
     insertion_point = max(last_user_idx, last_tool_idx)
 
-    new_chat_history = chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
-    return new_chat_history
+    return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages

@@ -5,11 +5,8 @@ description: "Tool-using agents with provider-agnostic chat model support."
 slug: "/agents-api"
 ---
 
-<a id="agent"></a>
 
-## Module agent
-
-<a id="agent.Agent"></a>
+## agent
 
 ### Agent
 
@@ -24,9 +21,10 @@ Without tools, the Agent works like a standard LLM that generates text. It produ
 ### Usage examples
 
 This is an example agent that:
+
 1. Searches for tipping customs in France.
-2. Uses a calculator to compute tips based on its findings.
-3. Returns the final answer with its context.
+1. Uses a calculator to compute tips based on its findings.
+1. Returns the final answer with its context.
 
 ```python
 from haystack.components.agents import Agent
@@ -91,166 +89,210 @@ result = agent.run(
 print(result["messages"][-1].text)
 ```
 
-<a id="agent.Agent.__init__"></a>
+#### Using a `user_prompt` template with variables
 
-#### Agent.\_\_init\_\_
+You can define a reusable `user_prompt` with Jinja2 template variables so the Agent can be invoked
+with different inputs without manually constructing `ChatMessage` objects each time.
+This is especially useful when embedding the Agent in a pipeline or calling it in a loop.
 
 ```python
-def __init__(
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import tool
+from typing import Annotated
+
+
+@tool
+def translate(
+    text: Annotated[str, "The text to translate"],
+    target_language: Annotated[str, "The language to translate to"],
+) -> str:
+    """Translate text to a target language."""
+    # Placeholder: would call an actual translation API
+    return f"[Translated '{text}' to {target_language}]"
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[translate],
+    system_prompt="You are a helpful translation assistant.",
+    user_prompt="""{% message role="user"%}
+Translate the following document to {{ language }}: {{ document }}
+{% endmessage %}""",
+    required_variables=["language", "document"],
+)
+
+# The template variables 'language' and 'document' become inputs to the run method
+result = agent.run(
+    language="French",
+    document="The weather is lovely today and the sun is shining.",
+)
+
+print(result["last_message"].text)
+```
+
+#### __init__
+
+```python
+__init__(
     *,
     chat_generator: ChatGenerator,
     tools: ToolsType | None = None,
     system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    required_variables: list[str] | Literal["*"] | None = None,
     exit_conditions: list[str] | None = None,
     state_schema: dict[str, Any] | None = None,
     max_agent_steps: int = 100,
     streaming_callback: StreamingCallbackT | None = None,
     raise_on_tool_invocation_failure: bool = False,
     tool_invoker_kwargs: dict[str, Any] | None = None,
-    confirmation_strategies: dict[str, ConfirmationStrategy] | None = None
+    confirmation_strategies: (
+        dict[str | tuple[str, ...], ConfirmationStrategy] | None
+    ) = None
 ) -> None
 ```
 
 Initialize the agent component.
 
-**Arguments**:
+**Parameters:**
 
-- `chat_generator`: An instance of the chat generator that your agent should use. It must support tools.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-- `system_prompt`: System prompt for the agent.
-- `exit_conditions`: List of conditions that will cause the agent to return.
-Can include "text" if the agent should return when it generates a message without tool calls,
-or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
-- `state_schema`: The schema for the runtime state used by the tools.
-- `max_agent_steps`: Maximum number of steps the agent will run before stopping. Defaults to 100.
-If the agent exceeds this number of steps, it will stop and return the current state.
-- `streaming_callback`: A callback that will be invoked when a response is streamed from the LLM.
-The same callback can be configured to emit tool results when a tool is called.
-- `raise_on_tool_invocation_failure`: Should the agent raise an exception when a tool invocation fails?
-If set to False, the exception will be turned into a chat message and passed to the LLM.
-- `tool_invoker_kwargs`: Additional keyword arguments to pass to the ToolInvoker.
-- `confirmation_strategies`: A dictionary mapping tool names to ConfirmationStrategy instances.
+- **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that your agent should use. It must support tools.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
+- **system_prompt** (<code>str | None</code>) – System prompt for the agent.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided this is appended to the messages provided at runtime.
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to user_prompt.
+  If a variable listed as required is not provided, an exception is raised.
+  If set to `"*"`, all variables found in the prompt are required. Optional.
+- **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
+  Can include "text" if the agent should return when it generates a message without tool calls,
+  or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
+- **state_schema** (<code>dict\[str, Any\] | None</code>) – The schema for the runtime state used by the tools.
+- **max_agent_steps** (<code>int</code>) – Maximum number of steps the agent will run before stopping. Defaults to 100.
+  If the agent exceeds this number of steps, it will stop and return the current state.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
+  The same callback can be configured to emit tool results when a tool is called.
+- **raise_on_tool_invocation_failure** (<code>bool</code>) – Should the agent raise an exception when a tool invocation fails?
+  If set to False, the exception will be turned into a chat message and passed to the LLM.
+- **tool_invoker_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to the ToolInvoker.
+- **confirmation_strategies** (<code>dict\[str | tuple\[str, ...\], ConfirmationStrategy\] | None</code>) – A dictionary mapping tool names to ConfirmationStrategy instances.
 
-**Raises**:
+**Raises:**
 
-- `TypeError`: If the chat_generator does not support tools parameter in its run method.
-- `ValueError`: If the exit_conditions are not valid.
+- <code>TypeError</code> – If the chat_generator does not support tools parameter in its run method.
+- <code>ValueError</code> – If the exit_conditions are not valid.
+- <code>ValueError</code> – If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
 
-<a id="agent.Agent.warm_up"></a>
-
-#### Agent.warm\_up
+#### warm_up
 
 ```python
-def warm_up() -> None
+warm_up() -> None
 ```
 
 Warm up the Agent.
 
-<a id="agent.Agent.to_dict"></a>
-
-#### Agent.to\_dict
+#### to_dict
 
 ```python
-def to_dict() -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
 
-**Returns**:
+**Returns:**
 
-Dictionary with serialized data
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data
 
-<a id="agent.Agent.from_dict"></a>
-
-#### Agent.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "Agent"
+from_dict(data: dict[str, Any]) -> Agent
 ```
 
 Deserialize the agent from a dictionary.
 
-**Arguments**:
+**Parameters:**
 
-- `data`: Dictionary to deserialize from
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from
 
-**Returns**:
+**Returns:**
 
-Deserialized agent
+- <code>Agent</code> – Deserialized agent
 
-<a id="agent.Agent.run"></a>
-
-#### Agent.run
+#### run
 
 ```python
-def run(messages: list[ChatMessage],
-        streaming_callback: StreamingCallbackT | None = None,
-        *,
-        generation_kwargs: dict[str, Any] | None = None,
-        break_point: AgentBreakpoint | None = None,
-        snapshot: AgentSnapshot | None = None,
-        system_prompt: str | None = None,
-        tools: ToolsType | list[str] | None = None,
-        snapshot_callback: SnapshotCallback | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
-        **kwargs: Any) -> dict[str, Any]
+run(
+    messages: list[ChatMessage] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    generation_kwargs: dict[str, Any] | None = None,
+    break_point: AgentBreakpoint | None = None,
+    snapshot: AgentSnapshot | None = None,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    tools: ToolsType | list[str] | None = None,
+    snapshot_callback: SnapshotCallback | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None,
+    **kwargs: Any
+) -> dict[str, Any]
 ```
 
 Process messages and execute tools until an exit condition is met.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: List of Haystack ChatMessage objects to process.
-- `streaming_callback`: A callback that will be invoked when a response is streamed from the LLM.
-The same callback can be configured to emit tool results when a tool is called.
-- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
-override the parameters passed during component initialization.
-- `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-for "tool_invoker".
-- `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-the relevant information to restart the Agent execution from where it left off.
-- `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
-- `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-When passing tool names, tools are selected from the Agent's originally configured tools.
-- `snapshot_callback`: Optional callback function that is invoked when a pipeline snapshot is created.
-The callback receives a `PipelineSnapshot` object and can return an optional string.
-If provided, the callback is used instead of the default file-saving behavior.
-- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
-to confirmation strategies. Useful in web/server environments to provide per-request
-objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-can use for non-blocking user interaction.
-- `kwargs`: Additional data to pass to the State schema used by the Agent.
-The keys must match the schema defined in the Agent's `state_schema`.
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
+  The same callback can be configured to emit tool results when a tool is called.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
+  override the parameters passed during component initialization.
+- **break_point** (<code>AgentBreakpoint | None</code>) – An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
+  for "tool_invoker".
+- **snapshot** (<code>AgentSnapshot | None</code>) – A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
+  the relevant information to restart the Agent execution from where it left off.
+- **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
+  appended to the messages provided at runtime.
+- **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+  When passing tool names, tools are selected from the Agent's originally configured tools.
+- **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
+  The callback receives a `PipelineSnapshot` object and can return an optional string.
+  If provided, the callback is used instead of the default file-saving behavior.
+- **confirmation_strategy_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary for passing request-scoped resources
+  to confirmation strategies. Useful in web/server environments to provide per-request
+  objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+  can use for non-blocking user interaction.
+- **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
+  The keys must match the schema defined in the Agent's `state_schema`.
 
-**Raises**:
+**Returns:**
 
-- `BreakpointException`: If an agent breakpoint is triggered.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - "messages": List of all messages exchanged during the agent's run.
 - "last_message": The last message exchanged during the agent's run.
 - Any additional keys defined in the `state_schema`.
 
-<a id="agent.Agent.run_async"></a>
+**Raises:**
 
-#### Agent.run\_async
+- <code>BreakpointException</code> – If an agent breakpoint is triggered.
+
+#### run_async
 
 ```python
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: StreamingCallbackT | None = None,
-                    *,
-                    generation_kwargs: dict[str, Any] | None = None,
-                    break_point: AgentBreakpoint | None = None,
-                    snapshot: AgentSnapshot | None = None,
-                    system_prompt: str | None = None,
-                    tools: ToolsType | list[str] | None = None,
-                    snapshot_callback: SnapshotCallback | None = None,
-                    confirmation_strategy_context: dict[str, Any]
-                    | None = None,
-                    **kwargs: Any) -> dict[str, Any]
+run_async(
+    messages: list[ChatMessage] | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    *,
+    generation_kwargs: dict[str, Any] | None = None,
+    break_point: AgentBreakpoint | None = None,
+    snapshot: AgentSnapshot | None = None,
+    system_prompt: str | None = None,
+    user_prompt: str | None = None,
+    tools: ToolsType | list[str] | None = None,
+    snapshot_callback: SnapshotCallback | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None,
+    **kwargs: Any
+) -> dict[str, Any]
 ```
 
 Asynchronously process messages and execute tools until the exit condition is met.
@@ -259,45 +301,43 @@ This is the asynchronous version of the `run` method. It follows the same logic 
 asynchronous operations where possible, such as calling the `run_async` method of the ChatGenerator
 if available.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: List of Haystack ChatMessage objects to process.
-- `streaming_callback`: An asynchronous callback that will be invoked when a response is streamed from the
-LLM. The same callback can be configured to emit tool results when a tool is called.
-- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
-override the parameters passed during component initialization.
-- `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-for "tool_invoker".
-- `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-the relevant information to restart the Agent execution from where it left off.
-- `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
-- `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-- `snapshot_callback`: Optional callback function that is invoked when a pipeline snapshot is created.
-The callback receives a `PipelineSnapshot` object and can return an optional string.
-If provided, the callback is used instead of the default file-saving behavior.
-- `kwargs`: Additional data to pass to the State schema used by the Agent.
-The keys must match the schema defined in the Agent's `state_schema`.
-- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
-to confirmation strategies. Useful in web/server environments to provide per-request
-objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-can use for non-blocking user interaction.
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed from the
+  LLM. The same callback can be configured to emit tool results when a tool is called.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
+  override the parameters passed during component initialization.
+- **break_point** (<code>AgentBreakpoint | None</code>) – An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
+  for "tool_invoker".
+- **snapshot** (<code>AgentSnapshot | None</code>) – A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
+  the relevant information to restart the Agent execution from where it left off.
+- **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
+  appended to the messages provided at runtime.
+- **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+- **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
+  The callback receives a `PipelineSnapshot` object and can return an optional string.
+  If provided, the callback is used instead of the default file-saving behavior.
+- **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
+  The keys must match the schema defined in the Agent's `state_schema`.
+- **confirmation_strategy_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary for passing request-scoped resources
+  to confirmation strategies. Useful in web/server environments to provide per-request
+  objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+  can use for non-blocking user interaction.
 
-**Raises**:
+**Returns:**
 
-- `BreakpointException`: If an agent breakpoint is triggered.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - "messages": List of all messages exchanged during the agent's run.
 - "last_message": The last message exchanged during the agent's run.
 - Any additional keys defined in the `state_schema`.
 
-<a id="state/state"></a>
+**Raises:**
 
-## Module state/state
+- <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
-<a id="state/state.State"></a>
+## state/state
 
 ### State
 
@@ -306,14 +346,16 @@ State is a container for storing shared information during the execution of an A
 For instance, State can be used to store documents, context, and intermediate results.
 
 Internally it wraps a `_data` dictionary defined by a `schema`. Each schema entry has:
+
 ```json
   "parameter_name": {
     "type": SomeType,  # expected type
     "handler": Optional[Callable[[Any, Any], Any]]  # merge/update function
   }
-  ```
+```
 
 Handlers control how values are merged when using the `set()` method:
+
 - For list types: defaults to `merge_lists` (concatenates lists)
 - For other types: defaults to `replace_values` (overwrites existing value)
 
@@ -322,6 +364,7 @@ A `messages` field with type `list[ChatMessage]` is automatically added to the s
 This makes it possible for the Agent to read from and write to the same context.
 
 ### Usage example
+
 ```python
 from haystack.components.agents.state import State
 
@@ -331,113 +374,99 @@ my_state = State(
 )
 ```
 
-<a id="state/state.State.__init__"></a>
-
-#### State.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
+__init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
 ```
 
 Initialize a State object with a schema and optional data.
 
-**Arguments**:
+**Parameters:**
 
-- `schema`: Dictionary mapping parameter names to their type and handler configs.
-Type must be a valid Python type, and handler must be a callable function or None.
-If handler is None, the default handler for the type will be used. The default handlers are:
-    - For list types: `haystack.agents.state.state_utils.merge_lists`
-    - For all other types: `haystack.agents.state.state_utils.replace_values`
-- `data`: Optional dictionary of initial data to populate the state
+- **schema** (<code>dict\[str, Any\]</code>) – Dictionary mapping parameter names to their type and handler configs.
+  Type must be a valid Python type, and handler must be a callable function or None.
+  If handler is None, the default handler for the type will be used. The default handlers are:
+  - For list types: `haystack.agents.state.state_utils.merge_lists`
+  - For all other types: `haystack.agents.state.state_utils.replace_values`
+- **data** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of initial data to populate the state
 
-<a id="state/state.State.get"></a>
-
-#### State.get
+#### get
 
 ```python
-def get(key: str, default: Any = None) -> Any
+get(key: str, default: Any = None) -> Any
 ```
 
 Retrieve a value from the state by key.
 
-**Arguments**:
+**Parameters:**
 
-- `key`: Key to look up in the state
-- `default`: Value to return if key is not found
+- **key** (<code>str</code>) – Key to look up in the state
+- **default** (<code>Any</code>) – Value to return if key is not found
 
-**Returns**:
+**Returns:**
 
-Value associated with key or default if not found
+- <code>Any</code> – Value associated with key or default if not found
 
-<a id="state/state.State.set"></a>
-
-#### State.set
+#### set
 
 ```python
-def set(key: str,
-        value: Any,
-        handler_override: Callable[[Any, Any], Any] | None = None) -> None
+set(
+    key: str,
+    value: Any,
+    handler_override: Callable[[Any, Any], Any] | None = None,
+) -> None
 ```
 
 Set or merge a value in the state according to schema rules.
 
 Value is merged or overwritten according to these rules:
-  - if handler_override is given, use that
-  - else use the handler defined in the schema for 'key'
 
-**Arguments**:
+- if handler_override is given, use that
+- else use the handler defined in the schema for 'key'
 
-- `key`: Key to store the value under
-- `value`: Value to store or merge
-- `handler_override`: Optional function to override the default merge behavior
+**Parameters:**
 
-<a id="state/state.State.data"></a>
+- **key** (<code>str</code>) – Key to store the value under
+- **value** (<code>Any</code>) – Value to store or merge
+- **handler_override** (<code>Callable\\[[Any, Any\], Any\] | None</code>) – Optional function to override the default merge behavior
 
-#### State.data
+#### data
 
 ```python
-@property
-def data()
+data
 ```
 
 All current data of the state.
 
-<a id="state/state.State.has"></a>
-
-#### State.has
+#### has
 
 ```python
-def has(key: str) -> bool
+has(key: str) -> bool
 ```
 
 Check if a key exists in the state.
 
-**Arguments**:
+**Parameters:**
 
-- `key`: Key to check for existence
+- **key** (<code>str</code>) – Key to check for existence
 
-**Returns**:
+**Returns:**
 
-True if key exists in state, False otherwise
+- <code>bool</code> – True if key exists in state, False otherwise
 
-<a id="state/state.State.to_dict"></a>
-
-#### State.to\_dict
+#### to_dict
 
 ```python
-def to_dict()
+to_dict()
 ```
 
 Convert the State object to a dictionary.
 
-<a id="state/state.State.from_dict"></a>
-
-#### State.from\_dict
+#### from_dict
 
 ```python
-@classmethod
-def from_dict(cls, data: dict[str, Any])
+from_dict(data: dict[str, Any])
 ```
 
 Convert a dictionary back to a State object.
-

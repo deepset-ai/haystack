@@ -48,18 +48,31 @@ This Retriever needs `AzureAISearchDocumentStore` and indexed documents to run.
 
 ```python
 from haystack import Document
-from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchHybridRetriever
-from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+from haystack_integrations.components.retrievers.azure_ai_search import (
+    AzureAISearchHybridRetriever,
+)
+from haystack_integrations.document_stores.azure_ai_search import (
+    AzureAISearchDocumentStore,
+)
 
 document_store = AzureAISearchDocumentStore(index_name="haystack_docs")
-documents = [Document(content="There are over 7,000 languages spoken around the world today."),
-			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
-			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
 document_store.write_documents(documents=documents)
 
 retriever = AzureAISearchHybridRetriever(document_store=document_store)
 ## fake embeddings to keep the example simple
-retriever.run(query="How many languages are spoken around the world today?", query_embedding=[0.1]*384)
+retriever.run(
+    query="How many languages are spoken around the world today?",
+    query_embedding=[0.1] * 384,
+)
 ```
 
 ### In a RAG pipeline
@@ -68,11 +81,18 @@ The following example demonstrates using the `AzureAISearchHybridRetriever` in a
 
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
 from haystack.components.writers import DocumentWriter
 
-from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchHybridRetriever
-from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+from haystack_integrations.components.retrievers.azure_ai_search import (
+    AzureAISearchHybridRetriever,
+)
+from haystack_integrations.document_stores.azure_ai_search import (
+    AzureAISearchDocumentStore,
+)
 
 document_store = AzureAISearchDocumentStore(index_name="hybrid-retrieval-example")
 
@@ -82,11 +102,11 @@ documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
         content="""Elephants have been observed to behave in a way that indicates a
-         high level of self-awareness, such as recognizing themselves in mirrors."""
+         high level of self-awareness, such as recognizing themselves in mirrors.""",
     ),
     Document(
         content="""In certain parts of the world, like the Maldives, Puerto Rico, and
-          San Diego, you can witness the phenomenon of bioluminescent waves."""
+          San Diego, you can witness the phenomenon of bioluminescent waves.""",
     ),
 ]
 
@@ -96,21 +116,31 @@ document_embedder.warm_up()
 ## Indexing Pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component(instance=document_embedder, name="doc_embedder")
-indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="doc_writer")
+indexing_pipeline.add_component(
+    instance=DocumentWriter(document_store=document_store),
+    name="doc_writer",
+)
 indexing_pipeline.connect("doc_embedder", "doc_writer")
 
 indexing_pipeline.run({"doc_embedder": {"documents": documents}})
 
 ## Query Pipeline
 query_pipeline = Pipeline()
-query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder(model=model))
-query_pipeline.add_component("retriever", AzureAISearchHybridRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "text_embedder",
+    SentenceTransformersTextEmbedder(model=model),
+)
+query_pipeline.add_component(
+    "retriever",
+    AzureAISearchHybridRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "How many languages are there?"
 
-result = query_pipeline.run({"text_embedder": {"text": query}, "retriever": {"query": query}})
+result = query_pipeline.run(
+    {"text_embedder": {"text": query}, "retriever": {"query": query}},
+)
 
 print(result["retriever"]["documents"][0])
-
 ```

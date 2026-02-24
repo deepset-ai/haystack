@@ -18,6 +18,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,6 @@ class LLMMetadataExtractor:
         raise_on_failure=False,
     )
 
-    extractor.warm_up()
     extractor.run(documents=docs)
     >> {'documents': [
         Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
@@ -148,7 +148,7 @@ class LLMMetadataExtractor:
     ```
     """  # noqa: E501
 
-    def __init__(  # pylint: disable=R0917
+    def __init__(
         self,
         prompt: str,
         chat_generator: ChatGenerator,
@@ -233,26 +233,16 @@ class LLMMetadataExtractor:
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
-        parsed_metadata: dict[str, Any] = {}
-
         try:
-            parsed_metadata = json.loads(llm_answer)
-        except json.JSONDecodeError as e:
+            parsed_metadata = _parse_dict_from_json(llm_answer, expected_keys=self.expected_keys, raise_on_failure=True)
+        except (ValueError, json.JSONDecodeError) as e:
             logger.warning(
-                "Response from the LLM is not valid JSON. Skipping metadata extraction. Received output: {response}",
+                "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
                 response=llm_answer,
             )
             if self.raise_on_failure:
                 raise e
-            return {"error": "Response is not valid JSON. Received JSONDecodeError: " + str(e)}
-
-        if not all(key in parsed_metadata for key in self.expected_keys):
-            logger.warning(
-                "Expected response from LLM to be a JSON with keys {expected_keys}, got {parsed_json}. "
-                "Continuing extraction with received output.",
-                expected_keys=self.expected_keys,
-                parsed_json=parsed_metadata,
-            )
+            return {"error": "Response is not valid JSON or missing keys. Error: " + str(e)}
 
         return parsed_metadata
 
@@ -295,7 +285,7 @@ class LLMMetadataExtractor:
         except Exception as e:
             if self.raise_on_failure:
                 raise e
-            logger.error(
+            logger.exception(
                 "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
@@ -348,7 +338,7 @@ class LLMMetadataExtractor:
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results):
+        for document, result in zip(documents, results, strict=True):
             new_meta = {**document.meta}
             if "error" in result:
                 new_meta["metadata_extraction_error"] = result["error"]

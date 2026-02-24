@@ -19,8 +19,8 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
     from transformers import Pipeline as HfPipeline
 
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
-    import spacy  # pylint: disable=import-error
-    from spacy import Language as SpacyPipeline  # pylint: disable=import-error
+    import spacy
+    from spacy import Language as SpacyPipeline
 
 
 class NamedEntityExtractorBackend(Enum):
@@ -96,7 +96,6 @@ class NamedEntityExtractor:
         Document(content="My name is Clara and I live in Berkeley, California."),
     ]
     extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-    extractor.warm_up()
     results = extractor.run(documents=documents)["documents"]
     annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
     print(annotations)
@@ -204,7 +203,7 @@ class NamedEntityExtractor:
             )
 
         new_documents = []
-        for doc, doc_annotations in zip(documents, annotations):
+        for doc, doc_annotations in zip(documents, annotations, strict=True):
             new_meta = {**doc.meta, self._METADATA_KEY: doc_annotations}
             new_documents.append(replace(doc, meta=new_meta))
 
@@ -368,7 +367,7 @@ class _HfBackend(_NerBackend):
         transformers_import.check()
 
         self._model_name_or_path = model_name_or_path
-        self.tokenizer: AutoTokenizer | None = None
+        self.tokenizer: Any = None
         self.model: AutoModelForTokenClassification | None = None
         self.pipeline: HfPipeline | None = None
 

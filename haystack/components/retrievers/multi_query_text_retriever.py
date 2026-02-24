@@ -72,7 +72,7 @@ class MultiQueryTextRetriever:
         Warm up the retriever if it has a warm_up method.
         """
         if not self._is_warmed_up:
-            if hasattr(self.retriever, "warm_up") and callable(getattr(self.retriever, "warm_up")):
+            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
                 self.retriever.warm_up()
             self._is_warmed_up = True
 
@@ -89,6 +89,9 @@ class MultiQueryTextRetriever:
         """
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
+
+        if not self._is_warmed_up:
+            self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)

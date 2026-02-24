@@ -76,21 +76,21 @@ if __name__ == "__main__":
     )
 
     # add unstable version to versions.json
-    with open("docs-website/versions.json", "r") as f:
+    with open("docs-website/versions.json") as f:
         versions_list = json.load(f)
     versions_list.insert(0, target_unstable)
     with open("docs-website/versions.json", "w") as f:
         json.dump(versions_list, f)
 
     # add unstable version to reference_versions.json
-    with open("docs-website/reference_versions.json", "r") as f:
+    with open("docs-website/reference_versions.json") as f:
         reference_versions_list = json.load(f)
     reference_versions_list.insert(0, target_unstable)
     with open("docs-website/reference_versions.json", "w") as f:
         json.dump(reference_versions_list, f)
 
     # in docusaurus.config.js, replace the target unstable version with the next unstable version
-    with open("docs-website/docusaurus.config.js", "r") as f:
+    with open("docs-website/docusaurus.config.js") as f:
         config = f.read()
     config = config.replace(f"label: '{target_unstable}'", f"label: '{next_unstable}'")
     with open("docs-website/docusaurus.config.js", "w") as f:

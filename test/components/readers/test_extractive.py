@@ -43,7 +43,7 @@ def mock_tokenizer():
 
         tokens = Mock()
 
-        num_splits = [ceil(len(text + pair) / max_length) for text, pair in zip(texts, text_pairs)]
+        num_splits = [ceil(len(text + pair) / max_length) for text, pair in zip(texts, text_pairs, strict=True)]
         tokens.overflow_to_sample_mapping = [i for i, num in enumerate(num_splits) for _ in range(num)]
         num_samples = sum(num_splits)
         tokens.encodings = [Mock() for _ in range(num_samples)]
@@ -286,7 +286,6 @@ def test_from_dict_no_token():
 
 
 def test_run_no_docs(mock_reader: ExtractiveReader):
-    mock_reader.warm_up()
     assert mock_reader.run(query="hello", documents=[]) == {"answers": []}
 
 
@@ -294,7 +293,7 @@ def test_output(mock_reader: ExtractiveReader):
     answers = mock_reader.run(example_queries[0], example_documents[0], top_k=3)["answers"]
     doc_ids = set()
     no_answer_prob = 1
-    for doc, answer in zip(example_documents[0], answers[:3]):
+    for doc, answer in zip(example_documents[0], answers[:3], strict=True):
         assert answer.document_offset is not None
         assert answer.document_offset.start == 11
         assert answer.document_offset.end == 16
@@ -321,7 +320,11 @@ def test_flatten_documents(mock_reader: ExtractiveReader):
 
 def test_preprocess(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
-        queries=example_queries * 3, documents=example_documents[0], max_seq_length=384, query_ids=[1, 1, 1], stride=0
+        queries=[example_queries[1]] * 3,
+        documents=example_documents[0],
+        max_seq_length=384,
+        query_ids=[1, 1, 1],
+        stride=0,
     )
     expected_seq_ids = torch.full((3, 384), -1, dtype=torch.int)
     expected_seq_ids[:, :16] = 0
@@ -333,7 +336,7 @@ def test_preprocess(mock_reader: ExtractiveReader):
 
 def test_preprocess_splitting(mock_reader: ExtractiveReader):
     _, _, seq_ids, _, query_ids, doc_ids = mock_reader._preprocess(
-        queries=example_queries * 4,
+        queries=[example_queries[1]] * 4,
         documents=example_documents[0] + [Document(content="a" * 64)],
         max_seq_length=96,
         query_ids=[1, 1, 1, 1],
@@ -413,11 +416,15 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         overlap_threshold=None,
     )
     expected_no_answers = [0.2 * 0.16 * 0.12, 0]
-    for query, answers, expected_no_answer, probabilities in zip(
-        example_queries, nested_answers, expected_no_answers, [probabilities[:3, -1], probabilities[3:, -1]]
+    for query, answers, expected_no_answer, _ in zip(
+        example_queries,
+        nested_answers,
+        expected_no_answers,
+        [probabilities[:3, -1], probabilities[3:, -1]],
+        strict=True,
     ):
         assert len(answers) == 4
-        for doc, answer, score in zip(example_documents[0], reversed(answers[:3]), probabilities):
+        for doc, answer, score in zip(example_documents[0], reversed(answers[:3]), _, strict=True):
             assert answer.query == query
             assert answer.document == doc
             assert answer.score == pytest.approx(score)
@@ -517,9 +524,7 @@ def test_warm_up_use_hf_token(mocked_automodel, mocked_autotokenizer, initialize
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "auto"})
     auto_device = ComponentDevice.resolve_device(None)
 
@@ -536,9 +541,7 @@ def test_device_map_auto(mocked_automodel, _mocked_autotokenizer, monkeypatch):
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_device_map_str(mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
     reader = ExtractiveReader("deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu:0"})
 
     class MockedModel:
@@ -554,9 +557,7 @@ def test_device_map_str(mocked_automodel, _mocked_autotokenizer, monkeypatch):
 
 @patch("haystack.components.readers.extractive.AutoTokenizer.from_pretrained")
 @patch("haystack.components.readers.extractive.AutoModelForQuestionAnswering.from_pretrained")
-def test_device_map_dict(mocked_automodel, _mocked_autotokenizer, monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_device_map_dict(mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
     reader = ExtractiveReader(
         "deepset/roberta-base-squad2", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}}
     )
@@ -777,10 +778,8 @@ class TestDeduplication:
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_t5(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+def test_t5(del_hf_env_vars):
     reader = ExtractiveReader("sjrhuschlee/flan-t5-base-squad2")
-    reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching support is reintroduced
@@ -803,10 +802,8 @@ def test_t5(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_roberta(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+def test_roberta(del_hf_env_vars):
     reader = ExtractiveReader("deepset/tinyroberta-squad2")
-    reader.warm_up()
     answers = reader.run(example_queries[0], example_documents[0], top_k=2)[
         "answers"
     ]  # remove indices when batching is reintroduced
@@ -834,12 +831,10 @@ def test_roberta(monkeypatch):
 
 @pytest.mark.integration
 @pytest.mark.slow
-def test_matches_hf_pipeline(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+def test_matches_hf_pipeline(del_hf_env_vars):
     reader = ExtractiveReader(
         "deepset/tinyroberta-squad2", device=ComponentDevice.from_str("cpu"), overlap_threshold=None
     )
-    reader.warm_up()
     answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
         "answers"
     ]  # [0] Remove first two indices when batching support is reintroduced
@@ -852,7 +847,7 @@ def test_matches_hf_pipeline(monkeypatch):
         top_k=20,
     )  # We need to disable HF postprocessing features to make the results comparable. This is related to https://github.com/huggingface/transformers/issues/26286
     assert len(answers) == len(answers_hf) == 20
-    for answer, answer_hf in zip(answers, answers_hf):
+    for answer, answer_hf in zip(answers, answers_hf, strict=True):
         assert answer.document_offset.start == answer_hf["start"]
         assert answer.document_offset.end == answer_hf["end"]
         assert answer.data == answer_hf["answer"]

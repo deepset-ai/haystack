@@ -45,7 +45,6 @@ class MultiQueryEmbeddingRetriever:
     # Populate the document store
     doc_store = InMemoryDocumentStore()
     doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    doc_embedder.warm_up()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     documents = doc_embedder.run(documents)["documents"]
     doc_writer.run(documents=documents)
@@ -91,9 +90,9 @@ class MultiQueryEmbeddingRetriever:
         Warm up the query embedder and the retriever if any has a warm_up method.
         """
         if not self._is_warmed_up:
-            if hasattr(self.query_embedder, "warm_up") and callable(getattr(self.query_embedder, "warm_up")):
+            if hasattr(self.query_embedder, "warm_up") and callable(self.query_embedder.warm_up):
                 self.query_embedder.warm_up()
-            if hasattr(self.retriever, "warm_up") and callable(getattr(self.retriever, "warm_up")):
+            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
                 self.retriever.warm_up()
             self._is_warmed_up = True
 

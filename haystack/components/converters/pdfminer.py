@@ -5,8 +5,9 @@
 import io
 import os
 import re
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -41,7 +42,7 @@ class PDFMinerToDocument:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         line_overlap: float = 0.5,
         char_margin: float = 2.0,
@@ -126,9 +127,7 @@ class PDFMinerToDocument:
             pages.append(text)
 
         # Add a page delimiter
-        delimited_pages = "\f".join(pages)
-
-        return delimited_pages
+        return "\f".join(pages)
 
     def detect_undecoded_cid_characters(self, text: str) -> dict[str, Any]:
         """
@@ -144,7 +143,7 @@ class PDFMinerToDocument:
 
         see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-values-in-the-textual-output
 
-        :param: text: The text to check for undecoded CID characters
+        :param text: The text to check for undecoded CID characters
         :returns:
             A dictionary containing detection results
         """
@@ -179,7 +178,7 @@ class PDFMinerToDocument:
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

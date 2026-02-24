@@ -8,11 +8,11 @@ from typing import Any
 
 from haystack import Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret
+from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
+    import accelerate  # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -42,7 +42,6 @@ class ExtractiveReader:
     ]
 
     reader = ExtractiveReader()
-    reader.warm_up()
 
     question = "What is a popular programming language?"
     result = reader.run(query=question, documents=docs)
@@ -50,7 +49,7 @@ class ExtractiveReader:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: Path | str = "deepset/roberta-base-squad2-distilled",
         device: ComponentDevice | None = None,
@@ -110,7 +109,7 @@ class ExtractiveReader:
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None
-        self.tokenizer = None
+        self.tokenizer: Any = None
         self.device: ComponentDevice | None = None
         self.token = token
         self.max_seq_length = max_seq_length
@@ -186,8 +185,13 @@ class ExtractiveReader:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name_or_path, token=self.token.resolve_value() if self.token else None
             )
-            assert self.model is not None
-            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
+            assert self.model is not None  # mypy doesn't know this is set in the line above
+            # hf_device_map appears to only be set now when mixed devices are actually used.
+            # So if it's missing then we can use the device attribute which is set even for single-device models.
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
+            else:
+                self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
     @staticmethod
     def _flatten_documents(
@@ -196,12 +200,12 @@ class ExtractiveReader:
         """
         Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
         """
-        flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
+        flattened_queries = [query for documents_, query in zip(documents, queries, strict=True) for _ in documents_]
         flattened_documents = [document for documents_ in documents for document in documents_]
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
 
-    def _preprocess(  # pylint: disable=too-many-positional-arguments
+    def _preprocess(
         self, *, queries: list[str], documents: list[Document], max_seq_length: int, query_ids: list[int], stride: int
     ) -> tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", list["Encoding"], list[int], list[int]]:
         """
@@ -223,7 +227,7 @@ class ExtractiveReader:
             document_contents.append(doc.content)
 
         # mypy doesn't know this is set in warm_up
-        encodings_pt = self.tokenizer(  # type: ignore[misc]
+        encodings_pt = self.tokenizer(
             queries,
             document_contents,
             padding=True,
@@ -297,12 +301,14 @@ class ExtractiveReader:
 
         start_candidates_tokens_to_chars = []
         end_candidates_tokens_to_chars = []
-        for i, (s_candidates, e_candidates, encoding) in enumerate(zip(start_candidates, end_candidates, encodings)):
+        for i, (s_candidates, e_candidates, encoding) in enumerate(
+            zip(start_candidates, end_candidates, encodings, strict=True)
+        ):
             # Those with probabilities > 0 are valid
             valid = candidates_values[i] > 0
             s_char_spans = []
             e_char_spans = []
-            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid]):
+            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid], strict=True):
                 # token_to_chars returns `None` for special tokens
                 # But we shouldn't have special tokens in the answers at this point
                 # The whole span is given by the start of the start_token (index 0)
@@ -326,8 +332,8 @@ class ExtractiveReader:
 
         if not isinstance(answer.document.meta["page_number"], int):
             logger.warning(
-                f"Document's page_number must be int but is {type(answer.document.meta['page_number'])}. "
-                f"No page number will be added to the answer."
+                "Document's page_number must be int but is {type}. No page number will be added to the answer.",
+                type=type(answer.document.meta["page_number"]),
             )
             return answer
 
@@ -364,9 +370,9 @@ class ExtractiveReader:
         """
         answers_without_query = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
-            document_ids, start, end, probabilities
+            document_ids, start, end, probabilities, strict=True
         ):
-            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
+            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_, strict=True):
                 doc = flattened_documents[document_id]
                 answers_without_query.append(
                     ExtractedAnswer(
@@ -525,7 +531,7 @@ class ExtractiveReader:
         return deduplicated_answers
 
     @component.output_types(answers=list[ExtractedAnswer])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         documents: list[Document],

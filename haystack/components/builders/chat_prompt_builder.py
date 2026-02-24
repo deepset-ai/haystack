@@ -18,7 +18,7 @@ from haystack.utils.jinja2_extensions import _extract_template_variables_and_ass
 logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install \"arrow>=1.3.0\"'") as arrow_import:
-    import arrow  # pylint: disable=unused-import # noqa: F401
+    import arrow  # noqa: F401
 
 NO_TEXT_ERROR_MESSAGE = "ChatMessages from {role} role must contain text. Received ChatMessage with no text: {message}"
 
@@ -153,7 +153,7 @@ class ChatPromptBuilder:
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
             If a variable listed as required is not provided, an exception is raised.
-            If set to "*", all variables found in the prompt are required. Optional.
+            If set to `"*"`, all variables found in the prompt are required. Optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -214,7 +214,7 @@ class ChatPromptBuilder:
         template: list[ChatMessage] | str | None = None,
         template_variables: dict[str, Any] | None = None,
         **kwargs,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Renders the prompt template with the provided variables.
 

@@ -83,14 +83,15 @@ With this example, we explicitly enable access without authentication, so you do
 Start your container with `docker compose up -d` and then initialize the Document Store with:
 
 ```python
-from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
 from haystack import Document
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
-document_store.write_documents([
-    Document(content="This is first"),
-    Document(content="This is second")
-])
+document_store.write_documents(
+    [Document(content="This is first"), Document(content="This is second")],
+)
 print(document_store.count_documents())
 ```
 
@@ -101,16 +102,22 @@ To use the [Weaviate managed cloud service](https://weaviate.io/developers/wcs),
 Then, initialize the `WeaviateDocumentStore` using the API Key and URL found in your [Weaviate account](https://console.weaviate.cloud/):
 
 ```python
-from haystack_integrations.document_stores.weaviate import WeaviateDocumentStore, AuthApiKey
+from haystack_integrations.document_stores.weaviate import (
+    WeaviateDocumentStore,
+    AuthApiKey,
+)
 from haystack import Document
 
 import os
+
 os.environ["WEAVIATE_API_KEY"] = "YOUR-API-KEY"
 
 auth_client_secret = AuthApiKey()
 
-document_store = WeaviateDocumentStore(url="YOUR-WEAVIATE-URL",
-    auth_client_secret=auth_client_secret)
+document_store = WeaviateDocumentStore(
+    url="YOUR-WEAVIATE-URL",
+    auth_client_secret=auth_client_secret,
+)
 ```
 
 ## Authorization

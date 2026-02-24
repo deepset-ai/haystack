@@ -18,6 +18,7 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    FileContent,
     ImageContent,
     ReasoningContent,
     StreamingCallbackT,
@@ -508,7 +509,7 @@ class OpenAIResponsesChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
 
-        for openai_chunk in responses:  # pylint: disable=not-an-iterable
+        for openai_chunk in responses:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
@@ -522,7 +523,7 @@ class OpenAIResponsesChatGenerator:
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        async for openai_chunk in responses:  # pylint: disable=not-an-iterable
+        async for openai_chunk in responses:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
@@ -591,17 +592,15 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     if logprobs:
         meta["logprobs"] = logprobs
 
-    chat_message = ChatMessage.from_assistant(
+    return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
         meta=meta,
     )
 
-    return chat_message
 
-
-def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
+def _convert_response_chunk_to_streaming_chunk(
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
@@ -699,13 +698,12 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
         )
 
     # we return rest of the chunk as is
-    chunk_message = StreamingChunk(
+    return StreamingChunk(
         content="",
         component_info=component_info,
         index=getattr(chunk, "output_index", None),
         meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
     )
-    return chunk_message
 
 
 def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:
@@ -804,14 +802,22 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         If the message format is invalid.
     """
 
-    def serialize_part(part) -> dict[str, str]:
+    def convert_part(part) -> dict[str, str | None]:
         if isinstance(part, TextContent):
             return {"type": "input_text", "text": part.text}
-        elif isinstance(part, ImageContent):
+        if isinstance(part, ImageContent):
             return {
                 "type": "input_image",
                 # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
                 "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
+            }
+        if isinstance(part, FileContent):
+            return {
+                "type": "input_file",
+                # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.
+                # We use a dummy filename to avoid this issue.
+                "filename": part.filename or "filename",
+                "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
             }
         raise ValueError(f"Unsupported content type: {type(part)}")
 
@@ -820,11 +826,12 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     tool_call_results = message.tool_call_results
     images = message.images
     reasonings = message.reasonings
+    files = message.files
 
-    if not text_contents and not tool_calls and not tool_call_results and not images and not reasonings:
+    if not any([text_contents, tool_calls, tool_call_results, images, reasonings, files]):
         raise ValueError(
             """A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`,
-              `ImageContent`, or `ReasoningContent`."""
+              `ImageContent`, `FileContent`, or `ReasoningContent`."""
         )
     if len(tool_call_results) > 0 and len(message._content) > 1:
         raise ValueError(
@@ -838,7 +845,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
 
     # user message
     if message._role.value == "user":
-        content = [serialize_part(part) for part in message._content]
+        content = [convert_part(part) for part in message._content]
         openai_msg["content"] = content
         return [openai_msg]
 
@@ -849,7 +856,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             if result.origin.id is not None:
                 # Handle multimodal tool results (list of TextContent/ImageContent)
                 if isinstance(result.result, list):
-                    output_content = [serialize_part(part) for part in result.result]
+                    output_content = [convert_part(part) for part in result.result]
                 elif isinstance(result.result, str):
                     output_content = [{"type": "input_text", "text": result.result}]
                 else:

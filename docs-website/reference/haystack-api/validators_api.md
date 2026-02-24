@@ -5,29 +5,24 @@ description: "Validators validate LLM outputs"
 slug: "/validators-api"
 ---
 
-<a id="json_schema"></a>
 
-## Module json\_schema
+## json_schema
 
-<a id="json_schema.is_valid_json"></a>
-
-#### is\_valid\_json
+### is_valid_json
 
 ```python
-def is_valid_json(s: str) -> bool
+is_valid_json(s: str) -> bool
 ```
 
 Check if the provided string is a valid JSON.
 
-**Arguments**:
+**Parameters:**
 
-- `s`: The string to be checked.
+- **s** (<code>str</code>) – The string to be checked.
 
-**Returns**:
+**Returns:**
 
-`True` if the string is a valid JSON; otherwise, `False`.
-
-<a id="json_schema.JsonSchemaValidator"></a>
+- <code>bool</code> – `True` if the string is a valid JSON; otherwise, `False`.
 
 ### JsonSchemaValidator
 
@@ -88,33 +83,30 @@ _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
 'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
 ```
 
-<a id="json_schema.JsonSchemaValidator.__init__"></a>
-
-#### JsonSchemaValidator.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(json_schema: dict[str, Any] | None = None,
-             error_template: str | None = None)
+__init__(
+    json_schema: dict[str, Any] | None = None, error_template: str | None = None
+)
 ```
 
 Initialize the JsonSchemaValidator component.
 
-**Arguments**:
+**Parameters:**
 
-- `json_schema`: A dictionary representing the [JSON schema](https://json-schema.org/) against which
-the messages' content is validated.
-- `error_template`: A custom template string for formatting the error message in case of validation failure.
+- **json_schema** (<code>dict\[str, Any\] | None</code>) – A dictionary representing the [JSON schema](https://json-schema.org/) against which
+  the messages' content is validated.
+- **error_template** (<code>str | None</code>) – A custom template string for formatting the error message in case of validation failure.
 
-<a id="json_schema.JsonSchemaValidator.run"></a>
-
-#### JsonSchemaValidator.run
+#### run
 
 ```python
-@component.output_types(validated=list[ChatMessage],
-                        validation_error=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        json_schema: dict[str, Any] | None = None,
-        error_template: str | None = None) -> dict[str, list[ChatMessage]]
+run(
+    messages: list[ChatMessage],
+    json_schema: dict[str, Any] | None = None,
+    error_template: str | None = None,
+) -> dict[str, list[ChatMessage]]
 ```
 
 Validates the last of the provided messages against the specified json schema.
@@ -122,24 +114,23 @@ Validates the last of the provided messages against the specified json schema.
 If it does, the message is passed along the "validated" output. If it does not, the message is passed along
 the "validation_error" output.
 
-**Arguments**:
+**Parameters:**
 
-- `messages`: A list of ChatMessage instances to be validated. The last message in this list is the one
-that is validated.
-- `json_schema`: A dictionary representing the [JSON schema](https://json-schema.org/)
-against which the messages' content is validated. If not provided, the schema from the component init
-is used.
-- `error_template`: A custom template string for formatting the error message in case of validation. If not
-provided, the `error_template` from the component init is used.
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances to be validated. The last message in this list is the one
+  that is validated.
+- **json_schema** (<code>dict\[str, Any\] | None</code>) – A dictionary representing the [JSON schema](https://json-schema.org/)
+  against which the messages' content is validated. If not provided, the schema from the component init
+  is used.
+- **error_template** (<code>str | None</code>) – A custom template string for formatting the error message in case of validation. If not
+  provided, the `error_template` from the component init is used.
 
-**Raises**:
+**Returns:**
 
-- `ValueError`: If no JSON schema is provided or if the message content is not a dictionary or a list of
-dictionaries.
-
-**Returns**:
-
-A dictionary with the following keys:
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - "validated": A list of messages if the last message is valid.
 - "validation_error": A list of messages if the last message is invalid.
 
+**Raises:**
+
+- <code>ValueError</code> – If no JSON schema is provided or if the message content is not a dictionary or a list of
+  dictionaries.

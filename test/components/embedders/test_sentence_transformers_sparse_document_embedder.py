@@ -291,6 +291,9 @@ class TestSentenceTransformersDocumentEmbedder:
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [
+            SparseEmbedding(indices=[0, 2, 5], values=[0.1, 0.2, 0.3]) for _ in range(5)
+        ]
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -314,6 +317,9 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator="\n",
         )
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [
+            SparseEmbedding(indices=[0, 2, 5], values=[0.1, 0.2, 0.3]) for _ in range(5)
+        ]
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -415,10 +421,7 @@ class TestSentenceTransformersDocumentEmbedder:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_sparse_document_embedder(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_live_run_sparse_document_embedder(self, del_hf_env_vars):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),

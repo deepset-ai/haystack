@@ -48,7 +48,9 @@ To get a Cohere API key, head over to https://cohere.com/.
 Here is how you can use the component on its own. You’ll need to pass in your Cohere API key via Secret or set it as an environment variable called `COHERE_API_KEY`. The examples below assume you've set the environment variable.
 
 ```python
-from haystack_integrations.components.embedders.cohere.text_embedder import CohereTextEmbedder
+from haystack_integrations.components.embedders.cohere.text_embedder import (
+    CohereTextEmbedder,
+)
 
 text_to_embed = "I love pizza!"
 
@@ -65,30 +67,39 @@ print(text_embedder.run(text_to_embed))
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.cohere.text_embedder import CohereTextEmbedder
-from haystack_integrations.components.embedders.cohere.document_embedder import CohereDocumentEmbedder
+from haystack_integrations.components.embedders.cohere.text_embedder import (
+    CohereTextEmbedder,
+)
+from haystack_integrations.components.embedders.cohere.document_embedder import (
+    CohereDocumentEmbedder,
+)
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
 document_embedder = CohereDocumentEmbedder()
-documents_with_embeddings = document_embedder.run(documents)['documents']
+documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", CohereTextEmbedder())
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 ## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
 ```

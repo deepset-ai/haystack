@@ -77,9 +77,9 @@ class OpenAPIServiceToFunctions:
             if isinstance(source, (str, Path)):
                 if os.path.exists(source):
                     try:
-                        with open(source, "r") as f:
+                        with open(source) as f:
                             openapi_spec_content = f.read()
-                    except IOError as e:
+                    except OSError as e:
                         logger.warning(
                             "IO error reading OpenAPI specification file: {source}. Error: {e}", source=source, e=e
                         )
@@ -105,7 +105,7 @@ class OpenAPIServiceToFunctions:
                     all_extracted_fc_definitions.extend(functions)
                     all_openapi_specs.append(service_openapi_spec)
                 except Exception as e:
-                    logger.error(
+                    logger.exception(
                         "Error processing OpenAPI specification from source {source}: {error}", source=source, error=e
                     )
 
@@ -184,11 +184,11 @@ class OpenAPIServiceToFunctions:
 
         if function_name and description and schema["properties"]:
             return {"name": function_name, "description": description, "parameters": schema}
-        else:
-            logger.warning(
-                "Invalid OpenAPI spec format provided. Could not extract function from {spec}", spec=resolved_spec
-            )
-            return {}
+
+        logger.warning(
+            "Invalid OpenAPI spec format provided. Could not extract function from {spec}", spec=resolved_spec
+        )
+        return {}
 
     def _parse_property_attributes(
         self, property_schema: dict[str, Any], include_attributes: list[str] | None = None
@@ -247,11 +247,11 @@ class OpenAPIServiceToFunctions:
 
         try:
             open_api_spec_content = yaml.safe_load(content)
-        except yaml.YAMLError:
+        except yaml.YAMLError as e:
             error_message = (
                 "Failed to parse the OpenAPI specification. The content does not appear to be valid JSON or YAML.\n\n"
             )
-            raise RuntimeError(error_message, content)
+            raise RuntimeError(error_message, content) from e
 
         # Replace references in the object with their resolved values, if any
         return jsonref.replace_refs(open_api_spec_content)

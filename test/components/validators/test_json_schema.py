@@ -18,7 +18,7 @@ def genuine_fc_message():
 
 @pytest.fixture
 def json_schema_github_compare():
-    json_schema = {
+    return {
         "type": "object",
         "properties": {
             "id": {"type": "string", "description": "A unique identifier for the call"},
@@ -49,12 +49,11 @@ def json_schema_github_compare():
         "required": ["function", "type"],
         "description": "Structure representing a function call",
     }
-    return json_schema
 
 
 @pytest.fixture
 def json_schema_github_compare_openai():
-    json_schema = {
+    return {
         "name": "compare_branches",
         "description": "Compares two branches in a GitHub repository",
         "parameters": {
@@ -72,7 +71,6 @@ def json_schema_github_compare_openai():
             "description": "Parameters for the function call",
         },
     }
-    return json_schema
 
 
 class TestJsonSchemaValidator:

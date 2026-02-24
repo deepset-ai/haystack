@@ -32,7 +32,6 @@ class SentenceTransformersSparseDocumentEmbedder:
 
     doc = Document(content="I love pizza!")
     doc_embedder = SentenceTransformersSparseDocumentEmbedder()
-    doc_embedder.warm_up()
 
     result = doc_embedder.run([doc])
     print(result['documents'][0].sparse_embedding)
@@ -231,7 +230,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         )
 
         documents_with_embeddings = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             documents_with_embeddings.append(replace(doc, sparse_embedding=emb))
 
         return {"documents": documents_with_embeddings}

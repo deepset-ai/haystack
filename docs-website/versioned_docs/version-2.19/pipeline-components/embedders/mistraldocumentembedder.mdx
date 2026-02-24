@@ -39,7 +39,10 @@ pip install mistral-haystack
 `MistralDocumentEmbedder` needs a Mistral API key to work. It uses an `MISTRAL_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```python
-embedder = MistralDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+embedder = MistralDocumentEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
+)
 ```
 
 ## Usage
@@ -52,14 +55,19 @@ Here is how you can use the component on its own:
 
 ```python
 from haystack import Document
-from haystack_integrations.components.embedders.mistral.document_embedder import MistralDocumentEmbedder
+from haystack_integrations.components.embedders.mistral.document_embedder import (
+    MistralDocumentEmbedder,
+)
 
 doc = Document(content="I love pizza!")
 
-embedder = MistralDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+embedder = MistralDocumentEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="mistral-embed",
+)
 
 result = embedder.run([doc])
-print(result['documents'][0].embedding)
+print(result["documents"][0].embedding)
 ## [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
 ```
 
@@ -74,7 +82,9 @@ from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.embedders.mistral.document_embedder import MistralDocumentEmbedder
+from haystack_integrations.components.embedders.mistral.document_embedder import (
+    MistralDocumentEmbedder,
+)
 
 document_store = InMemoryDocumentStore()
 fetcher = LinkContentFetcher()

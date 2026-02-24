@@ -27,7 +27,6 @@ class SentenceTransformersTextEmbedder:
     text_to_embed = "I love pizza!"
 
     text_embedder = SentenceTransformersTextEmbedder()
-    text_embedder.warm_up()
 
     print(text_embedder.run(text_to_embed))
 
@@ -35,7 +34,7 @@ class SentenceTransformersTextEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: ComponentDevice | None = None,

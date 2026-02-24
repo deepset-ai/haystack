@@ -104,7 +104,6 @@ class SentenceTransformersDiversityRanker:
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
     ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
-    ranker.warm_up()
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"
@@ -113,7 +112,7 @@ class SentenceTransformersDiversityRanker:
     ```
     """  # noqa: E501
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,

@@ -61,7 +61,6 @@ embedder = NvidiaDocumentEmbedder(
     api_url="https://integrate.api.nvidia.com/v1",
     api_key=Secret.from_token("<your-api-key>"),
 )
-embedder.warm_up()
 
 result = embedder.run(documents=documents)
 print(result["documents"])
@@ -84,7 +83,6 @@ embedder = NvidiaDocumentEmbedder(
     api_url="http://localhost:9999/v1",
     api_key=None,
 )
-embedder.warm_up()
 
 result = embedder.run(documents=documents)
 print(result["documents"])
@@ -101,7 +99,10 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.utils.auth import Secret
-from haystack_integrations.components.embedders.nvidia import NvidiaTextEmbedder, NvidiaDocumentEmbedder
+from haystack_integrations.components.embedders.nvidia import (
+    NvidiaTextEmbedder,
+    NvidiaDocumentEmbedder,
+)
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
@@ -134,7 +135,10 @@ query_pipeline.add_component(
         api_key=Secret.from_token("<your-api-key>"),
     ),
 )
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"

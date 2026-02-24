@@ -48,7 +48,7 @@ from haystack.utils import Secret
 from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 
 text_embedder = SentenceTransformersSparseTextEmbedder(
-    token=Secret.from_token("<your-api-key>")
+    token=Secret.from_token("<your-api-key>"),
 )
 ```
 
@@ -65,7 +65,7 @@ You can specify the backend during initialization:
 ```python
 embedder = SentenceTransformersSparseTextEmbedder(
     model="prithivida/Splade_PP_en_v2",
-    backend="onnx"
+    backend="onnx",
 )
 ```
 
@@ -79,7 +79,7 @@ Some models may benefit from adding a prefix or suffix to the text before embedd
 embedder = SentenceTransformersSparseTextEmbedder(
     model="prithivida/Splade_PP_en_v2",
     prefix="query: ",
-    suffix=""
+    suffix="",
 )
 ```
 
@@ -97,7 +97,6 @@ from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 text_to_embed = "I love pizza!"
 
 text_embedder = SentenceTransformersSparseTextEmbedder()
-text_embedder.warm_up()
 
 print(text_embedder.run(text_to_embed))
 
@@ -120,15 +119,17 @@ Then, try out this pipeline:
 from haystack import Document, Pipeline
 from haystack.components.embedders import (
     SentenceTransformersSparseDocumentEmbedder,
-    SentenceTransformersSparseTextEmbedder
+    SentenceTransformersSparseTextEmbedder,
 )
-from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.components.retrievers.qdrant import (
+    QdrantSparseEmbeddingRetriever,
+)
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 document_store = QdrantDocumentStore(
     ":memory:",
     recreate_index=True,
-    use_sparse_embeddings=True
+    use_sparse_embeddings=True,
 )
 
 documents = [
@@ -140,9 +141,8 @@ documents = [
 
 ## Embed and write documents
 sparse_document_embedder = SentenceTransformersSparseDocumentEmbedder(
-    model="prithivida/Splade_PP_en_v2"
+    model="prithivida/Splade_PP_en_v2",
 )
-sparse_document_embedder.warm_up()
 documents_with_sparse_embeddings = sparse_document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_sparse_embeddings)
 
@@ -150,15 +150,15 @@ document_store.write_documents(documents_with_sparse_embeddings)
 query_pipeline = Pipeline()
 query_pipeline.add_component(
     "sparse_text_embedder",
-    SentenceTransformersSparseTextEmbedder()
+    SentenceTransformersSparseTextEmbedder(),
 )
 query_pipeline.add_component(
     "sparse_retriever",
-    QdrantSparseEmbeddingRetriever(document_store=document_store)
+    QdrantSparseEmbeddingRetriever(document_store=document_store),
 )
 query_pipeline.connect(
     "sparse_text_embedder.sparse_embedding",
-    "sparse_retriever.query_sparse_embedding"
+    "sparse_retriever.query_sparse_embedding",
 )
 
 query = "Who provides sparse embedding models?"

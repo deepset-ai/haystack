@@ -62,10 +62,9 @@ class MockChatGenerator:
     def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         if self._counter >= len(self.responses):
             return {"replies": [self.responses[-1]]}
-        else:
-            result = self.responses[self._counter]
-            self._counter += 1
-            return {"replies": [result]}
+        result = self.responses[self._counter]
+        self._counter += 1
+        return {"replies": [result]}
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
@@ -73,10 +72,9 @@ class MockChatGenerator:
     ) -> dict[str, Any]:
         if self._counter >= len(self.responses):
             return {"replies": [self.responses[-1]]}
-        else:
-            result = self.responses[self._counter]
-            self._counter += 1
-            return {"replies": [result]}
+        result = self.responses[self._counter]
+        self._counter += 1
+        return {"replies": [result]}
 
 
 @pytest.fixture
@@ -610,7 +608,6 @@ class TestAgentBreakpoints:
         )
 
         try:
-            agent.warm_up()
             agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
         except BreakpointException:
             pass

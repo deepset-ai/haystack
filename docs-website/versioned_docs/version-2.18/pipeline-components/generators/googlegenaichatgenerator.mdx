@@ -44,7 +44,9 @@ The following examples show how to use the component with the Gemini Developer A
 #### Gemini Developer API (API Key Authentication)
 
 ```python
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 
 ## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIChatGenerator()
@@ -53,7 +55,9 @@ chat_generator = GoogleGenAIChatGenerator()
 #### Vertex AI (Application Default Credentials)
 
 ```python
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 
 ## Using Application Default Credentials (requires gcloud auth setup)
 chat_generator = GoogleGenAIChatGenerator(
@@ -66,7 +70,9 @@ chat_generator = GoogleGenAIChatGenerator(
 #### Vertex AI (API Key Authentication)
 
 ```python
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 
 ## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIChatGenerator(api="vertex")
@@ -84,7 +90,9 @@ pip install google-genai-haystack
 
 ```python
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 
 ## Initialize the chat generator
 chat_generator = GoogleGenAIChatGenerator()
@@ -101,12 +109,17 @@ You can also easily use function calls. First, define the function locally and c
 from typing import Annotated
 from haystack.tools import create_tool_from_function
 
+
 ## example function to get the current weather
 def get_current_weather(
-    location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
+    location: Annotated[
+        str,
+        "The city for which to get the weather, e.g. 'San Francisco'",
+    ] = "Munich",
     unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
 ) -> str:
     return f"The weather in {location} is sunny. The temperature is 20 {unit}."
+
 
 tool = create_tool_from_function(get_current_weather)
 ```
@@ -115,7 +128,9 @@ Create a new instance of `GoogleGenAIChatGenerator` to set the tools and a [Tool
 
 ```python
 import os
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 from haystack.components.tools import ToolInvoker
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
@@ -138,7 +153,9 @@ print(res["replies"][0].tool_calls)
 tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
 messages = user_message + replies + tool_messages
 
-messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
+messages += res["replies"][0] + [
+    ChatMessage.from_function(content=weather, name="get_current_weather"),
+]
 
 final_replies = genai_chat.run(messages=messages)["replies"]
 print(final_replies[0].text)
@@ -149,15 +166,17 @@ print(final_replies[0].text)
 ```python
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.dataclasses import StreamingChunk
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
+
 
 def streaming_callback(chunk: StreamingChunk):
-    print(chunk.content, end='', flush=True)
+    print(chunk.content, end="", flush=True)
+
 
 ## Initialize with streaming callback
-chat_generator = GoogleGenAIChatGenerator(
-    streaming_callback=streaming_callback
-)
+chat_generator = GoogleGenAIChatGenerator(streaming_callback=streaming_callback)
 
 ## Generate a streaming response
 messages = [ChatMessage.from_user("Write a short story")]
@@ -172,7 +191,9 @@ import os
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
-from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
 
 ## no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
@@ -187,7 +208,14 @@ pipe.connect("prompt_builder.prompt", "genai.messages")
 
 location = "Rome"
 messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
-res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        },
+    },
+)
 
 print(res)
 ```

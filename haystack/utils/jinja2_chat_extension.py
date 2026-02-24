@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension
@@ -13,6 +14,7 @@ from haystack.dataclasses.chat_message import (
     ChatMessage,
     ChatMessageContentT,
     ChatRole,
+    FileContent,
     ImageContent,
     ReasoningContent,
     TextContent,
@@ -221,9 +223,11 @@ class ChatMessageExtension(Extension):
         """
 
         if role == "user":
-            valid_parts = [part for part in parts if isinstance(part, (TextContent, str, ImageContent))]
+            valid_parts = [part for part in parts if isinstance(part, (TextContent, str, ImageContent, FileContent))]
             if len(parts) != len(valid_parts):
-                raise ValueError("User message must contain only TextContent, string or ImageContent parts.")
+                raise ValueError(
+                    "User message must contain only TextContent, string, ImageContent or FileContent parts."
+                )
             return ChatMessage.from_user(meta=meta, name=name, content_parts=valid_parts)
 
         if role == "system":

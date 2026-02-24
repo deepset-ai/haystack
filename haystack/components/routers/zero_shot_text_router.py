@@ -12,11 +12,7 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
     from transformers import Pipeline as HfPipeline
     from transformers import pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        deserialize_hf_model_kwargs,
-        resolve_hf_pipeline_kwargs,
-        serialize_hf_model_kwargs,
-    )
+    from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 
 @component
@@ -38,7 +34,6 @@ class TransformersZeroShotTextRouter:
 
     document_store = InMemoryDocumentStore()
     doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
-    doc_embedder.warm_up()
     docs = [
         Document(
             content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
@@ -93,7 +88,7 @@ class TransformersZeroShotTextRouter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         labels: list[str],
         multi_label: bool = False,
