@@ -180,6 +180,9 @@ class EvaluationRunResult:
         :returns:
             JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
              a message confirming the successful write or an error message.
+        :raises TypeError: If `other` is not an EvaluationRunResult instance, or if the detailed reports are not
+            dictionaries.
+        :raises ValueError: If the `other` parameter is missing required attributes.
         """
 
         if not isinstance(other, EvaluationRunResult):

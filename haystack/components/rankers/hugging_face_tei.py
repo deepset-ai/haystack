@@ -137,6 +137,9 @@ class HuggingFaceTEIRanker:
 
         :raises RuntimeError:
             - If the API returns an error response.
+
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         if isinstance(result, dict) and "error" in result:
             error_type = result.get("error_type", "UnknownError")
@@ -189,6 +192,9 @@ class HuggingFaceTEIRanker:
 
         :raises RuntimeError:
             - If the API returns an error response.
+
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         # Return empty if no documents provided
         if not documents:
@@ -246,6 +252,8 @@ class HuggingFaceTEIRanker:
             - If the API request fails.
         :raises RuntimeError:
             - If the API returns an error response.
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         # Return empty if no documents provided
         if not documents:

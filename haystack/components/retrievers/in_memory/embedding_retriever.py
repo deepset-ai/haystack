@@ -77,6 +77,7 @@ class InMemoryEmbeddingRetriever:
         - `REPLACE` (default): Overrides the initialization filters with the filters specified at runtime.
         Use this policy to dynamically change filtering for specific queries.
         - `MERGE`: Combines runtime filters with initialization filters to narrow down the search.
+        :raises TypeError: If the document_store is not an instance of InMemoryDocumentStore.
         :raises ValueError:
             If the specified top_k is not > 0.
         """

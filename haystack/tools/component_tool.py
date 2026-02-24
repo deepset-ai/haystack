@@ -164,7 +164,8 @@ class ComponentTool(Tool):
                 "documents": {"handler": custom_handler}
             }
             ```
-        :raises ValueError: If the component is invalid or schema generation fails.
+        :raises TypeError: If the object passed is not a Haystack Component instance.
+        :raises ValueError: If the component has already been added to a pipeline, or if schema generation fails.
         """
         if not isinstance(component, Component):
             message = (
