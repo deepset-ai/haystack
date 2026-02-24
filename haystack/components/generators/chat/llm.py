@@ -72,8 +72,6 @@ class LLM(Agent):
             user_prompt=user_prompt,
             required_variables=required_variables,
             streaming_callback=streaming_callback,
-            exit_conditions=["text"],
-            max_agent_steps=1,
         )
 
     @override
