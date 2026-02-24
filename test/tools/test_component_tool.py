@@ -214,7 +214,7 @@ class TestComponentTool:
 
     def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
-        with pytest.raises(ValueError, match="must be str, not dict"):
+        with pytest.raises(TypeError, match="must be str, not dict"):
             ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
 
     def test_from_component_with_outputs_to_state(self):
@@ -374,7 +374,7 @@ class TestComponentTool:
 
         not_a_component = NotAComponent()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
 
     def test_component_invoker_with_chat_message_input(self):

@@ -14,7 +14,7 @@ from haystack.dataclasses import ByteStream
 
 @pytest.fixture
 def json_serperdev_openapi_spec():
-    serper_spec = """
+    return """
             {
                 "openapi": "3.0.0",
                 "info": {
@@ -101,12 +101,11 @@ def json_serperdev_openapi_spec():
                 }
             }
             """
-    return serper_spec
 
 
 @pytest.fixture
 def yaml_serperdev_openapi_spec():
-    serper_spec = """
+    return """
             openapi: 3.0.0
             info:
               title: SerperDev
@@ -159,7 +158,6 @@ def yaml_serperdev_openapi_spec():
                   name: x-api-key
                   in: header
             """
-    return serper_spec
 
 
 class TestOpenAPIServiceToFunctions:

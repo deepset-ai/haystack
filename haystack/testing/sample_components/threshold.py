@@ -6,7 +6,7 @@ from haystack.core.component import component
 
 
 @component
-class Threshold:  # pylint: disable=too-few-public-methods
+class Threshold:
     """
     Redirects the value, along a different connection whether the value is above or below the given threshold.
 

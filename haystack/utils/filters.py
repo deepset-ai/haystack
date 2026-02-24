@@ -62,12 +62,10 @@ def _greater_than(value: Any, filter_value: Any) -> bool:
         return False
 
     if isinstance(value, str) or isinstance(filter_value, str):
-        try:
-            value = _parse_date(value)
-            filter_value = _parse_date(filter_value)
-            value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
-        except FilterError as exc:
-            raise exc
+        value = _parse_date(value)
+        filter_value = _parse_date(filter_value)
+        value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
+
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)

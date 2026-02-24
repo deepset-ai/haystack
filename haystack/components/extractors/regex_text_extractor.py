@@ -115,7 +115,7 @@ class RegexTextExtractor:
         """Process only the last message and build the result."""
         last_message = messages[-1]
         if not isinstance(last_message, ChatMessage):
-            raise ValueError(f"Expected ChatMessage object, got {type(last_message)}")
+            raise TypeError(f"Expected ChatMessage object, got {type(last_message)}")
         if last_message.text is None:
             logger.warning("Last message has no text content")
             return {"captured_text": ""}

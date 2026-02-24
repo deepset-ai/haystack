@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, TypeVar
+from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
@@ -92,8 +92,8 @@ def _validate_component_to_dict_output(component: Any, name: str, data: dict[str
     def is_allowed_type(obj: Any) -> bool:
         return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None)))
 
-    def check_iterable(l: Iterable[Any]) -> None:
-        for v in l:
+    def check_iterable(iterable: Iterable[Any]) -> None:
+        for v in iterable:
             if not is_allowed_type(v):
                 raise SerializationError(
                     f"Component '{name}' of type '{type(component).__name__}' has an unsupported value "
@@ -218,7 +218,7 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     # Automatically serialize objects that have a to_dict method
     serialized_params = {}
     for key, value in init_parameters.items():
-        if value is not None and hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
+        if value is not None and hasattr(value, "to_dict") and callable(value.to_dict):
             serialized_params[key] = value.to_dict()
         else:
             serialized_params[key] = value
@@ -242,7 +242,7 @@ def _is_serialized_component_device(value: Any) -> bool:
     type_value = value.get("type")
     if type_value == "single":
         return "device" in value and isinstance(value["device"], str)
-    elif type_value == "multiple":
+    if type_value == "multiple":
         return "device_map" in value and isinstance(value["device_map"], dict)
     return False
 
@@ -301,7 +301,7 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
             elif isinstance(type_value, str) and "." in type_value:
                 try:
                     imported_class = import_class_by_name(type_value)
-                    if hasattr(imported_class, "from_dict") and callable(getattr(imported_class, "from_dict")):
+                    if hasattr(imported_class, "from_dict") and callable(imported_class.from_dict):
                         init_params[key] = imported_class.from_dict(value)
                     else:
                         init_params[key] = default_from_dict(imported_class, value)
@@ -331,5 +331,5 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
         module = thread_safe_import(module_path)
         return getattr(module, class_name)
     except (ImportError, AttributeError) as error:
-        logger.error("Failed to import class '{full_name}'", full_name=fully_qualified_name)
+        logger.exception("Failed to import class '{full_name}'", full_name=fully_qualified_name)
         raise ImportError(f"Could not import class '{fully_qualified_name}'") from error

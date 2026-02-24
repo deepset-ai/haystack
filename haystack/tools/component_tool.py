@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Callable
 from types import NoneType, UnionType
-from typing import Any, Callable, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -170,7 +171,7 @@ class ComponentTool(Tool):
                 f"Object {component!r} is not a Haystack component. "
                 "Use ComponentTool only with Haystack component instances."
             )
-            raise ValueError(message)
+            raise TypeError(message)
 
         if getattr(component, "__haystack_added_to_pipeline__", None):
             msg = (

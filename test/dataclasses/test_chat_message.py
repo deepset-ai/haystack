@@ -350,7 +350,7 @@ class TestChatMessage:
         assert message._content == [FileContent(base64_data=base64_pdf_string)]
 
     def test_from_user_with_content_parts_fails_unsupported_parts(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             ChatMessage.from_user(
                 content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]
             )

@@ -21,7 +21,7 @@ from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_functi
 def calculate(expression: str) -> dict:
     """Calculate the result of a mathematical expression."""
     try:
-        result = eval(expression, {"__builtins__": {}})
+        result = eval(expression, {"__builtins__": {}})  # noqa: S307
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}
@@ -53,12 +53,9 @@ class MockChatGenerator:
         if self.fail_on_call:
             # Simulate a crash in the chat generator
             raise Exception("Error in chat generator component")
-        else:
-            return {
-                "replies": [
-                    ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="factorial", arguments={"n": 5})])
-                ]
-            }
+        return {
+            "replies": [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="factorial", arguments={"n": 5})])]
+        }
 
 
 @component

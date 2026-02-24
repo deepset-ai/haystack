@@ -18,11 +18,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
     from transformers import Pipeline as HfPipeline
     from transformers import StoppingCriteriaList, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        HFTokenStreamingHandler,
-        StopWordsCriteria,
-        resolve_hf_pipeline_kwargs,
-    )
+    from haystack.utils.hf import HFTokenStreamingHandler, StopWordsCriteria, resolve_hf_pipeline_kwargs
 
 
 @component
@@ -48,7 +44,7 @@ class HuggingFaceLocalGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str = "Qwen/Qwen3-0.6B",
         task: Literal["text-generation", "text2text-generation"] | None = None,

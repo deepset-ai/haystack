@@ -8,7 +8,7 @@ from haystack.dataclasses import ByteStream
 
 
 def test_from_file_path(tmp_path, request):
-    test_bytes = "Hello, world!\n".encode()
+    test_bytes = b"Hello, world!\n"
     test_path = tmp_path / request.node.name
     with open(test_path, "wb") as fd:
         assert fd.write(test_bytes)

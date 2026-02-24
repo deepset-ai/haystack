@@ -15,7 +15,7 @@ from haystack.dataclasses import ByteStream
 from haystack.utils.misc import _guess_mime_type  # ruff: isort: skip
 
 # We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
-from haystack.utils.misc import CUSTOM_MIMETYPES  # pylint: disable=unused-import  # noqa: F401
+from haystack.utils.misc import CUSTOM_MIMETYPES  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +88,8 @@ class FileTypeRouter:
         for mime_type in mime_types:
             try:
                 pattern = re.compile(mime_type)
-            except re.error:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.")
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
@@ -154,7 +154,7 @@ class FileTypeRouter:
         mime_types: defaultdict[str, list[Path | ByteStream]] = defaultdict(list)
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, meta_dict in zip(sources, meta_list):
+        for source, meta_dict in zip(sources, meta_list, strict=True):
             if isinstance(source, str):
                 source = Path(source)
 
@@ -162,7 +162,7 @@ class FileTypeRouter:
                 if not source.exists():
                     if self._raise_on_failure:
                         raise FileNotFoundError(f"File not found: {source}")
-                    logger.warning(f"File not found: {source}. Skipping it.", source=source)
+                    logger.warning("File not found: {source}. Skipping it.", source=source)
                     mime_types["failed"].append(source)
                     continue
 
@@ -171,7 +171,7 @@ class FileTypeRouter:
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
-                raise ValueError(f"Unsupported data source type: {type(source).__name__}")
+                raise TypeError(f"Unsupported data source type: {type(source).__name__}")
 
             # If we have metadata, we convert the source to ByteStream and add the metadata
             if meta_dict:

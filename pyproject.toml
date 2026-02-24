@@ -149,7 +149,6 @@ dependencies = [
   "coverage",
   "mypy",
   "pip",                     # mypy needs pip to install missing stub packages
-  "pylint",
   "ipython",
   "colorama==0.4.6",         # Pipeline checkpoints test
   "anyio",                   # needed for asynchronous Path testing
@@ -164,7 +163,6 @@ all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/}"
-lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]
 template = "test"
@@ -202,56 +200,6 @@ ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME"
 quiet-level = 3
 skip = "./test,./e2e"
 
-[tool.pylint.'MESSAGES CONTROL']
-max-line-length = 120
-disable = [
-  # To keep
-  "fixme",
-  "c-extension-no-member",
-  # we re-export symbols for correct type checking
-  # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
-  "useless-import-alias",
-
-  # To review:
-  "missing-docstring",
-  "unused-argument",
-  "line-too-long",
-  "protected-access",
-  "too-few-public-methods",
-  "raise-missing-from",
-  "invalid-name",
-  "duplicate-code",
-  "consider-using-f-string",
-  "no-else-return",
-  "attribute-defined-outside-init",
-  "super-with-arguments",
-  "redefined-builtin",
-  "unspecified-encoding",
-  "no-name-in-module",
-  "redefined-outer-name",
-  "arguments-renamed",
-  "unnecessary-pass",
-  "broad-except",
-  "consider-iterating-dictionary",
-  "consider-using-in",
-  "bare-except",
-  "unexpected-keyword-arg",
-  "broad-exception-raised",
-  "cyclic-import",
-  "import-outside-toplevel",
-]
-[tool.pylint.'DESIGN']
-max-args = 20           # Default is 5
-max-attributes = 22     # Default is 7
-max-branches = 22       # Default is 12
-max-locals = 39         # Default is 15
-max-module-lines = 1500 # Default is 1000
-max-nested-blocks = 6   # Default is 5
-max-statements = 102    # Default is 50
-
-[tool.pylint.'SIMILARITIES']
-min-similarity-lines = 6
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--strict-markers"
@@ -282,93 +230,18 @@ module = ["haystack.components.*", "haystack.testing.*"]
 disallow_incomplete_defs = false
 
 [tool.ruff]
+exclude = ["e2e/**", "proposals"]
 line-length = 120
-exclude = ["proposals"]
+
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true
 
-[tool.ruff.lint.per-file-ignores]
-"test/**" = [
-  "D102", # Missing docstring in public method
-  "D103", # Missing docstring in public function
-  "D205", # 1 blank line required between summary line and description
-  "PLC0206", # Extracting value from dictionary without calling `.items()`
-  "SIM105", # try-except-pass instead of contextlib-suppress
-  "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
-]
-# in the following files, we still allow old type hints to handle and test them
-# UP006: generics like typing.List, typing.Dict
-# UP007: Union[X, Y] syntax
-# UP045: Optional[X] syntax
-"haystack/components/agents/state/state_utils.py" = ["UP007"]
-"haystack/core/super_component/utils.py" = ["UP007"]
-"haystack/core/type_utils.py" = ["UP007"]
-"haystack/tools/parameters_schema_utils.py" = ["UP007"]
-"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP045"]
-"test/components/converters/test_output_adapter.py" = ["UP006"]
-"test/components/joiners/test_list_joiner.py" = ["UP006"]
-"test/core/test_type_utils.py" = ["UP006", "UP007", "UP045"]
-"test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
-"test/core/super_component/test_utils.py" = ["UP007", "UP045"]
-"test/tools/test_parameters_schema_utils.py" = ["UP007"]
-"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045"]
-
-
-[tool.ruff.lint]
-isort.split-on-trailing-comma = false
-exclude = ["e2e/**"]
-select = [
-  "ASYNC", # flake8-async
-  "C4",    # flake8-comprehensions
-  "C90",   # McCabe cyclomatic complexity
-  "E501",  # Long lines
-  "EXE",   # flake8-executable
-  "F",     # Pyflakes
-  "INT",   # flake8-gettext
-  "PERF",  # Perflint
-  "PL",    # Pylint
-  "Q",     # flake8-quotes
-  "SIM",   # flake8-simplify
-  "SLOT",  # flake8-slots
-  "T10",   # flake8-debugger
-  "UP006", # non-pep585-annotation (enforce list, dict, etc.)
-  "UP007", # non-pep604-annotation-union (enforce X | Y syntax)
-  "UP045", # non-pep604-annotation-optional (enforce X | None syntax)
-  "W",     # pycodestyle
-  "YTT",   # flake8-2020
-  "I",     # isort
-  # built-in shadowing
-  "A001", # builtin-variable-shadowing
-  "A002", # builtin-argument-shadowing
-  "A003", # builtin-attribute-shadowing
-  # docstring rules
-  "D102", # Missing docstring in public method
-  "D103", # Missing docstring in public function
-  "D209", # Closing triple quotes go to new line
-  "D205", # 1 blank line required between summary line and description
-  "D213", # summary lines must be positioned on the second physical line of the docstring
-  "D417", # undocumented-parameter
-  "D419", # undocumented-returns
-]
-
-ignore = [
-  "PERF203", # `try`-`except` within a loop incurs performance overhead
-  "PERF401", # Use a list comprehension to create a transformed list
-  "PLR1714", # repeated-equality-comparison
-  "PLW0603", # global-statement
-  "PLW2901", # redefined-loop-name
-  "SIM108",  # if-else-block-instead-of-if-exp
-  "SIM118",  # in-dict-keys
-  # we re-export symbols for correct type checking
-  # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
-  "PLC0414", # useless-import-alias,
-  "PLC0415", # import-outside-top-level,
-]
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
 
 [tool.ruff.lint.mccabe]
 max-complexity = 20
-
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
@@ -377,6 +250,112 @@ max-branches = 21                                 # Default is 12
 max-public-methods = 20                           # Default is 20
 max-returns = 7                                   # Default is 6
 max-statements = 56                               # Default is 50
+
+[tool.ruff.lint]
+select = [
+  "A001",   # builtin-variable-shadowing
+  "A002",   # builtin-argument-shadowing
+  "A003",   # builtin-attribute-shadowing
+  "ARG",    # flake8-unused-arguments
+  "ASYNC",  # flake8-async
+  "B",      # flake8-bugbear
+  "BLE",    # flake8-blind-except
+  "C4",     # flake8-comprehensions
+  "C90",    # mccabe complexity
+  "COM818", # trailing-comma-on-bare-tuple
+  "D102",   # Missing docstring in public method
+  "D103",   # Missing docstring in public function
+  "D205",   # 1 blank line required between summary line and description
+  "D209",   # Closing triple quotes go to new line
+  "D213",   # summary lines must be positioned on the second physical line of the docstring
+  "D417",   # undocumented-parameter
+  "D419",   # undocumented-returns
+  "E",      # pycodestyle errors
+  "EXE",    # flake8-executable
+  "F",      # pyflakes
+  "G001",   # logging-format-interpolation
+  "G002",   # logging-percent-format
+  "G004",   # logging-f-string
+  "I",      # isort
+  "ISC001", # implicit-string-concatenation
+  "INT",    # flake8-gettext
+  "PERF",   # perflint
+  "PIE",    # flake8-pie
+  "PL",     # pylint
+  "RET",    # flake8-return
+  "RUF104", # unmatched-suppression-comment
+  "S102",   # flake8-bandit (exec-builtin)
+  "S307",   # flake8-bandit (eval)
+  "SIM",    # flake8-simplify
+  "SLOT",   # flake8-slots
+  "T10",    # flake8-debugger
+  "TID252", # relative-imports
+  "TRY",    # tryceratops
+  "UP",     # pyupgrade
+  "W",      # pycodestyle warnings
+  "YTT",    # flake8-2020
+]
+
+ignore = [
+  "B008",    # function-call-as-argument-default
+  "B904",    # raise-without-from-inside-except
+  "BLE001",  # blind-except
+  "E721",    # type-comparison
+  "E722",    # bare-except
+  "PERF203", # try-except-in-loop
+  "PERF401", # manual-list-comprehension
+  "PIE790",  # unnecessary-pass
+
+  # we re-export symbols in __init__ for correct type checking
+  # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
+  "PLC0414", # useless-import-alias
+
+  "PLC0415", # import-outside-top-level
+  "PLR1714", # repeated-equality-comparison
+  "PLW0603", # global-statement
+  "PLW1514", # unspecified-encoding
+  "PLW2901", # redefined-loop-name
+  "RET505",  # superfluous-else-return
+  "SIM108",  # if-else-block-instead-of-ternary
+  "SIM109",  # multiple-comparisons-with-in
+  "SIM118",  # in-dict-keys
+  "TRY002",  # raise-vanilla-class
+  "TRY003",  # raise-vanilla-args
+  "TRY201",  # verbose-raise
+  "TRY300",  # try-consider-else
+  "UP008",   # super-with-arguments
+  "UP032",   # use-f-string
+  "UP037",   # quoted-annotation
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/**" = [
+  "ARG",     # flake8-unused-arguments
+  "B018",    # useless-expression
+  "D",       # pydocstyle (docstring checks)
+  "E711",    # none-comparison
+  "E731",    # lambda-assignment
+  "PLC0206", # dict-index-missing-items
+  "SIM105",  # suppressible-exception
+  "SIM117",  # multiple-with-statements
+]
+# in the following files, we still allow old type hints to handle and test them
+# UP006: generics like typing.List, typing.Dict
+# UP007: Union[X, Y] syntax
+# UP035: Deprecated import
+# UP045: Optional[X] syntax
+"haystack/components/agents/state/state_utils.py" = ["UP007"]
+"haystack/core/super_component/utils.py" = ["UP007"]
+"haystack/core/type_utils.py" = ["UP007"]
+"haystack/tools/parameters_schema_utils.py" = ["UP007"]
+"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP035", "UP045"]
+"test/components/converters/test_output_adapter.py" = ["UP006", "UP035"]
+"test/components/joiners/test_list_joiner.py" = ["UP006", "UP035"]
+"test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
+"test/core/super_component/test_utils.py" = ["UP007", "UP045"]
+"test/core/test_type_utils.py" = ["UP006", "UP007", "UP035", "UP045"]
+"test/tools/test_parameters_schema_utils.py" = ["UP007"]
+"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP035", "UP045"]
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]

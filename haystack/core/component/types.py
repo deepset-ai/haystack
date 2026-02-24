@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from types import UnionType
-from typing import Annotated, Any, Iterable, TypeAlias, TypedDict, TypeVar, get_args
+from typing import Annotated, Any, TypeAlias, TypedDict, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"

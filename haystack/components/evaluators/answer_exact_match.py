@@ -57,7 +57,7 @@ class AnswerExactMatchEvaluator:
             raise ValueError("The length of ground_truth_answers and predicted_answers must be the same.")
 
         matches = []
-        for truth, extracted in zip(ground_truth_answers, predicted_answers):
+        for truth, extracted in zip(ground_truth_answers, predicted_answers, strict=True):
             if truth == extracted:
                 matches.append(1)
             else:

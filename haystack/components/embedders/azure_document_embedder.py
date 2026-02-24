@@ -37,8 +37,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
     ```
     """
 
-    # pylint: disable=super-init-not-called
-    def __init__(  # noqa: PLR0913 (too-many-arguments) # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 (too-many-arguments)
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2023-05-15",

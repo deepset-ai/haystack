@@ -11,7 +11,7 @@ from haystack.human_in_the_loop.types import ConfirmationPolicy
 class AlwaysAskPolicy(ConfirmationPolicy):
     """Always ask for confirmation."""
 
-    def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:
+    def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:  # noqa: ARG002
         """
         Always ask for confirmation before executing the tool.
 
@@ -26,7 +26,7 @@ class AlwaysAskPolicy(ConfirmationPolicy):
 class NeverAskPolicy(ConfirmationPolicy):
     """Never ask for confirmation."""
 
-    def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:
+    def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:  # noqa: ARG002
         """
         Never ask for confirmation, always proceed with tool execution.
 
@@ -44,7 +44,7 @@ class AskOncePolicy(ConfirmationPolicy):
     def __init__(self) -> None:
         self._asked_tools: dict[str, Any] = {}
 
-    def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:
+    def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:  # noqa: ARG002
         """
         Ask for confirmation only once per tool with specific parameters.
 
@@ -59,7 +59,7 @@ class AskOncePolicy(ConfirmationPolicy):
     def update_after_confirmation(
         self,
         tool_name: str,
-        tool_description: str,
+        tool_description: str,  # noqa: ARG002
         tool_params: dict[str, Any],
         confirmation_result: ConfirmationUIResult,
     ) -> None:

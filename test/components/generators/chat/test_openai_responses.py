@@ -78,7 +78,7 @@ def tools():
 # Tool Function used in the test_live_run_with_agent_streaming_and_reasoning test
 def calculate(expression: str) -> dict:
     try:
-        result = eval(expression, {"__builtins__": {}})
+        result = eval(expression, {"__builtins__": {}})  # noqa: S307
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}

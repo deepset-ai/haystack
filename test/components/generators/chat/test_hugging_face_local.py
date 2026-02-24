@@ -91,7 +91,7 @@ class TestHuggingFaceLocalChatGenerator:
             streaming_callback=streaming_callback,
         )
 
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
+        assert generator.generation_kwargs == {**generation_kwargs, "stop_sequences": ["stop"]}
         assert generator.streaming_callback == streaming_callback
 
     def test_init_custom_token(self, model_info_mock):
@@ -446,7 +446,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
         generator.pipeline.assert_called_once()
-        generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
+        assert generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
 
     def test_run_with_streaming_callback_in_run_method(
         self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages
@@ -467,7 +467,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
         generator.pipeline.assert_called_once()
-        generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
+        assert generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
 
     @patch("haystack.components.generators.chat.hugging_face_local.convert_message_to_hf_format")
     def test_messages_conversion_is_called(self, mock_convert, model_info_mock):
@@ -707,7 +707,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
             await generator.run_async(
                 messages=[ChatMessage.from_user("test")],
-                streaming_callback=lambda x: None,
+                streaming_callback=lambda _: None,
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
 
