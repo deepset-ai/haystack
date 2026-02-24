@@ -121,7 +121,7 @@ class TestPipelineBase:
         metadata: {}
         """
 
-        with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
+        with pytest.raises(DeserializationError, match="Couldn't deserialize component 'Comp1'"):
             _ = PipelineBase.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
