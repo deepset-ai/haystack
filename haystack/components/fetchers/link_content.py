@@ -4,9 +4,10 @@
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
-from typing import Callable, cast
+from typing import cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -110,7 +111,7 @@ class LinkContentFetcher:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         raise_on_failure: bool = True,
         user_agents: list[str] | None = None,
@@ -200,10 +201,9 @@ class LinkContentFetcher:
         client defaults -> component defaults -> user-provided -> rotating UA
         """
         base = dict(self._client.headers)
-        headers = _merge_headers(
+        return _merge_headers(
             base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
         )
-        return headers
 
     def __del__(self):
         """
@@ -456,7 +456,7 @@ class LinkContentFetcher:
         # default handler
         return self.handlers["text/plain"]
 
-    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:
+    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:  # noqa: ARG002
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
 

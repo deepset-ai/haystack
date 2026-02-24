@@ -4,8 +4,9 @@
 
 import builtins
 import sys
+from collections.abc import Callable
 from importlib import import_module
-from typing import Any, Callable
+from typing import Any
 
 from haystack.core.component import component
 from haystack.core.errors import ComponentDeserializationError

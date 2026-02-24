@@ -5,7 +5,8 @@
 import contextlib
 import dataclasses
 import uuid
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from haystack.tracing import Span, Tracer
 

@@ -137,6 +137,9 @@ class HuggingFaceTEIRanker:
 
         :raises RuntimeError:
             - If the API returns an error response.
+
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         if isinstance(result, dict) and "error" in result:
             error_type = result.get("error_type", "UnknownError")
@@ -148,7 +151,7 @@ class HuggingFaceTEIRanker:
             # Expected list or dict, but encountered an unknown response format.
             error_msg = f"Expected a list of score dictionaries, but got `{type(result).__name__}`. "
             error_msg += f"Response content: {result}"
-            raise RuntimeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
+            raise TypeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
 
         # Determine number of docs to return
         final_k = min(top_k or self.top_k, len(result))
@@ -189,6 +192,9 @@ class HuggingFaceTEIRanker:
 
         :raises RuntimeError:
             - If the API returns an error response.
+
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         # Return empty if no documents provided
         if not documents:
@@ -246,6 +252,8 @@ class HuggingFaceTEIRanker:
             - If the API request fails.
         :raises RuntimeError:
             - If the API returns an error response.
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         # Return empty if no documents provided
         if not documents:

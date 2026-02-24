@@ -525,6 +525,10 @@ Create a generic device map from a HuggingFace device map.
 
 - <code>DeviceMap</code> – The deserialized device map.
 
+**Raises:**
+
+- <code>TypeError</code> – If a device value in the map is not an int, str, or torch.device.
+
 ### ComponentDevice
 
 A representation of a device for a component.
@@ -852,6 +856,8 @@ Jinja filter to convert an ChatMessageContentT object into JSON string wrapped i
 ### Jinja2TimeExtension
 
 Bases: <code>Extension</code>
+
+A Jinja2 extension for formatting dates and times.
 
 #### __init__
 

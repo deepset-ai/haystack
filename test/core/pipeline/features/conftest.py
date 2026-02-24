@@ -52,8 +52,7 @@ def run_pipeline(
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     if isinstance(pipeline_data[0], AsyncPipeline):
         return run_async_pipeline(pipeline_data, spying_tracer)
-    else:
-        return run_sync_pipeline(pipeline_data, spying_tracer)
+    return run_sync_pipeline(pipeline_data, spying_tracer)
 
 
 def run_async_pipeline(
@@ -92,7 +91,7 @@ def run_async_pipeline(
         except Exception as e:
             return e
 
-    return list(zip(results, pipeline_run_data))
+    return list(zip(results, pipeline_run_data, strict=True))
 
 
 def run_sync_pipeline(

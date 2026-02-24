@@ -131,7 +131,7 @@ class LLMMessagesRouter:
 
         output = {"chat_generator_text": chat_generator_text}
 
-        for output_name, pattern in zip(self._output_names, self._compiled_patterns):
+        for output_name, pattern in zip(self._output_names, self._compiled_patterns, strict=True):
             if pattern.search(chat_generator_text):
                 output[output_name] = messages
                 break

@@ -175,7 +175,7 @@ def resolve_hf_device_map(device: ComponentDevice | None, model_kwargs: dict[str
     return model_kwargs
 
 
-def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
+def resolve_hf_pipeline_kwargs(
     huggingface_pipeline_kwargs: dict[str, Any],
     model: str,
     task: str | None,
@@ -348,7 +348,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             super().__init__()
             # check if tokenizer is a valid tokenizer
             if not isinstance(tokenizer, (PreTrainedTokenizer, PreTrainedTokenizerFast)):
-                raise ValueError(
+                raise TypeError(
                     f"Invalid tokenizer provided for StopWordsCriteria - {tokenizer}. "
                     f"Please provide a valid tokenizer from the HuggingFace Transformers library."
                 )
@@ -360,7 +360,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:  # noqa: ARG002
             """Check if any of the stop words are generated in the current text generation step."""
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)
@@ -378,8 +378,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
             len_stop_id = stop_id.size(0)
-            result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
-            return result
+            return all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
 
     class HFTokenStreamingHandler(TextStreamer):
         """

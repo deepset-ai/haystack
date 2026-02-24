@@ -640,4 +640,4 @@ Extracts text from input using the configured regex pattern.
 
 **Raises:**
 
-- <code>ValueError</code> – if receiving a list the last element is not a ChatMessage instance.
+- <code>TypeError</code> – if receiving a list the last element is not a ChatMessage instance.

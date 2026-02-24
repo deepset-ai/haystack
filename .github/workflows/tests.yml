@@ -209,7 +209,7 @@ jobs:
                 - "branch:${{ github.ref_name }}"
                 - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  lint:
+  mypy:
     needs: unit-tests
     runs-on: ubuntu-latest
     steps:
@@ -224,35 +224,30 @@ jobs:
         id: files
         uses: tj-actions/changed-files@v47
         with:
-          files_yaml: |
-            python:
-              - '**/*.py'
-              - '!test/**'
-              - '!.github/**'
-            pyproject:
-              - 'pyproject.toml'
-
+          files: |
+            **/*.py
+            pyproject.toml
+          files_ignore: |
+            test/**
+            .github/**
+            scripts/**
       - uses: actions/setup-python@v6
+        if: steps.files.outputs.any_changed == 'true'
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
         id: hatch
+        if: steps.files.outputs.any_changed == 'true'
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Mypy
-        if: steps.files.outputs.python_any_changed == 'true' || steps.files.outputs.pyproject_any_changed == 'true'
+        if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
           hatch run test:types
-
-      - name: Pylint
-        # Running pylint on pyproject.toml causes errors, so we only run it on python files.
-        if: steps.files.outputs.python_any_changed == 'true'
-        run: |
-          hatch run test:lint ${{ steps.files.outputs.python_all_changed_files }}
 
       - name: Calculate alert data
         id: calculator
@@ -466,7 +461,7 @@ jobs:
     # and skip it accordingly.
     needs:
       - check-imports
-      - lint
+      - mypy
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows

@@ -301,6 +301,7 @@ Create the InMemoryBM25Retriever component.
 
 **Raises:**
 
+- <code>TypeError</code> – If the document_store is not an instance of InMemoryDocumentStore.
 - <code>ValueError</code> – If the specified `top_k` is not > 0.
 
 #### to_dict
@@ -461,6 +462,7 @@ Create the InMemoryEmbeddingRetriever component.
 
 **Raises:**
 
+- <code>TypeError</code> – If the document_store is not an instance of InMemoryDocumentStore.
 - <code>ValueError</code> – If the specified top_k is not > 0.
 
 #### to_dict

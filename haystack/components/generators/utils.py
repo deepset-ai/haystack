@@ -162,11 +162,10 @@ def _serialize_object(obj):
     """Convert an object to a serializable dict recursively"""
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
-    elif hasattr(obj, "__dict__"):
+    if hasattr(obj, "__dict__"):
         return {k: _serialize_object(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         return {k: _serialize_object(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [_serialize_object(item) for item in obj]
-    else:
-        return obj
+    return obj

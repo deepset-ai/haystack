@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+from collections.abc import Callable
 from enum import Enum
 from math import inf
-from typing import Any, Callable
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic

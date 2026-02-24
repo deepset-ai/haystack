@@ -17,10 +17,9 @@ from haystack.utils.auth import Secret
 def mock_encode_response(texts, **kwargs):
     if texts == ["city"]:
         return torch.tensor([[1.0, 1.0]])
-    elif texts == ["Eiffel Tower", "Berlin", "Bananas"]:
+    if texts == ["Eiffel Tower", "Berlin", "Bananas"]:
         return torch.tensor([[1.0, 0.0], [0.8, 0.8], [0.0, 1.0]])
-    else:
-        return torch.tensor([[0.0, 1.0]] * len(texts))
+    return torch.tensor([[0.0, 1.0]] * len(texts))
 
 
 class TestSentenceTransformersDiversityRanker:

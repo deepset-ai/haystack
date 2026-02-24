@@ -211,7 +211,7 @@ class DOCXToDocument:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
@@ -234,7 +234,7 @@ class DOCXToDocument:
 
             if not self.store_full_path and "file_path" in bytestream.meta:
                 file_path = bytestream.meta.get("file_path")
-                if file_path:  # Ensure the value is not None for pylint
+                if file_path:  # Ensure the value is not None for mypy
                     merged_metadata["file_path"] = os.path.basename(file_path)
 
             document = Document(content=text, meta=merged_metadata)

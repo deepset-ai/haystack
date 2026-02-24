@@ -6,9 +6,6 @@ from typing import Any, Protocol
 
 from haystack import Document
 
-# See https://github.com/pylint-dev/pylint/issues/9319.
-# pylint: disable=unnecessary-ellipsis
-
 
 class TextEmbedder(Protocol):
     """

@@ -240,7 +240,7 @@ class QueryExpander:
 
         except Exception as e:
             # Fallback: return original query to maintain pipeline functionality
-            logger.error("Failed to expand query {query}: {error}", query=query, error=str(e))
+            logger.exception("Failed to expand query {query}: {error}", query=query, error=str(e))
             return response
 
     def warm_up(self):

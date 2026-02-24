@@ -69,11 +69,7 @@ class TestHuggingFaceAPIGenerator:
 
         assert generator.api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API
         assert generator.api_params == {"model": model}
-        assert generator.generation_kwargs == {
-            **generation_kwargs,
-            **{"stop_sequences": ["stop"]},
-            **{"max_new_tokens": 512},
-        }
+        assert generator.generation_kwargs == {**generation_kwargs, "stop_sequences": ["stop"], "max_new_tokens": 512}
         assert generator.streaming_callback == streaming_callback
 
     def test_init_serverless_invalid_model(self, mock_check_valid_model):
@@ -106,11 +102,7 @@ class TestHuggingFaceAPIGenerator:
 
         assert generator.api_type == HFGenerationAPIType.TEXT_GENERATION_INFERENCE
         assert generator.api_params == {"url": url}
-        assert generator.generation_kwargs == {
-            **generation_kwargs,
-            **{"stop_sequences": ["stop"]},
-            **{"max_new_tokens": 512},
-        }
+        assert generator.generation_kwargs == {**generation_kwargs, "stop_sequences": ["stop"], "max_new_tokens": 512}
         assert generator.streaming_callback == streaming_callback
 
     def test_init_tgi_invalid_url(self):
@@ -265,7 +257,7 @@ class TestHuggingFaceAPIGenerator:
                 ),
             )
 
-        mock_response = Mock(**{"__iter__": mock_iter})
+        mock_response = Mock(__iter__=mock_iter)
         mock_text_generation.return_value = mock_response
 
         # Generate text response with streaming callback
