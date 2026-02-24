@@ -396,6 +396,9 @@ class AsyncPipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED and not running_tasks:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
+                        blocking_comp_name, blocking_comp = self._find_component_blocking_pipeline(
+                            priority_queue=priority_queue, component_visits=component_visits, inputs=inputs_state
+                        )
                         logger.warning(
                             "Cannot run pipeline - the next component that is meant to run is blocked.\n"
                             "Component name: '{component_name}'\n"
@@ -403,8 +406,8 @@ class AsyncPipeline(PipelineBase):
                             "This typically happens when the component is unable to receive all of its required "
                             "inputs.\nCheck the connections to this component and ensure all required inputs are "
                             "provided.",
-                            component_name=comp_name,
-                            component_type=comp["instance"].__class__.__name__,
+                            component_name=blocking_comp_name,
+                            component_type=blocking_comp["instance"].__class__.__name__,
                         )
                     # We always exit the loop since we cannot run the next component.
                     break

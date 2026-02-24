@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import logging
 
 import pytest
 
@@ -117,6 +118,42 @@ def test_component_with_empty_dict_as_output_appears_in_results():
     # because it's in include_outputs_from
     assert "empty_processor" in result
     assert result["empty_processor"] == {}
+
+
+def test_async_pipeline_is_possibly_blocked_warning_message(caplog):
+    """
+    Test that the pipeline raises a warning when it is possibly blocked due to missing inputs.
+
+    The situation below looks a little contrived, but it has happened in practice that users create pipelines
+    and accidentally made a mistake in their component code.
+    """
+    caplog.set_level(logging.WARNING)
+
+    @component
+    class MisconfiguredComponent:
+        # Here we purposely declare other_output which is not actually returned by the run() method
+        @component.output_types(output=str, other_output=str)
+        def run(self, required_input: str) -> dict[str, str]:
+            return {"output": "test"}
+
+    @component
+    class SimpleComponentTwoInputs:
+        @component.output_types(output=str)
+        def run(self, required_input: str, second_required_input: str) -> dict[str, str]:
+            return {"output": "test"}
+
+    pp = AsyncPipeline()
+    pp.add_component("first", MisconfiguredComponent())
+    pp.add_component("second", SimpleComponentTwoInputs())
+
+    # NOTE: We connect both outputs from the first component to the second component, but the first component
+    # doesn't actually produce other_output, so the second component will be blocked due to missing input.
+    pp.connect("first.output", "second.required_input")
+    pp.connect("first.other_output", "second.second_required_input")
+
+    pp.run({"first": {"required_input": "test"}})
+    assert "Cannot run pipeline - the next component that is meant to run is blocked." in caplog.text
+    assert "Component name: 'second'\nComponent type: 'SimpleComponentTwoInputs'" in caplog.text
 
 
 def test_async_pipeline_ensure_inputs_are_deep_copied():
