@@ -1383,7 +1383,11 @@ class TestPipelineBase:
     def test_fill_queue(self, mock_get_metadata, mock_calc_priority):
         pipeline = PipelineBase()
         component_names = ["comp1", "comp2"]
-        inputs = {"comp1": {"input1": "value1"}, "comp2": {"input2": "value2"}}
+        # {'first': {'document': [{'sender': None, 'value': Document(id="1", content: 'original')}]}}
+        inputs = {
+            "comp1": {"input1": [{"sender": None, "value": "value1"}]},
+            "comp2": {"input2": [{"sender": None, "value": "value2"}]},
+        }
 
         mock_get_metadata.side_effect = lambda name, _: {"component": f"mock_{name}"}
         mock_calc_priority.side_effect = [1, 2]  # Different priorities for testing
@@ -1395,11 +1399,15 @@ class TestPipelineBase:
 
         # Verify correct calls for first component
         mock_get_metadata.assert_any_call("comp1", 1)
-        mock_calc_priority.assert_any_call({"component": "mock_comp1"}, {"input1": "value1"})
+        mock_calc_priority.assert_any_call(
+            {"component": "mock_comp1"}, {"input1": [{"sender": None, "value": "value1"}]}
+        )
 
         # Verify correct calls for second component
         mock_get_metadata.assert_any_call("comp2", 1)
-        mock_calc_priority.assert_any_call({"component": "mock_comp2"}, {"input2": "value2"})
+        mock_calc_priority.assert_any_call(
+            {"component": "mock_comp2"}, {"input2": [{"sender": None, "value": "value2"}]}
+        )
 
         assert queue.pop() == (1, "comp1")
         assert queue.pop() == (2, "comp2")
