@@ -10,7 +10,6 @@ from haystack.dataclasses import ChatMessage, Document
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 
-@_warn_on_inplace_mutation
 @runtime_checkable
 @dataclass
 class Answer(Protocol):
