@@ -1054,7 +1054,7 @@ class PipelineBase:  # noqa: PLW1641
         :param pipeline_inputs: Inputs to the pipeline.
         :returns: Converted inputs that can be used by the internal `Pipeline.run` logic.
         """
-        inputs: dict[str, dict[str, list[dict[str, Any]]]] = {}
+        inputs: InputsType = {}
         for component_name, socket_dict in pipeline_inputs.items():
             inputs[component_name] = {}
             for socket_name, value in socket_dict.items():
@@ -1079,32 +1079,32 @@ class PipelineBase:  # noqa: PLW1641
         greedy_inputs_to_remove = set()
         for socket_name, socket in component["input_sockets"].items():
             socket_inputs = component_inputs.get(socket_name, [])
-            socket_inputs = [sock["value"] for sock in socket_inputs if sock["value"] is not _NO_OUTPUT_PRODUCED]
+            socket_inputs_values = [sock["value"] for sock in socket_inputs if sock["value"] is not _NO_OUTPUT_PRODUCED]
 
             # if we are resuming a component, the inputs are already consumed, so we just return the first input
             if is_resume:
-                consumed_inputs[socket_name] = socket_inputs[0]
+                consumed_inputs[socket_name] = socket_inputs_values[0]
                 continue
 
-            if socket_inputs:
+            if socket_inputs_values:
                 if socket.is_greedy:
                     # We need to keep track of greedy inputs because we always remove them, even if they come from
                     # outside the pipeline. Otherwise, a greedy input from the user would trigger a pipeline to run
                     # indefinitely.
                     greedy_inputs_to_remove.add(socket_name)
-                    consumed_inputs[socket_name] = [socket_inputs[0]]
+                    consumed_inputs[socket_name] = [socket_inputs_values[0]]
                 elif socket.is_lazy_variadic:
                     if socket.wrap_input_in_list:
                         # We use all inputs provided to the socket on a lazy variadic socket.
                         # So keep it wrapped in a list.
-                        consumed_inputs[socket_name] = socket_inputs
+                        consumed_inputs[socket_name] = socket_inputs_values
                     else:
                         # We flatten one-level of lists for lazy variadic sockets that don't wrap inputs in lists.
                         # This way the incoming inputs match the expected type of the socket.
-                        consumed_inputs[socket_name] = list(itertools.chain.from_iterable(socket_inputs))
+                        consumed_inputs[socket_name] = list(itertools.chain.from_iterable(socket_inputs_values))
                 else:
                     # For a normal socket we only care about the first input provided to the socket.
-                    consumed_inputs[socket_name] = socket_inputs[0]
+                    consumed_inputs[socket_name] = socket_inputs_values[0]
 
         # We prune all inputs except for those that were provided from outside the pipeline (e.g. user inputs).
         pruned_inputs = {
@@ -1307,14 +1307,16 @@ class PipelineBase:  # noqa: PLW1641
         # 2. Check which components have non-empty inputs.
         comps_with_inputs = []
         for comp_name in comps_in_queue:
-            # If components inputs is not empty it means that the component is waiting for some inputs to run, so it
-            # could be blocking the pipeline.
+            # If component has non-empty inputs and is blocked it means that the component is waiting for more inputs
+            # to run, so it could be blocking the pipeline.
             if inputs.get(comp_name):
                 comps_with_inputs.append(comp_name)
 
-        # TODO Handle edge case that possible_blocking_components is empty
+        # If there are no components with any inputs we fallback to checking all components in the queue.
+        # This isn't always ideal since already executed components are also in the queue at this point also
+        # with blocked priority.
         if not comps_with_inputs:
-            return "", {}
+            comps_with_inputs = comps_in_queue
 
         # 3. Order by component visits to prioritize components that haven't been executed yet
         ordered_comps_with_inputs = sorted(comps_with_inputs, key=lambda x: component_visits[x])
@@ -1329,7 +1331,9 @@ class PipelineBase:  # noqa: PLW1641
 
         # 4. Then for all components with the same lowest component visits we tie-break based on topological order.
         topological_sort = self._topological_sort()
-        possible_blocking_comps = sorted(possible_blocking_comps, key=lambda x: (topological_sort[x], x.lower()))
+        possible_blocking_comps = sorted(
+            possible_blocking_comps, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
+        )
 
         return possible_blocking_comps[0], self.graph.nodes[possible_blocking_comps[0]]
 
