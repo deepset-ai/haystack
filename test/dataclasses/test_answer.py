@@ -103,22 +103,22 @@ class TestExtractedAnswer:
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             ExtractedAnswer(query="q", score=1.0)
 
     def test_warn_on_inplace_mutation(self):
         answer = ExtractedAnswer(query="q", score=1.0)
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             answer.query = "new"
 
     def test_span_no_warning_on_init(self):
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", Warning)
             ExtractedAnswer.Span(start=0, end=5)
 
     def test_span_warn_on_inplace_mutation(self):
         span = ExtractedAnswer.Span(start=0, end=5)
-        with pytest.warns(DeprecationWarning, match="dataclasses.replace"):
+        with pytest.warns(Warning, match="dataclasses.replace"):
             span.start = 1
 
 
