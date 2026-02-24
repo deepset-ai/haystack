@@ -525,6 +525,10 @@ Create a generic device map from a HuggingFace device map.
 
 - <code>DeviceMap</code> – The deserialized device map.
 
+**Raises:**
+
+- <code>TypeError</code> – If a device value in the map is not an int, str, or torch.device.
+
 ### ComponentDevice
 
 A representation of a device for a component.

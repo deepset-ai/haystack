@@ -716,6 +716,11 @@ Create a message from the user.
 
 - <code>ChatMessage</code> – A new ChatMessage instance.
 
+**Raises:**
+
+- <code>ValueError</code> – If neither or both of text and content_parts are provided, or if content_parts is empty.
+- <code>TypeError</code> – If a content part is not a str, TextContent, ImageContent, or FileContent.
+
 #### from_system
 
 ```python
@@ -762,6 +767,10 @@ Create a message from the assistant.
 **Returns:**
 
 - <code>ChatMessage</code> – A new ChatMessage instance.
+
+**Raises:**
+
+- <code>TypeError</code> – If `reasoning` is not a string or ReasoningContent object.
 
 #### from_tool
 
@@ -814,6 +823,11 @@ Creates a new ChatMessage object from a dictionary.
 **Returns:**
 
 - <code>ChatMessage</code> – The created object.
+
+**Raises:**
+
+- <code>ValueError</code> – If the `role` field is missing from the dictionary.
+- <code>TypeError</code> – If the `content` field is not a list or string.
 
 #### to_openai_dict_format
 

@@ -795,6 +795,11 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
 
+**Raises:**
+
+- <code>ValueError</code> – If a document has `None` content.
+- <code>TypeError</code> – If a document's content is not a string.
+
 ## recursive_splitter
 
 ### RecursiveDocumentSplitter
