@@ -12,6 +12,8 @@ In your message, please include:
 3. Any information you may have on active exploitations of the vulnerability (zero-day).
 4. An explanation of why you believe the vulnerability is not out of scope. See the Out of Scope section below.
 
+We encourage reports that are meaningful, high-impact, and reviewed by a human before submission. Fully automated or AI-generated reports submitted without human review and validation are unlikely to meet this bar and risk being declined.
+
 ## Out of Scope
 
 Haystack is a Python framework intended to run inside a trusted execution environment. It assumes that the application build on top of it has already validated and sanitized all user-supplied input before passing it to the framework. Validation and sanitization of user inputs are the responsibility of the hosting application, not Haystack.
