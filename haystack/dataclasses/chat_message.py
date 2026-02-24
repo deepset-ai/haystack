@@ -11,6 +11,7 @@ from typing import Any
 from haystack import logging
 from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import ImageContent
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ class ChatRole(str, Enum):
         return role
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class TextContent:
     """
@@ -72,6 +74,7 @@ class TextContent:
         return TextContent(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ToolCall:
     """
@@ -113,6 +116,7 @@ class ToolCall:
 ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ToolCallResult:
     """
@@ -163,6 +167,7 @@ class ToolCallResult:
         return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ReasoningContent:
     """
@@ -263,6 +268,7 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     return {serialization_key: part.to_dict()}
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ChatMessage:
     """
