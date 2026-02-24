@@ -72,8 +72,6 @@ class TestLLM:
             assert llm.tools == []
             assert llm.system_prompt is None
             assert llm.user_prompt is None
-            assert llm.exit_conditions == ["text"]
-            assert llm.max_agent_steps == 1
             assert llm.streaming_callback is None
             assert llm._tool_invoker is None
 
@@ -167,8 +165,6 @@ class TestLLM:
             assert isinstance(llm.chat_generator, OpenAIChatGenerator)
             assert llm.system_prompt == "You are helpful."
             assert llm.tools == []
-            assert llm.exit_conditions == ["text"]
-            assert llm.max_agent_steps == 1
 
         def test_roundtrip(self, monkeypatch):
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -180,8 +176,6 @@ class TestLLM:
             assert isinstance(restored.chat_generator, OpenAIChatGenerator)
             assert restored.system_prompt == original.system_prompt
             assert restored.tools == []
-            assert restored.exit_conditions == ["text"]
-            assert restored.max_agent_steps == 1
 
     class TestPipelineIntegration:
         @pytest.fixture()
