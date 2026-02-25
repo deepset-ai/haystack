@@ -1,0 +1,106 @@
+---
+title: "SearchableToolset"
+id: searchabletoolset
+slug: "/searchabletoolset"
+description: "Enable agents to dynamically discover tools from large catalogs using keyword-based search."
+---
+
+# SearchableToolset
+
+Enable agents to dynamically discover tools from large catalogs using keyword-based search.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `catalog`: A list of Tools and/or Toolsets, or a single Toolset |
+| **API reference**            | [SearchableToolset](/reference/tools-api#searchabletoolset) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/searchable_toolset.py |
+
+</div>
+
+## Overview
+
+`SearchableToolset` is designed for working with large tool catalogs.
+Instead of exposing all tools at once — which can overwhelm the LLM context — it provides a single `search_tools` bootstrap tool.
+The agent uses this tool to find and load specific tools from the catalog using BM25 keyword search.
+
+Once the agent calls `search_tools`, the matching tools become immediately available and the agent can invoke them in
+subsequent iterations.
+
+### Modes of operation
+
+`SearchableToolset` operates in one of two modes depending on catalog size:
+
+- **Search mode** (default for large catalogs): The agent starts with only the `search_tools` bootstrap tool and discovers other tools on demand. This is activated when the catalog size meets or exceeds `search_threshold`.
+- **Passthrough mode** (small catalogs): All tools are exposed directly, with no discovery step needed. This is activated automatically when the catalog has fewer tools than `search_threshold`.
+
+### Parameters
+
+- `catalog` (required): The source of tools — a list of `Tool` and/or `Toolset` instances, or a single `Toolset`. This includes [MCPTool](mcptool.mdx) and [MCPToolset](mcptoolset.mdx) instances.
+- `top_k` (optional): The default number of tools returned by each `search_tools` call. Default is `3`.
+- `search_threshold` (optional): Minimum catalog size to activate search mode. Catalogs smaller than this value use passthrough mode instead. Default is `8`.
+
+:::info
+`SearchableToolset` does not support adding new tools after initialization or merging with other toolsets. Use `catalog` to provide all tools upfront.
+:::
+
+## Usage
+
+### Basic usage with an Agent
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import create_tool_from_function, SearchableToolset
+
+
+def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+    """Get current weather for a city."""
+    return f"Sunny, 22°C in {city}"
+
+
+def search_web(query: Annotated[str, "The search query"]) -> str:
+    """Search the web for information."""
+    return f"Results for: {query}"
+
+
+# Build a catalog from tools
+catalog = [
+    create_tool_from_function(get_weather),
+    create_tool_from_function(search_web),
+    # ... many more tools
+]
+
+toolset = SearchableToolset(catalog=catalog)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=toolset,
+)
+
+# The agent initially sees only `search_tools`. It will call it to find relevant tools,
+# then use the discovered tools to answer the question.
+result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+print(result["messages"][-1].text)
+```
+
+### Reusing the toolset across multiple agent runs
+
+When reusing the same `SearchableToolset` instance across multiple agent runs, you can call `clear()` to reset any tools discovered in the previous run:
+
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=toolset,
+)
+
+result1 = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+
+# Reset discovered tools before the next run
+toolset.clear()
+
+result2 = agent.run(messages=[ChatMessage.from_user("Search for news about AI.")])
+```
