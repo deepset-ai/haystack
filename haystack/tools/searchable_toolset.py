@@ -63,6 +63,14 @@ class SearchableToolset(Toolset):
             If catalog has fewer tools, acts as passthrough (all tools visible).
             Default is 8.
         """
+        valid_catalog = isinstance(catalog, Toolset) or (
+            isinstance(catalog, list) and all(isinstance(item, (Tool, Toolset)) for item in catalog)
+        )
+        if not valid_catalog:
+            raise TypeError(
+                f"Invalid catalog type: {type(catalog)}. Expected Tool, Toolset, or list of Tools and/or Toolsets."
+            )
+
         # Store raw catalog; flattening is deferred to warm_up() so that lazy
         # toolsets (e.g. MCPToolset with eager_connect=False) can connect first.
         self._raw_catalog: "ToolsType" = catalog
@@ -239,17 +247,9 @@ class SearchableToolset(Toolset):
 
         :returns: Dictionary representation of the toolset.
         """
-        # Serialize from _raw_catalog to preserve Toolset structure for lazy toolsets
-        raw = self._raw_catalog
-        catalog_items: list[Tool | Toolset]
-        if isinstance(raw, (Tool, Toolset)):
-            catalog_items = [raw]
-        elif isinstance(raw, list):
-            catalog_items = list(raw)
-        else:
-            raise TypeError(
-                f"Invalid catalog type: {type(raw)}. Expected Tool, Toolset, or list of Tools and/or Toolsets."
-            )
+        catalog_items: list[Tool | Toolset] = (
+            [self._raw_catalog] if isinstance(self._raw_catalog, Toolset) else list(self._raw_catalog)
+        )
 
         return {
             "type": generate_qualified_class_name(type(self)),
@@ -275,8 +275,8 @@ class SearchableToolset(Toolset):
         catalog: list[Tool | Toolset] = []
         for item_data in catalog_data:
             item_class = import_class_by_name(item_data["type"])
-            if not (issubclass(item_class, Tool) or issubclass(item_class, Toolset)):
+            if not issubclass(item_class, (Tool, Toolset)):
                 raise TypeError(f"Class '{item_class}' is not a subclass of Tool or Toolset")
             catalog.append(item_class.from_dict(item_data))
 
-        return cls(catalog=catalog, top_k=inner_data.get("top_k"), search_threshold=inner_data.get("search_threshold"))
+        return cls(catalog=catalog, **{k: inner_data[k] for k in ("top_k", "search_threshold") if k in inner_data})

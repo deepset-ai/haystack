@@ -98,6 +98,21 @@ def large_catalog():
 
 
 class TestSearchableToolset:
+    def test_init_with_invalid_catalog(self):
+        with pytest.raises(TypeError):
+            SearchableToolset(catalog=123)
+        with pytest.raises(TypeError):
+            SearchableToolset(catalog=[123])
+        with pytest.raises(TypeError):
+            SearchableToolset(
+                catalog=Tool(
+                    name="test",
+                    description="test",
+                    parameters={"type": "object", "properties": {}},
+                    function=lambda: None,
+                )
+            )
+
     def test_not_implemented_methods(self):
         toolset = SearchableToolset(catalog=[])
         with pytest.raises(NotImplementedError):
@@ -340,20 +355,19 @@ class TestSearchableToolsetSerialization:
         assert data["data"]["search_threshold"] == 5
         assert len(data["data"]["catalog"]) == len(large_catalog)
 
-    def test_to_dict_with_tool(self, weather_tool):
-        toolset = SearchableToolset(catalog=weather_tool, top_k=3, search_threshold=5)
-        data = toolset.to_dict()
+    def test_to_dict_with_toolset(self, large_catalog):
+
+        toolset = Toolset(tools=large_catalog)
+
+        searchable_toolset = SearchableToolset(catalog=toolset)
+        data = searchable_toolset.to_dict()
         assert "type" in data
         assert "haystack.tools.searchable_toolset.SearchableToolset" in data["type"]
         assert "data" in data
         assert data["data"]["top_k"] == 3
-        assert data["data"]["search_threshold"] == 5
+        assert data["data"]["search_threshold"] == 8
         assert len(data["data"]["catalog"]) == 1
-
-    def test_to_dict_with_invalid_catalog(self):
-        toolset = SearchableToolset(catalog=123)
-        with pytest.raises(TypeError):
-            toolset.to_dict()
+        assert data["data"]["catalog"][0]["type"] == "haystack.tools.toolset.Toolset"
 
     def test_from_dict(self, large_catalog):
         """Test deserialization from dict."""
