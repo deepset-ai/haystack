@@ -1,0 +1,97 @@
+---
+title: "PaddleOCRVLDocumentConverter"
+id: paddleocrvldocumentconverter
+slug: "/paddleocrvldocumentconverter"
+description: "`PaddleOCRVLDocumentConverter` extracts text from documents using PaddleOCR's large model document parsing API."
+---
+
+# PaddleOCRVLDocumentConverter
+
+`PaddleOCRVLDocumentConverter` extracts text from documents using PaddleOCR's large model document parsing API. PaddleOCR-VL is used behind the scenes. For more information, please refer to the [PaddleOCR-VL documentation](https://www.paddleocr.ai/latest/en/version3.x/algorithm/PaddleOCR-VL/PaddleOCR-VL.html).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `api_url`: The URL of the PaddleOCR-VL API. <br /> <br /> `access_token`: The AI Studio access token. Can be set with `AISTUDIO_ACCESS_TOKEN` environment variable. |
+| **Mandatory run variables** | `sources`: A list of image or PDF file paths or ByteStream objects. |
+| **Output variables** | `documents`: A list of documents. <br /> <br />`raw_paddleocr_responses`: A list of raw OCR responses from PaddleOCR API. |
+| **API reference** | [PaddleOCR](/reference/integrations-paddleocr) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/paddleocr |
+
+</div>
+
+## Overview
+
+The `PaddleOCRVLDocumentConverter` takes a list of document sources and uses PaddleOCR's large model document parsing API to extract text from images and PDFs. It supports both images and PDF files.
+
+The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#document) per source, with all pages concatenated using form feed characters (`\f`) as separators. This format ensures compatibility with Haystack's [`DocumentSplitter`](../preprocessors/documentsplitter.mdx) for accurate page-wise splitting and overlap handling. The content is returned in markdown format, with images represented as `![img-id](img-id)` tags.
+
+The component takes `api_url` as a required parameter. To obtain the API URL, visit the [PaddleOCR official website](https://aistudio.baidu.com/paddleocr), click the **API** button, choose the example code for PaddleOCR-VL, and copy the `API_URL`.
+
+By default, the component uses the `AISTUDIO_ACCESS_TOKEN` environment variable for authentication. You can also pass an `access_token` at initialization. The AI Studio access token can be obtained from [this page](https://aistudio.baidu.com/account/accessToken).
+
+## Usage
+
+You need to install the `paddleocr-haystack` integration to use `PaddleOCRVLDocumentConverter`:
+
+```shell
+pip install paddleocr-haystack
+```
+
+### On its own
+
+Basic usage with a local file:
+
+```python
+from pathlib import Path
+from haystack.utils import Secret
+from haystack_integrations.components.converters.paddleocr import (
+    PaddleOCRVLDocumentConverter,
+)
+
+converter = PaddleOCRVLDocumentConverter(
+    api_url="<your-api-url>",
+    access_token=Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
+)
+
+result = converter.run(sources=[Path("my_document.pdf")])
+documents = result["documents"]
+```
+
+### In a pipeline
+
+Here's an example of an indexing pipeline that processes PDFs with OCR and writes them to a Document Store:
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.utils import Secret
+from haystack_integrations.components.converters.paddleocr import (
+    PaddleOCRVLDocumentConverter,
+)
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "converter",
+    PaddleOCRVLDocumentConverter(
+        api_url="<your-api-url>",
+        access_token=Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
+    ),
+)
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+file_paths = ["invoice.pdf", "receipt.jpg", "contract.pdf"]
+pipeline.run({"converter": {"sources": file_paths}})
+```
