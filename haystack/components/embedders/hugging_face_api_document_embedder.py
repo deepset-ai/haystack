@@ -285,14 +285,12 @@ class HuggingFaceAPIDocumentEmbedder:
 
         return all_embeddings
 
-    async def _embed_batch_async(
-        self, texts_to_embed: list[str], batch_size: int, concurrency_limit: int
-    ) -> list[list[float]]:
+    async def _embed_batch_async(self, texts_to_embed: list[str], batch_size: int) -> list[list[float]]:
         """
         Embed a list of texts in batches asynchronously.
         """
         truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
-        sem = Semaphore(max(1, concurrency_limit))
+        sem = Semaphore(max(1, self.concurrency_limit))
         num_batches = (len(texts_to_embed) + batch_size - 1) // batch_size
         pbar = tqdm(total=num_batches, disable=not self.progress_bar, desc="Calculating embeddings")
 
@@ -372,9 +370,7 @@ class HuggingFaceAPIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings = await self._embed_batch_async(
-            texts_to_embed=texts_to_embed, batch_size=self.batch_size, concurrency_limit=self.concurrency_limit
-        )
+        embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
         for doc, emb in zip(documents, embeddings, strict=True):

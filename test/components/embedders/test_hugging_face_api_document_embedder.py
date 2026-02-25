@@ -413,8 +413,9 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
+                concurrency_limit=1,
             )
-            embeddings = await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2, concurrency_limit=1)
+            embeddings = await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
 
             assert mock_embedding_patch.call_count == 3
 
@@ -442,10 +443,11 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
+                concurrency_limit=1,
             )
 
             with pytest.raises(ValueError):
-                await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2, concurrency_limit=1)
+                await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
 
         # embedding ndim == 2 but shape[0] != len(batch)
         with patch("huggingface_hub.AsyncInferenceClient.feature_extraction") as mock_embedding_patch:
@@ -455,10 +457,11 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
+                concurrency_limit=1,
             )
 
             with pytest.raises(ValueError):
-                await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2, concurrency_limit=1)
+                await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
 
     @pytest.mark.asyncio
     async def test_run_async_wrong_input_format(self, mock_check_valid_model):
