@@ -156,10 +156,8 @@ class SearchableToolset(Toolset):
                     "names/descriptions (e.g. 'route weather search')."
                 )
 
-            if self._document_store is None:
-                raise RuntimeError("SearchableToolset has not been warmed up. Call warm_up() before using search.")
-
-            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)
+            # at this point, the toolset has been warmed up, so self._document_store is not None
+            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)  # type: ignore[union-attr]
 
             if not results:
                 return "No tools found matching these keywords. Try different keywords."
@@ -214,7 +212,7 @@ class SearchableToolset(Toolset):
             return any(tool.name == item for tool in self)
         if isinstance(item, Tool):
             return any(tool == item for tool in self)
-        return False
+        raise TypeError(f"Invalid item type: {type(item)}. Must be Tool or str.")
 
     def __getitem__(self, index: int) -> Tool:
         """
@@ -240,7 +238,9 @@ class SearchableToolset(Toolset):
         elif isinstance(raw, list):
             catalog_items = list(raw)
         else:
-            catalog_items = []
+            raise TypeError(
+                f"Invalid catalog type: {type(raw)}. Expected Tool, Toolset, or list of Tools and/or Toolsets."
+            )
 
         return {
             "type": generate_qualified_class_name(type(self)),

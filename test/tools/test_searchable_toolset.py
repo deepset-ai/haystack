@@ -97,6 +97,15 @@ def large_catalog():
     ]
 
 
+def test_clear(large_catalog):
+    toolset = SearchableToolset(catalog=large_catalog)
+    toolset.warm_up()
+    toolset._bootstrap_tool.invoke(tool_keywords="weather temperature city")
+    assert len(toolset._discovered_tools) > 0
+    toolset.clear()
+    assert len(toolset._discovered_tools) == 0
+
+
 class TestSearchableToolsetPassthrough:
     """Tests for passthrough mode (small catalogs)."""
 
@@ -140,6 +149,13 @@ class TestSearchableToolsetPassthrough:
         toolset.warm_up()
 
         assert weather_tool in toolset
+
+    def test_passthrough_contains_by_tool_invalid_type(self, small_catalog):
+        toolset = SearchableToolset(catalog=small_catalog)
+        toolset.warm_up()
+
+        with pytest.raises(TypeError):
+            123 in toolset  # noqa: B015
 
     def test_custom_search_threshold(self, large_catalog):
         """Test that custom search_threshold changes passthrough behavior."""
@@ -217,6 +233,16 @@ class TestSearchableToolsetBM25Mode:
         assert "No tools found" in result
         assert len(toolset._discovered_tools) == 0
 
+    def test_search_tools_no_keywords(self, large_catalog):
+        """Test search_tools with no keywords."""
+        toolset = SearchableToolset(catalog=large_catalog)
+        toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
+
+        result = toolset._bootstrap_tool.invoke(tool_keywords="")
+        assert "No tool keywords provided" in result
+        assert len(toolset._discovered_tools) == 0
+
 
 class TestSearchableToolsetIteration:
     """Tests for iteration and collection behavior."""
@@ -247,6 +273,13 @@ class TestSearchableToolsetIteration:
         assert "search_tools" in tool_names
         assert "get_weather" in tool_names
 
+    def test_iter_automatically_warms_up(self, large_catalog):
+        toolset = SearchableToolset(catalog=large_catalog)
+        assert not toolset._warmed_up
+
+        list(toolset)
+        assert toolset._warmed_up
+
     def test_contains_bootstrap_tool(self, large_catalog):
         """Test __contains__ for bootstrap tool."""
         toolset = SearchableToolset(catalog=large_catalog)
@@ -266,6 +299,13 @@ class TestSearchableToolsetIteration:
         assert "get_weather" in toolset
         assert "add_numbers" not in toolset  # Not discovered yet
 
+    def test_getitem(self, large_catalog):
+        toolset = SearchableToolset(catalog=large_catalog)
+        toolset.warm_up()
+
+        tool = toolset[0]
+        assert tool.name == "search_tools"
+
 
 class TestSearchableToolsetSerialization:
     """Tests for serialization and deserialization."""
@@ -283,6 +323,21 @@ class TestSearchableToolsetSerialization:
         assert data["data"]["search_threshold"] == 5
         assert len(data["data"]["catalog"]) == len(large_catalog)
 
+    def test_to_dict_with_tool(self, weather_tool):
+        toolset = SearchableToolset(catalog=weather_tool, top_k=3, search_threshold=5)
+        data = toolset.to_dict()
+        assert "type" in data
+        assert "haystack.tools.searchable_toolset.SearchableToolset" in data["type"]
+        assert "data" in data
+        assert data["data"]["top_k"] == 3
+        assert data["data"]["search_threshold"] == 5
+        assert len(data["data"]["catalog"]) == 1
+
+    def test_to_dict_with_invalid_catalog(self):
+        toolset = SearchableToolset(catalog=123)
+        with pytest.raises(TypeError):
+            toolset.to_dict()
+
     def test_from_dict(self, large_catalog):
         """Test deserialization from dict."""
         toolset = SearchableToolset(catalog=large_catalog, top_k=3)
@@ -293,6 +348,14 @@ class TestSearchableToolsetSerialization:
 
         assert restored._top_k == 3
         assert len(restored._catalog) == len(large_catalog)
+
+    def test_from_dict_with_invalid_item_type(self):
+        data = {
+            "type": "haystack.tools.searchable_toolset.SearchableToolset",
+            "data": {"catalog": [{"type": "haystack.dataclasses.Document", "data": "irrelevant"}]},
+        }
+        with pytest.raises(TypeError):
+            SearchableToolset.from_dict(data)
 
     def test_serde_roundtrip(self, large_catalog):
         """Test full serialization roundtrip."""
