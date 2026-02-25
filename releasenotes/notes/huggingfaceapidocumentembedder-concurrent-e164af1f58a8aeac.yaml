@@ -1,4 +1,4 @@
 ---
 enhancements:
   - |
-    Improve performance of `HuggingFaceAPIDocumentEmbedder.run_async` by requesting embedding inference concurrently.
+    Improve performance of ``HuggingFaceAPIDocumentEmbedder.run_async`` by requesting embedding inference concurrently.
