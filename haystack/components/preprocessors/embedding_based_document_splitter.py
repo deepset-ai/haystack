@@ -322,8 +322,7 @@ class EmbeddingBasedDocumentSplitter:
         group_docs = [Document(content=group) for group in sentence_groups]
         result = await self.document_embedder.run_async(group_docs)  # type: ignore[attr-defined]
         embedded_docs = result["documents"]
-        embeddings = [doc.embedding for doc in embedded_docs]
-        return embeddings
+        return [doc.embedding for doc in embedded_docs]
 
     def _find_split_points(self, embeddings: list[list[float]]) -> list[int]:
         """
