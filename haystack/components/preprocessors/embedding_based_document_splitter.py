@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from asyncio import gather
+from collections.abc import Awaitable
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Awaitable
+from typing import Any
 
 import numpy as np
 
@@ -287,9 +288,7 @@ class EmbeddingBasedDocumentSplitter:
         sentence_groups = self._prepare_sentence_groups(text=text)
         embeddings = await self._calculate_embeddings_async(sentence_groups=sentence_groups)
         split_points = self._find_split_points(embeddings=embeddings)
-        sub_splits = self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
-
-        return sub_splits
+        return self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
 
     def _group_sentences(self, sentences: list[str]) -> list[str]:
         """
