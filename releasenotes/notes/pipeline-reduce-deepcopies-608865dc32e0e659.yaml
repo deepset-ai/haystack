@@ -4,6 +4,6 @@ enhancements:
     Removed redundant deepcopy operations from ``Pipeline`` and ``AsyncPipeline`` execution.
     Component outputs are no longer deepcopied when collecting pipeline results, as inputs are already deepcopied
     before each component executes, preventing unintended mutations.
-    Tracing spans for component inputs and outputs are also no longer deepcopied.
+    Component inputs and outputs are also no longer deepcopied before being stored in tracing spans.
     These changes improve pipeline execution performance, especially when large objects (e.g., lists of Documents)
     flow between components and when ``include_outputs_from`` is used.
