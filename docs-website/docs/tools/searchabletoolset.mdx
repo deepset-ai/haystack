@@ -22,7 +22,7 @@ Enable agents to dynamically discover tools from large catalogs using keyword-ba
 ## Overview
 
 `SearchableToolset` is designed for working with large tool catalogs.
-Instead of exposing all tools at once — which can overwhelm the LLM context — it provides a single `search_tools` bootstrap tool.
+Instead of exposing all tools at once, which can overwhelm the LLM context, it provides a single `search_tools` bootstrap tool.
 The agent uses this tool to find and load specific tools from the catalog using BM25 keyword search.
 
 Once the agent calls `search_tools`, the matching tools become immediately available and the agent can invoke them in
