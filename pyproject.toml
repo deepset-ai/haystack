@@ -241,7 +241,7 @@ skip-magic-trailing-comma = true
 split-on-trailing-comma = false
 
 [tool.ruff.lint.mccabe]
-max-complexity = 20
+max-complexity = 20   # Default is 10 for Ruff
 
 [tool.ruff.lint.pylint]
 allow-magic-value-types = ["float", "int", "str"]
