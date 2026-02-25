@@ -114,7 +114,7 @@ class TestSearchableToolsetPassthrough:
         toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
 
-        assert toolset.is_passthrough is True
+        assert toolset._is_passthrough() is True
 
     def test_passthrough_exposes_all_tools(self, small_catalog):
         """Test that passthrough mode exposes all catalog tools."""
@@ -163,7 +163,7 @@ class TestSearchableToolsetPassthrough:
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=10)
         toolset.warm_up()
 
-        assert toolset.is_passthrough is True
+        assert toolset._is_passthrough() is True
         assert len(list(toolset)) == 8
 
 
@@ -371,7 +371,7 @@ class TestSearchableToolsetSerialization:
         assert restored._bootstrap_tool is not None
 
         # Verify behavior matches
-        assert restored.is_passthrough == toolset.is_passthrough
+        assert restored._is_passthrough() == toolset._is_passthrough()
 
         # Verify bootstrap tool works
         result = restored._bootstrap_tool.invoke(tool_keywords="weather")
@@ -414,7 +414,7 @@ class TestSearchableToolsetWithToolset:
         search_toolset = SearchableToolset(catalog=base_toolset)
         search_toolset.warm_up()
 
-        assert search_toolset.is_passthrough is True
+        assert search_toolset._is_passthrough() is True
         assert len(list(search_toolset)) == len(small_catalog)
 
     def test_accepts_list_of_toolsets(self, weather_tool, add_tool, multiply_tool, stock_tool):
@@ -486,7 +486,7 @@ class TestSearchableToolsetEdgeCases:
         toolset = SearchableToolset(catalog=[])
         toolset.warm_up()
 
-        assert toolset.is_passthrough is True
+        assert toolset._is_passthrough() is True
         assert len(list(toolset)) == 0
 
     def test_single_tool_catalog(self, weather_tool):
@@ -494,7 +494,7 @@ class TestSearchableToolsetEdgeCases:
         toolset = SearchableToolset(catalog=[weather_tool])
         toolset.warm_up()
 
-        assert toolset.is_passthrough is True
+        assert toolset._is_passthrough() is True
         assert len(list(toolset)) == 1
 
     def test_exactly_at_threshold(self):
@@ -513,7 +513,7 @@ class TestSearchableToolsetEdgeCases:
         toolset.warm_up()
 
         # Should NOT be passthrough (>= threshold triggers discovery)
-        assert toolset.is_passthrough is False
+        assert toolset._is_passthrough() is False
 
     def test_one_below_threshold(self):
         """Test catalog size one below threshold."""
@@ -531,7 +531,7 @@ class TestSearchableToolsetEdgeCases:
         toolset.warm_up()
 
         # Should be passthrough
-        assert toolset.is_passthrough is True
+        assert toolset._is_passthrough() is True
 
     def test_multiple_loads_same_tool(self, large_catalog):
         """Test searching for the same tool multiple times."""
@@ -590,7 +590,7 @@ class TestSearchableToolsetLazyToolset:
         # After warm_up, all 10 lazy tools should be in the catalog
         assert len(toolset._catalog) == 10
         # 10 tools >= 8 threshold -> BM25 mode
-        assert toolset.is_passthrough is False
+        assert toolset._is_passthrough() is False
         assert toolset._bootstrap_tool is not None
 
         # Search should find lazy tools
@@ -617,7 +617,7 @@ class TestSearchableToolsetLazyToolset:
         toolset = SearchableToolset(catalog=SmallLazyToolset())
         toolset.warm_up()
 
-        assert toolset.is_passthrough is True
+        assert toolset._is_passthrough() is True
         assert len(list(toolset)) == 1
         assert "lazy_single" in toolset
 
@@ -654,7 +654,7 @@ class TestSearchableToolsetLazyToolset:
 
         # Should have 5 lazy + 5 eager = 10 tools
         assert len(toolset._catalog) == 10
-        assert toolset.is_passthrough is False
+        assert toolset._is_passthrough() is False
         assert any(t.name == "lazy_0" for t in toolset._catalog)
         assert any(t.name == "eager_0" for t in toolset._catalog)
 

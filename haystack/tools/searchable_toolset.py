@@ -80,9 +80,10 @@ class SearchableToolset(Toolset):
         # Initialize parent with empty tools list - we manage tools dynamically
         super().__init__(tools=[])
 
-    @property
-    def is_passthrough(self) -> bool:
-        """Check if operating in passthrough mode (small catalog)."""
+    def _is_passthrough(self) -> bool:
+        """
+        Internal method to check if operating in passthrough mode (small catalog). Must be called after warm_up().
+        """
         return len(self._catalog) < self._search_threshold
 
     def warm_up(self) -> None:
@@ -102,7 +103,7 @@ class SearchableToolset(Toolset):
         # Now flatten — lazy toolsets will have their real tools available
         self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
 
-        if self.is_passthrough:
+        if self._is_passthrough():
             for tool in self._catalog:
                 tool.warm_up()
         else:
@@ -189,7 +190,7 @@ class SearchableToolset(Toolset):
         """
         if not self._warmed_up:
             self.warm_up()
-        if self.is_passthrough:
+        if self._is_passthrough():
             yield from self._catalog
         else:
             if self._bootstrap_tool is not None:
