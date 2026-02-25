@@ -614,6 +614,7 @@ export default {
         'tools/toolset',
         'tools/mcptool',
         'tools/mcptoolset',
+        'tools/searchabletoolset',
         {
           type: 'category',
           label: 'Ready-made Tools',
