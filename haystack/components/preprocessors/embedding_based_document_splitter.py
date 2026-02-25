@@ -178,7 +178,6 @@ class EmbeddingBasedDocumentSplitter:
 
         This is the asynchronous version of the `run` method with the same parameters and return values.
 
-
         :param documents: The documents to split.
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. Each document includes:
@@ -195,7 +194,11 @@ class EmbeddingBasedDocumentSplitter:
             self.warm_up()
 
         if not hasattr(self.document_embedder, "run_async"):
-            raise AttributeError(f"{type(self.document_embedder).__name__} must implement method 'run_async'.")
+            logger.warning(
+                "{embedder_type} must implement method 'run_async'.",
+                embedder_type=type(self.document_embedder).__name__,
+            )
+            return self.run(documents)
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
@@ -221,7 +224,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         # Create an initial split of the document content into smaller chunks
         # doc.content is validated in `run`
-        splits = self._split_text(text=doc.content)  # type: ignore
+        splits = self._split_text(text=doc.content)  # type: ignore[arg-type]
 
         # Merge splits smaller than min_length
         merged_splits = self._merge_small_splits(splits=splits)
@@ -238,7 +241,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         # Create an initial split of the document content into smaller chunks
         # doc.content is validated in `run`
-        splits = await self._split_text_async(text=doc.content)  # type: ignore
+        splits = await self._split_text_async(text=doc.content)  # type: ignore[arg-type]
 
         # Merge splits smaller than min_length
         merged_splits = self._merge_small_splits(splits=splits)
@@ -249,11 +252,8 @@ class EmbeddingBasedDocumentSplitter:
         # Create Document objects from the final splits
         return EmbeddingBasedDocumentSplitter._create_documents_from_splits(splits=final_splits, original_doc=doc)
 
-    def _split_text(self, text: str) -> list[str]:
-        """
-        Split a text into smaller chunks based on embedding similarity.
-        """
-
+    def _prepare_sentence_groups(self, text: str) -> list[str]:
+        """Preprocess raw text into grouped sentences ready for embedding."""
         # NOTE: `self.sentence_splitter.split_sentences` strips all white space types (e.g. new lines, page breaks,
         # etc.) at the end of the provided text. So to not lose them, we need keep track of them and add them back to
         # the last sentence.
@@ -269,7 +269,13 @@ class EmbeddingBasedDocumentSplitter:
             sentences_result[-1]["end"] += len(trailing_whitespaces)
 
         sentences = [sentence["sentence"] for sentence in sentences_result]
-        sentence_groups = self._group_sentences(sentences=sentences)
+        return self._group_sentences(sentences=sentences)
+
+    def _split_text(self, text: str) -> list[str]:
+        """
+        Split a text into smaller chunks based on embedding similarity.
+        """
+        sentence_groups = self._prepare_sentence_groups(text=text)
         embeddings = self._calculate_embeddings(sentence_groups=sentence_groups)
         split_points = self._find_split_points(embeddings=embeddings)
         return self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)
@@ -278,23 +284,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         Asynchronously split a text into smaller chunks based on embedding similarity.
         """
-
-        # NOTE: `self.sentence_splitter.split_sentences` strips all white space types (e.g. new lines, page breaks,
-        # etc.) at the end of the provided text. So to not lose them, we need keep track of them and add them back to
-        # the last sentence.
-        rstripped_text = text.rstrip()
-        trailing_whitespaces = text[len(rstripped_text) :]
-
-        # Split the text into sentences
-        sentences_result = self.sentence_splitter.split_sentences(rstripped_text)  # type: ignore[union-attr]
-
-        # Add back the stripped white spaces to the last sentence
-        if sentences_result and trailing_whitespaces:
-            sentences_result[-1]["sentence"] += trailing_whitespaces
-            sentences_result[-1]["end"] += len(trailing_whitespaces)
-
-        sentences = [sentence["sentence"] for sentence in sentences_result]
-        sentence_groups = self._group_sentences(sentences=sentences)
+        sentence_groups = self._prepare_sentence_groups(text=text)
         embeddings = await self._calculate_embeddings_async(sentence_groups=sentence_groups)
         split_points = self._find_split_points(embeddings=embeddings)
         sub_splits = self._create_splits_from_points(sentence_groups=sentence_groups, split_points=split_points)

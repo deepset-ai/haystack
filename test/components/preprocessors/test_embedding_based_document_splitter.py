@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -79,7 +79,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.asyncio
     async def test_run_not_warmed_up_async(self) -> None:
-        mock_embedder = Mock()
+        mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
 
         with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
@@ -98,9 +98,9 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.asyncio
     async def test_run_invalid_input_async(self) -> None:
-        mock_embedder = Mock()
+        mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-        splitter.sentence_splitter = Mock()
+        splitter.sentence_splitter = AsyncMock()
         splitter._is_warmed_up = True
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
@@ -117,9 +117,9 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.asyncio
     async def test_run_document_with_none_content_async(self) -> None:
-        mock_embedder = Mock()
+        mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-        splitter.sentence_splitter = Mock()
+        splitter.sentence_splitter = AsyncMock()
         splitter._is_warmed_up = True
 
         with pytest.raises(ValueError, match="content for document ID"):
@@ -136,9 +136,9 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.asyncio
     async def test_run_empty_document_async(self) -> None:
-        mock_embedder = Mock()
+        mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-        splitter.sentence_splitter = Mock()
+        splitter.sentence_splitter = AsyncMock()
         splitter._is_warmed_up = True
 
         result = await splitter.run_async(documents=[Document(content="")])
@@ -327,7 +327,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
     @pytest.mark.asyncio
     async def test_calculate_embeddings_async(self) -> None:
-        mock_embedder = Mock()
+        mock_embedder = AsyncMock()
 
         # Mock the document embedder to return documents with embeddings
         async def mock_run_async(documents):
@@ -335,7 +335,7 @@ class TestEmbeddingBasedDocumentSplitter:
                 doc.embedding = [1.0, 2.0, 3.0]  # Simple mock embedding
             return {"documents": documents}
 
-        mock_embedder.run_async = Mock(side_effect=mock_run_async)
+        mock_embedder.run_async = AsyncMock(side_effect=mock_run_async)
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
 
         sentence_groups = ["Group 1", "Group 2", "Group 3"]
