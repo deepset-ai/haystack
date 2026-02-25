@@ -21,7 +21,7 @@ Enable agents to dynamically discover tools from large catalogs using keyword-ba
 
 ## Overview
 
-`SearchableToolset` is a subclass of [`Toolset`](toolset.mdx) designed for working with large tool catalogs.
+`SearchableToolset` is designed for working with large tool catalogs.
 Instead of exposing all tools at once — which can overwhelm the LLM context — it provides a single `search_tools` bootstrap tool.
 The agent uses this tool to find and load specific tools from the catalog using BM25 keyword search.
 
@@ -37,7 +37,7 @@ subsequent iterations.
 
 ### Parameters
 
-- `catalog` (required): The source of tools — a list of `Tool` and/or `Toolset` instances, or a single `Toolset`.
+- `catalog` (required): The source of tools — a list of `Tool` and/or `Toolset` instances, or a single `Toolset`. This includes [MCPTool](mcptool.mdx) and [MCPToolset](mcptoolset.mdx) instances.
 - `top_k` (optional): The default number of tools returned by each `search_tools` call. Default is `3`.
 - `search_threshold` (optional): Minimum catalog size to activate search mode. Catalogs smaller than this value use passthrough mode instead. Default is `8`.
 
@@ -50,40 +50,34 @@ subsequent iterations.
 ### Basic usage with an Agent
 
 ```python
+from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool, SearchableToolset
+from haystack.tools import create_tool_from_function, SearchableToolset
 
-# Define a large catalog of tools
+
+def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+    """Get current weather for a city."""
+    return f"Sunny, 22°C in {city}"
+
+
+def search_web(query: Annotated[str, "The search query"]) -> str:
+    """Search the web for information."""
+    return f"Results for: {query}"
+
+
+# Build a catalog from tools
 catalog = [
-    Tool(
-        name="get_weather",
-        description="Get current weather for a city",
-        parameters={
-            "type": "object",
-            "properties": {"city": {"type": "string"}},
-            "required": ["city"],
-        },
-        function=lambda city: f"Sunny, 22°C in {city}",
-    ),
-    Tool(
-        name="search_web",
-        description="Search the web for information",
-        parameters={
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
-        function=lambda query: f"Results for: {query}",
-    ),
+    create_tool_from_function(get_weather),
+    create_tool_from_function(search_web),
     # ... many more tools
 ]
 
 toolset = SearchableToolset(catalog=catalog)
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(),
     tools=toolset,
 )
 
@@ -95,11 +89,11 @@ print(result["messages"][-1].text)
 
 ### Reusing the toolset across multiple agent runs
 
-When reusing the same `SearchableToolset` instance across multiple agent runs, call `clear()` to reset any tools discovered in the previous run:
+When reusing the same `SearchableToolset` instance across multiple agent runs, you can call `clear()` to reset any tools discovered in the previous run:
 
 ```python
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(),
     tools=toolset,
 )
 
