@@ -80,6 +80,14 @@ class SearchableToolset(Toolset):
         # Initialize parent with empty tools list - we manage tools dynamically
         super().__init__(tools=[])
 
+    def __add__(self, other: Tool | Toolset | list[Tool]) -> "Toolset":
+        """Concatenation is not supported for SearchableToolset."""
+        raise NotImplementedError("SearchableToolset does not support concatenation.")
+
+    def add(self, tool: Tool | Toolset) -> None:
+        """Adding new tools after initialization is not supported for SearchableToolset."""
+        raise NotImplementedError("SearchableToolset does not support adding new tools after initialization.")
+
     def _is_passthrough(self) -> bool:
         """
         Internal method to check if operating in passthrough mode (small catalog). Must be called after warm_up().

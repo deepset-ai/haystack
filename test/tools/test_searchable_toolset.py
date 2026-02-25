@@ -97,13 +97,30 @@ def large_catalog():
     ]
 
 
-def test_clear(large_catalog):
-    toolset = SearchableToolset(catalog=large_catalog)
-    toolset.warm_up()
-    toolset._bootstrap_tool.invoke(tool_keywords="weather temperature city")
-    assert len(toolset._discovered_tools) > 0
-    toolset.clear()
-    assert len(toolset._discovered_tools) == 0
+class TestSearchableToolset:
+    def test_not_implemented_methods(self):
+        toolset = SearchableToolset(catalog=[])
+        with pytest.raises(NotImplementedError):
+            toolset + Tool(
+                name="test", description="test", parameters={"type": "object", "properties": {}}, function=lambda: None
+            )
+        with pytest.raises(NotImplementedError):
+            toolset.add(
+                Tool(
+                    name="test",
+                    description="test",
+                    parameters={"type": "object", "properties": {}},
+                    function=lambda: None,
+                )
+            )
+
+    def test_clear(self, large_catalog):
+        toolset = SearchableToolset(catalog=large_catalog)
+        toolset.warm_up()
+        toolset._bootstrap_tool.invoke(tool_keywords="weather temperature city")
+        assert len(toolset._discovered_tools) > 0
+        toolset.clear()
+        assert len(toolset._discovered_tools) == 0
 
 
 class TestSearchableToolsetPassthrough:
