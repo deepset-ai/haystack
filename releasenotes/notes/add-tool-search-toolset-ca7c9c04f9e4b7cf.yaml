@@ -7,9 +7,7 @@ features:
     discover relevant tools as needed. For smaller catalogs, it operates in passthrough mode exposing all tools
     directly.
 
-    Key features include:
-    configurable search threshold for automatic passthrough mode, top-k result limiting,
-    and a ``clear()`` method to reset discovered tools between agent runs.
+    Key features include configurable search threshold for automatic passthrough mode and top-k result limiting.
 
     Example usage:
 
