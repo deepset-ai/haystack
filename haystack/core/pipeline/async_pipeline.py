@@ -67,9 +67,7 @@ class AsyncPipeline(PipelineBase):
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
-            # We deepcopy the inputs otherwise we might lose that information
-            # when we delete them in case they're sent to other Components
-            span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(component_inputs))
+            span.set_content_tag(_COMPONENT_INPUT, component_inputs)
             logger.info("Running component {component_name}", component_name=component_name)
 
             if getattr(instance, "__haystack_supports_async__", False):
@@ -95,7 +93,7 @@ class AsyncPipeline(PipelineBase):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
-            span.set_content_tag(_COMPONENT_OUTPUT, _deepcopy_with_exceptions(outputs))
+            span.set_content_tag(_COMPONENT_OUTPUT, outputs)
 
             return outputs
 
@@ -466,7 +464,7 @@ class AsyncPipeline(PipelineBase):
                 yield partial_res
 
             # 4) Yield final pipeline outputs
-            yield _deepcopy_with_exceptions(pipeline_outputs)
+            yield pipeline_outputs
 
     async def run_async(
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4

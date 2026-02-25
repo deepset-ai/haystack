@@ -8,6 +8,7 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from haystack import Pipeline, component
+from haystack.dataclasses import Document
 from haystack.tracing.tracer import tracer
 from test.tracing.utils import SpyingSpan, SpyingTracer
 
@@ -150,3 +151,32 @@ class TestTracing:
                 span_id=ANY,
             ),
         ]
+
+    def test_span_input_not_affected_by_component_mutation(
+        self, spying_tracer: SpyingTracer, monkeypatch: MonkeyPatch
+    ) -> None:
+        """
+        Verify that the haystack.component.input span tag retains the pre-execution value even though inputs
+        are no longer deep-copied before being stored in the span.
+
+        This is safe because each component receives a deep copy of its inputs for execution, so the original
+        dict referenced by the span cannot be mutated by the component.
+        """
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
+
+        @component
+        class MutatingComponent:
+            @component.output_types(doc=Document)
+            def run(self, doc: Document) -> dict:
+                doc.content = "mutated"
+                return {"doc": doc}
+
+        pipe = Pipeline()
+        pipe.add_component("mutator", MutatingComponent())
+
+        result = pipe.run({"mutator": {"doc": Document(content="original")}})
+
+        component_span = spying_tracer.spans[1]
+        # Span must show the pre-execution value, not the mutated one produced by the component
+        assert component_span.tags["haystack.component.input"]["doc"].content == "original"
+        assert result["mutator"]["doc"].content == "mutated"
