@@ -70,6 +70,57 @@ _COMPONENT_OUTPUT = "haystack.component.output"
 _COMPONENT_VISITS = "haystack.component.visits"
 
 
+def _validate_component_output_keys(
+    component_name: str, component: dict[str, Any], component_output: Mapping[str, Any]
+) -> None:
+    """
+    Validate that the output keys returned by a component match its declared output types.
+
+    Logs a warning for any mismatch between the actual output keys and the declared output sockets.
+    This helps catch bugs where a component returns wrong keys, which would otherwise cause
+    downstream components to wait forever for expected data, resulting in a confusing
+    "Pipeline Blocked" error that points to the wrong component.
+
+    :param component_name: Name of the Component as registered in the Pipeline.
+    :param component: Component metadata dict containing the component instance and its sockets.
+    :param component_output: The actual output dictionary returned by the component's run method.
+    """
+    output_sockets = component.get("output_sockets", {})
+    if not output_sockets:
+        return
+
+    declared_keys = set(output_sockets.keys())
+    actual_keys = set(component_output.keys())
+
+    extra_keys = actual_keys - declared_keys
+    missing_keys = declared_keys - actual_keys
+
+    instance = component["instance"]
+    component_type = instance.__class__.__name__
+
+    if extra_keys:
+        logger.warning(
+            "Component '{component_name}' (type: {component_type}) returned output keys {extra_keys} "
+            "that are not declared in its output types. "
+            "These keys will be ignored and not passed to downstream components. "
+            "Make sure the component's output keys match its declared @component.output_types.",
+            component_name=component_name,
+            component_type=component_type,
+            extra_keys=extra_keys,
+        )
+    if missing_keys:
+        logger.warning(
+            "Component '{component_name}' (type: {component_type}) did not produce output keys {missing_keys} "
+            "declared in its output types. "
+            "This may cause downstream components to block waiting for this data, "
+            "leading to a 'Pipeline Blocked' error. "
+            "Make sure the component's run method returns all declared output keys.",
+            component_name=component_name,
+            component_type=component_type,
+            missing_keys=missing_keys,
+        )
+
+
 class ComponentPriority(IntEnum):
     HIGHEST = 1
     READY = 2
