@@ -72,11 +72,14 @@ class Pipeline(PipelineBase):
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=inputs, parent_span=parent_span
         ) as span:
+            # deepcopy inputs before passing to the tracer so that even if a tracer mutates them
+            # the component always receives the original unmodified values
+            inputs_copy = _deepcopy_with_exceptions(inputs)
             span.set_content_tag(_COMPONENT_INPUT, inputs)
             logger.info("Running component {component_name}", component_name=component_name)
 
             try:
-                component_output = instance.run(**_deepcopy_with_exceptions(inputs))
+                component_output = instance.run(**inputs_copy)
             except BreakpointException as error:
                 # Re-raise BreakpointException to preserve the original exception context
                 # This is important when Agent components internally use Pipeline._run_component
