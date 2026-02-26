@@ -416,7 +416,7 @@ print(result["messages"][-1].text)`}</CodeBlock>
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 
 @tool
@@ -434,10 +434,10 @@ model = ChatAnthropic(
     model="claude-sonnet-4-5-20250929",
     temperature=0,
 )
-agent = create_react_agent(
+agent = create_agent(
     model,
     tools=[multiply, add],
-    prompt=SystemMessage(
+    system_prompt=SystemMessage(
         content="You are a helpful assistant that performs arithmetic."
     ),
 )
@@ -572,6 +572,81 @@ rag_chain = (
 
 result = rag_chain.invoke("What is the capital of France?")
 print(result)`}</CodeBlock>
+  </div>
+</div>
+
+### Using MCP Tools
+
+Both frameworks support the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), letting agents connect to external tools and services exposed by MCP servers. Haystack provides `MCPTool` and `MCPToolset` through the `mcp-haystack` integration package, which plug directly into the `Agent` component. LangChain's MCP support relies on the separate `langchain-mcp-adapters` package and requires an async workflow throughout.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai mcp-haystack anthropic-haystack
+
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+from haystack.components.agents import Agent
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.dataclasses import ChatMessage
+
+# Connect to an MCP server - tools are auto-discovered
+toolset = MCPToolset(
+    server_info=StdioServerInfo(
+        command="uvx",
+        args=["mcp-server-fetch"],
+    )
+)
+
+agent = Agent(
+    chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-5-20250929"),
+    tools=toolset,
+    system_prompt="You are a helpful assistant that can fetch web content.",
+)
+
+result = agent.run(messages=[
+    ChatMessage.from_user("Fetch the content from https://haystack.deepset.ai")
+])
+print(result["messages"][-1].text)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-mcp-adapters langgraph langchain-anthropic
+
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain.agents import create_agent
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
+
+model = ChatAnthropic(model="claude-sonnet-4-5-20250929")
+
+async def run():
+    client = MultiServerMCPClient(
+        {
+            "fetch": {
+                "command": "uvx",
+                "args": ["mcp-server-fetch"],
+                "transport": "stdio",
+            }
+        }
+    )
+    tools = await client.get_tools()
+    agent = create_agent(
+        model,
+        tools,
+        system_prompt=SystemMessage(
+            content="You are a helpful assistant that can fetch web content."
+        ),
+    )
+    result = await agent.ainvoke(
+        {
+            "messages": [
+                HumanMessage(content="Fetch the content from https://haystack.deepset.ai")
+            ]
+        }
+    )
+    print(result["messages"][-1].content)
+
+
+asyncio.run(run())`}</CodeBlock>
   </div>
 </div>
 
