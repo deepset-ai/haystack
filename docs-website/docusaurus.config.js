@@ -58,7 +58,7 @@ const config = {
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.24',
+          lastVersion: '2.25',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -102,7 +102,7 @@ const config = {
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.24',
+        lastVersion: '2.25',
       },
     ],
     [
@@ -153,10 +153,6 @@ const config = {
           {
             from: '/docs/prompt_node',
             to: '/docs/promptbuilder',
-          },
-          {
-            from: '/docs/ready_made_pipelines',
-            to: '/docs/pipeline-templates',
           },
           {
             from: '/docs/join_documents',
