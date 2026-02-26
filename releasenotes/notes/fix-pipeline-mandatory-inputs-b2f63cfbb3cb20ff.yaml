@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Update ``Pipeline.inputs()`` to return any variadic inputs as not mandatory if they already have a connection.
