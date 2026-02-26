@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import copy
+import dataclasses
 from enum import Enum
 from typing import Any
 from urllib.parse import urljoin
@@ -160,8 +160,7 @@ class HuggingFaceTEIRanker:
         ranked_docs = []
         for item in result[:final_k]:
             index: int = item["index"]
-            doc_copy = copy.copy(documents[index])
-            doc_copy.score = item["score"]
+            doc_copy = dataclasses.replace(documents[index], score=item["score"])
             ranked_docs.append(doc_copy)
         return {"documents": ranked_docs}
 

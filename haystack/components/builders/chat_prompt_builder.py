@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 import json
 from copy import deepcopy
 from typing import Any, Literal
@@ -269,7 +270,7 @@ class ChatPromptBuilder:
                     rendered_text = compiled_template.render(template_variables_combined)
                     # deep copy the message to avoid modifying the original message
                     rendered_message: ChatMessage = deepcopy(message)
-                    rendered_message._content = [TextContent(text=rendered_text)]
+                    rendered_message = dataclasses.replace(rendered_message, _content=[TextContent(text=rendered_text)])
                     processed_messages.append(rendered_message)
                 else:
                     processed_messages.append(message)

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 from collections import defaultdict
 from collections.abc import Callable
 from typing import Any, Literal
@@ -401,8 +402,7 @@ class MetaFieldRanker:
                 scores_map[document.id] += score * (1 - weight)
                 scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * weight
 
-        for document in documents:
-            document.score = scores_map[document.id]
+        documents = [dataclasses.replace(doc, score=scores_map[doc.id]) for doc in documents]
 
         return sorted(documents, key=lambda doc: doc.score if doc.score else -1, reverse=True)
 

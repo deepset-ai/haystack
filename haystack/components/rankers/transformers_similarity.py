@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 from pathlib import Path
 from typing import Any
 
@@ -318,8 +319,8 @@ class TransformersSimilarityRanker:
         ranked_docs = []
         for sorted_index in list_sorted_indices:
             i = sorted_index
-            deduplicated_documents[i].score = list_similarity_scores[i]
-            ranked_docs.append(deduplicated_documents[i])
+            doc = dataclasses.replace(deduplicated_documents[i], score=list_similarity_scores[i])
+            ranked_docs.append(doc)
 
         if score_threshold is not None:
             ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]

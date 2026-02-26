@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 import math
 from pathlib import Path
 from typing import Any
@@ -322,7 +323,7 @@ class ExtractiveReader:
 
     def _add_answer_page_number(self, answer: ExtractedAnswer) -> ExtractedAnswer:
         if answer.meta is None:
-            answer.meta = {}
+            answer = dataclasses.replace(answer, meta={})
 
         if answer.document_offset is None:
             return answer
@@ -341,7 +342,8 @@ class ExtractiveReader:
         if answer.document.content:
             ans_start = answer.document_offset.start
             answer_page_number = answer.document.meta["page_number"] + answer.document.content[:ans_start].count("\f")
-            answer.meta.update({"answer_page_number": answer_page_number})
+            new_meta = {**answer.meta, "answer_page_number": answer_page_number}
+            answer = dataclasses.replace(answer, meta=new_meta)
 
         return answer
 
@@ -389,8 +391,7 @@ class ExtractiveReader:
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
             while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
-                answer = answers_without_query[i]
-                answer.query = queries[query_id]
+                answer = dataclasses.replace(answers_without_query[i], query=queries[query_id])
                 current_answers.append(answer)
                 i += 1
             current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)

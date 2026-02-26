@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import dataclasses
 import json
 import math
 import re
@@ -432,8 +433,7 @@ class InMemoryDocumentStore:
             docs = list(self.storage.values())
 
         if not self.return_embedding:
-            for doc in docs:
-                doc.embedding = None
+            docs = [dataclasses.replace(doc, embedding=None) for doc in docs]
 
         return docs
 

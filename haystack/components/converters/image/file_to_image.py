@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 import mimetypes
 from pathlib import Path
 from typing import Any, Literal
@@ -124,7 +125,7 @@ class ImageFileToImageContent:
                 continue
 
             if bytestream.mime_type is None and isinstance(source, Path):
-                bytestream.mime_type = mimetypes.guess_type(source.as_posix())[0]
+                bytestream = dataclasses.replace(bytestream, mime_type=mimetypes.guess_type(source.as_posix())[0])
 
             if bytestream.data == _EMPTY_BYTE_STRING:
                 logger.warning("File {source} is empty. Skipping it.", source=source)

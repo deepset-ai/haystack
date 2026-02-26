@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import dataclasses
 import itertools
 from collections import defaultdict
 from enum import Enum
@@ -190,10 +191,7 @@ class DocumentJoiner:
                 scores_map[doc.id] += (doc.score if doc.score else 0) * weight
                 documents_map[doc.id] = doc
 
-        for doc in documents_map.values():
-            doc.score = scores_map[doc.id]
-
-        return list(documents_map.values())
+        return [dataclasses.replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
 
     def _reciprocal_rank_fusion(self, document_lists: list[list[Document]]) -> list[Document]:
         """
@@ -223,10 +221,7 @@ class DocumentJoiner:
         for _id in scores_map:
             scores_map[_id] /= len(document_lists) / k
 
-        for doc in documents_map.values():
-            doc.score = scores_map[doc.id]
-
-        return list(documents_map.values())
+        return [dataclasses.replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
 
     @staticmethod
     def _distribution_based_rank_fusion(document_lists: list[list[Document]]) -> list[Document]:
@@ -251,8 +246,9 @@ class DocumentJoiner:
             max_score = mean_score + 3 * std_dev
             delta_score = max_score - min_score
 
-            for doc in documents:
-                doc.score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
+            for i, doc in enumerate(documents):
+                new_score = (doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0
+                documents[i] = dataclasses.replace(doc, score=new_score)
                 # if all docs have the same score delta_score is 0, the docs are uninformative for the query
 
         return DocumentJoiner._concatenate(document_lists=document_lists)

@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Replaced in-place dataclass mutations with `dataclasses.replace()` across multiple components
+    (rankers, joiners, fetchers, converters, readers, document stores, and pipeline) to avoid
+    unintended side effects and eliminate deprecation warnings introduced by the dataclass mutation
+    detection in PR #10650.
