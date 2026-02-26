@@ -33,7 +33,9 @@ jobs:
           echo "Building haystack-ai version: ${NIGHTLY_VERSION}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        uses: pypa/hatch@install
+        with:
+          version: "${{ env.HATCH_VERSION }}"
 
       - name: Build Haystack
         run: hatch build
