@@ -36,7 +36,6 @@ if __name__ == "__main__":
 
     target_unstable = f"{target_version}-unstable"  # e.g., "2.20-unstable"
     next_unstable = f"{major}.{int(minor) + 1}-unstable"  # e.g., "2.21-unstable" - next cycle
-    previous_stable = f"{major}.{int(minor) - 1}"  # e.g., "2.19" - previous stable release
 
     versions = [
         folder.replace("version-", "")
@@ -64,43 +63,21 @@ if __name__ == "__main__":
     shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{target_unstable}")
 
     # generate versioned_sidebars/version-target_unstable-sidebars.json from the current sidebars.js
-    docs_sidebar_dest = f"docs-website/versioned_sidebars/version-{target_unstable}-sidebars.json"
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         tmp_path = tmp.name
-    result = subprocess.run(
-        [
-            "node",
-            "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
-            "docs-website/scripts/extract_sidebar.mjs",
-            "docs-website/sidebars.js",
-            tmp_path,
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
+    subprocess.run(
+        ["node", "docs-website/scripts/extract_sidebar.mjs", "docs-website/sidebars.js", tmp_path], check=True
     )
-    if result.returncode != 0:
-        sys.exit(f"Failed to extract sidebar JSON from sidebars.js:\n{result.stderr}")
+    docs_sidebar_dest = f"docs-website/versioned_sidebars/version-{target_unstable}-sidebars.json"
     shutil.move(tmp_path, docs_sidebar_dest)
 
     # generate reference_versioned_sidebars/version-target_unstable-sidebars.json from the current reference-sidebars.js
     ref_sidebar_dest = f"docs-website/reference_versioned_sidebars/version-{target_unstable}-sidebars.json"
     with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
         tmp_path = tmp.name
-    result = subprocess.run(
-        [
-            "node",
-            "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
-            "docs-website/scripts/extract_sidebar.mjs",
-            "docs-website/reference-sidebars.js",
-            tmp_path,
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
+    subprocess.run(
+        ["node", "docs-website/scripts/extract_sidebar.mjs", "docs-website/reference-sidebars.js", tmp_path], check=True
     )
-    if result.returncode != 0:
-        sys.exit(f"Failed to extract sidebar JSON from reference-sidebars.js:\n{result.stderr}")
     shutil.move(tmp_path, ref_sidebar_dest)
 
     # add unstable version to versions.json

@@ -1,4 +1,4 @@
-// Imports a Docusaurus sidebar JS file and writes its default export as JSON to a file.
+// Imports a Docusaurus sidebar JS file, renders it as a JSON and writes it to a file.
 // Usage: node extract_sidebar.mjs <path-to-sidebars.js> <output-path>
 
 import { pathToFileURL } from "url";
