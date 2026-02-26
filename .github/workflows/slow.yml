@@ -136,10 +136,9 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+        uses: pypa/hatch@install
+        with:
+          version: "${{ env.HATCH_VERSION }}"
 
       - name: Run Tika
         if: matrix.os == 'ubuntu-latest'
