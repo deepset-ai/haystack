@@ -155,10 +155,6 @@ const config = {
             to: '/docs/promptbuilder',
           },
           {
-            from: '/docs/ready_made_pipelines',
-            to: '/docs/pipeline-templates',
-          },
-          {
             from: '/docs/join_documents',
             to: '/docs/documentjoiner',
           },
