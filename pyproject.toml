@@ -251,6 +251,8 @@ max-public-methods = 20                           # Default is 20
 max-returns = 7                                   # Default is 6
 max-statements = 56                               # Default is 50
 
+# TRIGGER
+
 [tool.ruff.lint]
 select = [
   "A001",   # builtin-variable-shadowing
