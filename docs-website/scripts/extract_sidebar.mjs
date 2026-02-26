@@ -1,15 +1,16 @@
-// Imports a Docusaurus sidebar JS file and prints its default export as JSON.
-// Usage: node extract_sidebar.mjs <path-to-sidebars.js>
+// Imports a Docusaurus sidebar JS file and writes its default export as JSON to a file.
+// Usage: node extract_sidebar.mjs <path-to-sidebars.js> <output-path>
 
 import { pathToFileURL } from "url";
 import { resolve } from "path";
+import { writeFileSync } from "fs";
 
-const [, , sidebarPath] = process.argv;
+const [, , sidebarPath, outputPath] = process.argv;
 
-if (!sidebarPath) {
-  process.stderr.write("Usage: node extract_sidebar.mjs <path-to-sidebars.js>\n");
+if (!sidebarPath || !outputPath) {
+  process.stderr.write("Usage: node extract_sidebar.mjs <path-to-sidebars.js> <output-path>\n");
   process.exit(1);
 }
 
 const mod = await import(pathToFileURL(resolve(sidebarPath)).href);
-process.stdout.write(JSON.stringify(mod.default));
+writeFileSync(resolve(outputPath), JSON.stringify(mod.default, null, 2));
