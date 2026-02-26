@@ -55,6 +55,10 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
       - name: Prepare changes for main
         shell: bash
         run: |
