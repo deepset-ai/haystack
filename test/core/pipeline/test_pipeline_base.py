@@ -646,7 +646,7 @@ class TestPipelineBase:
         p.connect("b.y", "c.y")
         assert p.inputs() == {}
         assert p.inputs(include_components_with_connected_inputs=True) == {
-            "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}}
+            "c": {"x": {"type": int, "is_mandatory": False}, "y": {"type": int, "is_mandatory": False}}
         }
 
     def test_describe_input_some_components_with_no_inputs(self):
@@ -662,7 +662,7 @@ class TestPipelineBase:
         assert p.inputs() == {"b": {"y": {"type": int, "is_mandatory": True}}}
         assert p.inputs(include_components_with_connected_inputs=True) == {
             "b": {"y": {"type": int, "is_mandatory": True}},
-            "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
+            "c": {"x": {"type": int, "is_mandatory": False}, "y": {"type": int, "is_mandatory": False}},
         }
 
     def test_describe_input_all_components_have_inputs(self):
@@ -682,7 +682,7 @@ class TestPipelineBase:
         assert p.inputs(include_components_with_connected_inputs=True) == {
             "a": {"x": {"type": int | None, "is_mandatory": True}},
             "b": {"y": {"type": int, "is_mandatory": True}},
-            "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
+            "c": {"x": {"type": int, "is_mandatory": False}, "y": {"type": int, "is_mandatory": False}},
         }
 
     def test_describe_output_multiple_possible(self):

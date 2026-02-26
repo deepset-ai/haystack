@@ -16,6 +16,15 @@ def find_pipeline_inputs(
     Collect components that have disconnected/connected input sockets.
 
     Note that this method returns *ALL* disconnected input sockets, including all such sockets with default values.
+    It also includes variadic input sockets, even if they are currently connected, as they can accept additional
+    inputs from outside the pipeline.
+
+    :param graph: The pipeline graph to analyze.
+    :param include_connected_sockets: If True, also include input sockets that are already connected.
+        This can be useful for understanding the full input requirements of the pipeline, including inputs
+        that are currently satisfied by connections within the pipeline. If False, only include input sockets that
+        are not connected to any output socket, which represent the external inputs that can be provided when running
+        the pipeline.
     """
     return {
         name: [
@@ -47,12 +56,18 @@ def describe_pipeline_inputs(graph: networkx.MultiDiGraph) -> dict[str, dict[str
     """
     Returns a dictionary with the input names and types that this pipeline accepts.
     """
-    inputs: dict[str, dict[str, InputSocketTypeDescriptor]] = {
-        comp: {socket.name: {"type": socket.type, "is_mandatory": socket.is_mandatory} for socket in data}
-        for comp, data in find_pipeline_inputs(graph).items()
-        if data
+    return {
+        comp: {
+            socket.name: InputSocketTypeDescriptor(
+                type=socket.type,
+                # Variadic mandatory sockets with existing connections don't require user input, so treat them as
+                # optional.
+                is_mandatory=socket.is_mandatory and socket.senders == [],
+            )
+            for socket in sockets
+        }
+        for comp, sockets in find_pipeline_inputs(graph).items()
     }
-    return inputs
 
 
 def describe_pipeline_inputs_as_string(graph: networkx.MultiDiGraph) -> str:
