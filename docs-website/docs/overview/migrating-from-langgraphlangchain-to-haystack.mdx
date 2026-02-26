@@ -44,7 +44,7 @@ Here's a table of key concepts and their approximate equivalents between the two
 | Model Context Protocol `load_mcp_tools` `MultiServerMCPClient` | Model Context Protocol - `MCPTool`, `MCPToolset`, `StdioServerInfo`, `StreamableHttpServerInfo` | Haystack provides [various MCP primitives](https://haystack.deepset.ai/integrations/mcp) for connecting multiple MCP servers and organizing MCP toolsets. |
 | Memory (State, short-term, long-term) | Memory (Agent State, short-term, long-term) | Agent [State](../concepts/agents/state.mdx) provides a structured way to share data between tools and store intermediate results during agent execution. For short-term memory, Haystack offers a [ChatMessage Store](/reference/experimental-chatmessage-store-api) to persist chat history. More memory options are coming soon. |
 | Time travel (Checkpoints) | Breakpoints (Breakpoint, AgentBreakpoint, ToolBreakpoint, Snapshot) | [Breakpoints](../concepts/pipelines/pipeline-breakpoints.mdx) let you pause, inspect, modify, and resume a pipeline, agent, or tool for debugging or iterative development. |
-| Human-in-the-Loop (Interrupts / Commands) | Human-in-the-loop ( ConfirmationStrategy / ConfirmationPolicy) | (Experimental) Haystack uses [confirmation strategies](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent) to pause or block the execution to gather user feedback |
+| Human-in-the-Loop (Interrupts / Commands) | Human-in-the-loop ( ConfirmationStrategy / ConfirmationPolicy) | Haystack uses [confirmation strategies](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent) to pause or block the execution to gather user feedback |
 
 ## Ecosystem and Tooling Mapping: LangChain → Haystack
 
