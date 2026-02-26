@@ -196,7 +196,7 @@ class EmbeddingBasedDocumentSplitter:
 
         if not hasattr(self.document_embedder, "run_async"):
             logger.warning(
-                "{embedder_type} must implement method 'run_async'.",
+                "{embedder_type} does not implement method 'run_async'. Falling back to 'run'.",
                 embedder_type=type(self.document_embedder).__name__,
             )
             return self.run(documents)
