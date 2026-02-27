@@ -65,6 +65,19 @@ You can also explicitly call:
 - `save(index_path)` to write index and metadata to disk.
 - `load(index_path)` to load them later.
 
+Example of loading from a previously saved folder/path:
+
+```python
+from haystack_integrations.document_stores.faiss import FAISSDocumentStore
+
+# This loads `my_faiss_index.faiss` and `my_faiss_index.json` if they exist
+document_store = FAISSDocumentStore(index_path="my_faiss_index")
+
+# Alternatively, initialize first and then load explicitly
+another_store = FAISSDocumentStore(embedding_dim=768)
+another_store.load("my_faiss_index")
+```
+
 ## Supported Retrievers
 
 [`FAISSEmbeddingRetriever`](../pipeline-components/retrievers/faissembeddingretriever.mdx): Retrieves documents from `FAISSDocumentStore` based on query embeddings.
