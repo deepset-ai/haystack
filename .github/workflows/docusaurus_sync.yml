@@ -30,9 +30,7 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
+        run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Generate API reference for Docusaurus
         run: hatch run docs

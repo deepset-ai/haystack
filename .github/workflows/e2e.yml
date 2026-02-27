@@ -34,9 +34,7 @@ jobs:
         python-version: "${{ env.PYTHON_VERSION }}"
 
     - name: Install Hatch
-      uses: pypa/hatch@install
-      with:
-        version: "${{ env.HATCH_VERSION }}"
+      run: pip install hatch==${{ env.HATCH_VERSION }}
 
     - name: Run tests
       run: hatch run e2e:test
