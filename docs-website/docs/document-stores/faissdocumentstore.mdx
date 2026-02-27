@@ -1,0 +1,70 @@
+---
+title: "FAISSDocumentStore"
+id: faissdocumentstore
+slug: "/faissdocumentstore"
+---
+
+# FAISSDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [FAISS](/reference/integrations-faiss)                                                      |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/faiss |
+
+</div>
+
+`FAISSDocumentStore` is a local Document Store backed by [FAISS](https://github.com/facebookresearch/faiss) for vector similarity search.
+It keeps vectors in a FAISS index and stores document data in memory, with optional persistence to disk.
+
+`FAISSDocumentStore` is a good fit for local development and small to medium-sized datasets where you want a lightweight setup without running an external database service.
+
+## Installation
+
+Install the FAISS integration:
+
+```shell
+pip install faiss-haystack
+```
+
+## Initialization
+
+Create a `FAISSDocumentStore` instance and write embedded documents:
+
+```python
+from haystack import Document
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.document_stores.faiss import FAISSDocumentStore
+
+document_store = FAISSDocumentStore(
+    index_path="my_faiss_index",  # Optional: enables persistence on disk
+    index_string="Flat",
+    embedding_dim=768,
+)
+
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.1] * 768),
+        Document(content="This is second", embedding=[0.2] * 768),
+    ],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+print(document_store.count_documents())
+
+# Persist index and metadata files (`.faiss` and `.json`)
+document_store.save("my_faiss_index")
+```
+
+### Persistence
+
+If you provide `index_path` when initializing `FAISSDocumentStore`, it tries to load existing persisted files (`.faiss` and `.json`) from that path.
+You can also explicitly call:
+
+- `save(index_path)` to write index and metadata to disk.
+- `load(index_path)` to load them later.
+
+## Supported Retrievers
+
+[`FAISSEmbeddingRetriever`](/reference/integrations-faiss#faissembeddingretriever): Retrieves documents from `FAISSDocumentStore` based on query embeddings.
