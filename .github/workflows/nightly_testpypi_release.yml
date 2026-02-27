@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.4"
 
 jobs:
   nightly-release:
@@ -33,7 +33,8 @@ jobs:
           echo "Building haystack-ai version: ${NIGHTLY_VERSION}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        # https://github.com/pypa/hatch/issues/2193
+        run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Build Haystack
         run: hatch build

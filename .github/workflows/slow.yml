@@ -14,7 +14,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.4"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
 
@@ -139,7 +139,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Run Tika
         if: matrix.os == 'ubuntu-latest'
