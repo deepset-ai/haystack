@@ -373,6 +373,283 @@ for m in messages["messages"]:
   </div>
 </div>
 
+### Creating Agents
+
+The [Agentic Flows](#agentic-flows-with-haystack-vs-langgraph) walkthrough above showed how to assemble an agent loop manually from pipeline primitives. Haystack also provides a high-level `Agent` class that wraps the full loop  -  LLM calls, tool invocation, and iteration  -  into a single component. LangGraph offers an equivalent shortcut through `create_react_agent` in `langgraph.prebuilt`. Both produce a ReAct-style agent that handles tool calling and multi-step reasoning automatically.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai anthropic-haystack
+
+from haystack.components.agents import Agent
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply \`a\` and \`b\`."""
+    return a * b
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add \`a\` and \`b\`."""
+    return a + b
+
+# Create an agent  -  the agentic loop is handled automatically
+agent = Agent(
+    chat_generator=AnthropicChatGenerator(
+        model="claude-sonnet-4-5-20250929",
+        generation_kwargs={"temperature": 0},
+    ),
+    tools=[multiply, add],
+    system_prompt="You are a helpful assistant that performs arithmetic.",
+)
+
+result = agent.run(messages=[
+    ChatMessage.from_user("What is 3 multiplied by 7, then add 5?")
+])
+print(result["messages"][-1].text)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-anthropic langgraph
+
+from langchain_anthropic import ChatAnthropic
+from langchain_core.tools import tool
+from langchain.agents import create_agent
+from langchain_core.messages import HumanMessage, SystemMessage
+
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply \`a\` and \`b\`."""
+    return a * b
+
+@tool
+def add(a: int, b: int) -> int:
+    """Add \`a\` and \`b\`."""
+    return a + b
+
+# Create an agent - the agentic loop is handled automatically
+model = ChatAnthropic(
+    model="claude-sonnet-4-5-20250929",
+    temperature=0,
+)
+agent = create_agent(
+    model,
+    tools=[multiply, add],
+    system_prompt=SystemMessage(
+        content="You are a helpful assistant that performs arithmetic."
+    ),
+)
+
+result = agent.invoke({
+    "messages": [HumanMessage(content="What is 3 multiplied by 7, then add 5?")]
+})
+print(result["messages"][-1].content)`}</CodeBlock>
+  </div>
+</div>
+
+### Connecting to Document Stores
+
+Document stores are the foundation of retrieval-augmented generation (RAG). In Haystack, document stores integrate natively with pipeline components like Retrievers and Prompt Builders via explicit typed connections. LangChain centers retrieval around its vector store abstraction composed using LCEL (LangChain Expression Language).
+
+Both frameworks offer in-memory stores for prototyping and a wide range of production backends (Elasticsearch, Qdrant, Weaviate, Pinecone, and more) via integrations.
+
+**Step 1: Create a document store and add documents**
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai sentence-transformers
+
+from haystack import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+
+# Embed and write documents to the document store
+document_store = InMemoryDocumentStore()
+
+doc_embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2"
+)
+doc_embedder.warm_up()
+
+docs = [
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="Tokyo is the capital of Japan."),
+]
+docs_with_embeddings = doc_embedder.run(docs)["documents"]
+document_store.write_documents(docs_with_embeddings)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangChain">{`# pip install langchain-community langchain-huggingface sentence-transformers
+
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import InMemoryVectorStore
+from langchain_core.documents import Document
+
+# Embed and add documents to the vector store
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
+vectorstore = InMemoryVectorStore(embedding=embeddings)
+vectorstore.add_documents([
+    Document(page_content="Paris is the capital of France."),
+    Document(page_content="Berlin is the capital of Germany."),
+    Document(page_content="Tokyo is the capital of Japan."),
+])`}</CodeBlock>
+  </div>
+</div>
+
+**Step 2: Build a RAG pipeline**
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`from haystack import Pipeline
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+
+# ChatPromptBuilder expects a List[ChatMessage] as template
+template = [ChatMessage.from_user("""
+Given the following documents, answer the question.
+{% for doc in documents %}{{ doc.content }}{% endfor %}
+Question: {{ question }}
+""")]
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(
+    "text_embedder",
+    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+)
+rag_pipeline.add_component(
+    "retriever", InMemoryEmbeddingRetriever(document_store=document_store)
+)
+rag_pipeline.add_component(
+    "prompt_builder", ChatPromptBuilder(template=template)
+)
+rag_pipeline.add_component(
+    "llm", AnthropicChatGenerator(model="claude-sonnet-4-5-20250929")
+)
+
+rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+rag_pipeline.connect("retriever.documents", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+result = rag_pipeline.run({
+    "text_embedder": {"text": "What is the capital of France?"},
+    "prompt_builder": {"question": "What is the capital of France?"},
+})
+print(result["llm"]["replies"][0].text)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangChain">{`from langchain_anthropic import ChatAnthropic
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+
+def format_docs(docs):
+    return "\\n".join(doc.page_content for doc in docs)
+
+retriever = vectorstore.as_retriever()
+model = ChatAnthropic(model="claude-sonnet-4-5-20250929")
+
+template = """
+Given the following documents, answer the question.
+{context}
+Question: {question}
+"""
+prompt = ChatPromptTemplate.from_template(template)
+
+rag_chain = (
+    {"context": retriever | format_docs, "question": RunnablePassthrough()}
+    | prompt
+    | model
+    | StrOutputParser()
+)
+
+result = rag_chain.invoke("What is the capital of France?")
+print(result)`}</CodeBlock>
+  </div>
+</div>
+
+### Using MCP Tools
+
+Both frameworks support the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), letting agents connect to external tools and services exposed by MCP servers. Haystack provides `MCPTool` and `MCPToolset` through the `mcp-haystack` integration package, which plug directly into the `Agent` component. LangChain's MCP support relies on the separate `langchain-mcp-adapters` package and requires an async workflow throughout.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai mcp-haystack anthropic-haystack
+
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+from haystack.components.agents import Agent
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+from haystack.dataclasses import ChatMessage
+
+# Connect to an MCP server - tools are auto-discovered
+toolset = MCPToolset(
+    server_info=StdioServerInfo(
+        command="uvx",
+        args=["mcp-server-fetch"],
+    )
+)
+
+agent = Agent(
+    chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-5-20250929"),
+    tools=toolset,
+    system_prompt="You are a helpful assistant that can fetch web content.",
+)
+
+result = agent.run(messages=[
+    ChatMessage.from_user("Fetch the content from https://haystack.deepset.ai")
+])
+print(result["messages"][-1].text)`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-mcp-adapters langgraph langchain-anthropic
+
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain.agents import create_agent
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
+
+model = ChatAnthropic(model="claude-sonnet-4-5-20250929")
+
+async def run():
+    client = MultiServerMCPClient(
+        {
+            "fetch": {
+                "command": "uvx",
+                "args": ["mcp-server-fetch"],
+                "transport": "stdio",
+            }
+        }
+    )
+    tools = await client.get_tools()
+    agent = create_agent(
+        model,
+        tools,
+        system_prompt=SystemMessage(
+            content="You are a helpful assistant that can fetch web content."
+        ),
+    )
+    result = await agent.ainvoke(
+        {
+            "messages": [
+                HumanMessage(content="Fetch the content from https://haystack.deepset.ai")
+            ]
+        }
+    )
+    print(result["messages"][-1].content)
+
+
+asyncio.run(run())`}</CodeBlock>
+  </div>
+</div>
+
 ## Hear from Haystack Users
 
 See how teams across industries use Haystack to power their production AI systems, from RAG applications to agentic workflows.
