@@ -43,26 +43,26 @@ if __name__ == "__main__":
 
     ### Docusaurus updates
 
-    # rename versioned_docs/version-target_unstable to versioned_docs/version-target_version
+    # move versioned_docs/version-target_unstable to versioned_docs/version-target_version
     shutil.move(
         f"docs-website/versioned_docs/version-{target_unstable}",
         f"docs-website/versioned_docs/version-{target_version}",
     )
 
-    # rename reference_versioned_docs/version-target_unstable to reference_versioned_docs/version-target_version
+    # move reference_versioned_docs/version-target_unstable to reference_versioned_docs/version-target_version
     shutil.move(
         f"docs-website/reference_versioned_docs/version-{target_unstable}",
         f"docs-website/reference_versioned_docs/version-{target_version}",
     )
 
-    # copy versioned_sidebars/version-target_unstable-sidebars.json
+    # move versioned_sidebars/version-target_unstable-sidebars.json
     # to versioned_sidebars/version-target_version-sidebars.json
     shutil.move(
         f"docs-website/versioned_sidebars/version-{target_unstable}-sidebars.json",
         f"docs-website/versioned_sidebars/version-{target_version}-sidebars.json",
     )
 
-    # rename reference_versioned_sidebars/version-target_unstable-sidebars.json
+    # move reference_versioned_sidebars/version-target_unstable-sidebars.json
     # to reference_versioned_sidebars/version-target_version-sidebars.json
     shutil.move(
         f"docs-website/reference_versioned_sidebars/version-{target_unstable}-sidebars.json",
