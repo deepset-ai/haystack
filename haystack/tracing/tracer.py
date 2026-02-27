@@ -5,7 +5,8 @@
 import abc
 import contextlib
 import os
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from haystack import logging
 
@@ -146,7 +147,10 @@ class NullTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
+        self,
+        operation_name: str,  # noqa: ARG002
+        tags: dict[str, Any] | None = None,  # noqa: ARG002
+        parent_span: Span | None = None,  # noqa: ARG002
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         yield NullSpan()

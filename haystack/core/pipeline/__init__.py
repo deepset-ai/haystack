@@ -4,6 +4,5 @@
 
 from .async_pipeline import AsyncPipeline
 from .pipeline import Pipeline
-from .template import PredefinedPipeline
 
-__all__ = ["AsyncPipeline", "Pipeline", "PredefinedPipeline"]
+__all__ = ["AsyncPipeline", "Pipeline"]

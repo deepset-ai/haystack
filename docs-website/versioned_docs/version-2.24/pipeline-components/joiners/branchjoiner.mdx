@@ -70,10 +70,8 @@ Below is an example where `BranchJoiner` is used for closing a loop. In this exa
 
 ```python
 import json
-from typing import List
 
 from haystack import Pipeline
-from haystack.components.converters import OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.components.validators import JsonSchemaValidator
@@ -96,16 +94,11 @@ person_schema = {
 pipe = Pipeline()
 
 ## Add components to the pipeline
-pipe.add_component("joiner", BranchJoiner(List[ChatMessage]))
-pipe.add_component("fc_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
+pipe.add_component("fc_llm", OpenAIChatGenerator(model="gpt-4.1-mini"))
 pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
-pipe.add_component(
-    "adapter",
-    OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True),
-)
 
 ## Connect components
-pipe.connect("adapter", "joiner")
 pipe.connect("joiner", "fc_llm")
 pipe.connect("fc_llm.replies", "validator.messages")
 pipe.connect("validator.validation_error", "joiner")
@@ -113,10 +106,8 @@ pipe.connect("validator.validation_error", "joiner")
 result = pipe.run(
     data={
         "fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-        "adapter": {
-            "chat_message": [
-                ChatMessage.from_user("Create json object from Peter Parker"),
-            ],
+        "joiner": {
+            "value": [ChatMessage.from_user("Create json object from Peter Parker")],
         },
     },
 )
@@ -131,7 +122,7 @@ print(json.loads(result["validator"]["validated"][0].text))
 <details>
 
 <summary>Expand to see the pipeline graph</summary>
-<ClickableImage src="/img/9dc767d-loop_chart.png" alt="Pipeline flowchart showing a validation loop with adapter, joiner, language model, and validator components forming a cycle until validation succeeds" size="large" />
+<ClickableImage src="/img/9dc767d-loop_chart.png" alt="Pipeline flowchart showing a validation loop with joiner, language model, and validator components forming a cycle until validation succeeds" size="large" />
 
 </details>
 

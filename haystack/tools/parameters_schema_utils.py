@@ -4,10 +4,11 @@
 
 import collections
 import types
+from collections.abc import Callable, Sequence
 from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Sequence, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
@@ -76,9 +77,10 @@ def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     for param in parsed_doc.params:
         if not param.description:
             logger.warning(
-                "Missing description for parameter '%s'. Please add a description in the component's "
-                "run() method docstring using the format ':param %%s: <description>'. "
-                "This description helps the LLM understand how to use this parameter." % param.arg_name
+                "Missing description for parameter '{arg_name}'. Please add a description in the component's "
+                "run() method docstring using the format ':param {arg_name}: <description>'. "
+                "This description helps the LLM understand how to use this parameter.",
+                arg_name=param.arg_name,
             )
         param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
     return parsed_doc.short_description or "", param_descriptions
@@ -128,7 +130,12 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
                     if input_param_mapping := run_param_descriptions.get(socket_name):
                         descriptions.append(f"Provided to the '{comp_name}' component as: '{input_param_mapping}'")
                 except Exception as e:
-                    logger.debug(f"Error extracting description for {super_param_name} from {path}: {str(e)}")
+                    logger.debug(
+                        "Error extracting description for {super_param_name} from {path}: {e}",
+                        super_param_name=super_param_name,
+                        path=path,
+                        e=str(e),
+                    )
 
             # We don't only handle a one to one description mapping of input parameters, but a one to many mapping.
             # i.e. for a combined_input parameter description:
@@ -173,11 +180,10 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
         description = param_descriptions.get(field_name, f"Field '{field_name}' of '{cls.__name__}'.")
         field_defs[field_name] = (f_type, Field(default, description=description))
 
-    model = create_model(cls.__name__, **field_defs)
-    return model
+    return create_model(cls.__name__, **field_defs)
 
 
-def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911  # pylint: disable=too-many-return-statements
+def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
     """
     Recursively resolve and convert complex type annotations, transforming dataclasses into Pydantic-compatible types.
 

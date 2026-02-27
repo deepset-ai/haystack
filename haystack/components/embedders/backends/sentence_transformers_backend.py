@@ -23,7 +23,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
     _instances: dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
 
     @staticmethod
-    def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
+    def get_embedding_backend(
         *,
         model: str,
         device: str | None = None,
@@ -79,7 +79,7 @@ class _SentenceTransformersEmbeddingBackend:
     Class to manage Sentence Transformers embeddings.
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         *,
         model: str,
@@ -113,5 +113,4 @@ class _SentenceTransformersEmbeddingBackend:
     def embed(self, data: list[str] | list["Image"], **kwargs: Any) -> list[list[float]]:
         # Sentence Transformers encode can work with Images, but the type hint does not reflect that
         # https://sbert.net/examples/sentence_transformer/applications/image-search
-        embeddings = self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]
-        return embeddings
+        return self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]

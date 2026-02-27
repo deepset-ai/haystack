@@ -2,18 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Awaitable, Callable, Literal, overload
+from typing import Any, Literal, overload
 
 from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ReasoningContent, ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 # Type alias for standard finish_reason values following OpenAI's convention
 # plus Haystack-specific value ("tool_call_results")
 FinishReason = Literal["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ToolCallDelta:
     """
@@ -52,6 +55,7 @@ class ToolCallDelta:
         return ToolCallDelta(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ComponentInfo:
     """
@@ -98,6 +102,7 @@ class ComponentInfo:
         return ComponentInfo(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class StreamingChunk:
     """

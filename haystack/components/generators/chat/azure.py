@@ -70,9 +70,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     ```
     """
 
-    # pylint: disable=super-init-not-called
     # ruff: noqa: PLR0913
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2024-12-01-preview",

@@ -4,7 +4,8 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping
+from typing import Any
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -66,14 +67,15 @@ class AsyncPipeline(PipelineBase):
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
-            # We deepcopy the inputs otherwise we might lose that information
-            # when we delete them in case they're sent to other Components
-            span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(component_inputs))
+            # deepcopy inputs before passing to the tracer so that even if a tracer mutates them
+            # the component always receives the original unmodified values
+            component_inputs_copy = _deepcopy_with_exceptions(component_inputs)
+            span.set_content_tag(_COMPONENT_INPUT, component_inputs)
             logger.info("Running component {component_name}", component_name=component_name)
 
             if getattr(instance, "__haystack_supports_async__", False):
                 try:
-                    outputs = await instance.run_async(**_deepcopy_with_exceptions(component_inputs))  # type: ignore
+                    outputs = await instance.run_async(**component_inputs_copy)  # type: ignore
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             else:
@@ -83,7 +85,7 @@ class AsyncPipeline(PipelineBase):
                 ctx = contextvars.copy_context()
                 try:
                     outputs = await loop.run_in_executor(
-                        None, lambda: ctx.run(lambda: instance.run(**_deepcopy_with_exceptions(component_inputs)))
+                        None, lambda: ctx.run(lambda: instance.run(**component_inputs_copy))
                     )
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
@@ -94,11 +96,11 @@ class AsyncPipeline(PipelineBase):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
-            span.set_content_tag(_COMPONENT_OUTPUT, _deepcopy_with_exceptions(outputs))
+            span.set_content_tag(_COMPONENT_OUTPUT, outputs)
 
             return outputs
 
-    async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
+    async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncIterator[dict[str, Any]]:
         """
@@ -272,16 +274,13 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
-                try:
-                    component_pipeline_outputs = await self._run_component_async(
-                        component_name=component_name,
-                        component=comp_dict,
-                        component_inputs=component_inputs,
-                        component_visits=component_visits,
-                        parent_span=parent_span,
-                    )
-                except PipelineRuntimeError as error:
-                    raise error
+                component_pipeline_outputs = await self._run_component_async(
+                    component_name=component_name,
+                    component=comp_dict,
+                    component_inputs=component_inputs,
+                    component_visits=component_visits,
+                    parent_span=parent_span,
+                )
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
@@ -319,17 +318,14 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
                 async def _runner():
-                    try:
-                        async with ready_sem:
-                            component_pipeline_outputs = await self._run_component_async(
-                                component_name=component_name,
-                                component=comp_dict,
-                                component_inputs=component_inputs,
-                                component_visits=component_visits,
-                                parent_span=parent_span,
-                            )
-                    except PipelineRuntimeError as error:
-                        raise error
+                    async with ready_sem:
+                        component_pipeline_outputs = await self._run_component_async(
+                            component_name=component_name,
+                            component=comp_dict,
+                            component_inputs=component_inputs,
+                            component_visits=component_visits,
+                            parent_span=parent_span,
+                        )
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(
@@ -471,7 +467,7 @@ class AsyncPipeline(PipelineBase):
                 yield partial_res
 
             # 4) Yield final pipeline outputs
-            yield _deepcopy_with_exceptions(pipeline_outputs)
+            yield pipeline_outputs
 
     async def run_async(
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4

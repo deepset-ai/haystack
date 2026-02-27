@@ -19,8 +19,8 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
     from transformers import Pipeline as HfPipeline
 
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
-    import spacy  # pylint: disable=import-error
-    from spacy import Language as SpacyPipeline  # pylint: disable=import-error
+    import spacy
+    from spacy import Language as SpacyPipeline
 
 
 class NamedEntityExtractorBackend(Enum):
@@ -203,7 +203,7 @@ class NamedEntityExtractor:
             )
 
         new_documents = []
-        for doc, doc_annotations in zip(documents, annotations):
+        for doc, doc_annotations in zip(documents, annotations, strict=True):
             new_meta = {**doc.meta, self._METADATA_KEY: doc_annotations}
             new_documents.append(replace(doc, meta=new_meta))
 

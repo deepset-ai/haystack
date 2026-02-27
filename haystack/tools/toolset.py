@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Iterator, Union
+from typing import Any, Union
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
@@ -168,7 +169,7 @@ class Toolset:
         """
         return iter(self.tools)
 
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, item: str | Tool) -> bool:
         """
         Check if a tool is in this Toolset.
 

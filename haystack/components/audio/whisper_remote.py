@@ -36,7 +36,7 @@ class RemoteWhisperTranscriber:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "whisper-1",

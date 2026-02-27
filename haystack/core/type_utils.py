@@ -90,7 +90,7 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint: disable=too-many-return-statements
+def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
@@ -138,7 +138,7 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # pylint:
         receiver_args = (Any,) * (len(sender_args) if sender_args else 1)
 
     return not (len(sender_args) > len(receiver_args)) and all(
-        _strict_types_are_compatible(*args) for args in zip(sender_args, receiver_args)
+        _strict_types_are_compatible(*args) for args in zip(sender_args, receiver_args, strict=False)
     )
 
 
@@ -160,7 +160,7 @@ def _check_callable_compatibility(sender_args, receiver_args):
     return all(_strict_types_are_compatible(sender_args[0][i], receiver_args[0][i]) for i in range(len(sender_args[0])))
 
 
-def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyType:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyType:  # noqa: PLR0911
     """
     Determines whether a conversion exists from sender to receiver.
 
@@ -186,11 +186,11 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         return strategies.pop() if strategies else None
 
     # ChatMessage -> str
-    if _contains_type(sender, ChatMessage) and _contains_type(receiver, str):
+    if sender is ChatMessage and receiver is str:
         return ConversionStrategy.CHAT_MESSAGE_TO_STR
 
     # str -> ChatMessage
-    if _contains_type(sender, str) and _contains_type(receiver, ChatMessage):
+    if sender is str and receiver is ChatMessage:
         return ConversionStrategy.STR_TO_CHAT_MESSAGE
 
     # Wrap: T -> List[T]
@@ -207,14 +207,16 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
     # Unwrap: List[T] -> T - for str and ChatMessage only
     if _safe_get_origin(sender) is list and (args := get_args(sender)):
         inner = args[0]
-        if (_contains_type(inner, ChatMessage) and _contains_type(receiver, ChatMessage)) or (
-            _contains_type(inner, str) and _contains_type(receiver, str)
-        ):
+        # Guard against multi-level unwrap (e.g. list[list[str]] -> list[str])
+        if _safe_get_origin(receiver) is not list and _strict_types_are_compatible(inner, receiver):
             return ConversionStrategy.UNWRAP
         # Unwrap + conversion
-        if _contains_type(inner, str) and _contains_type(receiver, ChatMessage):
+        # Check that all possible types in the sender list can be converted to the receiver type
+        # using the same strategy by recursively calling _get_conversion_strategy on each inner element type.
+        inner_strategy = _get_conversion_strategy(inner, receiver)
+        if inner_strategy == ConversionStrategy.STR_TO_CHAT_MESSAGE:
             return ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE
-        if _contains_type(inner, ChatMessage) and _contains_type(receiver, str):
+        if inner_strategy == ConversionStrategy.CHAT_MESSAGE_TO_STR:
             return ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR
 
     return None
@@ -260,7 +262,7 @@ def _get_first_item(value: list[Any]) -> Any:
     return value[0]
 
 
-def _convert_value(value: Any, conversion_strategy: ConversionStrategy) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _convert_value(value: Any, conversion_strategy: ConversionStrategy) -> Any:  # noqa: PLR0911
     """
     Converts a value using the specified conversion strategy.
     """

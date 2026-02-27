@@ -7,6 +7,7 @@ from typing import Any, Optional, Protocol, runtime_checkable
 
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, Document
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 
 @runtime_checkable
@@ -24,6 +25,7 @@ class Answer(Protocol):
         ...
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ExtractedAnswer:
     query: str
@@ -35,6 +37,7 @@ class ExtractedAnswer:
     context_offset: Optional["Span"] = None
     meta: dict[str, Any] = field(default_factory=dict)
 
+    @_warn_on_inplace_mutation
     @dataclass
     class Span:
         start: int
@@ -84,6 +87,7 @@ class ExtractedAnswer:
         return default_from_dict(cls, data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class GeneratedAnswer:
     data: str

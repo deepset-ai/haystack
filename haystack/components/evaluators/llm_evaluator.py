@@ -51,7 +51,7 @@ class LLMEvaluator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         instructions: str,
         inputs: list[tuple[str, type[list]]],
@@ -200,8 +200,8 @@ class LLMEvaluator:
 
         # inputs is a dictionary with keys being input names and values being a list of input values
         # We need to iterate through the lists in parallel for all keys of the dictionary
-        input_names, values = inputs.keys(), list(zip(*inputs.values()))
-        list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
+        input_names, values = inputs.keys(), list(zip(*inputs.values(), strict=True))
+        list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
 
         results: list[dict[str, Any] | None] = []
         metadata = []
@@ -213,7 +213,7 @@ class LLMEvaluator:
                 result = self._chat_generator.run(messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
-                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
+                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
                 logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
                 results.append(None)
                 errors += 1

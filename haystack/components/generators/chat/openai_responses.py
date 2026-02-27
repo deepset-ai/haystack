@@ -509,7 +509,7 @@ class OpenAIResponsesChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
 
-        for openai_chunk in responses:  # pylint: disable=not-an-iterable
+        for openai_chunk in responses:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
@@ -523,7 +523,7 @@ class OpenAIResponsesChatGenerator:
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        async for openai_chunk in responses:  # pylint: disable=not-an-iterable
+        async for openai_chunk in responses:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
@@ -592,17 +592,15 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     if logprobs:
         meta["logprobs"] = logprobs
 
-    chat_message = ChatMessage.from_assistant(
+    return ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
         meta=meta,
     )
 
-    return chat_message
 
-
-def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
+def _convert_response_chunk_to_streaming_chunk(
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
@@ -700,13 +698,12 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
         )
 
     # we return rest of the chunk as is
-    chunk_message = StreamingChunk(
+    return StreamingChunk(
         content="",
         component_info=component_info,
         index=getattr(chunk, "output_index", None),
         meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
     )
-    return chunk_message
 
 
 def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:
@@ -808,13 +805,13 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     def convert_part(part) -> dict[str, str | None]:
         if isinstance(part, TextContent):
             return {"type": "input_text", "text": part.text}
-        elif isinstance(part, ImageContent):
+        if isinstance(part, ImageContent):
             return {
                 "type": "input_image",
                 # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
                 "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
             }
-        elif isinstance(part, FileContent):
+        if isinstance(part, FileContent):
             return {
                 "type": "input_file",
                 # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.

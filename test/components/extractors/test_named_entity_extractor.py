@@ -149,7 +149,7 @@ def test_named_entity_extractor_pipeline_serde(tmp_path):
 
     with open(tmp_path / "test_pipeline.yaml", "w") as f:
         p.dump(f)
-    with open(tmp_path / "test_pipeline.yaml", "r") as f:
+    with open(tmp_path / "test_pipeline.yaml") as f:
         q = Pipeline.load(f)
 
     assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with NamedEntityExtractor failed."

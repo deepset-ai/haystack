@@ -7,7 +7,8 @@ from unittest.mock import ANY
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from haystack import Pipeline, component
+from haystack import AsyncPipeline, Pipeline, component
+from haystack.dataclasses import Document
 from haystack.tracing.tracer import tracer
 from test.tracing.utils import SpyingSpan, SpyingTracer
 
@@ -150,3 +151,27 @@ class TestTracing:
                 span_id=ANY,
             ),
         ]
+
+    @pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
+    def test_span_input_not_affected_by_component_mutation(self, pipeline_class, spying_tracer, monkeypatch):
+        """
+        Verify that the haystack.component.input span tag retains the pre-execution value.
+        """
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
+
+        @component
+        class MutatingComponent:
+            @component.output_types(doc=Document)
+            def run(self, doc: Document) -> dict:
+                doc.content = "mutated"
+                return {"doc": doc}
+
+        pipe = pipeline_class()
+        pipe.add_component("mutator", MutatingComponent())
+
+        result = pipe.run({"mutator": {"doc": Document(content="original")}})
+
+        component_span = spying_tracer.spans[1]
+
+        assert component_span.tags["haystack.component.input"]["doc"].content == "original"
+        assert result["mutator"]["doc"].content == "mutated"

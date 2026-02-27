@@ -311,7 +311,7 @@ class SentenceWindowRetriever:
         max_after = split_id + window_size
         source_id_filters = [
             {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
-            for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
+            for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids, strict=True)
         ]
         conditions = [
             {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},

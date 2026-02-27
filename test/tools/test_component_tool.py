@@ -5,6 +5,7 @@
 import json
 import os
 from dataclasses import dataclass
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -19,7 +20,7 @@ from haystack.components.tools import ToolInvoker
 from haystack.components.websearch.serper_dev import SerperDevWebSearch
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
-from haystack.tools import ComponentTool
+from haystack.tools import ComponentTool, ToolsType
 from haystack.utils.auth import Secret
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
@@ -145,6 +146,22 @@ class DocumentProcessor:
         return {"concatenated": "\n".join(doc.content for doc in documents[:top_k])}
 
 
+@component
+class FakeChatGenerator:
+    def __init__(self, messages: list[ChatMessage]):
+        self.messages = messages
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        *,
+        tools: ToolsType | None = None,
+    ) -> dict[str, list[ChatMessage]]:
+        return {"replies": self.messages}
+
+
 def output_handler(old, new):
     """
     Output handler to test serialization.
@@ -197,7 +214,7 @@ class TestComponentTool:
 
     def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
-        with pytest.raises(ValueError, match="must be str, not dict"):
+        with pytest.raises(TypeError, match="must be str, not dict"):
             ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
 
     def test_from_component_with_outputs_to_state(self):
@@ -357,7 +374,7 @@ class TestComponentTool:
 
         not_a_component = NotAComponent()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
 
     def test_component_invoker_with_chat_message_input(self):
@@ -519,6 +536,18 @@ class TestComponentTool:
         assert "snapshot_callback" not in param_names
         assert "streaming_callback" not in param_names
         assert "messages" in param_names
+
+    def test_component_invoker_with_agent(self):
+        """Tests that Agent as a ComponentTool can be invoked when calling it with a list of dicts"""
+        agent = Agent(chat_generator=FakeChatGenerator(messages=[ChatMessage.from_assistant("Answer")]))
+        tool = ComponentTool(
+            component=agent,
+            name="agent_tool",
+            description="An agent tool",
+            outputs_to_string={"source": "last_message"},
+        )
+        result = tool.invoke(messages=[{"role": "user", "content": [{"text": "A 4-day trip in the south of France"}]}])
+        assert result["last_message"] == ChatMessage.from_assistant("Answer")
 
 
 class TestComponentToolInPipeline:

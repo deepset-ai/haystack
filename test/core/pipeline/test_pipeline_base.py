@@ -20,7 +20,7 @@ from haystack.core.errors import (
     PipelineMaxComponentRuns,
     PipelineRuntimeError,
 )
-from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
@@ -84,7 +84,7 @@ class TestPipelineBase:
         pipeline.add_component("Comp2", FakeComponent())
         pipeline.connect("Comp1.value", "Comp2.input_")
         result = pipeline.dumps()
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml") as f:
             assert f.read() == result
 
     def test_pipeline_loads_invalid_data(self):
@@ -121,7 +121,7 @@ class TestPipelineBase:
         metadata: {}
         """
 
-        with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
+        with pytest.raises(DeserializationError, match="Couldn't deserialize component 'Comp1'"):
             _ = PipelineBase.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
@@ -132,11 +132,11 @@ class TestPipelineBase:
         with open(tmp_path / "out.yaml", "w") as f:
             pipeline.dump(f)
         # re-open and ensure it's the same data as the test file
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as test_f, open(tmp_path / "out.yaml", "r") as f:
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml") as test_f, open(tmp_path / "out.yaml") as f:
             assert f.read() == test_f.read()
 
     def test_pipeline_load(self, test_files_path):
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml") as f:
             pipeline = PipelineBase.load(f)
             assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
@@ -745,11 +745,6 @@ class TestPipelineBase:
             "a": {"x": {"type": int}},
             "b": {"y": {"type": int}},
         }
-
-    def test_from_template(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
-        pipe = PipelineBase.from_template(PredefinedPipeline.INDEXING)
-        assert pipe.get_component("cleaner")
 
     def test_walk_pipeline_with_no_cycles(self):
         """

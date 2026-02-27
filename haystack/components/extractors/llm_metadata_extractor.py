@@ -148,7 +148,7 @@ class LLMMetadataExtractor:
     ```
     """  # noqa: E501
 
-    def __init__(  # pylint: disable=R0917
+    def __init__(
         self,
         prompt: str,
         chat_generator: ChatGenerator,
@@ -285,7 +285,7 @@ class LLMMetadataExtractor:
         except Exception as e:
             if self.raise_on_failure:
                 raise e
-            logger.error(
+            logger.exception(
                 "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
@@ -338,7 +338,7 @@ class LLMMetadataExtractor:
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results):
+        for document, result in zip(documents, results, strict=True):
             new_meta = {**document.meta}
             if "error" in result:
                 new_meta["metadata_extraction_error"] = result["error"]

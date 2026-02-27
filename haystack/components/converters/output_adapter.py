@@ -4,7 +4,8 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, TypeAlias
+from collections.abc import Callable
+from typing import Any, TypeAlias
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError
@@ -100,7 +101,7 @@ class OutputAdapter:
 
         # the env is not needed, discarded automatically
         component.set_input_types(self, **dict.fromkeys(input_types, Any))
-        component.set_output_types(self, **{"output": output_type})
+        component.set_output_types(self, output=output_type)
         self.output_type = output_type
 
     def run(self, **kwargs):
@@ -125,7 +126,7 @@ class OutputAdapter:
             adapted_output_template = self._env.from_string(self.template)
             output_result = adapted_output_template.render(**kwargs)
             if isinstance(output_result, jinja2.runtime.Undefined):
-                raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")
+                raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")  # noqa: TRY301
 
             # We suppress the exception in case the output is already a string, otherwise
             # we try to evaluate it and would fail.
