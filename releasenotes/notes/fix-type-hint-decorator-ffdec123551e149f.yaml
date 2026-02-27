@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Use ``TypeVar`` instead of ``type`` as the type hint for ``cls`` in ``_warn_on_inplace_mutation``. Using ``type`` would type the function as
+    ``(type) -> type``, losing information about which class was passed in.
+    With ``(cls: T) -> T``, the type checker understands that the specific class passed in is returned unchanged, rather than an anonymous ``type``.
