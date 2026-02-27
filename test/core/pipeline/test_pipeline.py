@@ -170,6 +170,99 @@ class TestPipeline:
         assert "empty_processor" in result
         assert result["empty_processor"] == {}
 
+    def test__run_component_warns_on_extra_output_keys(self, caplog):
+        """Test that a warning is raised when a component returns undeclared output keys."""
+        caplog.set_level(logging.WARNING)
+
+        @component
+        class ExtraKeyComponent:
+            @component.output_types(output=str)
+            def run(self, value: str) -> dict[str, str]:
+                return {"output": value, "extra_key": "unexpected"}
+
+        pp = Pipeline()
+        pp.add_component("extra", ExtraKeyComponent())
+
+        pp._run_component(
+            component_name="extra",
+            component=pp._get_component_with_graph_metadata_and_visits("extra", 0),
+            inputs={"value": "test"},
+            component_visits={"extra": 0},
+        )
+        assert "returned output keys" in caplog.text
+        assert "extra_key" in caplog.text
+        assert "not declared" in caplog.text
+
+    def test__run_component_warns_on_missing_output_keys(self, caplog):
+        """Test that a warning is raised when a component does not return declared output keys."""
+        caplog.set_level(logging.WARNING)
+
+        @component
+        class MissingKeyComponent:
+            @component.output_types(output=str, other_output=str)
+            def run(self, value: str) -> dict[str, str]:
+                return {"output": value}
+
+        pp = Pipeline()
+        pp.add_component("missing", MissingKeyComponent())
+
+        pp._run_component(
+            component_name="missing",
+            component=pp._get_component_with_graph_metadata_and_visits("missing", 0),
+            inputs={"value": "test"},
+            component_visits={"missing": 0},
+        )
+        assert "did not produce output keys" in caplog.text
+        assert "other_output" in caplog.text
+        assert "Pipeline Blocked" in caplog.text
+
+    def test__run_component_warns_on_wrong_output_keys(self, caplog):
+        """Test that warnings are raised for both extra and missing keys when a component returns completely wrong
+        output keys."""
+        caplog.set_level(logging.WARNING)
+
+        @component
+        class WrongKeyComponent:
+            @component.output_types(expected_output=str)
+            def run(self, value: str) -> dict[str, str]:
+                return {"wrong_key": value}
+
+        pp = Pipeline()
+        pp.add_component("wrong", WrongKeyComponent())
+
+        pp._run_component(
+            component_name="wrong",
+            component=pp._get_component_with_graph_metadata_and_visits("wrong", 0),
+            inputs={"value": "test"},
+            component_visits={"wrong": 0},
+        )
+        assert "returned output keys" in caplog.text
+        assert "wrong_key" in caplog.text
+        assert "did not produce output keys" in caplog.text
+        assert "expected_output" in caplog.text
+
+    def test__run_component_no_warning_on_correct_output_keys(self, caplog):
+        """Test that no warning is raised when a component returns the correct output keys."""
+        caplog.set_level(logging.WARNING)
+
+        @component
+        class CorrectComponent:
+            @component.output_types(output=str)
+            def run(self, value: str) -> dict[str, str]:
+                return {"output": value}
+
+        pp = Pipeline()
+        pp.add_component("correct", CorrectComponent())
+
+        pp._run_component(
+            component_name="correct",
+            component=pp._get_component_with_graph_metadata_and_visits("correct", 0),
+            inputs={"value": "test"},
+            component_visits={"correct": 0},
+        )
+        assert "returned output keys" not in caplog.text
+        assert "did not produce output keys" not in caplog.text
+
     def test_pipeline_is_possibly_blocked_warning_message(self, caplog):
         """
         Test that the pipeline raises a warning when it is possibly blocked due to missing inputs.
@@ -203,6 +296,10 @@ class TestPipeline:
 
         pp.run({"first": {"required_input": "test"}})
         assert "Cannot run pipeline - the next component that is meant to run is blocked." in caplog.text
+        # The new output key validation should also warn about the actual misconfigured component
+        assert "did not produce output keys" in caplog.text
+        assert "'first'" in caplog.text
+        assert "other_output" in caplog.text
 
     def test_pipeline_ensure_inputs_are_deep_copied(self):
         """

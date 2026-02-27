@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Added runtime validation of component output keys in ``Pipeline.run()``. When a component
+    returns keys that don't match its declared ``@component.output_types``, the pipeline now
+    logs a warning identifying the misconfigured component. This helps diagnose issues where
+    a component returns wrong keys, which previously caused a confusing "Pipeline Blocked"
+    error pointing to the wrong (downstream) component.
