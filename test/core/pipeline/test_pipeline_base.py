@@ -1949,6 +1949,31 @@ class TestPipelineConnect:
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
 
+    def test_connect_auto_variadic_optional_list(self):
+        @component
+        class ListAcceptor:
+            @component.output_types(result=list[int])
+            def run(self, numbers: list[int] | None = None) -> dict[str, list[int]]:
+                return {"result": numbers or []}
+
+        pipeline = PipelineBase()
+        receiver = ListAcceptor()
+        pipeline.add_component("sender1", ListAcceptor())
+        pipeline.add_component("sender2", ListAcceptor())
+        pipeline.add_component("receiver", receiver)
+
+        pipeline.connect("sender1.result", "receiver.numbers")
+        pipeline.connect("sender2.result", "receiver.numbers")
+
+        # Check that the receiver's input socket is correctly set to lazy variadic with wrap_input_in_list=False
+        inp_socket = InputSocket(
+            name="numbers", type=list[int] | None, senders=["sender1", "sender2"], default_value=None
+        )
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
+
     def test_connect_auto_variadic_with_conversion_str_to_list_str(self):
         @component
         class StringProducer:
