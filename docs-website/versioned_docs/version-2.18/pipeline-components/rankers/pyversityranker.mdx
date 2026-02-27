@@ -1,0 +1,160 @@
+---
+title: "PyversityRanker"
+id: pyversityranker
+slug: "/pyversityranker"
+description: "Use this component to rerank documents by balancing relevance and diversity using pyversity's diversification algorithms."
+---
+
+# PyversityRanker
+
+Use this component to rerank documents by balancing relevance and diversity using pyversity's diversification algorithms.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a dense [Retriever](../retrievers.mdx) with `return_embedding=True` |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `documents`: A list of document objects, each with `score` and `embedding` set |
+| **Output variables** | `documents`: A list of document objects |
+| **API reference** | [Pyversity](/reference/integrations-pyversity) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pyversity |
+
+</div>
+
+## Overview
+
+`PyversityRanker` reranks `Documents` using [pyversity](https://github.com/Pringled/pyversity)'s diversification algorithms. Unlike similarity-based rankers, it balances **relevance and diversity** - so the output isn't just the most relevant documents, but a varied selection that avoids redundancy.
+
+Documents must have both `score` and `embedding` populated. This makes it a natural fit after a dense retriever such as `InMemoryEmbeddingRetriever` configured with `return_embedding=True`. Documents missing either field are skipped with a warning.
+
+The key parameters are:
+
+- `strategy`: The diversification algorithm to use. Defaults to `Strategy.DPP` (Determinantal Point Process). `Strategy.MMR` (Maximal Marginal Relevance) is another popular option.
+- `diversity`: A float in `[0, 1]` controlling the relevance–diversity trade-off. `0.0` keeps the most relevant documents; `1.0` maximises diversity regardless of relevance. Defaults to `0.5`.
+- `top_k`: The number of documents to return. If `None`, all documents are returned in diversified order.
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install pyversity-haystack
+```
+
+## Usage
+
+### On its own
+
+This example uses `PyversityRanker` to rerank five documents. Each document must have a `score` and `embedding` set. The ranker returns the top 3 documents using the MMR strategy with a diversity of `0.7`.
+
+```python
+from haystack import Document
+from pyversity import Strategy
+
+from haystack_integrations.components.rankers.pyversity import PyversityRanker
+
+documents = [
+    Document(
+        content="Paris is the capital of France.",
+        score=0.95,
+        embedding=[0.9, 0.1, 0.0, 0.0],
+    ),
+    Document(
+        content="The Eiffel Tower is located in Paris.",
+        score=0.90,
+        embedding=[0.8, 0.2, 0.0, 0.0],
+    ),
+    Document(
+        content="Berlin is the capital of Germany.",
+        score=0.85,
+        embedding=[0.0, 0.0, 0.9, 0.1],
+    ),
+    Document(
+        content="The Brandenburg Gate is in Berlin.",
+        score=0.80,
+        embedding=[0.0, 0.0, 0.8, 0.2],
+    ),
+    Document(
+        content="France borders Spain to the south.",
+        score=0.75,
+        embedding=[0.5, 0.5, 0.0, 0.0],
+    ),
+]
+
+ranker = PyversityRanker(top_k=3, strategy=Strategy.MMR, diversity=0.7)
+result = ranker.run(documents=documents)
+
+for doc in result["documents"]:
+    print(f"{doc.score:.2f}  {doc.content}")
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that embeds documents and stores them in an `InMemoryDocumentStore`. It then retrieves the top 6 documents using `InMemoryEmbeddingRetriever` and reranks them with `PyversityRanker` to return 3 diverse results.
+
+Note that the retriever must be configured with `return_embedding=True` so that documents have embeddings available for the ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from pyversity import Strategy
+
+from haystack_integrations.components.rankers.pyversity import PyversityRanker
+
+# Index documents
+document_store = InMemoryDocumentStore()
+
+raw_documents = [
+    Document(content="Paris is the capital of France."),
+    Document(content="The Eiffel Tower is located in Paris."),
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="The Brandenburg Gate is in Berlin."),
+    Document(content="France borders Spain to the south."),
+    Document(content="The Louvre is the world's largest art museum and is in Paris."),
+    Document(content="Munich is the capital of Bavaria."),
+    Document(content="The Rhine river flows through Germany and France."),
+]
+
+doc_embedder = SentenceTransformersDocumentEmbedder()
+documents_with_embeddings = doc_embedder.run(raw_documents)["documents"]
+document_store.write_documents(documents_with_embeddings)
+
+# Build pipeline
+pipeline = Pipeline()
+pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(
+        document_store=document_store,
+        top_k=6,
+        return_embedding=True,
+    ),
+)
+pipeline.add_component(
+    "ranker",
+    PyversityRanker(top_k=3, strategy=Strategy.MMR, diversity=0.7),
+)
+
+pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+pipeline.connect("retriever.documents", "ranker.documents")
+
+# Run
+result = pipeline.run(
+    {"text_embedder": {"text": "What are the famous landmarks in France?"}},
+)
+
+for doc in result["ranker"]["documents"]:
+    print(f"{doc.score:.4f}  {doc.content}")
+```
+
+:::note Embeddings required
+
+`PyversityRanker` requires documents to have both `score` and `embedding` set. When using a dense retriever, make sure to pass `return_embedding=True`. Documents missing either field are skipped with a warning.
+
+:::
