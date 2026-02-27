@@ -34,7 +34,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.4"
 
 jobs:
   format:
@@ -47,9 +47,8 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
+        # https://github.com/pypa/hatch/issues/2193
+        run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Ruff - check format and linting
         run: hatch run fmt-check
@@ -99,9 +98,8 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
+        # https://github.com/pypa/hatch/issues/2193
+        run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
@@ -156,15 +154,13 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
-      - name: Get Hatch environment
-        id: get-hatch-env
+        id: hatch
         shell: bash
-        run: echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+        run: |
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run
         run: hatch run test:unit
@@ -173,7 +169,7 @@ jobs:
         id: cache
         if: matrix.os == 'macos-latest'
         with:
-          path: ${{ steps.get-hatch-env.outputs.env }}
+          path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Coveralls
@@ -244,9 +240,12 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
+        id: hatch
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
@@ -298,9 +297,12 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
+        id: hatch
+        shell: bash
+        run: |
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
 
       - name: Run
@@ -353,18 +355,17 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
-      - name: Get Hatch environment
-        id: get-hatch-env
+        id: hatch
         shell: bash
-        run: echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+        run: |
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v5
         id: cache
         with:
-          path: ${{ steps.get-hatch-env.outputs.env }}
+          path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
 
@@ -418,13 +419,12 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
-      - name: Get Hatch environment
-        id: get-hatch-env
+        id: hatch
         shell: bash
-        run: echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+        run: |
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run
         run: hatch run test:integration-only-fast

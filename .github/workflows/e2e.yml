@@ -17,7 +17,7 @@ on:
 env:
   PYTHON_VERSION: "3.10"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.4"
   # we use HF_TOKEN instead of HF_API_TOKEN to work around a Hugging Face bug
   # see https://github.com/deepset-ai/haystack/issues/9552
   HF_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
@@ -34,9 +34,8 @@ jobs:
         python-version: "${{ env.PYTHON_VERSION }}"
 
     - name: Install Hatch
-      uses: pypa/hatch@install
-      with:
-        version: "${{ env.HATCH_VERSION }}"
+      # https://github.com/pypa/hatch/issues/2193
+      run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
     - name: Run tests
       run: hatch run e2e:test
