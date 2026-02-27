@@ -29,6 +29,14 @@ def weather_function(location):
     return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
+def runtime_weather_function(location: str) -> dict[str, Any]:
+    return {"weather": "windy", "temperature": 6, "unit": "celsius"}
+
+
+def fail_weather_tool_function(location: str) -> dict[str, Any]:
+    raise Exception("Error in weather tool")
+
+
 @pytest.fixture
 def weather_tool():
     return Tool(
@@ -599,14 +607,11 @@ class TestAgentBreakpoints:
         assert list(Path(debug_path).glob("*.json")) == []
 
     def test_run_with_runtime_tools_validates_tool_breakpoint_against_runtime_tools(self, weather_tool):
-        def runtime_weather(location: str) -> dict[str, Any]:
-            return {"weather": "windy", "temperature": 6, "unit": "celsius"}
-
         runtime_tool = Tool(
             name="runtime_weather_tool",
             description="Provides weather information for a given location.",
             parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
-            function=runtime_weather,
+            function=runtime_weather_function,
         )
 
         agent = Agent(
@@ -882,14 +887,11 @@ class TestAsyncAgentBreakpoints:
 
     @pytest.mark.asyncio
     async def test_run_async_with_runtime_tools_validates_tool_breakpoint_against_runtime_tools(self, weather_tool):
-        def runtime_weather(location: str) -> dict[str, Any]:
-            return {"weather": "windy", "temperature": 6, "unit": "celsius"}
-
         runtime_tool = Tool(
             name="runtime_weather_tool",
             description="Provides weather information for a given location.",
             parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
-            function=runtime_weather,
+            function=runtime_weather_function,
         )
 
         agent = Agent(
@@ -954,10 +956,7 @@ class TestAsyncAgentBreakpoints:
 
     @pytest.mark.asyncio
     async def test_run_async_tool_invoker_runtime_error_includes_snapshot(self, weather_tool):
-        def fail_weather_tool(location: str) -> dict[str, Any]:
-            raise Exception("Error in weather tool")
-
-        weather_tool.function = fail_weather_tool
+        weather_tool.function = fail_weather_tool_function
 
         agent = Agent(
             chat_generator=MockChatGenerator(
