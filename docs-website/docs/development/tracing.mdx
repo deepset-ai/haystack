@@ -86,6 +86,26 @@ To use OpenTelemetry as your tracing backend, follow these steps:
      tracing.enable_tracing(OpenTelemetryTracer(tracer))
      ```
 
+### MLflow
+
+[MLflow](https://mlflow.org/) is an open-source platform for managing the end-to-end machine learning and AI lifecycle. MLflow provides native tracing support for Haystack. Simply install MLflow and enable automatic tracing with a single line of code.
+
+```shell
+pip install mlflow
+```
+
+```python
+import mlflow
+
+mlflow.haystack.autolog()
+```
+
+This automatically captures traces from all Haystack pipelines and components, including latencies, token usage, cost, and any exceptions.
+
+:::info
+Check out the [MLflow Haystack integration guide](https://mlflow.org/docs/latest/genai/tracing/integrations/listing/haystack.html) for a full walkthrough with examples.
+:::
+
 ### Datadog
 
 To use Datadog as your tracing backend, follow these steps:
