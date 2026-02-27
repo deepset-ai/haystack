@@ -5,7 +5,7 @@
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from types import UnionType
-from typing import Annotated, Any, TypeAlias, TypedDict, TypeVar, get_args, get_origin
+from typing import Annotated, Any, TypeAlias, TypedDict, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"
@@ -98,13 +98,6 @@ class InputSocket:
         # twice: the first time to get `list[int]` out of `Variadic`, the second time to get `int` out of `list[int]`.
         if self.is_lazy_variadic or self.is_greedy:
             self.type = get_args(get_args(self.type)[0])[0]
-
-        # Set to be auto-variadic if origin of type is list
-        # TODO Should check how/if this affects the execution flow with the READY vs DEFER if we make all list types
-        #      auto-variadic instead of only doing it when necessary (e.g. at connection time)
-        if not (self.is_lazy_variadic or self.is_greedy) and get_origin(self.type) == list:
-            self.is_lazy_variadic = True
-            self.wrap_input_in_list = False
 
 
 class InputSocketTypeDescriptor(TypedDict):

@@ -41,7 +41,13 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.type_utils import ConversionStrategyType, _convert_value, _type_name, _types_are_compatible
+from haystack.core.type_utils import (
+    ConversionStrategyType,
+    _convert_value,
+    _safe_get_origin,
+    _type_name,
+    _types_are_compatible,
+)
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
 
@@ -608,15 +614,26 @@ class PipelineBase:  # noqa: PLW1641
             # This is already connected, nothing to do
             return self
 
-        if receiver_socket.senders and not receiver_socket.is_variadic:
-            # Only variadic input sockets can receive from multiple senders
-            msg = (
-                f"Cannot connect '{sender_component_name}.{sender_socket.name}' with "
-                f"'{receiver_component_name}.{receiver_socket.name}': "
-                f"{receiver_component_name}.{receiver_socket.name} is already connected to "
-                f"{receiver_socket.senders}.\n"
-            )
-            raise PipelineConnectError(msg)
+        if receiver_socket.senders:
+            # We automatically set the receiver socket as variadic if:
+            # - it has at least one sender already connected
+            # - it's not already variadic
+            # - its origin type is list
+            if not receiver_socket.is_variadic and _safe_get_origin(receiver_socket.type) == list:
+                receiver_socket.is_lazy_variadic = True
+                # We also disable wrapping inputs into list so the sender outputs matches the type of the receiver
+                # socket.
+                receiver_socket.wrap_input_in_list = False
+
+            if not receiver_socket.is_variadic:
+                # Only variadic input sockets can receive from multiple senders
+                msg = (
+                    f"Cannot connect '{sender_component_name}.{sender_socket.name}' with "
+                    f"'{receiver_component_name}.{receiver_socket.name}': "
+                    f"{receiver_component_name}.{receiver_socket.name} is already connected to "
+                    f"{receiver_socket.senders}.\n"
+                )
+                raise PipelineConnectError(msg)
 
         # Update the sockets with the new connection
         sender_socket.receivers.append(receiver_component_name)
@@ -931,12 +948,23 @@ class PipelineBase:  # noqa: PLW1641
                     raise ValueError(f"Missing mandatory input '{socket_name}' for component '{component_name}'.")
 
                 # Check if an input is provided more than once for non-variadic sockets
-                if socket.senders and socket_name in component_inputs and not socket.is_variadic:
-                    raise ValueError(
-                        f"Component '{component_name}' cannot accept multiple inputs to '{socket_name}'. "
-                        f"It is already connected to component '{socket.senders[0]}' so it cannot accept "
-                        "additional inputs."
-                    )
+                if socket.senders and socket_name in component_inputs:
+                    # We automatically set the receiver socket as lazy variadic if:
+                    # - it has at least one sender already connected
+                    # - it's not already variadic
+                    # - its origin type is list
+                    if not socket.is_variadic and _safe_get_origin(socket.type) == list:
+                        socket.is_lazy_variadic = True
+                        # We also disable wrapping inputs into list so the sender outputs matches the type of the
+                        # receiver socket.
+                        socket.wrap_input_in_list = False
+
+                    if not socket.is_variadic:
+                        raise ValueError(
+                            f"Component '{component_name}' cannot accept multiple inputs to '{socket_name}'. "
+                            f"It is already connected to component '{socket.senders[0]}' so it cannot accept "
+                            "additional inputs."
+                        )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """
