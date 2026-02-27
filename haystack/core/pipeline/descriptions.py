@@ -5,8 +5,7 @@
 
 import networkx
 
-from haystack.core.component.types import InputSocket, InputSocketTypeDescriptor, OutputSocket
-from haystack.core.type_utils import _type_name
+from haystack.core.component.types import InputSocket, OutputSocket
 
 
 def find_pipeline_inputs(
@@ -50,35 +49,3 @@ def find_pipeline_outputs(
         ]
         for name, data in graph.nodes(data=True)
     }
-
-
-def describe_pipeline_inputs(graph: networkx.MultiDiGraph) -> dict[str, dict[str, InputSocketTypeDescriptor]]:
-    """
-    Returns a dictionary with the input names and types that this pipeline accepts.
-    """
-    return {
-        comp: {
-            socket.name: InputSocketTypeDescriptor(
-                type=socket.type,
-                # Variadic mandatory sockets with existing connections don't require user input, so treat them as
-                # optional.
-                is_mandatory=socket.is_mandatory and socket.senders == [],
-            )
-            for socket in sockets
-        }
-        for comp, sockets in find_pipeline_inputs(graph).items()
-    }
-
-
-def describe_pipeline_inputs_as_string(graph: networkx.MultiDiGraph) -> str:
-    """
-    Returns a string representation of the input names and types that this pipeline accepts.
-    """
-    inputs = describe_pipeline_inputs(graph)
-    message = "This pipeline expects the following inputs:\n"
-    for comp, sockets in inputs.items():
-        if sockets:
-            message += f"- {comp}:\n"
-            for name, socket in sockets.items():
-                message += f"    - {name}: {_type_name(socket['type'])}\n"
-    return message
