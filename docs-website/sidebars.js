@@ -113,6 +113,7 @@ export default {
           href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
         },
         'document-stores/elasticsearch-document-store',
+        'document-stores/faissdocumentstore',
         {
           type: 'link',
           label: 'LanceDBDocumentStore',
@@ -519,6 +520,7 @@ export default {
             'pipeline-components/retrievers/chromaqueryretriever',
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
+            'pipeline-components/retrievers/faissembeddingretriever',
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
