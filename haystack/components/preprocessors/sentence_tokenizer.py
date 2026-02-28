@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from collections import deque
 from pathlib import Path
 from typing import Any, Literal
 
@@ -169,13 +170,14 @@ class SentenceSplitter:
         """
         new_sentence_spans = []
         quote_spans = [match.span() for match in QUOTE_SPANS_RE.finditer(text)]
-        while sentence_spans:
-            span = sentence_spans.pop(0)
-            next_span = sentence_spans[0] if len(sentence_spans) > 0 else None
+        spans_queue = deque(sentence_spans)
+        while spans_queue:
+            span = spans_queue.popleft()
+            next_span = spans_queue[0] if spans_queue else None
             while next_span and SentenceSplitter._needs_join(text, span, next_span, quote_spans):
-                sentence_spans.pop(0)
+                spans_queue.popleft()
                 span = (span[0], next_span[1])
-                next_span = sentence_spans[0] if len(sentence_spans) > 0 else None
+                next_span = spans_queue[0] if spans_queue else None
             start, end = span
             new_sentence_spans.append((start, end))
         return new_sentence_spans
