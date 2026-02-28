@@ -309,6 +309,9 @@ class Pipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
+                        blocking_comp_name, blocking_comp = self._find_component_blocking_pipeline(
+                            priority_queue=priority_queue, component_visits=component_visits, inputs=inputs
+                        )
                         logger.warning(
                             "Cannot run pipeline - the next component that is meant to run is blocked.\n"
                             "Component name: '{component_name}'\n"
@@ -316,8 +319,8 @@ class Pipeline(PipelineBase):
                             "This typically happens when the component is unable to receive all of its required "
                             "inputs.\nCheck the connections to this component and ensure all required inputs are "
                             "provided.",
-                            component_name=component_name,
-                            component_type=component["instance"].__class__.__name__,
+                            component_name=blocking_comp_name,
+                            component_type=blocking_comp["instance"].__class__.__name__,
                         )
                     # We always exit the loop since we cannot run the next component.
                     break

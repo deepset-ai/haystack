@@ -124,7 +124,7 @@ def can_not_receive_inputs_from_pipeline(component: dict) -> bool:
     return all(len(sock.senders) == 0 for sock in component["input_sockets"].values())
 
 
-def all_socket_predecessors_executed(socket: InputSocket, socket_inputs: list[dict]) -> bool:
+def all_socket_predecessors_executed(socket: InputSocket, socket_inputs: list[dict[str, Any]]) -> bool:
     """
     Checks if all components connecting to an InputSocket have executed.
 
@@ -133,7 +133,6 @@ def all_socket_predecessors_executed(socket: InputSocket, socket_inputs: list[di
     """
     expected_senders = set(socket.senders)
     executed_senders = {inp["sender"] for inp in socket_inputs if inp["sender"] is not None}
-
     return expected_senders == executed_senders
 
 
