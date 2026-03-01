@@ -108,6 +108,38 @@ def _extract_reasoning_content(message_or_delta: Any) -> ReasoningContent | None
     return None
 
 
+def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    """Resolve ``$ref`` references in a JSON schema by inlining ``$defs`` definitions.
+
+    The HuggingFace API does not support ``$defs`` and ``$ref`` in tool parameter schemas.
+    This function expands all ``$ref`` pointers and removes the ``$defs`` section.
+
+    :param schema: A JSON schema dict potentially containing ``$defs`` and ``$ref``.
+    :returns: A new schema dict with all references resolved and ``$defs`` removed.
+    """
+    defs = schema.get("$defs", {})
+    if not defs:
+        return schema
+
+    def _resolve(obj: Any, resolving: set[str] | None = None) -> Any:
+        if resolving is None:
+            resolving = set()
+        if isinstance(obj, dict):
+            if "$ref" in obj:
+                ref_path = obj["$ref"]
+                parts = ref_path.split("/")
+                if len(parts) == 3 and parts[0] == "#" and parts[1] == "$defs":
+                    def_name = parts[2]
+                    if def_name in defs and def_name not in resolving:
+                        return _resolve(defs[def_name], resolving | {def_name})
+            return {k: _resolve(v, resolving) for k, v in obj.items() if k != "$defs"}
+        if isinstance(obj, list):
+            return [_resolve(item, resolving) for item in obj]
+        return obj
+
+    return _resolve(schema)
+
+
 def _convert_tools_to_hfapi_tools(tools: ToolsType | None) -> list["ChatCompletionInputTool"] | None:
     if not tools:
         return None
@@ -117,7 +149,11 @@ def _convert_tools_to_hfapi_tools(tools: ToolsType | None) -> list["ChatCompleti
 
     hf_tools = []
     for tool in flatten_tools_or_toolsets(tools):
-        hf_tools_args = {"name": tool.name, "description": tool.description, parameters_name: tool.parameters}
+        hf_tools_args = {
+            "name": tool.name,
+            "description": tool.description,
+            parameters_name: _resolve_schema_refs(tool.parameters),
+        }
 
         hf_tools.append(
             ChatCompletionInputTool(
