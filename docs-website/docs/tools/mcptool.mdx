@@ -29,6 +29,10 @@ The `MCPTool` supports multiple transport options:
 - SSE (Server-Sent Events) for connecting to HTTP servers **(deprecated)**,
 - StdIO for direct execution of local programs.
 
+:::note SSE Transport Deprecation
+The SSE transport has been [deprecated by the MCP specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http) in favor of the newer **Streamable HTTP** transport. While many MCP servers still use SSE, new servers should adopt Streamable HTTP. If you are connecting to an existing SSE-only server, `SSEServerInfo` will continue to work, but consider migrating to `StreamableHttpServerInfo` when the server supports it.
+:::
+
 Learn more about the MCP protocol and its architecture at the [official MCP website](https://modelcontextprotocol.io/).
 
 ### Parameters
@@ -65,6 +69,10 @@ result = tool.invoke(param1="value1", param2="value2")
 ```
 
 ### With SSE Transport (deprecated)
+
+:::warning
+SSE transport is deprecated in the MCP specification. Use [Streamable HTTP](#with-streamable-http-transport) for new integrations. SSE remains available for backward compatibility with servers that have not yet migrated.
+:::
 
 You can create an `MCPTool` that connects to an external HTTP server using SSE transport:
 
