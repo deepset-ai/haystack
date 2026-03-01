@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Reduced unnecessary deepcopies in Agent for improved performance.
+    Replaced deepcopy of `state_schema` with a shallow dict copy since only top-level keys are modified,
+    and removed deepcopy of `agent_inputs` for span tags since the dict is freshly created and only used
+    for tracing.

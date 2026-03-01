@@ -28,7 +28,6 @@ from haystack.core.pipeline.breakpoint import (
     _should_trigger_tool_invoker_breakpoint,
     _validate_tool_breakpoint_is_valid,
 )
-from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import (
     AgentBreakpoint,
@@ -289,7 +288,7 @@ class Agent:
         self._state_schema = state_schema or {}
 
         # Initialize state schema
-        resolved_state_schema = _deepcopy_with_exceptions(self._state_schema)
+        resolved_state_schema = dict(self._state_schema)
         if resolved_state_schema.get("messages") is None:
             resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
         self.state_schema = resolved_state_schema
@@ -755,7 +754,7 @@ class Agent:
             )
 
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
+            span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
@@ -988,7 +987,7 @@ class Agent:
             )
 
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
+            span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
