@@ -53,7 +53,18 @@ class SearchableToolset(Toolset):
     ```
     """
 
-    def __init__(self, catalog: "ToolsType", *, top_k: int = 3, search_threshold: int = 8):
+    _VALID_SEARCH_TOOL_PARAMS = {"tool_keywords", "k"}
+
+    def __init__(
+        self,
+        catalog: "ToolsType",
+        *,
+        top_k: int = 3,
+        search_threshold: int = 8,
+        search_tool_name: str = "search_tools",
+        search_tool_description: str | None = None,
+        search_tool_parameters_description: dict[str, str] | None = None,
+    ):
         """
         Initialize the SearchableToolset.
 
@@ -62,6 +73,12 @@ class SearchableToolset(Toolset):
         :param search_threshold: Minimum catalog size to activate search.
             If catalog has fewer tools, acts as passthrough (all tools visible).
             Default is 8.
+        :param search_tool_name: Custom name for the bootstrap search tool. Default is "search_tools".
+        :param search_tool_description: Custom description for the bootstrap search tool.
+            If not provided, uses a default description.
+        :param search_tool_parameters_description: Custom descriptions for the bootstrap search tool's parameters.
+            Keys must be a subset of {"tool_keywords", "k"}.
+            Example: {"tool_keywords": "Keywords to find tools, e.g. 'email send'"}
         """
         valid_catalog = isinstance(catalog, Toolset) or (
             isinstance(catalog, list) and all(isinstance(item, (Tool, Toolset)) for item in catalog)
@@ -71,6 +88,14 @@ class SearchableToolset(Toolset):
                 f"Invalid catalog type: {type(catalog)}. Expected Tool, Toolset, or list of Tools and/or Toolsets."
             )
 
+        if search_tool_parameters_description is not None:
+            invalid_keys = set(search_tool_parameters_description.keys()) - self._VALID_SEARCH_TOOL_PARAMS
+            if invalid_keys:
+                raise ValueError(
+                    f"Invalid search_tool_parameters_description keys: {invalid_keys}. "
+                    f"Valid keys are: {self._VALID_SEARCH_TOOL_PARAMS}"
+                )
+
         # Store raw catalog; flattening is deferred to warm_up() so that lazy
         # toolsets (e.g. MCPToolset with eager_connect=False) can connect first.
         self._raw_catalog: "ToolsType" = catalog
@@ -78,6 +103,9 @@ class SearchableToolset(Toolset):
 
         self._top_k = top_k
         self._search_threshold = search_threshold
+        self._search_tool_name = search_tool_name
+        self._search_tool_description = search_tool_description
+        self._search_tool_parameters_description = search_tool_parameters_description
 
         # Runtime state (initialized in warm_up)
         self._discovered_tools: dict[str, Tool] = {}
@@ -194,7 +222,17 @@ class SearchableToolset(Toolset):
 
             return f"Found and loaded {len(tool_names)} tool(s): {', '.join(tool_names)}. Use them directly as tools."
 
-        return create_tool_from_function(function=search_tools, name="search_tools")
+        bootstrap_tool = create_tool_from_function(
+            function=search_tools, name=self._search_tool_name, description=self._search_tool_description
+        )
+
+        # Override parameter descriptions if custom ones were provided
+        if self._search_tool_parameters_description:
+            for param_name, desc in self._search_tool_parameters_description.items():
+                if param_name in bootstrap_tool.parameters.get("properties", {}):
+                    bootstrap_tool.parameters["properties"][param_name]["description"] = desc
+
+        return bootstrap_tool
 
     def __iter__(self) -> Iterator[Tool]:
         """
@@ -251,14 +289,18 @@ class SearchableToolset(Toolset):
             [self._raw_catalog] if isinstance(self._raw_catalog, Toolset) else list(self._raw_catalog)
         )
 
-        return {
-            "type": generate_qualified_class_name(type(self)),
-            "data": {
-                "catalog": [item.to_dict() for item in catalog_items],
-                "top_k": self._top_k,
-                "search_threshold": self._search_threshold,
-            },
+        data: dict[str, Any] = {
+            "catalog": [item.to_dict() for item in catalog_items],
+            "top_k": self._top_k,
+            "search_threshold": self._search_threshold,
+            "search_tool_name": self._search_tool_name,
         }
+        if self._search_tool_description is not None:
+            data["search_tool_description"] = self._search_tool_description
+        if self._search_tool_parameters_description is not None:
+            data["search_tool_parameters_description"] = self._search_tool_parameters_description
+
+        return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SearchableToolset":
@@ -279,4 +321,11 @@ class SearchableToolset(Toolset):
                 raise TypeError(f"Class '{item_class}' is not a subclass of Tool or Toolset")
             catalog.append(item_class.from_dict(item_data))
 
-        return cls(catalog=catalog, **{k: inner_data[k] for k in ("top_k", "search_threshold") if k in inner_data})
+        optional_keys = (
+            "top_k",
+            "search_threshold",
+            "search_tool_name",
+            "search_tool_description",
+            "search_tool_parameters_description",
+        )
+        return cls(catalog=catalog, **{k: inner_data[k] for k in optional_keys if k in inner_data})
