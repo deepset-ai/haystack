@@ -11,7 +11,7 @@ on:
       - ".github/workflows/docusaurus_sync.yml"
 
 env:
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.4"
   PYTHON_VERSION: "3.11"
 
 jobs:
@@ -30,9 +30,8 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        uses: pypa/hatch@install
-        with:
-          version: "${{ env.HATCH_VERSION }}"
+        # https://github.com/pypa/hatch/issues/2193
+        run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Generate API reference for Docusaurus
         run: hatch run docs

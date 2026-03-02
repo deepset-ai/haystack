@@ -4,9 +4,12 @@
 
 import warnings
 from functools import wraps
+from typing import TypeVar
+
+T = TypeVar("T")
 
 
-def _warn_on_inplace_mutation(cls: type) -> type:
+def _warn_on_inplace_mutation(cls: T) -> T:
     """
     Decorator that warns if the dataclass is mutated in-place.
     """
