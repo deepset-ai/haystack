@@ -266,10 +266,11 @@ class Agent:
         """
         # Check if chat_generator supports tools parameter
         chat_generator_run_method = inspect.signature(chat_generator.run)
-        if "tools" not in chat_generator_run_method.parameters:
+        self._chat_generator_supports_tools: bool = "tools" in chat_generator_run_method.parameters
+        if tools and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
-                "The Agent component requires a chat generator that supports tools."
+                "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
         valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
@@ -327,7 +328,7 @@ class Agent:
                 **(tool_invoker_kwargs or {}),
             }
             self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
-        else:
+        elif type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
@@ -532,7 +533,9 @@ class Agent:
 
         selected_tools = self._select_tools(tools)
         tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {}
+        if self._chat_generator_supports_tools:
+            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -631,7 +634,9 @@ class Agent:
 
         selected_tools = self._select_tools(tools)
         tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {}
+        if self._chat_generator_supports_tools:
+            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -654,19 +659,21 @@ class Agent:
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
-    def _runtime_checks(self, break_point: AgentBreakpoint | None) -> None:
+    def _runtime_checks(self, break_point: AgentBreakpoint | None, tools: ToolsType) -> None:
         """
         Perform runtime checks before running the agent.
 
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
+        :param tools: Tools selected for this run. This can differ from initialization-time tools when runtime tools
+            are provided to `run`/`run_async`.
         :raises ValueError: If the break_point is invalid.
         """
         if not self._is_warmed_up:
             self.warm_up()
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
-            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
+            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=tools)
 
     def run(  # noqa: PLR0915
         self,
@@ -723,7 +730,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point)
+        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -956,7 +963,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point)
+        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -1002,6 +1009,20 @@ class Agent:
                             parent_span=span,
                             break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
                         )
+                    except PipelineRuntimeError as e:
+                        agent_name = getattr(self, "__component_name__", None)
+                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
+                            agent_name=agent_name, execution_context=exe_context, break_point=None
+                        )
+                        new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
+                        new_error.pipeline_snapshot = pipe_snapshot
+                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
+                        # Checked by __component_name__ not being set.
+                        if agent_name is None:
+                            new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
+                            )
+                        raise new_error from e
                     except BreakpointException as e:
                         e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                             agent_name=break_point.agent_name if break_point else None,
@@ -1061,6 +1082,21 @@ class Agent:
                         parent_span=span,
                         break_point=break_point_to_pass,
                     )
+                except PipelineRuntimeError as e:
+                    agent_name = getattr(self, "__component_name__", None)
+                    tool_name = getattr(e.__cause__, "tool_name", None)
+                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
+                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
+                    )
+                    new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
+                    new_error.pipeline_snapshot = pipe_snapshot
+                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
+                    # Checked by __component_name__ not being set.
+                    if agent_name is None:
+                        new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
+                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
+                        )
+                    raise new_error from e
                 except BreakpointException as e:
                     e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
                         tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,

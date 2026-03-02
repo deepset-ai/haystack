@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
+
 import pytest
 
 from haystack import Document
@@ -344,3 +346,15 @@ def test_content_type():
 
     with pytest.raises(ValueError):
         _ = Document().content_type
+
+
+def test_no_warning_on_init():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Warning)
+        Document(content="test")
+
+
+def test_warn_on_inplace_mutation():
+    doc = Document(content="test")
+    with pytest.warns(Warning, match="dataclasses.replace"):
+        doc.content = "other"

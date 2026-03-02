@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder, SentenceTransformersDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 from haystack.utils import ComponentDevice
 
@@ -77,6 +77,16 @@ class TestEmbeddingBasedDocumentSplitter:
             assert splitter._is_warmed_up
             mock_warm_up.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_run_not_warmed_up_async(self) -> None:
+        mock_embedder = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
+            await splitter.run_async(documents=[])
+            assert splitter._is_warmed_up
+            mock_warm_up.assert_called_once()
+
     def test_run_invalid_input(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
@@ -85,6 +95,16 @@ class TestEmbeddingBasedDocumentSplitter:
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
             splitter.run(documents="not a list")
+
+    @pytest.mark.asyncio
+    async def test_run_invalid_input_async(self) -> None:
+        mock_embedder = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+        splitter.sentence_splitter = AsyncMock()
+        splitter._is_warmed_up = True
+
+        with pytest.raises(TypeError, match="expects a List of Documents"):
+            await splitter.run_async(documents="not a list")
 
     def test_run_document_with_none_content(self):
         mock_embedder = Mock()
@@ -95,6 +115,16 @@ class TestEmbeddingBasedDocumentSplitter:
         with pytest.raises(ValueError, match="content for document ID"):
             splitter.run(documents=[Document(content=None)])
 
+    @pytest.mark.asyncio
+    async def test_run_document_with_none_content_async(self) -> None:
+        mock_embedder = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+        splitter.sentence_splitter = AsyncMock()
+        splitter._is_warmed_up = True
+
+        with pytest.raises(ValueError, match="content for document ID"):
+            await splitter.run_async(documents=[Document(content=None)])
+
     def test_run_empty_document(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
@@ -102,6 +132,16 @@ class TestEmbeddingBasedDocumentSplitter:
         splitter._is_warmed_up = True
 
         result = splitter.run(documents=[Document(content="")])
+        assert result["documents"] == []
+
+    @pytest.mark.asyncio
+    async def test_run_empty_document_async(self) -> None:
+        mock_embedder = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+        splitter.sentence_splitter = AsyncMock()
+        splitter._is_warmed_up = True
+
+        result = await splitter.run_async(documents=[Document(content="")])
         assert result["documents"] == []
 
     def test_group_sentences_single(self):
@@ -285,6 +325,26 @@ class TestEmbeddingBasedDocumentSplitter:
         assert all(embedding == [1.0, 2.0, 3.0] for embedding in embeddings)
         mock_embedder.run.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_calculate_embeddings_async(self) -> None:
+        mock_embedder = AsyncMock()
+
+        # Mock the document embedder to return documents with embeddings
+        async def mock_run_async(documents):
+            for doc in documents:
+                doc.embedding = [1.0, 2.0, 3.0]  # Simple mock embedding
+            return {"documents": documents}
+
+        mock_embedder.run_async = AsyncMock(side_effect=mock_run_async)
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        sentence_groups = ["Group 1", "Group 2", "Group 3"]
+        embeddings = await splitter._calculate_embeddings_async(sentence_groups)
+
+        assert len(embeddings) == 3
+        assert all(embedding == [1.0, 2.0, 3.0] for embedding in embeddings)
+        mock_embedder.run_async.assert_called_once()
+
     def test_to_dict(self):
         mock_embedder = Mock()
         mock_embedder.to_dict.return_value = {"type": "MockEmbedder"}
@@ -345,6 +405,48 @@ class TestEmbeddingBasedDocumentSplitter:
         original = text
         assert combined in original or original in combined
 
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("TEI_URL", None),
+        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
+    )
+    @pytest.mark.slow
+    @pytest.mark.integration
+    async def test_split_document_with_multiple_topics_async(self) -> None:
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
+        )
+
+        splitter = EmbeddingBasedDocumentSplitter(
+            document_embedder=embedder, sentences_per_group=2, percentile=0.9, min_length=30, max_length=300
+        )
+
+        # A document with multiple topics
+        text = (
+            "The weather today is beautiful. The sun is shining brightly. The temperature is perfect for a walk. "
+            "Machine learning has revolutionized many industries. Neural networks can process vast amounts of data. "
+            "Deep learning models achieve remarkable accuracy on complex tasks. "
+            "Cooking is both an art and a science. Fresh ingredients make all the difference. "
+            "Proper seasoning enhances the natural flavors of food. "
+            "The history of ancient civilizations fascinates researchers. Archaeological discoveries reveal new insights. "  # noqa: E501
+            "Ancient texts provide valuable information about past societies."
+        )
+        doc = Document(content=text)
+
+        result = await splitter.run_async(documents=[doc])
+        split_docs = result["documents"]
+
+        # There should be more than one split
+        assert len(split_docs) > 1
+        # Each split should be non-empty and respect min_length
+        for split_doc in split_docs:
+            assert split_doc.content.strip() != ""
+            assert len(split_doc.content) >= 30
+        # The splits should cover the original text
+        combined = "".join([d.content for d in split_docs])
+        original = text
+        assert combined in original or original in combined
+
     @pytest.mark.slow
     @pytest.mark.integration
     def test_trailing_whitespace_is_preserved(self, del_hf_env_vars):
@@ -367,6 +469,34 @@ class TestEmbeddingBasedDocumentSplitter:
         result = splitter.run(documents=[Document(content=text)])
         assert result["documents"][0].content == text
 
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("TEI_URL", None),
+        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
+    )
+    @pytest.mark.slow
+    @pytest.mark.integration
+    async def test_trailing_whitespace_is_preserved_async(self) -> None:
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
+        )
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
+
+        # Normal trailing whitespace
+        text = "The weather today is beautiful.  "
+        result = await splitter.run_async(documents=[Document(content=text)])
+        assert result["documents"][0].content == text
+
+        # Newline at the end
+        text = "The weather today is beautiful.\n"
+        result = await splitter.run_async(documents=[Document(content=text)])
+        assert result["documents"][0].content == text
+
+        # Page break at the end
+        text = "The weather today is beautiful.\f"
+        result = await splitter.run_async(documents=[Document(content=text)])
+        assert result["documents"][0].content == text
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_no_extra_whitespaces_between_sentences(self, del_hf_env_vars):
@@ -384,6 +514,42 @@ class TestEmbeddingBasedDocumentSplitter:
         doc = Document(content=text)
 
         result = splitter.run(documents=[doc])
+        split_docs = result["documents"]
+        assert len(split_docs) == 2
+        # Expect the original whitespace structure with trailing spaces where they exist
+        assert (
+            split_docs[0].content
+            == "The weather today is beautiful. The sun is shining brightly. The temperature is perfect for a walk. There are no clouds and no rain. "  # noqa: E501
+        )  # noqa: E501
+        assert (
+            split_docs[1].content
+            == "Machine learning has revolutionized many industries. Neural networks can process vast amounts of data. Deep learning models achieve remarkable accuracy on complex tasks."  # noqa: E501
+        )  # noqa: E501
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("TEI_URL", None),
+        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_no_extra_whitespaces_between_sentences_async(self) -> None:
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
+        )
+
+        splitter = EmbeddingBasedDocumentSplitter(
+            document_embedder=embedder, sentences_per_group=1, percentile=0.9, min_length=10, max_length=500
+        )
+
+        text = (
+            "The weather today is beautiful. The sun is shining brightly. The temperature is perfect for a walk. "
+            "There are no clouds and no rain. Machine learning has revolutionized many industries. "
+            "Neural networks can process vast amounts of data. Deep learning models achieve remarkable accuracy on complex tasks."  # noqa: E501
+        )
+        doc = Document(content=text)
+
+        result = await splitter.run_async(documents=[doc])
         split_docs = result["documents"]
         assert len(split_docs) == 2
         # Expect the original whitespace structure with trailing spaces where they exist
@@ -419,6 +585,53 @@ The history of software is closely tied to the development of digital computers 
 
         doc = Document(content=text)
         result = semantic_chunker.run(documents=[doc])
+        split_docs = result["documents"]
+
+        assert len(split_docs) == 1
+
+        # If the chunk cannot be split further, it is allowed to be larger than max_length
+        # At least one split should be larger than max_length in this test case
+        assert any(len(split_doc.content) > 1000 for split_doc in split_docs)
+
+        # Verify that the splits cover the original content
+        combined_content = "".join([d.content for d in split_docs])
+        assert combined_content == text
+
+        for i, split_doc in enumerate(split_docs):
+            assert split_doc.meta["source_id"] == doc.id
+            assert split_doc.meta["split_id"] == i
+            assert "page_number" in split_doc.meta
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("TEI_URL", None),
+        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_split_large_splits_recursion_async(self) -> None:
+        """
+        Test that _split_large_splits() works correctly without infinite loops.
+        This test uses a longer text that will trigger the recursive splitting logic.
+        If the chunk cannot be split further, it is allowed to be larger than max_length.
+        """
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
+        )
+        semantic_chunker = EmbeddingBasedDocumentSplitter(
+            document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
+        )
+
+        text = """# Artificial intelligence and its Impact on Society
+## Article from Wikipedia, the free encyclopedia
+### Introduction to Artificial Intelligence
+Artificial intelligence (AI) is the capability of computational systems to perform tasks typically associated with human intelligence, such as learning, reasoning, problem-solving, perception, and decision-making. It is a field of research in computer science that develops and studies methods and software that enable machines to perceive their environment and use learning and intelligence to take actions that maximize their chances of achieving defined goals.
+
+### The History of Software
+The history of software is closely tied to the development of digital computers in the mid-20th century. Early programs were written in the machine language specific to the hardware. The introduction of high-level programming languages in 1958 allowed for more human-readable instructions, making software development easier and more portable across different computer architectures. Software in a programming language is run through a compiler or interpreter to execute on the architecture's hardware. Over time, software has become complex, owing to developments in networking, operating systems, and databases."""  # noqa: E501
+
+        doc = Document(content=text)
+        result = await semantic_chunker.run_async(documents=[doc])
         split_docs = result["documents"]
 
         assert len(split_docs) == 1
@@ -496,6 +709,95 @@ Artificial intelligence is transforming education by enabling personalized learn
 
         doc = Document(content=text)
         result = semantic_chunker.run(documents=[doc])
+        split_docs = result["documents"]
+
+        assert len(split_docs) == 11
+
+        # Verify that the splits cover the original content
+        combined_content = "".join([d.content for d in split_docs])
+        assert combined_content == text
+
+        for i, split_doc in enumerate(split_docs):
+            assert split_doc.meta["source_id"] == doc.id
+            assert split_doc.meta["split_id"] == i
+            assert "page_number" in split_doc.meta
+
+            if i in [0, 1, 2, 3]:
+                assert split_doc.meta["page_number"] == 1
+            if i in [4, 5, 6]:
+                assert split_doc.meta["page_number"] == 2
+            if i in [7, 8]:
+                assert split_doc.meta["page_number"] == 3
+            if i in [9, 10]:
+                assert split_doc.meta["page_number"] == 4
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("TEI_URL", None),
+        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_split_large_splits_actually_splits_async(self) -> None:
+        """
+        Test that _split_large_splits() actually works and can split long texts into multiple chunks.
+        This test uses a very long text that should be split into multiple chunks.
+        """
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
+        )
+        semantic_chunker = EmbeddingBasedDocumentSplitter(
+            document_embedder=embedder,
+            sentences_per_group=3,
+            percentile=0.85,  # Lower percentile to create more splits
+            min_length=100,
+            max_length=500,  # Smaller max_length to force more splits
+        )
+
+        # Create a very long text with multiple paragraphs and topics
+        text = """# Comprehensive Guide to Machine Learning and Artificial Intelligence
+
+## Introduction to Machine Learning
+Machine learning is a subset of artificial intelligence that focuses on the development of computer programs that can access data and use it to learn for themselves. The process of learning begins with observations or data, such as examples, direct experience, or instruction, in order to look for patterns in data and make better decisions in the future based on the examples that we provide. The primary aim is to allow the computers learn automatically without human intervention or assistance and adjust actions accordingly.
+
+## Types of Machine Learning
+There are several types of machine learning algorithms, each with their own strengths and weaknesses. Supervised learning involves training a model on a labeled dataset, where the correct answers are provided. The model learns to map inputs to outputs based on these examples. Unsupervised learning, on the other hand, deals with unlabeled data and seeks to find hidden patterns or structures within the data. Reinforcement learning is a type of learning where an agent learns to behave in an environment by performing certain actions and receiving rewards or penalties.
+
+## Deep Learning and Neural Networks
+Deep learning is a subset of machine learning that uses neural networks with multiple layers to model and understand complex patterns. Neural networks are inspired by the human brain and consist of interconnected nodes or neurons. Each connection between neurons has a weight that is adjusted during training. The network learns by adjusting these weights based on the error between predicted and actual outputs. Deep learning has been particularly successful in areas such as computer vision, natural language processing, and speech recognition.
+
+\f
+
+## Natural Language Processing
+Natural Language Processing (NLP) is a field of artificial intelligence that focuses on the interaction between computers and human language. It involves developing algorithms and models that can understand, interpret, and generate human language. NLP applications include machine translation, sentiment analysis, text summarization, and question answering systems. Recent advances in deep learning have significantly improved the performance of NLP systems, leading to more accurate and sophisticated language models.
+
+## Computer Vision and Image Recognition
+Computer vision is another important area of artificial intelligence that deals with how computers can gain high-level understanding from digital images or videos. It involves developing algorithms that can identify and understand visual information from the world. Applications include facial recognition, object detection, medical image analysis, and autonomous vehicle navigation. Deep learning models, particularly convolutional neural networks (CNNs), have revolutionized computer vision by achieving human-level performance on many tasks.
+
+## The Future of Artificial Intelligence
+The future of artificial intelligence holds immense potential for transforming various industries and aspects of human life. We can expect to see more sophisticated AI systems that can handle complex reasoning tasks, understand context better, and interact more naturally with humans. However, this rapid advancement also brings challenges related to ethics, privacy, and the impact on employment. It's crucial to develop AI systems that are not only powerful but also safe, fair, and beneficial to society as a whole.
+
+\f
+
+## Ethical Considerations in AI
+As artificial intelligence becomes more prevalent, ethical considerations become increasingly important. Issues such as bias in AI systems, privacy concerns, and the potential for misuse need to be carefully addressed. AI systems can inherit biases from their training data, leading to unfair outcomes for certain groups. Privacy concerns arise from the vast amounts of data required to train AI systems. Additionally, there are concerns about the potential for AI to be used maliciously or to replace human workers in certain industries.
+
+## Applications in Healthcare
+Artificial intelligence has the potential to revolutionize healthcare by improving diagnosis, treatment planning, and patient care. Machine learning algorithms can analyze medical images to detect diseases earlier and more accurately than human doctors. AI systems can also help in drug discovery by predicting the effectiveness of potential treatments. In addition, AI-powered chatbots and virtual assistants can provide basic healthcare information and support to patients, reducing the burden on healthcare professionals.
+
+## AI in Finance and Banking
+The financial industry has been quick to adopt artificial intelligence for various applications. AI systems can analyze market data to make investment decisions, detect fraudulent transactions, and provide personalized financial advice. Machine learning algorithms can assess credit risk more accurately than traditional methods, leading to better lending decisions. Additionally, AI-powered chatbots can handle customer service inquiries, reducing costs and improving customer satisfaction.
+
+\f
+
+## Transportation and Autonomous Vehicles
+Autonomous vehicles represent one of the most visible applications of artificial intelligence in transportation. Self-driving cars use a combination of sensors, cameras, and AI algorithms to navigate roads safely. These systems can detect obstacles, read traffic signs, and make decisions about speed and direction. Beyond autonomous cars, AI is also being used in logistics and supply chain management to optimize routes and reduce delivery times.
+
+## Education and Personalized Learning
+Artificial intelligence is transforming education by enabling personalized learning experiences. AI systems can adapt to individual student needs, providing customized content and pacing. Intelligent tutoring systems can provide immediate feedback and support to students, helping them learn more effectively. Additionally, AI can help educators by automating administrative tasks and providing insights into student performance and learning patterns."""  # noqa: E501
+
+        doc = Document(content=text)
+        result = await semantic_chunker.run_async(documents=[doc])
         split_docs = result["documents"]
 
         assert len(split_docs) == 11

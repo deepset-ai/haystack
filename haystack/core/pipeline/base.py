@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import json
 from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, TextIO, TypeVar
+from typing import Any, TextIO, TypeVar, Union, get_args
 
 import networkx
 
@@ -231,12 +232,20 @@ class PipelineBase:  # noqa: PLW1641
                 try:
                     instance = component_from_dict(component_class, component_data, name, callbacks)
                 except Exception as e:
+                    # Convert to JSON with indentation, truncate if too long
+                    try:
+                        data_str = json.dumps(component_data, default=str, indent=2)
+                    except Exception:
+                        data_str = str(component_data)
+
+                    max_len = 1000
+                    if len(data_str) > max_len:
+                        data_str = data_str[:max_len] + "\n... (truncated)"
+
                     msg = (
                         f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
-                        f"with the following data: {str(component_data)}. Possible reasons include "
-                        "malformed serialized data, mismatch between the serialized component and the "
-                        "loaded one (due to a breaking change, see "
-                        "https://github.com/deepset-ai/haystack/releases), etc."
+                        f"with the following data:\n{data_str}\n\n"
+                        f"Original error: {e}"
                     )
                     raise DeserializationError(msg) from e
             pipe.add_component(name=name, instance=instance)
@@ -606,16 +615,7 @@ class PipelineBase:  # noqa: PLW1641
             return self
 
         if receiver_socket.senders:
-            # We automatically set the receiver socket as variadic if:
-            # - it has at least one sender already connected
-            # - it's not already variadic
-            # - its origin type is list
-            if not receiver_socket.is_variadic and _safe_get_origin(receiver_socket.type) == list:
-                receiver_socket.is_lazy_variadic = True
-                # We also disable wrapping inputs into list so the sender outputs matches the type of the receiver
-                # socket.
-                receiver_socket.wrap_input_in_list = False
-
+            receiver_socket = self._make_socket_auto_variadic(receiver_socket=receiver_socket)
             if not receiver_socket.is_variadic:
                 # Only variadic input sockets can receive from multiple senders
                 msg = (
@@ -940,22 +940,47 @@ class PipelineBase:  # noqa: PLW1641
 
                 # Check if an input is provided more than once for non-variadic sockets
                 if socket.senders and socket_name in component_inputs:
-                    # We automatically set the receiver socket as lazy variadic if:
-                    # - it has at least one sender already connected
-                    # - it's not already variadic
-                    # - its origin type is list
-                    if not socket.is_variadic and _safe_get_origin(socket.type) == list:
-                        socket.is_lazy_variadic = True
-                        # We also disable wrapping inputs into list so the sender outputs matches the type of the
-                        # receiver socket.
-                        socket.wrap_input_in_list = False
-
+                    socket = self._make_socket_auto_variadic(receiver_socket=socket)
                     if not socket.is_variadic:
                         raise ValueError(
                             f"Component '{component_name}' cannot accept multiple inputs to '{socket_name}'. "
                             f"It is already connected to component '{socket.senders[0]}' so it cannot accept "
                             "additional inputs."
                         )
+
+    def _make_socket_auto_variadic(self, receiver_socket: InputSocket) -> InputSocket:
+        """
+        Checks if the receiver socket can be made lazy variadic and modifies it in-place if that's the case.
+
+        We automatically set the receiver socket as lazy variadic if:
+            - it has at least one sender already connected
+            - it's not already variadic
+            - its type is list or Optional[list]
+
+        NOTE: We also disable wrapping inputs into list for these auto-variadic sockets, so the sender outputs match the
+        type of the receiver socket.
+
+        :returns:
+            The potentially modified receiver socket.
+        """
+        # If it's already variadic, we don't change anything
+        if receiver_socket.is_variadic:
+            return receiver_socket
+
+        origin = _safe_get_origin(receiver_socket.type)
+
+        # Unwrap Optional types
+        if origin == Union:
+            non_none_args = [a for a in get_args(receiver_socket.type) if a is not type(None)]
+            if len(non_none_args) == 1:
+                origin = _safe_get_origin(non_none_args[0])
+
+        # If the origin is list, we can make the socket lazy variadic
+        if origin == list:
+            receiver_socket.is_lazy_variadic = True
+            receiver_socket.wrap_input_in_list = False
+
+        return receiver_socket
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """

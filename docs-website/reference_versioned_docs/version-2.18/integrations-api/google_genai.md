@@ -455,6 +455,18 @@ messages = [ChatMessage.from_user("What's the weather in Paris?")]
 response = chat_generator_with_tools.run(messages=messages)
 ```
 
+### Usage example with FileContent embedded in a ChatMessage
+
+```python
+from haystack.dataclasses import ChatMessage, FileContent
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+
+file_content = FileContent.from_url("https://arxiv.org/pdf/2309.08632")
+chat_message = ChatMessage.from_user(content_parts=[file_content, "Summarize this paper in 100 words."])
+chat_generator = GoogleGenAIChatGenerator()
+response = chat_generator.run(messages=[chat_message])
+```
+
 #### __init__
 
 ```python

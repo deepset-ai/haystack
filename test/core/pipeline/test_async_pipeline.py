@@ -166,3 +166,33 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
     # Without deep copying the inputs, the second component would also see the modified document and produce
     # "modified" instead of "original"
     assert result["second"]["output"].content == "original"
+
+
+def test_async_pipeline_does_not_corrupt_outputs():
+    """
+    Test that a component's output collected via include_outputs_from is not corrupted when a downstream
+    component receives and mutates the same data in-place.
+    """
+
+    @component
+    class Producer:
+        @component.output_types(doc=Document)
+        def run(self) -> dict:
+            return {"doc": Document(content="original")}
+
+    @component
+    class Mutator:
+        @component.output_types(doc=Document)
+        def run(self, doc: Document) -> dict:
+            doc.content = "mutated"
+            return {"doc": doc}
+
+    pipe = AsyncPipeline()
+    pipe.add_component("producer", Producer())
+    pipe.add_component("mutator", Mutator())
+    pipe.connect("producer.doc", "mutator.doc")
+
+    result = pipe.run({}, include_outputs_from={"producer"})
+
+    assert result["producer"]["doc"].content == "original"
+    assert result["mutator"]["doc"].content == "mutated"

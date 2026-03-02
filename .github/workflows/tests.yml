@@ -34,7 +34,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.4"
 
 jobs:
   format:
@@ -47,7 +47,8 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        # https://github.com/pypa/hatch/issues/2193
+        run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Ruff - check format and linting
         run: hatch run fmt-check
@@ -97,7 +98,8 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        # https://github.com/pypa/hatch/issues/2193
+        run: pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
 
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
@@ -156,7 +158,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run
@@ -240,7 +243,8 @@ jobs:
         id: hatch
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Mypy
@@ -296,7 +300,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
 
@@ -353,7 +358,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v5
@@ -416,7 +422,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          # https://github.com/pypa/hatch/issues/2193
+          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run

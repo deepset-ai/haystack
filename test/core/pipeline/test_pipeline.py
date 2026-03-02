@@ -7,11 +7,19 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+from haystack.components.agents import Agent
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
-from haystack.dataclasses.document import Document
+from haystack.dataclasses import ChatMessage, Document
+
+
+@component
+class MockChatGenerator:
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+        return {"replies": [ChatMessage.from_assistant("Hello, world!")]}
 
 
 @component
@@ -251,3 +259,53 @@ class TestPipeline:
         # Without deep copying the inputs, the second component would also see the modified document and produce
         # "modified" instead of "original"
         assert result["second"]["output"].content == "original"
+
+    def test_pipeline_does_not_corrupt_outputs(self):
+        """
+        Test that a component's output collected via include_outputs_from is not corrupted when a downstream
+        component receives and mutates the same data in-place.
+        """
+
+        @component
+        class Producer:
+            @component.output_types(doc=Document)
+            def run(self) -> dict:
+                return {"doc": Document(content="original")}
+
+        @component
+        class Mutator:
+            @component.output_types(doc=Document)
+            def run(self, doc: Document) -> dict:
+                doc.content = "mutated"
+                return {"doc": doc}
+
+        pipe = Pipeline()
+        pipe.add_component("producer", Producer())
+        pipe.add_component("mutator", Mutator())
+        pipe.connect("producer.doc", "mutator.doc")
+
+        result = pipe.run({}, include_outputs_from={"producer"})
+
+        assert result["producer"]["doc"].content == "original"
+        assert result["mutator"]["doc"].content == "mutated"
+
+    def test_auto_variadic_connection_to_agent(self):
+        @component
+        class MessageProducer:
+            @component.output_types(messages=list[ChatMessage])
+            def run(self) -> dict[str, list[ChatMessage]]:
+                return {"messages": [ChatMessage.from_user("Hello, world!")]}
+
+        p = Pipeline()
+        p.add_component("message_producer", MessageProducer())
+        p.add_component("message_producer2", MessageProducer())
+        p.add_component("agent", Agent(chat_generator=MockChatGenerator()))
+        p.connect("message_producer", "agent.messages")
+        p.connect("message_producer2", "agent.messages")
+
+        result = p.run({})
+        assert result["agent"]["messages"] == [
+            ChatMessage.from_user("Hello, world!"),
+            ChatMessage.from_user("Hello, world!"),
+            ChatMessage.from_assistant("Hello, world!"),
+        ]

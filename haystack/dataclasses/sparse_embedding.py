@@ -5,7 +5,10 @@
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
+
+@_warn_on_inplace_mutation
 @dataclass
 class SparseEmbedding:
     """

@@ -4,14 +4,10 @@
 
 import React from 'react';
 import OriginalFooter from '@theme-original/DocItem/Footer';
-import CopyDropdown from '@site/src/components/CopyDropdown';
 
 export default function FooterWrapper(props) {
   return (
     <>
-      <div className="copy-dropdown-floating">
-        <CopyDropdown />
-      </div>
       <OriginalFooter {...props} />
     </>
   );

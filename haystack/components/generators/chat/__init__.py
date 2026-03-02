@@ -15,6 +15,7 @@ _import_structure = {
     "hugging_face_local": ["HuggingFaceLocalChatGenerator"],
     "hugging_face_api": ["HuggingFaceAPIChatGenerator"],
     "fallback": ["FallbackChatGenerator"],
+    "llm": ["LLM"],
 }
 
 if TYPE_CHECKING:
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from .fallback import FallbackChatGenerator as FallbackChatGenerator
     from .hugging_face_api import HuggingFaceAPIChatGenerator as HuggingFaceAPIChatGenerator
     from .hugging_face_local import HuggingFaceLocalChatGenerator as HuggingFaceLocalChatGenerator
+    from .llm import LLM as LLM
     from .openai import OpenAIChatGenerator as OpenAIChatGenerator
     from .openai_responses import OpenAIResponsesChatGenerator as OpenAIResponsesChatGenerator
 
