@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import dataclasses
 from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -248,7 +249,7 @@ class LinkContentFetcher:
         if len(urls) == 1:
             stream_metadata, stream = self._fetch(urls[0])
             stream.meta.update(stream_metadata)
-            stream.mime_type = stream.meta.get("content_type", None)
+            stream = dataclasses.replace(stream, mime_type=stream.meta.get("content_type", None))
             streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
@@ -257,7 +258,7 @@ class LinkContentFetcher:
             for stream_metadata, stream in results:  # type: ignore
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
-                    stream.mime_type = stream.meta.get("content_type", None)
+                    stream = dataclasses.replace(stream, mime_type=stream.meta.get("content_type", None))
                     streams.append(stream)
 
         return {"streams": streams}
@@ -302,7 +303,7 @@ class LinkContentFetcher:
                 stream_metadata, stream = result_tuple
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
-                    stream.mime_type = stream.meta.get("content_type", None)
+                    stream = dataclasses.replace(stream, mime_type=stream.meta.get("content_type", None))
                     streams.append(stream)
 
         return {"streams": streams}

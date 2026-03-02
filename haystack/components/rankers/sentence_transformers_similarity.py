@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import copy
+import dataclasses
 from pathlib import Path
 from typing import Any, Literal
 
@@ -288,8 +288,7 @@ class SentenceTransformersSimilarityRanker:
         for el in ranking_result:
             index = el["corpus_id"]
             score = float(el["score"])
-            document = copy(deduplicated_documents[index])
-            document.score = score
+            document = dataclasses.replace(deduplicated_documents[index], score=score)
             ranked_docs.append(document)
 
         if score_threshold is not None:
