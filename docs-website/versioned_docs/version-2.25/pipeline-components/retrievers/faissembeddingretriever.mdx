@@ -1,0 +1,98 @@
+---
+title: "FAISSEmbeddingRetriever"
+id: faissembeddingretriever
+slug: "/faissembeddingretriever"
+description: "An embedding-based Retriever compatible with the FAISSDocumentStore."
+---
+
+# FAISSEmbeddingRetriever
+
+An embedding-based Retriever compatible with the FAISSDocumentStore.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of a [`FAISSDocumentStore`](../../document-stores/faissdocumentstore.mdx) |
+| **Mandatory run variables**            | `query_embedding`: A vector representing the query (a list of floats) |
+| **Output variables**                   | `documents`: A list of documents |
+| **API reference**                      | [FAISS](/reference/integrations-faiss) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/faiss |
+
+</div>
+
+## Overview
+
+The `FAISSEmbeddingRetriever` is an embedding-based Retriever that queries a `FAISSDocumentStore`. It compares the query embedding to document embeddings stored in FAISS and returns the most similar documents.
+
+This Retriever expects precomputed embeddings in the Document Store and a query embedding at runtime. You can generate them with a Document Embedder in your indexing pipeline and a Text Embedder in your query pipeline.
+
+In addition to `query_embedding`, you can pass:
+
+- `top_k`: The maximum number of documents to return.
+- `filters`: Metadata filters to restrict retrieved documents.
+
+You can also configure default filters and `filter_policy` at initialization.
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.document_stores.faiss import FAISSDocumentStore
+from haystack_integrations.components.retrievers.faiss import FAISSEmbeddingRetriever
+
+document_store = FAISSDocumentStore(embedding_dim=768)
+retriever = FAISSEmbeddingRetriever(document_store=document_store, top_k=5)
+
+# Example query embedding
+result = retriever.run(query_embedding=[0.1] * 768)
+print(result["documents"])
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.document_stores.faiss import FAISSDocumentStore
+from haystack_integrations.components.retrievers.faiss import FAISSEmbeddingRetriever
+
+document_store = FAISSDocumentStore(embedding_dim=768)
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of intelligence.",
+    ),
+    Document(
+        content="In certain places, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)["documents"]
+document_store.write_documents(
+    documents_with_embeddings,
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component(
+    "retriever",
+    FAISSEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+```
