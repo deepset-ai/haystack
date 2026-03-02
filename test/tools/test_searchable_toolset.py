@@ -690,6 +690,169 @@ class TestSearchableToolsetLazyToolset:
         assert any(t.name == "eager_0" for t in toolset._catalog)
 
 
+class TestSearchableToolsetCustomSearchTool:
+    """Tests for customizing the bootstrap search tool."""
+
+    def test_custom_name(self, large_catalog):
+        """Test that custom name is applied to the bootstrap tool."""
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_name="find_tools")
+        toolset.warm_up()
+
+        assert toolset._bootstrap_tool is not None
+        assert toolset._bootstrap_tool.name == "find_tools"
+        assert "find_tools" in toolset
+
+    def test_custom_description(self, large_catalog):
+        """Test that custom description is applied to the bootstrap tool."""
+        custom_desc = "Search for tools by keyword."
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_description=custom_desc)
+        toolset.warm_up()
+
+        assert toolset._bootstrap_tool is not None
+        assert toolset._bootstrap_tool.description == custom_desc
+
+    def test_custom_parameters_description_all_params(self, large_catalog):
+        """Test overriding all parameter descriptions."""
+        custom_params = {"tool_keywords": "Single words only, e.g. 'hotel booking'.", "k": "How many tools to load."}
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_parameters_description=custom_params)
+        toolset.warm_up()
+
+        assert toolset._bootstrap_tool is not None
+        props = toolset._bootstrap_tool.parameters["properties"]
+        assert props["tool_keywords"]["description"] == "Single words only, e.g. 'hotel booking'."
+        assert props["k"]["description"] == "How many tools to load."
+
+    def test_custom_parameters_description_partial(self, large_catalog):
+        """Test overriding only one parameter description keeps the other default."""
+        custom_params = {"tool_keywords": "Keywords only."}
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_parameters_description=custom_params)
+        toolset.warm_up()
+
+        assert toolset._bootstrap_tool is not None
+        props = toolset._bootstrap_tool.parameters["properties"]
+        assert props["tool_keywords"]["description"] == "Keywords only."
+        # k should keep its default description
+        assert "Number of results" in props["k"]["description"]
+
+    def test_invalid_parameters_description_key(self):
+        """Test that invalid parameter keys raise ValueError."""
+        with pytest.raises(ValueError, match="Invalid search_tool_parameters_description keys"):
+            SearchableToolset(catalog=[], search_tool_parameters_description={"invalid_key": "some description"})
+
+    def test_custom_tool_still_discovers(self, large_catalog):
+        """Test that a fully customized bootstrap tool still discovers tools."""
+        toolset = SearchableToolset(
+            catalog=large_catalog,
+            search_tool_name="find_tools",
+            search_tool_description="Find tools by keyword.",
+            search_tool_parameters_description={"tool_keywords": "Keywords."},
+        )
+        toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
+
+        result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
+        assert "get_weather" in result
+        assert "get_weather" in toolset._discovered_tools
+
+    def test_default_name_unchanged(self, large_catalog):
+        """Test that default name is preserved when no customization is provided."""
+        toolset = SearchableToolset(catalog=large_catalog)
+        toolset.warm_up()
+
+        assert toolset._bootstrap_tool is not None
+        assert toolset._bootstrap_tool.name == "search_tools"
+
+    def test_default_description_unchanged(self, large_catalog):
+        """Test that default description is preserved when no customization is provided."""
+        toolset = SearchableToolset(catalog=large_catalog)
+        toolset.warm_up()
+
+        assert toolset._bootstrap_tool is not None
+        assert "ALWAYS use this tool FIRST" in toolset._bootstrap_tool.description
+
+    def test_contains_with_custom_name(self, large_catalog):
+        """Test __contains__ works with custom bootstrap tool name."""
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_name="find_tools")
+        toolset.warm_up()
+
+        assert "find_tools" in toolset
+        assert "search_tools" not in toolset
+
+    def test_getitem_with_custom_name(self, large_catalog):
+        """Test __getitem__ returns custom-named bootstrap tool."""
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_name="find_tools")
+        toolset.warm_up()
+
+        assert toolset[0].name == "find_tools"
+
+    def test_iter_with_custom_name(self, large_catalog):
+        """Test iteration yields custom-named bootstrap tool."""
+        toolset = SearchableToolset(catalog=large_catalog, search_tool_name="find_tools")
+        toolset.warm_up()
+
+        tool_names = [t.name for t in toolset]
+        assert "find_tools" in tool_names
+        assert "search_tools" not in tool_names
+
+    def test_to_dict_with_custom_settings(self, large_catalog):
+        """Test serialization includes custom search tool settings."""
+        toolset = SearchableToolset(
+            catalog=large_catalog,
+            search_tool_name="find_tools",
+            search_tool_description="Custom description.",
+            search_tool_parameters_description={"tool_keywords": "Custom param desc."},
+        )
+
+        data = toolset.to_dict()
+
+        assert data["data"]["search_tool_name"] == "find_tools"
+        assert data["data"]["search_tool_description"] == "Custom description."
+        assert data["data"]["search_tool_parameters_description"] == {"tool_keywords": "Custom param desc."}
+
+    def test_to_dict_omits_none_values(self, large_catalog):
+        """Test serialization omits None values for optional fields."""
+        toolset = SearchableToolset(catalog=large_catalog)
+        data = toolset.to_dict()
+
+        assert data["data"]["search_tool_name"] == "search_tools"
+        assert "search_tool_description" not in data["data"]
+        assert "search_tool_parameters_description" not in data["data"]
+
+    def test_serde_roundtrip_with_custom_settings(self, large_catalog):
+        """Test full serialization roundtrip preserves custom search tool settings."""
+        toolset = SearchableToolset(
+            catalog=large_catalog,
+            search_tool_name="find_tools",
+            search_tool_description="Custom description.",
+            search_tool_parameters_description={"tool_keywords": "Custom param desc."},
+        )
+
+        data = toolset.to_dict()
+        restored = SearchableToolset.from_dict(data)
+        restored.warm_up()
+
+        assert restored._bootstrap_tool is not None
+        assert restored._bootstrap_tool.name == "find_tools"
+        assert restored._bootstrap_tool.description == "Custom description."
+        assert restored._bootstrap_tool.parameters["properties"]["tool_keywords"]["description"] == "Custom param desc."
+
+        # Verify search still works after roundtrip
+        result = restored._bootstrap_tool.invoke(tool_keywords="weather")
+        assert "get_weather" in result
+
+    def test_serde_roundtrip_without_custom_settings(self, large_catalog):
+        """Test serialization roundtrip works with default settings."""
+        toolset = SearchableToolset(catalog=large_catalog)
+
+        data = toolset.to_dict()
+        restored = SearchableToolset.from_dict(data)
+        restored.warm_up()
+
+        assert restored._bootstrap_tool is not None
+        assert restored._bootstrap_tool.name == "search_tools"
+        assert "ALWAYS use this tool FIRST" in restored._bootstrap_tool.description
+
+
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestSearchableToolsetAgentIntegration:
