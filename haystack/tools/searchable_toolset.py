@@ -77,8 +77,8 @@ class SearchableToolset(Toolset):
         :param search_tool_description: Custom description for the bootstrap search tool.
             If not provided, uses a default description.
         :param search_tool_parameters_description: Custom descriptions for the bootstrap search tool's parameters.
-            Keys must be a subset of {"tool_keywords", "k"}.
-            Example: {"tool_keywords": "Keywords to find tools, e.g. 'email send'"}
+            Keys must be a subset of `{"tool_keywords", "k"}`.
+            Example: `{"tool_keywords": "Keywords to find tools, e.g. 'email send'"}`
         """
         valid_catalog = isinstance(catalog, Toolset) or (
             isinstance(catalog, list) and all(isinstance(item, (Tool, Toolset)) for item in catalog)
