@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any
 
 from haystack import logging, tracing
@@ -409,8 +410,11 @@ class Pipeline(PipelineBase):
                     # agent snapshot and attach it to the pipeline snapshot we create here.
                     # We also update the break_point to be an AgentBreakpoint.
                     if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
-                        pipeline_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
-                        pipeline_snapshot.break_point = error.pipeline_snapshot.agent_snapshot.break_point
+                        pipeline_snapshot = replace(
+                            pipeline_snapshot,
+                            agent_snapshot=error.pipeline_snapshot.agent_snapshot,
+                            break_point=error.pipeline_snapshot.agent_snapshot.break_point,
+                        )
 
                     # Attach the pipeline snapshot to the error before re-raising
                     error.pipeline_snapshot = pipeline_snapshot
