@@ -294,11 +294,9 @@ class SearchableToolset(Toolset):
             "top_k": self._top_k,
             "search_threshold": self._search_threshold,
             "search_tool_name": self._search_tool_name,
+            "search_tool_description": self._search_tool_description,
+            "search_tool_parameters_description": self._search_tool_parameters_description,
         }
-        if self._search_tool_description is not None:
-            data["search_tool_description"] = self._search_tool_description
-        if self._search_tool_parameters_description is not None:
-            data["search_tool_parameters_description"] = self._search_tool_parameters_description
 
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
