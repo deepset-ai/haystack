@@ -66,7 +66,7 @@ print(document_store.count_documents())
 
 To learn more about the initialization parameters, see the [API docs](/reference/integrations-arcadedb#arcadedbdocumentstore).
 
-Documents without embeddings (or with a different dimension) are stored with a zero-padded vector so they can be written and filtered; use an [Embedder](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx) for real embeddings.
+Documents without embeddings or with a different dimension are stored with a zero-padded vector so they can be written and filtered; use an [Embedder](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx) for real embeddings.
 
 ### Supported Retrievers
 
