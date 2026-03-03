@@ -677,7 +677,15 @@ result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?
 #### __init__
 
 ```python
-__init__(catalog: ToolsType, *, top_k: int = 3, search_threshold: int = 8)
+__init__(
+    catalog: ToolsType,
+    *,
+    top_k: int = 3,
+    search_threshold: int = 8,
+    search_tool_name: str = "search_tools",
+    search_tool_description: str | None = None,
+    search_tool_parameters_description: dict[str, str] | None = None
+)
 ```
 
 Initialize the SearchableToolset.
@@ -689,6 +697,12 @@ Initialize the SearchableToolset.
 - **search_threshold** (<code>int</code>) – Minimum catalog size to activate search.
   If catalog has fewer tools, acts as passthrough (all tools visible).
   Default is 8.
+- **search_tool_name** (<code>str</code>) – Custom name for the bootstrap search tool. Default is "search_tools".
+- **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool.
+  If not provided, uses a default description.
+- **search_tool_parameters_description** (<code>dict\[str, str\] | None</code>) – Custom descriptions for the bootstrap search tool's parameters.
+  Keys must be a subset of `{"tool_keywords", "k"}`.
+  Example: `{"tool_keywords": "Keywords to find tools, e.g. 'email send'"}`
 
 #### add
 
