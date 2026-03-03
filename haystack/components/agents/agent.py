@@ -559,6 +559,7 @@ class Agent:
                         "Please make sure a system_prompt with Jinja2 template syntax is provided at initialization "
                         "time."
                     )
+
                 prompt_kwargs = {
                     var: kwargs[var] for var in self._system_chat_prompt_builder.variables if var in kwargs
                 }
