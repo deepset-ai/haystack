@@ -25,7 +25,7 @@ Use Firecrawl to crawl websites and return the content as Haystack Documents. Un
 
 `FirecrawlCrawler` uses [Firecrawl](https://firecrawl.dev) to crawl one or more URLs and return the extracted content as Haystack `Document` objects. Starting from each given URL, it follows links to discover subpages up to a configurable limit. This makes it well-suited for ingesting entire websites or documentation sites, not just single pages.
 
-Firecrawl returns content in a structured format (Markdown by default) that works well as input for LLMs. Each crawled page becomes a separate `Document` with the page content in the `content` field and metadata (title, URL, description, and so on) in the `meta` field.
+Firecrawl returns content in a structured format that works well as input for LLMs. Each crawled page becomes a separate `Document` with the page content in the `content` field and metadata, such as title, URL, and description, in the `meta` field.
 
 ### Crawl parameters
 
