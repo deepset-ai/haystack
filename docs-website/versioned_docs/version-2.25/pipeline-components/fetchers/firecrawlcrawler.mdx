@@ -70,7 +70,7 @@ result = crawler.run(urls=["https://docs.haystack.deepset.ai/docs/intro"])
 documents = result["documents"]
 
 for doc in documents:
-    print(doc.meta.get("title"), "-", doc.meta.get("sourceURL"))
+    print(f"{doc.meta.get('title')} - {doc.meta.get('url')}")
 ```
 
 ### In a pipeline
