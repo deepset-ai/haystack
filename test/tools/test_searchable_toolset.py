@@ -754,7 +754,6 @@ class TestSearchableToolsetCustomSearchTool:
         assert "get_weather" in result
 
 
-
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestSearchableToolsetAgentIntegration:
