@@ -1974,6 +1974,36 @@ class TestPipelineConnect:
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
 
+    def test_connect_auto_variadic_any_type(self):
+        @component
+        class AnyAcceptor:
+            @component.output_types(result=list[int])
+            def run(self, **kwargs) -> dict[str, list[int]]:
+                return {"result": kwargs.get("data", [])}
+
+        @component
+        class ListProducer:
+            @component.output_types(result=list[int])
+            def run(self) -> dict[str, list[int]]:
+                return {"result": [1, 2]}
+
+        pipeline = PipelineBase()
+        receiver = AnyAcceptor()
+        component.set_input_type(receiver, "data", Any)
+        pipeline.add_component("sender1", ListProducer())
+        pipeline.add_component("sender2", ListProducer())
+        pipeline.add_component("receiver", receiver)
+
+        pipeline.connect("sender1.result", "receiver.data")
+        pipeline.connect("sender2.result", "receiver.data")
+
+        # Check that the receiver's input socket is correctly set to lazy variadic with wrap_input_in_list=False
+        inp_socket = InputSocket(name="data", type=Any, senders=["sender1", "sender2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict["data"] == inp_socket  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["data"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
+
     def test_connect_with_conversion_chat_message_to_str(self):
         @component
         class ChatMessageOutput:
