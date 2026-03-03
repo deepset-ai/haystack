@@ -269,7 +269,9 @@ class ChatPromptBuilder:
                     compiled_template = self._env.from_string(message.text)
                     rendered_text = compiled_template.render(template_variables_combined)
                     # use dataclasses.replace to avoid in-place mutation of the copied message
-                    rendered_message: ChatMessage = replace(deepcopy(message), _content=[TextContent(text=rendered_text)])
+                    rendered_message: ChatMessage = replace(
+                        deepcopy(message), _content=[TextContent(text=rendered_text)]
+                    )
                     processed_messages.append(rendered_message)
                 else:
                     processed_messages.append(message)

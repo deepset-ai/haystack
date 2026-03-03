@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed in-place mutation of ``ChatMessage`` dataclass instances in
+    ``ChatPromptBuilder``, ``DynamicChatPromptBuilder``, and
+    ``HuggingFaceLocalChatGenerator``. Mutations now use
+    ``dataclasses.replace()`` instead of direct attribute assignment,
+    preventing unintended side-effects when the same message object is
+    reused across multiple pipeline runs.
