@@ -87,6 +87,26 @@ result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?
 print(result["messages"][-1].text)
 ```
 
+### Customizing the bootstrap tool
+
+You can customize the name, description, and parameter descriptions of the `search_tools` bootstrap tool:
+
+- `search_tool_name`: Custom name for the bootstrap tool. Default is `"search_tools"`.
+- `search_tool_description`: Custom description for the bootstrap tool.
+- `search_tool_parameters_description`: Custom descriptions for the bootstrap tool's parameters. Keys must be a subset of `{"tool_keywords", "k"}`.
+
+```python
+toolset = SearchableToolset(
+    catalog=catalog,
+    search_tool_name="find_tools",
+    search_tool_description="Search for tools in the catalog by keyword.",
+    search_tool_parameters_description={
+        "tool_keywords": "Keywords to find tools, e.g. 'email send'",
+        "k": "Max number of tools to return",
+    },
+)
+```
+
 ### Reusing the toolset across multiple agent runs
 
 When reusing the same `SearchableToolset` instance across multiple agent runs, you can call `clear()` to reset any tools discovered in the previous run:

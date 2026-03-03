@@ -104,6 +104,7 @@ export default {
       label: 'Document Stores',
       items: [
         'document-stores/inmemorydocumentstore',
+        'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
         'document-stores/chromadocumentstore',
@@ -511,6 +512,7 @@ export default {
             id: 'pipeline-components/retrievers'
           },
           items: [
+            'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
             'pipeline-components/retrievers/azureaisearchbm25retriever',

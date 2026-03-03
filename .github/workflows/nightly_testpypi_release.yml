@@ -1,4 +1,4 @@
-name: Nightly release to TestPyPI
+name: Nightly pre-release on PyPI
 
 on:
   schedule:
@@ -8,7 +8,6 @@ on:
 
 env:
   HATCH_VERSION: "1.16.4"
-  PYPI_CLEANUP_VERSION: "0.1.10"
 
 jobs:
   nightly-release:
@@ -40,21 +39,8 @@ jobs:
       - name: Build Haystack
         run: hatch build
 
-      - name: Publish to TestPyPI
+      - name: Publish to PyPI
         env:
           HATCH_INDEX_USER: __token__
-          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_TESTPYPI_TOKEN }}
-        run: hatch publish -r test -y
-
-  # Remove .dev* pre-releases on TestPyPI that are older than 7 days (keeps index manageable).
-  cleanup-old-nightlies:
-    runs-on: ubuntu-latest
-    needs: nightly-release
-    steps:
-      - name: Delete nightly pre-releases older than 7 days from TestPyPI
-        env:
-          PYPI_CLEANUP_PASSWORD: ${{ secrets.HAYSTACK_AI_TESTPYPI_TOKEN }}
-        run: |
-          pip install pypi-cleanup==${{ env.PYPI_CLEANUP_VERSION }}
-          pypi-cleanup -u __token__ -p haystack-ai -t https://test.pypi.org/ \
-            -d 7 --do-it -y -v
+          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
+        run: hatch publish -y
