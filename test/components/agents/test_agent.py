@@ -1647,7 +1647,7 @@ class TestSystemPromptTemplate:
         agent = Agent(
             chat_generator=MockChatGenerator(), tools=[weather_tool], system_prompt="You are a helpful assistant."
         )
-        assert agent._system_prompt_builder is None
+        assert agent._system_chat_prompt_builder is None
         result = agent.run(messages=[ChatMessage.from_user("Hi")])
         assert result["messages"][0].is_from(ChatRole.SYSTEM)
         assert result["messages"][0].text == "You are a helpful assistant."
@@ -1659,8 +1659,8 @@ class TestSystemPromptTemplate:
             tools=[weather_tool],
             system_prompt=_sys_msg("You are an assistant for {{company}}. Your role is {{role}}."),
         )
-        assert agent._system_prompt_builder is not None
-        assert set(agent._system_prompt_builder.variables) == {"company", "role"}
+        assert agent._system_chat_prompt_builder is not None
+        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
 
         result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
         sys_msg = result["messages"][0]
@@ -1679,8 +1679,8 @@ class TestSystemPromptTemplate:
             system_prompt=_sys_msg("You help users of {{product}}."),
             user_prompt=_user_msg("Tell me about {{topic}} for {{product}}."),
         )
-        assert agent._system_prompt_builder is not None
-        assert agent._chat_prompt_builder is not None
+        assert agent._system_chat_prompt_builder is not None
+        assert agent._user_chat_prompt_builder is not None
 
         result = agent.run(product="HaystackAI", topic="pipelines")
         messages = result["messages"]
@@ -1797,23 +1797,23 @@ class TestSystemPromptTemplate:
 
         deserialized = Agent.from_dict(serialized)
         assert deserialized.system_prompt == sys_prompt
-        assert deserialized._system_prompt_builder is not None
-        assert "department" in deserialized._system_prompt_builder.variables
+        assert deserialized._system_chat_prompt_builder is not None
+        assert "department" in deserialized._system_chat_prompt_builder.variables
 
     def test_system_prompt_no_builder_for_plain_string(self):
         """No builder is created when system_prompt has no Jinja2 syntax."""
         agent = Agent(chat_generator=MockChatGenerator(), system_prompt="Just a plain system prompt.")
-        assert agent._system_prompt_builder is None
+        assert agent._system_chat_prompt_builder is None
 
     def test_system_prompt_builder_for_message_blocks(self):
         """Builder is created when system_prompt contains {% message %} blocks."""
         agent = Agent(chat_generator=MockChatGenerator(), system_prompt=_sys_msg("Be helpful."))
-        assert agent._system_prompt_builder is not None
+        assert agent._system_chat_prompt_builder is not None
 
     def test_system_prompt_no_builder_for_non_message_jinja2(self):
         """No builder is created for Jinja2 syntax that doesn't use {% message %} blocks."""
         agent = Agent(chat_generator=MockChatGenerator(), system_prompt="Use {{ and }} for templates.")
-        assert agent._system_prompt_builder is None
+        assert agent._system_chat_prompt_builder is None
 
     def test_system_prompt_runtime_jinja2_without_init_raises(self, weather_tool):
         """Providing a Jinja2 system_prompt at runtime without one at init raises."""
