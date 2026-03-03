@@ -324,11 +324,13 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        self._user_chat_prompt_builder = ChatPromptBuilder(template=user_prompt) if user_prompt is not None else None
+        self._user_chat_prompt_builder = (
+            ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
+        )
         # Only create a system prompt builder when the prompt uses Jinja2 message syntax
         self._system_chat_prompt_builder: ChatPromptBuilder | None = None
         if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
-            self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt)
+            self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
 
         self._register_prompt_variables()
 
