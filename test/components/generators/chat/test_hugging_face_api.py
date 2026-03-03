@@ -30,7 +30,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
 )
-from haystack.dataclasses import ChatMessage, ImageContent, ReasoningContent, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ImageContent, ReasoningContent, StreamingChunk, ToolCall, ToolCallDelta
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -240,14 +240,16 @@ class TestHuggingFaceAPIChatGenerator:
                 tools=duplicate_tools,
             )
 
-    def test_init_fail_with_tools_and_streaming(self, mock_check_valid_model, tools):
-        with pytest.raises(ValueError):
-            HuggingFaceAPIChatGenerator(
-                api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-                api_params={"model": "irrelevant"},
-                tools=tools,
-                streaming_callback=streaming_callback_handler,
-            )
+    def test_init_with_tools_and_streaming(self, mock_check_valid_model, tools):
+        # tools + streaming should work together (no ValueError)
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "irrelevant"},
+            tools=tools,
+            streaming_callback=streaming_callback_handler,
+        )
+        assert generator.tools is not None
+        assert generator.streaming_callback is not None
 
     def test_to_dict(self, mock_check_valid_model):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
@@ -445,6 +447,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert kwargs == {
             "stop": [],
             "stream": True,
+            "tools": None,
             "max_tokens": 512,
             "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
         }
@@ -514,6 +517,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert kwargs == {
             "stop": [],
             "stream": True,
+            "tools": None,
             "max_tokens": 512,
             "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
         }
@@ -527,16 +531,129 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(response["replies"]) > 0
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    def test_run_fail_with_tools_and_streaming(self, tools, mock_check_valid_model):
-        component = HuggingFaceAPIChatGenerator(
+    def test_run_with_tools_streaming(self, tools, mock_check_valid_model):
+        streaming_call_count = 0
+
+        def streaming_callback_fn(chunk: StreamingChunk):
+            nonlocal streaming_call_count
+            streaming_call_count += 1
+            assert isinstance(chunk, StreamingChunk)
+
+        generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
-            streaming_callback=streaming_callback_handler,
+            api_params={"model": "meta-llama/Llama-3.1-70B-Instruct"},
+            streaming_callback=streaming_callback_fn,
         )
 
-        with pytest.raises(ValueError):
-            message = ChatMessage.from_user("irrelevant")
-            component.run([message], tools=tools)
+        # Create mock tool call delta objects
+        mock_tc_function_1 = Mock()
+        mock_tc_function_1.name = "weather"
+        mock_tc_function_1.arguments = '{"city": '
+
+        mock_tc_delta_1 = Mock()
+        mock_tc_delta_1.index = 0
+        mock_tc_delta_1.id = "0"
+        mock_tc_delta_1.type = "function"
+        mock_tc_delta_1.function = mock_tc_function_1
+
+        mock_tc_function_2 = Mock()
+        mock_tc_function_2.name = None
+        mock_tc_function_2.arguments = '"Paris"}'
+
+        mock_tc_delta_2 = Mock()
+        mock_tc_delta_2.index = 0
+        mock_tc_delta_2.id = "0"
+        mock_tc_delta_2.type = "function"
+        mock_tc_delta_2.function = mock_tc_function_2
+
+        # Create fake streamed response with tool call deltas
+        def mock_iter(self):
+            # Chunk 1: tool call start with name and partial arguments
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(
+                            role="assistant",
+                            content=None,
+                            tool_calls=[mock_tc_delta_1],
+                        ),
+                        index=0,
+                        finish_reason=None,
+                    )
+                ],
+                id="some_id",
+                model="meta-llama/Llama-3.1-70B-Instruct",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+            # Chunk 2: tool call continuation with remaining arguments
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(
+                            role="assistant",
+                            content=None,
+                            tool_calls=[mock_tc_delta_2],
+                        ),
+                        index=0,
+                        finish_reason=None,
+                    )
+                ],
+                id="some_id",
+                model="meta-llama/Llama-3.1-70B-Instruct",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+            # Chunk 3: finish with tool_calls indicated via tool_call_id
+            yield ChatCompletionStreamOutput(
+                choices=[
+                    ChatCompletionStreamOutputChoice(
+                        delta=ChatCompletionStreamOutputDelta(role="assistant", content=None, tool_call_id="0"),
+                        index=0,
+                        finish_reason="stop",
+                    )
+                ],
+                id="some_id",
+                model="meta-llama/Llama-3.1-70B-Instruct",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+            )
+
+            # Chunk 4: empty choices with usage
+            yield ChatCompletionStreamOutput(
+                choices=[],
+                id="some_id",
+                model="meta-llama/Llama-3.1-70B-Instruct",
+                system_fingerprint="some_fingerprint",
+                created=1710498504,
+                usage=ChatCompletionStreamOutputUsage(completion_tokens=30, prompt_tokens=426, total_tokens=456),
+            )
+
+        with patch("huggingface_hub.InferenceClient.chat_completion", autospec=True) as mock_chat_completion:
+            mock_response = Mock(__iter__=mock_iter)
+            mock_chat_completion.return_value = mock_response
+
+            messages = [ChatMessage.from_user("What is the weather in Paris?")]
+            response = generator.run(messages=messages, tools=tools)
+
+        # Verify streaming callback was called
+        assert streaming_call_count == 4
+
+        # Verify the response contains tool calls
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert len(response["replies"]) == 1
+
+        message = response["replies"][0]
+        assert message.tool_calls
+        assert len(message.tool_calls) == 1
+        assert message.tool_calls[0].tool_name == "weather"
+        assert message.tool_calls[0].arguments == {"city": "Paris"}
+        assert message.tool_calls[0].id == "0"
+        assert message.meta["finish_reason"] == "tool_calls"
+        assert message.meta["usage"] == {"completion_tokens": 30, "prompt_tokens": 426}
 
     def test_run_with_tools(self, mock_check_valid_model, tools):
         generator = HuggingFaceAPIChatGenerator(
@@ -977,6 +1094,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert kwargs == {
             "stop": [],
             "stream": True,
+            "tools": None,
             "max_tokens": 512,
             "stream_options": ChatCompletionInputStreamOptions(include_usage=True),
         }
@@ -1659,3 +1777,81 @@ class TestHuggingFaceAPIChatGenerator:
 
         assert streaming_chunk.content == "Hello"
         assert streaming_chunk.reasoning is None
+
+    def test_convert_chat_completion_stream_output_to_streaming_chunk_with_tool_calls(self):
+        """Test that streaming chunks with tool calls are properly converted."""
+        mock_tc_function = Mock()
+        mock_tc_function.name = "weather"
+        mock_tc_function.arguments = '{"city": "Paris"}'
+
+        mock_tc = Mock()
+        mock_tc.index = 0
+        mock_tc.id = "call_123"
+        mock_tc.type = "function"
+        mock_tc.function = mock_tc_function
+
+        chunk = ChatCompletionStreamOutput(
+            choices=[
+                ChatCompletionStreamOutputChoice(
+                    delta=ChatCompletionStreamOutputDelta(
+                        role="assistant",
+                        content=None,
+                        tool_calls=[mock_tc],
+                    ),
+                    index=0,
+                    finish_reason=None,
+                )
+            ],
+            id="some_id",
+            model="some_model",
+            system_fingerprint="some_fingerprint",
+            created=1710498504,
+        )
+
+        streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+
+        assert streaming_chunk.tool_calls is not None
+        assert len(streaming_chunk.tool_calls) == 1
+        assert streaming_chunk.tool_calls[0].index == 0
+        assert streaming_chunk.tool_calls[0].id == "call_123"
+        assert streaming_chunk.tool_calls[0].tool_name == "weather"
+        assert streaming_chunk.tool_calls[0].arguments == '{"city": "Paris"}'
+        assert streaming_chunk.index == 0
+        assert streaming_chunk.start is True  # tool_name is present
+
+    def test_convert_chat_completion_stream_output_to_streaming_chunk_tool_call_continuation(self):
+        """Test that tool call continuation chunks (no tool_name) have start=False."""
+        mock_tc_function = Mock()
+        mock_tc_function.name = None
+        mock_tc_function.arguments = '"Paris"}'
+
+        mock_tc = Mock()
+        mock_tc.index = 0
+        mock_tc.id = "call_123"
+        mock_tc.type = "function"
+        mock_tc.function = mock_tc_function
+
+        chunk = ChatCompletionStreamOutput(
+            choices=[
+                ChatCompletionStreamOutputChoice(
+                    delta=ChatCompletionStreamOutputDelta(
+                        role="assistant",
+                        content=None,
+                        tool_calls=[mock_tc],
+                    ),
+                    index=0,
+                    finish_reason=None,
+                )
+            ],
+            id="some_id",
+            model="some_model",
+            system_fingerprint="some_fingerprint",
+            created=1710498504,
+        )
+
+        streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+
+        assert streaming_chunk.tool_calls is not None
+        assert streaming_chunk.tool_calls[0].tool_name is None
+        assert streaming_chunk.tool_calls[0].arguments == '"Paris"}'
+        assert streaming_chunk.start is False  # no tool_name, so not a start chunk
