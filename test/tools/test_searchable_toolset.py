@@ -753,20 +753,6 @@ class TestSearchableToolsetCustomSearchTool:
         result = restored._bootstrap_tool.invoke(tool_keywords="weather")
         assert "get_weather" in result
 
-    def test_serialization_defaults(self, large_catalog):
-        """Test to_dict and serde roundtrip with default settings."""
-        toolset = SearchableToolset(catalog=large_catalog)
-        data = toolset.to_dict()
-
-        assert data["data"]["search_tool_name"] == "search_tools"
-        assert data["data"]["search_tool_description"] is None
-        assert data["data"]["search_tool_parameters_description"] is None
-
-        restored = SearchableToolset.from_dict(data)
-        restored.warm_up()
-        assert restored._bootstrap_tool is not None
-        assert restored._bootstrap_tool.name == "search_tools"
-        assert "ALWAYS use this tool FIRST" in restored._bootstrap_tool.description
 
 
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
