@@ -355,8 +355,8 @@ export default {
             id: 'pipeline-components/fetchers'
           },
           items: [
-            'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/firecrawlcrawler',
+            'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
         },
