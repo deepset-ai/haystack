@@ -1,4 +1,4 @@
-name: Nightly release to TestPyPI
+name: Nightly pre-release on PyPI
 
 on:
   schedule:
@@ -39,8 +39,8 @@ jobs:
       - name: Build Haystack
         run: hatch build
 
-      - name: Publish to TestPyPI
+      - name: Publish to PyPI
         env:
           HATCH_INDEX_USER: __token__
-          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_TESTPYPI_TOKEN }}
-        run: hatch publish -r test -y
+          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
+        run: hatch publish -y
