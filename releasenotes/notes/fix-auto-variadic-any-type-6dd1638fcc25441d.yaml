@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Allow auto-variadic promotion for sockets typed as ``Any`` in ``_make_socket_auto_variadic``.
+    This fixes an issue where connecting multiple outputs to ``PromptBuilder`` template variable
+    inputs (e.g. ``documents``) would raise a ``PipelineConnectError``.
