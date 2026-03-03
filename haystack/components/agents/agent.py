@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -58,6 +59,9 @@ from haystack.utils.callable_serialization import deserialize_callable, serializ
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
+
+# Regex to detect the Jinja2 chat template syntax
+_JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
@@ -323,7 +327,7 @@ class Agent:
         self._user_chat_prompt_builder = ChatPromptBuilder(template=user_prompt) if user_prompt is not None else None
         # Only create a system prompt builder when the prompt uses Jinja2 message syntax
         self._system_chat_prompt_builder: ChatPromptBuilder | None = None
-        if system_prompt is not None and "{% message" in system_prompt:
+        if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
             self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt)
 
         self._register_prompt_variables()
@@ -548,7 +552,7 @@ class Agent:
             messages = messages + user_messages
 
         if system_prompt is not None:
-            if "{% message" in system_prompt:
+            if _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
                 if self._system_chat_prompt_builder is None:
                     raise ValueError(
                         "system_prompt contains Jinja2 template syntax but no system prompt builder is initialized. "
