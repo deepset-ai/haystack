@@ -1978,7 +1978,7 @@ class TestPipelineConnect:
         @component
         class AnyAcceptor:
             @component.output_types(result=list[int])
-            def run(self, **kwargs) -> dict[str, list[int]]:
+            def run(self, **kwargs: Any) -> dict[str, list[int]]:
                 return {"result": kwargs.get("data", [])}
 
         @component
