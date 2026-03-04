@@ -1,0 +1,30 @@
+name: "Notify Slack on CI failure"
+description: "Sends a Slack notification with workflow failure details"
+
+inputs:
+  slack-webhook-url:
+    description: "Slack Webhook URL"
+    required: true
+  mention-here:
+    description: "Whether to mention @here in the notification"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Send Slack notification
+      uses: slackapi/slack-github-action@v2
+      with:
+        webhook: ${{ inputs.slack-webhook-url }}
+        webhook-type: incoming-webhook
+        payload: |
+          text: ${{ github.repository }} - ${{ github.workflow }} failed on ${{ github.ref_name }}
+          blocks:
+            - type: "section"
+              text:
+                type: "mrkdwn"
+                text: |
+                  ${{ github.repository }} - *${{ github.workflow }}* failed on `${{ github.ref_name }}`
+                  ${{ inputs.mention-here == 'true' && '<!here>' || '' }}
+                  <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>

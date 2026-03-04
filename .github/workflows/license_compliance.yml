@@ -62,19 +62,11 @@ jobs:
         run: echo "${{ steps.license_check_report.outputs.report }}"
 
       - name: Notify Slack on failure
-        # Skip on fork PRs where secrets are not accessible
+        # This step would fail when running in PRs opened from forks since
+        # secrets are not accessible.
+        # To prevent showing bogus failures in those PRs we skip the step.
+        # The workflow will fail in any case if the actual check fails in the previous steps.
         if: failure() && env.SLACK_WEBHOOK_URL_NOTIFICATIONS != ''
-        uses: slackapi/slack-github-action@v2
+        uses: ./.github/actions/notify_slack
         with:
-          webhook: ${{ env.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
-          webhook-type: incoming-webhook
-          payload: |
-            text: ${{ github.repository }} - ${{ github.workflow }} failed on ${{ github.ref_name }}
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: >-
-                    ${{ github.repository }} - *${{ github.workflow }}* failed on `${{ github.ref_name }}`\n\n
-                    <!here>\n\n
-                    <${{ github.server_url }}/${{github.repository }}/actions/runs/${{ github.run_id }}|View Logs>
+          slack-webhook-url: ${{ env.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
