@@ -69,9 +69,12 @@ jobs:
           webhook: ${{ env.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
           webhook-type: incoming-webhook
           payload: |
-            text: "${{ github.repository }} - ${{ github.workflow }} failed on ${{ github.ref_name }}"
+            text: ${{ github.repository }} - ${{ github.workflow }} failed on ${{ github.ref_name }}
             blocks:
               - type: "section"
                 text:
                   type: "mrkdwn"
-                  text: "${{ github.repository }} - *${{ github.workflow }}* failed on `${{ github.ref_name }}`\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                  text: >-
+                    ${{ github.repository }} - *${{ github.workflow }}* failed on `${{ github.ref_name }}`\n\n
+                    <!here>\n\n
+                    <${{ github.server_url }}/${{github.repository }}/actions/runs/${{ github.run_id }}|View Logs>
