@@ -56,36 +56,11 @@ jobs:
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   check-imports:
     needs: format
@@ -104,36 +79,11 @@ jobs:
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -181,36 +131,11 @@ jobs:
         with:
           path-to-lcov: coverage.xml
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   mypy:
     needs: unit-tests
@@ -253,36 +178,11 @@ jobs:
           mkdir .mypy_cache
           hatch run test:types
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   integration-tests-linux:
     name: Integration / ubuntu-latest
@@ -308,36 +208,11 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   integration-tests-macos:
     name: Integration / macos-latest
@@ -372,36 +247,11 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   integration-tests-windows:
     name: Integration / windows-latest
@@ -429,36 +279,11 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure() && github.ref_name == 'main'
+        uses: ./.github/actions/notify_slack
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   trigger-catch-all:
     name: Tests completed

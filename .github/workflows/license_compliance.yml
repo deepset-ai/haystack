@@ -10,7 +10,6 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 env:
-  SLACK_WEBHOOK_URL_NOTIFICATIONS: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
   PYTHON_VERSION: "3.10"
 
 jobs:
@@ -22,10 +21,6 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v6
-
-      # TODO: Remove this step after testing Slack notifications
-      - name: Force failure for testing
-        run: exit 1
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -62,11 +57,7 @@ jobs:
         run: echo "${{ steps.license_check_report.outputs.report }}"
 
       - name: Notify Slack on failure
-        # This step would fail when running in PRs opened from forks since
-        # secrets are not accessible.
-        # To prevent showing bogus failures in those PRs we skip the step.
-        # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: failure() && env.SLACK_WEBHOOK_URL_NOTIFICATIONS != ''
+        if: failure()
         uses: ./.github/actions/notify_slack
         with:
-          slack-webhook-url: ${{ env.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
