@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 env:
-  CORE_DATADOG_API_KEY: ${{ secrets.CORE_DATADOG_API_KEY }}
+  SLACK_WEBHOOK_URL_NOTIFICATIONS: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
   PYTHON_VERSION: "3.10"
 
 jobs:
@@ -57,37 +57,39 @@ jobs:
         if: ${{ always() }}
         run: echo "${{ steps.license_check_report.outputs.report }}"
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure())
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
+      # TODO: Remove this step after testing Slack notifications
+      - name: Force failure for testing
+        run: exit 1
 
-      - name: Send event to Datadog
-        # This step would fail when running in PRs opened from forks since
-        # secrets are not accessible.
-        # To prevent showing bogus failures in those PRs we skip the step.
-        # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: (success() || failure()) && env.CORE_DATADOG_API_KEY != ''
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        # Skip on fork PRs where secrets are not accessible
+        if: failure() && env.SLACK_WEBHOOK_URL_NOTIFICATIONS != ''
+        uses: slackapi/slack-github-action@v2
         with:
-          api-key: ${{ env.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.job }} in ${{ github.workflow }} workflow"
-              text: "License compliance check: direct dependencies only."
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          webhook: ${{ env.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ github.workflow }} / ${{ github.job }} failed on ${{ github.ref_name }}"
+            blocks:
+              - type: "header"
+                text:
+                  type: "plain_text"
+                  text: "HaystackCI Failure"
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*Workflow:*\n${{ github.workflow }}"
+                  - type: "mrkdwn"
+                    text: "*Job:*\n${{ github.job }}"
+                  - type: "mrkdwn"
+                    text: "*Branch:*\n`${{ github.ref_name }}`"
+                  - type: "mrkdwn"
+                    text: "*Author:*\n${{ github.actor }}"
+              - type: "actions"
+                elements:
+                  - type: "button"
+                    text:
+                      type: "plain_text"
+                      text: "View Run"
+                    url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    style: "danger"
