@@ -2,12 +2,12 @@
 title: "LaraDocumentTranslator"
 id: laradocumenttranslator
 slug: "/laradocumenttranslator"
-description: "This component translates the text content of Haystack Documents using the Lara translation API."
+description: "This component translates the text content of Haystack documents using the Lara translation API."
 ---
 
 # LaraDocumentTranslator
 
-This component translates the text content of Haystack Documents using the Lara translation API.
+This component translates the text content of Haystack documents using the Lara translation API.
 
 <div className="key-value-table">
 
@@ -26,7 +26,7 @@ This component translates the text content of Haystack Documents using the Lara 
 
 [Lara](https://developers.laratranslate.com/docs/introduction) is an adaptive translation AI by [translated](https://translated.com/) that combines the fluency and context handling of LLMs with low hallucination and latency. It adapts to domains at inference time using optional context, instructions, translation memories, and glossaries.
 
-`LaraDocumentTranslator` takes a list of Haystack Documents, translates their text content via the Lara API, and returns new Documents containing the translations. The original document ID is preserved in each translated document's metadata under the `original_document_id` key.
+`LaraDocumentTranslator` takes a list of Haystack documents, translates their text content via the Lara API, and returns new documents containing the translations. The original document ID is preserved in each translated document's metadata under the `original_document_id` key.
 
 Key features:
 
@@ -79,11 +79,12 @@ translator = LaraDocumentTranslator(
 doc = Document(content="Hello, world!")
 result = translator.run(documents=[doc])
 print(result["documents"][0].content)
+>> "Hallo, Welt!"
 ```
 
 ### In a pipeline
 
-Below is an example of the `LaraDocumentTranslator` in a pipeline that fetches a webpage, converts it to a Document, and translates it from English to German.
+Below is an example of the `LaraDocumentTranslator` in a pipeline that fetches a webpage, converts it to a document, and translates it from English to German.
 
 ```python
 from haystack import Pipeline
