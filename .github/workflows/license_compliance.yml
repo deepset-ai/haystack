@@ -23,6 +23,10 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v6
 
+      # TODO: Remove this step after testing Slack notifications
+      - name: Force failure for testing
+        run: exit 1
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -57,10 +61,6 @@ jobs:
         if: ${{ always() }}
         run: echo "${{ steps.license_check_report.outputs.report }}"
 
-      # TODO: Remove this step after testing Slack notifications
-      - name: Force failure for testing
-        run: exit 1
-
       - name: Notify Slack on failure
         # Skip on fork PRs where secrets are not accessible
         if: failure() && env.SLACK_WEBHOOK_URL_NOTIFICATIONS != ''
@@ -69,23 +69,9 @@ jobs:
           webhook: ${{ env.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
           webhook-type: incoming-webhook
           payload: |
-            text: "${{ github.workflow }} / ${{ github.job }} failed on ${{ github.ref_name }}"
+            text: "${{ github.repository }} - ${{ github.workflow }} failed on ${{ github.ref_name }}"
             blocks:
-              - type: "header"
-                text:
-                  type: "plain_text"
-                  text: "License Compliance Failure"
               - type: "section"
-                fields:
-                  - type: "mrkdwn"
-                    text: "*Project:*\n${{ github.repository }}"
-                  - type: "mrkdwn"
-                    text: "*Workflow:*\n${{ github.workflow }}"
-                  - type: "mrkdwn"
-                    text: "*Job:*\n${{ github.job }}"
-                  - type: "mrkdwn"
-                    text: "*Branch:*\n`${{ github.ref_name }}`"
-                  - type: "mrkdwn"
-                    text: "*Author:*\n${{ github.actor }}"
-                  - type: "mrkdwn"
-                    text: "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+                text:
+                  type: "mrkdwn"
+                  text: "${{ github.repository }} - *${{ github.workflow }}* failed on `${{ github.ref_name }}`\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
