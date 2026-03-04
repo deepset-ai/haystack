@@ -212,6 +212,7 @@ class Agent:
 
     # The template variables 'language' and 'document' become inputs to the run method
     result = agent.run(
+        messages=[],
         language="French",
         document="The weather is lovely today and the sun is shining.",
     )
