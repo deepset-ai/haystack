@@ -1380,13 +1380,6 @@ def _make_agent_with_user_prompt(
 
 
 class TestUserPromptInitialization:
-    def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
-        with pytest.raises(
-            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
-        ):
-            agent.run()
-
     def test_user_prompt_conflict_with_state_schema_raises(self, weather_tool):
         with pytest.raises(ValueError, match="already defined in the state schema"):
             _make_agent_with_user_prompt(
@@ -1400,14 +1393,14 @@ class TestUserPromptInitialization:
     def test_user_prompt_only_variables_forwarded_to_builder(self, weather_tool):
         agent = _make_agent_with_user_prompt(_user_msg("Question: {{question}}"), tools=[weather_tool])
         # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(question="Will it snow?", irrelevant_kwarg="unused")
+        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
         assert "messages" in result
 
 
 class TestUserPromptOnly:
     def test_simple_literal_user_prompt(self, weather_tool):
         agent = _make_agent_with_user_prompt(_user_msg("Tell me the weather."), tools=[weather_tool])
-        result = agent.run()
+        result = agent.run(messages=[])
         messages = result["messages"]
         # The rendered user_prompt should be the first (and only) non-system message
         user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
@@ -1423,7 +1416,7 @@ class TestUserPromptOnly:
             ),
             tools=[weather_tool],
         )
-        result = agent.run(name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
+        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
 
@@ -1438,7 +1431,7 @@ class TestUserPromptOnly:
             tools=[weather_tool],
             system_prompt="You are a helpful weather assistant.",
         )
-        result = agent.run(city="Berlin")
+        result = agent.run(messages=[], city="Berlin")
         messages = result["messages"]
         assert messages[0].is_from(ChatRole.SYSTEM)
         assert messages[0].text == "You are a helpful weather assistant."
@@ -1455,7 +1448,7 @@ class TestUserPromptOnly:
             tools=[weather_tool],
         )
         docs = [Document(content="Doc A"), Document(content="Doc B")]
-        result = agent.run(documents=docs, question="What is in the docs?")
+        result = agent.run(messages=[], documents=docs, question="What is in the docs?")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert "Doc A" in user_messages[0].text
         assert "Doc B" in user_messages[0].text
@@ -1463,7 +1456,7 @@ class TestUserPromptOnly:
 
     def test_runtime_user_prompt_overrides_init_prompt(self, weather_tool):
         agent = _make_agent_with_user_prompt(_user_msg("Default prompt for {{city}}."), tools=[weather_tool])
-        result = agent.run(user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
+        result = agent.run(messages=[], user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Runtime prompt for Berlin."
 
@@ -1558,7 +1551,7 @@ class TestAgentUserPromptInPipeline:
     def test_rag_pipeline_user_prompt_init_only(self, document_store_with_docs, weather_tool):
         pipeline = _make_rag_pipeline(document_store_with_docs, weather_tool)
         query = "Where is the Colosseum?"
-        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query}})
+        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "query": query}})
         assert "agent" in result
         agent_output = result["agent"]
         assert "messages" in agent_output
@@ -1585,6 +1578,7 @@ class TestAgentUserPromptInPipeline:
             data={
                 "retriever": {"query": query},
                 "agent": {
+                    "messages": [],
                     "user_prompt": _user_msg(
                         "OVERRIDE: Using docs:\n"
                         "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
