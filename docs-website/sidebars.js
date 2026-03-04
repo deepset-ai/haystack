@@ -583,6 +583,13 @@ export default {
         },
         {
           type: 'category',
+          label: 'Translators',
+          items: [
+            'pipeline-components/translators/laradocumenttranslator',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Validators',
           items: [
             'pipeline-components/validators/jsonschemavalidator',
