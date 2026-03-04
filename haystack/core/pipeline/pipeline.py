@@ -289,6 +289,8 @@ class Pipeline(PipelineBase):
         ) as span:
             inputs = self._convert_to_internal_format(pipeline_inputs=data)
             priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
+            if self._propagate_blocked_outputs(inputs, ordered_component_names, component_visits):
+                priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
             # check if pipeline is blocked before execution
             self.validate_pipeline(priority_queue)
@@ -435,6 +437,7 @@ class Pipeline(PipelineBase):
                 if component_pipeline_outputs or component_name in include_outputs_from:
                     pipeline_outputs[component_name] = component_pipeline_outputs
                 if self._is_queue_stale(priority_queue):
+                    self._propagate_blocked_outputs(inputs, ordered_component_names, component_visits)
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
             if isinstance(break_point, Breakpoint):

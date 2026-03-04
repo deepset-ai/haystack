@@ -227,6 +227,58 @@ def are_all_lazy_variadic_sockets_resolved(component: dict, inputs: dict) -> boo
     return True
 
 
+def is_permanently_blocked(component: dict, inputs: dict) -> bool:
+    """
+    Checks if a component is permanently blocked and will never be able to run.
+
+    A component is permanently blocked when:
+    1. It cannot run (``can_component_run`` returns False), AND
+    2. At least one mandatory socket will *never* be satisfied because every sender for that socket
+       has already executed and none produced a real value (all sent `_NO_OUTPUT_PRODUCED`).
+
+    :param component: Component metadata and the component instance.
+    :param inputs: Inputs for the component.
+    """
+    if can_component_run(component, inputs):
+        return False
+
+    for socket_name, socket in component["input_sockets"].items():
+        if not socket.is_mandatory or not socket.senders:
+            continue
+
+        socket_inputs = inputs.get(socket_name, [])
+        if not socket_inputs:
+            continue
+
+        # Determine which senders have already executed (regardless of what they produced).
+        executed_senders = {inp["sender"] for inp in socket_inputs if inp["sender"] is not None}
+        all_senders = set(socket.senders)
+
+        if not all_senders.issubset(executed_senders):
+            # Not all senders have executed yet — we can't call this permanently blocked.
+            continue
+
+        # All senders executed.  Identify those that only produced _NO_OUTPUT_PRODUCED.
+        if _is_socket_permanently_unsatisfied(socket, socket_inputs):
+            return True
+
+    return False
+
+
+def _is_socket_permanently_unsatisfied(socket: InputSocket, socket_inputs: list[dict]) -> bool:
+    """
+    Given that every sender for *socket* has already executed, checks whether the socket will never be satisfied.
+
+    For a non-variadic socket this is the case when the single input is `_NO_OUTPUT_PRODUCED`.
+    For a variadic socket this is the case when no sender delivered a real value.
+    """
+    if not socket.is_variadic and not socket.is_lazy_variadic:
+        return socket_inputs[0]["value"] is _NO_OUTPUT_PRODUCED
+
+    # Variadic (greedy or lazy): permanently unsatisfied if no sender provided a real value.
+    return not any(inp["value"] is not _NO_OUTPUT_PRODUCED for inp in socket_inputs if inp["sender"] is not None)
+
+
 def is_any_greedy_socket_ready(component: dict, inputs: dict) -> bool:
     """
     Checks if the component has any greedy socket that is ready to run.

@@ -33,6 +33,7 @@ from haystack.core.pipeline.component_checks import (
     are_all_sockets_ready,
     can_component_run,
     is_any_greedy_socket_ready,
+    is_permanently_blocked,
 )
 from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
 from haystack.core.serialization import (
@@ -1159,6 +1160,61 @@ class PipelineBase:  # noqa: PLW1641
             priority = self._calculate_priority(comp, inputs.get(component_name, {}))
             priority_queue.push(component_name, priority)
         return priority_queue
+
+    def _propagate_blocked_outputs(
+        self, inputs: dict[str, Any], component_names: list[str], component_visits: dict[str, int]
+    ) -> bool:
+        """
+        Propagates `_NO_OUTPUT_PRODUCED` from permanently blocked components to their downstream sockets.
+
+        When a component will never run because its mandatory inputs received only
+        `_NO_OUTPUT_PRODUCED`, we write `_NO_OUTPUT_PRODUCED` to all its downstream sockets —
+        as if it had run and produced nothing.  This allows downstream components (e.g. lazy
+        variadic joiners) to see that a predecessor is resolved and adjust their scheduling
+        priority accordingly.
+
+        Propagation is applied iteratively so that transitive blocking chains (A blocks B
+        blocks C) are fully resolved in a single call.
+
+        :param inputs: The current global input state.
+        :param component_names: Names of all components in the pipeline.
+        :param component_visits: Current state of component visits.
+        :returns: True if any propagation occurred, False otherwise.
+        """
+        propagated: set[str] = set()
+        changed = True
+        while changed:
+            changed = False
+            for name in component_names:
+                if name in propagated:
+                    continue
+                comp = self._get_component_with_graph_metadata_and_visits(name, component_visits[name])
+                if not is_permanently_blocked(comp, inputs.get(name, {})):
+                    continue
+
+                # Write _NO_OUTPUT_PRODUCED to every downstream socket of this blocked component.
+                for recv_name, _sender_sock, recv_sock, _ in self._find_receivers_from(name):
+                    if recv_name not in inputs:
+                        inputs[recv_name] = {}
+                    if recv_sock.is_lazy_variadic:
+                        _write_to_lazy_variadic_socket(
+                            inputs=inputs,
+                            receiver_name=recv_name,
+                            receiver_socket_name=recv_sock.name,
+                            component_name=name,
+                            value=_NO_OUTPUT_PRODUCED,
+                        )
+                    else:
+                        _write_to_standard_socket(
+                            inputs=inputs,
+                            receiver_name=recv_name,
+                            receiver_socket_name=recv_sock.name,
+                            component_name=name,
+                            value=_NO_OUTPUT_PRODUCED,
+                        )
+                propagated.add(name)
+                changed = True
+        return len(propagated) > 0
 
     @staticmethod
     def _calculate_priority(comp: dict, inputs: dict) -> ComponentPriority:
