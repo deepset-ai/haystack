@@ -74,9 +74,11 @@ jobs:
               - type: "header"
                 text:
                   type: "plain_text"
-                  text: "HaystackCI Failure"
+                  text: "License Compliance Failure"
               - type: "section"
                 fields:
+                  - type: "mrkdwn"
+                    text: "*Project:*\n${{ github.repository }}"
                   - type: "mrkdwn"
                     text: "*Workflow:*\n${{ github.workflow }}"
                   - type: "mrkdwn"
@@ -85,11 +87,5 @@ jobs:
                     text: "*Branch:*\n`${{ github.ref_name }}`"
                   - type: "mrkdwn"
                     text: "*Author:*\n${{ github.actor }}"
-              - type: "actions"
-                elements:
-                  - type: "button"
-                    text:
-                      type: "plain_text"
-                      text: "View Run"
-                    url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                    style: "danger"
+                  - type: "mrkdwn"
+                    text: "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
