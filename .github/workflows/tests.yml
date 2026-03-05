@@ -56,12 +56,6 @@ jobs:
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
 
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
-
   check-imports:
     needs: format
     runs-on: ubuntu-slim
@@ -78,12 +72,6 @@ jobs:
 
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
-
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -131,12 +119,6 @@ jobs:
         with:
           path-to-lcov: coverage.xml
 
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
-
   mypy:
     needs: unit-tests
     runs-on: ubuntu-latest
@@ -147,6 +129,9 @@ jobs:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
           fetch-depth: 0
+
+      - name: make it fail
+        run: exit 1
 
       - name: Get changed files
         id: files
@@ -178,12 +163,6 @@ jobs:
           mkdir .mypy_cache
           hatch run test:types
 
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
-
   integration-tests-linux:
     name: Integration / ubuntu-latest
     needs: unit-tests
@@ -207,12 +186,6 @@ jobs:
 
       - name: Run
         run: hatch run test:integration-only-fast
-
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   integration-tests-macos:
     name: Integration / macos-latest
@@ -247,12 +220,6 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
-        with:
-          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
-
   integration-tests-windows:
     name: Integration / windows-latest
     needs: unit-tests
@@ -279,9 +246,17 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Notify Slack on failure
-        if: failure() && github.ref_name == 'main'
-        uses: deepset-ai/notify-slack-action@v1
+  notify-slack:
+    if: failure() && github.ref_name == 'main'
+    needs:
+      - check-imports
+      - mypy
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
