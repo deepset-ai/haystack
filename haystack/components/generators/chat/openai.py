@@ -111,7 +111,8 @@ class OpenAIChatGenerator:
         "gpt-4",
         "gpt-3.5-turbo",
     ]
-    """A non-exhaustive list of chat models supported by this component. See https://developers.openai.com/api/docs/models for the full list and snapshot IDs."""
+    """A non-exhaustive list of chat models supported by this component.
+    See https://developers.openai.com/api/docs/models for the full list and snapshot IDs."""
 
     def __init__(
         self,
