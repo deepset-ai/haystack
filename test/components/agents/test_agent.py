@@ -1528,7 +1528,7 @@ class TestPrompts:
     def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(question="Will it snow?", irrelevant_kwarg="unused")
+        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
         assert "messages" in result
 
     def test_user_prompt_with_template_variables(self, make_agent):
@@ -1539,7 +1539,7 @@ class TestPrompts:
                 + " on {{date}}?"
             )
         )
-        result = agent.run(name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
+        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
 
@@ -1630,7 +1630,7 @@ class TestAgentUserPromptInPipeline:
     def test_rag_pipeline_user_prompt_init_only(self, make_rag_pipeline):
         pipeline = make_rag_pipeline()
         query = "Where is the Colosseum?"
-        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query}})
+        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "query": query}})
         assert "agent" in result
         agent_output = result["agent"]
         assert "messages" in agent_output
@@ -1657,6 +1657,7 @@ class TestAgentUserPromptInPipeline:
             data={
                 "retriever": {"query": query},
                 "agent": {
+                    "messages": [],
                     "user_prompt": _user_msg(
                         "OVERRIDE: Using docs:\n"
                         "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
@@ -1705,3 +1706,152 @@ class TestAgentUserPromptInPipeline:
         assert "History:" in user_messages[0].text
         rendered = user_messages[1].text
         assert "Relevant docs:" in rendered
+
+
+@pytest.mark.integration
+class TestAgentPipelineStaticToolInput:
+    """
+    Regression test for the scheduling bug introduced by making the 'messages'
+    run parameter non-required in https://github.com/deepset-ai/haystack/pull/10638.
+
+        pipeline inputs:
+            query    →  history_parser          # feeds the messages chain
+            filters  →  agent.retrieval_filters # static, sender=None  ← the trigger
+            (files is optional / absent)
+
+        pipeline connections:
+            history_parser.messages  →  messages_joiner.values
+            files_processor.prompt   →  messages_joiner.values  # needs 'files' (mandatory)
+            messages_joiner.values   →  system_concat.messages
+            system_concat.output     →  agent.messages
+
+        agent.tools = [ComponentTool(inputs_from_state={"documents": "docs"})]
+
+    The bug
+    -------
+    When the optional 'files' pipeline input is NOT provided:
+    1. files_processor is BLOCKED (its mandatory 'files' input is absent).
+    2. messages_joiner stays DEFER_LAST.
+    3. system_concat is BLOCKED – cannot receive 'messages'.
+    4. agent.messages is therefore never delivered.
+
+    Meanwhile, 'filters' → agent.retrieval_filters (sender=None) fires the pipeline's
+    "user trigger" gate on the Agent's first visit.  Because none of the Agent's
+    sockets are mandatory, can_component_run() returns True and the Agent gets
+    DEFER priority instead of BLOCKED.
+
+    The scheduler eventually pops the Agent (DEFER) from the queue — the only
+    non-BLOCKED component left — and runs it.  _add_missing_input_defaults fills
+    messages=None, and Agent._initialize_fresh_execution raises:
+
+        ValueError("No messages provided to the Agent and neither
+                    user_prompt nor system_prompt is set.")
+    """
+
+    @pytest.fixture()
+    def search_tool(self):
+        return ComponentTool(
+            name="search",
+            description="Searches documents.",
+            component=PromptBuilder(template="{% for d in docs %}{{ d.content }}{% endfor %}"),
+            inputs_from_state={"documents": "docs"},
+        )
+
+    def _make_agent(self, search_tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[search_tool],
+            state_schema={"retrieval_filters": {"type": dict[str, Any]}, "documents": {"type": list[Document]}},
+        )
+        # Mock after __init__ so Agent sees the real 'tools' param in the signature.
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        return agent
+
+    def test_agent_runs_prematurely_when_messages_predecessor_is_blocked(self, search_tool):
+        """
+        Demonstrates the bug: the Agent executes without 'messages' when its
+        messages-providing predecessor chain is permanently BLOCKED.
+
+        Pipeline shape:
+            query   →  history_parser             →  messages_joiner.values
+            files=[]→  files_processor             →  attachments_builder  →  messages_joiner.values
+            messages_joiner  →  system_concat  →  agent.messages
+            filters →  agent.retrieval_filters   (static, triggers the user gate)
+
+        Scheduling sequence that exposes the bug:
+        1. history_parser runs (query provided) → sends to messages_joiner.
+        2. files_processor runs with files=[] → returns {} (_NO_OUTPUT_PRODUCED).
+        3. attachments_builder receives _NO_OUTPUT_PRODUCED → BLOCKED (mandatory
+           processed_files socket never filled).
+        4. messages_joiner is DEFER_LAST (lazy-variadic; attachments_builder
+           has not executed yet → are_all_lazy_variadic_sockets_resolved=False).
+        5. system_concat is BLOCKED (mandatory messages from messages_joiner
+           never received).
+        6. agent is DEFER (static retrieval_filters triggered the user gate;
+           no mandatory sockets → can_component_run=True).
+
+        DEFER (priority=3) < DEFER_LAST (priority=4) → the scheduler picks the
+        Agent before messages_joiner gets a chance to run.  _add_missing_input_defaults
+        fills messages=None, and Agent._initialize_fresh_execution raises:
+            ValueError("No messages provided …")
+        """
+
+        @component
+        class HistoryParser:
+            @component.output_types(messages=list[ChatMessage])
+            def run(self, query: str) -> dict:
+                return {"messages": [ChatMessage.from_user(query)]}
+
+        @component
+        class FilesProcessor:
+            """Produces no output when given an empty file list."""
+
+            @component.output_types(processed_files=list[str])
+            def run(self, files: list[str]) -> dict:
+                if not files:
+                    return {}  # _NO_OUTPUT_PRODUCED → blocks AttachmentsBuilder
+                return {"processed_files": files}
+
+        @component
+        class AttachmentsBuilder:
+            """Builds attachment messages; mandatory processed_files from FilesProcessor."""
+
+            @component.output_types(prompt=list[ChatMessage])
+            def run(self, processed_files: list[str]) -> dict:
+                return {"prompt": [ChatMessage.from_user(f"Files: {processed_files}")]}
+
+        @component
+        class SystemConcat:
+            @component.output_types(output=list[ChatMessage])
+            def run(self, messages: list[ChatMessage]) -> dict:
+                return {"output": messages}
+
+        from haystack.components.joiners.list_joiner import ListJoiner
+
+        agent = self._make_agent(search_tool)
+
+        pipeline = Pipeline()
+        pipeline.add_component("history_parser", HistoryParser())
+        pipeline.add_component("files_processor", FilesProcessor())
+        pipeline.add_component("attachments_builder", AttachmentsBuilder())
+        pipeline.add_component("messages_joiner", ListJoiner(list[ChatMessage]))
+        pipeline.add_component("system_concat", SystemConcat())
+        pipeline.add_component("agent", agent)
+
+        pipeline.connect("history_parser.messages", "messages_joiner.values")
+        pipeline.connect("files_processor.processed_files", "attachments_builder.processed_files")
+        pipeline.connect("attachments_builder.prompt", "messages_joiner.values")
+        pipeline.connect("messages_joiner.values", "system_concat.messages")
+        pipeline.connect("system_concat.output", "agent.messages")
+
+        # files=[] → files_processor produces no output → attachments_builder BLOCKED
+        # → messages_joiner stays DEFER_LAST → system_concat BLOCKED
+        # → agent (DEFER) runs first without messages → ValueError
+        pipeline.run(
+            data={
+                "history_parser": {"query": "What case law applies?"},
+                "files_processor": {"files": []},  # empty → no output
+                "agent": {"retrieval_filters": {"field": "date", "value": "2024-01-01"}},
+            }
+        )

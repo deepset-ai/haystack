@@ -355,6 +355,7 @@ export default {
             id: 'pipeline-components/fetchers'
           },
           items: [
+            'pipeline-components/fetchers/firecrawlcrawler',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
@@ -578,6 +579,13 @@ export default {
           label: 'Tools',
           items: [
             'pipeline-components/tools/toolinvoker',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Translators',
+          items: [
+            'pipeline-components/translators/laradocumenttranslator',
           ],
         },
         {
