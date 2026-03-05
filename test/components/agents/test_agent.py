@@ -1419,15 +1419,6 @@ class TestRegisterPromptVariables:
 
 
 class TestInitializeFreshExecution:
-    def test_initialize_fresh_execution_raises_when_no_messages_and_no_prompt(self, make_agent):
-        agent = make_agent()
-        with pytest.raises(
-            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
-        ):
-            agent._initialize_fresh_execution(
-                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
-            )
-
     def test_initialize_fresh_execution_raises_with_init_run_mismatch(self, make_agent):
         agent = make_agent(system_prompt="Plain init prompt.")
         with pytest.raises(ValueError, match="no system prompt builder is initialized"):
@@ -1550,7 +1541,7 @@ class TestPrompts:
 
     def test_runtime_user_prompt_overrides_init_prompt(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Default prompt for {{city}}."))
-        result = agent.run(user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
+        result = agent.run(messages=[], user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Runtime prompt for Berlin."
 
@@ -1581,7 +1572,7 @@ class TestPrompts:
         assert agent._system_chat_prompt_builder is not None
         assert agent._user_chat_prompt_builder is not None
 
-        result = agent.run(project="Haystack", topic="pipelines")
+        result = agent.run(messages=[], project="Haystack", topic="pipelines")
         messages = result["messages"]
         assert messages[0].is_from(ChatRole.SYSTEM)
         assert messages[0].text == "You help users of Haystack."
