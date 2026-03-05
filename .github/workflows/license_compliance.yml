@@ -27,11 +27,6 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: fail here
-        run: |
-          echo "fail here"
-          exit 1
-
       - name: Get direct dependencies
         run: |
           pip install toml
