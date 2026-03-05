@@ -1275,6 +1275,32 @@ Output:
 }
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS = [
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5",
+    "gpt-5.1",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "gpt-5-pro",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-4-turbo",
+    "gpt-4",
+    "gpt-3.5-turbo",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://developers.openai.com/api/docs/models for the full list and snapshot IDs.
+
 #### __init__
 
 ```python
