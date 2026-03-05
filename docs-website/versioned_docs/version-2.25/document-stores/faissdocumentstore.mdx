@@ -81,3 +81,72 @@ another_store.load("my_faiss_index")
 ## Supported Retrievers
 
 [`FAISSEmbeddingRetriever`](../pipeline-components/retrievers/faissembeddingretriever.mdx): Retrieves documents from `FAISSDocumentStore` based on query embeddings.
+
+
+### Fixing OpenMP Runtime Conflicts on macOS
+
+#### Symptoms
+
+You may encounter one or both of the following errors at runtime:
+
+```
+OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib already initialized.
+OMP: Hint This means that multiple copies of the OpenMP runtime have been linked into the program.
+```
+
+```
+resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+```
+
+If setting `OMP_NUM_THREADS=1` prevents the crash, the root cause is **multiple OpenMP runtimes loaded simultaneously**. Each runtime maintains its own thread pool and thread-local storage (TLS). When two runtimes spin up worker threads at the same time, they corrupt each other's memory — causing segfaults at `N > 1` threads.
+
+---
+
+#### Diagnosis
+
+First, find how many copies of `libomp.dylib` exist in your virtual environment:
+
+```bash
+find /path/to/your/.venv -name "libomp.dylib" 2>/dev/null
+```
+
+If you see more than one, e.g.:
+
+```
+.venv/lib/pythonX.Y/site-packages/torch/lib/libomp.dylib
+.venv/lib/pythonX.Y/site-packages/sklearn/.dylibs/libomp.dylib
+.venv/lib/pythonX.Y/site-packages/faiss/.dylibs/libomp.dylib
+```
+
+you need to consolidate them into a single runtime.
+
+---
+
+#### Fix
+
+The solution is to pick one canonical `libomp.dylib` (torch's is a good choice) and replace all other copies with symlinks pointing to it.
+
+For each duplicate, delete the copy and replace it with a symlink:
+
+```bash
+# Delete the duplicate
+rm /path/to/.venv/lib/pythonX.Y/site-packages/<package>/.dylibs/libomp.dylib
+
+# Replace with a symlink to the canonical copy
+ln -s /path/to/.venv/lib/pythonX.Y/site-packages/torch/lib/libomp.dylib \
+      /path/to/.venv/lib/pythonX.Y/site-packages/<package>/.dylibs/libomp.dylib
+```
+
+Repeat for every duplicate found. Because these packages use `@loader_path`-relative references to load `libomp.dylib`, the symlink will be transparently resolved to the single canonical runtime at load time.
+
+---
+
+#### Verify
+
+After applying the fix, confirm only one unique `libomp.dylib` is being referenced:
+
+```bash
+find /path/to/your/.venv -name "*.so" | xargs otool -L 2>/dev/null | grep libomp | sort -u
+```
+
+All entries should resolve to the same canonical path. You should now be able to run without `OMP_NUM_THREADS=1`.
