@@ -247,7 +247,8 @@ jobs:
         run: hatch run test:integration-only-fast
 
   notify-slack:
-    if: failure() && github.ref_name == 'main'
+    if: failure()
+    #  #&& github.ref_name == 'main'
     needs:
       - check-imports
       - mypy
