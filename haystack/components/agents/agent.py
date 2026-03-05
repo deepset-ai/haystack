@@ -288,6 +288,7 @@ class Agent:
         self._state_schema = state_schema or {}
 
         # Initialize state schema
+        # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
         resolved_state_schema = dict(self._state_schema)
         if resolved_state_schema.get("messages") is None:
             resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
@@ -754,6 +755,7 @@ class Agent:
             )
 
         with self._create_agent_span() as span:
+            # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
@@ -987,6 +989,7 @@ class Agent:
             )
 
         with self._create_agent_span() as span:
+            # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
