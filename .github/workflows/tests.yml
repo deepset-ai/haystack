@@ -58,7 +58,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -81,7 +81,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -133,7 +133,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -180,7 +180,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -210,7 +210,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -249,7 +249,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -281,7 +281,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref_name == 'main'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 

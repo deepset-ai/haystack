@@ -27,6 +27,11 @@ jobs:
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
+      - name: fail here
+        run: |
+          echo "fail here"
+          exit 1
+
       - name: Get direct dependencies
         run: |
           pip install toml
@@ -58,6 +63,6 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure()
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

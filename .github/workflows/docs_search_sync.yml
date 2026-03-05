@@ -48,6 +48,6 @@ jobs:
 
       - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'
-        uses: ./.github/actions/notify_slack
+        uses: deepset-ai/notify-slack-action@v1
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
