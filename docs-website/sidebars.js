@@ -104,6 +104,7 @@ export default {
       label: 'Document Stores',
       items: [
         'document-stores/inmemorydocumentstore',
+        'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
         'document-stores/chromadocumentstore',
@@ -113,6 +114,7 @@ export default {
           href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
         },
         'document-stores/elasticsearch-document-store',
+        'document-stores/faissdocumentstore',
         {
           type: 'link',
           label: 'LanceDBDocumentStore',
@@ -353,6 +355,7 @@ export default {
             id: 'pipeline-components/fetchers'
           },
           items: [
+            'pipeline-components/fetchers/firecrawlcrawler',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
@@ -510,6 +513,7 @@ export default {
             id: 'pipeline-components/retrievers'
           },
           items: [
+            'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
             'pipeline-components/retrievers/azureaisearchbm25retriever',
@@ -519,6 +523,7 @@ export default {
             'pipeline-components/retrievers/chromaqueryretriever',
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
+            'pipeline-components/retrievers/faissembeddingretriever',
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
@@ -574,6 +579,13 @@ export default {
           label: 'Tools',
           items: [
             'pipeline-components/tools/toolinvoker',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Translators',
+          items: [
+            'pipeline-components/translators/laradocumenttranslator',
           ],
         },
         {

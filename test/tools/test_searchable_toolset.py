@@ -690,6 +690,70 @@ class TestSearchableToolsetLazyToolset:
         assert any(t.name == "eager_0" for t in toolset._catalog)
 
 
+class TestSearchableToolsetCustomSearchTool:
+    """Tests for customizing the bootstrap search tool."""
+
+    def test_invalid_parameters_description_key(self):
+        """Test that invalid parameter keys raise ValueError."""
+        with pytest.raises(ValueError, match="Invalid search_tool_parameters_description keys"):
+            SearchableToolset(catalog=[], search_tool_parameters_description={"invalid_key": "some description"})
+
+    def test_custom_tool_behavior(self, large_catalog):
+        """Test custom name, description, parameter overrides, collection access, and discovery."""
+        toolset = SearchableToolset(
+            catalog=large_catalog,
+            search_tool_name="find_tools",
+            search_tool_description="Find tools by keyword.",
+            search_tool_parameters_description={"tool_keywords": "Keywords.", "k": "How many."},
+        )
+        toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
+
+        # Custom name and description applied
+        assert toolset._bootstrap_tool.name == "find_tools"
+        assert toolset._bootstrap_tool.description == "Find tools by keyword."
+
+        # Both parameter descriptions overridden
+        props = toolset._bootstrap_tool.parameters["properties"]
+        assert props["tool_keywords"]["description"] == "Keywords."
+        assert props["k"]["description"] == "How many."
+
+        # Collection access uses custom name
+        assert "find_tools" in toolset
+        assert "search_tools" not in toolset
+        assert toolset[0].name == "find_tools"
+
+        # Discovery still works
+        result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
+        assert "get_weather" in result
+        assert "get_weather" in toolset._discovered_tools
+
+    def test_serialization(self, large_catalog):
+        """Test to_dict includes all fields and serde roundtrip preserves settings."""
+        toolset = SearchableToolset(
+            catalog=large_catalog,
+            search_tool_name="find_tools",
+            search_tool_description="Custom description.",
+            search_tool_parameters_description={"tool_keywords": "Custom param desc."},
+        )
+
+        # to_dict includes custom values
+        data = toolset.to_dict()
+        assert data["data"]["search_tool_name"] == "find_tools"
+        assert data["data"]["search_tool_description"] == "Custom description."
+        assert data["data"]["search_tool_parameters_description"] == {"tool_keywords": "Custom param desc."}
+
+        # Roundtrip preserves behavior
+        restored = SearchableToolset.from_dict(data)
+        restored.warm_up()
+        assert restored._bootstrap_tool is not None
+        assert restored._bootstrap_tool.name == "find_tools"
+        assert restored._bootstrap_tool.description == "Custom description."
+        assert restored._bootstrap_tool.parameters["properties"]["tool_keywords"]["description"] == "Custom param desc."
+        result = restored._bootstrap_tool.invoke(tool_keywords="weather")
+        assert "get_weather" in result
+
+
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestSearchableToolsetAgentIntegration:

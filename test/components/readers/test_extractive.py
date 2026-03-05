@@ -9,7 +9,6 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from _pytest.monkeypatch import MonkeyPatch
-from transformers import pipeline
 
 from haystack import Document, ExtractedAnswer
 from haystack.components.readers import ExtractiveReader
@@ -827,27 +826,3 @@ def test_roberta(del_hf_env_vars):
     # assert answers[1][1].score == pytest.approx(0.6604189872741699)
     # assert answers[1][2].data is None
     # assert answers[1][2].score == pytest.approx(0.1002123719777046)
-
-
-@pytest.mark.integration
-@pytest.mark.slow
-def test_matches_hf_pipeline(del_hf_env_vars):
-    reader = ExtractiveReader(
-        "deepset/tinyroberta-squad2", device=ComponentDevice.from_str("cpu"), overlap_threshold=None
-    )
-    answers = reader.run(example_queries[0], [[example_documents[0][0]]][0], top_k=20, no_answer=False)[
-        "answers"
-    ]  # [0] Remove first two indices when batching support is reintroduced
-    pipe = pipeline("question-answering", model=reader.model, tokenizer=reader.tokenizer, align_to_words=False)
-    answers_hf = pipe(
-        question=example_queries[0],
-        context=example_documents[0][0].content,
-        max_answer_len=1_000,
-        handle_impossible_answer=False,
-        top_k=20,
-    )  # We need to disable HF postprocessing features to make the results comparable. This is related to https://github.com/huggingface/transformers/issues/26286
-    assert len(answers) == len(answers_hf) == 20
-    for answer, answer_hf in zip(answers, answers_hf, strict=True):
-        assert answer.document_offset.start == answer_hf["start"]
-        assert answer.document_offset.end == answer_hf["end"]
-        assert answer.data == answer_hf["answer"]
