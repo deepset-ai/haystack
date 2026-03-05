@@ -1631,7 +1631,8 @@ class TestAgentUserPromptInPipeline:
 
 class TestAgentPipelineStaticToolInput:
     """
-    Regression tests for the scheduling bug
+    Regression test for the scheduling bug introduced by making the 'messages'
+    run parameter non-required in https://github.com/deepset-ai/haystack/pull/10638.
 
         pipeline inputs:
             query    →  history_parser          # feeds the messages chain
