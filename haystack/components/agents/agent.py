@@ -212,6 +212,7 @@ class Agent:
 
     # The template variables 'language' and 'document' become inputs to the run method
     result = agent.run(
+        messages=[],
         language="French",
         document="The weather is lovely today and the sun is shining.",
     )
@@ -467,7 +468,7 @@ class Agent:
 
     def _initialize_fresh_execution(
         self,
-        messages: list[ChatMessage] | None,
+        messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
@@ -497,12 +498,6 @@ class Agent:
         """
         user_prompt = user_prompt or self.user_prompt
         system_prompt = system_prompt or self.system_prompt
-        if messages is None and user_prompt is None and system_prompt is None:
-            raise ValueError(
-                "No messages provided to the Agent and neither user_prompt nor system_prompt is set. "
-                "Please provide at least one of these inputs."
-            )
-
         messages = messages or []
 
         if user_prompt is not None:
@@ -677,7 +672,7 @@ class Agent:
 
     def run(  # noqa: PLR0915
         self,
-        messages: list[ChatMessage] | None = None,
+        messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
@@ -907,7 +902,7 @@ class Agent:
 
     async def run_async(  # noqa: PLR0915
         self,
-        messages: list[ChatMessage] | None = None,
+        messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
