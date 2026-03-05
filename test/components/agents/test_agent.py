@@ -1644,19 +1644,22 @@ class TestAgentPipelineStaticToolInput:
         Path B (blocked): files=[] → files_processor (returns {}) → attachments_builder ──╳──→ messages_joiner.values
 
         messages_joiner.values → agent.messages
-        filters → agent.retrieval_filters   (static input, triggers the user gate)
+        filters → agent.retrieval_filters   (static input from pipeline.run data)
 
     The bug
     -------
     1. history_parser runs → sends messages to messages_joiner.
     2. files_processor runs with files=[] → returns {} (no output).
     3. attachments_builder is BLOCKED — its mandatory processed_files input never arrives.
-    4. messages_joiner gets DEFER_LAST (priority=4): it has a lazy-variadic socket and attachments_builder hasn't
-       executed yet, so the joiner doesn't know if more data might still come. It keeps waiting.
-    5. agent gets DEFER (priority=3): retrieval_filters was sent as a static input which triggers the user gate,
-       can_component_run() returns True (no mandatory sockets), and it has no unresolved lazy-variadic sockets.
-    6. Since DEFER (3) < DEFER_LAST (4), the scheduler picks the Agent before the joiner runs.
-       The Agent executes without messages and raises:
+    4. messages_joiner gets DEFER_LAST (priority=4): it has a lazy-variadic socket and
+       attachments_builder hasn't executed yet, so the joiner doesn't know if more data
+       might still come. It keeps waiting.
+    5. agent gets DEFER (priority=3): retrieval_filters arrives with sender=None (static
+       pipeline input), which satisfies has_any_trigger() on the first visit. The Agent
+       has no mandatory sockets, so can_component_run() returns True. It also has no
+       unresolved lazy-variadic sockets, so it gets DEFER rather than DEFER_LAST.
+    6. Since DEFER (3) < DEFER_LAST (4), the scheduler picks the Agent before the joiner
+       runs. The Agent executes without messages and raises:
 
         ValueError("No messages provided to the Agent and neither
                     user_prompt nor system_prompt is set.")
