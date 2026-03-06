@@ -545,8 +545,14 @@ class Agent:
             # Only forward the prompt kwargs to the prompt builder
             prompt_kwargs = {var: kwargs[var] for var in self._user_chat_prompt_builder.variables if var in kwargs}
             user_messages = self._user_chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
-            if len(user_messages) != 1 or not user_messages[0].is_from(ChatRole.USER):
-                raise ValueError("user_prompt must render to exactly one user message.")
+            if len(user_messages) != 1:
+                raise ValueError(
+                    f"user_prompt must render to exactly one user message. Got {len(user_messages)} messages."
+                )
+            if not user_messages[0].is_from(ChatRole.USER):
+                raise ValueError(
+                    f"user_prompt must render to a user message. Got a message with role {user_messages[0].role}."
+                )
             messages = messages + user_messages
 
         if system_prompt is not None:
@@ -564,8 +570,15 @@ class Agent:
                 system_messages = self._system_chat_prompt_builder.run(template=system_prompt, **prompt_kwargs)[
                     "prompt"
                 ]
-                if len(system_messages) != 1 or not system_messages[0].is_from(ChatRole.SYSTEM):
-                    raise ValueError("system_prompt must render to exactly one system message.")
+                if len(system_messages) != 1:
+                    raise ValueError(
+                        f"system_prompt must render to exactly one system message. Got {len(system_messages)} messages."
+                    )
+                if not system_messages[0].is_from(ChatRole.SYSTEM):
+                    raise ValueError(
+                        "system_prompt must render to a system message. "
+                        f"Got a message with role {system_messages[0].role}."
+                    )
                 messages = system_messages + messages
             else:
                 messages = [ChatMessage.from_system(system_prompt)] + messages

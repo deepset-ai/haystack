@@ -1443,13 +1443,13 @@ class TestInitializeFreshExecution:
 
     def test_initialize_fresh_execution_raises_with_wrong_role(self, make_agent):
         agent = make_agent(system_prompt=_user_msg("This is a user message, not system."))
-        with pytest.raises(ValueError, match="system_prompt must render to exactly one system message"):
+        with pytest.raises(ValueError, match="system_prompt must render to a system message"):
             agent._initialize_fresh_execution(
                 messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
             )
 
         agent = make_agent(user_prompt=_sys_msg("This is a user message, not system."))
-        with pytest.raises(ValueError, match="user_prompt must render to exactly one user message"):
+        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
             agent._initialize_fresh_execution(
                 messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
             )
