@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -57,6 +58,9 @@ from haystack.utils.callable_serialization import deserialize_callable, serializ
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
+
+# Regex to detect the Jinja2 chat template syntax
+_JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
@@ -242,12 +246,17 @@ class Agent:
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-        :param system_prompt: System prompt for the agent.
-        :param user_prompt: User prompt for the agent. If provided this is appended to the messages provided at runtime.
+        :param system_prompt: System prompt for the agent. Can be a plain string or a Jinja2 string template.
+            For details on the supported template syntax, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
+        :param user_prompt: User prompt for the agent, defined as a Jinja2 string template. If provided, this is
+            appended to the messages provided at runtime.
+            For details on the supported template syntax, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
         :param required_variables:
-            List variables that must be provided as input to user_prompt.
+            List variables that must be provided as input to user_prompt or system_prompt.
             If a variable listed as required is not provided, an exception is raised.
-            If set to `"*"`, all variables found in the prompt are required. Optional.
+            If set to `"*"`, all variables found in the prompts are required. Optional.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -316,9 +325,16 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        self._chat_prompt_builder: ChatPromptBuilder | None = self._initialize_chat_prompt_builder(
-            user_prompt, required_variables
+        # required_variables is initially set to [] and populated later by _register_prompt_variables
+        self._user_chat_prompt_builder = (
+            ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
         )
+        # Only create a system prompt builder when the prompt uses Jinja2 message syntax
+        self._system_chat_prompt_builder: ChatPromptBuilder | None = None
+        if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+            self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
+
+        self._register_prompt_variables()
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
@@ -339,38 +355,57 @@ class Agent:
 
         self._is_warmed_up = False
 
-    def _initialize_chat_prompt_builder(
-        self, user_prompt: str | None, required_variables: list[str] | Literal["*"] | None
-    ) -> ChatPromptBuilder | None:
+    def _register_prompt_variables(self) -> None:
         """
-        Initialize the ChatPromptBuilder if a user prompt is provided.
-        """
-        if user_prompt is None:
-            if required_variables is not None:
-                logger.warning(
-                    "The parameter required_variables is provided but user_prompt is not. "
-                    "Either provide a user_prompt or remove required_variables, it has otherwise no effect."
-                )
-            return None
+        Collect variables from both Chat Prompt Builders and register Agent inputs.
 
-        chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables=required_variables)
-        prompt_variables = chat_prompt_builder.variables
-        for var_name in prompt_variables:
+        Sets `required_variables` for both Chat Prompt Builders, checks for conflicts with state schema and
+        run parameters, and registers component inputs.
+        """
+        required_variables = self.required_variables
+
+        if (
+            required_variables is not None
+            and self._system_chat_prompt_builder is None
+            and self._user_chat_prompt_builder is None
+        ):
+            logger.warning(
+                "The parameter required_variables is provided but neither user_prompt nor system_prompt "
+                "contains template variables. Either provide a prompt with Jinja2 template variables "
+                "or remove required_variables, it has otherwise no effect."
+            )
+
+        all_variables: dict[str, list[str]] = {}
+        for builder, label in [
+            (self._system_chat_prompt_builder, "system_prompt"),
+            (self._user_chat_prompt_builder, "user_prompt"),
+        ]:
+            if builder is not None:
+                # set required_variables on the builder, filtered to its own variables
+                if required_variables == "*":
+                    builder.required_variables = "*"
+                elif isinstance(self.required_variables, list):
+                    builder.required_variables = [v for v in self.required_variables if v in builder.variables]
+
+                for var_name in builder.variables:
+                    all_variables.setdefault(var_name, []).append(label)
+
+        for var_name, sources in all_variables.items():
+            prompt_source = " and ".join(sources)
             if var_name in self.state_schema:
                 raise ValueError(
-                    f"Variable '{var_name}' from the user prompt is already defined in the state schema. "
-                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                    f"Variable '{var_name}' from {prompt_source} is already defined in the state schema. "
+                    "Please rename the variable or remove it from the prompt to avoid conflicts."
                 )
             if var_name in self._run_method_params:
                 raise ValueError(
-                    f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
-                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                    f"Variable '{var_name}' from {prompt_source} conflicts with input names in the run method. "
+                    "Please rename the variable or remove it from the prompt to avoid conflicts."
                 )
-            if required_variables == "*" or var_name in (required_variables or []):
+            if required_variables == "*" or (isinstance(required_variables, list) and var_name in required_variables):
                 component.set_input_type(self, name=var_name, type=Any)
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
-        return chat_prompt_builder
 
     def warm_up(self) -> None:
         """
@@ -501,19 +536,52 @@ class Agent:
         messages = messages or []
 
         if user_prompt is not None:
-            if self._chat_prompt_builder is None:
+            if self._user_chat_prompt_builder is None:
                 raise ValueError(
                     "user_prompt is provided but the ChatPromptBuilder is not initialized. "
                     "Please make sure a user_prompt is provided at initialization time."
                 )
 
             # Only forward the prompt kwargs to the prompt builder
-            prompt_kwargs = {var: kwargs[var] for var in self._chat_prompt_builder.variables if var in kwargs}
-            user_messages = self._chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
+            prompt_kwargs = {var: kwargs[var] for var in self._user_chat_prompt_builder.variables if var in kwargs}
+            user_messages = self._user_chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
+            if len(user_messages) != 1:
+                raise ValueError(
+                    f"user_prompt must render to exactly one user message. Got {len(user_messages)} messages."
+                )
+            if not user_messages[0].is_from(ChatRole.USER):
+                raise ValueError(
+                    f"user_prompt must render to a user message. Got a message with role {user_messages[0].role}."
+                )
             messages = messages + user_messages
 
         if system_prompt is not None:
-            messages = [ChatMessage.from_system(system_prompt)] + messages
+            if _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+                if self._system_chat_prompt_builder is None:
+                    raise ValueError(
+                        "system_prompt contains Jinja2 template syntax but no system prompt builder is initialized. "
+                        "Please make sure a system_prompt with Jinja2 template syntax is provided at initialization "
+                        "time."
+                    )
+
+                prompt_kwargs = {
+                    var: kwargs[var] for var in self._system_chat_prompt_builder.variables if var in kwargs
+                }
+                system_messages = self._system_chat_prompt_builder.run(template=system_prompt, **prompt_kwargs)[
+                    "prompt"
+                ]
+                if len(system_messages) != 1:
+                    raise ValueError(
+                        f"system_prompt must render to exactly one system message. Got {len(system_messages)} messages."
+                    )
+                if not system_messages[0].is_from(ChatRole.SYSTEM):
+                    raise ValueError(
+                        "system_prompt must render to a system message. "
+                        f"Got a message with role {system_messages[0].role}."
+                    )
+                messages = system_messages + messages
+            else:
+                messages = [ChatMessage.from_system(system_prompt)] + messages
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
