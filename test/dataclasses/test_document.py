@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
+from dataclasses import replace
 
 import pytest
 
@@ -114,8 +115,8 @@ def test_basic_equality_id():
 
     assert doc1 == doc2
 
-    doc1.id = "1234"
-    doc2.id = "5678"
+    doc1 = replace(doc1, id="1234")
+    doc2 = replace(doc2, id="5678")
 
     assert doc1 != doc2
 

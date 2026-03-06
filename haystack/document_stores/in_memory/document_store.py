@@ -10,7 +10,7 @@ import uuid
 from collections import Counter
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -432,8 +432,7 @@ class InMemoryDocumentStore:
             docs = list(self.storage.values())
 
         if not self.return_embedding:
-            for doc in docs:
-                doc.embedding = None
+            docs = [replace(doc, embedding=None) for doc in docs]
 
         return docs
 
