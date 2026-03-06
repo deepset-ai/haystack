@@ -59,8 +59,7 @@ jobs:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
         with:
-          source: .
-          workdir: docker
+          source: ./docker
           targets: base
           push: true
 
