@@ -29,6 +29,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     _convert_chat_completion_stream_output_to_streaming_chunk,
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
+    _resolve_schema_refs,
 )
 from haystack.dataclasses import ChatMessage, ImageContent, ReasoningContent, StreamingChunk, ToolCall
 from haystack.tools import Tool
@@ -1659,3 +1660,77 @@ class TestHuggingFaceAPIChatGenerator:
 
         assert streaming_chunk.content == "Hello"
         assert streaming_chunk.reasoning is None
+
+    def test_resolve_schema_refs_no_defs(self):
+        """Schema without $defs is returned as-is."""
+        schema = {"type": "object", "properties": {"name": {"type": "string"}}}
+        assert _resolve_schema_refs(schema) == schema
+
+    def test_resolve_schema_refs_expands_defs(self):
+        """Schema with $defs and $ref is expanded correctly."""
+        schema = {
+            "$defs": {
+                "User": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                    "required": ["name"],
+                }
+            },
+            "type": "object",
+            "properties": {"user": {"$ref": "#/$defs/User"}},
+            "required": ["user"],
+        }
+        resolved = _resolve_schema_refs(schema)
+        assert "$defs" not in resolved
+        assert "$ref" not in resolved["properties"]["user"]
+        assert resolved["properties"]["user"]["type"] == "object"
+        assert resolved["properties"]["user"]["properties"]["name"] == {"type": "string"}
+
+    def test_resolve_schema_refs_nested_refs(self):
+        """Schema with nested $ref references is expanded correctly."""
+        schema = {
+            "$defs": {
+                "Address": {
+                    "type": "object",
+                    "properties": {"street": {"type": "string"}},
+                },
+                "User": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "address": {"$ref": "#/$defs/Address"},
+                    },
+                },
+            },
+            "type": "object",
+            "properties": {"user": {"$ref": "#/$defs/User"}},
+        }
+        resolved = _resolve_schema_refs(schema)
+        assert "$defs" not in resolved
+        user = resolved["properties"]["user"]
+        assert user["properties"]["address"]["type"] == "object"
+        assert user["properties"]["address"]["properties"]["street"] == {"type": "string"}
+
+    def test_convert_tools_to_hfapi_tools_resolves_defs(self):
+        """Tool schemas with $defs are resolved before passing to HF API."""
+        tool = Tool(
+            name="get_user",
+            description="Get user info",
+            parameters={
+                "$defs": {
+                    "User": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                    }
+                },
+                "type": "object",
+                "properties": {"user": {"$ref": "#/$defs/User"}},
+            },
+            function=lambda user: user,
+        )
+        hf_tools = _convert_tools_to_hfapi_tools([tool])
+        assert hf_tools is not None
+        assert len(hf_tools) == 1
+        params = hf_tools[0].function.parameters or hf_tools[0].function.arguments
+        assert "$defs" not in params
+        assert params["properties"]["user"]["type"] == "object"
