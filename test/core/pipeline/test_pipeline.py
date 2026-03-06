@@ -192,7 +192,7 @@ class TestPipeline:
             # Here we purposely declare other_output which is not actually returned by the run() method
             @component.output_types(output=str, other_output=str)
             def run(self, required_input: str) -> dict[str, str]:
-                return {"output": "test"}
+                return {"output": "test", "other_outputs": "other_test"}
 
         @component
         class SimpleComponentTwoInputs:
@@ -211,6 +211,7 @@ class TestPipeline:
 
         pp.run({"first": {"required_input": "test"}})
         assert "Cannot run pipeline - the next component that is meant to run is blocked." in caplog.text
+        assert "Component name: 'second'\nComponent type: 'SimpleComponentTwoInputs'" in caplog.text
 
     def test_pipeline_ensure_inputs_are_deep_copied(self):
         """
