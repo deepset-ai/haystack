@@ -10,7 +10,6 @@ on:
   schedule:
     - cron: "0 0 * * *" # every day at midnight
 env:
-  CORE_DATADOG_API_KEY: ${{ secrets.CORE_DATADOG_API_KEY }}
   PYTHON_VERSION: "3.10"
 
 jobs:
@@ -57,37 +56,8 @@ jobs:
         if: ${{ always() }}
         run: echo "${{ steps.license_check_report.outputs.report }}"
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure())
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        # This step would fail when running in PRs opened from forks since
-        # secrets are not accessible.
-        # To prevent showing bogus failures in those PRs we skip the step.
-        # The workflow will fail in any case if the actual check fails in the previous steps.
-        if: (success() || failure()) && env.CORE_DATADOG_API_KEY != ''
-        uses: masci/datadog@v1
+      - name: Notify Slack on failure
+        if: failure()
+        uses: deepset-ai/notify-slack-action@v1
         with:
-          api-key: ${{ env.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.job }} in ${{ github.workflow }} workflow"
-              text: "License compliance check: direct dependencies only."
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
