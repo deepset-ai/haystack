@@ -14,6 +14,7 @@ from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
     _COMPONENT_VISITS,
+    _validate_component_output_keys,
     ComponentPriority,
     PipelineBase,
 )
@@ -94,6 +95,8 @@ class AsyncPipeline(PipelineBase):
 
             if not isinstance(outputs, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
+
+            _validate_component_output_keys(component_name, component, outputs)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
             span.set_content_tag(_COMPONENT_OUTPUT, outputs)
