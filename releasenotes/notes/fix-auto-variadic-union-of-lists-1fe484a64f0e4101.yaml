@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Allow auto-variadic promotion for union-of-list socket types in ``_make_socket_auto_variadic``.
+    This fixes an issue where connecting multiple outputs to inputs typed as a union of list types
+    (e.g. ``AnswerBuilder.replies`` with type ``list[str] | list[ChatMessage]``) would raise a
+    ``PipelineConnectError``.
