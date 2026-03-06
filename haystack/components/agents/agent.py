@@ -325,6 +325,7 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
+        # required_variables is initially set to [] and populated later by _register_prompt_variables
         self._user_chat_prompt_builder = (
             ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
         )
