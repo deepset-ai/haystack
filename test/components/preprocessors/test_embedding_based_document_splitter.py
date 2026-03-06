@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from dataclasses import replace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -311,9 +312,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
         # Mock the document embedder to return documents with embeddings
         def mock_run(documents):
-            for doc in documents:
-                doc.embedding = [1.0, 2.0, 3.0]  # Simple mock embedding
-            return {"documents": documents}
+            return {"documents": [replace(doc, embedding=[1.0, 2.0, 3.0]) for doc in documents]}
 
         mock_embedder.run = Mock(side_effect=mock_run)
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
@@ -331,9 +330,7 @@ class TestEmbeddingBasedDocumentSplitter:
 
         # Mock the document embedder to return documents with embeddings
         async def mock_run_async(documents):
-            for doc in documents:
-                doc.embedding = [1.0, 2.0, 3.0]  # Simple mock embedding
-            return {"documents": documents}
+            return {"documents": [replace(doc, embedding=[1.0, 2.0, 3.0]) for doc in documents]}
 
         mock_embedder.run_async = AsyncMock(side_effect=mock_run_async)
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)

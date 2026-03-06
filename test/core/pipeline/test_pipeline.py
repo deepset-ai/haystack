@@ -4,6 +4,7 @@
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 
 import pytest
 
@@ -238,9 +239,7 @@ class TestPipeline:
         class ModifyingComponent:
             @component.output_types(output=Document)
             def run(self, document: Document) -> dict[str, Document]:
-                # Modifies the incoming document inplace
-                document.content = "modified"
-                return {"output": document}
+                return {"output": replace(document, content="modified")}
 
         pp = Pipeline()
         pp.add_component("first", SimpleComponent())
@@ -276,8 +275,7 @@ class TestPipeline:
         class Mutator:
             @component.output_types(doc=Document)
             def run(self, doc: Document) -> dict:
-                doc.content = "mutated"
-                return {"doc": doc}
+                return {"doc": replace(doc, content="mutated")}
 
         pipe = Pipeline()
         pipe.add_component("producer", Producer())
