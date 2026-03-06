@@ -129,10 +129,6 @@ jobs:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
           fetch-depth: 0
-
-      - name: make it fail
-        run: exit 1
-
       - name: Get changed files
         id: files
         uses: tj-actions/changed-files@v47
@@ -246,9 +242,8 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-  notify-slack:
-    if: failure()
-    #  #&& github.ref_name == 'main'
+  notify-slack-on-failure:
+    if: failure() && github.ref_name == 'main'
     needs:
       - check-imports
       - mypy
