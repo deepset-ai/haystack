@@ -159,11 +159,16 @@ Initialize the agent component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that your agent should use. It must support tools.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-- **system_prompt** (<code>str | None</code>) – System prompt for the agent.
-- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided this is appended to the messages provided at runtime.
-- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to user_prompt.
+- **system_prompt** (<code>str | None</code>) – System prompt for the agent. Can be a plain string or a Jinja2 string template.
+  For details on the supported template syntax, refer to the
+  [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent, defined as a Jinja2 string template. If provided, this is
+  appended to the messages provided at runtime.
+  For details on the supported template syntax, refer to the
+  [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to user_prompt or system_prompt.
   If a variable listed as required is not provided, an exception is raised.
-  If set to `"*"`, all variables found in the prompt are required. Optional.
+  If set to `"*"`, all variables found in the prompts are required. Optional.
 - **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
   Can include "text" if the agent should return when it generates a message without tool calls,
   or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
