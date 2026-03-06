@@ -41,7 +41,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: $DOCKER_REPO_NAME
 
@@ -54,13 +54,12 @@ jobs:
             echo "Not a stable version"
           fi
       - name: Build base images
-        uses: docker/bake-action@v6
+        uses: docker/bake-action@v7
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
         with:
-          source: .
-          workdir: docker
+          source: ./docker
           targets: base
           push: true
 
