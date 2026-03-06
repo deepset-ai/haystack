@@ -18,6 +18,7 @@ from haystack.dataclasses import (
     StreamingChunk,
     SyncStreamingCallbackT,
     ToolCall,
+    ToolCallDelta,
     select_streaming_callback,
 )
 from haystack.dataclasses.streaming_chunk import FinishReason
@@ -199,11 +200,37 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
     # Extract reasoning content if present
     reasoning = _extract_reasoning_content(choice.delta)
 
+    # Extract tool call deltas if present
+    if choice.delta.tool_calls:
+        tool_calls_deltas = []
+        for tc in choice.delta.tool_calls:
+            tool_calls_deltas.append(
+                ToolCallDelta(
+                    index=tc.index,
+                    id=tc.id,
+                    tool_name=tc.function.name if tc.function else None,
+                    arguments=tc.function.arguments if tc.function and tc.function.arguments else None,
+                )
+            )
+        return StreamingChunk(
+            content=choice.delta.content or "",
+            meta={
+                "model": chunk.model,
+                "received_at": datetime.now().isoformat(),
+                "finish_reason": choice.finish_reason,
+            },
+            component_info=component_info,
+            index=tool_calls_deltas[0].index,
+            tool_calls=tool_calls_deltas,
+            start=tool_calls_deltas[0].tool_name is not None,
+            finish_reason=mapped_finish_reason,
+            reasoning=reasoning,
+        )
+
     return StreamingChunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
         component_info=component_info,
-        # Index must always be 0 since we don't allow tool calls in streaming mode.
         index=0 if choice.finish_reason is None else None,
         # start is True at the very beginning since first chunk contains role information + first part of the answer.
         start=len(previous_chunks) == 0,
@@ -382,8 +409,6 @@ class HuggingFaceAPIChatGenerator:
             msg = f"Unknown api_type {api_type}"
             raise ValueError(msg)
 
-        if tools and streaming_callback is not None:
-            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
 
         # handle generation kwargs setup
@@ -483,10 +508,10 @@ class HuggingFaceAPIChatGenerator:
         formatted_messages = [convert_message_to_hf_format(message) for message in messages]
 
         tools = tools or self.tools
-        if tools and self.streaming_callback:
-            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
+
+        hf_tools = _convert_tools_to_hfapi_tools(tools)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
@@ -494,9 +519,7 @@ class HuggingFaceAPIChatGenerator:
         )
 
         if streaming_callback:
-            return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
-
-        hf_tools = _convert_tools_to_hfapi_tools(tools)
+            return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback, hf_tools)
 
         return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
 
@@ -537,18 +560,16 @@ class HuggingFaceAPIChatGenerator:
         formatted_messages = [convert_message_to_hf_format(message) for message in messages]
 
         tools = tools or self.tools
-        if tools and self.streaming_callback:
-            raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
+
+        hf_tools = _convert_tools_to_hfapi_tools(tools)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
 
         if streaming_callback:
-            return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
-
-        hf_tools = _convert_tools_to_hfapi_tools(tools)
+            return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback, hf_tools)
 
         return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
@@ -557,10 +578,12 @@ class HuggingFaceAPIChatGenerator:
         messages: list[dict[str, str]],
         generation_kwargs: dict[str, Any],
         streaming_callback: SyncStreamingCallbackT,
+        tools: list["ChatCompletionInputTool"] | None = None,
     ):
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
             messages,
             stream=True,
+            tools=tools,
             stream_options=ChatCompletionInputStreamOptions(include_usage=True),
             **generation_kwargs,
         )
@@ -628,10 +651,12 @@ class HuggingFaceAPIChatGenerator:
         messages: list[dict[str, str]],
         generation_kwargs: dict[str, Any],
         streaming_callback: AsyncStreamingCallbackT,
+        tools: list["ChatCompletionInputTool"] | None = None,
     ):
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages,
             stream=True,
+            tools=tools,
             stream_options=ChatCompletionInputStreamOptions(include_usage=True),
             **generation_kwargs,
         )
