@@ -101,6 +101,7 @@ class OpenAIChatGenerator:
         "gpt-5.1",
         "gpt-5.2",
         "gpt-5.2-pro",
+        "gpt-5.4",
         "gpt-5-pro",
         "gpt-4.1",
         "gpt-4.1-mini",
