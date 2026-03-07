@@ -87,7 +87,7 @@ Read more about telemetry in Haystack or how you can opt out in [Haystack docs](
 
 ## 🖖 Community
 
-If you have a feature request or a bug report, feel free to open an [issue in GitHub](https://github.com/deepset-ai/haystack/issues). We regularly check these, so you can expect a quick response. If you'd like to discuss a topic or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.com/invite/VBpFzsgRVF). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
+If you have a feature request or a bug report, feel free to open an [issue in GitHub](https://github.com/deepset-ai/haystack/issues). We regularly check these, so you can expect a quick response. If you'd like to discuss a topic or get more general advice on how to make Haystack work for your project, you can start a thread in [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.com/invite/VBpFzsgRVF). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
 ## Contributing to Haystack
 
