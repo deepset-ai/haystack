@@ -59,6 +59,7 @@ class OpenAIResponsesChatGenerator:
 
     For details on OpenAI API parameters, see
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses).
+    For currently available models, see [OpenAI model docs](https://developers.openai.com/api/docs/models).
 
     ### Usage example
 
@@ -73,6 +74,23 @@ class OpenAIResponsesChatGenerator:
     print(response)
     ```
     """
+
+    SUPPORTED_MODELS = [
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5",
+        "gpt-5.1",
+        "gpt-5.2",
+        "gpt-5.2-pro",
+        "gpt-5-pro",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4o",
+        "gpt-4o-mini",
+    ]
+    """A non-exhaustive list of Responses API models supported by this component.
+    See https://developers.openai.com/api/docs/models for the full list and snapshot IDs."""
 
     def __init__(
         self,
