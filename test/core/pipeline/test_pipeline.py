@@ -310,3 +310,28 @@ class TestPipeline:
             ChatMessage.from_user("Hello, world!"),
             ChatMessage.from_assistant("Hello, world!"),
         ]
+
+    def test_auto_variadic_connection_to_prompt_builder_any_typed_input(self):
+        """Regression test for #10721: connecting multiple outputs to PromptBuilder.documents
+        (typed as Any) should succeed because _make_socket_auto_variadic now handles Any."""
+        from haystack.components.builders import PromptBuilder
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.retrievers import InMemoryBM25Retriever
+
+        store1 = InMemoryDocumentStore()
+        store1.write_documents([Document(content="Document from store 1")])
+        store2 = InMemoryDocumentStore()
+        store2.write_documents([Document(content="Document from store 2")])
+
+        template = (
+            "{% for doc in documents %}{{ doc.content }} {% endfor %}"
+            "Question: {{ query }}"
+        )
+        p = Pipeline()
+        p.add_component("retriever_1", InMemoryBM25Retriever(document_store=store1))
+        p.add_component("retriever_2", InMemoryBM25Retriever(document_store=store2))
+        p.add_component("prompt_builder", PromptBuilder(template=template))
+
+        # Both connections must succeed (previously the 2nd raised PipelineConnectError)
+        p.connect("retriever_1.documents", "prompt_builder.documents")
+        p.connect("retriever_2.documents", "prompt_builder.documents")
