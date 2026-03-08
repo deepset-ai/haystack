@@ -263,7 +263,7 @@ class LLMMetadataExtractor:
                 for idx, page in enumerate(pages["documents"]):
                     if idx + 1 in expanded_range:
                         content += page.content
-                doc_copy.content = content
+                doc_copy = replace(doc_copy, content=content)
             else:
                 doc_copy = document
 

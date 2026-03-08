@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -389,9 +390,7 @@ class ExtractiveReader:
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
             while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
-                answer = answers_without_query[i]
-                answer.query = queries[query_id]
-                current_answers.append(answer)
+                current_answers.append(replace(answers_without_query[i], query=queries[query_id]))
                 i += 1
             current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
             current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)

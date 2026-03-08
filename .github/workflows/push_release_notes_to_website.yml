@@ -28,7 +28,7 @@ jobs:
         run: |
           VERSION_NUMBER="${VERSION:1}"
           RELEASE_DATE=$(gh release view "$VERSION" --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt | split("T")[0]')
-          RELEASE_NOTES_PATH="content/release-notes/$VERSION.md"
+          RELEASE_NOTES_PATH="content/release-notes/$VERSION_NUMBER.md"
 
           {
             echo "---"

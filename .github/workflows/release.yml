@@ -140,21 +140,15 @@ jobs:
           BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
         run: .github/utils/prepare_release_notification.sh
 
-      - name: Send event to Datadog
-        uses: masci/datadog@v1
+      - name: Send release notification to Slack
+        uses: slackapi/slack-github-action@v2
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ steps.prepare-notification.outputs.title }}"
-              text: "${{ steps.prepare-notification.outputs.event_text }}"
-              alert_type: "${{ steps.prepare-notification.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "version:${{ inputs.version }}"
-                - "released_rc:${{ steps.prepare-notification.outputs.released_rc }}"
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ steps.prepare-notification.outputs.text }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "${{ steps.prepare-notification.outputs.text }}"

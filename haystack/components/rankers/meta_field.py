@@ -4,6 +4,7 @@
 
 from collections import defaultdict
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any, Literal
 
 from dateutil.parser import parse as date_parse
@@ -401,10 +402,9 @@ class MetaFieldRanker:
                 scores_map[document.id] += score * (1 - weight)
                 scores_map[sorted_doc.id] += self._calc_linear_score(rank=i, amount=len(sorted_documents)) * weight
 
-        for document in documents:
-            document.score = scores_map[document.id]
+        scored_docs = [replace(doc, score=scores_map[doc.id]) for doc in documents]
 
-        return sorted(documents, key=lambda doc: doc.score if doc.score else -1, reverse=True)
+        return sorted(scored_docs, key=lambda doc: doc.score if doc.score else -1, reverse=True)
 
     @staticmethod
     def _calculate_rrf(rank: int, k: int = 61) -> float:

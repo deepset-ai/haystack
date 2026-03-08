@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from copy import deepcopy
+from dataclasses import replace
 from typing import Any, Literal
 
 from jinja2.sandbox import SandboxedEnvironment
@@ -267,9 +267,8 @@ class ChatPromptBuilder:
                         raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
                     compiled_template = self._env.from_string(message.text)
                     rendered_text = compiled_template.render(template_variables_combined)
-                    # deep copy the message to avoid modifying the original message
-                    rendered_message: ChatMessage = deepcopy(message)
-                    rendered_message._content = [TextContent(text=rendered_text)]
+                    # use dataclasses.replace to avoid in-place mutation of the original message
+                    rendered_message: ChatMessage = replace(message, _content=[TextContent(text=rendered_text)])
                     processed_messages.append(rendered_message)
                 else:
                     processed_messages.append(message)

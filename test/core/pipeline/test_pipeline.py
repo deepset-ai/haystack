@@ -276,6 +276,7 @@ class TestPipeline:
         class Mutator:
             @component.output_types(doc=Document)
             def run(self, doc: Document) -> dict:
+                # Modifies the incoming document inplace
                 doc.content = "mutated"
                 return {"doc": doc}
 

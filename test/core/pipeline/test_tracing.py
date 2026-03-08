@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from unittest.mock import ANY
 
 import pytest
@@ -163,8 +164,7 @@ class TestTracing:
         class MutatingComponent:
             @component.output_types(doc=Document)
             def run(self, doc: Document) -> dict:
-                doc.content = "mutated"
-                return {"doc": doc}
+                return {"doc": replace(doc, content="mutated")}
 
         pipe = pipeline_class()
         pipe.add_component("mutator", MutatingComponent())
