@@ -955,7 +955,7 @@ class PipelineBase:  # noqa: PLW1641
         We automatically set the receiver socket as lazy variadic if:
             - it has at least one sender already connected
             - it's not already variadic
-            - its type is list or Optional[list]
+            - its type is list, Optional[list], or Any
 
         NOTE: We also disable wrapping inputs into list for these auto-variadic sockets, so the sender outputs match the
         type of the receiver socket.
@@ -975,8 +975,9 @@ class PipelineBase:  # noqa: PLW1641
             if len(non_none_args) == 1:
                 origin = _safe_get_origin(non_none_args[0])
 
-        # If the origin is list, we can make the socket lazy variadic
-        if origin == list:
+        # If the origin is list, or the type is Any (which is compatible with
+        # any type including lists), we can make the socket lazy variadic
+        if origin == list or receiver_socket.type is Any:
             receiver_socket.is_lazy_variadic = True
             receiver_socket.wrap_input_in_list = False
 
