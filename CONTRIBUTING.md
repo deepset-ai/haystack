@@ -9,14 +9,27 @@ and smooth out the experience for all involved. The community looks forward to y
 
 > [!TIP]
 > If you like Haystack but just don't have time to contribute, that's fine. There are other easy ways to support the
-> project and show your appreciation, which we would also be very happy about:
-> - Star this repository
-> - Tweet about it
-> - Mention Haystack at local meetups and tell your friends/colleagues
+> project and show your appreciation: star this repository ⭐, mention Haystack at local meetups and tell your
+> friends/colleagues, or share what you build and tag [Haystack on X (Twitter)](https://x.com/Haystack_ai) and
+> [Haystack on LinkedIn](https://www.linkedin.com/showcase/haystack-ai-framework) — we'd love to see it!
+
+## Your first PR — high-level to-do list
+
+Use this checklist to stay on track for your first code PR:
+
+- **Pick an issue** — Choose one labeled [good first issue](https://github.com/deepset-ai/haystack/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) or [contributions wanted](https://github.com/deepset-ai/haystack/issues?q=is%3Aissue%20state%3Aopen%20label%3A"Contributions%20wanted!"). Avoid issues marked or commented as [handled internally](#issues-not-open-for-external-contributions).
+- **Fork and clone** — [Clone the repository](#clone-the-git-repository), run `pre-commit install`, and create a branch.
+- **Set up and run** — [Set up your development environment](#setting-up-your-development-environment), run unit tests with `hatch run test:unit` and run quality checks with `hatch run test:types` and `hatch run fmt`.
+- **Implement and test** — Make your changes, add or update tests as needed, and ensure tests and pre-commit checks pass locally.
+- **Documentation** — If your change adds or alters user-facing behavior, add a new docs page or update the relevant one in `docs-website/` (edit under `docs/` for the next release; add new pages to `sidebars.js`). See the [Documentation Contributing Guide](docs-website/CONTRIBUTING.md) for where to edit, frontmatter, and navigation.
+- **Release notes** — Add a release note under `releasenotes/notes` with `hatch run release-note your-change-name` (see [Release notes](#release-notes)); maintainers can add `ignore-for-release-notes` for tests-only or CI-only changes.
+- **Open the PR** — Use a [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) title, fill the [PR template](.github/pull_request_template.md), and if the PR was fully AI-generated, add a [short disclaimer](#using-ai-assistants-to-contribute). Enable "Allow edits and access to secrets by maintainers" on the PR.
+- **Before submitting** — Fix any [CI](#ci-continuous-integration) failures and address review feedback.
 
 **Table of Contents**
 
 - [Contributing to Haystack](#contributing-to-haystack)
+  - [Your first PR — high-level to-do list](#your-first-pr--high-level-to-do-list)
   - [Code of Conduct](#code-of-conduct)
   - [I Have a Question](#i-have-a-question)
   - [Reporting Bugs](#reporting-bugs)
@@ -28,6 +41,9 @@ and smooth out the experience for all involved. The community looks forward to y
   - [Contributing to Documentation](#contributing-to-documentation)
   - [Contribute code](#contribute-code)
     - [Where to start](#where-to-start)
+    - [Issues not open for external contributions](#issues-not-open-for-external-contributions)
+    - [Example high-quality contributions](#example-high-quality-contributions)
+    - [Using AI assistants to contribute](#using-ai-assistants-to-contribute)
     - [Setting up your development environment](#setting-up-your-development-environment)
     - [Clone the git repository](#clone-the-git-repository)
     - [Run the tests locally](#run-the-tests-locally)
@@ -49,15 +65,11 @@ By participating, you are expected to uphold this code. Please report unacceptab
 
 ## I Have a Question
 
-> [!TIP]
-> If you want to ask a question, we assume that you have read the available [Documentation](https://docs.haystack.deepset.ai/docs/intro).
-
-Before you ask a question, it is best to search for existing [Issues](/issues) that might help you. In case you have
+Before you ask a question, it is best to search for existing [Issues](https://github.com/deepset-ai/haystack/issues) that might help you. In case you have
 found a suitable issue and still need clarification, you can write your question in this issue. It is also advisable to
 search the internet for answers first.
 
-If you then still feel the need to ask a question and need clarification, you can use one of our
-[Community Channels](https://haystack.deepset.ai/community), Discord, in particular, is often very helpful.
+If you then still feel the need to ask a question and need clarification, you can use [Haystack Discord Server](https://discord.com/invite/xYvH6drSmA)
 
 ## Reporting Bugs
 
@@ -65,14 +77,14 @@ If you then still feel the need to ask a question and need clarification, you ca
 
 A good bug report shouldn't leave others needing to chase you up for more information. Therefore, we ask you to
 investigate carefully, collect information, and describe the issue in detail in your report. Please complete the
-following steps in advance to help us fix any potential bug as fast as possible.
+following steps in advance to help us fix any potential bugs as fast as possible.
 
 - Make sure that you are using the latest version.
-- Determine if your bug is really a bug and not an error on your side, for example using incompatible versions.
+- Determine if your bug is really a bug and not an error on your side, for example, using incompatible versions.
   Make sure that you have read the [documentation](https://docs.haystack.deepset.ai/docs/intro). If you are looking
   for support, you might want to check [this section](#i-have-a-question).
 - To see if other users have experienced (and potentially already solved) the same issue you are having, check if there
-  is not already a bug report existing for your bug or error in the [bug tracker](/issues).
+  is not already a bug report existing for your bug or error in the [bug tracker](https://github.com/deepset-ai/haystack/issues).
 - Also make sure to search the internet (including Stack Overflow) to see if users outside of the GitHub community have
   discussed the issue.
 - Collect information about the bug:
@@ -84,13 +96,11 @@ following steps in advance to help us fix any potential bug as fast as possible.
 ### How Do I Submit a Good Bug Report?
 
 > [!IMPORTANT]
-> You must never report security-related issues, vulnerabilities, or bugs, including sensitive information to the issue
-> tracker, or elsewhere in public. Instead, sensitive bugs must be reported using [this link](https://github.com/deepset-ai/haystack/security/advisories/new).
->
+> You must never report security-related issues, vulnerabilities, or bugs, including sensitive information, to the issue tracker, or elsewhere in public. Instead, sensitive bugs must be reported using [this link](https://github.com/deepset-ai/haystack/security/advisories/new).
 
 We use GitHub issues to track bugs and errors. If you run into an issue with the project:
 
-- Open an [Issue of type Bug Report](/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=).
+- Open an [Issue of type Bug Report](https://github.com/deepset-ai/haystack/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=).
 - Explain the behavior you would expect and the actual behavior.
 - Please provide as much context as possible and describe the *reproduction steps* that someone else can follow to
   recreate the issue on their own. This usually includes your code. For good bug reports, you should isolate the problem
@@ -102,8 +112,8 @@ Once it's filed:
 - The project team will label the issue accordingly.
 - A team member will try to reproduce the issue with your provided steps. If there are no reproduction steps or no
   obvious way to reproduce the issue, the team will ask you for those steps.
-- If the team is able to reproduce the issue, the issue will scheduled for a fix or left to be
-  [implemented by someone](#your-first-code-contribution).
+- If the team is able to reproduce the issue, the issue will be scheduled for a fix or left to be
+  [implemented by someone](https://github.com/deepset-ai/haystack/issues?q=is%3Aissue%20state%3Aopen%20label%3A"Contributions%20wanted!").
 
 ## Suggesting Enhancements
 
@@ -116,7 +126,7 @@ find related suggestions.
 - Make sure that you are using the latest version.
 - Read the [documentation](https://docs.haystack.deepset.ai/docs/intro) carefully and find out if the functionality
   is already covered, maybe by an individual configuration.
-- Perform a [search](/issues) to see if the enhancement has already been suggested. If it has, add a comment to the
+- Perform a [search](https://github.com/deepset-ai/haystack/issues) to see if the enhancement has already been suggested. If it has, add a comment to the
   existing issue instead of opening a new one.
 - Find out whether your idea fits with the scope and aims of the project. It's up to you to make a strong case to
   convince the project's developers of the merits of this feature. Keep in mind that we want features that will be
@@ -125,10 +135,10 @@ find related suggestions.
 
 ### How Do I Submit a Good Enhancement Suggestion?
 
-Enhancement suggestions are tracked as GitHub issues of type [Feature request for existing integrations](/issues/new?assignees=&labels=feature+request&projects=&template=feature-request-for-existing-integrations.md&title=).
+Enhancement suggestions are tracked as GitHub issues of type [Feature request](https://github.com/deepset-ai/haystack/issues/new?template=feature_request.md).
 
 - Use a **clear and descriptive title** for the issue to identify the suggestion.
-- Fill the issue following the template
+- Fill in the issue following the template
 
 ## Contributing to Documentation
 
@@ -137,19 +147,43 @@ If you'd like to improve the documentation by fixing errors, clarifying explanat
 ## Contribute code
 
 > [!IMPORTANT]
-> When contributing to this project, you must agree that you have authored 100% of the content, that you have the
-> necessary rights to the content and that the content you contribute may be provided under the project license.
+> When contributing to this project, you must agree that you have authored 100% of the content, that you have the necessary rights to the content and that the content you contribute may be provided under the project license.
 
 ### Where to start
 
-If this is your first contribution, a good starting point is looking for an open issue that's marked with the label
+If this is your first code contribution, a good starting point is looking for an open issue that's marked with the label
 ["good first issue"](https://github.com/deepset-ai/haystack/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 The core contributors periodically mark certain issues as good for first-time contributors. Those issues are usually
-limited in scope, easily fixable and low priority, so there is absolutely no reason why you should not try fixing them,
-it's a good excuse to start looking into the project and a safe space for experimenting failure: if you don't get the
+limited in scope, easily fixable and low priority, so there is absolutely no reason why you should not try fixing them.
+It's a good excuse to start looking into the project and a safe space for experimenting failure: if you don't get the
 grasp of something, pick another one! Once you become comfortable contributing to Haystack, you can have a look at the
 list of issues marked as [contributions wanted](https://github.com/orgs/deepset-ai/projects/14/views/1) to look for your
 next contribution!
+
+### Issues not open for external contributions
+
+Some issues are handled internally by the core team and are **not open for external contributions**. You may see a
+comment on such issues like:
+
+> 👋 Hello there! This issue will be handled internally and isn't open for external contributions. If you'd like to contribute, please take a look at issues labeled **contributions welcome** or **good first issue**. We'd really appreciate it!
+
+> [!WARNING]
+> **Please do not open pull requests for issues that are marked or commented as handled internally.** Your work may not be merged. Instead, look for issues labeled [good first issue](https://github.com/deepset-ai/haystack/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) or [contributions wanted](https://github.com/deepset-ai/haystack/issues?q=is%3Aissue%20state%3Aopen%20label%3A"Contributions%20wanted!") — we'd love your help there!
+
+### Example high-quality contributions
+
+Looking at strong pull requests is a great way to learn our standards. Example high-quality PRs: [#9270](https://github.com/deepset-ai/haystack/pull/9270), [#9227](https://github.com/deepset-ai/haystack/pull/9227), [#9271](https://github.com/deepset-ai/haystack/pull/9271), [#8648](https://github.com/deepset-ai/haystack/pull/8648), [#8767](https://github.com/deepset-ai/haystack/pull/8767). Use them as references for structure, testing, documentation, and how to describe changes in the PR description and release notes.
+
+### Using AI assistants to contribute
+
+You may use AI assistants or agents to help you implement a contribution. Please use them wisely:
+
+- **Review and understand** all generated code before submitting. You are responsible for the contribution.
+- **Run tests and checks** locally (e.g. `hatch run test:unit`, `hatch run fmt`) so your PR meets our quality bar.
+- **If your PR was fully AI-generated**, add a short disclaimer in the PR description, for example: *"This PR was
+  fully generated with an AI assistant. I have reviewed the changes and run the relevant tests."*
+
+This helps maintainers and keeps the project ready for both human and AI contributors.
 
 ### Setting up your development environment
 
@@ -219,9 +253,7 @@ Lint GitHub Actions workflow files...................(no files to check)Skipped
 
 ### Run the tests locally
 
-Tests will automatically run in our CI for every commit you push to your PR on Github. In order to save precious CI time
-we encourage you to run the tests locally before pushing new commits to Github. From the root of the git repository,
-you can run all the unit tests like this:
+Tests will automatically run in our CI for every commit you push to your PR on Github. In order to save precious CI time, we encourage you to run the tests locally before pushing new commits to Github. From the root of the git repository, you can run all the unit tests like this:
 
 ```sh
 hatch run test:unit
@@ -259,6 +291,8 @@ To ease the review process, please follow the instructions in this paragraph whe
 
 - For the title, use the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/).
 - For the body, follow the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md) to describe and document your changes.
+- If you used an AI assistant and the PR was **fully AI-generated**, include a brief disclaimer in the PR description
+  (see [Using AI assistants to contribute](#using-ai-assistants-to-contribute)).
 
 ### Release notes
 
@@ -314,7 +348,7 @@ If all goes well, at the bottom of your PR page you should see something like th
 
 ![Successful CI](images/ci-success.png)
 
-If you see some red checks (like the following), then something didn't work, and action is needed from your side.
+If you see some red checks (like the following), then something didn't work, and action is needed on your side.
 
 ![Failed CI](images/ci-failure-example.png)
 
@@ -325,7 +359,7 @@ For example, in the case above, the CI will give you instructions on how to fix 
 
 ## Working from GitHub forks
 
-In order for maintainers to be able to help you, we usually ask contributors to give us push access to their fork.
+To help maintainers, we usually ask contributors to grant us push access to their fork.
 
 To do so, please verify that "Allow edits and access to secrets by maintainers" on the PR preview page is checked
 (you can check it later on the PR's sidebar once it's created).
