@@ -409,7 +409,7 @@ agent = Agent(
 result = agent.run(messages=[
     ChatMessage.from_user("What is 3 multiplied by 7, then add 5?")
 ])
-print(result["messages"][-1].text)`}</CodeBlock>
+print(result["messages"][-1].text) # or print(result["last_message"].text)`}</CodeBlock>
   </div>
   <div className="code-comparison__column">
     <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-anthropic langgraph
@@ -604,7 +604,7 @@ agent = Agent(
 result = agent.run(messages=[
     ChatMessage.from_user("Fetch the content from https://haystack.deepset.ai")
 ])
-print(result["messages"][-1].text)`}</CodeBlock>
+print(result["messages"][-1].text) # or print(result["last_message"].text)`}</CodeBlock>
   </div>
   <div className="code-comparison__column">
     <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-mcp-adapters langgraph langchain-anthropic
