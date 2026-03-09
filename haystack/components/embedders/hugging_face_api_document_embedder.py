@@ -142,6 +142,7 @@ class HuggingFaceAPIDocumentEmbedder:
             Separator used to concatenate the metadata fields to the document text.
         :param concurrency_limit:
             The maximum number of requests that should be allowed to run concurrently.
+            This parameter is only used in the `run_async` method.
         """
         huggingface_hub_import.check()
 
@@ -311,15 +312,20 @@ class HuggingFaceAPIDocumentEmbedder:
                 pbar.update(1)
                 return np_embeddings.tolist()
 
-        all_embeddings = [
-            *chain(
-                *await gather(
-                    *[_runner(texts_to_embed[i : i + batch_size]) for i in range(0, len(texts_to_embed), batch_size)]
+        try:
+            all_embeddings = [
+                *chain(
+                    *await gather(
+                        *[
+                            _runner(texts_to_embed[i : i + batch_size])
+                            for i in range(0, len(texts_to_embed), batch_size)
+                        ]
+                    )
                 )
-            )
-        ]
+            ]
+        finally:
+            pbar.close()
 
-        pbar.close()
         return all_embeddings
 
     @component.output_types(documents=list[Document])

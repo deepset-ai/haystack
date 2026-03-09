@@ -413,7 +413,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
-                concurrency_limit=1,
+                concurrency_limit=4,
             )
             embeddings = await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
 
