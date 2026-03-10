@@ -46,22 +46,8 @@ jobs:
           DEEPSET_API_KEY_DOCS_SEARCH: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
         run: python ./.github/utils/docs_search_sync.py
 
-      - name: Send event to Datadog for nightly failures
+      - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'
-        uses: masci/datadog@v1
+        uses: deepset-ai/notify-slack-action@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "error"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

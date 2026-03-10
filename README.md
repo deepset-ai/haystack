@@ -33,9 +33,9 @@ The simplest way to get Haystack is via pip:
 pip install haystack-ai
 ```
 
-Install from the `main` branch to try the newest features:
+Install nightly pre-releases to try the newest features:
 ```sh
-pip install git+https://github.com/deepset-ai/haystack.git@main
+pip install --pre haystack-ai
 ```
 
 Haystack supports multiple installation methods, including Docker images. For a comprehensive guide, please refer

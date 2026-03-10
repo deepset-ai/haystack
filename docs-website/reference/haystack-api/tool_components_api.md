@@ -149,17 +149,6 @@ result = invoker.run(messages=[message])
 
 print(result)
 
-
-
-
-
-
-
-
-
-
-
-
 #### __init__
 
 ```python

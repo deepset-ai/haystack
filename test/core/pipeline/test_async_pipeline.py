@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+from dataclasses import replace
 
 import pytest
 
@@ -145,9 +146,7 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
     class ModifyingComponent:
         @component.output_types(output=Document)
         def run(self, document: Document) -> dict[str, Document]:
-            # Modifies the incoming document inplace
-            document.content = "modified"
-            return {"output": document}
+            return {"output": replace(document, content="modified")}
 
     pp = AsyncPipeline()
     pp.add_component("first", SimpleComponent())
@@ -184,8 +183,7 @@ def test_async_pipeline_does_not_corrupt_outputs():
     class Mutator:
         @component.output_types(doc=Document)
         def run(self, doc: Document) -> dict:
-            doc.content = "mutated"
-            return {"doc": doc}
+            return {"doc": replace(doc, content="mutated")}
 
     pipe = AsyncPipeline()
     pipe.add_component("producer", Producer())
