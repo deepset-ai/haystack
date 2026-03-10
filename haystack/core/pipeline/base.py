@@ -943,7 +943,7 @@ class PipelineBase:  # noqa: PLW1641
                         component_name=component_name,
                         receiver_socket=socket,
                         current_sender_sockets=current_sender_sockets,
-                        new_sender_socket=OutputSocket(name=socket_name, type=type(component_inputs[socket_name])),
+                        new_sender_socket=OutputSocket(name="User Input", type=type(component_inputs[socket_name])),
                         error_type=ValueError,
                     )
 
