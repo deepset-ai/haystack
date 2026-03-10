@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Fixed `_output_matches_type()` in the `ConditionalRouter` where a `str` value would incorrectly be valid as a `list[str]` because Python's `str` is a `Sequence`
+    Fixed ``_output_matches_type()`` in the ``ConditionalRouter`` where a ``str`` value would incorrectly be valid as a ``list[str]`` because Python's ``str`` is a ``Sequence``.
