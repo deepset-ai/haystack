@@ -26,7 +26,7 @@ Search the web and extract content using the Firecrawl API.
 
 When you give `FirecrawlWebSearch` a query, it uses the Firecrawl Search API to search the web, crawl the resulting pages, and return the structured text as a list of Haystack `Document` objects. It also returns a list of the underlying URLs.
 
-Because Firecrawl actively scrapes and structures the content of the pages it finds into LLM-friendly formats, you generally do not need an additional component like `LinkContentFetcher` to read the web pages. `FirecrawlWebSearch` handles the retrieval and scraping all in one step.
+Because Firecrawl actively scrapes and structures the content of the pages it finds into LLM-friendly formats, you generally don't need an additional component like `LinkContentFetcher` to read the web pages. `FirecrawlWebSearch` handles the retrieval and scraping all in one step.
 
 `FirecrawlWebSearch` requires a [Firecrawl](https://firecrawl.dev) API key to work. By default, it looks for a `FIRECRAWL_API_KEY` environment variable. Alternatively, you can pass an `api_key` directly during initialization.
 
@@ -34,7 +34,7 @@ Because Firecrawl actively scrapes and structures the content of the pages it fi
 
 ### On its own
 
-Here is a quick example of how `FirecrawlWebSearch` searcher the web based on a query, scrapes the resulting web pages, and returns a list of Documents containing the page content.
+Here is a quick example of how `FirecrawlWebSearch` searches the web based on a query, scrapes the resulting web pages, and returns a list of Documents containing the page content.
 
 ```python
 from haystack_integrations.components.websearch.firecrawl import FirecrawlWebSearch
@@ -55,7 +55,7 @@ for doc in response["documents"]:
 
 ### In a pipeline
 
-Here is an example of a Retrieval-Augmented Generation (RAG) pipeline where we use `FirecrawlWebSearch` to look up an answer. Because Firecrawl returns the actual text of the scraped pages, we can pass its `documents` output directly into the `ChatPromptBuilder` to give our LLM the necessary context.
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline where using `FirecrawlWebSearch` to look up an answer. Because Firecrawl returns the actual text of the scraped pages, you can pass its `documents` output directly into the `ChatPromptBuilder` to give the LLM the necessary context.
 
 ```python
 from haystack import Pipeline
@@ -96,7 +96,7 @@ pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 
 pipe.connect("search.documents", "prompt_builder.documents")
-pipe.connect("prompt_builder.messages", "llm.messages")
+pipe.connect("prompt_builder.prompt", "llm.messages")
 
 query = "What is Haystack by deepset?"
 
