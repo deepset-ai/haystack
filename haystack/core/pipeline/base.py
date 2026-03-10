@@ -962,7 +962,7 @@ class PipelineBase:  # noqa: PLW1641
         :raises error_type:
             If the socket cannot accept multiple senders given its type constraints.
         """
-        # If it's already variadic (and not type==Any), we return as-is
+        # If it's already variadic, we return as-is
         if receiver_socket.is_variadic:
             return receiver_socket
 
