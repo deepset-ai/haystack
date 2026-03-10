@@ -694,7 +694,7 @@ class PipelineBase:  # noqa: PLW1641
             for socket in data:
                 # Variadic mandatory sockets with existing connections don't require user input, so treat them as
                 # optional.
-                is_mandatory = socket.is_mandatory and socket.senders == []
+                is_mandatory = socket.is_mandatory and not socket.senders
                 sockets_description[socket.name] = {"type": socket.type, "is_mandatory": is_mandatory}
                 if not socket.is_mandatory:
                     sockets_description[socket.name]["default_value"] = socket.default_value
