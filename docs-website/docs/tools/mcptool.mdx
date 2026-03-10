@@ -66,6 +66,10 @@ result = tool.invoke(param1="value1", param2="value2")
 
 ### With SSE Transport (deprecated)
 
+:::warning
+SSE transport has been [deprecated by the MCP specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http) in favor of Streamable HTTP. Use [Streamable HTTP](#with-streamable-http-transport) for new integrations. If you are connecting to an existing SSE-only server, `SSEServerInfo` will continue to work, but consider migrating to `StreamableHttpServerInfo` when the server supports it.
+:::
+
 You can create an `MCPTool` that connects to an external HTTP server using SSE transport:
 
 ```python
