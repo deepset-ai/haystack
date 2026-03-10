@@ -470,14 +470,7 @@ class TestRouter:
         str is a Sequence, but when the expected type is list[str], a bare string
         should be rejected.
         """
-        routes = [
-            {
-                "condition": "{{True}}",
-                "output": "{{value}}",
-                "output_type": list[str],
-                "output_name": "result",
-            }
-        ]
+        routes = [{"condition": "{{True}}", "output": "{{value}}", "output_type": list[str], "output_name": "result"}]
         router = ConditionalRouter(routes, validate_output_type=True)
 
         # A list of strings should pass
