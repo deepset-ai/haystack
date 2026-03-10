@@ -464,6 +464,23 @@ class TestRouter:
         with pytest.raises(ValueError, match="Route 'result' type doesn't match expected type"):
             router.run(value=42)
 
+    def test_str_not_matching_list_str(self):
+        """
+        Test that a plain str value does not incorrectly validate as list[str].
+        str is a Sequence, but when the expected type is list[str], a bare string
+        should be rejected.
+        """
+        routes = [{"condition": "{{True}}", "output": "{{value}}", "output_type": list[str], "output_name": "result"}]
+        router = ConditionalRouter(routes, validate_output_type=True)
+
+        # A list of strings should pass
+        result = router.run(value=["a", "b"])
+        assert result == {"result": ["a", "b"]}
+
+        # A plain string should NOT pass as list[str]
+        with pytest.raises(ValueError, match="Route 'result' type doesn't match expected type"):
+            router.run(value="hello")
+
     def test_router_with_optional_parameters(self):
         """
         Test that the router works with optional parameters, particularly testing the default/fallback route
