@@ -1014,7 +1014,7 @@ class PipelineBase:  # noqa: PLW1641
                 )
             raise error_type(msg)
 
-        # If it's already variadic, we don't change anything
+        # If it's already variadic (and not type==Any), we return as-is
         if receiver_socket.is_variadic:
             return receiver_socket
 
