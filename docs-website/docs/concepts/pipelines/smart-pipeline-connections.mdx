@@ -18,12 +18,10 @@ Pipelines natively support connecting multiple component outputs directly to a s
 
 This works when:
 
-* The target input is typed as `list`, `list | None`, a union of list types (e.g. `list[int] | list[str]`), or `Any`.
+* The target input is typed as `list`, `list | None`, or a union of list types (e.g. `list[int] | list[str]`).
 * All connected outputs are compatible list types.
 
 When multiple outputs are connected to the same input, the pipeline implicitly concatenates the lists from the outputs into a single list for the input.
-
-**Note:** If the target input is typed as `Any`, all connected outputs must still be list types.
 
 ### Example
 

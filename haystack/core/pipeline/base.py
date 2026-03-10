@@ -615,13 +615,8 @@ class PipelineBase:  # noqa: PLW1641
             return self
 
         if receiver_socket.senders:
-            current_sender_sockets = [self.graph.nodes[sender]["output_sockets"] for sender in receiver_socket.senders]
             receiver_socket = self._make_socket_auto_variadic(
-                component_name=receiver_component_name,
-                receiver_socket=receiver_socket,
-                current_sender_sockets=current_sender_sockets,
-                new_sender_socket=sender_socket,
-                error_type=PipelineConnectError,
+                component_name=receiver_component_name, receiver_socket=receiver_socket, error_type=PipelineConnectError
             )
 
         # Update the sockets with the new connection
@@ -938,22 +933,12 @@ class PipelineBase:  # noqa: PLW1641
 
                 # Check if an input is provided more than once for non-variadic sockets
                 if socket.senders and socket_name in component_inputs:
-                    current_sender_sockets = [self.graph.nodes[sender]["output_sockets"] for sender in socket.senders]
                     _ = self._make_socket_auto_variadic(
-                        component_name=component_name,
-                        receiver_socket=socket,
-                        current_sender_sockets=current_sender_sockets,
-                        new_sender_socket=OutputSocket(name="User Input", type=type(component_inputs[socket_name])),
-                        error_type=ValueError,
+                        component_name=component_name, receiver_socket=socket, error_type=ValueError
                     )
 
     def _make_socket_auto_variadic(
-        self,
-        component_name: str,
-        receiver_socket: InputSocket,
-        current_sender_sockets: list[OutputSocket],
-        new_sender_socket: OutputSocket,
-        error_type: type[Exception],
+        self, component_name: str, receiver_socket: InputSocket, error_type: type[Exception]
     ) -> InputSocket:
         """
         Attempts to make the receiver socket lazy variadic in-place to accommodate a new sender.
@@ -962,7 +947,6 @@ class PipelineBase:  # noqa: PLW1641
           - It already has at least one connected sender
           - It is not already variadic
           - Its type is list, Optional[list], a union of list types
-          - Its type is Any and all its connected senders and the new sender are of type list
 
         When auto-variadicity is applied, `wrap_input_in_list` is also set to False so that sender output types match
         the receiver socket's declared list type directly.
@@ -971,10 +955,6 @@ class PipelineBase:  # noqa: PLW1641
             Name of the component owning the receiver socket, used in error messages.
         :param receiver_socket:
             The receiver socket to inspect and potentially modify in-place.
-        :param current_sender_sockets:
-            Output sockets already connected to the receiver.
-        :param new_sender_socket:
-            The output socket being newly connected.
         :param error_type:
             Exception class to raise on failure (e.g. ValueError or PipelineConnectError).
         :returns:
@@ -982,38 +962,6 @@ class PipelineBase:  # noqa: PLW1641
         :raises error_type:
             If the socket cannot accept multiple senders given its type constraints.
         """
-        # Handle Any type for receiver
-        # NOTE: We have to do additional checks on the sender types when receiver type is Any.
-        #       This is because we have no guarantees that the sender types are lists at this point since anything
-        #       can be passed to an Any socket.
-        if receiver_socket.type == Any:
-            if (
-                _safe_get_origin(current_sender_sockets[0].type) == list
-                and _safe_get_origin(new_sender_socket.type) == list
-            ):
-                receiver_socket.is_lazy_variadic = True
-                receiver_socket.wrap_input_in_list = False
-                return receiver_socket
-            if len(receiver_socket.senders) > 1:
-                msg = (
-                    f"Cannot connect '{new_sender_socket.name}' ({_type_name(new_sender_socket.type)}) to "
-                    f"'{component_name}.{receiver_socket.name}': '{component_name}.{receiver_socket.name}' accepts "
-                    f"any type, but when multiple outputs feed into it, they must all be lists. "
-                    f"'{new_sender_socket.name}' outputs {_type_name(new_sender_socket.type)} instead."
-                )
-            else:
-                current_senders_summary = ", ".join(
-                    f"'{s.name}' ({_type_name(s.type)})" for s in current_sender_sockets
-                )
-                msg = (
-                    f"Cannot connect '{new_sender_socket.name}' ({_type_name(new_sender_socket.type)}) to "
-                    f"'{component_name}.{receiver_socket.name}': when multiple outputs feed into an untyped input, "
-                    f"they must all be lists, but one or more is not. "
-                    f"Already connected: {current_senders_summary}. "
-                    f"New connection: '{new_sender_socket.name}' ({_type_name(new_sender_socket.type)})."
-                )
-            raise error_type(msg)
-
         # If it's already variadic (and not type==Any), we return as-is
         if receiver_socket.is_variadic:
             return receiver_socket
@@ -1040,7 +988,7 @@ class PipelineBase:  # noqa: PLW1641
         raise error_type(
             f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
             f"It is already connected to component '{receiver_socket.senders[0]}', and it can only can only accept "
-            f"inputs from multiple senders if its type is list, Optional[list], union of list types, or Any."
+            f"inputs from multiple senders if its type is list, Optional[list], or union of list types."
         )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:

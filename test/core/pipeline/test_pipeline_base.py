@@ -2096,8 +2096,6 @@ class TestMakeSocketAutoVariadic:
         [
             # All lists
             (list[int], list[int], list[int]),
-            # Receiver is Any
-            (Any, list[int], list[int]),
             # List unions
             (list[str] | list[ChatMessage], list[str], list[str]),
             (list[str] | list[ChatMessage], list[ChatMessage], list[ChatMessage]),
@@ -2110,8 +2108,6 @@ class TestMakeSocketAutoVariadic:
         inp_socket = pipe._make_socket_auto_variadic(
             component_name="comp",
             receiver_socket=InputSocket(name="input_to_comp3", type=receiver_type, senders=["comp1"]),
-            current_sender_sockets=[OutputSocket(name="output_from_comp1", type=current_sender_type)],
-            new_sender_socket=OutputSocket(name="output_from_comp2", type=new_sender_type),
             error_type=PipelineConnectError,
         )
         assert inp_socket.is_variadic is True
@@ -2124,33 +2120,6 @@ class TestMakeSocketAutoVariadic:
             _ = pipe._make_socket_auto_variadic(
                 component_name="comp",
                 receiver_socket=InputSocket(name="input_to_comp3", type=int, senders=["comp1"]),
-                current_sender_sockets=[OutputSocket(name="output_from_comp1", type=int)],
-                new_sender_socket=OutputSocket(name="output_from_comp2", type=int),
-                error_type=PipelineConnectError,
-            )
-
-    def test_raises_error_receiver_is_any_but_senders_not_all_lists(self):
-        with pytest.raises(PipelineConnectError):
-            pipe = PipelineBase()
-            _ = pipe._make_socket_auto_variadic(
-                component_name="comp",
-                receiver_socket=InputSocket(name="input_to_comp3", type=Any, senders=["comp1"]),
-                current_sender_sockets=[OutputSocket(name="output_from_comp1", type=list[int])],
-                new_sender_socket=OutputSocket(name="output_from_comp2", type=int),
-                error_type=PipelineConnectError,
-            )
-
-    def test_raises_error_receiver_is_any_third_connection_is_not_list(self):
-        with pytest.raises(PipelineConnectError):
-            pipe = PipelineBase()
-            _ = pipe._make_socket_auto_variadic(
-                component_name="comp",
-                receiver_socket=InputSocket(name="input_to_comp4", type=Any, senders=["comp1", "comp2"]),
-                current_sender_sockets=[
-                    OutputSocket(name="output_from_comp1", type=list[int]),
-                    OutputSocket(name="output_from_comp2", type=list[int]),
-                ],
-                new_sender_socket=OutputSocket(name="output_from_comp3", type=int),
                 error_type=PipelineConnectError,
             )
 
@@ -2183,7 +2152,7 @@ class TestValidateInput:
             ValueError,
             match="Component 'comp2' cannot accept multiple inputs to 'input_'. "
             "It is already connected to component 'comp1', and it can only can only accept inputs from multiple "
-            r"senders if its type is list, Optional\[list\], union of list types, or Any.",
+            r"senders if its type is list, Optional\[list\], or union of list types.",
         ):
             pipe.validate_input(data={"comp1": {"input_": "test"}, "comp2": {"input_": "extra_input"}})
 
