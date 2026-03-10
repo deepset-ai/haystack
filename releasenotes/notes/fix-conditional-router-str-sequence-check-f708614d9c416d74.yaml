@@ -1,4 +1,4 @@
 ---
 fixes:
   - |
-    Fixed a bug in the ConditionalRouter where a str value would incorrectly be valid as a list[str].
+    Fixed a bug in the ConditionalRouter where a string value would incorrectly be valid as a list of strings.
