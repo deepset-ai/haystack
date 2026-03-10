@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Made QUOTE_SPANS_RE regex ReDoS-safe. This prevents potential catastrophic backtracking on malicious inputs
+fixes:
+  - |
+    Fixed a potential ReDoS issue in QUOTE_SPANS_RE regex used inside the SentenceSplitter component.

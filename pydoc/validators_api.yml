@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/validators]
+    modules: ["json_schema"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Validators
+  id: validators-api
+  description: Validators validate LLM outputs
+  filename: validators_api.md

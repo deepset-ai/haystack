@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Refactor DocumentJoiner to use enum pattern for the 'join_mode' parameter instead of bare string.

@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added multiple converters to help convert image data between different formats:
+    - DocumentToImageContent: Converts documents sourced from PDF and image files into ImageContents.
+    - ImageFileToImageContent: Converts image files to ImageContent objects.
+    - ImageFileToDocument: Converts image file references into empty Document objects with associated metadata.
+    - PDFToImageContent: Converts PDF files to ImageContent objects.

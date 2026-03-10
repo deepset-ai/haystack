@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added a new component DocumentNDCGEvaluator, which is similar to DocumentMRREvaluator and useful for retrieval evaluation. It calculates the normalized discounted cumulative gain, an evaluation metric useful when there are multiple ground truth relevant documents and the order in which they are retrieved is important.

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The parameter min_top_k is added to the TopPSampler which sets the minimum number of documents to be returned when the top-p sampling algorithm results in fewer documents being selected. The documents with the next highest scores are added to the selection. This is useful when we want to guarantee a set number of documents will always be passed on, but allow the Top-P algorithm to still determine if more documents should be sent based on document score.

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Make the HuggingFaceLocalChatGenerator compatible with the new ChatMessage format, by converting the messages to
+    the format expected by Hugging Face.
+
+    Serialize the chat_template parameter.

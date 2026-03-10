@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced `OpenAPIServiceConnector` to support and be compatible with the new ChatMessage format.

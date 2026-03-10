@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    We added a `Component` signature validation method that details the mismatches between the `run` and `run_async` method signatures. This allows a user to debug custom components easily.

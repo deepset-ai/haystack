@@ -1,0 +1,8 @@
+---
+
+features:
+  - |
+    Add LostInTheMiddleRanker.
+    It reorders documents based on the "Lost in the Middle" order, a strategy that
+    places the most relevant paragraphs at the beginning or end of the context,
+    while less relevant paragraphs are positioned in the middle.

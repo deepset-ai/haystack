@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Added documents_store.update_embeddings call to pipeline examples so that embeddings are calculated for newly added documents.

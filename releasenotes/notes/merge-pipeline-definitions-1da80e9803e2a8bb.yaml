@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Merge `Pipeline`s definitions into a single `Pipeline` class.
+    The class in the `haystack.pipeline` package has been deleted and only `haystack.core.pipeline` exists now.

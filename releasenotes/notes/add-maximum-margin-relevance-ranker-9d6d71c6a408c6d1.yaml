@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added the Maximum Margin Relevance (MMR) strategy to the `SentenceTransformersDiversityRanker`. MMR scores are calculated for each document based on their relevance to the query and diversity from already selected documents.

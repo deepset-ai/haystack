@@ -1,0 +1,7 @@
+extends: existence
+message: "Consider spelling out numbers zero through nine (exceptions: time, measurements, lists with larger numbers)."
+level: suggestion
+scope: text
+nonword: true
+tokens:
+  - '\b[1-9]\b'

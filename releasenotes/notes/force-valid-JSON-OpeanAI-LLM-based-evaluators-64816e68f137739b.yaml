@@ -1,0 +1,6 @@
+---
+
+enhancements:
+  - |
+    Enforce JSON mode on OpenAI LLM-based evaluators so that the they always return valid JSON output.
+    This is to ensure that the output is always in a consistent format, regardless of the input.

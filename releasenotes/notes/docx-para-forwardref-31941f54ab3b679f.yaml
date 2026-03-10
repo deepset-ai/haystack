@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Use a forward reference for the `Paragraph` class in the `DOCXToDocument` converter
+    to prevent import errors.

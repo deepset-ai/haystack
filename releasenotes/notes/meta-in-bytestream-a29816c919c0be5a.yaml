@@ -1,0 +1,3 @@
+---
+enhancements:
+  - Add meta parameter to `ByteStream.from_file_path()` and `ByteStream.from_string()`.

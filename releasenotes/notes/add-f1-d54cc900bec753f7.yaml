@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Adds support for the F1 metric to `EvaluationResult.calculate_metrics(...)`:
+    ```python
+    from haystack.evaluation.metrics import Metric
+    f1_metric = eval_result.calculate_metrics(Metric.F1, output_key="answers")
+    ```

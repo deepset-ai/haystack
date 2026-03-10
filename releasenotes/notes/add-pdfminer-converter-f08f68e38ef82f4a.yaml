@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+   Provides users the ability to customize text extraction from PDF files. It is particularly useful for PDFs with unusual layouts, such as those containing multiple text columns. For instance, users can configure the object to retain the reading order.

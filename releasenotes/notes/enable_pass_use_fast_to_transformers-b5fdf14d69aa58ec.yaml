@@ -1,0 +1,3 @@
+---
+enhancements:
+  - enable passing use_fast to the underlying transformers' pipeline

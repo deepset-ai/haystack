@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Adds support for single metadata dictionary input in `AzureOCRDocumentConverter`. In this way, additional metadata can be added to all files processed by this component even when the length of the list of sources is unknown.
+

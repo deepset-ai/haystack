@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added the option to use a custom splitting function in DocumentSplitter. The function must accept a string as
+    input and return a list of strings, representing the split units. To use the feature initialise `DocumentSplitter`
+    with `split_by="function"` providing the custom splitting function as `splitting_function=custom_function`.

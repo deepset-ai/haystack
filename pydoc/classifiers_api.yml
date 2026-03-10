@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/classifiers]
+    modules: ["document_language_classifier", "zero_shot_document_classifier"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Classifiers
+  id: classifiers-api
+  description: Classify documents based on the provided labels.
+  filename: classifiers_api.md

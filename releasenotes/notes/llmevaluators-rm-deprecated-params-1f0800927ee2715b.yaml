@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The deprecated `api`, `api_key`, and `api_params` parameters for `LLMEvaluator`, `ContextRelevanceEvaluator`, and
+    `FaithfulnessEvaluator` have been removed.
+
+    By default, these components will continue to use OpenAI in JSON mode.
+
+    To customize the LLM, use the `chat_generator` parameter with a `ChatGenerator` instance configured to return a
+    response in JSON format. For example:
+    `chat_generator=OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}})`.

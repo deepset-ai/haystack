@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced DynamicChatPromptBuilder's capabilities by allowing all user and system messages to be templated with provided variables. This update ensures a more versatile and dynamic templating process, making chat prompt generation more efficient and customized to user needs.

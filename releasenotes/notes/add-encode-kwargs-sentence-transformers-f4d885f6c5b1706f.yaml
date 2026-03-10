@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Enhanced `SentenceTransformersDocumentEmbedder` and `SentenceTransformersTextEmbedder` to accept
+    an additional parameter, which is passed directly to the underlying `SentenceTransformer.encode` method
+    for greater flexibility in embedding customization.

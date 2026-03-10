@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Updated Document's meta data after initializing the Document in DocumentSplitter as requested in issue #8741

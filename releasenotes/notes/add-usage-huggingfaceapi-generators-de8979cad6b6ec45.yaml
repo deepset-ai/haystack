@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Adds 'usage' meta field with 'prompt_tokens' and 'completion_tokens' keys to HuggingFaceAPIChatGenerator.

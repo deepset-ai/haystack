@@ -1,0 +1,57 @@
+<p align="center">
+  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubusercontent.com/deepset-ai/.github/main/haystack-logo-colored.png" alt="Haystack by deepset"></a>
+</p>
+
+[Haystack](https://github.com/deepset-ai/haystack) is an end-to-end LLM framework that allows you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG), document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
+
+## Haystack 2.x
+
+For the latest version of Haystack there's only one image available:
+
+- `haystack:base-<version>` contains a working Python environment with Haystack preinstalled. This image is expected to
+  be derived `FROM`.
+
+## Image Development
+
+Images are built with BuildKit and we use `bake` to orchestrate the process.
+You can build a specific image by running:
+```sh
+docker buildx bake base
+```
+
+You can override any `variable` defined in the `docker-bake.hcl` file and build custom
+images, for example if you want to use a branch from the Haystack repo, run:
+```sh
+HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake base --no-cache
+```
+
+### Multi-Platform Builds
+
+Haystack images support multiple architectures. But depending on your operating system and Docker
+environment, you might not be able to build all of them locally.
+
+You may encounter the following error when trying to build the image:
+
+```
+multiple platforms feature is currently not supported for docker driver. Please switch to a different driver
+(eg. “docker buildx create --use”)
+```
+
+To get around this, you need to override the `platform` option and limit local builds to the same architecture as
+your computer's. For example, on an Apple M1 you can limit the builds to ARM only by invoking `bake` like this:
+
+```sh
+docker buildx bake base --set "*.platform=linux/arm64"
+```
+
+# License
+
+View [license information](https://github.com/deepset-ai/haystack/blob/main/LICENSE) for
+the software contained in this image.
+
+As with all Docker images, these likely also contain other software which may be under
+other licenses (such as Bash, etc from the base distribution, along with any direct or
+indirect dependencies of the primary software being contained).
+
+As for any pre-built image usage, it is the image user's responsibility to ensure that any
+use of this image complies with any relevant licenses for all software contained within.

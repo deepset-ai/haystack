@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add a CSV to Document converter component. Loads the file as bytes object. Adds the loaded string as a new document that can be used for further processing by the Document Splitter.

@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/writers]
+    modules: ["document_writer"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Document Writers
+  id: document-writers-api
+  description: Writes Documents to a DocumentStore.
+  filename: document_writers_api.md

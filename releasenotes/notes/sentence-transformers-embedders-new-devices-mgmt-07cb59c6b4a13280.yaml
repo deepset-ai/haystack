@@ -1,0 +1,20 @@
+---
+upgrade:
+  - |
+    Adopt the new framework-agnostic device management in Sentence Transformers Embedders.
+
+    Before this change:
+    ```python
+    from haystack.components.embedders import SentenceTransformersTextEmbedder
+    embedder = SentenceTransformersTextEmbedder(device="cuda:0")
+    ```
+
+    After this change:
+    ```python
+    from haystack.utils.device import ComponentDevice, Device
+    from haystack.components.embedders import SentenceTransformersTextEmbedder
+    device = ComponentDevice.from_single(Device.gpu(id=0))
+    # or
+    # device = ComponentDevice.from_str("cuda:0")
+    embedder = SentenceTransformersTextEmbedder(device=device)
+    ```

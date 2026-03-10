@@ -1,0 +1,6 @@
+---
+
+upgrade:
+  - |
+    The `ContextRelevanceEvaluator` now returns a list of relevant sentences for each context, instead of all the sentences in a context.
+    Also, a score of 1 is now returned if a relevant sentence is found, and 0 otherwise.

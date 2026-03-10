@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add DocumentMRREvaluator, it can be used to calculate mean reciprocal rank of retrieved documents.

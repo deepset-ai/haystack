@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Re-implement `InMemoryDocumentStore` BM25 search with incremental indexing by avoiding re-creating
+    the entire inverse index for every new query. This change also removes the dependency on
+    `haystack_bm25`. Please refer to [PR #7549](https://github.com/deepset-ai/haystack/pull/7549)
+    for the full context.

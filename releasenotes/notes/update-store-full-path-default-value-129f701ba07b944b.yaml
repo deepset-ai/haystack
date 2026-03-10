@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Update default value of `store_full_path` to `False` in converters

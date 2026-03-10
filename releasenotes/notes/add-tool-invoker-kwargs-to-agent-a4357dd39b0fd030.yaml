@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added the `tool_invoker_kwargs` param to Agent so additional kwargs can be passed to the ToolInvoker like `max_workers` and `enable_streaming_callback_passthrough`.

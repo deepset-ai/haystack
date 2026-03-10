@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Make SparseEmbedding a dataclass, this makes it easier to use the class with Pydantic

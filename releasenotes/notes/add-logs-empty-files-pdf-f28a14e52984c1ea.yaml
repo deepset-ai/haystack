@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add warning logs to the PDFMinerToDocument and PyPDFToDocument to indicate when a processed PDF file has no content.
+    This can happen if the PDF file is a scanned image.
+    Also added an explicit check and warning message to the DocumentSplitter that warns the user that empty Documents are skipped.
+    This behavior was already occurring, but now its clearer through logs that this is happening.

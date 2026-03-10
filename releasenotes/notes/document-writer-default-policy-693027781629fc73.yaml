@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Change `DocumentWriter` default `policy` from `DuplicatePolicy.FAIL` to `DuplicatePolicy.NONE`.
+    The `DocumentStore` protocol uses the same default so that different Document Stores can choose
+    the default policy that better fit.

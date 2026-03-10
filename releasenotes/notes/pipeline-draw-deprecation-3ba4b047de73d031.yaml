@@ -1,0 +1,13 @@
+---
+
+upgrade:
+  - |
+    All parameters of the Pipeline.draw() and Pipeline.show() methods must now be specified as keyword arguments
+    Example:
+        pipeline.draw(
+            path="output.png",
+            server_url="https://custom-server.com",
+            params=None,
+            timeout=30,
+            super_component_expansion=False
+        )

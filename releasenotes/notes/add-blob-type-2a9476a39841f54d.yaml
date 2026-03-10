@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add ByteStream type to send binary raw data across components
+    in a pipeline.

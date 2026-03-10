@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the DocumentCleaner removing the `\f` tag from content preventing from counting page number (by Splitter for example).

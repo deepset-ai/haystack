@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The `from_dict` method of `ConditionalRouter` now correctly handles
+    the case where the `dict` passed to it contains the key `custom_filters` explicitly
+    set to `None`. Previously this was causing an `AttributeError`

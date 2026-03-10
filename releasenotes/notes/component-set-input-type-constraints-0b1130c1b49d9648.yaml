@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Add constraints to `component.set_input_type` and `component.set_input_types` to prevent undefined behaviour
+    when the `run` method does not contain a variadic keyword argument.

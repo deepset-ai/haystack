@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Prevent `set_output_types`` from being called when the `output_types`` decorator is used.

@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Fix usage examples for OpenAIDocumentEmbedder and SentenceTransformersDocumentEmbedder.

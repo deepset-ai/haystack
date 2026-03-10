@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Improved `OpenAIChatGenerator` streaming response tool call processing: The logic now scans all chunks to correctly identify the first chunk with tool calls, ensuring accurate payload construction and preventing errors when tool call data isn’t confined to the initial chunk.

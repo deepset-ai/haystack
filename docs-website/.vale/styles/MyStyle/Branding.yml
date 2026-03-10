@@ -1,0 +1,11 @@
+extends: substitution
+message: "'%s' is not the correct branding. Use '%s' instead."
+level: error
+ignorecase: false
+swap:
+  Deepset: deepset
+  DEEPSET: deepset
+  Huggingface: Hugging Face
+  huggingface: Hugging Face
+  HuggingFace: Hugging Face
+  HAYSTACK: Haystack

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Callable deserialization now works for all fully qualified import paths.

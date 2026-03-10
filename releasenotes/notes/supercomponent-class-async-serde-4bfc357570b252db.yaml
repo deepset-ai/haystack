@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+     The SuperComponent class can now correctly serialize and deserialize a SuperComponent based on an async pipeline.
+     Previously, the SuperComponent class always assumed the underlying pipeline was synchronous.

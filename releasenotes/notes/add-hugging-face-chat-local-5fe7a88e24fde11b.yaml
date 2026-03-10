@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Introducing the HuggingFaceLocalChatGenerator, a new chat-based generator designed for leveraging chat models from
+    Hugging Face's (HF) model hub. Users can now perform inference with chat-based models in a local runtime, utilizing
+    familiar HF generation parameters, stop words, and even employing custom chat templates for custom message formatting.
+    This component also supports streaming responses and is optimized for compatibility with a variety of devices.
+
+    Here is an example of how to use the HuggingFaceLocalChatGenerator:
+
+    ```python
+    from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+    from haystack.dataclasses import ChatMessage
+
+    generator = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta")
+    generator.warm_up()
+    messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+    print(generator.run(messages))
+    ```

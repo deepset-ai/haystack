@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adds TopPSampler, a component selects documents based on the cumulative probability of the Document scores using top p (nucleus) sampling.

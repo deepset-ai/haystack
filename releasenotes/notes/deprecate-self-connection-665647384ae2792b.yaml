@@ -1,0 +1,4 @@
+---
+deprecations:
+  - |
+    Deprecate connecting a Component to itself when calling `Pipeline.connect()`, it will raise an error from version `2.7.0` onwards

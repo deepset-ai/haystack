@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix component_invoker used by ComponentTool to work when a dataclass like ChatMessage is directly passed to `component_tool.invoke(...)`.
+    Previously this would either cause an error or silently skip your input.

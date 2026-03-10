@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/core/pipeline]
+    modules: ["async_pipeline", "pipeline"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Pipeline
+  id: pipeline-api
+  description: Arranges components and integrations in flow.
+  filename: pipeline_api.md

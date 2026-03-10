@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Adds support for the Exact Match metric to `EvaluationResult.calculate_metrics(...)`:
+    ```python
+    from haystack.evaluation.metrics import Metric
+    exact_match_metric = eval_result.calculate_metrics(Metric.EM, output_key="answers")
+    ```

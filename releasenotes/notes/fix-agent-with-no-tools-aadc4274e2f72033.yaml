@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Now when you call an Agent with no tools it acts like a ChatGenerator which means it returns a ChatMessage based on a user input.

@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adds tooling support to HuggingFaceLocalChatGenerator

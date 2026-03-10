@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    When meta is passed into AnswerBuilder.run(), it is now merged into GeneratedAnswer meta

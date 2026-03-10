@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add support for the union type operator `|` (added in python 3.10) in `serialize_type` and `Pipeline.connect()`. These functions support both the `typing.Union` and `|` operators and mixtures of them for backwards compatibility.

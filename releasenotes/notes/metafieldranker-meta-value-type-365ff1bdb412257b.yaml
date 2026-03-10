@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add a new variable called meta_value_type to the MetaFieldRanker that allows a user to parse the meta value into the data type specified as along as the meta value is a string.
+    The supported values for meta_value_type are '"float"', '"int"', '"date"', or 'None'. If None is passed then no parsing is done.
+    For example, if we specified meta_value_type="date" then for the meta value "date": "2015-02-01" we would parse the string into a datetime object.

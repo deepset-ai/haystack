@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    DocumentSplitter now has an optional split_threshold parameter. Use this parameter if you want to rather not split inputs that are only slightly longer than the allowed split_length. 
+    If when chunking one of the chunks is smaller than the split_threshold, the chunk will be concatenated with the previous one. This avoids having too small chunks that are not meaningful. 

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `NamedEntityExtractor` crashing in Python 3.12 if constructed using a string backend argument.

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Introduces optional parameters in the ConditionalRouter component, enabling default/fallback routing behavior when certain inputs are not provided at runtime. This enhancement allows for more flexible pipeline configurations with graceful handling of missing parameters.

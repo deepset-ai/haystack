@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes deserializing an instance of ``NamedEntityExtractor`` when ``pipeline_kwargs`` is stored in the deserialization dict with the value of ``None``.

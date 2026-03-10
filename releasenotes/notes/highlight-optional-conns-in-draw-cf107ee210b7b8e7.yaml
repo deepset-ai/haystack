@@ -1,0 +1,3 @@
+---
+enhancements:
+  - Highlight optional connections in the `Pipeline.draw()` output.

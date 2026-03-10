@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Change `Pipeline.run()` to check if `max_loops_allowed` has been reached.
+    If we attempt to run a Component that already ran the number of `max_loops_allowed` a `PipelineMaxLoops` will be raised.

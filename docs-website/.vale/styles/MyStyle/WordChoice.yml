@@ -1,0 +1,24 @@
+extends: substitution
+message: "Use '%s' instead of '%s'."
+level: warning
+ignorecase: true
+action:
+  name: replace
+swap:
+  utilize: use
+  utilizes: uses
+  utilizing: using
+  utilized: used
+  purchase: buy
+  purchases: buys
+  purchasing: buying
+  purchased: bought
+  assist: help
+  assists: helps
+  assisting: helping
+  assisted: helped
+  info: information
+  leverage: use
+  leverages: uses
+  leveraging: using
+  leveraged: used

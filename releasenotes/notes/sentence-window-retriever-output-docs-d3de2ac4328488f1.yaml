@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The SentenceWindowRetriever has now an extra output key containing all the documents belonging to the context window.

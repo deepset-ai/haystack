@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    Change `Pipeline.connect()` to return the instance of `Pipeline`.
+    This way we can chain multiple `connect()` like so:
+    ```python
+    pipeline.connect("fetcher", "converter") \
+    .connect("converter", "splitter") \
+    .connect("splitter", "ranker") \
+    .connect("ranker", "prompt_builder") \
+    .connect("prompt_builder", "llm")
+    ```

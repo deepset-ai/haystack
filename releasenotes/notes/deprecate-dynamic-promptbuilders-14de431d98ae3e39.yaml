@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Removed the deprecated `DynamicPromptBuilder` and `DynamicChatPromptBuilder` components. Use `PromptBuilder` and `ChatPromptBuilder` instead.

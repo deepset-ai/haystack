@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add top_k parameter to the DiversityRanker init method.

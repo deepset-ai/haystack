@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Ensure that the max_retries initialization parameter is correctly set when equal 0 in AzureOpenAIGenerator, AzureOpenAIChatGenerator, AzureOpenAITextEmbedder and AzureOpenAIDocumentEmbedder.

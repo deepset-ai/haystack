@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Adds scale_score, which allows users to toggle if they would like their document scores to be raw logits or scaled between 0 and 1 (using the sigmoid function). This is a feature that already existed in Haystack v1 that is being moved over.
+    Adds calibration_factor. This follows the example from the ExtractiveReader which allows the user to better control the spread of scores when scaling the score using sigmoid.
+    Adds score_threshold. Also copied from the ExtractiveReader. This optionally allows users to set a score threshold where only documents with a score above this threshold are returned.

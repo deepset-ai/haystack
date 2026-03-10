@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The `DOCXToDocument` converter now returns a `Document` object with DOCX metadata stored in the `meta` field as a
+    dictionary under the key `docx`. Previously, the metadata was represented as a `DOCXMetadata` dataclass.
+    This change does not impact reading from or writing to a Document Store.

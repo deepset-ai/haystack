@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add support for multiple outputs in ConditionalRouter

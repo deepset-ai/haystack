@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The `converter` parameter in the `PyPDFToDocument` component is deprecated and will be removed in Haystack 2.9.0.
+    For in-depth customization of the conversion process, consider implementing a custom component.
+    Additional high-level customization options will be added in the future.

@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add experimental support for asynchronous `Pipeline` run

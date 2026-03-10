@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Rename `Document`'s `metadata` field to `meta` to enhance backward compatibility

@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add a new parameter `require_tool_call_ids` to `ChatMessage.to_openai_dict_format`.
+    The default is `True`, for compatibility with OpenAI's Chat API: if the `id` field is missing in a Tool Call,
+    an error is raised.  Using `False` is useful for shallow OpenAI-compatible APIs, where the `id` field is not
+    required.

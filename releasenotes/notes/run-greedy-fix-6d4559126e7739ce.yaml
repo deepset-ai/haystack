@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix `Pipeline.run()` mistakenly running a Component before it should.
+    This can happen when a greedy variadic Component must be executed before a
+    Component with default inputs.

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    In AsyncPipline the span tag name is updated from `hasytack.component.outputs` to `haystack.component.output`. This matches the tag name used in Pipeline and is the tag name expected by our tracers.

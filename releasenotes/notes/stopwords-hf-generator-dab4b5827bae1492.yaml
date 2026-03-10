@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Allow specifying stopwords to stop text generation for `HuggingFaceLocalGenerator`.

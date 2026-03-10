@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added component_name and component_type attributes to PipelineRuntimeError.
+    - Moved error message creation to within PipelineRuntimeError
+    - Created a new subclass of PipelineRuntimeError called PipelineComponentsBlockedError for the specific case where the pipeline cannot run since no components are unblocked.

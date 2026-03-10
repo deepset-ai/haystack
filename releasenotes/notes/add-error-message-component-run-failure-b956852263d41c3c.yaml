@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Improved error handling for component `run` failures by raising a runtime error that includes the component's name and type.

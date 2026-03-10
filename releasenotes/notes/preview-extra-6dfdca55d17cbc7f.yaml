@@ -1,0 +1,4 @@
+preview:
+  - |
+    Create a dedicated dependency list for the preview package, `farm-haystack[preview]`.
+    Using `haystack-ai` is still the recommended way to test Haystack 2.0.

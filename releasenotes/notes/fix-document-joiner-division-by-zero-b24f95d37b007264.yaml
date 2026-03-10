@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `DocumentJoiner` failing when ran with an empty list of `Document`s

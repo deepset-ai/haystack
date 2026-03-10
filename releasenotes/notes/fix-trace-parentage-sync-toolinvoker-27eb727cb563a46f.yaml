@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed missing trace parentage for tools executed via the synchronous ToolInvoker path.
+    Updated `ToolInvoker.run()` to propagate `contextvars` into ThreadPoolExecutor workers,
+    ensuring all tool spans (ComponentTool, Agent wrapped in ComponentTool, or custom tools)
+    are correctly linked to the outer Agent's trace instead of starting new root traces.
+    This improves end-to-end observability across the entire tool execution chain.

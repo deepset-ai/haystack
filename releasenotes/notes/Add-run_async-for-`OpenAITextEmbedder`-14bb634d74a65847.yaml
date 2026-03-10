@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Add run_async for `OpenAITextEmbedder`.
+fixes:
+  - |
+    `OpenAITextEmbedder` no longer replaces newlines with spaces in the text to embed. This was only required for the
+    discontinued v1 embedding models.

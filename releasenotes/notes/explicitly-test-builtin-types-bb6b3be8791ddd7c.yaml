@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Test that our type validation and connection validation works with builtin python types introduced in 3.9.
+    We found that these types were already supported, we just now add explicit tests for them.

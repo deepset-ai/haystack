@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed an issue where page breaks were not being extracted from DOCX files.

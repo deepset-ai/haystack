@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Update the __deepcopy__ of ComponentTool to gracefully handle NotImplementedError when trying to deepcopy attributes.

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added new `HuggingFaceTEIRanker` component to enable reranking with Text Embeddings Inference (TEI) API.
+    This component supports both self-hosted Text Embeddings Inference services and Hugging Face Inference Endpoints.

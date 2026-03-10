@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `run_async` method to `DocumentWriter`. This method supports the same parameters as
+    the `run` method and relies on the DocumentStore to implement `write_documents_async`.
+    It returns a coroutine that can be awaited.

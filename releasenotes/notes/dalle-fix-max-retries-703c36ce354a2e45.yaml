@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    In `DALLEImageGenerator`, ensure that the `max_retries` initialization parameter is correctly set when it is equal
+    to 0.

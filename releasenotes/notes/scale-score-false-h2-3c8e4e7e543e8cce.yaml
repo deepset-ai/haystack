@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Change the default value of `scale_score` to False for Retrievers.
+    Users can still explicitly set `scale_score` to True to get relevance
+    scores in the range [0, 1].

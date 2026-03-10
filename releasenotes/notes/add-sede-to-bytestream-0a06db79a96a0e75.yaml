@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add `to_dict` and `from_dict` to ByteStream so it is consistent with our other dataclasses in having serialization and deserialization methods.

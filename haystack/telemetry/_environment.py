@@ -1,0 +1,98 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import os
+import platform
+import sys
+from typing import Any
+
+from haystack.version import __version__
+
+# This value cannot change during the lifetime of the process
+_IS_DOCKER_CACHE = None
+
+
+def _str_in_any_line_of_file(s: str, path: str) -> bool:
+    with open(path) as f:
+        return any(s in line for line in f)
+
+
+def _in_podman() -> bool:
+    """
+    Check if the code is running in a Podman container.
+
+    Podman run would create the file /run/.containernv, see:
+    https://github.com/containers/podman/blob/main/docs/source/markdown/podman-run.1.md.in#L31
+    """
+    return os.path.exists("/run/.containerenv")
+
+
+def _has_dockerenv() -> bool:
+    """
+    Check if the code is running in a Docker container.
+
+    This might not work anymore at some point (even if it's been a while now), see:
+    https://github.com/moby/moby/issues/18355#issuecomment-220484748
+    """
+    return os.path.exists("/.dockerenv")
+
+
+def _has_docker_cgroup_v1() -> bool:
+    """
+    This only works with cgroups v1.
+    """
+    path = "/proc/self/cgroup"  # 'self' should be always symlinked to the actual PID
+    return os.path.isfile(path) and _str_in_any_line_of_file("docker", path)
+
+
+def _has_docker_cgroup_v2() -> bool:
+    """
+    Check if the code is running in a Docker container using the cgroups v2 version.
+
+    inspired from: https://github.com/jenkinsci/docker-workflow-plugin/blob/master/src/main/java/org/jenkinsci/plugins/docker/workflow/client/DockerClient.java
+    """
+    path = "/proc/self/mountinfo"  # 'self' should be always symlinked to the actual PID
+    return os.path.isfile(path) and _str_in_any_line_of_file("/docker/containers/", path)
+
+
+def _is_containerized() -> bool | None:
+    """
+    This code is based on the popular 'is-docker' package for node.js
+    """
+    global _IS_DOCKER_CACHE
+
+    if _IS_DOCKER_CACHE is None:
+        _IS_DOCKER_CACHE = _in_podman() or _has_dockerenv() or _has_docker_cgroup_v1() or _has_docker_cgroup_v2()
+
+    return _IS_DOCKER_CACHE
+
+
+def collect_system_specs() -> dict[str, Any]:
+    """
+    Collects meta-data about the setup that is used with Haystack.
+
+    Data collected includes: operating system, python version, Haystack version, transformers version,
+    pytorch version, number of GPUs, execution environment.
+
+    These values are highly unlikely to change during the runtime of the pipeline,
+    so they're collected only once.
+    """
+    return {
+        "libraries.haystack": __version__,
+        "os.containerized": _is_containerized(),
+        "os.version": platform.release(),
+        "os.family": platform.system(),
+        "os.machine": platform.machine(),
+        "python.version": platform.python_version(),
+        "hardware.cpus": os.cpu_count(),
+        "libraries.pytest": sys.modules["pytest"].__version__ if "pytest" in sys.modules.keys() else False,
+        "libraries.ipython": sys.modules["ipython"].__version__ if "ipython" in sys.modules.keys() else False,
+        "libraries.colab": sys.modules["google.colab"].__version__ if "google.colab" in sys.modules.keys() else False,
+        # NOTE: The following items are set to default values and never populated.
+        # We keep them just to make sure we don't break telemetry.
+        "hardware.gpus": 0,
+        "libraries.transformers": False,
+        "libraries.torch": False,
+        "libraries.cuda": False,
+    }

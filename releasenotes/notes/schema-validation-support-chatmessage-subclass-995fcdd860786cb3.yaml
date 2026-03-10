@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Support subclasses of `ChatMessage` in Agent state schema validation.
+    The validation now checks for `issubclass(args[0], ChatMessage)` instead
+    of requiring exact type equality, allowing custom ChatMessage subclasses
+    to be used in the messages field.

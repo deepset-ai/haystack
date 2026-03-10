@@ -1,0 +1,2 @@
+preview:
+  - Change `write_documents()` method in `DocumentStore` protocol to return the number of document written

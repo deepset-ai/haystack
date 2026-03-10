@@ -1,0 +1,8 @@
+---
+
+preview:
+  - |
+    Fix a failure that occurred when creating a document passing the 'meta' keyword
+    to the constructor. Raise a specific ValueError if the 'meta' keyword is passed
+    along with metadata as keyword arguments, the two options are mutually exclusive
+    now.

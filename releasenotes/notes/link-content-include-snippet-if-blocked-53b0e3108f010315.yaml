@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    If LinkContentFetcher encounters a block or receives any response code other than HTTPStatus.OK, return the search
+    engine snippet as content, if it's available.

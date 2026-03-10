@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix model_max_length not being set in the Tokenizer in DefaultPromptHandler.

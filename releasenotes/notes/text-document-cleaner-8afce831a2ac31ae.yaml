@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Added DocumentCleaner, which removes extra whitespace, empty lines, headers, etc. from Documents containing text.
+    Useful as a preprocessing step before splitting into shorter text documents.

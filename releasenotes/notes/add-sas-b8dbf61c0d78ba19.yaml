@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Adds support for the Semantic Answer Similarity (SAS) metric to `EvaluationResult.calculate_metrics(...)`:
+    ```python
+    from haystack.evaluation.metrics import Metric
+    sas_metric = eval_result.calculate_metrics(
+        Metric.SAS, output_key="answers", model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+    ```

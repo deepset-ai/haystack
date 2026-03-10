@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix telemetry code that could cause a ValueError by trying to serialize a pipeline.
+    Telemetry code does not serialize pipelines anymore.

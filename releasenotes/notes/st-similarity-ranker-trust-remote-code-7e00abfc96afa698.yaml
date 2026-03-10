@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added a `trust_remote_code` parameter to the `SentenceTransformersSimilarityRanker` component.
+    When set to True, this enables execution of custom models and scripts hosted on the Hugging Face Hub.

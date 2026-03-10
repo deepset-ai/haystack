@@ -1,0 +1,3 @@
+---
+fixes:
+  - Fix serialization of `GeneratedAnswer` when `ChatMessage` objects are nested in `meta`.

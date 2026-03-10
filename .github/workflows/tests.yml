@@ -1,0 +1,266 @@
+# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
+name: Tests
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  push:
+    branches:
+      - main
+      # release branches have the form v1.9.x
+      - "v[0-9].*[0-9].x"
+    paths-ignore:
+      - 'docs/**'
+      - 'docs-website/**'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      # Keep the list in sync with the paths defined in the `tests_skipper_trigger.yml` workflow
+      - "haystack/**/*.py"
+      - "haystack/core/pipeline/predefined/*"
+      - "test/**/*.py"
+      - "pyproject.toml"
+      - ".github/utils/*.py"
+      - "scripts/*.py"
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
+  CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
+  AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+  AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
+  PYTHON_VERSION: "3.10"
+  HATCH_VERSION: "1.16.5"
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Ruff - check format and linting
+        run: hatch run fmt-check
+
+      - name: Check presence of license header
+        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
+
+  check-imports:
+    needs: format
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Check imports
+        run: hatch run python .github/utils/check_imports.py
+
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
+    needs: format
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Run
+        run: hatch run test:unit
+
+      - uses: actions/cache/save@v5
+        id: cache
+        if: matrix.os == 'macos-latest'
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
+      - name: Coveralls
+        # We upload only coverage for ubuntu as handling both os
+        # complicates the workflow too much for little to no gain
+        if: matrix.os == 'ubuntu-latest'
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        with:
+          path-to-lcov: coverage.xml
+
+  mypy:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            **/*.py
+            pyproject.toml
+          files_ignore: |
+            test/**
+            .github/**
+            scripts/**
+      - uses: actions/setup-python@v6
+        if: steps.files.outputs.any_changed == 'true'
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Mypy
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          mkdir .mypy_cache
+          hatch run test:types
+
+  integration-tests-linux:
+    name: Integration / ubuntu-latest
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+
+      - name: Run
+        run: hatch run test:integration-only-fast
+
+  integration-tests-macos:
+    name: Integration / macos-latest
+    needs: unit-tests
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      HAYSTACK_MPS_ENABLED: false
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v5
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
+
+      - name: Run
+        run: hatch run test:integration-only-fast
+
+  integration-tests-windows:
+    name: Integration / windows-latest
+    needs: unit-tests
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      HAYSTACK_XPU_ENABLED: false
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          pip install hatch==${{ env.HATCH_VERSION }}
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Run
+        run: hatch run test:integration-only-fast
+
+  notify-slack-on-failure:
+    if: failure() && github.ref_name == 'main'
+    needs:
+      - check-imports
+      - mypy
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    runs-on: ubuntu-slim
+    steps:
+      - uses: deepset-ai/notify-slack-action@v1
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
+
+  trigger-catch-all:
+    name: Tests completed
+    # This job will be executed only after all the other tests
+    # are successful.
+    # This way we'll be able to mark only this test as required
+    # and skip it accordingly.
+    needs:
+      - check-imports
+      - mypy
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    uses: ./.github/workflows/tests_skipper_workflow.yml
+    with:
+      tests_were_skipped: false

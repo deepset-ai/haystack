@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    Allow code instrumentation to also trace the input and output of components.
+    This is useful for debugging and understanding the behavior of components.
+    This behavior is disabled by default and can be enabled with one of the following methods:
+    - Set the environment variable `HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR` to `true` before importing Haystack.
+    - Enable content tracing in the code:
+        ```python
+        from haystack import tracing
+        tracing.tracer.is_content_tracing_enabled = True
+        ```

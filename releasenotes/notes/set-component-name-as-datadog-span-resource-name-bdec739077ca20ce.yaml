@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    For component run Datadog tracing, set the span resource name to the component name instead of the operation name.

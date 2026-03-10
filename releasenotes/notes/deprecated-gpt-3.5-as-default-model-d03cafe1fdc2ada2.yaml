@@ -1,0 +1,4 @@
+---
+deprecations:
+  - |
+    The 'gpt-3.5-turbo' as the default model for the `OpenAIGenerator` and `OpenAIChatGenerator` will be replaced by 'gpt-4o-mini'.

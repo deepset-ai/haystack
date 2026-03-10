@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The `ChatGenerator` Protocol no longer requires `to_dict` and `from_dict` methods.

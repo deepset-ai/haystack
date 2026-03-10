@@ -1,0 +1,12 @@
+---
+security:
+  - |
+    Remove the text value from a warning log in the `TextLanguageRouter` to avoid logging sensitive information.
+    The text can be still be shown by switching to the `debug` log level.
+
+    ```python
+    import logging
+
+    logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+    logging.getLogger("haystack").setLevel(logging.DEBUG)
+    ```

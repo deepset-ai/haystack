@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Expose default_headers to pass custom headers to Azure API including APIM subscription key.
+  - |
+    Add optional azure_kwargs dictionary parameter to pass in parameters undefined in Haystack but supported by AzureOpenAI.

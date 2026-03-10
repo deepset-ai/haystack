@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Prevented in-place mutation of input `Document` objects in all `Extractor` and `Classifier` components
+    by creating copies with `dataclasses.replace` before processing.

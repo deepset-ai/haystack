@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Upgrade Transformers to the latest version 4.34.1.
+    This version adds support for the new Mistral, Persimmon, BROS, ViTMatte, and Nougat models.

@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Speed up import of Document dataclass.
+    Importing Document was slowed down cause we were importing the whole `pandas` and `numpy` packages.
+    This has now been changed to import only the necessary classes and functions.

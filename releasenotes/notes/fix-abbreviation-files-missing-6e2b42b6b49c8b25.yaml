@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    The English and German abbreviation files used by the `SentenceSplitter` are now included in the distribution. They were previously missing due to a config in the `.gitignore` file.

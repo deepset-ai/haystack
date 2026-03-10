@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add support for PEP 604 type syntax. This means that when defining types in components,
+    you can use ``X | Y`` instead of ``Union[X, Y]`` and ``X | None`` instead of ``Optional[X]``.
+    The codebase has been migrated to the new syntax, but both syntaxes are fully supported.

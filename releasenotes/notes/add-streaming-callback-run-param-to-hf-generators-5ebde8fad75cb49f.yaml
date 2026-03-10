@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add `streaming_callback` run parameter to `HuggingFaceAPIGenerator` and `HuggingFaceLocalGenerator` to allow users to pass a callback function that will be called after each chunk of the response is generated.

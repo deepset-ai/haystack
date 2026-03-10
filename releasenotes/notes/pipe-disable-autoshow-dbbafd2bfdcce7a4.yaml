@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    In Jupyter notebooks, the image of the Pipeline will no longer be displayed automatically.
+    The textual representation of the Pipeline will be displayed.
+
+    To display the Pipeline image, use the `show` method of the Pipeline object.

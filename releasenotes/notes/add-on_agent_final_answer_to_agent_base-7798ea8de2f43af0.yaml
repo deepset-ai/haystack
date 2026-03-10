@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    added support for using `on_final_answer` trough `Agent` `callback_manager`

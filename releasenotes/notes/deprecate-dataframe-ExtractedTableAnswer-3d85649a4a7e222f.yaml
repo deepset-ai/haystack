@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The `ExtractedTableAnswer` dataclass and the `dataframe` field in the `Document` dataclass are deprecated and
+    will be removed in Haystack 2.11.0.
+    Check out the GitHub discussion for motivation and details: https://github.com/deepset-ai/haystack/discussions/8688

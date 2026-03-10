@@ -1,0 +1,38 @@
+---
+highlights: |
+   Introduced ComponentTool, a powerful addition to the Haystack tooling architecture that enables any Haystack component to be used as a tool by LLMs.
+   ComponentTool bridges the gap between Haystack's component ecosystem and LLM tool/function calling capabilities, allowing LLMs to
+   directly interact with components like web search, document processing, or any custom user component. ComponentTool handles
+   all the complexity of schema generation and type conversion, making it easy to expose component functionality to LLMs.
+
+features:
+ - |
+   Introduced the ComponentTool, a new tool that wraps Haystack components allowing them to be utilized as tools for LLMs (various ChatGenerators).
+   This ComponentTool supports automatic tool schema generation, input type conversion, and offering support for components with run methods that have input types:
+   - Basic types (str, int, float, bool, dict)
+   - Dataclasses (both simple and nested structures)
+   - Lists of basic types (e.g., List[str])
+   - Lists of dataclasses (e.g., List[Document])
+   - Parameters with mixed types (e.g., List[Document], str etc.)
+
+   Example usage:
+   ```python
+   from haystack.components.websearch import SerperDevWebSearch
+   from haystack.tools import ComponentTool
+   from haystack.utils import Secret
+
+   # Create a SerperDev search component
+   search = SerperDevWebSearch(
+       api_key=Secret.from_token("your-api-key"),
+       top_k=3
+   )
+
+   # Create a tool from the component
+   tool = ComponentTool(
+       component=search,
+       name="web_search",  # Optional: defaults to "serper_dev_web_search"
+       description="Search the web for current information"  # Optional: defaults to component docstring
+   )
+
+   # You can now use the tool now in a pipeline, see docs for more examples
+   ```

@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Make the PipelineBase().validate_input method public so users can use it with the confidence that it won't receive breaking changes without warning.
+    This method is useful for checking that all required connections in a pipeline have a connection and is automatically called in the run method of Pipeline.
+    It is being exposed as public for users who would like to call this method before runtime to validate the pipeline.

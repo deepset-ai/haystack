@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    `TikaDocumentConverter` now returns page breaks ("\f") in the output.
+    This only works for PDF files.

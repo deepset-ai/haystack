@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adds GPTChatGenerator, a chat-based OpenAI LLM component, ChatMessage(s) are used for input and output

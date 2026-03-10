@@ -1,0 +1,24 @@
+---
+enhancements:
+  - |
+    Enhanced FileTypeRouter with Regex Pattern Support for MIME Types: This introduces a significant enhancement to the `FileTypeRouter`, now featuring support for regex pattern matching for MIME types. This powerful addition allows for more granular control and flexibility in routing files based on their MIME types, enabling the handling of broad categories or specific MIME type patterns with ease. This feature is particularly beneficial for applications requiring sophisticated file classification and routing logic.
+
+    Usage example:
+    ```python
+    from haystack.components.routers import FileTypeRouter
+
+    router = FileTypeRouter(mime_types=[r"text/.*", r"application/(pdf|json)"])
+
+    # Example files to classify
+    file_paths = [
+        Path("document.pdf"),
+        Path("report.json"),
+        Path("notes.txt"),
+        Path("image.png"),
+    ]
+
+    result = router.run(sources=file_paths)
+
+    for mime_type, files in result.items():
+        print(f"MIME Type: {mime_type}, Files: {[str(file) for file in files]}")
+    ```

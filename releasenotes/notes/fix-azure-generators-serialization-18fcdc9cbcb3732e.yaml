@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Azure generators components fixed, they were missing the `@component` decorator.

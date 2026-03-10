@@ -1,0 +1,3 @@
+upgrade:
+  - |
+    Removes the `audio`, `ray`, `onnx` and `beir` extras from the extra group `all`.

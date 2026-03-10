@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Ensure that the `score` field in `SentenceTransformersSimilarityRanker` is
+    returned as a Python `float` instead of `numpy.float32`. This prevents potential
+    serialization issues in downstream integrations.

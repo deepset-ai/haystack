@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Adds `api_base_url` attribute to `OpenAITExtEmbedder`.
+    Previously, it was used only for initialization and was not serialized.

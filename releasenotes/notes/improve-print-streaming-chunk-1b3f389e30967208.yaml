@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    - Updates StreamingChunk construction in ToolInvoker to also stream a chunk with a finish reason. This is useful when using the print_streaming_chunk utility method
+    - Update the print_streaming_chunk to have better formatting of messages especially when using it with Agent.
+    - Also updated to work with the current version of the AWS Bedrock integration by working with the dict representation of ChoiceDeltaToolCall

@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Introduced a 'filter_policy' init parameter for both InMemoryBM25Retriever and InMemoryEmbeddingRetriever, allowing users to define how runtime filters should be applied with options to either 'replace' the initial filters or 'merge' them, providing greater flexibility in filtering query results.

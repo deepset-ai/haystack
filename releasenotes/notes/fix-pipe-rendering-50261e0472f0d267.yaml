@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the Pipeline visualization issue due to changes in the new release of Mermaid.

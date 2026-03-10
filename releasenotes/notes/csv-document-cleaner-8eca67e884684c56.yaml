@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Introduced `CSVDocumentCleaner` component for cleaning CSV documents.
+    - Removes empty rows and columns, while preserving specified ignored rows and columns.
+    - Customizable number of rows and columns to ignore during processing.

@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Adds `HuggingFaceTGIChatGenerator` for text and chat generation. This components support remote inferencing for
+    Hugging Face LLMs via text-generation-inference (TGI) protocol.

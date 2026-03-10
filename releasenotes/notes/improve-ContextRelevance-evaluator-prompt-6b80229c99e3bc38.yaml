@@ -1,0 +1,5 @@
+---
+
+enhancements:
+  - |
+    Updated the ContextRelevance evaluator prompt, explicitly asking to score each statement.

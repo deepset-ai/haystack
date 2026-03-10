@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Re-export symbols in __init__.py files. This ensures that short imports like
+    `from haystack.components.builders import ChatPromptBuilder` work equivalently to
+    `from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder`,
+    without causing errors or warnings in mypy/Pylance.

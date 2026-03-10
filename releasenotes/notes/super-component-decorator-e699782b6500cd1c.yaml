@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Created a super_component decorator (`from haystack import super_component`) that directly converts your class into a SuperComponent. This is an alternative to inheriting from SuperComponent.

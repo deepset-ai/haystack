@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Update the deepset Cloud SDK to the new endpoint format for new saving pipeline configs.

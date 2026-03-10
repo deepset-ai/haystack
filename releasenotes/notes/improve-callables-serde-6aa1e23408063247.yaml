@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Improve serialization and deserialization of callables.
+    We now allow serialization of classmethods and staticmethods
+    and explicitly prohibit serialization of instance methods, lambdas, and nested functions.

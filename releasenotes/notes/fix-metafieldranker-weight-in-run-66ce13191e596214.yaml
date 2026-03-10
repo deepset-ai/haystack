@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix a bug in the `MetaFieldRanker` where the `weight` parameter passed to the `run` method was not being used.

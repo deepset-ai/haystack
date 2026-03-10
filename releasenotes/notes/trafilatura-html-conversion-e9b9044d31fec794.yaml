@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    `HTMLToDocument`: change the HTML conversion backend from `boilerpy3` to `trafilatura`,
+    which is more robust and better maintained.
+deprecations:
+  - |
+    The following parameters of `HTMLToDocument` are ignored and will be removed in Haystack 2.4.0:
+    `extractor_type` and `try_others`.

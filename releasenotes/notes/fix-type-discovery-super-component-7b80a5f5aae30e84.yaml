@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix incorrect type resolution for super component inputs when mapped components use optional types.
+    The compatibility check now correctly keeps optional types when combining inputs from multiple components,
+    instead of dropping the optional part and producing a non optional type.
+    For example, going from ``dict[str, Any] | None`` to ``dict[str, Any]``.
+    Instead we now keep the ``None`` in the final type for the super component.

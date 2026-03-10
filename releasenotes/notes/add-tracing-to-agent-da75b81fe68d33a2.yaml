@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    We have added internal tracing support to Agent. It is now possible to track the internal loops within the agent by viewing the inputs and outputs each time the ChatGenerator and ToolInvoker is called.

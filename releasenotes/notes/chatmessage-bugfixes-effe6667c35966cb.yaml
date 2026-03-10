@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Addressed incorrect assumptions in the `ChatMessage` class that raised errors in valid usage scenario.
+    1. `ChatMessage.from_user` with `content_parts`: Previously, at least one text part was required, even though some
+    model providers support messages with only image parts. This restriction has been removed.
+    If a provider has such a limitation, it should now be enforced in the provider's implementation.
+    2. `ChatMessage.to_openai_dict_format`: Messages containing multiple text parts weren't supported, despite this
+    being allowed by the OpenAI API. This has now been corrected.

@@ -1,0 +1,7 @@
+extends: existence
+message: "Avoid 'please' in instructions—it can make actions seem optional. Use imperative instead."
+level: warning
+ignorecase: true
+scope: text
+tokens:
+  - please

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Remove the old evaluation API in favor of a Component based API.
+    We now have `SASEvaluator` and `StatisticalEvaluator` replacing the old API.

@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    Haystack's core modules are now
+    ["type complete"](https://typing.python.org/en/latest/guides/libraries.html#how-much-of-my-library-needs-types),
+    meaning that all function parameters and return types are explicitly
+    annotated. This increases the usefulness of the newly added `py.typed`
+    marker and sidesteps  differences in type inference between the various
+    type checker implementations.

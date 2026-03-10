@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Add a `streaming_callback` parameter to `ToolInvoker` to enable streaming of tool results.
+    Note that tool_result is emitted only after the tool execution completes and is not streamed incrementally.
+
+  - Update `print_streaming_chunk` to print ToolCall information if it is present in the chunk's metadata.
+
+  - Update `Agent` to forward the `streaming_callback` to `ToolInvoker` to emit tool results during tool invocation.

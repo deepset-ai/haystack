@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes a bug that causes pyright type checker to fail for all component objects.

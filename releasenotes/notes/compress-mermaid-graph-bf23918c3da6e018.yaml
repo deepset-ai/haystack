@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Haystack pipelines with Mermaid graphs are now compressed to reduce the size of the encoded base64 and avoid HTTP 400 errors when the graph is too large.

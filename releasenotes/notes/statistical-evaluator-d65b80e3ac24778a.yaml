@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add `StatisticalEvaluator`, this Component can be used to calculate the different statistic metrics from answers returned by LLMs.

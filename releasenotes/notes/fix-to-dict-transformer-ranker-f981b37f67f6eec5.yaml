@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    The batch_size parameter has now been added to to_dict function of TransformersSimilarityRanker. This means serialization of batch_size now works as expected.

@@ -1,0 +1,48 @@
+---
+features:
+  - |
+    Add new `JSONConverter` Component to convert JSON files to `Document`.
+    Optionally it can use jq to filter the source JSON files and extract only specific parts.
+
+    ```python
+    import json
+
+    from haystack.components.converters import JSONConverter
+    from haystack.dataclasses import ByteStream
+
+    data = {
+        "laureates": [
+            {
+                "firstname": "Enrico",
+                "surname": "Fermi",
+                "motivation": "for his demonstrations of the existence of new radioactive elements produced "
+                "by neutron irradiation, and for his related discovery of nuclear reactions brought about by slow neutrons",
+            },
+            {
+                "firstname": "Rita",
+                "surname": "Levi-Montalcini",
+                "motivation": "for their discoveries of growth factors",
+            },
+        ],
+    }
+    source = ByteStream.from_string(json.dumps(data))
+    converter = JSONConverter(
+        jq_schema=".laureates[]", content_key="motivation", extra_meta_fields=["firstname", "surname"]
+    )
+
+    results = converter.run(sources=[source])
+    documents = results["documents"]
+    print(documents[0].content)
+    # 'for his demonstrations of the existence of new radioactive elements produced by
+    # neutron irradiation, and for his related discovery of nuclear reactions brought
+    # about by slow neutrons'
+
+    print(documents[0].meta)
+    # {'firstname': 'Enrico', 'surname': 'Fermi'}
+
+    print(documents[1].content)
+    # 'for their discoveries of growth factors'
+
+    print(documents[1].meta)
+    # {'firstname': 'Rita', 'surname': 'Levi-Montalcini'}
+    ```

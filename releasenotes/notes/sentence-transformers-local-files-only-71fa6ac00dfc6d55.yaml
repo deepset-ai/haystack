@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Adds `local_files_only` parameter to `SentenceTransformersDocumentEmbedder` and `SentenceTransformersTextEmbedder` to allow loading models in offline mode.

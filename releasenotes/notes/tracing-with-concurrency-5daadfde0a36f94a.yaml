@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Each tracing span of a component run is now attached with the pipeline run span object. This allows users to trace
+    the execution of multiple pipeline runs concurrently.

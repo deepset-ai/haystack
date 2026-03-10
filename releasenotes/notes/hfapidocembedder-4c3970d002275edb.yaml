@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Introduce `HuggingFaceAPIDocumentEmbedder`.
+    This component can be used to compute Document embeddings using different Hugging Face APIs:
+      - free Serverless Inference API
+      - paid Inference Endpoints
+      - self-hosted Text Embeddings Inference.
+    This embedder will replace the `HuggingFaceTEIDocumentEmbedder` in the future.
+deprecations:
+  - |
+    Deprecate `HuggingFaceTEIDocumentEmbedder`. This component will be removed in Haystack 2.3.0.
+    Use `HuggingFaceAPIDocumentEmbedder` instead.

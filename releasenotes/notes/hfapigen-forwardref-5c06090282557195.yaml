@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Use forward references for Hugging Face Hub types in the `HuggingFaceAPIGenerator` component
+    to prevent import errors.

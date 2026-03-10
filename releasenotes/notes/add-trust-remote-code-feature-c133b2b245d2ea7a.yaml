@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Add trust_remote_code parameter to SentenceTransformersDocumentEmbedder and SentenceTransformersTextEmbedder for allowing custom models and scripts.

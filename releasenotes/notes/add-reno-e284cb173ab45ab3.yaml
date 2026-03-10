@@ -1,0 +1,11 @@
+---
+prelude: >
+    Release notes are now managed by `reno`. The main difference is that
+    every contributor is responsible for adding release notes for the feature or bugfix they're
+    introducing in Haystack in the very same Pull Request containing the code changes. The
+    goal is to encourage detailed and accurate notes for every release, especially when it comes
+    to complex features or breaking changes.
+upgrade:
+  - |
+    If you're a Haystack contributor, you need a new tool called `reno` to manage the release notes.
+    Please run `pip install -e .[dev]` to ensure you have `reno` available in your environment.

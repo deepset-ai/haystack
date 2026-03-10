@@ -1,0 +1,3 @@
+---
+fixes:
+  - fix docstrings for normalize_embeddings in sentence_transformers_text_embedder and sentence_transformers_document_embedder

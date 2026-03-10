@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Add the `@component` decorator to `HuggingFaceTGIChatGenerator`.
+    The lack of this decorator made it impossible to use the `HuggingFaceTGIChatGenerator` in a pipeline.

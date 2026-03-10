@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Improved pipeline run tracing to include pipeline input/output data.

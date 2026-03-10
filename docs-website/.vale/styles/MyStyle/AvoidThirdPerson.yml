@@ -1,0 +1,13 @@
+extends: existence
+message: "Prefer second person ('you') instead of '%s'."
+level: warning
+scope: text
+tokens:
+  - the user
+  - the customer
+  - the client
+  - '\bhe\b'
+  - '\bshe\b'
+  - '\bhis\b'
+  - '\bher\b'
+  - their system

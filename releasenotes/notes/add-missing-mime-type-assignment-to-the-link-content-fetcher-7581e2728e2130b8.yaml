@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Add missing stream mime type assignment to the `LinkContentFetcher` for
+    the single url scenario.
+
+    Previously the pipelines that use `FileTypeRouter` could fail if receive
+    a single url as an input.

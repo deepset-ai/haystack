@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `run_async` method to OpenAIChatGenerator. This method internally uses the async version of the OpenAI client
+    to generate chat completions and supports the same parameters as the `run` method. It returns a coroutine
+    that can be awaited.

@@ -1,0 +1,64 @@
+{
+    "name": "processPayment",
+    "description": "Process a new payment using the specified payment method",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "transaction_amount": {
+                "type": "number",
+                "description": "The amount to be paid"
+            },
+            "description": {
+                "type": "string",
+                "description": "A brief description of the payment"
+            },
+            "payment_method_id": {
+                "type": "string",
+                "description": "The payment method to be used"
+            },
+            "payer": {
+                "type": "object",
+                "description": "Information about the payer, including their name, email, and identification number",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The payer's name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "The payer's email address"
+                    },
+                    "identification": {
+                        "type": "object",
+                        "description": "The payer's identification number",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "description": "The type of identification document (e.g., CPF, CNPJ)"
+                            },
+                            "number": {
+                                "type": "string",
+                                "description": "The identification number"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "number"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "email",
+                    "identification"
+                ]
+            }
+        },
+        "required": [
+            "transaction_amount",
+            "description",
+            "payment_method_id",
+            "payer"
+        ]
+    }
+}

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix a bug when running a Pipeline that would cause it to get stuck in an infinite loop

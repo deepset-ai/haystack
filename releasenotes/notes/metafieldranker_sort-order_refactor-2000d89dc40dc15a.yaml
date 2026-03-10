@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Prevent the `MetaFieldRanker` from throwing an error if one or more of the documents doesn't contain the specific meta data field. Now those documents will be ignored for ranking purposes and placed at the end of the ranked list so we don't completely throw them away.
+    Adding a sort_order that can have values of descending or ascending.
+    Added more runtime parameters.

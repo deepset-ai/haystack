@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Remove all mentions of Canals by renaming some variables.
+    `__canals_input__` and `__canals_ouput__` have been renamed respectively to `__haystack_input__` and `__haystack_ouput__`.
+    `CANALS_VARIADIC_ANNOTATION` has been renamed to `HAYSTACK_VARIADIC_ANNOTATION` and it's value changed from `__canals__variadic_t` to `__haystack__variadic_t`.
+    Default Pipeline `debug_path` has been changed from `.canals_debug` to `.haystack_debug`.

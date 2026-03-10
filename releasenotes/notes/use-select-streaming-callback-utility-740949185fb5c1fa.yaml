@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Consolidate the use of `select_streaming_callback` utility in OpenAI and Azure ChatGenerators,
+    which checks the compatibility of `streaming_callback` with the async or non-async `run` method.

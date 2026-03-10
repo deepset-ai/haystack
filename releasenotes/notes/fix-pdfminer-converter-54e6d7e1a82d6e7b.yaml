@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed the PdfMinerToDocument converter's outputs to be properly wired up to 'documents'.

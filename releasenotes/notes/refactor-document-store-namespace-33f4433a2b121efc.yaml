@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    Change the imports for in_memory document store and retrievers from:
+
+        from haystack.document_stores import InMemoryDocumentStore
+        from haystack.components.retrievers import InMemoryEmbeddingRetriever
+
+    to:
+
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+        from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+
+enhancements:
+  - |
+    Stop exposing `in_memory` package symbols in the `haystack.document_store` and
+    `haystack.components.retrievers` root namespaces.

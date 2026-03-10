@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Introducing CSVDocumentSplitter: The CSVDocumentSplitter splits CSV documents into structured sub-tables by recursively splitting by empty rows and columns larger than a specified threshold.
+    This is particularly useful when converting Excel files which can often have multiple tables within one sheet.

@@ -1,0 +1,8 @@
+extends: existence
+message: "Avoid '%s'—it's implied by the colon. Rephrase or remove."
+level: suggestion
+ignorecase: true
+scope: text
+tokens:
+  - the following
+  - as follows

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the deserialization of pipelines containing evaluator components that were subclasses of `LLMEvaluator`.

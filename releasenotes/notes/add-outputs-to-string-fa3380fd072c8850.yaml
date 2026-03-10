@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds outputs_to_string to Tool and ComponentTool to allow users to customize how the output of a Tool should be converted into a string so that it can be provided back to the ChatGenerator in a ChatMessage.
+    If outputs_to_string is not provided a default converter is used within ToolInvoker. The default handler uses the current default behavior.

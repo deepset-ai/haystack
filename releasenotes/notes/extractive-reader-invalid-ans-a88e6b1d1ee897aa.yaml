@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix issue with `ExtractiveReader` picking invalid answers when `answers_per_seq` > num of valid answers

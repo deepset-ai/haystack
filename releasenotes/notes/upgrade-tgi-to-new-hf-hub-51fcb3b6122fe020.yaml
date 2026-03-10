@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The `HuggingFaceTGIGenerator` and `HuggingFaceTGIChatGenerator` components have been modified to be compatible with
+    `huggingface_hub>=0.22.0`.
+
+    If you use these components, you may need to upgrade the `huggingface_hub` library.
+    To do this, run the following command in your environment:
+    ```bash
+    pip install "huggingface_hub>=0.22.0"
+    ```

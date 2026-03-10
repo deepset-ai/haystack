@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add a Zero Shot Text Router that uses an NLI model from HF to classify texts based on a set of provided labels and routes them based on the label they were classified with.

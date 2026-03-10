@@ -1,0 +1,31 @@
+name: Project release on PyPi
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+      # We must not release versions tagged with -rc0 suffix
+      - "!v[0-9]+.[0-9]+.[0-9]-rc0"
+
+env:
+  HATCH_VERSION: "1.16.5"
+
+jobs:
+  release-on-pypi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Build Haystack
+        run: hatch build
+
+      - name: Publish on PyPi
+        env:
+          HATCH_INDEX_USER: __token__
+          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
+        run: hatch publish -y

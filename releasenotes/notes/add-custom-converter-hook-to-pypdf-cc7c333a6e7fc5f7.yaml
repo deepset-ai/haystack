@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add callable hook to PyPDFToDocument to enable easier customization of pdf to Document conversion.

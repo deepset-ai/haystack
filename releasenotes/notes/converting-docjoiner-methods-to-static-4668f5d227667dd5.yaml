@@ -1,0 +1,4 @@
+---
+enhancements:
+  -|
+   DocumentJoiner methods `_concatenate()` and `_distribution_based_rank_fusion()` were converted to static methods.

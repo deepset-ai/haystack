@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Updated `SentenceTransformersDiversityRanker` to use the `token` parameter internally instead
+    of the deprecated `use_auth_token`. The public API of this component already utilizes `token`.

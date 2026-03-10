@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Extend core component machinery to support an optional asynchronous `run_async` method in components.
+    If it's present, it should have the same parameters (and output types) as the run method and must be
+    implemented as a coroutine.

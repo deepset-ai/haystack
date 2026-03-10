@@ -1,0 +1,1017 @@
+/* SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Import Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  /* Primary Color Scale (Blue) - Light Mode */
+  --ifm-color-primary: #2558FF;
+  --ifm-color-primary-dark: #1F49D4;
+  --ifm-color-primary-darker: #193BAA;
+  --ifm-color-primary-darkest: #132C80;
+  --ifm-color-primary-light: #4974FF;
+  --ifm-color-primary-lighter: #6E90FF;
+  --ifm-color-primary-lightest: #92ABFF;
+
+  /* Secondary Color Scale (Blue Tints) - Light Mode */
+  --ifm-color-secondary: #B6C7FF;
+  --ifm-color-secondary-dark: #92ABFF;
+  --ifm-color-secondary-darker: #6E90FF;
+  --ifm-color-secondary-darkest: #4974FF;
+  --ifm-color-secondary-light: #D3DEFF;
+  --ifm-color-secondary-lighter: #E6ECFF;
+  --ifm-color-secondary-lightest: #F0F4FF;
+
+  /* Brand Colors for Reference */
+  --haystack-blue-main: #2558FF;
+  --haystack-blue-soft: #B6C7FF;
+  --haystack-blue-medium: #6E90FF;
+  --haystack-blue-strong: #193BAA;
+  --haystack-blue-light: #E6ECFF;
+
+  /* Code and Typography */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(37, 88, 255, 0.12);
+  --ifm-font-family-base:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ifm-font-family-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Admonition Custom Colors */
+  --docusaurus-admonition-tip-bg: rgba(37, 88, 255, 0.08);
+  --docusaurus-admonition-tip-border: var(--ifm-color-primary);
+  --docusaurus-admonition-note-bg: rgba(182, 199, 255, 0.15);
+  --docusaurus-admonition-note-border: #6E90FF;
+  --docusaurus-admonition-info-bg: rgba(110, 144, 255, 0.1);
+  --docusaurus-admonition-info-border: #92ABFF;
+
+  /* Content Width - wider for long class names */
+  --ifm-container-width: 1024px;
+
+  /* Neutral Colors for UI Components */
+  --color-background: #ffffff;
+  --color-background-hover: #f5f7fa;
+  --color-border: #e0e0e0;
+  --color-border-hover: #d0d0d0;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-shadow: rgba(0, 0, 0, 0.12);
+
+  /* Success Colors */
+  --color-success-bg: #e6f4ea;
+  --color-success-border: #b7dfc7;
+  --color-success-text: #155724;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  /* Primary Color Scale (Blue) - Dark Mode */
+  --ifm-color-primary: #6E90FF;
+  --ifm-color-primary-dark: #4974FF;
+  --ifm-color-primary-darker: #2558FF;
+  --ifm-color-primary-darkest: #1F49D4;
+  --ifm-color-primary-light: #92ABFF;
+  --ifm-color-primary-lighter: #B6C7FF;
+  --ifm-color-primary-lightest: #D3DEFF;
+
+  /* Secondary Color Scale (Blue Tints) - Dark Mode */
+  --ifm-color-secondary: #92ABFF;
+  --ifm-color-secondary-dark: #6E90FF;
+  --ifm-color-secondary-darker: #4974FF;
+  --ifm-color-secondary-darkest: #2558FF;
+  --ifm-color-secondary-light: #B6C7FF;
+  --ifm-color-secondary-lighter: #D3DEFF;
+  --ifm-color-secondary-lightest: #E6ECFF;
+
+  /* Code and Typography */
+  --docusaurus-highlighted-code-line-bg: rgba(110, 144, 255, 0.2);
+
+  /* Admonition Custom Colors - Dark Mode */
+  --docusaurus-admonition-tip-bg: rgba(110, 144, 255, 0.15);
+  --docusaurus-admonition-tip-border: #6E90FF;
+  --docusaurus-admonition-note-bg: rgba(146, 171, 255, 0.15);
+  --docusaurus-admonition-note-border: #92ABFF;
+  --docusaurus-admonition-info-bg: rgba(182, 199, 255, 0.12);
+  --docusaurus-admonition-info-border: #B6C7FF;
+
+  /* Neutral Colors for UI Components - Dark Mode */
+  --color-background: #2a2a2a;
+  --color-background-hover: #333333;
+  --color-border: #444444;
+  --color-border-hover: #555555;
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #999999;
+  --color-shadow: rgba(0, 0, 0, 0.4);
+
+  /* Success Colors - Dark Mode */
+  --color-success-bg: #1a3d1f;
+  --color-success-border: #2d5a34;
+  --color-success-text: #8fd69d;
+}
+
+body {
+  font-family: var(--ifm-font-family-base);
+}
+
+/* 5) Headings weight & family */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ifm-font-family-heading);
+  font-weight: 700;
+}
+
+/* Heading sizes */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+/* 6) Buttons, spacing, etc. (optional) */
+button, .button {
+  border-radius: 8px;
+}
+
+
+.pagination-nav {
+  display: none;
+}
+
+/* Top Navbar active state styling - using dc-docs approach with haystack-docs colors */
+.navbar__item.navbar__link--active,
+.navbar__item.navbar__link--active:hover {
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+}
+
+/* Style for the Docs and API Reference navbar items */
+.navbar__item[href*="/docs/"],
+.navbar__item[href*="/reference/"] {
+  transition: color 0.2s ease;
+}
+
+.navbar__item[href*="/docs/"]:hover,
+.navbar__item[href*="/reference/"]:hover {
+  color: var(--ifm-color-primary);
+}
+
+/* Active state for API Reference section */
+.navbar__item[href*="/reference/"].navbar__link--active,
+.navbar__item[href*="/reference/"].navbar__link--active:hover {
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+}
+
+/* ========================================
+   BREADCRUMBS - Neutral Grey with Blue Active
+   ======================================== */
+
+/* Breadcrumb links - grey for non-active items */
+.breadcrumbs__link {
+  color: #6B7280;
+}
+
+.breadcrumbs__link:hover {
+  color: var(--ifm-color-primary);
+  background: transparent;
+}
+
+/* Active breadcrumb item - blue */
+.breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--ifm-color-primary);
+  font-weight: 500;
+}
+
+[data-theme='dark'] .breadcrumbs__link {
+  color: #9CA3AF;
+}
+
+[data-theme='dark'] .breadcrumbs__link:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+[data-theme='dark'] .breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--ifm-color-primary);
+}
+
+/* Footer section titles - make them bold and prominent */
+.footer .footer__title,
+.footer .footer__col .footer__title,
+.footer__links .footer__col .footer__title,
+.footer--dark .footer__title {
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  font-size: 1.1em !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Footer links - white on hover for better contrast on green background */
+.footer__link-item {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.footer__link-item:hover {
+  color: #ffffff !important;
+  text-decoration: underline;
+}
+
+/* Remove any secondary/lilac color from footer */
+.footer a {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.footer a:hover {
+  color: #ffffff !important;
+}
+
+/* Footer copyright - same color as other footer text */
+.footer__copyright {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Footer - Haystack Blue Background */
+.footer.footer--dark {
+  background-color: #193BAA !important;
+}
+
+[data-theme='dark'] .footer.footer--dark {
+  background-color: #132C80 !important;
+}
+
+/* Footer Social Media Icons */
+.footer-social-icons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-left: -0.25rem;
+}
+
+.footer-social-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+.footer-social-icon {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  opacity: 0.7;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.footer-social-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.footer__link-item:has(.footer-social-icon) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.footer__link-item:has(.footer-social-icon):hover {
+  text-decoration: none;
+}
+
+/* Sidebar navigation - top-level items bold */
+.menu__list > .menu__list-item > .menu__link {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.menu__link {
+  color: #4B5563;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  position: relative;
+}
+
+/* Truncate only single-word items (like class names: SentenceTransformersDocumentImageEmbedder) */
+/* Multi-word phrases (like "Migrating from LangGraph to Haystack") will wrap normally */
+.menu__link--single-word {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme='dark'] .menu__link {
+  color: #E5E7EB;
+}
+
+/* Sidebar navigation - sub-items normal weight */
+.menu__list .menu__list .menu__link {
+  font-weight: 400;
+  font-size: 0.925rem;
+  padding-left: 1.25rem;
+}
+
+/* Highlight all items in the active path (breadcrumb trail) */
+.menu__link--active {
+  color: var(--ifm-color-primary-dark) !important;
+  font-weight: 600;
+}
+
+/* Add background highlight only to the actual page (leaf node) */
+.theme-doc-sidebar-item-link .menu__link--active {
+  background-color: rgba(37, 88, 255, 0.1);
+  border-left: 3px solid var(--ifm-color-primary);
+  padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
+}
+
+/* Hover state for sidebar links */
+.menu__link:hover {
+  background-color: rgba(37, 88, 255, 0.06);
+  color: var(--ifm-color-primary);
+  transition: background-color 0.2s ease;
+}
+
+/* Active link hover - keep stronger background */
+.theme-doc-sidebar-item-link .menu__link--active:hover {
+  background-color: rgba(37, 88, 255, 0.1);
+}
+
+/* Dark mode adjustments for sidebar */
+[data-theme='dark'] .theme-doc-sidebar-item-link .menu__link--active {
+  background-color: rgba(110, 144, 255, 0.2);
+  border-left: 3px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary-light) !important;
+}
+
+[data-theme='dark'] .menu__link:hover {
+  background-color: rgba(110, 144, 255, 0.1);
+  color: var(--ifm-color-primary-light);
+}
+
+[data-theme='dark'] .menu__link--active {
+  color: var(--ifm-color-primary-light) !important;
+}
+
+/* ========================================
+   ADMONITION STYLING - Brand Colors
+   ======================================== */
+
+/* Tip Admonitions - Match sidebar navigation color */
+.theme-admonition.alert.alert--success {
+  background-color: rgba(37, 88, 255, 0.08);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+.theme-admonition.alert.alert--success .admonition-icon svg {
+  fill: var(--ifm-color-primary);
+}
+
+.theme-admonition.alert.alert--success .admonition-heading {
+  color: var(--ifm-color-primary-dark);
+}
+
+/* Note Admonitions - Blue Tint */
+.theme-admonition.alert.alert--secondary {
+  background-color: var(--docusaurus-admonition-note-bg);
+  border-left: 4px solid var(--docusaurus-admonition-note-border);
+}
+
+.theme-admonition.alert.alert--secondary .admonition-icon svg {
+  fill: var(--ifm-color-secondary);
+}
+
+.theme-admonition.alert.alert--secondary .admonition-heading {
+  color: var(--ifm-color-secondary-dark);
+}
+
+/* Info Admonitions - Blue Soft */
+.theme-admonition.alert.alert--info {
+  background-color: var(--docusaurus-admonition-info-bg);
+  border-left: 4px solid var(--docusaurus-admonition-info-border);
+}
+
+.theme-admonition.alert.alert--info .admonition-icon svg {
+  fill: var(--ifm-color-primary-light);
+}
+
+.theme-admonition.alert.alert--info .admonition-heading {
+  color: var(--ifm-color-primary);
+}
+
+/* ========================================
+   INTERACTIVE ELEMENTS - Enhanced Colors
+   ======================================== */
+
+/* Primary Links - only underline content links, not navigation */
+article a {
+  color: var(--ifm-color-primary);
+  transition: text-decoration 0.2s ease;
+}
+
+article a:hover {
+  text-decoration: underline;
+}
+
+/* Reset general link behavior - no underline by default */
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Navbar links - keep neutral color until hovered/active */
+.navbar__link {
+  color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__link:hover,
+.navbar__link:focus-visible {
+  color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
+}
+
+.navbar__link:active {
+  color: var(--ifm-navbar-link-active-color, var(--ifm-color-primary)) !important;
+}
+
+/* Navbar logo title - default to neutral, blue on hover */
+.navbar__title {
+  color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__title:hover {
+  color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
+}
+
+/* Hide navbar title on mobile/tablet to prevent overlap with search bar */
+@media (max-width: 996px) {
+  .navbar__title {
+    display: none !important;
+  }
+
+  /* Ensure navbar brand doesn't grow too large */
+  .navbar__brand {
+    flex-shrink: 0;
+    max-width: fit-content;
+  }
+}
+
+/* Remove underline from navbar logo link */
+.navbar__logo,
+.navbar__brand {
+  text-decoration: none !important;
+}
+
+.navbar__logo:hover,
+.navbar__brand:hover {
+  text-decoration: none !important;
+}
+
+/* Inline Code - Neutral Grey Background */
+code:not([class*="language-"]) {
+  background-color: #F5F5F7;
+  border: 1px solid #E5E5E7;
+  color: #1D1D1F;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+}
+
+[data-theme='dark'] code:not([class*="language-"]) {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #E8E8E8;
+}
+
+/* Links inside inline code - use blue for distinction */
+a code:not([class*="language-"]),
+code:not([class*="language-"]) a {
+  color: var(--ifm-color-primary-dark);
+  font-weight: 600;
+}
+
+[data-theme='dark'] a code:not([class*="language-"]),
+[data-theme='dark'] code:not([class*="language-"]) a {
+  color: var(--ifm-color-primary);
+}
+
+/* Hover state for code links */
+a:hover code:not([class*="language-"]),
+code:not([class*="language-"]) a:hover {
+  text-decoration: underline;
+}
+
+/* Primary Buttons */
+.button--primary {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: #ffffff;
+}
+
+.button--primary:hover {
+  background-color: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+  color: #ffffff;
+}
+
+/* Secondary Buttons - Blue Outline */
+.button--secondary {
+  background-color: transparent;
+  border: 2px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.button--secondary:hover {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: #ffffff;
+}
+
+/* ========================================
+   CODE BLOCKS - Enhanced Styling
+   ======================================== */
+
+/* Code Block Container */
+.theme-code-block {
+  position: relative;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Language Badge - Positioned at top-right corner */
+.theme-code-block-with-lang {
+  position: relative;
+}
+
+.code-block-language-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #E6ECFF;
+  color: #193BAA;
+  font-weight: 600;
+  font-size: 0.6em;
+  text-transform: uppercase;
+  padding: 0.15em 0.5em;
+  border-radius: 0.25rem;
+  letter-spacing: 0.3px;
+  z-index: 1;
+  pointer-events: none;
+  line-height: 1.2;
+}
+
+/* Push action buttons below the language badge */
+.theme-code-block div[class*="buttonGroup"] {
+  margin-top: 1.5rem;
+}
+
+[data-theme='dark'] .code-block-language-badge {
+  background: rgba(110, 144, 255, 0.2);
+  color: #B6C7FF;
+  border: 1px solid rgba(110, 144, 255, 0.3);
+}
+
+/* Copy Button Styling */
+.clean-btn.copy-button {
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.clean-btn.copy-button:hover {
+  background-color: var(--ifm-color-primary-lightest);
+}
+
+[data-theme='dark'] .clean-btn.copy-button:hover {
+  background-color: rgba(110, 144, 255, 0.2);
+}
+
+/* Hide language badge for single-line code blocks */
+.hide-language-badge .code-block-language-badge {
+  display: none;
+}
+
+/* Hide action buttons for two-line code blocks */
+.hide-action-buttons div[class*="buttonGroup"] {
+  display: none;
+}
+
+/* ========================================
+   VERSION BADGE & BANNER - Brand Colors
+   ======================================== */
+
+/* Version Badge - Lighter grey for better blue contrast */
+.badge--secondary,
+.theme-doc-version-badge {
+  background-color: #9CA3AF !important;
+  border-color: #9CA3AF !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .badge--secondary,
+[data-theme='dark'] .theme-doc-version-badge {
+  background-color: #6B7280 !important;
+  border-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+/* Navbar Version Dropdown - Badge Style with lighter grey */
+.navbar-version-badge-dropdown {
+  background-color: #9CA3AF !important;
+  border-radius: 12px !important;
+  padding: 3px 10px !important;
+  font-size: 13px !important;
+  margin-right: 10px !important;
+  color: #ffffff !important;
+}
+
+.navbar-version-badge-dropdown .navbar__link,
+.navbar-version-badge-dropdown .navbar__link *,
+.navbar-version-badge-dropdown button,
+.navbar-version-badge-dropdown a,
+.navbar-version-badge-dropdown span,
+.navbar__item.navbar-version-badge-dropdown > .navbar__link {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  transition: color 0.2s ease !important;
+}
+
+/* Light mode: blue TEXT color on hover */
+.navbar-version-badge-dropdown:hover .navbar__link,
+.navbar-version-badge-dropdown:hover .navbar__link *,
+.navbar-version-badge-dropdown:hover button,
+.navbar-version-badge-dropdown:hover a,
+.navbar-version-badge-dropdown:hover span,
+.navbar-version-badge-dropdown .navbar__link:hover,
+.navbar-version-badge-dropdown .navbar__link:hover * {
+  color: var(--ifm-color-primary-dark) !important;
+  background-color: transparent !important;
+}
+
+/* Force white color on the dropdown caret/arrow */
+.navbar-version-badge-dropdown::after,
+.navbar-version-badge-dropdown .navbar__link::after {
+  filter: brightness(0) invert(1) !important;
+  transition: filter 0.2s ease !important;
+}
+
+/* Teal arrow on hover */
+.navbar-version-badge-dropdown:hover::after,
+.navbar-version-badge-dropdown:hover .navbar__link::after {
+  filter: none !important;
+}
+
+[data-theme='dark'] .navbar-version-badge-dropdown {
+  background-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link,
+[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link *,
+[data-theme='dark'] .navbar-version-badge-dropdown button,
+[data-theme='dark'] .navbar-version-badge-dropdown a,
+[data-theme='dark'] .navbar-version-badge-dropdown span,
+[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown > .navbar__link {
+  color: #ffffff !important;
+}
+
+/* Dark mode: blue TEXT color on hover - higher specificity */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link *,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover button,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover span,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover *,
+html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .navbar__link {
+  color: #6E90FF !important;
+}
+
+/* Unreleased Version Banner */
+.theme-doc-version-banner.alert--warning {
+  background: linear-gradient(135deg,
+    rgba(25, 59, 170, 0.1) 0%,
+    rgba(110, 144, 255, 0.1) 100%);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .theme-doc-version-banner.alert--warning {
+  background: linear-gradient(135deg,
+    rgba(110, 144, 255, 0.15) 0%,
+    rgba(182, 199, 255, 0.1) 100%);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+/* ========================================
+   TABLE OF CONTENTS - Enhanced Styling
+   ======================================== */
+
+.table-of-contents {
+  padding-top: 2.5rem;
+}
+
+.table-of-contents__link {
+  color: #4B5563;
+  position: relative;
+}
+
+[data-theme='dark'] .table-of-contents__link {
+  color: #E5E7EB;
+}
+
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+/* Active indicator line */
+.table-of-contents__link--active::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--ifm-color-primary);
+  border-radius: 2px;
+}
+
+[data-theme='dark'] .table-of-contents__link--active {
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+}
+
+.table-of-contents__link--active code {
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .table-of-contents__link--active code {
+  color: var(--ifm-color-primary) !important;
+}
+
+.table-of-contents__link:hover {
+  color: var(--ifm-color-primary) !important;
+}
+
+[data-theme='dark'] .table-of-contents__link:hover {
+  color: var(--ifm-color-primary) !important;
+}
+
+/* ========================================
+   DROPDOWN MENUS - Enhanced Colors
+   ======================================== */
+
+.dropdown__menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown__link {
+  color: #374151;
+}
+
+[data-theme='dark'] .dropdown__link {
+  color: #E5E7EB;
+}
+
+/* Active state - keep the color highlight */
+.dropdown__link--active {
+  background-color: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary);
+}
+
+/* Hover state - gray background only, no color */
+.dropdown__link:hover {
+  background-color: #F3F4F6;
+  color: #374151;
+}
+
+/* Active item on hover - keep the active color */
+.dropdown__link--active:hover {
+  background-color: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .dropdown__link--active {
+  background-color: rgba(110, 144, 255, 0.15);
+  color: var(--ifm-color-primary);
+}
+
+/* Dark mode hover - neutral gray */
+[data-theme='dark'] .dropdown__link:hover {
+  background-color: #374151;
+  color: #E5E7EB;
+}
+
+/* Dark mode active item on hover - keep the active color */
+[data-theme='dark'] .dropdown__link--active:hover {
+  background-color: rgba(110, 144, 255, 0.15);
+  color: var(--ifm-color-primary);
+}
+
+/* ========================================
+   PAGINATION - Brand Colors
+   ======================================== */
+
+.pagination-nav__link:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.pagination-nav__link:hover .pagination-nav__label {
+  color: var(--ifm-color-primary);
+}
+
+/* ========================================
+   SEARCH BAR - Enhanced Styling
+   ======================================== */
+
+.navbar__search-input:focus {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 0.2rem rgba(37, 88, 255, 0.2);
+}
+
+/* ========================================
+   TABS - Brand Colors
+   ======================================== */
+
+.tabs__item--active {
+  border-bottom-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.tabs__item:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+/* ========================================
+   IMAGES - Dark Mode White Background
+   ======================================== */
+
+/* Add white background to images with transparent PNGs in dark mode */
+[data-theme='dark'] .img-white-bg img,
+[data-theme='dark'] .img-white-bg picture img {
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* Alternative: light grey background (less harsh) */
+[data-theme='dark'] .img-light-bg img,
+[data-theme='dark'] .img-light-bg picture img {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* ========================================
+   KEY-VALUE TABLE STYLING - Headerless Tables
+   ======================================== */
+
+/* Hide header visually in key-value tables */
+.key-value-table thead {
+  display: none;
+}
+
+/* Ensure wrapper doesn't overflow */
+.key-value-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Force table to use full width and fixed layout */
+.key-value-table table {
+  table-layout: fixed !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Style the first column (keys) as bold and nowrap */
+.key-value-table td:first-child {
+  font-weight: 600;
+  white-space: nowrap;
+  padding-right: 1rem;
+  width: 30% !important;
+  min-width: 200px;
+}
+
+/* Style the second column (values) to wrap text properly */
+.key-value-table td:last-child {
+  width: 70% !important;
+  max-width: 0 !important; /* Force wrapping */
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+}
+
+/* Ensure content inside cells wraps properly */
+.key-value-table td:last-child * {
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+}
+
+/* Ensure links wrap properly */
+.key-value-table td:last-child a {
+  white-space: normal !important;
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+}
+
+/* General cell styling */
+.key-value-table td {
+  vertical-align: top;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Add subtle spacing between rows for readability */
+.key-value-table tr + tr td {
+  padding-top: 0.4rem;
+}
+
+/* ========================================
+   SIDE-BY-SIDE CODE COMPARISON
+   ======================================== */
+
+.code-comparison {
+  display: flex;
+  gap: 1.5rem;
+  align-items: stretch;
+  margin: 1rem 0 2rem;
+}
+
+.code-comparison__column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.code-comparison .theme-code-block {
+  height: 100%;
+}
+
+@media (max-width: 996px) {
+  .code-comparison {
+    flex-direction: column;
+  }
+}
+
+/* ========================================= */
+/* CRITICAL: Version badge hover color fix  */
+/* These rules MUST be at the end to ensure */
+/* they override all other hover styles     */
+/* ========================================= */
+
+/* Dark mode version badge - blue text on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a.navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a.navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown a.navbar__link:hover {
+  color: #6E90FF !important;
+}
+
+/* Also target the dropdown arrow/caret in dark mode on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
+  filter: none !important;
+}
+
+/* ========================================
+   COPY DROPDOWN - Sticky Button
+   ======================================== */
+
+/* Copy dropdown sticky button - floats at the top-right of the content column */
+.copy-dropdown-sticky {
+  float: right;
+  position: sticky;
+  top: 76px;
+  z-index: 100;
+  margin-bottom: -40px;
+  margin-left: 16px;
+}
+
+@media (max-width: 768px) {
+  .copy-dropdown-sticky {
+    top: 65px;
+  }
+}
+
+@media print {
+  .copy-dropdown-sticky {
+    display: none !important;
+  }
+}

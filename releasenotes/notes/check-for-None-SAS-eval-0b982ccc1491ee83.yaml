@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    `SASEvaluator` now raises a `ValueError` if a `None` value is contained in the `predicted_answers` input.

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Add the init parameters timeout and max_retries to the to_dict methods of OpenAITextEmbedder and OpenAIDocumentEmbedder.
+    This ensures that these values are properly serialized when using the to_dict method of these components.

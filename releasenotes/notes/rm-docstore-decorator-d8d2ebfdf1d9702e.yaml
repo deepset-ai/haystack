@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Improve the deserialization logic for components that use a Document Store.
+    Remove the @document_store decorator and the registry of Document Stores.

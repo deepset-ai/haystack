@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    `Pipeline.connect()` arguments have renamed for clarity. This is a breaking change if `connect` was called
+    with keyword arguments only.
+    `connect_from` and `connect_to` arguments have been renamed respectively to `sender` and `receiver`.
+    The behaviour of `Pipeline.connect()` is not changed.
+features:
+  - |
+    Rename `Pipeline.connect()` arguments for clarity

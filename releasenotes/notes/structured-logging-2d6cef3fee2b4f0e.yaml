@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    Haystack now supports structured logging out-of-the box.
+    Logging can be separated into 3 categories:
+    - If [`structlog`](https://www.structlog.org/en/stable/) is not installed, Haystack will
+      use the standard Python logging library with whatever configuration is present.
+    - If `structlog` is installed, Haystack will log through [`structlog`](https://www.structlog.org/en/stable/) using
+      structlog's console renderer.
+      To disable structlog, set the environment variable `HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR` to `true`.
+    - To log in JSON, install [`structlog`](https://www.structlog.org/en/stable/) and
+      - set the environment variable `HAYSTACK_LOGGING_JSON` to `true` or
+      - enable JSON logging from Python
+        ```python
+        import haystack.logging
+
+        haystack.logging.configure_logging(use_json=True)
+        ```

@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Refactor `Answer` dataclass and classes that inherited it.
+    Now `Answer` is a Protocol, classes that used to inherit it now respect that interface.
+    We also added a new `ExtractiveTableAnswer` to be used for table question answering.
+
+    All classes now are easily serializable using `to_dict()` and `from_dict()` like `Document` and components.

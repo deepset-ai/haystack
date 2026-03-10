@@ -1,0 +1,11 @@
+That's yet another file!
+
+it contains
+
+
+
+
+many
+
+
+empty lines.

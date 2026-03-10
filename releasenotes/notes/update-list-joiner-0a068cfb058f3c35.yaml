@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Update ListJoiner to only optionally need list_type_ to be passed. By default it uses type List which acts like List[Any].
+    - This allows the ListJoiner to combine any incoming lists into a single flattened list.
+    - Users can still pass list_type_ if they would like to have stricter type validation in their pipelines.

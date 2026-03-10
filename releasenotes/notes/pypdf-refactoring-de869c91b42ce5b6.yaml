@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    Refactor `PyPDFToDocument` to simplify support for custom PDF converters.
+    PDF converters are classes that implement the `PyPDFConverter` protocol and have 3 methods:
+    `convert`, `to_dict` and `from_dict`.
+    The `DefaultConverter` class is provided as a default implementation.
+deprecations:
+  - |
+    Using the `converter_name` parameter in the `PyPDFToDocument` component is deprecated.
+    It will be removed in the 2.3.0 release.
+    Use the `converter` parameter instead.
