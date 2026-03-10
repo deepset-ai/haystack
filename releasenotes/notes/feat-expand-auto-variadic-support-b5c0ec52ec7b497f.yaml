@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    We now allow a component's whose input type is typed as ``Any`` to allow multiple input connections as long as the input connections are all of type ``list``.
+    A common use case for this is using the ``PromptBuilder`` component, which could be configured to have a  ``documents`` input that is typed as ``Any``.
+    With this change it can now accept multiple lists of documents from different upstream components.
+  - |
+    We now allow a component's whose input type is typed as a union of lists (e.g. ``list[str] | list[ChatMessage]``) to allow multiple input connections.
+    Previously we only supported bare lists (e.g. ``list[str]``) or optional lists (e.g. ``list[str] | None``) to allow multiple input connections.
+    A common use case for this is using the ``AnswerBuilder`` component which has it's ``replies`` input typed as ``list[str] | list[ChatMessage]``.
