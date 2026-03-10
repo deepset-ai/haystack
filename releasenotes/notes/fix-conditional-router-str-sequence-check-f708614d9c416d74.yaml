@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixed a bug in the ConditionalRouter where a string value would incorrectly be valid as a list of strings.
