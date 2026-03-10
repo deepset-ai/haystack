@@ -956,25 +956,31 @@ class PipelineBase:  # noqa: PLW1641
         error_type: type[Exception],
     ) -> InputSocket:
         """
-        Checks if the receiver socket can be made lazy variadic and modifies it in-place if that's the case.
+        Attempts to make the receiver socket lazy variadic in-place to accommodate a new sender.
 
-        We automatically set the receiver socket as lazy variadic if:
-            - it has at least one sender already connected
-            - it's not already variadic
-            - its type is list or Optional[list]
+        A socket is automatically made lazy variadic when:
+          - It already has at least one connected sender
+          - It is not already variadic
+          - Its type is list, Optional[list], a union of list types
+          - Its type is Any and all its connected senders and the new sender are of type list
 
-        NOTE: We also disable wrapping inputs into list for these auto-variadic sockets, so the sender outputs match the
-        type of the receiver socket.
+        When auto-variadicity is applied, `wrap_input_in_list` is also set to False so that sender output types match
+        the receiver socket's declared list type directly.
 
+        :param component_name:
+            Name of the component owning the receiver socket, used in error messages.
         :param receiver_socket:
-            The receiver socket to check and potentially modify.
+            The receiver socket to inspect and potentially modify in-place.
         :param current_sender_sockets:
-            The list of sender sockets currently connected to the receiver socket.
+            Output sockets already connected to the receiver.
         :param new_sender_socket:
-            The sender socket that is being newly connected to the receiver socket.
-
+            The output socket being newly connected.
+        :param error_type:
+            Exception class to raise on failure (e.g. ValueError or PipelineConnectError).
         :returns:
-            The potentially modified receiver socket.
+            The (possibly modified) receiver socket.
+        :raises error_type:
+            If the socket cannot accept multiple senders given its type constraints.
         """
         # Handle Any type for receiver
         # NOTE: We have to do additional checks on the sender types when receiver type is Any.
@@ -990,22 +996,21 @@ class PipelineBase:  # noqa: PLW1641
                 return receiver_socket
             if len(receiver_socket.senders) > 1:
                 msg = (
-                    f"The new sender socket '{new_sender_socket.name}' of type '{_type_name(new_sender_socket.type)}' "
-                    f"cannot be connected to '{component_name}.{receiver_socket.name}' because it has type 'Any' "
-                    f"but the new sender socket is not of type 'list'. "
-                    f"Currently connected sender sockets are: "
-                    + ", ".join(
-                        f"{sender_socket.name} (type {_type_name(sender_socket.type)})"
-                        for sender_socket in current_sender_sockets
-                    )
+                    f"Cannot connect '{new_sender_socket.name}' ({_type_name(new_sender_socket.type)}) to "
+                    f"'{component_name}.{receiver_socket.name}': '{component_name}.{receiver_socket.name}' accepts "
+                    f"any type, but when multiple outputs feed into it, they must all be lists. "
+                    f"'{new_sender_socket.name}' outputs {_type_name(new_sender_socket.type)} instead."
                 )
             else:
+                current_senders_summary = ", ".join(
+                    f"'{s.name}' ({_type_name(s.type)})" for s in current_sender_sockets
+                )
                 msg = (
-                    f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
-                    f"It is already connected to component '{receiver_socket.senders[0]}', so it cannot accept "
-                    "additional inputs. "
-                    "The receiver socket can only accept inputs from multiple senders if its type is list, "
-                    "Optional[list], union of list types, or Any."
+                    f"Cannot connect '{new_sender_socket.name}' ({_type_name(new_sender_socket.type)}) to "
+                    f"'{component_name}.{receiver_socket.name}': when multiple outputs feed into an untyped input, "
+                    f"they must all be lists, but one or more is not. "
+                    f"Already connected: {current_senders_summary}. "
+                    f"New connection: '{new_sender_socket.name}' ({_type_name(new_sender_socket.type)})."
                 )
             raise error_type(msg)
 
