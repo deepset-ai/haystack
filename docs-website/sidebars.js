@@ -282,6 +282,7 @@ export default {
             'pipeline-components/embedders/fastembedtextembedder',
             'pipeline-components/embedders/googlegenaidocumentembedder',
             'pipeline-components/embedders/googlegenaitextembedder',
+            'pipeline-components/embedders/googlegenaimultimodaldocumentembedder',
             'pipeline-components/embedders/huggingfaceapidocumentembedder',
             'pipeline-components/embedders/huggingfaceapitextembedder',
             'pipeline-components/embedders/jinadocumentembedder',
