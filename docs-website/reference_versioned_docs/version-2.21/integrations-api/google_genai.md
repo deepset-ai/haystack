@@ -482,7 +482,9 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
-    tools: ToolsType | None = None
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 )
 ```
 
@@ -519,6 +521,10 @@ Initialize a GoogleGenAIChatGenerator instance.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
+- **timeout** (<code>float | None</code>) – Timeout for Google GenAI client calls. If not set, it defaults to the default set by the Google GenAI
+  client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
+  the Google GenAI client.
 
 #### to_dict
 
