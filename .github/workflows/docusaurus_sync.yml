@@ -11,7 +11,7 @@ on:
       - ".github/workflows/docusaurus_sync.yml"
 
 env:
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.5"
   PYTHON_VERSION: "3.11"
 
 jobs:

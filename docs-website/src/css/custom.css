@@ -991,33 +991,27 @@ html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
 }
 
 /* ========================================
-   COPY DROPDOWN - Floating Button
+   COPY DROPDOWN - Sticky Button
    ======================================== */
 
-/* Copy dropdown floating button */
-.copy-dropdown-floating {
-  position: fixed;
-  top: 80px;
-  right: 24px;
+/* Copy dropdown sticky button - floats at the top-right of the content column */
+.copy-dropdown-sticky {
+  float: right;
+  position: sticky;
+  top: 76px;
   z-index: 100;
-}
-
-@media (max-width: 996px) {
-  .copy-dropdown-floating {
-    top: 70px;
-    right: 16px;
-  }
+  margin-bottom: -40px;
+  margin-left: 16px;
 }
 
 @media (max-width: 768px) {
-  .copy-dropdown-floating {
+  .copy-dropdown-sticky {
     top: 65px;
-    right: 12px;
   }
 }
 
 @media print {
-  .copy-dropdown-floating {
+  .copy-dropdown-sticky {
     display: none !important;
   }
 }

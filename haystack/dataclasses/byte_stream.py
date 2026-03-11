@@ -6,9 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 from haystack.utils.misc import _guess_mime_type
 
 
+@_warn_on_inplace_mutation
 @dataclass(repr=False)
 class ByteStream:
     """

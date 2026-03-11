@@ -530,7 +530,7 @@ __init__(
     language: Language = "en",
     use_split_rules: bool = True,
     extend_abbreviations: bool = True
-)
+) -> None
 ```
 
 Initialize EmbeddingBasedDocumentSplitter.
@@ -565,6 +565,35 @@ run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Split documents based on embedding similarity.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – The documents to split.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
+- `documents`: List of documents with the split texts. Each document includes:
+  - A metadata field `source_id` to track the original document.
+  - A metadata field `split_id` to track the split number.
+  - A metadata field `page_number` to track the original page number.
+  - All other metadata copied from the original document.
+
+**Raises:**
+
+- <code>RuntimeError</code> – If the component wasn't warmed up.
+- <code>TypeError</code> – If the input is not a list of Documents.
+- <code>ValueError</code> – If the document content is None or empty.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Asynchronously split documents based on embedding similarity.
+
+This is the asynchronous version of the `run` method with the same parameters and return values.
 
 **Parameters:**
 
@@ -794,6 +823,11 @@ Run the markdown header splitter with optional secondary splitting.
   - A metadata field `page_number` to track the original page number.
   - A metadata field `split_id` to identify the split chunk index within its parent document.
   - All other metadata copied from the original document.
+
+**Raises:**
+
+- <code>ValueError</code> – If a document has `None` content.
+- <code>TypeError</code> – If a document's content is not a string.
 
 ## recursive_splitter
 

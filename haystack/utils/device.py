@@ -223,6 +223,7 @@ class DeviceMap:
             The HuggingFace device map.
         :returns:
             The deserialized device map.
+        :raises TypeError: If a device value in the map is not an int, str, or torch.device.
         """
         mapping = {}
         for key, device in hf_device_map.items():

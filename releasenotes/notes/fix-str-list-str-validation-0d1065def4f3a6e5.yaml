@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix ``ConditionalRouter`` incorrectly validating a plain ``str`` as ``list[str]``. Since ``str`` is a ``Sequence``, it previously passed the Sequence type check. Now ``str`` and ``bytes`` values are explicitly rejected when the expected type is a generic Sequence like ``list[str]``.

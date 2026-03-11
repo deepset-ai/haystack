@@ -348,7 +348,8 @@ class OpenAPIServiceConnector:
         should contain the method name (key: "name") and the arguments (key: "arguments"). The name is a string, and
         the arguments are a dictionary of key-value pairs.
         :return: A service JSON response.
-        :raises RuntimeError: If the method is not found or invocation fails.
+        :raises ValueError: If the descriptor is malformed or a required parameter is missing.
+        :raises TypeError: If the operation is not found in the OpenAPI specification.
         """
         name = method_invocation_descriptor.get("name")
         invocation_arguments = copy(method_invocation_descriptor.get("arguments", {}))

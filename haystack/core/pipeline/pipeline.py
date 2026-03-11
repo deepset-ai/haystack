@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Mapping
-from copy import deepcopy
+from dataclasses import replace
 from typing import Any
 
 from haystack import logging, tracing
@@ -73,13 +73,14 @@ class Pipeline(PipelineBase):
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=inputs, parent_span=parent_span
         ) as span:
-            # We deepcopy the inputs otherwise we might lose that information
-            # when we delete them in case they're sent to other Components
-            span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(inputs))
+            # deepcopy inputs before passing to the tracer so that even if a tracer mutates them
+            # the component always receives the original unmodified values
+            inputs_copy = _deepcopy_with_exceptions(inputs)
+            span.set_content_tag(_COMPONENT_INPUT, inputs)
             logger.info("Running component {component_name}", component_name=component_name)
 
             try:
-                component_output = instance.run(**_deepcopy_with_exceptions(inputs))
+                component_output = instance.run(**inputs_copy)
             except BreakpointException as error:
                 # Re-raise BreakpointException to preserve the original exception context
                 # This is important when Agent components internally use Pipeline._run_component
@@ -412,8 +413,11 @@ class Pipeline(PipelineBase):
                     # agent snapshot and attach it to the pipeline snapshot we create here.
                     # We also update the break_point to be an AgentBreakpoint.
                     if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
-                        pipeline_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
-                        pipeline_snapshot.break_point = error.pipeline_snapshot.agent_snapshot.break_point
+                        pipeline_snapshot = replace(
+                            pipeline_snapshot,
+                            agent_snapshot=error.pipeline_snapshot.agent_snapshot,
+                            break_point=error.pipeline_snapshot.agent_snapshot.break_point,
+                        )
 
                     # Attach the pipeline snapshot to the error before re-raising
                     error.pipeline_snapshot = pipeline_snapshot
@@ -436,7 +440,7 @@ class Pipeline(PipelineBase):
                 )
 
                 if component_pipeline_outputs or component_name in include_outputs_from:
-                    pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
+                    pipeline_outputs[component_name] = component_pipeline_outputs
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 

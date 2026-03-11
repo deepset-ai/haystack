@@ -150,7 +150,8 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If the component is invalid or schema generation fails.
+- <code>TypeError</code> – If the object passed is not a Haystack Component instance.
+- <code>ValueError</code> – If the component has already been added to a pipeline, or if schema generation fails.
 
 #### warm_up
 
@@ -635,6 +636,135 @@ Deserializes the PipelineTool from a dictionary.
 
 - <code>PipelineTool</code> – The deserialized PipelineTool instance.
 
+## searchable_toolset
+
+### SearchableToolset
+
+Bases: <code>Toolset</code>
+
+Dynamic tool discovery from large catalogs using BM25 search.
+
+This Toolset enables LLMs to discover and use tools from large catalogs through
+BM25-based search. Instead of exposing all tools at once (which can overwhelm the
+LLM context), it provides a `search_tools` bootstrap tool that allows the LLM to
+find and load specific tools as needed.
+
+For very small catalogs (below `search_threshold`), acts as a simple passthrough
+exposing all tools directly without any discovery mechanism.
+
+### Usage Example
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool, SearchableToolset
+
+# Create a catalog of tools
+catalog = [
+    Tool(name="get_weather", description="Get weather for a city", ...),
+    Tool(name="search_web", description="Search the web", ...),
+    # ... 100s more tools
+]
+toolset = SearchableToolset(catalog=catalog)
+
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+# The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
+result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+```
+
+#### __init__
+
+```python
+__init__(
+    catalog: ToolsType,
+    *,
+    top_k: int = 3,
+    search_threshold: int = 8,
+    search_tool_name: str = "search_tools",
+    search_tool_description: str | None = None,
+    search_tool_parameters_description: dict[str, str] | None = None
+)
+```
+
+Initialize the SearchableToolset.
+
+**Parameters:**
+
+- **catalog** (<code>ToolsType</code>) – Source of tools - a list of Tools, list of Toolsets, or a single Toolset.
+- **top_k** (<code>int</code>) – Default number of results for search_tools.
+- **search_threshold** (<code>int</code>) – Minimum catalog size to activate search.
+  If catalog has fewer tools, acts as passthrough (all tools visible).
+  Default is 8.
+- **search_tool_name** (<code>str</code>) – Custom name for the bootstrap search tool. Default is "search_tools".
+- **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool.
+  If not provided, uses a default description.
+- **search_tool_parameters_description** (<code>dict\[str, str\] | None</code>) – Custom descriptions for the bootstrap search tool's parameters.
+  Keys must be a subset of `{"tool_keywords", "k"}`.
+  Example: `{"tool_keywords": "Keywords to find tools, e.g. 'email send'"}`
+
+#### add
+
+```python
+add(tool: Tool | Toolset) -> None
+```
+
+Adding new tools after initialization is not supported for SearchableToolset.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Prepare the toolset for use.
+
+Warms up child toolsets first (so lazy toolsets like MCPToolset can connect),
+then flattens the catalog, indexes it, and creates the search_tools bootstrap tool.
+In passthrough mode, it warms up all catalog tools directly.
+Must be called before using the toolset with an Agent.
+
+#### clear
+
+```python
+clear() -> None
+```
+
+Clear all discovered tools.
+
+This method allows resetting the toolset's discovered tools between agent runs
+when the same toolset instance is reused. This can be useful for long-running
+applications to control memory usage or to start fresh searches.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the toolset to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary representation of the toolset.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SearchableToolset
+```
+
+Deserialize a toolset from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary representation of the toolset.
+
+**Returns:**
+
+- <code>SearchableToolset</code> – New SearchableToolset instance.
+
 ## tool
 
 ### Tool
@@ -710,6 +840,13 @@ Example:
     "documents": {"handler": custom_handler}
 }
 ```
+
+**Raises:**
+
+- <code>ValueError</code> – If `function` is async, if `parameters` is not a valid JSON schema, or if the
+  `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
+- <code>TypeError</code> – If any configuration value in `outputs_to_state`, `outputs_to_string`, or
+  `inputs_from_state` has the wrong type.
 
 #### tool_spec
 

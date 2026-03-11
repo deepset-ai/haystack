@@ -4,6 +4,7 @@
 
 import base64
 import logging
+import warnings
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -151,3 +152,15 @@ def test_file_content_from_url_bad_request():
 
         with pytest.raises(httpx.HTTPStatusError):
             FileContent.from_url(url="https://non_existent_website_dot.com/file.pdf", retry_attempts=0, timeout=1)
+
+
+def test_file_content_no_warning_on_init(base64_pdf_string):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Warning)
+        FileContent(base64_data=base64_pdf_string, mime_type="application/pdf")
+
+
+def test_file_content_warn_on_inplace_mutation():
+    fc = FileContent(base64_data="dGVzdA==", mime_type="text/plain", validation=False)
+    with pytest.warns(Warning, match="dataclasses.replace"):
+        fc.mime_type = "application/pdf"

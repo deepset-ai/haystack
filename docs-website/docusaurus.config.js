@@ -53,19 +53,15 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.25-unstable',
+              label: '2.26-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.24',
+          lastVersion: '2.25',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
-        },
-        gtag: {
-          trackingID: 'G-XLR9NC5CBS',
-          anonymizeIP: true,
         },
       }),
     ],
@@ -97,12 +93,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.25-unstable',
+            label: '2.26-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.24',
+        lastVersion: '2.25',
       },
     ],
     [
@@ -153,10 +149,6 @@ const config = {
           {
             from: '/docs/prompt_node',
             to: '/docs/promptbuilder',
-          },
-          {
-            from: '/docs/ready_made_pipelines',
-            to: '/docs/pipeline-templates',
           },
           {
             from: '/docs/join_documents',

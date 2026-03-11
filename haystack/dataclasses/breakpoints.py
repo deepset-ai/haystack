@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any
 
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
+
 
 @dataclass(frozen=True)
 class Breakpoint:
@@ -113,6 +115,7 @@ class AgentBreakpoint:
         return cls(agent_name=data["agent_name"], break_point=break_point)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class AgentSnapshot:
     component_inputs: dict[str, Any]
@@ -149,6 +152,7 @@ class AgentSnapshot:
         )
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class PipelineState:
     """
@@ -184,6 +188,7 @@ class PipelineState:
         return cls(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class PipelineSnapshot:
     """

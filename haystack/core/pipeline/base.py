@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import json
 from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, TextIO, TypeVar
+from typing import Any, TextIO, TypeVar, Union, get_args
 
 import networkx
 
@@ -233,12 +234,20 @@ class PipelineBase:  # noqa: PLW1641
                 try:
                     instance = component_from_dict(component_class, component_data, name, callbacks)
                 except Exception as e:
+                    # Convert to JSON with indentation, truncate if too long
+                    try:
+                        data_str = json.dumps(component_data, default=str, indent=2)
+                    except Exception:
+                        data_str = str(component_data)
+
+                    max_len = 1000
+                    if len(data_str) > max_len:
+                        data_str = data_str[:max_len] + "\n... (truncated)"
+
                     msg = (
                         f"Couldn't deserialize component '{name}' of class '{component_class.__name__}' "
-                        f"with the following data: {str(component_data)}. Possible reasons include "
-                        "malformed serialized data, mismatch between the serialized component and the "
-                        "loaded one (due to a breaking change, see "
-                        "https://github.com/deepset-ai/haystack/releases), etc."
+                        f"with the following data:\n{data_str}\n\n"
+                        f"Original error: {e}"
                     )
                     raise DeserializationError(msg) from e
             pipe.add_component(name=name, instance=instance)
@@ -608,25 +617,9 @@ class PipelineBase:  # noqa: PLW1641
             return self
 
         if receiver_socket.senders:
-            # We automatically set the receiver socket as variadic if:
-            # - it has at least one sender already connected
-            # - it's not already variadic
-            # - its origin type is list
-            if not receiver_socket.is_variadic and _safe_get_origin(receiver_socket.type) == list:
-                receiver_socket.is_lazy_variadic = True
-                # We also disable wrapping inputs into list so the sender outputs matches the type of the receiver
-                # socket.
-                receiver_socket.wrap_input_in_list = False
-
-            if not receiver_socket.is_variadic:
-                # Only variadic input sockets can receive from multiple senders
-                msg = (
-                    f"Cannot connect '{sender_component_name}.{sender_socket.name}' with "
-                    f"'{receiver_component_name}.{receiver_socket.name}': "
-                    f"{receiver_component_name}.{receiver_socket.name} is already connected to "
-                    f"{receiver_socket.senders}.\n"
-                )
-                raise PipelineConnectError(msg)
+            receiver_socket = self._make_socket_auto_variadic(
+                component_name=receiver_component_name, receiver_socket=receiver_socket, error_type=PipelineConnectError
+            )
 
         # Update the sockets with the new connection
         sender_socket.receivers.append(receiver_component_name)
@@ -694,7 +687,10 @@ class PipelineBase:  # noqa: PLW1641
         for component_name, data in find_pipeline_inputs(self.graph, include_components_with_connected_inputs).items():
             sockets_description = {}
             for socket in data:
-                sockets_description[socket.name] = {"type": socket.type, "is_mandatory": socket.is_mandatory}
+                # Variadic mandatory sockets with existing connections don't require user input, so treat them as
+                # optional.
+                is_mandatory = socket.is_mandatory and not socket.senders
+                sockets_description[socket.name] = {"type": socket.type, "is_mandatory": is_mandatory}
                 if not socket.is_mandatory:
                     sockets_description[socket.name]["default_value"] = socket.default_value
 
@@ -942,22 +938,63 @@ class PipelineBase:  # noqa: PLW1641
 
                 # Check if an input is provided more than once for non-variadic sockets
                 if socket.senders and socket_name in component_inputs:
-                    # We automatically set the receiver socket as lazy variadic if:
-                    # - it has at least one sender already connected
-                    # - it's not already variadic
-                    # - its origin type is list
-                    if not socket.is_variadic and _safe_get_origin(socket.type) == list:
-                        socket.is_lazy_variadic = True
-                        # We also disable wrapping inputs into list so the sender outputs matches the type of the
-                        # receiver socket.
-                        socket.wrap_input_in_list = False
+                    self._make_socket_auto_variadic(
+                        component_name=component_name, receiver_socket=socket, error_type=ValueError
+                    )
 
-                    if not socket.is_variadic:
-                        raise ValueError(
-                            f"Component '{component_name}' cannot accept multiple inputs to '{socket_name}'. "
-                            f"It is already connected to component '{socket.senders[0]}' so it cannot accept "
-                            "additional inputs."
-                        )
+    def _make_socket_auto_variadic(
+        self, component_name: str, receiver_socket: InputSocket, error_type: type[Exception]
+    ) -> InputSocket:
+        """
+        Attempts to make the receiver socket lazy variadic in-place to accommodate a new sender.
+
+        A socket is automatically made lazy variadic when:
+          - It already has at least one connected sender
+          - It is not already variadic
+          - Its type is list, Optional[list], a union of list types
+
+        When auto-variadicity is applied, `wrap_input_in_list` is also set to False so that sender output types match
+        the receiver socket's declared list type directly.
+
+        :param component_name:
+            Name of the component owning the receiver socket, used in error messages.
+        :param receiver_socket:
+            The receiver socket to inspect and potentially modify in-place.
+        :param error_type:
+            Exception class to raise on failure (e.g. ValueError or PipelineConnectError).
+        :returns:
+            The (possibly modified) receiver socket.
+        :raises error_type:
+            If the socket cannot accept multiple senders given its type constraints.
+        """
+        # If it's already variadic, we return as-is
+        if receiver_socket.is_variadic:
+            return receiver_socket
+
+        # Get receiver origin
+        receiver_origin = _safe_get_origin(receiver_socket.type)
+
+        # Handle Union types
+        if receiver_origin == Union:
+            # Unwrap Optional types
+            non_none_args = [a for a in get_args(receiver_socket.type) if a is not type(None)]
+            if len(non_none_args) == 1:
+                receiver_origin = _safe_get_origin(non_none_args[0])
+            # Handle Union of list types (e.g. list[int] | list[str])
+            elif all(_safe_get_origin(arg) == list for arg in non_none_args):
+                receiver_origin = list
+
+        # If the receiver origin is a list, we can make the socket lazy variadic
+        if receiver_origin == list:
+            receiver_socket.is_lazy_variadic = True
+            receiver_socket.wrap_input_in_list = False
+            return receiver_socket
+
+        raise error_type(
+            f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
+            f"It is already connected to component '{receiver_socket.senders[0]}', and it can only can only accept "
+            f"inputs from multiple senders if its type is list, Optional[list], or union of list types."
+        )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """

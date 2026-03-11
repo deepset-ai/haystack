@@ -96,7 +96,7 @@ class RegexTextExtractor:
           - `{"captured_text": "matched text"}` if a match is found
           - `{"captured_text": ""}` if no match is found
 
-        :raises ValueError: if receiving a list the last element is not a ChatMessage instance.
+        :raises TypeError: if receiving a list the last element is not a ChatMessage instance.
         """
         if isinstance(text_or_messages, str):
             return self._build_result(self._extract_from_text(text_or_messages))
@@ -112,7 +112,11 @@ class RegexTextExtractor:
         return {"captured_text": result}
 
     def _process_last_message(self, messages: list[ChatMessage]) -> dict:
-        """Process only the last message and build the result."""
+        """
+        Process only the last message and build the result.
+
+        :raises TypeError: If the last element of the list is not a ChatMessage instance.
+        """
         last_message = messages[-1]
         if not isinstance(last_message, ChatMessage):
             raise TypeError(f"Expected ChatMessage object, got {type(last_message)}")

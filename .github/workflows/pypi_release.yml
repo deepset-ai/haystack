@@ -8,7 +8,7 @@ on:
       - "!v[0-9]+.[0-9]+.[0-9]-rc0"
 
 env:
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.5"
 
 jobs:
   release-on-pypi:

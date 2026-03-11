@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -28,7 +29,6 @@ from haystack.core.pipeline.breakpoint import (
     _should_trigger_tool_invoker_breakpoint,
     _validate_tool_breakpoint_is_valid,
 )
-from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import (
     AgentBreakpoint,
@@ -58,6 +58,9 @@ from haystack.utils.callable_serialization import deserialize_callable, serializ
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
+
+# Regex to detect the Jinja2 chat template syntax
+_JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
@@ -212,6 +215,7 @@ class Agent:
 
     # The template variables 'language' and 'document' become inputs to the run method
     result = agent.run(
+        messages=[],
         language="French",
         document="The weather is lovely today and the sun is shining.",
     )
@@ -242,12 +246,17 @@ class Agent:
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-        :param system_prompt: System prompt for the agent.
-        :param user_prompt: User prompt for the agent. If provided this is appended to the messages provided at runtime.
+        :param system_prompt: System prompt for the agent. Can be a plain string or a Jinja2 string template.
+            For details on the supported template syntax, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
+        :param user_prompt: User prompt for the agent, defined as a Jinja2 string template. If provided, this is
+            appended to the messages provided at runtime.
+            For details on the supported template syntax, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
         :param required_variables:
-            List variables that must be provided as input to user_prompt.
+            List variables that must be provided as input to user_prompt or system_prompt.
             If a variable listed as required is not provided, an exception is raised.
-            If set to `"*"`, all variables found in the prompt are required. Optional.
+            If set to `"*"`, all variables found in the prompts are required. Optional.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -266,10 +275,11 @@ class Agent:
         """
         # Check if chat_generator supports tools parameter
         chat_generator_run_method = inspect.signature(chat_generator.run)
-        if "tools" not in chat_generator_run_method.parameters:
+        self._chat_generator_supports_tools: bool = "tools" in chat_generator_run_method.parameters
+        if tools and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
-                "The Agent component requires a chat generator that supports tools."
+                "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
         valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
@@ -288,7 +298,8 @@ class Agent:
         self._state_schema = state_schema or {}
 
         # Initialize state schema
-        resolved_state_schema = _deepcopy_with_exceptions(self._state_schema)
+        # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
+        resolved_state_schema = dict(self._state_schema)
         if resolved_state_schema.get("messages") is None:
             resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
         self.state_schema = resolved_state_schema
@@ -314,9 +325,16 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        self._chat_prompt_builder: ChatPromptBuilder | None = self._initialize_chat_prompt_builder(
-            user_prompt, required_variables
+        # required_variables is initially set to [] and populated later by _register_prompt_variables
+        self._user_chat_prompt_builder = (
+            ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
         )
+        # Only create a system prompt builder when the prompt uses Jinja2 message syntax
+        self._system_chat_prompt_builder: ChatPromptBuilder | None = None
+        if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+            self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
+
+        self._register_prompt_variables()
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
@@ -327,7 +345,7 @@ class Agent:
                 **(tool_invoker_kwargs or {}),
             }
             self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
-        else:
+        elif type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
@@ -337,38 +355,57 @@ class Agent:
 
         self._is_warmed_up = False
 
-    def _initialize_chat_prompt_builder(
-        self, user_prompt: str | None, required_variables: list[str] | Literal["*"] | None
-    ) -> ChatPromptBuilder | None:
+    def _register_prompt_variables(self) -> None:
         """
-        Initialize the ChatPromptBuilder if a user prompt is provided.
-        """
-        if user_prompt is None:
-            if required_variables is not None:
-                logger.warning(
-                    "The parameter required_variables is provided but user_prompt is not. "
-                    "Either provide a user_prompt or remove required_variables, it has otherwise no effect."
-                )
-            return None
+        Collect variables from both Chat Prompt Builders and register Agent inputs.
 
-        chat_prompt_builder = ChatPromptBuilder(template=user_prompt, required_variables=required_variables)
-        prompt_variables = chat_prompt_builder.variables
-        for var_name in prompt_variables:
+        Sets `required_variables` for both Chat Prompt Builders, checks for conflicts with state schema and
+        run parameters, and registers component inputs.
+        """
+        required_variables = self.required_variables
+
+        if (
+            required_variables is not None
+            and self._system_chat_prompt_builder is None
+            and self._user_chat_prompt_builder is None
+        ):
+            logger.warning(
+                "The parameter required_variables is provided but neither user_prompt nor system_prompt "
+                "contains template variables. Either provide a prompt with Jinja2 template variables "
+                "or remove required_variables, it has otherwise no effect."
+            )
+
+        all_variables: dict[str, list[str]] = {}
+        for builder, label in [
+            (self._system_chat_prompt_builder, "system_prompt"),
+            (self._user_chat_prompt_builder, "user_prompt"),
+        ]:
+            if builder is not None:
+                # set required_variables on the builder, filtered to its own variables
+                if required_variables == "*":
+                    builder.required_variables = "*"
+                elif isinstance(self.required_variables, list):
+                    builder.required_variables = [v for v in self.required_variables if v in builder.variables]
+
+                for var_name in builder.variables:
+                    all_variables.setdefault(var_name, []).append(label)
+
+        for var_name, sources in all_variables.items():
+            prompt_source = " and ".join(sources)
             if var_name in self.state_schema:
                 raise ValueError(
-                    f"Variable '{var_name}' from the user prompt is already defined in the state schema. "
-                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                    f"Variable '{var_name}' from {prompt_source} is already defined in the state schema. "
+                    "Please rename the variable or remove it from the prompt to avoid conflicts."
                 )
             if var_name in self._run_method_params:
                 raise ValueError(
-                    f"Variable '{var_name}' from the user prompt conflicts with input names in the run method. "
-                    "Please rename the variable or remove it from the user prompt to avoid conflicts."
+                    f"Variable '{var_name}' from {prompt_source} conflicts with input names in the run method. "
+                    "Please rename the variable or remove it from the prompt to avoid conflicts."
                 )
-            if required_variables == "*" or var_name in (required_variables or []):
+            if required_variables == "*" or (isinstance(required_variables, list) and var_name in required_variables):
                 component.set_input_type(self, name=var_name, type=Any)
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
-        return chat_prompt_builder
 
     def warm_up(self) -> None:
         """
@@ -466,7 +503,7 @@ class Agent:
 
     def _initialize_fresh_execution(
         self,
-        messages: list[ChatMessage] | None,
+        messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
@@ -496,28 +533,55 @@ class Agent:
         """
         user_prompt = user_prompt or self.user_prompt
         system_prompt = system_prompt or self.system_prompt
-        if messages is None and user_prompt is None and system_prompt is None:
-            raise ValueError(
-                "No messages provided to the Agent and neither user_prompt nor system_prompt is set. "
-                "Please provide at least one of these inputs."
-            )
-
         messages = messages or []
 
         if user_prompt is not None:
-            if self._chat_prompt_builder is None:
+            if self._user_chat_prompt_builder is None:
                 raise ValueError(
                     "user_prompt is provided but the ChatPromptBuilder is not initialized. "
                     "Please make sure a user_prompt is provided at initialization time."
                 )
 
             # Only forward the prompt kwargs to the prompt builder
-            prompt_kwargs = {var: kwargs[var] for var in self._chat_prompt_builder.variables if var in kwargs}
-            user_messages = self._chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
+            prompt_kwargs = {var: kwargs[var] for var in self._user_chat_prompt_builder.variables if var in kwargs}
+            user_messages = self._user_chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
+            if len(user_messages) != 1:
+                raise ValueError(
+                    f"user_prompt must render to exactly one user message. Got {len(user_messages)} messages."
+                )
+            if not user_messages[0].is_from(ChatRole.USER):
+                raise ValueError(
+                    f"user_prompt must render to a user message. Got a message with role {user_messages[0].role}."
+                )
             messages = messages + user_messages
 
         if system_prompt is not None:
-            messages = [ChatMessage.from_system(system_prompt)] + messages
+            if _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+                if self._system_chat_prompt_builder is None:
+                    raise ValueError(
+                        "system_prompt contains Jinja2 template syntax but no system prompt builder is initialized. "
+                        "Please make sure a system_prompt with Jinja2 template syntax is provided at initialization "
+                        "time."
+                    )
+
+                prompt_kwargs = {
+                    var: kwargs[var] for var in self._system_chat_prompt_builder.variables if var in kwargs
+                }
+                system_messages = self._system_chat_prompt_builder.run(template=system_prompt, **prompt_kwargs)[
+                    "prompt"
+                ]
+                if len(system_messages) != 1:
+                    raise ValueError(
+                        f"system_prompt must render to exactly one system message. Got {len(system_messages)} messages."
+                    )
+                if not system_messages[0].is_from(ChatRole.SYSTEM):
+                    raise ValueError(
+                        "system_prompt must render to a system message. "
+                        f"Got a message with role {system_messages[0].role}."
+                    )
+                messages = system_messages + messages
+            else:
+                messages = [ChatMessage.from_system(system_prompt)] + messages
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
@@ -532,7 +596,9 @@ class Agent:
 
         selected_tools = self._select_tools(tools)
         tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {}
+        if self._chat_generator_supports_tools:
+            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -631,7 +697,9 @@ class Agent:
 
         selected_tools = self._select_tools(tools)
         tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {}
+        if self._chat_generator_supports_tools:
+            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -654,23 +722,25 @@ class Agent:
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
-    def _runtime_checks(self, break_point: AgentBreakpoint | None) -> None:
+    def _runtime_checks(self, break_point: AgentBreakpoint | None, tools: ToolsType) -> None:
         """
         Perform runtime checks before running the agent.
 
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
+        :param tools: Tools selected for this run. This can differ from initialization-time tools when runtime tools
+            are provided to `run`/`run_async`.
         :raises ValueError: If the break_point is invalid.
         """
         if not self._is_warmed_up:
             self.warm_up()
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
-            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
+            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=tools)
 
     def run(  # noqa: PLR0915
         self,
-        messages: list[ChatMessage] | None = None,
+        messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
@@ -723,7 +793,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point)
+        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -748,7 +818,8 @@ class Agent:
             )
 
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
+            # agent_inputs is local and not used after this point, so we avoid deepcopying it
+            span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
@@ -900,7 +971,7 @@ class Agent:
 
     async def run_async(  # noqa: PLR0915
         self,
-        messages: list[ChatMessage] | None = None,
+        messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
@@ -956,7 +1027,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point)
+        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -981,7 +1052,8 @@ class Agent:
             )
 
         with self._create_agent_span() as span:
-            span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
+            # agent_inputs is local and not used after this point, so we avoid deepcopying it
+            span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
@@ -1002,6 +1074,20 @@ class Agent:
                             parent_span=span,
                             break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
                         )
+                    except PipelineRuntimeError as e:
+                        agent_name = getattr(self, "__component_name__", None)
+                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
+                            agent_name=agent_name, execution_context=exe_context, break_point=None
+                        )
+                        new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
+                        new_error.pipeline_snapshot = pipe_snapshot
+                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
+                        # Checked by __component_name__ not being set.
+                        if agent_name is None:
+                            new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
+                            )
+                        raise new_error from e
                     except BreakpointException as e:
                         e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                             agent_name=break_point.agent_name if break_point else None,
@@ -1061,6 +1147,21 @@ class Agent:
                         parent_span=span,
                         break_point=break_point_to_pass,
                     )
+                except PipelineRuntimeError as e:
+                    agent_name = getattr(self, "__component_name__", None)
+                    tool_name = getattr(e.__cause__, "tool_name", None)
+                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
+                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
+                    )
+                    new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
+                    new_error.pipeline_snapshot = pipe_snapshot
+                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
+                    # Checked by __component_name__ not being set.
+                    if agent_name is None:
+                        new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
+                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
+                        )
+                    raise new_error from e
                 except BreakpointException as e:
                     e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
                         tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
