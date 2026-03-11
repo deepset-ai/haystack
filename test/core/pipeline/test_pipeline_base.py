@@ -2090,6 +2090,40 @@ class TestPipelineConnect:
         )
 
 
+class TestMakeSocketAutoVariadic:
+    @pytest.mark.parametrize(
+        "receiver_type,current_sender_type,new_sender_type",
+        [
+            # All lists
+            (list[int], list[int], list[int]),
+            # List unions
+            (list[str] | list[ChatMessage], list[str], list[str]),
+            (list[str] | list[ChatMessage], list[ChatMessage], list[ChatMessage]),
+            # Optional list
+            (list[int] | None, list[int], list[int]),
+        ],
+    )
+    def test_successful(self, receiver_type, current_sender_type, new_sender_type):
+        pipe = PipelineBase()
+        inp_socket = pipe._make_socket_auto_variadic(
+            component_name="comp",
+            receiver_socket=InputSocket(name="input_to_comp3", type=receiver_type, senders=["comp1"]),
+            error_type=PipelineConnectError,
+        )
+        assert inp_socket.is_variadic is True
+        assert inp_socket.is_lazy_variadic is True
+        assert inp_socket.wrap_input_in_list is False
+
+    def test_raises_error_all_int(self):
+        with pytest.raises(PipelineConnectError):
+            pipe = PipelineBase()
+            _ = pipe._make_socket_auto_variadic(
+                component_name="comp",
+                receiver_socket=InputSocket(name="input_to_comp3", type=int, senders=["comp1"]),
+                error_type=PipelineConnectError,
+            )
+
+
 class TestValidateInput:
     def test_validate_input_wrong_comp_name(self):
         pipe = PipelineBase()
@@ -2117,7 +2151,8 @@ class TestValidateInput:
         with pytest.raises(
             ValueError,
             match="Component 'comp2' cannot accept multiple inputs to 'input_'. "
-            "It is already connected to component 'comp1' so it cannot accept additional inputs.",
+            "It is already connected to component 'comp1', and it can only can only accept inputs from multiple "
+            r"senders if its type is list, Optional\[list\], or union of list types.",
         ):
             pipe.validate_input(data={"comp1": {"input_": "test"}, "comp2": {"input_": "extra_input"}})
 
