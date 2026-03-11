@@ -933,7 +933,7 @@ class PipelineBase:  # noqa: PLW1641
 
                 # Check if an input is provided more than once for non-variadic sockets
                 if socket.senders and socket_name in component_inputs:
-                    _ = self._make_socket_auto_variadic(
+                    self._make_socket_auto_variadic(
                         component_name=component_name, receiver_socket=socket, error_type=ValueError
                     )
 
