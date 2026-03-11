@@ -210,8 +210,8 @@ class TestPipeline:
         pp.connect("first.other_output", "second.second_required_input")
 
         pp.run({"first": {"required_input": "test"}})
-        assert "Cannot run pipeline - the next component that is meant to run is blocked." in caplog.text
-        assert "Component name: 'second'\nComponent type: 'SimpleComponentTwoInputs'" in caplog.text
+        assert "Cannot run pipeline - the pipeline appears to be blocked." in caplog.text
+        assert " - 'second' (SimpleComponentTwoInputs)" in caplog.text
 
     def test_pipeline_ensure_inputs_are_deep_copied(self):
         """

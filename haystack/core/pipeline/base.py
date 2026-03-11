@@ -1329,7 +1329,7 @@ class PipelineBase:  # noqa: PLW1641
 
     def _find_component_blocking_pipeline(
         self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int], inputs: InputsType
-    ) -> tuple[str, dict]:
+    ) -> tuple[list[str], list[dict]]:
         """
         Finds the component that is most likely blocking the pipeline execution.
 
@@ -1350,7 +1350,7 @@ class PipelineBase:  # noqa: PLW1641
                 comps_with_inputs.append(comp_name)
 
         # If there are no components with any inputs we fallback to checking all components in the queue.
-        # This isn't always ideal since already executed components are also in the queue at this point also
+        # This isn't always ideal since already executed components can also be in the queue at this point also
         # with blocked priority.
         if not comps_with_inputs:
             comps_with_inputs = comps_in_queue
@@ -1364,7 +1364,7 @@ class PipelineBase:  # noqa: PLW1641
 
         # If there is only one component with the lowest visits, return it as the most likely blocking component.
         if len(possible_blocking_comps) == 1:
-            return possible_blocking_comps[0], self.graph.nodes[possible_blocking_comps[0]]
+            return possible_blocking_comps, [self.graph.nodes[possible_blocking_comps[0]]]
 
         # 4. Then for all components with the same lowest component visits we tie-break based on topological order.
         topological_sort = self._topological_sort()
@@ -1372,7 +1372,7 @@ class PipelineBase:  # noqa: PLW1641
             possible_blocking_comps, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
         )
 
-        return possible_blocking_comps[0], self.graph.nodes[possible_blocking_comps[0]]
+        return possible_blocking_comps, [self.graph.nodes[comp_name] for comp_name in possible_blocking_comps]
 
     def _write_component_outputs(
         self,

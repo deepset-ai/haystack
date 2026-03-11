@@ -397,18 +397,23 @@ class AsyncPipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED and not running_tasks:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
-                        blocking_comp_name, blocking_comp = self._find_component_blocking_pipeline(
+                        blocking_comp_names, blocking_comps = self._find_component_blocking_pipeline(
                             priority_queue=priority_queue, component_visits=component_visits, inputs=inputs_state
                         )
+                        blocking_comp_types = [comp["instance"].__class__.__name__ for comp in blocking_comps]
+                        comp_details = "\n".join(
+                            f"  - '{name}' ({comp_type})"
+                            for name, comp_type in zip(blocking_comp_names, blocking_comp_types, strict=True)
+                        )
                         logger.warning(
-                            "Cannot run pipeline - the next component that is meant to run is blocked.\n"
-                            "Component name: '{component_name}'\n"
-                            "Component type: '{component_type}'\n"
-                            "This typically happens when the component is unable to receive all of its required "
-                            "inputs.\nCheck the connections to this component and ensure all required inputs are "
-                            "provided.",
-                            component_name=blocking_comp_name,
-                            component_type=blocking_comp["instance"].__class__.__name__,
+                            "Cannot run pipeline - the pipeline appears to be blocked.\n"
+                            "The following components could not be run and may be waiting on inputs that will "
+                            "never arrive:\n" + comp_details + "\n"
+                            "Note that some of these components may be intentionally inactive due to conditional "
+                            "branching. If this is unexpected, check the connections to these components and "
+                            "ensure all required inputs are provided.",
+                            component_names=blocking_comp_names,
+                            component_types=blocking_comp_types,
                         )
                     # We always exit the loop since we cannot run the next component.
                     break
