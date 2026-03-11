@@ -1364,6 +1364,10 @@ class PipelineBase:  # noqa: PLW1641
 
         # If there is only one component with the lowest visits, return it as the most likely blocking component.
         if len(possible_blocking_comps) == 1:
+            self._log_warning_for_blocking_components(
+                blocking_comp_names=possible_blocking_comps,
+                blocking_comps=[self.graph.nodes[possible_blocking_comps[0]]],
+            )
             return possible_blocking_comps, [self.graph.nodes[possible_blocking_comps[0]]]
 
         # 4. Then for all components with the same lowest component visits we sort topologically before returning.
@@ -1371,8 +1375,35 @@ class PipelineBase:  # noqa: PLW1641
         possible_blocking_comps = sorted(
             possible_blocking_comps, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
         )
+        possible_blocking_comps_nodes = [self.graph.nodes[comp_name] for comp_name in possible_blocking_comps]
+        self._log_warning_for_blocking_components(
+            blocking_comp_names=possible_blocking_comps, blocking_comps=possible_blocking_comps_nodes
+        )
+        return possible_blocking_comps, possible_blocking_comps_nodes
 
-        return possible_blocking_comps, [self.graph.nodes[comp_name] for comp_name in possible_blocking_comps]
+    def _log_warning_for_blocking_components(self, blocking_comp_names: list[str], blocking_comps: list[dict]) -> None:
+        """
+        Logs a warning about the components that are most likely blocking the pipeline execution.
+
+        :param blocking_comp_names: The list of component names that are most likely blocking the pipeline execution.
+        :param blocking_comps: The list of component metadata from the graph for the components that are most likely
+            blocking the pipeline execution.
+        """
+        blocking_comp_types = [comp["instance"].__class__.__name__ for comp in blocking_comps]
+        comp_details = "\n".join(
+            f"  - '{name}' ({comp_type})"
+            for name, comp_type in zip(blocking_comp_names, blocking_comp_types, strict=True)
+        )
+        logger.warning(
+            "Cannot run pipeline - the pipeline appears to be blocked.\n"
+            "The following components could not be run and may be waiting on inputs that will "
+            "never arrive:\n" + comp_details + "\n"
+            "Note that some of these components may be intentionally inactive due to conditional "
+            "branching. If this is unexpected, check the connections to these components and "
+            "ensure all required inputs are provided.",
+            component_names=blocking_comp_names,
+            component_types=blocking_comp_types,
+        )
 
     def _write_component_outputs(
         self,
