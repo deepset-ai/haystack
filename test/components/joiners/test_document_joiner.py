@@ -310,3 +310,22 @@ class TestDocumentJoiner:
             assert is_sorted, (
                 "Documents are not sorted in descending order by score, there is an issue with rff ranking"
             )
+
+    def test_concatenate_preserves_zero_score_over_none(self):
+        """Documents with score=0 should be preferred over documents with score=None."""
+        joiner = DocumentJoiner()
+        doc_with_zero = Document(content="a", score=0.0)
+        doc_with_none = Document(content="a", score=None)
+        output = joiner.run([[doc_with_zero], [doc_with_none]])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].score == 0.0
+
+    def test_merge_preserves_zero_score(self):
+        """Documents with score=0 should contribute 0 to the weighted sum, not be treated as missing."""
+        joiner = DocumentJoiner(join_mode="merge")
+        doc_a = Document(content="a", score=0.0)
+        doc_b = Document(content="b", score=0.5)
+        output = joiner.run([[doc_a, doc_b]])
+        scores = {doc.content: doc.score for doc in output["documents"]}
+        assert scores["a"] == 0.0
+        assert scores["b"] > 0.0

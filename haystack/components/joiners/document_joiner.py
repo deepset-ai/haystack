@@ -170,7 +170,7 @@ class DocumentJoiner:
         for doc in itertools.chain.from_iterable(document_lists):
             docs_per_id[doc.id].append(doc)
         for docs in docs_per_id.values():
-            doc_with_best_score = max(docs, key=lambda doc: doc.score if doc.score else -inf)
+            doc_with_best_score = max(docs, key=lambda doc: doc.score if doc.score is not None else -inf)
             output.append(doc_with_best_score)
         return output
 
@@ -188,7 +188,7 @@ class DocumentJoiner:
 
         for documents, weight in zip(document_lists, weights, strict=True):
             for doc in documents:
-                scores_map[doc.id] += (doc.score if doc.score else 0) * weight
+                scores_map[doc.id] += (doc.score if doc.score is not None else 0) * weight
                 documents_map[doc.id] = doc
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
