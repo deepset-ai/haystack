@@ -1327,13 +1327,11 @@ class PipelineBase:  # noqa: PLW1641
 
         return component_name, topological_sort
 
-    def _find_component_blocking_pipeline(
+    def _find_components_blocking_pipeline(
         self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int], inputs: InputsType
     ) -> tuple[list[str], list[dict]]:
         """
-        Finds the component that is most likely blocking the pipeline execution.
-
-        A component is blocking if it has priority BLOCKED and all its predecessors have been executed.
+        Finds the components that are most likely blocking the pipeline execution.
 
         :returns:
             The name of the component that is blocking the pipeline or None if no component is blocking.
@@ -1355,7 +1353,8 @@ class PipelineBase:  # noqa: PLW1641
         if not comps_with_inputs:
             comps_with_inputs = comps_in_queue
 
-        # 3. Order by component visits to prioritize components that haven't been executed yet
+        # 3. Only keep components with the lowest number of visits. Mostly needed to handle the fallback case if no
+        #    components with inputs are found.
         ordered_comps_with_inputs = sorted(comps_with_inputs, key=lambda x: component_visits[x])
         lowest_component_visit = component_visits[ordered_comps_with_inputs[0]]
         possible_blocking_comps = [
@@ -1366,7 +1365,7 @@ class PipelineBase:  # noqa: PLW1641
         if len(possible_blocking_comps) == 1:
             return possible_blocking_comps, [self.graph.nodes[possible_blocking_comps[0]]]
 
-        # 4. Then for all components with the same lowest component visits we tie-break based on topological order.
+        # 4. Then for all components with the same lowest component visits we sort topologically before returning.
         topological_sort = self._topological_sort()
         possible_blocking_comps = sorted(
             possible_blocking_comps, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())

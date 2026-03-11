@@ -2194,7 +2194,7 @@ class TestValidateInput:
         assert comp2.__haystack_input__._sockets_dict["numbers"].senders == ["comp1"]  # type: ignore[attr-defined]
 
 
-class TestFindComponentBlockingPipeline:
+class TestFindComponentsBlockingPipeline:
     def test_missing_input(self):
         pipe = PipelineBase()
         pipe.add_component("comp1", FakeComponent())
@@ -2205,7 +2205,7 @@ class TestFindComponentBlockingPipeline:
         priority_queue.push("comp1", ComponentPriority.BLOCKED)
         priority_queue.push("comp2", ComponentPriority.BLOCKED)
 
-        blocking_comps, blocking_graph_nodes = pipe._find_component_blocking_pipeline(
+        blocking_comps, blocking_graph_nodes = pipe._find_components_blocking_pipeline(
             priority_queue=priority_queue,
             component_visits={"comp1": 1, "comp2": 0},
             inputs={
@@ -2218,8 +2218,8 @@ class TestFindComponentBlockingPipeline:
         assert blocking_comps == ["comp2"]
         assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}
 
-    def test_tiebreak_blocked_components(self):
-        """Tests if that there are multiple blocking components that we tiebreak using topological sorting"""
+    def test_blocked_components_branch(self):
+        """Tests if that there is a branch that only the component that received an _empty input is shown as blocking"""
         pipe = PipelineBase()
         pipe.add_component("comp1", FakeComponent())
         pipe.add_component("comp2", FakeComponent())
@@ -2232,7 +2232,7 @@ class TestFindComponentBlockingPipeline:
         priority_queue.push("comp2", ComponentPriority.BLOCKED)
         priority_queue.push("comp3", ComponentPriority.BLOCKED)
 
-        blocking_comps, blocking_graph_nodes = pipe._find_component_blocking_pipeline(
+        blocking_comps, blocking_graph_nodes = pipe._find_components_blocking_pipeline(
             priority_queue=priority_queue,
             component_visits={"comp1": 1, "comp2": 0, "comp3": 0},
             inputs={
@@ -2245,9 +2245,8 @@ class TestFindComponentBlockingPipeline:
         assert blocking_comps == ["comp2"]
         assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}
 
-    # TODO Doesn't pass currently. Difficult edge case to determine actually blocking component.
-    def test_blocking_component_in_a_branch(self):
-        """Tests that we can correctly identify the blocking component in the active branch"""
+    def test_blocking_components_from_two_branches(self):
+        """Tests that we can correctly identify both potentially blocking components"""
         pipe = PipelineBase()
         pipe.add_component("comp1", FakeComponent())
         pipe.add_component("router", FakeRouter())
@@ -2266,7 +2265,7 @@ class TestFindComponentBlockingPipeline:
         priority_queue.push("blocking_comp", ComponentPriority.BLOCKED)
         priority_queue.push("a_comp3", ComponentPriority.BLOCKED)
 
-        blocking_comps, blocking_graph_nodes = pipe._find_component_blocking_pipeline(
+        blocking_comps, blocking_graph_nodes = pipe._find_components_blocking_pipeline(
             priority_queue=priority_queue,
             component_visits={"comp1": 1, "router": 1, "comp2": 1, "a_comp3": 0, "blocking_comp": 0},
             inputs={
@@ -2284,5 +2283,7 @@ class TestFindComponentBlockingPipeline:
                 "a_comp3": {"input_": [{"sender": "router", "value": _empty}]},
             },
         )
+        # We correctly label as both potentially blocking since it's unclear from the input state which component is
+        # actually blocking.
         assert blocking_comps == ["a_comp3", "blocking_comp"]
         assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}

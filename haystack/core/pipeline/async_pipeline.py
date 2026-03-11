@@ -397,7 +397,7 @@ class AsyncPipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED and not running_tasks:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
-                        blocking_comp_names, blocking_comps = self._find_component_blocking_pipeline(
+                        blocking_comp_names, blocking_comps = self._find_components_blocking_pipeline(
                             priority_queue=priority_queue, component_visits=component_visits, inputs=inputs_state
                         )
                         blocking_comp_types = [comp["instance"].__class__.__name__ for comp in blocking_comps]
