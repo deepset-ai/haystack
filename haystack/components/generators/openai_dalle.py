@@ -31,7 +31,7 @@ class DALLEImageGenerator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str = "dall-e-3",
         quality: Literal["standard", "hd"] = "standard",

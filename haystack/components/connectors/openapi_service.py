@@ -348,7 +348,8 @@ class OpenAPIServiceConnector:
         should contain the method name (key: "name") and the arguments (key: "arguments"). The name is a string, and
         the arguments are a dictionary of key-value pairs.
         :return: A service JSON response.
-        :raises RuntimeError: If the method is not found or invocation fails.
+        :raises ValueError: If the descriptor is malformed or a required parameter is missing.
+        :raises TypeError: If the operation is not found in the OpenAPI specification.
         """
         name = method_invocation_descriptor.get("name")
         invocation_arguments = copy(method_invocation_descriptor.get("arguments", {}))
@@ -361,7 +362,7 @@ class OpenAPIServiceConnector:
         # openapi3 specific method to call the operation, do we have it?
         method_to_call = getattr(openapi_service, f"call_{name}", None)
         if not callable(method_to_call):
-            raise RuntimeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
+            raise TypeError(f"Operation {name} not found in OpenAPI specification {openapi_service.info.title}")
 
         # get the operation reference from the method_to_call
         operation = method_to_call.operation.__self__

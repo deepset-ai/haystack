@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import mimetypes
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -18,7 +19,7 @@ with LazyImport(
     "Image resizing will be applied, which requires the Pillow library. "
     "Run 'pip install pillow'"
 ) as pillow_import:
-    import PIL  # pylint: disable=unused-import # noqa: F401
+    import PIL  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class ImageFileToImageContent:
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             if isinstance(source, str):
                 source = Path(source)
 
@@ -124,7 +125,7 @@ class ImageFileToImageContent:
                 continue
 
             if bytestream.mime_type is None and isinstance(source, Path):
-                bytestream.mime_type = mimetypes.guess_type(source.as_posix())[0]
+                bytestream = replace(bytestream, mime_type=mimetypes.guess_type(source.as_posix())[0])
 
             if bytestream.data == _EMPTY_BYTE_STRING:
                 logger.warning("File {source} is empty. Skipping it.", source=source)

@@ -14,7 +14,7 @@ def get_weather_report(city: str) -> str:
 def calculate(a: int, b: int, operation: str) -> int:
     if operation == "add":
         return a + b
-    elif operation == "multiply":
+    if operation == "multiply":
         return a * b
     return 0
 

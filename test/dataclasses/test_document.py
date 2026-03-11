@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
+from dataclasses import replace
+
 import pytest
 
 from haystack import Document
@@ -112,8 +115,8 @@ def test_basic_equality_id():
 
     assert doc1 == doc2
 
-    doc1.id = "1234"
-    doc2.id = "5678"
+    doc1 = replace(doc1, id="1234")
+    doc2 = replace(doc2, id="5678")
 
     assert doc1 != doc2
 
@@ -344,3 +347,15 @@ def test_content_type():
 
     with pytest.raises(ValueError):
         _ = Document().content_type
+
+
+def test_no_warning_on_init():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Warning)
+        Document(content="test")
+
+
+def test_warn_on_inplace_mutation():
+    doc = Document(content="test")
+    with pytest.warns(Warning, match="dataclasses.replace"):
+        doc.content = "other"

@@ -75,13 +75,13 @@ method decorated with `@component.input`. This dataclass contains:
 
 import inspect
 import typing
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Iterator, Mapping, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
+from typing import Any, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -180,7 +180,7 @@ class Component(Protocol):
     # [arg-type]
     # note: Protocol member Component.run expected settable variable, got read-only attribute
 
-    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # pylint: disable=missing-function-docstring # noqa: D102
+    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # noqa: D102
         ...
 
 
@@ -194,7 +194,7 @@ class ComponentMeta(type):
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 
         out = {}
-        for arg, (name, info) in zip(args, init_params.items()):
+        for arg, (name, info) in zip(args, init_params.items(), strict=False):
             if info.kind == inspect.Parameter.VAR_POSITIONAL:
                 raise ComponentError(
                     "Pre-init hooks do not support components with variadic positional args in their init method"
@@ -272,7 +272,7 @@ class ComponentMeta(type):
         if not hasattr(instance, "__haystack_input__"):
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
 
-        inner(getattr(component_cls, "run"), instance.__haystack_input__)
+        inner(getattr(component_cls, "run"), instance.__haystack_input__)  # noqa: B009
 
         # Ensure that the sockets are the same for the async method, if it exists.
         async_run = getattr(component_cls, "run_async", None)
@@ -282,7 +282,7 @@ class ComponentMeta(type):
 
             # Can't use the sockets from above as they might contain
             # values set with set_input_types().
-            run_sig = inner(getattr(component_cls, "run"), run_sockets)
+            run_sig = inner(getattr(component_cls, "run"), run_sockets)  # noqa: B009
             async_run_sig = inner(async_run, async_run_sockets)
 
             if async_run_sockets != run_sockets or run_sig != async_run_sig:
@@ -353,10 +353,9 @@ def _component_run_has_kwargs(component_cls: type) -> bool:
     run_method = getattr(component_cls, "run", None)
     if run_method is None:
         return False
-    else:
-        return any(
-            param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
-        )
+    return any(
+        param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
+    )
 
 
 def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: inspect.Signature) -> str:
@@ -378,7 +377,7 @@ def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: i
             f"Different number of parameters: run has {len(run_params)}, run_async has {len(async_params)}"
         )
 
-    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params):
+    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params, strict=False):
         if run_name != async_name:
             differences.append(f"Parameter name mismatch: {run_name} vs {async_name}")
 
@@ -561,7 +560,7 @@ class _Component:
             if method_name not in ("run", "run_async"):
                 raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
 
-            setattr(
+            setattr(  # noqa: B010
                 run_method,
                 "_output_types_cache",
                 {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()},

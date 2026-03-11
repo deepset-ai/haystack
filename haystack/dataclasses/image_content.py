@@ -13,6 +13,7 @@ import filetype
 from haystack import logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import is_in_jupyter
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 with LazyImport("The 'show' method requires the 'PIL' library. Run 'pip install pillow'") as pillow_import:
     from PIL import Image
@@ -56,6 +57,7 @@ MIME_TO_FORMAT["image/jpg"] = "JPEG"
 IMAGE_MIME_TYPES = set(MIME_TO_FORMAT.keys())
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ImageContent:
     """

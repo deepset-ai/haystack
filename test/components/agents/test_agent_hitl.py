@@ -103,6 +103,8 @@ class TestAgent:
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
                 "tool_invoker_kwargs": None,
+                "required_variables": None,
+                "user_prompt": None,
                 "confirmation_strategies": {
                     "addition_tool": {
                         "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",

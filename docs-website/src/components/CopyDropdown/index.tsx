@@ -12,6 +12,27 @@ import ChevronDownIcon from '@site/static/img/chevron-down.svg';
 import MarkdownIcon from '@site/static/img/markdown.svg';
 import PDFIcon from '@site/static/img/pdf.svg';
 
+const SparkleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" />
+    <path d="M20 16l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z" />
+  </svg>
+);
+
+const ExternalLinkIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
+  </svg>
+);
+
+const AI_ASSISTANTS = [
+  { name: 'ChatGPT', buildUrl: (prompt: string) => `https://chatgpt.com/?q=${encodeURIComponent(prompt)}` },
+  { name: 'Claude', buildUrl: (prompt: string) => `https://claude.ai/new?q=${encodeURIComponent(prompt)}` },
+  { name: 'Perplexity', buildUrl: (prompt: string) => `https://www.perplexity.ai/search?q=${encodeURIComponent(prompt)}` },
+];
+
 // Create and configure Turndown service
 function createTurndownService(): TurndownService {
   const turndownService = new TurndownService({
@@ -190,6 +211,12 @@ export default function CopyDropdown({ className }: CopyDropdownProps) {
     setIsOpen(false);
   };
 
+  const handleAskAI = (buildUrl: (prompt: string) => string) => {
+    const prompt = `Read this page ${window.location.href} and answer my questions about it.`;
+    window.open(buildUrl(prompt), '_blank', 'noopener,noreferrer');
+    setIsOpen(false);
+  };
+
   return (
     <div className={`${styles.copyDropdownContainer} ${className || ''}`} ref={dropdownRef}>
       <button
@@ -230,6 +257,26 @@ export default function CopyDropdown({ className }: CopyDropdownProps) {
               <span className={styles.menuItemDescription}>Save this page as a PDF file</span>
             </div>
           </button>
+
+          <div className={styles.menuDivider} />
+
+          <div className={styles.menuSectionHeader}>
+            <SparkleIcon />
+            <span>Ask AI about this page</span>
+          </div>
+
+          {AI_ASSISTANTS.map(({ name, buildUrl }) => (
+            <button key={name} className={styles.menuItem} onClick={() => handleAskAI(buildUrl)}>
+              <SparkleIcon />
+              <div className={styles.menuItemContent}>
+                <span className={styles.menuItemTitle}>
+                  {name}
+                  <ExternalLinkIcon />
+                </span>
+                <span className={styles.menuItemDescription}>Open this page in {name}</span>
+              </div>
+            </button>
+          ))}
         </div>
       )}
     </div>

@@ -20,7 +20,7 @@ from haystack.core.errors import (
     PipelineMaxComponentRuns,
     PipelineRuntimeError,
 )
-from haystack.core.pipeline import Pipeline, PredefinedPipeline
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
@@ -84,7 +84,7 @@ class TestPipelineBase:
         pipeline.add_component("Comp2", FakeComponent())
         pipeline.connect("Comp1.value", "Comp2.input_")
         result = pipeline.dumps()
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml") as f:
             assert f.read() == result
 
     def test_pipeline_loads_invalid_data(self):
@@ -121,7 +121,7 @@ class TestPipelineBase:
         metadata: {}
         """
 
-        with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
+        with pytest.raises(DeserializationError, match="Couldn't deserialize component 'Comp1'"):
             _ = PipelineBase.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
@@ -132,11 +132,11 @@ class TestPipelineBase:
         with open(tmp_path / "out.yaml", "w") as f:
             pipeline.dump(f)
         # re-open and ensure it's the same data as the test file
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as test_f, open(tmp_path / "out.yaml", "r") as f:
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml") as test_f, open(tmp_path / "out.yaml") as f:
             assert f.read() == test_f.read()
 
     def test_pipeline_load(self, test_files_path):
-        with open(f"{test_files_path}/yaml/test_pipeline.yaml", "r") as f:
+        with open(f"{test_files_path}/yaml/test_pipeline.yaml") as f:
             pipeline = PipelineBase.load(f)
             assert pipeline._max_runs_per_component == 99
             assert isinstance(pipeline.get_component("Comp1"), FakeComponent)
@@ -646,7 +646,7 @@ class TestPipelineBase:
         p.connect("b.y", "c.y")
         assert p.inputs() == {}
         assert p.inputs(include_components_with_connected_inputs=True) == {
-            "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}}
+            "c": {"x": {"type": int, "is_mandatory": False}, "y": {"type": int, "is_mandatory": False}}
         }
 
     def test_describe_input_some_components_with_no_inputs(self):
@@ -662,7 +662,7 @@ class TestPipelineBase:
         assert p.inputs() == {"b": {"y": {"type": int, "is_mandatory": True}}}
         assert p.inputs(include_components_with_connected_inputs=True) == {
             "b": {"y": {"type": int, "is_mandatory": True}},
-            "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
+            "c": {"x": {"type": int, "is_mandatory": False}, "y": {"type": int, "is_mandatory": False}},
         }
 
     def test_describe_input_all_components_have_inputs(self):
@@ -682,7 +682,7 @@ class TestPipelineBase:
         assert p.inputs(include_components_with_connected_inputs=True) == {
             "a": {"x": {"type": int | None, "is_mandatory": True}},
             "b": {"y": {"type": int, "is_mandatory": True}},
-            "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
+            "c": {"x": {"type": int, "is_mandatory": False}, "y": {"type": int, "is_mandatory": False}},
         }
 
     def test_describe_output_multiple_possible(self):
@@ -745,11 +745,6 @@ class TestPipelineBase:
             "a": {"x": {"type": int}},
             "b": {"y": {"type": int}},
         }
-
-    def test_from_template(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake_key")
-        pipe = PipelineBase.from_template(PredefinedPipeline.INDEXING)
-        assert pipe.get_component("cleaner")
 
     def test_walk_pipeline_with_no_cycles(self):
         """
@@ -1954,6 +1949,31 @@ class TestPipelineConnect:
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
 
+    def test_connect_auto_variadic_optional_list(self):
+        @component
+        class ListAcceptor:
+            @component.output_types(result=list[int])
+            def run(self, numbers: list[int] | None = None) -> dict[str, list[int]]:
+                return {"result": numbers or []}
+
+        pipeline = PipelineBase()
+        receiver = ListAcceptor()
+        pipeline.add_component("sender1", ListAcceptor())
+        pipeline.add_component("sender2", ListAcceptor())
+        pipeline.add_component("receiver", receiver)
+
+        pipeline.connect("sender1.result", "receiver.numbers")
+        pipeline.connect("sender2.result", "receiver.numbers")
+
+        # Check that the receiver's input socket is correctly set to lazy variadic with wrap_input_in_list=False
+        inp_socket = InputSocket(
+            name="numbers", type=list[int] | None, senders=["sender1", "sender2"], default_value=None
+        )
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
+
     def test_connect_with_conversion_chat_message_to_str(self):
         @component
         class ChatMessageOutput:
@@ -2070,6 +2090,40 @@ class TestPipelineConnect:
         )
 
 
+class TestMakeSocketAutoVariadic:
+    @pytest.mark.parametrize(
+        "receiver_type,current_sender_type,new_sender_type",
+        [
+            # All lists
+            (list[int], list[int], list[int]),
+            # List unions
+            (list[str] | list[ChatMessage], list[str], list[str]),
+            (list[str] | list[ChatMessage], list[ChatMessage], list[ChatMessage]),
+            # Optional list
+            (list[int] | None, list[int], list[int]),
+        ],
+    )
+    def test_successful(self, receiver_type, current_sender_type, new_sender_type):
+        pipe = PipelineBase()
+        inp_socket = pipe._make_socket_auto_variadic(
+            component_name="comp",
+            receiver_socket=InputSocket(name="input_to_comp3", type=receiver_type, senders=["comp1"]),
+            error_type=PipelineConnectError,
+        )
+        assert inp_socket.is_variadic is True
+        assert inp_socket.is_lazy_variadic is True
+        assert inp_socket.wrap_input_in_list is False
+
+    def test_raises_error_all_int(self):
+        with pytest.raises(PipelineConnectError):
+            pipe = PipelineBase()
+            _ = pipe._make_socket_auto_variadic(
+                component_name="comp",
+                receiver_socket=InputSocket(name="input_to_comp3", type=int, senders=["comp1"]),
+                error_type=PipelineConnectError,
+            )
+
+
 class TestValidateInput:
     def test_validate_input_wrong_comp_name(self):
         pipe = PipelineBase()
@@ -2097,7 +2151,8 @@ class TestValidateInput:
         with pytest.raises(
             ValueError,
             match="Component 'comp2' cannot accept multiple inputs to 'input_'. "
-            "It is already connected to component 'comp1' so it cannot accept additional inputs.",
+            "It is already connected to component 'comp1', and it can only can only accept inputs from multiple "
+            r"senders if its type is list, Optional\[list\], or union of list types.",
         ):
             pipe.validate_input(data={"comp1": {"input_": "test"}, "comp2": {"input_": "extra_input"}})
 

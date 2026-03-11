@@ -64,7 +64,6 @@ export default {
             'concepts/pipelines/debugging-pipelines',
             'concepts/pipelines/pipeline-breakpoints',
             'concepts/pipelines/pipeline-loops',
-            'concepts/pipelines/pipeline-templates',
             'concepts/pipelines/asyncpipeline',
             'concepts/pipelines/smart-pipeline-connections',
           ],
@@ -105,6 +104,7 @@ export default {
       label: 'Document Stores',
       items: [
         'document-stores/inmemorydocumentstore',
+        'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
         'document-stores/chromadocumentstore',
@@ -114,6 +114,7 @@ export default {
           href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
         },
         'document-stores/elasticsearch-document-store',
+        'document-stores/faissdocumentstore',
         {
           type: 'link',
           label: 'LanceDBDocumentStore',
@@ -134,6 +135,7 @@ export default {
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
+        'document-stores/valkeydocumentstore',
         'document-stores/weaviatedocumentstore',
       ],
     },
@@ -227,6 +229,7 @@ export default {
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
+            'pipeline-components/converters/filetofilecontent',
             'pipeline-components/converters/htmltodocument',
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
@@ -279,6 +282,7 @@ export default {
             'pipeline-components/embedders/fastembedtextembedder',
             'pipeline-components/embedders/googlegenaidocumentembedder',
             'pipeline-components/embedders/googlegenaitextembedder',
+            'pipeline-components/embedders/googlegenaimultimodaldocumentembedder',
             'pipeline-components/embedders/huggingfaceapidocumentembedder',
             'pipeline-components/embedders/huggingfaceapitextembedder',
             'pipeline-components/embedders/jinadocumentembedder',
@@ -352,6 +356,7 @@ export default {
             id: 'pipeline-components/fetchers'
           },
           items: [
+            'pipeline-components/fetchers/firecrawlcrawler',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
@@ -483,6 +488,7 @@ export default {
             'pipeline-components/rankers/metafieldgroupingranker',
             'pipeline-components/rankers/metafieldranker',
             'pipeline-components/rankers/nvidiaranker',
+            'pipeline-components/rankers/pyversityranker',
             'pipeline-components/rankers/sentencetransformersdiversityranker',
             'pipeline-components/rankers/sentencetransformerssimilarityranker',
             'pipeline-components/rankers/transformerssimilarityranker',
@@ -508,6 +514,7 @@ export default {
             id: 'pipeline-components/retrievers'
           },
           items: [
+            'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
             'pipeline-components/retrievers/azureaisearchbm25retriever',
@@ -517,6 +524,7 @@ export default {
             'pipeline-components/retrievers/chromaqueryretriever',
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
+            'pipeline-components/retrievers/faissembeddingretriever',
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
@@ -535,6 +543,7 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretrieval',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/valkeyembeddingretriever',
             'pipeline-components/retrievers/weaviatebm25retriever',
             'pipeline-components/retrievers/weaviateembeddingretriever',
             'pipeline-components/retrievers/weaviatehybridretriever',
@@ -575,6 +584,13 @@ export default {
         },
         {
           type: 'category',
+          label: 'Translators',
+          items: [
+            'pipeline-components/translators/laradocumenttranslator',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Validators',
           items: [
             'pipeline-components/validators/jsonschemavalidator',
@@ -588,6 +604,7 @@ export default {
             id: 'pipeline-components/websearch'
           },
           items: [
+            'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
             'pipeline-components/websearch/external-integrations-websearch',
@@ -612,6 +629,7 @@ export default {
         'tools/toolset',
         'tools/mcptool',
         'tools/mcptoolset',
+        'tools/searchabletoolset',
         {
           type: 'category',
           label: 'Ready-made Tools',

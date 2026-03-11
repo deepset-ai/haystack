@@ -290,6 +290,8 @@ class MarkdownHeaderSplitter:
                 - A metadata field `page_number` to track the original page number.
                 - A metadata field `split_id` to identify the split chunk index within its parent document.
                 - All other metadata copied from the original document.
+        :raises ValueError: If a document has `None` content.
+        :raises TypeError: If a document's content is not a string.
         """
         if self.secondary_split and not self._is_warmed_up:
             self.warm_up()
@@ -297,13 +299,11 @@ class MarkdownHeaderSplitter:
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
-                    (
-                        "MarkdownHeaderSplitter only works with text documents but content for document ID"
-                        f" {doc.id} is None."
-                    )
+                    "MarkdownHeaderSplitter only works with text documents but content for document ID"
+                    f" {doc.id} is None."
                 )
             if not isinstance(doc.content, str):
-                raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")
+                raise TypeError("MarkdownHeaderSplitter only works with text documents (str content).")
 
         final_docs = []
         for doc in documents:

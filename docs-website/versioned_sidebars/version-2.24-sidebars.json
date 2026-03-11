@@ -130,6 +130,7 @@
         "document-stores/pgvectordocumentstore",
         "document-stores/pinecone-document-store",
         "document-stores/qdrant-document-store",
+        "document-stores/valkeydocumentstore",
         "document-stores/weaviatedocumentstore"
       ]
     },
@@ -478,6 +479,7 @@
             "pipeline-components/rankers/metafieldgroupingranker",
             "pipeline-components/rankers/metafieldranker",
             "pipeline-components/rankers/nvidiaranker",
+            "pipeline-components/rankers/pyversityranker",
             "pipeline-components/rankers/sentencetransformersdiversityranker",
             "pipeline-components/rankers/sentencetransformerssimilarityranker",
             "pipeline-components/rankers/transformerssimilarityranker",
@@ -530,6 +532,7 @@
             "pipeline-components/retrievers/qdrantsparseembeddingretriever",
             "pipeline-components/retrievers/sentencewindowretrieval",
             "pipeline-components/retrievers/snowflaketableretriever",
+            "pipeline-components/retrievers/valkeyembeddingretriever",
             "pipeline-components/retrievers/weaviatebm25retriever",
             "pipeline-components/retrievers/weaviateembeddingretriever",
             "pipeline-components/retrievers/weaviatehybridretriever"

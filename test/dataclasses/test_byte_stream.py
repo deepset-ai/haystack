@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
+
 import pytest
 
 from haystack.dataclasses import ByteStream
 
 
 def test_from_file_path(tmp_path, request):
-    test_bytes = "Hello, world!\n".encode()
+    test_bytes = b"Hello, world!\n"
     test_path = tmp_path / request.node.name
     with open(test_path, "wb") as fd:
         assert fd.write(test_bytes)
@@ -155,3 +157,15 @@ def test_from_dict():
     assert b2.mime_type == b.mime_type
     assert b2.meta == b.meta
     assert str(b2) == str(b)
+
+
+def test_no_warning_on_init():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Warning)
+        ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"})
+
+
+def test_warn_on_inplace_mutation():
+    b = ByteStream(data=b"hello")
+    with pytest.warns(Warning, match="dataclasses.replace"):
+        b.data = b"world"

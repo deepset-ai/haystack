@@ -1,0 +1,108 @@
+---
+title: "FirecrawlCrawler"
+id: firecrawlcrawler
+slug: "/firecrawlcrawler"
+description: "Use Firecrawl to crawl websites and return the content as Haystack Documents. Unlike single-page fetchers, FirecrawlCrawler follows links and discovers subpages."
+---
+
+# FirecrawlCrawler
+
+Use Firecrawl to crawl websites and return the content as Haystack Documents. Unlike single-page fetchers, FirecrawlCrawler follows links and discovers subpages.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing or query pipelines as the data fetching step |
+| **Mandatory run variables** | `urls`: A list of URLs (strings) to start crawling from |
+| **Output variables** | `documents`: A list of [Documents](../../concepts/data-classes.mdx) |
+| **API reference** | [Firecrawl](/reference/integrations-firecrawl) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/firecrawl |
+
+</div>
+
+## Overview
+
+`FirecrawlCrawler` uses [Firecrawl](https://firecrawl.dev) to crawl one or more URLs and return the extracted content as Haystack `Document` objects. Starting from each given URL, it follows links to discover subpages up to a configurable limit. This makes it well-suited for ingesting entire websites or documentation sites, not just single pages.
+
+Firecrawl returns content in a structured format that works well as input for LLMs. Each crawled page becomes a separate `Document` with the page content in the `content` field and metadata, such as title, URL, and description, in the `meta` field.
+
+### Crawl parameters
+
+You can control the crawl behavior through the `params` argument. Some commonly used parameters:
+
+- `limit`: Maximum number of pages to crawl per URL. Defaults to `1`. Without a limit, Firecrawl may crawl all subpages and consume credits quickly.
+- `scrape_options`: Controls the output format. Defaults to `{"formats": ["markdown"]}`.
+
+See the [Firecrawl API reference](https://docs.firecrawl.dev/api-reference/endpoint/crawl-post) for the full list of available parameters.
+
+### Authorization
+
+`FirecrawlCrawler` uses the `FIRECRAWL_API_KEY` environment variable by default. You can also pass the key explicitly at initialization:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.fetchers.firecrawl import FirecrawlCrawler
+
+crawler = FirecrawlCrawler(api_key=Secret.from_token("<your-api-key>"))
+```
+
+To get an API key, sign up at [firecrawl.dev](https://firecrawl.dev).
+
+### Installation
+
+Install the Firecrawl integration with:
+
+```shell
+pip install firecrawl-haystack
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.fetchers.firecrawl import FirecrawlCrawler
+
+crawler = FirecrawlCrawler(params={"limit": 3})
+
+result = crawler.run(urls=["https://docs.haystack.deepset.ai/docs/intro"])
+documents = result["documents"]
+
+for doc in documents:
+    print(f"{doc.meta.get('title')} - {doc.meta.get('url')}")
+```
+
+### In a pipeline
+
+Below is an example of an indexing pipeline that uses `FirecrawlCrawler` to crawl a documentation site and store the results in an `InMemoryDocumentStore`.
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.fetchers.firecrawl import FirecrawlCrawler
+
+document_store = InMemoryDocumentStore()
+
+crawler = FirecrawlCrawler(params={"limit": 10})
+splitter = DocumentSplitter(split_by="sentence", split_length=5)
+writer = DocumentWriter(document_store=document_store)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("crawler", crawler)
+indexing_pipeline.add_component("splitter", splitter)
+indexing_pipeline.add_component("writer", writer)
+
+indexing_pipeline.connect("crawler.documents", "splitter.documents")
+indexing_pipeline.connect("splitter.documents", "writer.documents")
+
+indexing_pipeline.run(
+    data={
+        "crawler": {
+            "urls": ["https://docs.haystack.deepset.ai/docs/intro"],
+        },
+    },
+)
+```

@@ -33,7 +33,6 @@ class BranchJoiner:
     import json
 
     from haystack import Pipeline
-    from haystack.components.converters import OutputAdapter
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.joiners import BranchJoiner
     from haystack.components.validators import JsonSchemaValidator
@@ -54,13 +53,11 @@ class BranchJoiner:
     pipe = Pipeline()
 
     # Add components to the pipeline
-    pipe.add_component('joiner', BranchJoiner(list[ChatMessage]))
-    pipe.add_component('generator', OpenAIChatGenerator())
-    pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
-    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
+    pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
+    pipe.add_component("generator", OpenAIChatGenerator(model="gpt-4.1-mini"))
+    pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
 
     # And connect them
-    pipe.connect("adapter", "joiner")
     pipe.connect("joiner", "generator")
     pipe.connect("generator.replies", "validator.messages")
     pipe.connect("validator.validation_error", "joiner")
@@ -68,7 +65,7 @@ class BranchJoiner:
     result = pipe.run(
         data={
         "generator": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
-        "adapter": {"chat_message": [ChatMessage.from_user("Create json from Peter Parker")]}}
+        "joiner": {"value": [ChatMessage.from_user("Create json from Peter Parker")]}}
     )
 
     print(json.loads(result["validator"]["validated"][0].text))

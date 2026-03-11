@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+from dataclasses import replace
 
 import pytest
 
@@ -145,9 +146,7 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
     class ModifyingComponent:
         @component.output_types(output=Document)
         def run(self, document: Document) -> dict[str, Document]:
-            # Modifies the incoming document inplace
-            document.content = "modified"
-            return {"output": document}
+            return {"output": replace(document, content="modified")}
 
     pp = AsyncPipeline()
     pp.add_component("first", SimpleComponent())
@@ -166,3 +165,32 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
     # Without deep copying the inputs, the second component would also see the modified document and produce
     # "modified" instead of "original"
     assert result["second"]["output"].content == "original"
+
+
+def test_async_pipeline_does_not_corrupt_outputs():
+    """
+    Test that a component's output collected via include_outputs_from is not corrupted when a downstream
+    component receives and mutates the same data in-place.
+    """
+
+    @component
+    class Producer:
+        @component.output_types(doc=Document)
+        def run(self) -> dict:
+            return {"doc": Document(content="original")}
+
+    @component
+    class Mutator:
+        @component.output_types(doc=Document)
+        def run(self, doc: Document) -> dict:
+            return {"doc": replace(doc, content="mutated")}
+
+    pipe = AsyncPipeline()
+    pipe.add_component("producer", Producer())
+    pipe.add_component("mutator", Mutator())
+    pipe.connect("producer.doc", "mutator.doc")
+
+    result = pipe.run({}, include_outputs_from={"producer"})
+
+    assert result["producer"]["doc"].content == "original"
+    assert result["mutator"]["doc"].content == "mutated"

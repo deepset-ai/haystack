@@ -102,7 +102,11 @@ class TestDocumentJoiner:
         joiner = DocumentJoiner(join_mode=join_mode)
         documents = [Document(content="a"), Document(content="b"), Document(content="c")]
         result = joiner.run([[], documents])
-        assert result == {"documents": documents}
+        # Verify the same documents are returned (scoring functions assign scores to the results;
+        # compare by ID to avoid relying on in-place score mutation of the input list).
+        result_ids = {doc.id for doc in result["documents"]}
+        expected_ids = {doc.id for doc in documents}
+        assert result_ids == expected_ids
 
     def test_unsupported_join_mode(self):
         unsupported_mode = "unsupported_mode"
@@ -296,7 +300,7 @@ class TestDocumentJoiner:
 
         joiners = [joiner_1, joiner_2, joiner_3, joiner_4, joiner_5]
 
-        for index, joiner in enumerate(joiners):
+        for joiner in joiners:
             join_results = joiner.run(documents=document_lists)
             is_sorted = all(
                 join_results["documents"][i].score >= join_results["documents"][i + 1].score

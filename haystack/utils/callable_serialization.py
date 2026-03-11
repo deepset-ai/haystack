@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.utils.type_serialization import thread_safe_import

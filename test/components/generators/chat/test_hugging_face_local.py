@@ -91,7 +91,7 @@ class TestHuggingFaceLocalChatGenerator:
             streaming_callback=streaming_callback,
         )
 
-        assert generator.generation_kwargs == {**generation_kwargs, **{"stop_sequences": ["stop"]}}
+        assert generator.generation_kwargs == {**generation_kwargs, "stop_sequences": ["stop"]}
         assert generator.streaming_callback == streaming_callback
 
     def test_init_custom_token(self, model_info_mock):
@@ -249,9 +249,7 @@ class TestHuggingFaceLocalChatGenerator:
         }
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up(self, pipeline_mock, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_warm_up(self, pipeline_mock, del_hf_env_vars):
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2", task="text-generation", device=ComponentDevice.from_str("cpu")
         )
@@ -265,10 +263,8 @@ class TestHuggingFaceLocalChatGenerator:
         )
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up_with_tools(self, pipeline_mock, monkeypatch):
+    def test_warm_up_with_tools(self, pipeline_mock, del_hf_env_vars):
         """Test that warm_up() calls warm_up on tools and is idempotent."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
 
         # Create a mock tool that tracks if warm_up() was called
         class MockTool(Tool):
@@ -321,10 +317,8 @@ class TestHuggingFaceLocalChatGenerator:
         pipeline_mock.assert_called_once()
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up_with_no_tools(self, pipeline_mock, monkeypatch):
+    def test_warm_up_with_no_tools(self, pipeline_mock, del_hf_env_vars):
         """Test that warm_up() works when no tools are provided."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
 
         generator = HuggingFaceLocalChatGenerator(
             model="mistralai/Mistral-7B-Instruct-v0.2", task="text-generation", device=ComponentDevice.from_str("cpu")
@@ -348,10 +342,8 @@ class TestHuggingFaceLocalChatGenerator:
         pipeline_mock.assert_called_once()
 
     @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_warm_up_with_multiple_tools(self, pipeline_mock, monkeypatch):
+    def test_warm_up_with_multiple_tools(self, pipeline_mock, del_hf_env_vars):
         """Test that warm_up() works with multiple tools."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
 
         # Track warm_up calls
         warm_up_calls = []
@@ -454,7 +446,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
         generator.pipeline.assert_called_once()
-        generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
+        assert generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
 
     def test_run_with_streaming_callback_in_run_method(
         self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages
@@ -475,7 +467,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
         generator.pipeline.assert_called_once()
-        generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
+        assert generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
 
     @patch("haystack.components.generators.chat.hugging_face_local.convert_message_to_hf_format")
     def test_messages_conversion_is_called(self, mock_convert, model_info_mock):
@@ -496,9 +488,8 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run(self, monkeypatch):
+    def test_live_run(self, del_hf_env_vars):
         """Test live run with default behavior (no thinking)."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
 
         llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
@@ -512,9 +503,8 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_thinking(self, monkeypatch):
+    def test_live_run_thinking(self, del_hf_env_vars):
         """Test live run with enable_thinking=True."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
         messages = [ChatMessage.from_user("What is 2+2?")]
 
         llm = HuggingFaceLocalChatGenerator(
@@ -717,7 +707,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
             await generator.run_async(
                 messages=[ChatMessage.from_user("test")],
-                streaming_callback=lambda x: None,
+                streaming_callback=lambda _: None,
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
 
@@ -815,10 +805,8 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.asyncio
-    async def test_live_run_async_with_streaming(self, monkeypatch):
+    async def test_live_run_async_with_streaming(self, del_hf_env_vars):
         """Test async streaming with a live model."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-
         streaming_chunks = []
 
         async def streaming_callback(chunk: StreamingChunk) -> None:

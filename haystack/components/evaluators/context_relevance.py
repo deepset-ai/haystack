@@ -97,7 +97,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         examples: list[dict[str, Any]] | None = None,
         progress_bar: bool = True,
@@ -146,7 +146,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.outputs = ["relevant_statements"]
         self.examples = examples or _DEFAULT_EXAMPLES
 
-        super(ContextRelevanceEvaluator, self).__init__(
+        super(ContextRelevanceEvaluator, self).__init__(  # noqa: UP008
             instructions=self.instructions,
             inputs=self.inputs,
             outputs=self.outputs,
@@ -170,7 +170,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `score`: Mean context relevance score over all the provided input questions.
                 - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
-        result = super(ContextRelevanceEvaluator, self).run(**inputs)
+        result = super(ContextRelevanceEvaluator, self).run(**inputs)  # noqa: UP008
 
         for idx, res in enumerate(result["results"]):
             if res is None:

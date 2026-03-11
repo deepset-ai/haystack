@@ -7,9 +7,6 @@ from typing import Any, Protocol
 from haystack.dataclasses import Document
 from haystack.document_stores.types.policy import DuplicatePolicy
 
-# Ellipsis are needed for the type checker, it's safe to disable module-wide
-# pylint: disable=unnecessary-ellipsis
-
 
 class DocumentStore(Protocol):
     """

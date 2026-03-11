@@ -38,7 +38,7 @@ class InMemoryBM25Retriever:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         document_store: InMemoryDocumentStore,
         filters: dict[str, Any] | None = None,
@@ -63,11 +63,12 @@ class InMemoryBM25Retriever:
         - `REPLACE` (default): Overrides the initialization filters with the filters specified at runtime.
         Use this policy to dynamically change filtering for specific queries.
         - `MERGE`: Combines runtime filters with initialization filters to narrow down the search.
+        :raises TypeError: If the document_store is not an instance of InMemoryDocumentStore.
         :raises ValueError:
             If the specified `top_k` is not > 0.
         """
         if not isinstance(document_store, InMemoryDocumentStore):
-            raise ValueError("document_store must be an instance of InMemoryDocumentStore")
+            raise TypeError("document_store must be an instance of InMemoryDocumentStore")
 
         self.document_store = document_store
 

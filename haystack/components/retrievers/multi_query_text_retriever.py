@@ -72,7 +72,7 @@ class MultiQueryTextRetriever:
         Warm up the retriever if it has a warm_up method.
         """
         if not self._is_warmed_up:
-            if hasattr(self.retriever, "warm_up") and callable(getattr(self.retriever, "warm_up")):
+            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
                 self.retriever.warm_up()
             self._is_warmed_up = True
 

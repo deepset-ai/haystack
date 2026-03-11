@@ -277,7 +277,7 @@ class SentenceTransformersDocumentImageEmbedder:
         )
 
         docs_with_embeddings = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             # we store this information for later inspection
             new_meta = {
                 **doc.meta,

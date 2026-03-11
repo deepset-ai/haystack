@@ -1,4 +1,4 @@
-name: Nightly release to TestPyPI
+name: Nightly pre-release on PyPI
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.5"
 
 jobs:
   nightly-release:
@@ -15,7 +15,7 @@ jobs:
     # Always build from main for consistency (scheduled and manual runs)
     steps:
       - name: Checkout main
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           ref: main
           fetch-depth: 1
@@ -38,8 +38,8 @@ jobs:
       - name: Build Haystack
         run: hatch build
 
-      - name: Publish to TestPyPI
+      - name: Publish to PyPI
         env:
           HATCH_INDEX_USER: __token__
-          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_TESTPYPI_TOKEN }}
-        run: hatch publish -r test -y
+          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
+        run: hatch publish -y

@@ -14,7 +14,9 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
+import tempfile
 
 VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
@@ -34,7 +36,6 @@ if __name__ == "__main__":
 
     target_unstable = f"{target_version}-unstable"  # e.g., "2.20-unstable"
     next_unstable = f"{major}.{int(minor) + 1}-unstable"  # e.g., "2.21-unstable" - next cycle
-    previous_stable = f"{major}.{int(minor) - 1}"  # e.g., "2.19" - previous stable release
 
     versions = [
         folder.replace("version-", "")
@@ -61,36 +62,40 @@ if __name__ == "__main__":
     # copy reference to reference_versioned_docs/version-target_unstable
     shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{target_unstable}")
 
-    # copy versioned_sidebars/version-previous_stable-sidebars.json
-    # to versioned_sidebars/version-target_unstable-sidebars.json
-    shutil.copy(
-        f"docs-website/versioned_sidebars/version-{previous_stable}-sidebars.json",
-        f"docs-website/versioned_sidebars/version-{target_unstable}-sidebars.json",
+    # generate versioned_sidebars/version-target_unstable-sidebars.json from the current sidebars.js
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = tmp.name
+    subprocess.run(
+        ["node", "docs-website/scripts/extract_sidebar.mjs", "docs-website/sidebars.js", tmp_path], check=True
     )
+    docs_sidebar_dest = f"docs-website/versioned_sidebars/version-{target_unstable}-sidebars.json"
+    shutil.move(tmp_path, docs_sidebar_dest)
 
-    # copy reference_versioned_sidebars/version-previous_stable-sidebars.json
-    # to reference_versioned_sidebars/version-target_unstable-sidebars.json
-    shutil.copy(
-        f"docs-website/reference_versioned_sidebars/version-{previous_stable}-sidebars.json",
-        f"docs-website/reference_versioned_sidebars/version-{target_unstable}-sidebars.json",
+    # generate reference_versioned_sidebars/version-target_unstable-sidebars.json from the current reference-sidebars.js
+    ref_sidebar_dest = f"docs-website/reference_versioned_sidebars/version-{target_unstable}-sidebars.json"
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp_path = tmp.name
+    subprocess.run(
+        ["node", "docs-website/scripts/extract_sidebar.mjs", "docs-website/reference-sidebars.js", tmp_path], check=True
     )
+    shutil.move(tmp_path, ref_sidebar_dest)
 
     # add unstable version to versions.json
-    with open("docs-website/versions.json", "r") as f:
+    with open("docs-website/versions.json") as f:
         versions_list = json.load(f)
     versions_list.insert(0, target_unstable)
     with open("docs-website/versions.json", "w") as f:
         json.dump(versions_list, f)
 
     # add unstable version to reference_versions.json
-    with open("docs-website/reference_versions.json", "r") as f:
+    with open("docs-website/reference_versions.json") as f:
         reference_versions_list = json.load(f)
     reference_versions_list.insert(0, target_unstable)
     with open("docs-website/reference_versions.json", "w") as f:
         json.dump(reference_versions_list, f)
 
     # in docusaurus.config.js, replace the target unstable version with the next unstable version
-    with open("docs-website/docusaurus.config.js", "r") as f:
+    with open("docs-website/docusaurus.config.js") as f:
         config = f.read()
     config = config.replace(f"label: '{target_unstable}'", f"label: '{next_unstable}'")
     with open("docs-website/docusaurus.config.js", "w") as f:

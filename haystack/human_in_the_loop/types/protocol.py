@@ -7,9 +7,6 @@ from typing import Any, Protocol
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.human_in_the_loop.dataclasses import ConfirmationUIResult, ToolExecutionDecision
 
-# Ellipsis are needed to define the Protocol but pylint complains. See https://github.com/pylint-dev/pylint/issues/9319.
-# pylint: disable=unnecessary-ellipsis
-
 
 class ConfirmationUI(Protocol):
     """Base class for confirmation UIs."""
@@ -39,10 +36,10 @@ class ConfirmationPolicy(Protocol):
 
     def update_after_confirmation(
         self,
-        tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        confirmation_result: ConfirmationUIResult,
+        tool_name: str,  # noqa: ARG002
+        tool_description: str,  # noqa: ARG002
+        tool_params: dict[str, Any],  # noqa: ARG002
+        confirmation_result: ConfirmationUIResult,  # noqa: ARG002
     ) -> None:
         """Update the policy based on the confirmation UI result."""
         return

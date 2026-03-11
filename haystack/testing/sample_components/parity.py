@@ -6,7 +6,7 @@ from haystack.core.component import component
 
 
 @component
-class Parity:  # pylint: disable=too-few-public-methods
+class Parity:
     """
     Redirects the value, unchanged, along the 'even' connection if even, or along the 'odd' one if odd.
     """

@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -45,7 +45,7 @@ def mock_auto_tokenizer():
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
     def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
         client = client or MagicMock()
-        super().__init__(client=client, *args, **kwargs)
+        super().__init__(client=client, *args, **kwargs)  # noqa: B026
         self.mock_chunk = mock_chunk
 
     def __stream__(self) -> Iterator[ChatCompletionChunk]:
@@ -408,8 +408,7 @@ def openai_mock_responses_reasoning_summary_delta():
                 super().__init__(events[0] if events else None, **kwargs)
 
             def __stream__(self):
-                for event in self.events:
-                    yield event
+                yield from self.events
 
         mock_responses_create.return_value = MultiEventMockStream(
             start_event, event, cast_to=None, response=None, client=None

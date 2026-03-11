@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Literal
 
 from haystack import Document, Pipeline, default_from_dict, default_to_dict, super_component
 from haystack.components.preprocessors.document_cleaner import DocumentCleaner

@@ -83,9 +83,7 @@ def test_named_entity_extractor_serde():
         _ = NamedEntityExtractor.from_dict(serde_data)
 
 
-def test_to_dict_default(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-
+def test_to_dict_default(del_hf_env_vars):
     component = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE,
         model="dslim/bert-base-NER",
@@ -132,9 +130,7 @@ def test_to_dict_with_parameters():
     }
 
 
-def test_named_entity_extractor_from_dict_no_default_parameters_hf(monkeypatch):
-    monkeypatch.delenv("HF_API_TOKEN", raising=False)
-
+def test_named_entity_extractor_from_dict_no_default_parameters_hf(del_hf_env_vars):
     data = {
         "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
         "init_parameters": {"backend": "HUGGING_FACE", "model": "dslim/bert-base-NER"},
@@ -153,7 +149,7 @@ def test_named_entity_extractor_pipeline_serde(tmp_path):
 
     with open(tmp_path / "test_pipeline.yaml", "w") as f:
         p.dump(f)
-    with open(tmp_path / "test_pipeline.yaml", "r") as f:
+    with open(tmp_path / "test_pipeline.yaml") as f:
         q = Pipeline.load(f)
 
     assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization with NamedEntityExtractor failed."

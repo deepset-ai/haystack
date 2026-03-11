@@ -398,8 +398,8 @@ class TestLinkContentFetcherAsync:
             for key, value in sent_headers.items():
                 lower_key = key.lower()
                 if lower_key in existing_keys:
-                    assert False
-                elif lower_key == "x-test-header":
+                    raise AssertionError()
+                if lower_key == "x-test-header":
                     assert value == "good-one"
                 existing_keys[lower_key] = key
 

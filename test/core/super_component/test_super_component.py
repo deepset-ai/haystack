@@ -288,7 +288,7 @@ class TestSuperComponent:
         class CustomSuperComponent(SuperComponent):
             def __init__(self, pipeline, instance_attribute="test"):
                 self.instance_attribute = instance_attribute
-                super(CustomSuperComponent, self).__init__(pipeline)
+                super(CustomSuperComponent, self).__init__(pipeline)  # noqa: UP008
 
             def to_dict(self):
                 return default_to_dict(

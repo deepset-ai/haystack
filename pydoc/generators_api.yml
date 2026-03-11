@@ -1,8 +1,22 @@
 loaders:
   - search_path: [../haystack/components/generators]
-    modules: ["azure", "hugging_face_local", "hugging_face_api", "openai", "openai_dalle",
-      "chat/azure", "chat/azure_responses", "chat/hugging_face_local", "chat/hugging_face_api",
-      "chat/openai", "chat/openai_responses", "chat/fallback", "utils"]
+    modules:
+      [
+        "azure",
+        "chat/azure",
+        "chat/azure_responses",
+        "chat/fallback",
+        "chat/hugging_face_api",
+        "chat/hugging_face_local",
+        "chat/llm",
+        "chat/openai",
+        "chat/openai_responses",
+        "hugging_face_api",
+        "hugging_face_local",
+        "openai",
+        "openai_dalle",
+        "utils",
+      ]
 processors:
   - type: filter
     documented_only: true

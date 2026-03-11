@@ -67,7 +67,7 @@ class BlockingConfirmationStrategy:
         tool_description: str,
         tool_params: dict[str, Any],
         tool_call_id: str | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,  # noqa: ARG002
     ) -> ToolExecutionDecision:
         """
         Run the human-in-the-loop strategy for a given tool and its parameters.
@@ -116,7 +116,7 @@ class BlockingConfirmationStrategy:
             return ToolExecutionDecision(
                 tool_name=tool_name, execute=False, tool_call_id=tool_call_id, feedback=explanation_text
             )
-        elif confirmation_ui_result.action == "modify" and confirmation_ui_result.new_tool_params:
+        if confirmation_ui_result.action == "modify" and confirmation_ui_result.new_tool_params:
             # Update the tool call params with the new params
             final_args.update(confirmation_ui_result.new_tool_params)
             explanation_text = self.modify_template.format(tool_name=tool_name, final_tool_params=final_args)
@@ -130,10 +130,10 @@ class BlockingConfirmationStrategy:
                 feedback=explanation_text,
                 final_tool_params=final_args,
             )
-        else:  # action == "confirm"
-            return ToolExecutionDecision(
-                tool_name=tool_name, execute=True, tool_call_id=tool_call_id, final_tool_params=tool_params
-            )
+        # action == "confirm"
+        return ToolExecutionDecision(
+            tool_name=tool_name, execute=True, tool_call_id=tool_call_id, final_tool_params=tool_params
+        )
 
     async def run_async(
         self,
@@ -604,5 +604,4 @@ def _update_chat_history(
 
     insertion_point = max(last_user_idx, last_tool_idx)
 
-    new_chat_history = chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
-    return new_chat_history
+    return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages

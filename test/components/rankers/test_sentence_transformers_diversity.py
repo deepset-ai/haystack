@@ -17,10 +17,9 @@ from haystack.utils.auth import Secret
 def mock_encode_response(texts, **kwargs):
     if texts == ["city"]:
         return torch.tensor([[1.0, 1.0]])
-    elif texts == ["Eiffel Tower", "Berlin", "Bananas"]:
+    if texts == ["Eiffel Tower", "Berlin", "Bananas"]:
         return torch.tensor([[1.0, 0.0], [0.8, 0.8], [0.0, 1.0]])
-    else:
-        return torch.tensor([[0.0, 1.0]] * len(texts))
+    return torch.tensor([[0.0, 1.0]] * len(texts))
 
 
 class TestSentenceTransformersDiversityRanker:
@@ -255,12 +254,10 @@ class TestSentenceTransformersDiversityRanker:
             )
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_warm_up(self, similarity, monkeypatch):
+    def test_warm_up(self, similarity, del_hf_env_vars):
         """
         Test that ranker loads the SentenceTransformer model correctly during warm up.
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
         mock_model_class = MagicMock()
         mock_model_instance = MagicMock()
         mock_model_class.return_value = mock_model_instance
@@ -581,8 +578,7 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_real_world_use_case(self, similarity, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_real_world_use_case(self, similarity, del_hf_env_vars):
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers-testing/stsb-bert-tiny-safetensors", similarity=similarity
         )
@@ -655,8 +651,7 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity, del_hf_env_vars):
         query = "renewable energy sources"
         docs = [
             Document(content="18th-century French literature"),

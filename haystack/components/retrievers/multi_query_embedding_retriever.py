@@ -90,9 +90,9 @@ class MultiQueryEmbeddingRetriever:
         Warm up the query embedder and the retriever if any has a warm_up method.
         """
         if not self._is_warmed_up:
-            if hasattr(self.query_embedder, "warm_up") and callable(getattr(self.query_embedder, "warm_up")):
+            if hasattr(self.query_embedder, "warm_up") and callable(self.query_embedder.warm_up):
                 self.query_embedder.warm_up()
-            if hasattr(self.retriever, "warm_up") and callable(getattr(self.retriever, "warm_up")):
+            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
                 self.retriever.warm_up()
             self._is_warmed_up = True
 

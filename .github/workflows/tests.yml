@@ -34,7 +34,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.14.2"
+  HATCH_VERSION: "1.16.5"
 
 jobs:
   format:
@@ -55,37 +55,6 @@ jobs:
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
   check-imports:
     needs: format
     runs-on: ubuntu-slim
@@ -101,37 +70,6 @@ jobs:
 
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -178,38 +116,7 @@ jobs:
         with:
           path-to-lcov: coverage.xml
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-  lint:
+  mypy:
     needs: unit-tests
     runs-on: ubuntu-latest
     steps:
@@ -219,71 +126,34 @@ jobs:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
           fetch-depth: 0
-
       - name: Get changed files
         id: files
         uses: tj-actions/changed-files@v47
         with:
-          files_yaml: |
-            python:
-              - '**/*.py'
-              - '!test/**'
-              - '!.github/**'
-            pyproject:
-              - 'pyproject.toml'
-
+          files: |
+            **/*.py
+            pyproject.toml
+          files_ignore: |
+            test/**
+            .github/**
+            scripts/**
       - uses: actions/setup-python@v6
+        if: steps.files.outputs.any_changed == 'true'
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
         id: hatch
+        if: steps.files.outputs.any_changed == 'true'
         run: |
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Mypy
-        if: steps.files.outputs.python_any_changed == 'true' || steps.files.outputs.pyproject_any_changed == 'true'
+        if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
           hatch run test:types
-
-      - name: Pylint
-        # Running pylint on pyproject.toml causes errors, so we only run it on python files.
-        if: steps.files.outputs.python_any_changed == 'true'
-        run: |
-          hatch run test:lint ${{ steps.files.outputs.python_all_changed_files }}
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   integration-tests-linux:
     name: Integration / ubuntu-latest
@@ -307,37 +177,6 @@ jobs:
 
       - name: Run
         run: hatch run test:integration-only-fast
-
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   integration-tests-macos:
     name: Integration / macos-latest
@@ -371,37 +210,6 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
-        with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
   integration-tests-windows:
     name: Integration / windows-latest
     needs: unit-tests
@@ -427,36 +235,19 @@ jobs:
       - name: Run
         run: hatch run test:integration-only-fast
 
-      - name: Calculate alert data
-        id: calculator
-        shell: bash
-        if: (success() || failure()) && github.ref_name == 'main'
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "alert_type=success" >> "$GITHUB_OUTPUT";
-          else
-            echo "alert_type=error" >> "$GITHUB_OUTPUT";
-          fi
-
-      - name: Send event to Datadog
-        if: (success() || failure()) && github.ref_name == 'main'
-        uses: masci/datadog@v1
+  notify-slack-on-failure:
+    if: failure() && github.ref_name == 'main'
+    needs:
+      - check-imports
+      - mypy
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    runs-on: ubuntu-slim
+    steps:
+      - uses: deepset-ai/notify-slack-action@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   trigger-catch-all:
     name: Tests completed
@@ -466,7 +257,7 @@ jobs:
     # and skip it accordingly.
     needs:
       - check-imports
-      - lint
+      - mypy
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows

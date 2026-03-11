@@ -82,8 +82,7 @@ class Device:
     def __str__(self):
         if self.id is None:
             return str(self.type)
-        else:
-            return f"{self.type}:{self.id}"
+        return f"{self.type}:{self.id}"
 
     @staticmethod
     def cpu() -> "Device":
@@ -198,8 +197,7 @@ class DeviceMap:
         """
         if not self.mapping:
             return None
-        else:
-            return next(iter(self.mapping.values()))
+        return next(iter(self.mapping.values()))
 
     @staticmethod
     def from_dict(dict: dict[str, str]) -> "DeviceMap":  # noqa:A002
@@ -225,6 +223,7 @@ class DeviceMap:
             The HuggingFace device map.
         :returns:
             The deserialized device map.
+        :raises TypeError: If a device value in the map is not an int, str, or torch.device.
         """
         mapping = {}
         for key, device in hf_device_map.items():
@@ -238,7 +237,7 @@ class DeviceMap:
                 device_id = device.index
                 mapping[key] = Device(DeviceType.from_str(device_type), device_id)
             else:
-                raise ValueError(
+                raise TypeError(
                     f"Couldn't convert HuggingFace device map - unexpected device '{str(device)}' for '{key}'"
                 )
         return DeviceMap(mapping)
@@ -361,8 +360,7 @@ class ComponentDevice:
         if self._single_device.type == DeviceType.GPU:
             assert self._single_device.id is not None
             return self._single_device.id
-        else:
-            return -1
+        return -1
 
     def to_hf(self) -> int | str | dict[str, int | str]:
         """
@@ -377,8 +375,7 @@ class ComponentDevice:
             if gpu_id_only and device.type == DeviceType.GPU:
                 assert device.id is not None
                 return device.id
-            else:
-                return str(device)
+            return str(device)
 
         if self._single_device is not None:
             return convert_device(self._single_device)
@@ -464,11 +461,10 @@ class ComponentDevice:
         """
         if self._single_device is not None:
             return {"type": "single", "device": str(self._single_device)}
-        elif self._multiple_devices is not None:
+        if self._multiple_devices is not None:
             return {"type": "multiple", "device_map": self._multiple_devices.to_dict()}
-        else:
-            # Unreachable
-            assert False
+        # Unreachable
+        raise AssertionError()
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> "ComponentDevice":  # noqa:A002
@@ -482,10 +478,9 @@ class ComponentDevice:
         """
         if dict["type"] == "single":
             return cls.from_str(dict["device"])
-        elif dict["type"] == "multiple":
+        if dict["type"] == "multiple":
             return cls.from_multiple(DeviceMap.from_dict(dict["device_map"]))
-        else:
-            raise ValueError(f"Unknown component device type '{dict['type']}' in serialized data")
+        raise ValueError(f"Unknown component device type '{dict['type']}' in serialized data")
 
 
 def _get_default_device() -> Device:
@@ -520,12 +515,11 @@ def _get_default_device() -> Device:
 
     if has_cuda:
         return Device.gpu()
-    elif has_xpu:
+    if has_xpu:
         return Device.xpu()
-    elif has_mps:
+    if has_mps:
         return Device.mps()
-    else:
-        return Device.cpu()
+    return Device.cpu()
 
 
 def _split_device_string(string: str) -> tuple[str, int | None]:
@@ -541,8 +535,8 @@ def _split_device_string(string: str) -> tuple[str, int | None]:
         device_type, device_id_str = string.split(":")
         try:
             device_id = int(device_id_str)
-        except ValueError:
-            raise ValueError(f"Device id must be an integer, got {device_id_str}")
+        except ValueError as e:
+            raise ValueError(f"Device id must be an integer, got {device_id_str}") from e
     else:
         device_type = string
         device_id = None

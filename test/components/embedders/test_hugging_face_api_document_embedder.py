@@ -27,8 +27,7 @@ def mock_check_valid_model():
 
 
 def mock_embedding_generation(text, **kwargs):
-    response = array([[random.random() for _ in range(384)] for _ in range(len(text))])
-    return response
+    return array([[random.random() for _ in range(384)] for _ in range(len(text))])
 
 
 class TestHuggingFaceAPIDocumentEmbedder:
@@ -316,7 +315,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc, new_doc in zip(docs, documents_with_embeddings):
+        for doc, new_doc in zip(docs, documents_with_embeddings, strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -404,6 +403,39 @@ class TestHuggingFaceAPIDocumentEmbedder:
             assert all(isinstance(x, float) for x in doc.embedding)
 
     @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    async def test_live_run_serverless_async(self) -> None:
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        embedder = HuggingFaceAPIDocumentEmbedder(
+            api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "sentence-transformers/all-MiniLM-L6-v2"},
+            meta_fields_to_embed=["topic"],
+            embedding_separator=" | ",
+        )
+        embedder._async_client.timeout = 10  # we want to fail fast if the server is not responding
+        result = await embedder.run_async(documents=docs)
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert isinstance(doc.embedding, list)
+            assert len(doc.embedding) == 384
+            assert all(isinstance(x, float) for x in doc.embedding)
+
+    @pytest.mark.asyncio
     async def test_embed_batch_async(self, mock_check_valid_model, caplog):
         texts = ["text 1", "text 2", "text 3", "text 4", "text 5"]
 
@@ -414,6 +446,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
+                concurrency_limit=4,
             )
             embeddings = await embedder._embed_batch_async(texts_to_embed=texts, batch_size=2)
 
@@ -443,6 +476,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
+                concurrency_limit=1,
             )
 
             with pytest.raises(ValueError):
@@ -456,6 +490,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
                 api_params={"model": "BAAI/bge-small-en-v1.5"},
                 token=Secret.from_token("fake-api-token"),
+                concurrency_limit=1,
             )
 
             with pytest.raises(ValueError):

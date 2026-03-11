@@ -230,6 +230,7 @@ __init__(
     url: str = "http://localhost:11434",
     generation_kwargs: dict[str, Any] | None = None,
     timeout: int = 120,
+    max_retries: int = 0,
     keep_alive: float | str | None = None,
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
     tools: ToolsType | None = None,
@@ -246,6 +247,8 @@ __init__(
   top_p, and others. See the available arguments in
   [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
 - **timeout** (<code>int</code>) – The number of seconds before throwing a timeout error from the Ollama API.
+- **max_retries** (<code>int</code>) – Maximum number of retries to attempt for failed requests (HTTP 429, 5xx, connection/timeout errors).
+  Uses exponential backoff between attempts. Set to 0 (default) to disable retries.
 - **think** (<code>bool | Literal['low', 'medium', 'high']</code>) – If True, the model will "think" before producing a response.
   Only [thinking models](https://ollama.com/search?c=thinking) support this feature.
   Some models like gpt-oss support different levels of thinking: "low", "medium", "high".

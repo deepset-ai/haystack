@@ -222,8 +222,7 @@ class TestMultiQueryEmbeddingRetriever:
                 nonlocal call_count
                 if call_count == 1:
                     return {"documents": [doc1, doc2]}
-                else:
-                    return {"documents": [doc3, doc2]}
+                return {"documents": [doc3, doc2]}
 
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=MockRetriever(), query_embedder=MockQueryEmbedder(), max_workers=1
@@ -239,10 +238,7 @@ class TestMultiQueryEmbeddingRetriever:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_filters(self, monkeypatch, document_store_with_embeddings):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
         query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
@@ -256,10 +252,7 @@ class TestMultiQueryEmbeddingRetriever:
     )
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_pipeline_integration(self, monkeypatch, document_store_with_embeddings):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_pipeline_integration(self, del_hf_env_vars, document_store_with_embeddings):
         expander = QueryExpander(
             chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), n_expansions=3, include_original_query=True
         )

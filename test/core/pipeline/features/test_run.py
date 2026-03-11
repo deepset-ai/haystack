@@ -2838,6 +2838,16 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
     ]
 
 
+class AnyOrder:  # noqa: PLW1641 # Object does not implement `__hash__` method but it's ok
+    """List wrapper with order-insensitive equality"""
+
+    def __init__(self, items):
+        self.items = items
+
+    def __eq__(self, other):
+        return isinstance(other, list) and sorted(self.items) == sorted(other)
+
+
 @given("a pipeline that has a string variadic component", target_fixture="pipeline_data")
 def that_has_a_string_variadic_component(pipeline_class):
     string_1 = "What's Natural Language Processing?"
@@ -2858,7 +2868,9 @@ def that_has_a_string_variadic_component(pipeline_class):
                 inputs={"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}},
                 expected_outputs={
                     "string_joiner": {
-                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        "strings": AnyOrder(
+                            ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        )
                     }
                 },
                 expected_component_calls={
@@ -2869,7 +2881,9 @@ def that_has_a_string_variadic_component(pipeline_class):
                     },
                     ("prompt_builder_2", 1): {"query": "What's is life?", "template": None, "template_variables": None},
                     ("string_joiner", 1): {
-                        "strings": ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        "strings": AnyOrder(
+                            ["Builder 1: What's Natural Language Processing?", "Builder 2: What's is life?"]
+                        )
                     },
                 },
             )

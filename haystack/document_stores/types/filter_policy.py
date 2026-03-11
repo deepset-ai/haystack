@@ -305,15 +305,15 @@ def apply_filter_policy(
         # now we merge filters
         if is_comparison_filter(init_filters) and is_comparison_filter(runtime_filters):
             return combine_two_comparison_filters(init_filters, runtime_filters, default_logical_operator)
-        elif is_comparison_filter(init_filters) and is_logical_filter(runtime_filters):
+        if is_comparison_filter(init_filters) and is_logical_filter(runtime_filters):
             return combine_init_comparison_and_runtime_logical_filters(
                 init_filters, runtime_filters, default_logical_operator
             )
-        elif is_logical_filter(init_filters) and is_comparison_filter(runtime_filters):
+        if is_logical_filter(init_filters) and is_comparison_filter(runtime_filters):
             return combine_runtime_comparison_and_init_logical_filters(
                 runtime_filters, init_filters, default_logical_operator
             )
-        elif is_logical_filter(init_filters) and is_logical_filter(runtime_filters):
+        if is_logical_filter(init_filters) and is_logical_filter(runtime_filters):
             return combine_two_logical_filters(init_filters, runtime_filters)
 
     return runtime_filters or init_filters

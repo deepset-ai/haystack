@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,7 @@ from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
+    import accelerate  # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
@@ -49,7 +50,7 @@ class ExtractiveReader:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: Path | str = "deepset/roberta-base-squad2-distilled",
         device: ComponentDevice | None = None,
@@ -200,12 +201,12 @@ class ExtractiveReader:
         """
         Flattens queries and Documents so all query-document pairs are arranged along one batch axis.
         """
-        flattened_queries = [query for documents_, query in zip(documents, queries) for _ in documents_]
+        flattened_queries = [query for documents_, query in zip(documents, queries, strict=True) for _ in documents_]
         flattened_documents = [document for documents_ in documents for document in documents_]
         query_ids = [i for i, documents_ in enumerate(documents) for _ in documents_]
         return flattened_queries, flattened_documents, query_ids
 
-    def _preprocess(  # pylint: disable=too-many-positional-arguments
+    def _preprocess(
         self, *, queries: list[str], documents: list[Document], max_seq_length: int, query_ids: list[int], stride: int
     ) -> tuple["torch.Tensor", "torch.Tensor", "torch.Tensor", list["Encoding"], list[int], list[int]]:
         """
@@ -301,12 +302,14 @@ class ExtractiveReader:
 
         start_candidates_tokens_to_chars = []
         end_candidates_tokens_to_chars = []
-        for i, (s_candidates, e_candidates, encoding) in enumerate(zip(start_candidates, end_candidates, encodings)):
+        for i, (s_candidates, e_candidates, encoding) in enumerate(
+            zip(start_candidates, end_candidates, encodings, strict=True)
+        ):
             # Those with probabilities > 0 are valid
             valid = candidates_values[i] > 0
             s_char_spans = []
             e_char_spans = []
-            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid]):
+            for start_token, end_token in zip(s_candidates[valid], e_candidates[valid], strict=True):
                 # token_to_chars returns `None` for special tokens
                 # But we shouldn't have special tokens in the answers at this point
                 # The whole span is given by the start of the start_token (index 0)
@@ -330,8 +333,8 @@ class ExtractiveReader:
 
         if not isinstance(answer.document.meta["page_number"], int):
             logger.warning(
-                f"Document's page_number must be int but is {type(answer.document.meta['page_number'])}. "
-                f"No page number will be added to the answer."
+                "Document's page_number must be int but is {type}. No page number will be added to the answer.",
+                type=type(answer.document.meta["page_number"]),
             )
             return answer
 
@@ -368,9 +371,9 @@ class ExtractiveReader:
         """
         answers_without_query = []
         for document_id, start_candidates_, end_candidates_, probabilities_ in zip(
-            document_ids, start, end, probabilities
+            document_ids, start, end, probabilities, strict=True
         ):
-            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_):
+            for start_, end_, probability in zip(start_candidates_, end_candidates_, probabilities_, strict=True):
                 doc = flattened_documents[document_id]
                 answers_without_query.append(
                     ExtractedAnswer(
@@ -387,9 +390,7 @@ class ExtractiveReader:
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
             while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
-                answer = answers_without_query[i]
-                answer.query = queries[query_id]
-                current_answers.append(answer)
+                current_answers.append(replace(answers_without_query[i], query=queries[query_id]))
                 i += 1
             current_answers = sorted(current_answers, key=lambda ans: ans.score, reverse=True)
             current_answers = self.deduplicate_by_overlap(current_answers, overlap_threshold=overlap_threshold)
@@ -529,7 +530,7 @@ class ExtractiveReader:
         return deduplicated_answers
 
     @component.output_types(answers=list[ExtractedAnswer])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         documents: list[Document],

@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from types import UnionType
-from typing import Annotated, Any, Iterable, TypeAlias, TypedDict, TypeVar, get_args
+from typing import Annotated, Any, TypeAlias, TypedDict, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"
@@ -84,21 +85,18 @@ class InputSocket:
         except AttributeError:
             self.is_lazy_variadic = False
             self.is_greedy = False
+
+        # We need to "unpack" the type inside the Variadic annotation, otherwise the pipeline connection api will try
+        # to match `Annotated[type, HAYSTACK_VARIADIC_ANNOTATION]`.
+        #
+        # Note1: Variadic is expressed as an annotation of one single type, so the return value of get_args will
+        # always be a one-item tuple.
+        #
+        # Note2: a pipeline always passes a list of items when a component input is declared as Variadic, so the
+        # type itself always wraps an iterable of the declared type. For example, Variadic[int] is eventually an
+        # alias for Iterable[int]. Since we're interested in getting the inner type `int`, we call `get_args`
+        # twice: the first time to get `list[int]` out of `Variadic`, the second time to get `int` out of `list[int]`.
         if self.is_lazy_variadic or self.is_greedy:
-            # We need to "unpack" the type inside the Variadic annotation,
-            # otherwise the pipeline connection api will try to match
-            # `Annotated[type, HAYSTACK_VARIADIC_ANNOTATION]`.
-            #
-            # Note1: Variadic is expressed as an annotation of one single type,
-            # so the return value of get_args will always be a one-item tuple.
-            #
-            # Note2: a pipeline always passes a list of items when a component
-            # input is declared as Variadic, so the type itself always wraps
-            # an iterable of the declared type. For example, Variadic[int]
-            # is eventually an alias for Iterable[int]. Since we're interested
-            # in getting the inner type `int`, we call `get_args` twice: the
-            # first time to get `list[int]` out of `Variadic`, the second time
-            # to get `int` out of `list[int]`.
             self.type = get_args(get_args(self.type)[0])[0]
 
 
