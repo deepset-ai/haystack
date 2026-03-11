@@ -29,7 +29,6 @@ from haystack.core.errors import (
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
     all_predecessors_executed,
-    are_all_lazy_variadic_sockets_resolved,
     are_all_sockets_ready,
     can_component_run,
     is_any_greedy_socket_ready,
@@ -1192,9 +1191,13 @@ class PipelineBase:  # noqa: PLW1641
         if all_predecessors_executed(comp, comp_inputs):
             # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
             return ComponentPriority.READY
-        if are_all_lazy_variadic_sockets_resolved(comp, comp_inputs):
-            return ComponentPriority.DEFER
-        return ComponentPriority.DEFER_LAST
+        # NOTE: Experiment to see if this check is redundant b/c are_all_lazy_variadic_sockets_resolved again checks
+        #       all_predecessors_executed but only specifically for variadic sockets --> not sure why this would matter
+        #       specifically.
+        # if are_all_lazy_variadic_sockets_resolved(comp, comp_inputs):
+        #     return ComponentPriority.DEFER
+        # NOTE: Test to see if all tests pass with only using DEFER priority and no longer DEFER_LAST
+        return ComponentPriority.DEFER
 
     def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> dict[str, Any]:
         """
