@@ -1063,7 +1063,7 @@ class TestPipelineBase:
                 ComponentPriority.DEFER,
                 "Component should DEFER when all lazy variadic sockets are resolved",
             ),
-            # Test case 6: DEFER_LAST - Incomplete variadic inputs
+            # Test case 6: DEFER - Incomplete variadic inputs
             (
                 {
                     "instance": "mock_instance",
@@ -1079,8 +1079,8 @@ class TestPipelineBase:
                     "variadic_input": [{"sender": "component1", "value": 42}],  # Missing component2
                     "normal_input": [{"sender": "component3", "value": "test"}],
                 },
-                ComponentPriority.DEFER_LAST,
-                "Component should be DEFER_LAST when not all variadic senders have produced output",
+                ComponentPriority.DEFER,
+                "Component should be DEFER when not all variadic senders have produced output",
             ),
             # Test case 7: READY - No input sockets, first visit
             (
