@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from unittest.mock import Mock
 
 import pytest
@@ -29,7 +30,7 @@ def test_init_default_generator(monkeypatch):
 
     assert ranker.top_k == 10
     assert ranker.raise_on_failure is False
-    assert ranker.prompt_template == DEFAULT_PROMPT_TEMPLATE
+    assert ranker.prompt == DEFAULT_PROMPT_TEMPLATE
     assert isinstance(ranker._chat_generator, OpenAIChatGenerator)
     assert ranker._chat_generator.model == "gpt-4.1-mini"
     assert ranker._prompt_builder is not None
@@ -48,7 +49,7 @@ def test_to_dict(monkeypatch):
     chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
     ranker = LLMRanker(
         chat_generator=chat_generator,
-        prompt_template="Rank {{ documents|length }} docs for {{ query }} with {{ top_k }}",
+        prompt="Rank {{ documents|length }} docs for {{ query }}",
         top_k=3,
         raise_on_failure=True,
     )
@@ -57,7 +58,7 @@ def test_to_dict(monkeypatch):
         "type": "haystack.components.rankers.llm_ranker.LLMRanker",
         "init_parameters": {
             "chat_generator": chat_generator.to_dict(),
-            "prompt_template": "Rank {{ documents|length }} docs for {{ query }} with {{ top_k }}",
+            "prompt": "Rank {{ documents|length }} docs for {{ query }}",
             "top_k": 3,
             "raise_on_failure": True,
         },
@@ -71,7 +72,7 @@ def test_from_dict(monkeypatch):
         "type": "haystack.components.rankers.llm_ranker.LLMRanker",
         "init_parameters": {
             "chat_generator": chat_generator.to_dict(),
-            "prompt_template": "Rank {{ documents|length }} docs for {{ query }} with {{ top_k }}",
+            "prompt": "Rank {{ documents|length }} docs for {{ query }}",
             "top_k": 3,
             "raise_on_failure": True,
         },
@@ -81,7 +82,7 @@ def test_from_dict(monkeypatch):
 
     assert ranker.top_k == 3
     assert ranker.raise_on_failure is True
-    assert ranker.prompt_template == "Rank {{ documents|length }} docs for {{ query }} with {{ top_k }}"
+    assert ranker.prompt == "Rank {{ documents|length }} docs for {{ query }}"
     assert ranker._chat_generator.to_dict() == chat_generator.to_dict()
 
 
@@ -115,21 +116,18 @@ def test_run_successful_ranking(mock_chat_generator):
         Document(id="3", content="third"),
     ]
     mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"id": "2"}, {"id": "1", "score": 0.75}, {"id": "3"}]}')]
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
     }
     ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["2", "1"]
-    assert result["documents"][0].score is None
-    assert result["documents"][1].score == pytest.approx(0.75)
-    assert documents[1].score is None
 
 
-def test_run_dynamic_cutoff_returns_fewer_documents(mock_chat_generator):
+def test_run_returns_only_documents_listed_by_the_llm(mock_chat_generator):
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant('{"documents": [{"id": "2"}]}')]}
+    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}]}')]}
     ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
 
     result = ranker.run(query="test query", documents=documents)
@@ -137,12 +135,26 @@ def test_run_dynamic_cutoff_returns_fewer_documents(mock_chat_generator):
     assert [document.id for document in result["documents"]] == ["2"]
 
 
-def test_run_ignores_unknown_and_duplicate_ids(mock_chat_generator):
+def test_run_runtime_top_k_overrides_instance_top_k(mock_chat_generator):
+    documents = [
+        Document(id="doc_1", content="first"),
+        Document(id="doc_2", content="second"),
+        Document(id="doc_3", content="third"),
+    ]
+    mock_chat_generator.run.return_value = {
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 3}, {"index": 2}, {"index": 1}]}')]
+    }
+    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=3)
+
+    result = ranker.run(query="test query", documents=documents, top_k=1)
+
+    assert [document.id for document in result["documents"]] == ["doc_3"]
+
+
+def test_run_ignores_out_of_range_indices(mock_chat_generator):
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
     mock_chat_generator.run.return_value = {
-        "replies": [
-            ChatMessage.from_assistant('{"documents": [{"id": "missing"}, {"id": "2"}, {"id": "2"}, {"id": "1"}]}')
-        ]
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 99}, {"index": 2}, {"index": 1}]}')]
     }
     ranker = LLMRanker(chat_generator=mock_chat_generator)
 
@@ -219,10 +231,10 @@ def test_run_reply_without_text_falls_back(mock_chat_generator):
     assert result == {"documents": [documents[0]]}
 
 
-def test_run_no_valid_document_ids_falls_back(mock_chat_generator):
+def test_run_no_valid_document_indices_falls_back(mock_chat_generator):
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
     mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"id": "missing"}]}')]
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 0}, {"index": 3}]}')]
     }
     ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1)
 
@@ -238,7 +250,7 @@ def test_run_deduplicates_documents_before_ranking(mock_chat_generator):
         Document(id="unique", content="unique", score=0.2),
     ]
     mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"id": "unique"}, {"id": "duplicate"}]}')]
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}]}')]
     }
     ranker = LLMRanker(chat_generator=mock_chat_generator)
 
@@ -247,6 +259,91 @@ def test_run_deduplicates_documents_before_ranking(mock_chat_generator):
     assert [document.content for document in result["documents"]] == ["unique", "keep me"]
 
 
+def test_run_preserves_duplicate_indices(mock_chat_generator):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    mock_chat_generator.run.return_value = {
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 2}, {"index": 1}]}')]
+    }
+    ranker = LLMRanker(chat_generator=mock_chat_generator)
+
+    result = ranker.run(query="test query", documents=documents)
+
+    assert [document.id for document in result["documents"]] == ["2", "2", "1"]
+
+
+def test_run_numeric_string_index_is_accepted(mock_chat_generator):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant('{"documents": [{"index": "2"}]}')]}
+    ranker = LLMRanker(chat_generator=mock_chat_generator)
+
+    result = ranker.run(query="test query", documents=documents)
+
+    assert result == {"documents": [documents[1]]}
+
+
+def test_run_invalid_index_type_falls_back(mock_chat_generator):
+    documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+    mock_chat_generator.run.return_value = {
+        "replies": [ChatMessage.from_assistant('{"documents": [{"index": "invalid"}]}')]
+    }
+    ranker = LLMRanker(chat_generator=mock_chat_generator)
+
+    result = ranker.run(query="test query", documents=documents)
+
+    assert result == {"documents": documents}
+
+
 def test_init_invalid_custom_prompt_raises(mock_chat_generator):
     with pytest.raises(TemplateSyntaxError):
-        LLMRanker(chat_generator=mock_chat_generator, prompt_template="Rank {{ query }")
+        LLMRanker(chat_generator=mock_chat_generator, prompt="Rank {{ query }")
+
+
+def test_init_prompt_requires_query_and_documents(mock_chat_generator):
+    with pytest.raises(ValueError, match="prompt must include exactly the variables 'documents' and 'query'"):
+        LLMRanker(chat_generator=mock_chat_generator, prompt="Rank {{ query }}")
+
+
+def test_init_prompt_rejects_additional_variables(mock_chat_generator):
+    with pytest.raises(ValueError, match="prompt must include exactly the variables 'documents' and 'query'"):
+        LLMRanker(
+            chat_generator=mock_chat_generator,
+            prompt="Rank {{ query }} using {{ documents|length }} docs with top_k={{ top_k }}",
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_live_run_ranks_berlin_first_for_germany_query():
+    documents = [
+        Document(id="doc-berlin", content="Berlin is the capital of Germany."),
+        Document(id="doc-paris", content="Paris is the capital of France."),
+        Document(id="doc-rust", content="Rust is a systems programming language focused on safety."),
+    ]
+    ranker = LLMRanker(top_k=2)
+
+    result = ranker.run(query="What is the capital of Germany?", documents=documents)
+
+    assert result["documents"]
+    assert result["documents"][0].id == "doc-berlin"
+    assert len(result["documents"]) <= 2
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_live_run_ranks_rust_for_programming_language_query():
+    documents = [
+        Document(id="doc-berlin", content="Berlin is the capital of Germany."),
+        Document(id="doc-paris", content="Paris is the capital of France."),
+        Document(id="doc-rust", content="Rust is a systems programming language focused on safety."),
+    ]
+    ranker = LLMRanker(top_k=1)
+
+    result = ranker.run(query="Which document is about a programming language?", documents=documents)
+
+    assert [document.id for document in result["documents"]] == ["doc-rust"]
