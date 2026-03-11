@@ -1517,6 +1517,13 @@ class TestPrompts:
         assert result["messages"][0].text == "You are an Haystack expert."
         assert result["messages"][1].text == "Hi"
 
+    def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
+        with pytest.raises(
+            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
+        ):
+            agent.run()
+
     def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
@@ -1700,7 +1707,6 @@ class TestAgentUserPromptInPipeline:
         assert "Relevant docs:" in rendered
 
 
-@pytest.mark.integration
 class TestAgentPipelineStaticToolInput:
     """
     Regression test for the scheduling bug introduced by making the 'messages'
@@ -1729,8 +1735,7 @@ class TestAgentPipelineStaticToolInput:
     6. Since DEFER (3) < DEFER_LAST (4), the scheduler picks the Agent before the joiner runs.
        The Agent executes without messages and raises:
 
-        ValueError("No messages provided to the Agent and neither
-                    user_prompt nor system_prompt is set.")
+        ValueError("No messages provided to the Agent and neither user_prompt nor system_prompt is set.")
     """
 
     def test_agent_waits_for_messages_when_predecessor_is_blocked(self, weather_tool):

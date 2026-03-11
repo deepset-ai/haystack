@@ -328,6 +328,19 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
+                # import pdb;pdb.set_trace()
+                # priority_queue._queue
+                ### Required Messages
+                # FilesProcessor
+                # HistoryParser
+                # ListJoiner --> Agent is BLOCKED at this point
+                # Agent
+                ### Optional Messages
+                # FilesProcessor --> Agent is DEFER at this point
+                # HistoryParser --> Agent is DEFER at this point
+                # Agent --> This is the problem. ListJoiner has DEFER_LAST so it loses even though there should be a
+                # tie-break ...
+
                 if pipeline_snapshot:
                     if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
                         name_to_check = pipeline_snapshot.break_point.agent_name
