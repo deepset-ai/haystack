@@ -1334,7 +1334,8 @@ class PipelineBase:  # noqa: PLW1641
         Finds the components that are most likely blocking the pipeline execution.
 
         :returns:
-            The name of the component that is blocking the pipeline or None if no component is blocking.
+            The list of component names that are most likely blocking the pipeline execution and their corresponding
+            metadata from the graph.
         """
         # 1. Go through all components in priority queue (should all be blocked at this point)
         comps_in_queue: list[str] = [comp_name for _, _, comp_name in priority_queue._queue]

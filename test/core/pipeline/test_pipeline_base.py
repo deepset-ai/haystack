@@ -1392,7 +1392,6 @@ class TestPipelineBase:
     def test_fill_queue(self, mock_get_metadata, mock_calc_priority):
         pipeline = PipelineBase()
         component_names = ["comp1", "comp2"]
-        # {'first': {'document': [{'sender': None, 'value': Document(id="1", content: 'original')}]}}
         inputs = {
             "comp1": {"input1": [{"sender": None, "value": "value1"}]},
             "comp2": {"input2": [{"sender": None, "value": "value2"}]},
@@ -2218,8 +2217,8 @@ class TestFindComponentsBlockingPipeline:
         assert blocking_comps == ["comp2"]
         assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}
 
-    def test_blocked_components_branch(self):
-        """Tests if that there is a branch that only the component that received an _empty input is shown as blocking"""
+    def test_blocked_components_linear(self):
+        """Tests that we only return the component directly blocked by missing input, and not downstream components"""
         pipe = PipelineBase()
         pipe.add_component("comp1", FakeComponent())
         pipe.add_component("comp2", FakeComponent())

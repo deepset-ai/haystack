@@ -192,7 +192,7 @@ class TestPipeline:
             # Here we purposely declare other_output which is not actually returned by the run() method
             @component.output_types(output=str, other_output=str)
             def run(self, required_input: str) -> dict[str, str]:
-                return {"output": "test", "other_outputs": "other_test"}
+                return {"output": "test"}
 
         @component
         class SimpleComponentTwoInputs:
