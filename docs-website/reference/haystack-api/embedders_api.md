@@ -325,7 +325,8 @@ __init__(
     progress_bar: bool = True,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
-)
+    concurrency_limit: int = 4,
+) -> None
 ```
 
 Creates a HuggingFaceAPIDocumentEmbedder component.
@@ -353,6 +354,8 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
+- **concurrency_limit** (<code>int</code>) – The maximum number of requests that should be allowed to run concurrently.
+  This parameter is only used in the `run_async` method.
 
 #### to_dict
 
@@ -385,7 +388,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embeds a list of documents.
@@ -396,13 +399,13 @@ Embeds a list of documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 
 #### run_async
 
 ```python
-run_async(documents: list[Document])
+run_async(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embeds a list of documents asynchronously.
@@ -413,7 +416,7 @@ Embeds a list of documents asynchronously.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 
 ## hugging_face_api_text_embedder

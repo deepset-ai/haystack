@@ -615,16 +615,9 @@ class PipelineBase:  # noqa: PLW1641
             return self
 
         if receiver_socket.senders:
-            receiver_socket = self._make_socket_auto_variadic(receiver_socket=receiver_socket)
-            if not receiver_socket.is_variadic:
-                # Only variadic input sockets can receive from multiple senders
-                msg = (
-                    f"Cannot connect '{sender_component_name}.{sender_socket.name}' with "
-                    f"'{receiver_component_name}.{receiver_socket.name}': "
-                    f"{receiver_component_name}.{receiver_socket.name} is already connected to "
-                    f"{receiver_socket.senders}.\n"
-                )
-                raise PipelineConnectError(msg)
+            receiver_socket = self._make_socket_auto_variadic(
+                component_name=receiver_component_name, receiver_socket=receiver_socket, error_type=PipelineConnectError
+            )
 
         # Update the sockets with the new connection
         sender_socket.receivers.append(receiver_component_name)
@@ -692,7 +685,10 @@ class PipelineBase:  # noqa: PLW1641
         for component_name, data in find_pipeline_inputs(self.graph, include_components_with_connected_inputs).items():
             sockets_description = {}
             for socket in data:
-                sockets_description[socket.name] = {"type": socket.type, "is_mandatory": socket.is_mandatory}
+                # Variadic mandatory sockets with existing connections don't require user input, so treat them as
+                # optional.
+                is_mandatory = socket.is_mandatory and not socket.senders
+                sockets_description[socket.name] = {"type": socket.type, "is_mandatory": is_mandatory}
                 if not socket.is_mandatory:
                     sockets_description[socket.name]["default_value"] = socket.default_value
 
@@ -940,47 +936,63 @@ class PipelineBase:  # noqa: PLW1641
 
                 # Check if an input is provided more than once for non-variadic sockets
                 if socket.senders and socket_name in component_inputs:
-                    socket = self._make_socket_auto_variadic(receiver_socket=socket)
-                    if not socket.is_variadic:
-                        raise ValueError(
-                            f"Component '{component_name}' cannot accept multiple inputs to '{socket_name}'. "
-                            f"It is already connected to component '{socket.senders[0]}' so it cannot accept "
-                            "additional inputs."
-                        )
+                    self._make_socket_auto_variadic(
+                        component_name=component_name, receiver_socket=socket, error_type=ValueError
+                    )
 
-    def _make_socket_auto_variadic(self, receiver_socket: InputSocket) -> InputSocket:
+    def _make_socket_auto_variadic(
+        self, component_name: str, receiver_socket: InputSocket, error_type: type[Exception]
+    ) -> InputSocket:
         """
-        Checks if the receiver socket can be made lazy variadic and modifies it in-place if that's the case.
+        Attempts to make the receiver socket lazy variadic in-place to accommodate a new sender.
 
-        We automatically set the receiver socket as lazy variadic if:
-            - it has at least one sender already connected
-            - it's not already variadic
-            - its type is list or Optional[list]
+        A socket is automatically made lazy variadic when:
+          - It already has at least one connected sender
+          - It is not already variadic
+          - Its type is list, Optional[list], a union of list types
 
-        NOTE: We also disable wrapping inputs into list for these auto-variadic sockets, so the sender outputs match the
-        type of the receiver socket.
+        When auto-variadicity is applied, `wrap_input_in_list` is also set to False so that sender output types match
+        the receiver socket's declared list type directly.
 
+        :param component_name:
+            Name of the component owning the receiver socket, used in error messages.
+        :param receiver_socket:
+            The receiver socket to inspect and potentially modify in-place.
+        :param error_type:
+            Exception class to raise on failure (e.g. ValueError or PipelineConnectError).
         :returns:
-            The potentially modified receiver socket.
+            The (possibly modified) receiver socket.
+        :raises error_type:
+            If the socket cannot accept multiple senders given its type constraints.
         """
-        # If it's already variadic, we don't change anything
+        # If it's already variadic, we return as-is
         if receiver_socket.is_variadic:
             return receiver_socket
 
-        origin = _safe_get_origin(receiver_socket.type)
+        # Get receiver origin
+        receiver_origin = _safe_get_origin(receiver_socket.type)
 
-        # Unwrap Optional types
-        if origin == Union:
+        # Handle Union types
+        if receiver_origin == Union:
+            # Unwrap Optional types
             non_none_args = [a for a in get_args(receiver_socket.type) if a is not type(None)]
             if len(non_none_args) == 1:
-                origin = _safe_get_origin(non_none_args[0])
+                receiver_origin = _safe_get_origin(non_none_args[0])
+            # Handle Union of list types (e.g. list[int] | list[str])
+            elif all(_safe_get_origin(arg) == list for arg in non_none_args):
+                receiver_origin = list
 
-        # If the origin is list, we can make the socket lazy variadic
-        if origin == list:
+        # If the receiver origin is a list, we can make the socket lazy variadic
+        if receiver_origin == list:
             receiver_socket.is_lazy_variadic = True
             receiver_socket.wrap_input_in_list = False
+            return receiver_socket
 
-        return receiver_socket
+        raise error_type(
+            f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
+            f"It is already connected to component '{receiver_socket.senders[0]}', and it can only can only accept "
+            f"inputs from multiple senders if its type is list, Optional[list], or union of list types."
+        )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """
