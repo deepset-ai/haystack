@@ -43,8 +43,6 @@ def _type_name(type_: Any) -> str:
 
     args = get_args(type_)
 
-    # import pdb; pdb.set_trace()
-
     if isinstance(type_, UnionType):
         return " | ".join([_type_name(a) for a in args])
 
@@ -92,7 +90,7 @@ def _contains_type(container: Any, target: Any) -> bool:
     return _safe_get_origin(container) is Union and target in get_args(container)
 
 
-def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:
+def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: PLR0911
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
 
@@ -117,6 +115,10 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:
 
     sender_origin = _safe_get_origin(sender)
     receiver_origin = _safe_get_origin(receiver)
+
+    # Special case to reject bare-Union types
+    if (sender_origin is Union and not get_args(sender)) or (receiver_origin is Union and not get_args(receiver)):
+        return False
 
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
