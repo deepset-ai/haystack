@@ -1329,13 +1329,13 @@ class PipelineBase:  # noqa: PLW1641
 
     def _find_components_blocking_pipeline(
         self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int], inputs: InputsType
-    ) -> tuple[list[str], list[dict]]:
+    ) -> tuple[list[str], list[str]]:
         """
         Finds the components that are most likely blocking the pipeline execution.
 
         :returns:
             The list of component names that are most likely blocking the pipeline execution and their corresponding
-            metadata from the graph.
+            component types.
         """
         # 1. Go through all components in priority queue (should all be blocked at this point)
         comps_in_queue: list[str] = [comp_name for _, _, comp_name in priority_queue._queue]
@@ -1364,32 +1364,35 @@ class PipelineBase:  # noqa: PLW1641
 
         # If there is only one component with the lowest visits, return it as the most likely blocking component.
         if len(possible_blocking_comps) == 1:
+            blocking_comp_types = [self.graph.nodes[possible_blocking_comps[0]]["instance"].__class__.__name__]
             self._log_warning_for_blocking_components(
-                blocking_comp_names=possible_blocking_comps,
-                blocking_comps=[self.graph.nodes[possible_blocking_comps[0]]],
+                blocking_comp_names=possible_blocking_comps, blocking_comp_types=blocking_comp_types
             )
-            return possible_blocking_comps, [self.graph.nodes[possible_blocking_comps[0]]]
+            return possible_blocking_comps, blocking_comp_types
 
         # 4. Then for all components with the same lowest component visits we sort topologically before returning.
         topological_sort = self._topological_sort()
         possible_blocking_comps = sorted(
             possible_blocking_comps, key=lambda comp_name: (topological_sort[comp_name], comp_name.lower())
         )
-        possible_blocking_comps_nodes = [self.graph.nodes[comp_name] for comp_name in possible_blocking_comps]
-        self._log_warning_for_blocking_components(
-            blocking_comp_names=possible_blocking_comps, blocking_comps=possible_blocking_comps_nodes
-        )
-        return possible_blocking_comps, possible_blocking_comps_nodes
+        possible_blocking_comp_types = [
+            self.graph.nodes[comp_name]["instance"].__class__.__name__ for comp_name in possible_blocking_comps
+        ]
 
-    def _log_warning_for_blocking_components(self, blocking_comp_names: list[str], blocking_comps: list[dict]) -> None:
+        self._log_warning_for_blocking_components(
+            blocking_comp_names=possible_blocking_comps, blocking_comp_types=possible_blocking_comp_types
+        )
+        return possible_blocking_comps, possible_blocking_comp_types
+
+    def _log_warning_for_blocking_components(
+        self, blocking_comp_names: list[str], blocking_comp_types: list[dict]
+    ) -> None:
         """
         Logs a warning about the components that are most likely blocking the pipeline execution.
 
         :param blocking_comp_names: The list of component names that are most likely blocking the pipeline execution.
-        :param blocking_comps: The list of component metadata from the graph for the components that are most likely
-            blocking the pipeline execution.
+        :param blocking_comp_types: The list of component types that are most likely blocking the pipeline execution.
         """
-        blocking_comp_types = [comp["instance"].__class__.__name__ for comp in blocking_comps]
         comp_details = "\n".join(
             f"  - '{name}' ({comp_type})"
             for name, comp_type in zip(blocking_comp_names, blocking_comp_types, strict=True)

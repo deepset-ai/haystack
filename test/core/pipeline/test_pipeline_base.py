@@ -2204,7 +2204,7 @@ class TestFindComponentsBlockingPipeline:
         priority_queue.push("comp1", ComponentPriority.BLOCKED)
         priority_queue.push("comp2", ComponentPriority.BLOCKED)
 
-        blocking_comps, blocking_graph_nodes = pipe._find_components_blocking_pipeline(
+        blocking_comps, blocking_comp_types = pipe._find_components_blocking_pipeline(
             priority_queue=priority_queue,
             component_visits={"comp1": 1, "comp2": 0},
             inputs={
@@ -2215,7 +2215,7 @@ class TestFindComponentsBlockingPipeline:
             },
         )
         assert blocking_comps == ["comp2"]
-        assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}
+        assert blocking_comp_types == ["FakeComponent"]
 
     def test_blocked_components_linear(self):
         """Tests that we only return the component directly blocked by missing input, and not downstream components"""
@@ -2231,7 +2231,7 @@ class TestFindComponentsBlockingPipeline:
         priority_queue.push("comp2", ComponentPriority.BLOCKED)
         priority_queue.push("comp3", ComponentPriority.BLOCKED)
 
-        blocking_comps, blocking_graph_nodes = pipe._find_components_blocking_pipeline(
+        blocking_comps, blocking_comp_types = pipe._find_components_blocking_pipeline(
             priority_queue=priority_queue,
             component_visits={"comp1": 1, "comp2": 0, "comp3": 0},
             inputs={
@@ -2242,7 +2242,7 @@ class TestFindComponentsBlockingPipeline:
             },
         )
         assert blocking_comps == ["comp2"]
-        assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}
+        assert blocking_comp_types == ["FakeComponent"]
 
     def test_blocking_components_from_two_branches(self):
         """Tests that we can correctly identify both potentially blocking components"""
@@ -2264,7 +2264,7 @@ class TestFindComponentsBlockingPipeline:
         priority_queue.push("blocking_comp", ComponentPriority.BLOCKED)
         priority_queue.push("a_comp3", ComponentPriority.BLOCKED)
 
-        blocking_comps, blocking_graph_nodes = pipe._find_components_blocking_pipeline(
+        blocking_comps, blocking_comp_types = pipe._find_components_blocking_pipeline(
             priority_queue=priority_queue,
             component_visits={"comp1": 1, "router": 1, "comp2": 1, "a_comp3": 0, "blocking_comp": 0},
             inputs={
@@ -2285,4 +2285,4 @@ class TestFindComponentsBlockingPipeline:
         # We correctly label as both potentially blocking since it's unclear from the input state which component is
         # actually blocking.
         assert blocking_comps == ["a_comp3", "blocking_comp"]
-        assert set(blocking_graph_nodes[0].keys()) == {"instance", "input_sockets", "output_sockets", "visits"}
+        assert blocking_comp_types == ["FakeComponent", "FakeComponent"]
