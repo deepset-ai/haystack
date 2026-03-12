@@ -29,6 +29,7 @@ from haystack.core.errors import (
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
     all_predecessors_executed,
+    are_all_lazy_variadic_sockets_resolved,
     are_all_sockets_ready,
     can_component_run,
     is_any_greedy_socket_ready,
@@ -1182,6 +1183,8 @@ class PipelineBase:  # noqa: PLW1641
         :param comp_inputs: Inputs to the component.
         :returns: Priority value for the component.
         """
+        # NOTE: Even if a component can run, it doesn't mean it's ready to run since it could be waiting for optional
+        # inputs. This is why it's only used to determine if a component is BLOCKED or not.
         if not can_component_run(comp, comp_inputs):
             return ComponentPriority.BLOCKED
         if is_any_greedy_socket_ready(comp, comp_inputs) and are_all_sockets_ready(comp, comp_inputs):
@@ -1191,13 +1194,9 @@ class PipelineBase:  # noqa: PLW1641
         if all_predecessors_executed(comp, comp_inputs):
             # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
             return ComponentPriority.READY
-        # NOTE: Experiment to see if this check is redundant b/c are_all_lazy_variadic_sockets_resolved again checks
-        #       all_predecessors_executed but only specifically for variadic sockets --> not sure why this would matter
-        #       specifically.
-        # if are_all_lazy_variadic_sockets_resolved(comp, comp_inputs):
-        #     return ComponentPriority.DEFER
-        # NOTE: Test to see if all tests pass with only using DEFER priority and no longer DEFER_LAST
-        return ComponentPriority.DEFER
+        if are_all_lazy_variadic_sockets_resolved(comp, comp_inputs):
+            return ComponentPriority.DEFER
+        return ComponentPriority.DEFER_LAST
 
     def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> dict[str, Any]:
         """
@@ -1319,7 +1318,6 @@ class PipelineBase:  # noqa: PLW1641
         components_with_same_priority = [component_name]
         while len(priority_queue) > 0:
             next_priority, next_component_name = priority_queue.peek()
-            # TODO I also really wonder if there should only be one DEFER and not a DEFER and DEFER_LAST
             # For tiebreaking purposes we treat DEFER and DEFER_LAST as the same priority.
             if (
                 has_deferred_priority
