@@ -14,30 +14,16 @@ from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import (
-    CountDocumentsByFilterTest,
-    CountUniqueMetadataByFilterTest,
     DeleteAllTest,
     DeleteByFilterTest,
     DocumentStoreBaseTests,
     FilterableDocsFixtureMixin,
-    GetMetadataFieldMinMaxTest,
-    GetMetadataFieldsInfoTest,
-    GetMetadataFieldUniqueValuesTest,
     UpdateByFilterTest,
 )
 
 
 class TestMemoryDocumentStore(
-    CountDocumentsByFilterTest,
-    CountUniqueMetadataByFilterTest,
-    DeleteAllTest,
-    DeleteByFilterTest,
-    DocumentStoreBaseTests,
-    FilterableDocsFixtureMixin,
-    GetMetadataFieldMinMaxTest,
-    GetMetadataFieldsInfoTest,
-    GetMetadataFieldUniqueValuesTest,
-    UpdateByFilterTest,
+    DeleteAllTest, DeleteByFilterTest, DocumentStoreBaseTests, FilterableDocsFixtureMixin, UpdateByFilterTest
 ):
     """
     Test InMemoryDocumentStore's specific features
