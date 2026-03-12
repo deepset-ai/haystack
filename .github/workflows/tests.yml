@@ -2,8 +2,8 @@
 name: Tests
 
 # The workflow will always run, but the actual tests will only execute when:
-# - The workflow is triggered manually
-# - The push is to main or a release branch (with paths-ignore for docs)
+# - The workflow is triggered manually.
+# - The push is to main or a release branch.
 # - There are changes to relevant files on a pull request.
 # Note: If no conditions are met, the workflow will complete successfully without running tests
 # to satisfy Branch Protection rules.
@@ -15,6 +15,7 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
+    # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
     paths-ignore:
       - 'docs/**'
       - 'docs-website/**'
