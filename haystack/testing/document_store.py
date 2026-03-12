@@ -76,7 +76,7 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
     The Document Store `filter_documents` method must be at least partly implemented to return all stored Documents
-    for these tests to work correctly.
+    for this tests to work correctly.
     Example usage:
 
     ```python
