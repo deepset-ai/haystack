@@ -14,6 +14,7 @@ _import_structure = {
     "file_to_file_content": ["FileToFileContent"],
     "html": ["HTMLToDocument"],
     "json": ["JSONConverter"],
+    "legacy_office": ["LegacyOfficeConverter"],
     "markdown": ["MarkdownToDocument"],
     "msg": ["MSGToDocument"],
     "multi_file_converter": ["MultiFileConverter"],
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
     from .file_to_file_content import FileToFileContent as FileToFileContent
     from .html import HTMLToDocument as HTMLToDocument
     from .json import JSONConverter as JSONConverter
+    from .legacy_office import LegacyOfficeConverter as LegacyOfficeConverter
     from .markdown import MarkdownToDocument as MarkdownToDocument
     from .msg import MSGToDocument as MSGToDocument
     from .multi_file_converter import MultiFileConverter as MultiFileConverter

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added ``LegacyOfficeConverter``, a new converter component that uses libreoffice to convert
+    legacy office files (e.g. .doc, .ppt, .xls) to modern office files.
