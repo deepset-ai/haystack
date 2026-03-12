@@ -54,16 +54,18 @@ class LegacyOfficeConverter:
         from haystack import Pipeline
         from haystack.components.converters import DOCXToDocument, LegacyOfficeConverter
 
+        # Setup paths
         output_directory = Path("modern_office_documents")
         output_directory.mkdir(exist_ok=True)
 
-
+        # Create pipeline with components
         pipeline = Pipeline()
         pipeline.add_component("legacy_converter", LegacyOfficeConverter())
         pipeline.add_component("docx_converter", DOCXToDocument())
 
         pipeline.connect("legacy_converter.output", "docx_converter.sources")
 
+        # Run pipeline and convert legacy documents into Haystack documents
         results = pipeline.run(
             {"legacy_converter": {"sources": [Path("sample_docx.doc")], "output_directory": output_directory}}
         )
@@ -100,8 +102,7 @@ class LegacyOfficeConverter:
         """
         return default_from_dict(cls, data)
 
-    @staticmethod
-    def _get_conversion_args(source: str | Path, output_directory: str | Path) -> tuple[Path, list[str]]:
+    def _get_conversion_args(self, source: str | Path, output_directory: str | Path) -> tuple[Path, list[str]]:
         """
         Validate source file and return the soffice arguments for conversion.
 
@@ -129,7 +130,15 @@ class LegacyOfficeConverter:
             raise OSError(msg)
 
         output_type = CONVERSION_MAPPING[source_suffix]
-        args = ["soffice", "--headless", "--convert-to", output_type, "--outdir", str(output_directory), str(source)]
+        args = [
+            self.soffice_path,
+            "--headless",
+            "--convert-to",
+            output_type,
+            "--outdir",
+            str(output_directory),
+            str(source),
+        ]
         return (output_path / source_path.name).with_suffix(f".{output_type}"), args
 
     @component.output_types(output=list[Path])
