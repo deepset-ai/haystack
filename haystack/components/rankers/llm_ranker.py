@@ -16,12 +16,9 @@ from haystack.utils.misc import _deduplicate_documents, _parse_dict_from_json
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
-
-
 def _default_openai_chat_generator() -> ChatGenerator:
     return OpenAIChatGenerator(
-        model=DEFAULT_OPENAI_MODEL,
+        model="gpt-4.1-mini",
         generation_kwargs={
             "temperature": 0.0,
             "response_format": {
@@ -92,9 +89,39 @@ class LLMRanker:
 
     ```python
     from haystack import Document
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.rankers import LLMRanker
 
-    ranker = LLMRanker()
+    chat_generator = OpenAIChatGenerator(
+        model="gpt-4.1-mini",
+        generation_kwargs={
+            "temperature": 0.0,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "document_ranking",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "documents": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {"index": {"type": "integer"}},
+                                    "required": ["index"],
+                                    "additionalProperties": False,
+                                },
+                            }
+                        },
+                        "required": ["documents"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+        },
+    )
+
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     documents = [
         Document(id="paris", content="Paris is the capital of France."),
@@ -122,7 +149,7 @@ class LLMRanker:
             output is used.
         :param prompt:
             Custom prompt template for reranking. The prompt must include exactly the variables `query` and
-            `documents` and instruct the LLM to return ranked document indices as JSON.
+            `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
         :param top_k:
             The maximum number of documents to return.
         :param raise_on_failure:
@@ -206,9 +233,9 @@ class LLMRanker:
         if not documents:
             return {"documents": []}
 
-        top_k = top_k or self.top_k
+        top_k = self.top_k if top_k is None else top_k
         deduplicated_documents = _deduplicate_documents(documents)
-        fallback_documents = deduplicated_documents[:top_k]
+        fallback_documents = deduplicated_documents
 
         if not query.strip():
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")

@@ -105,7 +105,7 @@ def test_run_whitespace_query_returns_fallback(mock_chat_generator):
 
     result = ranker.run(query="   ", documents=documents)
 
-    assert result == {"documents": [documents[0]]}
+    assert result == {"documents": documents}
     mock_chat_generator.run.assert_not_called()
 
 
@@ -180,7 +180,7 @@ def test_run_invalid_json_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": [documents[0]]}
+    assert result == {"documents": documents}
 
 
 def test_run_invalid_json_raises(mock_chat_generator):
@@ -199,7 +199,7 @@ def test_run_generator_exception_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": [documents[0]]}
+    assert result == {"documents": documents}
 
 
 def test_run_generator_exception_raises(mock_chat_generator):
@@ -218,7 +218,7 @@ def test_run_no_replies_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": [documents[0]]}
+    assert result == {"documents": documents}
 
 
 def test_run_reply_without_text_falls_back(mock_chat_generator):
@@ -228,7 +228,7 @@ def test_run_reply_without_text_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": [documents[0]]}
+    assert result == {"documents": documents}
 
 
 def test_run_no_valid_document_indices_falls_back(mock_chat_generator):
@@ -240,7 +240,7 @@ def test_run_no_valid_document_indices_falls_back(mock_chat_generator):
 
     result = ranker.run(query="test query", documents=documents)
 
-    assert result == {"documents": [documents[0]]}
+    assert result == {"documents": documents}
 
 
 def test_run_deduplicates_documents_before_ranking(mock_chat_generator):
