@@ -8,7 +8,23 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
-from haystack.utils.misc import _deduplicate_documents, _parse_dict_from_json
+from haystack.utils.misc import _deduplicate_documents, _normalize_metadata_field_name, _parse_dict_from_json
+
+
+class TestNormalizeMetadataFieldName:
+    def test_removes_meta_prefix(self):
+        assert _normalize_metadata_field_name("meta.year") == "year"
+        assert _normalize_metadata_field_name("meta.category") == "category"
+
+    def test_returns_unchanged_when_no_prefix(self):
+        assert _normalize_metadata_field_name("year") == "year"
+        assert _normalize_metadata_field_name("category") == "category"
+
+    def test_meta_prefix_only_returns_empty_string(self):
+        assert _normalize_metadata_field_name("meta.") == ""
+
+    def test_does_not_strip_meta_substring(self):
+        assert _normalize_metadata_field_name("my_meta_field") == "my_meta_field"
 
 
 class TestDeduplicateDocuments:
