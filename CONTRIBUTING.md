@@ -112,8 +112,8 @@ Once it's filed:
 - The project team will label the issue accordingly.
 - A team member will try to reproduce the issue with your provided steps. If there are no reproduction steps or no
   obvious way to reproduce the issue, the team will ask you for those steps.
-- If the team is able to reproduce the issue, the issue will be scheduled for a fix or left to be
-  [implemented by someone](https://github.com/deepset-ai/haystack/issues?q=is%3Aissue%20state%3Aopen%20label%3A"Contributions%20wanted!").
+- If the team is able to reproduce it, the issue will be scheduled for a fix or left to be
+  [picked up by a community contributor](https://github.com/deepset-ai/haystack/issues?q=is%3Aissue%20state%3Aopen%20label%3A"Contributions%20wanted!").
 
 ## Suggesting Enhancements
 
