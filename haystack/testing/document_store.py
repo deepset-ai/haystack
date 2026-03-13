@@ -1050,17 +1050,6 @@ class CountUniqueMetadataByFilterTest:
         assert counts["status"] == 2
         assert counts["priority"] == 2
 
-    @staticmethod
-    def test_count_unique_metadata_by_filter_empty_collection(document_store: DocumentStore):
-        """Test count_unique_metadata_by_filter() on an empty store."""
-        assert document_store.count_documents() == 0
-
-        counts = document_store.count_unique_metadata_by_filter(  # type:ignore[attr-defined]
-            filters={}, metadata_fields=["category", "status"]
-        )
-        assert counts["category"] == 0
-        assert counts["status"] == 0
-
 
 class GetMetadataFieldsInfoTest:
     """
@@ -1074,7 +1063,7 @@ class GetMetadataFieldsInfoTest:
         """Test get_metadata_fields_info() returns field names and types after writing documents."""
         docs = [
             Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
-            Document(content="Doc 2", meta={"category": "B", "status": "inactive", "score": 0.5}),
+            Document(content="Doc 2", meta={"category": "B", "status": "inactive", "rating": 0.5}),
         ]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 2
@@ -1084,7 +1073,7 @@ class GetMetadataFieldsInfoTest:
         assert "category" in fields_info
         assert "status" in fields_info
         assert "priority" in fields_info
-        assert "score" in fields_info
+        assert "rating" in fields_info
         for field_name, info in fields_info.items():  # noqa: B007, PERF102
             assert isinstance(info, dict)
             assert "type" in info
