@@ -1,9 +1,0 @@
-extends: substitution
-message: "Write '%s' without a hyphen: '%s'."
-level: warning
-ignorecase: true
-action:
-  name: replace
-swap:
-  question-answering: question answering
-  document-retrieval: document retrieval
