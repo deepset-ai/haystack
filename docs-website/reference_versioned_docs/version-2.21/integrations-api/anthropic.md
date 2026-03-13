@@ -103,6 +103,7 @@ Supported generation_kwargs parameters are:
 - `thinking`: A dictionary of thinking parameters to be passed to the model.
   The `budget_tokens` passed for thinking should be less than `max_tokens`.
   For more details and supported models, see: [Anthropic Extended Thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking)
+- `output_config`: A dictionary of output configuration options to be passed to the model.
 - **ignore_tools_thinking_messages** (<code>bool</code>) – Anthropic's approach to tools (function calling) resolution involves a
   "chain of thought" messages before returning the actual function names and parameters in a message. If
   `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
@@ -202,9 +203,8 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 
 Bases: <code>AnthropicChatGenerator</code>
 
-Enables text generation using state-of-the-art Claude 3 LLMs via the Anthropic Vertex AI API.
-It supports models such as `Claude 3.5 Sonnet`, `Claude 3 Opus`, `Claude 3 Sonnet`, and `Claude 3 Haiku`,
-accessible through the Vertex AI API endpoint.
+Enables text generation using Anthropic's Claude models via the Anthropic Vertex AI API.
+A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through the Vertex AI API endpoint.
 
 To use AnthropicVertexChatGenerator, you must have a GCP project with Vertex AI enabled.
 Additionally, ensure that the desired Anthropic model is activated in the Vertex AI Model Garden.
@@ -241,6 +241,28 @@ print(response)
 
 For more details on supported models and their capabilities, refer to the Anthropic
 [documentation](https://docs.anthropic.com/claude/docs/intro-to-claude).
+
+For a list of available model IDs when using Claude on Vertex AI, see
+[Claude on Vertex AI - model availability](https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-availability).
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-sonnet-4-5@20250929",
+    "claude-sonnet-4@20250514",
+    "claude-opus-4-5@20251101",
+    "claude-opus-4-1@20250805",
+    "claude-opus-4@20250514",
+    "claude-haiku-4-5@20251001",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component. See
+https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-availability for the full list.
 
 #### __init__
 
