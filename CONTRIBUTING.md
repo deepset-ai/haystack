@@ -24,6 +24,7 @@ Use this checklist to stay on track for your first code PR:
 - **Documentation** — If your change adds or alters user-facing behavior, add a new docs page or update the relevant one in `docs-website/` (edit under `docs/` for the next release; add new pages to `sidebars.js`). See the [Documentation Contributing Guide](docs-website/CONTRIBUTING.md) for where to edit, frontmatter, and navigation.
 - **Release notes** — Add a release note under `releasenotes/notes` with `hatch run release-note your-change-name` (see [Release notes](#release-notes)); maintainers can add `ignore-for-release-notes` for tests-only or CI-only changes.
 - **Open the PR** — Use a [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) title, fill the [PR template](.github/pull_request_template.md), and if the PR was fully AI-generated, add a [short disclaimer](#using-ai-assistants-to-contribute). Enable "Allow edits and access to secrets by maintainers" on the PR.
+- **Sign the CLA** — A [Contributor Licence Agreement (CLA)](https://cla-assistant.io/deepset-ai/haystack) is required for all contributions. Sign when prompted so your PR is ready for review (see [CLA](#contributor-licence-agreement-cla)).
 - **Once the PR is open** — Fix any [CI](#ci-continuous-integration) failures and address review feedback.
 
 **Table of Contents**
@@ -147,7 +148,7 @@ If you'd like to improve the documentation by fixing errors, clarifying explanat
 ## Contribute code
 
 > [!IMPORTANT]
-> When contributing to this project, you must agree that you have authored 100% of the content, that you have the necessary rights to the content and that the content you contribute may be provided under the project license.
+> When contributing to this project, you must agree that you have authored or carefully reviewed 100% of the content, that you have the necessary rights to the content and that the content you contribute may be provided under the project license.
 
 ### Where to start
 
