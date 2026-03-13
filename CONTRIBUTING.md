@@ -156,7 +156,7 @@ If this is your first code contribution, a good starting point is looking for an
 ["good first issue"](https://github.com/deepset-ai/haystack/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 The core contributors periodically mark certain issues as good for first-time contributors. Those issues are usually
 limited in scope, easily fixable and low priority, so there is absolutely no reason why you should not try fixing them.
-It's a good excuse to start looking into the project and a safe space for experimenting failure: if you don't get the
+It's a good excuse to start looking into the project and a safe space to experiment and fail: if you don't get the
 grasp of something, pick another one! Once you become comfortable contributing to Haystack, you can have a look at the
 list of issues marked as [contributions wanted](https://github.com/orgs/deepset-ai/projects/14/views/1) to look for your
 next contribution!
