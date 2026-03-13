@@ -126,7 +126,7 @@ find related suggestions.
 
 - Make sure that you are using the latest version.
 - Read the [documentation](https://docs.haystack.deepset.ai/docs/intro) carefully and find out if the functionality
-  is already covered, maybe by an individual configuration.
+  is already covered, possibly via particular configuration parameters.
 - Perform a [search](https://github.com/deepset-ai/haystack/issues) to see if the enhancement has already been suggested. If it has, add a comment to the
   existing issue instead of opening a new one.
 - Find out whether your idea fits with the scope and aims of the project. It's up to you to make a strong case to
