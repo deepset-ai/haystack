@@ -176,3 +176,5 @@ haystack/json-schemas
 
 # uv
 uv.lock
+
+CLAUDE.md
