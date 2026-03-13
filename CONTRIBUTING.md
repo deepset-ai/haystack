@@ -69,7 +69,7 @@ Before you ask a question, it is best to search for existing [Issues](https://gi
 found a suitable issue and still need clarification, you can write your question in this issue. It is also advisable to
 search the internet for answers first.
 
-If you then still feel the need to ask a question and need clarification, you can use [Haystack Discord Server](https://discord.com/invite/xYvH6drSmA)
+If you then still feel the need to ask a question and need clarification, you can use [Haystack's Discord Server](https://discord.com/invite/xYvH6drSmA).
 
 ## Reporting Bugs
 
