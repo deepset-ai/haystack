@@ -1125,14 +1125,15 @@ class GetMetadataFieldMinMaxTest:
     def test_get_metadata_field_min_max_float(document_store: DocumentStore):
         """Test get_metadata_field_min_max() with float field."""
         docs = [
-            Document(content="Doc 1", meta={"score": 0.6}),
-            Document(content="Doc 2", meta={"score": 0.95}),
-            Document(content="Doc 3", meta={"score": 0.8}),
+            Document(content="Doc 1", meta={"rating": 0.6}),
+            Document(content="Doc 2", meta={"rating": 0.95}),
+            Document(content="Doc 3", meta={"rating": 0.8}),
         ]
         document_store.write_documents(docs)
         assert document_store.count_documents() == 3
 
-        result = document_store.get_metadata_field_min_max("score")  # type:ignore[attr-defined]
+        result = document_store.get_metadata_field_min_max("rating")  # type:ignore[attr-defined]
+
         assert result["min"] == pytest.approx(0.6)
         assert result["max"] == pytest.approx(0.95)
 
