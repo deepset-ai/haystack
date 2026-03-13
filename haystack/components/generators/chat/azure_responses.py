@@ -4,7 +4,7 @@
 
 import os
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, ClassVar
 
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel
@@ -49,6 +49,42 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
     print(response)
     ```
     """
+
+    SUPPORTED_MODELS: ClassVar[list[str]] = [
+        "gpt-5.4-pro",
+        "gpt-5.4",
+        "gpt-5.3-chat",
+        "gpt-5.3-codex",
+        "gpt-5.2-codex",
+        "gpt-5.2",
+        "gpt-5.2-chat",
+        "gpt-5.1-codex-max",
+        "gpt-5.1",
+        "gpt-5.1-chat",
+        "gpt-5.1-codex",
+        "gpt-5.1-codex-mini",
+        "gpt-5-pro",
+        "gpt-5-codex",
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5-chat",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "computer-use-preview",
+        "gpt-4.1",
+        "gpt-4.1-nano",
+        "gpt-4.1-mini",
+        "gpt-image-1",
+        "gpt-image-1-mini",
+        "gpt-image-1.5",
+        "o1",
+        "o3-mini",
+        "o3",
+        "o4-mini",
+    ]
+    """A non-exhaustive list of chat models supported by this component.
+    See https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/responses#model-support for the full list."""
 
     # ruff: noqa: PLR0913
     def __init__(
