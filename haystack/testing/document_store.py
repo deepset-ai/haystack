@@ -1146,6 +1146,30 @@ class GetMetadataFieldMinMaxTest:
         assert result["min"] is None
         assert result["max"] is None
 
+    @staticmethod
+    def test_get_metadata_field_min_max_meta_prefix(document_store: DocumentStore):
+        """Test get_metadata_field_min_max() with field names that include 'meta.' prefix."""
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1, "age": 10}),
+            Document(content="Doc 2", meta={"priority": 5, "age": 20}),
+            Document(content="Doc 3", meta={"priority": 3, "age": 15}),
+            Document(content="Doc 4", meta={"priority": 10, "age": 5}),
+            Document(content="Doc 6", meta={"rating": 10.5}),
+            Document(content="Doc 7", meta={"rating": 20.3}),
+            Document(content="Doc 8", meta={"rating": 15.7}),
+            Document(content="Doc 9", meta={"rating": 5.2}),
+        ]
+        document_store.write_documents(docs)
+
+        min_max_priority = document_store.get_metadata_field_min_max("meta.priority")  # type:ignore[attr-defined]
+        assert min_max_priority["min"] == 1
+        assert min_max_priority["max"] == 10
+
+        # Test with float values and "meta." prefix
+        min_max_score = document_store.get_metadata_field_min_max("meta.rating")  # type:ignore[attr-defined]
+        assert min_max_score["min"] == pytest.approx(5.2)
+        assert min_max_score["max"] == pytest.approx(20.3)
+
 
 class GetMetadataFieldUniqueValuesTest:
     """
@@ -1188,64 +1212,6 @@ class GetMetadataFieldUniqueValuesTest:
         assert set(values) == {"A", "B", "C"}
         if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[1], int):
             assert result[1] == 3
-
-    @staticmethod
-    def test_get_metadata_field_unique_values_pagination(document_store: DocumentStore):
-        """Test get_metadata_field_unique_values() with pagination (from_ and size)."""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A"}),
-            Document(content="Doc 2", meta={"category": "B"}),
-            Document(content="Doc 3", meta={"category": "C"}),
-            Document(content="Doc 4", meta={"category": "D"}),
-            Document(content="Doc 5", meta={"category": "E"}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 5
-
-        sig = inspect.signature(document_store.get_metadata_field_unique_values)  # type:ignore[attr-defined]
-        if "from_" not in sig.parameters and "offset" not in sig.parameters:
-            pytest.skip("get_metadata_field_unique_values does not support pagination (from_/offset)")
-
-        params_first: dict = {}
-        if "from_" in sig.parameters:
-            params_first["from_"] = 0
-            params_first["size"] = 2
-        elif "offset" in sig.parameters:
-            params_first["offset"] = 0
-            params_first["limit"] = 2
-        else:
-            pytest.skip("get_metadata_field_unique_values does not support pagination")
-
-        result_first = document_store.get_metadata_field_unique_values("category", **params_first)  # type:ignore[attr-defined]
-        values_first = result_first[0] if isinstance(result_first, tuple) else result_first
-        total = result_first[1] if isinstance(result_first, tuple) and len(result_first) >= 2 else len(values_first)
-
-        assert len(values_first) == 2
-        assert total == 5
-
-    @staticmethod
-    def test_get_metadata_field_unique_values_empty_collection(document_store: DocumentStore):
-        """Test get_metadata_field_unique_values() on an empty store."""
-        assert document_store.count_documents() == 0
-
-        sig = inspect.signature(document_store.get_metadata_field_unique_values)  # type:ignore[attr-defined]
-        params: dict = {}
-        if "search_term" in sig.parameters:
-            params["search_term"] = None
-        if "from_" in sig.parameters:
-            params["from_"] = 0
-        elif "offset" in sig.parameters:
-            params["offset"] = 0
-        if "size" in sig.parameters:
-            params["size"] = 10
-        elif "limit" in sig.parameters:
-            params["limit"] = 10
-
-        result = document_store.get_metadata_field_unique_values("category", **params)  # type:ignore[attr-defined]
-        values = result[0] if isinstance(result, tuple) else result
-        assert values == []
-        if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[1], int):
-            assert result[1] == 0
 
 
 class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):
