@@ -195,7 +195,7 @@ class SentenceTransformersSparseDocumentEmbedder:
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, Any]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Embed a list of documents.
 

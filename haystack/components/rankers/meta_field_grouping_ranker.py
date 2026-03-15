@@ -74,7 +74,7 @@ class MetaFieldGroupingRanker:
         self.subgroup_by = subgroup_by
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, Any]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
 

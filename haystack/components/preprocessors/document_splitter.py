@@ -170,7 +170,7 @@ class DocumentSplitter:
             )
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, Any]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Split documents into smaller parts.
 

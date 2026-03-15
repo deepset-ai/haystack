@@ -123,7 +123,7 @@ class InMemoryDocumentStore:
         )
         self.return_embedding = return_embedding
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Cleanup when the instance is being destroyed.
         """

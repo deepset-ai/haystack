@@ -75,7 +75,7 @@ class DocumentLanguageClassifier:
         self.languages = languages
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, Any]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Classifies the language of each document and adds it to its metadata.
 

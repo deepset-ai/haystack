@@ -55,7 +55,7 @@ class HierarchicalDocumentSplitter:
         self._build_block_sizes()
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, Any]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Builds a hierarchical document structure for each document in a list of documents.
 

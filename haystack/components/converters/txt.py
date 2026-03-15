@@ -55,7 +55,7 @@ class TextFileToDocument:
         self,
         sources: list[str | Path | ByteStream],
         meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, list[Document]]:
         """
         Converts text files to documents.
 
