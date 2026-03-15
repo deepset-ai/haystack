@@ -317,7 +317,7 @@ class OpenAIDocumentEmbedder:
         return {"documents": new_documents, "meta": meta}
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
-    async def run_async(self, documents: list[Document]):
+    async def run_async(self, documents: list[Document]) -> dict[str, Any]:
         """
         Embeds a list of documents asynchronously.
 

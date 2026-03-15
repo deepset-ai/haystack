@@ -190,7 +190,7 @@ class OpenAITextEmbedder:
         return self._prepare_output(result=response)
 
     @component.output_types(embedding=list[float], meta=dict[str, Any])
-    async def run_async(self, text: str):
+    async def run_async(self, text: str) -> dict[str, Any]:
         """
         Asynchronously embed a single string.
 

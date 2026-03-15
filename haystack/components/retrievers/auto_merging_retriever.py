@@ -167,7 +167,7 @@ class AutoMergingRetriever:
         return {"documents": _try_merge_level(documents, [])}
 
     @component.output_types(documents=list[Document])
-    async def run_async(self, documents: list[Document]):
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Asynchronously run the AutoMergingRetriever.
 

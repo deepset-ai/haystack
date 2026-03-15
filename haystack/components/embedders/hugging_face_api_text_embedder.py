@@ -230,7 +230,7 @@ class HuggingFaceAPITextEmbedder:
         return {"embedding": embedding}
 
     @component.output_types(embedding=list[float])
-    async def run_async(self, text: str):
+    async def run_async(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string asynchronously.
 

@@ -89,7 +89,7 @@ class FilterRetriever:
         return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
 
     @component.output_types(documents=list[Document])
-    async def run_async(self, filters: dict[str, Any] | None = None):
+    async def run_async(self, filters: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Asynchronously run the FilterRetriever on the given input data.
 

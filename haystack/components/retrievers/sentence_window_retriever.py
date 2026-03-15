@@ -211,7 +211,7 @@ class SentenceWindowRetriever:
         return {"context_windows": context_text, "context_documents": context_documents}
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])
-    async def run_async(self, retrieved_documents: list[Document], window_size: int | None = None):
+    async def run_async(self, retrieved_documents: list[Document], window_size: int | None = None) -> dict[str, Any]:
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 
