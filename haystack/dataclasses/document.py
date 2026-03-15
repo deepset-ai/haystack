@@ -69,7 +69,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     embedding: list[float] | None = field(default=None)
     sparse_embedding: SparseEmbedding | None = field(default=None)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         fields = []
         if self.content is not None:
             fields.append(
@@ -88,7 +88,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         Compares Documents for equality.
 

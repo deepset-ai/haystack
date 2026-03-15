@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Union
@@ -30,7 +31,7 @@ class DeviceType(Enum):
     MPS = "mps"
     XPU = "xpu"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -79,7 +80,7 @@ class Device:
         self.type = type
         self.id = id
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.id is None:
             return str(self.type)
         return f"{self.type}:{self.id}"
@@ -175,7 +176,7 @@ class DeviceMap:
     def __len__(self) -> int:
         return len(self.mapping)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, Device]]:
         return iter(self.mapping.items())
 
     def to_dict(self) -> dict[str, str]:
@@ -298,7 +299,7 @@ class ComponentDevice:
         """
         return cls(_multiple_devices=device_map)
 
-    def _validate(self):
+    def _validate(self) -> None:
         """
         Validate the component device representation.
         """

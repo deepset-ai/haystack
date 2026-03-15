@@ -286,13 +286,13 @@ class TransformersSimilarityRanker:
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
         class _Dataset(Dataset):
-            def __init__(self, batch_encoding):
+            def __init__(self, batch_encoding: Any) -> None:
                 self.batch_encoding = batch_encoding
 
-            def __len__(self):
+            def __len__(self) -> int:
                 return len(self.batch_encoding["input_ids"])
 
-            def __getitem__(self, item):
+            def __getitem__(self, item: int) -> dict[str, Any]:
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
         # mypy doesn't know this is set in warm_up

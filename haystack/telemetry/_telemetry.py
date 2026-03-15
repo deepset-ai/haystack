@@ -121,7 +121,7 @@ def send_telemetry(func):
     """
 
     # FIXME? Somehow, functools.wraps makes `telemetry` out of scope. Let's take care of it later.
-    def send_telemetry_wrapper(*args, **kwargs):
+    def send_telemetry_wrapper(*args: Any, **kwargs: Any) -> None:
         try:
             if telemetry:
                 output = func(*args, **kwargs)
