@@ -6,7 +6,7 @@ import inspect
 import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
-
+from haystack.dataclasses import GuardrailProvider
 from haystack import Pipeline, component, logging, tracing
 from haystack.components.agents.state.state import (
     State,
@@ -44,6 +44,7 @@ from haystack.human_in_the_loop.strategies import (
     _process_confirmation_strategies,
     _process_confirmation_strategies_async,
 )
+
 from haystack.human_in_the_loop.types import ConfirmationStrategy
 from haystack.tools import (
     Tool,
@@ -229,6 +230,7 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
+        guardrail_providers: list[GuardrailProvider] | None = None,
         tools: ToolsType | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
@@ -273,6 +275,7 @@ class Agent:
         :raises ValueError: If the exit_conditions are not valid.
         :raises ValueError: If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
         """
+        self.guardrail_providers = guardrail_providers or []
         # Check if chat_generator supports tools parameter
         chat_generator_run_method = inspect.signature(chat_generator.run)
         self._chat_generator_supports_tools: bool = "tools" in chat_generator_run_method.parameters
@@ -887,6 +890,33 @@ class Agent:
                     )
                 ):
                     break_point_to_pass = break_point.break_point
+
+                # Evaluate tool calls against configured guardrails
+                if self.guardrail_providers:
+                    for msg in llm_messages:
+                        # Extract all tool calls from the message
+                        t_calls = getattr(msg, "tool_calls", []) or ([msg.tool_call] if getattr(msg, "tool_call", None) else [])
+                        
+                        for tool_call in t_calls:
+                            # Find the corresponding Tool object
+                            tool_instance = next((t for t in flatten_tools_or_toolsets(self.tools) if t.name == tool_call.tool_name), None)
+                            
+                            if tool_instance:
+                                for provider in self.guardrail_providers:
+                                    result = provider.evaluate_tool_call(
+                                        tool=tool_instance,
+                                        tool_call_args=tool_call.arguments,
+                                        messages=exe_context.state.get("messages", []),
+                                        agent_state=exe_context.state
+                                    )
+                                    
+                                    if not result.allowed:
+                                        # Block execution if the guardrail fails
+                                        raise ValueError(f"Guardrail blocked tool execution for '{tool_call.tool_name}': {result.reason}")
+                                    
+                                    if result.modified_args is not None:
+                                        # Update arguments if the guardrail modified them
+                                        tool_call.arguments = result.modified_args
 
                 # Apply confirmation strategies and update State and messages sent to ToolInvoker
                 # Run confirmation strategies to get updated tool call messages and modified chat history

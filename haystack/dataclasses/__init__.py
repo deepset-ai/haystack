@@ -4,11 +4,11 @@
 
 import sys
 from typing import TYPE_CHECKING
-
 from lazy_imports import LazyImporter
 
 _import_structure = {
     "answer": ["Answer", "ExtractedAnswer", "GeneratedAnswer"],
+    "guardrail": ["GuardrailResult", "GuardrailProvider"],  # Added for automated policy enforcement
     "breakpoints": [
         "AgentBreakpoint",
         "AgentSnapshot",
@@ -40,6 +40,8 @@ if TYPE_CHECKING:
     from .answer import Answer as Answer
     from .answer import ExtractedAnswer as ExtractedAnswer
     from .answer import GeneratedAnswer as GeneratedAnswer
+    from .guardrail import GuardrailResult as GuardrailResult # Added for TYPE_CHECKING
+    from .guardrail import GuardrailProvider as GuardrailProvider # Added for TYPE_CHECKING
     from .breakpoints import AgentBreakpoint as AgentBreakpoint
     from .breakpoints import AgentSnapshot as AgentSnapshot
     from .breakpoints import Breakpoint as Breakpoint
