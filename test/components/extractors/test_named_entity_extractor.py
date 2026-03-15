@@ -6,14 +6,23 @@
 # Spacy is not installed in the test environment to keep the CI fast.
 # We test the Spacy backend in e2e/pipelines/test_named_entity_extractor.py.
 
+import sys
 from unittest.mock import patch
 
 import pytest
 
-from haystack import ComponentError, DeserializationError, Document, Pipeline
-from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
-from haystack.utils.auth import Secret
-from haystack.utils.device import ComponentDevice
+# spacy uses pydantic.v1 which is not compatible with Python 3.14 (PEP 649 deferred annotations)
+if sys.version_info >= (3, 14):
+    pytestmark = pytest.mark.skip(reason="spacy/pydantic.v1 not compatible with Python 3.14")
+else:
+    from haystack import ComponentError, DeserializationError, Document, Pipeline
+    from haystack.components.extractors import (
+        NamedEntityAnnotation,
+        NamedEntityExtractor,
+        NamedEntityExtractorBackend,
+    )
+    from haystack.utils.auth import Secret
+    from haystack.utils.device import ComponentDevice
 
 
 def test_named_entity_extractor_backend():
