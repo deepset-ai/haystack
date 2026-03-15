@@ -264,7 +264,7 @@ class LinkContentFetcher:
         return {"streams": streams}
 
     @component.output_types(streams=list[ByteStream])
-    async def run_async(self, urls: list[str]):
+    async def run_async(self, urls: list[str]) -> dict[str, Any]:
         """
         Asynchronously fetches content from a list of URLs and returns a list of extracted content streams.
 
