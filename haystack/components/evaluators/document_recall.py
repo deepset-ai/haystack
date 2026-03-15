@@ -21,7 +21,7 @@ class RecallMode(Enum):
     # Score is based on how many documents were retrieved.
     MULTI_HIT = "multi_hit"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod

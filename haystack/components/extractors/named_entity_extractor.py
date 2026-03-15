@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from enum import Enum
+from collections.abc import Iterator
 from typing import Any
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
@@ -34,7 +35,7 @@ class NamedEntityExtractorBackend(Enum):
     #: Uses a spaCy model and pipeline.
     SPACY = "spacy"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -158,7 +159,7 @@ class NamedEntityExtractor:
         else:
             raise ComponentError(f"Unknown NER backend '{type(backend).__name__}' for extractor")
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initialize the component.
 
@@ -287,7 +288,7 @@ class _NerBackend(ABC):
         self._pipeline_kwargs = pipeline_kwargs if pipeline_kwargs is not None else {}
 
     @abstractmethod
-    def initialize(self):
+    def initialize(self) -> None:
         """
         Initializes the backend. This would usually entail loading models, pipelines, and so on.
         """
@@ -486,7 +487,7 @@ class _SpacyBackend(_NerBackend):
         return self._model_name_or_path
 
     @contextmanager
-    def _select_device(self):
+    def _select_device(self) -> Iterator[None]:
         """
         Context manager used to run spaCy models on a specific GPU in a scoped manner.
         """

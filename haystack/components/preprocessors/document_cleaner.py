@@ -7,7 +7,7 @@ from collections.abc import Generator
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Literal
+from typing import Any, Literal
 from unicodedata import normalize
 
 from haystack import Document, component, logging
@@ -90,7 +90,7 @@ class DocumentCleaner:
         self.strip_whitespaces = strip_whitespaces
         self.replace_regexes = replace_regexes
 
-    def _validate_params(self, unicode_normalization: str | None):
+    def _validate_params(self, unicode_normalization: str | None) -> None:
         """
         Validate the parameters of the DocumentCleaner.
 
@@ -101,7 +101,7 @@ class DocumentCleaner:
             raise ValueError("unicode_normalization must be one of 'NFC', 'NFKC', 'NFD', 'NFKD'.")
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, Any]:
         """
         Cleans up the documents.
 

@@ -173,7 +173,7 @@ class OpenAITextEmbedder:
         return {"embedding": result.data[0].embedding, "meta": {"model": result.model, "usage": dict(result.usage)}}
 
     @component.output_types(embedding=list[float], meta=dict[str, Any])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string.
 

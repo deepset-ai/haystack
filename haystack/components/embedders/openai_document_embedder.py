@@ -285,7 +285,7 @@ class OpenAIDocumentEmbedder:
         return doc_ids_to_embeddings, meta
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, Any]:
         """
         Embeds a list of documents.
 

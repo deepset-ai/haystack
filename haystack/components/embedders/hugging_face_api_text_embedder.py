@@ -202,7 +202,7 @@ class HuggingFaceAPITextEmbedder:
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=list[float])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string.
 

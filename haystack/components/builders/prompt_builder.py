@@ -212,7 +212,9 @@ class PromptBuilder:
         )
 
     @component.output_types(prompt=str)
-    def run(self, template: str | None = None, template_variables: dict[str, Any] | None = None, **kwargs):
+    def run(
+        self, template: str | None = None, template_variables: dict[str, Any] | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         """
         Renders the prompt template with the provided variables.
 
@@ -246,7 +248,7 @@ class PromptBuilder:
         result = compiled_template.render(template_variables_combined)
         return {"prompt": result}
 
-    def _validate_variables(self, provided_variables: set[str]):
+    def _validate_variables(self, provided_variables: set[str]) -> None:
         """
         Checks if all the required template variables are provided.
 

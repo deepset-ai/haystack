@@ -408,7 +408,7 @@ class HuggingFaceAPIChatGenerator:
         self.tools = tools
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the Hugging Face API chat generator.
 

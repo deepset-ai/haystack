@@ -345,6 +345,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             stop_words: list[str],
             device: str | torch.device = "cpu",
         ):
+            """Creates an instance of StopWordsCriteria."""
             super().__init__()
             # check if tokenizer is a valid tokenizer
             if not isinstance(tokenizer, (PreTrainedTokenizer, PreTrainedTokenizerFast)):
@@ -397,6 +398,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ):
+            """Creates an instance of HFTokenStreamingHandler."""
             super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
@@ -431,6 +433,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ):
+            """Creates an instance of AsyncHFTokenStreamingHandler."""
             super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []

@@ -153,7 +153,7 @@ class TransformersSimilarityRanker:
         """
         return {"model": self.model_name_or_path}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -227,7 +227,7 @@ class TransformersSimilarityRanker:
         scale_score: bool | None = None,
         calibration_factor: float | None = None,
         score_threshold: float | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Returns a list of documents ranked by their similarity to the given query.
 

@@ -76,7 +76,7 @@ class FilterRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, filters: dict[str, Any] | None = None):
+    def run(self, filters: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Run the FilterRetriever on the given input data.
 

@@ -105,7 +105,11 @@ class PPTXToDocument:
         return "".join(parts)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Converts PPTX files to Documents.
 

@@ -135,7 +135,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream]):
+    def run(self, sources: list[str | Path | ByteStream]) -> dict[str, Any]:
         """
         Transcribes the list of audio files into a list of documents.
 

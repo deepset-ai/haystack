@@ -8,7 +8,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from fnmatch import fnmatch
-from typing import cast
+from typing import Any, cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -188,14 +188,14 @@ class LinkContentFetcher:
             # This method is invoked only after failed requests (exception raised)
             after=self._switch_user_agent,
         )
-        def get_response(url):
+        def get_response(url: str) -> httpx.Response:
             response = self._client.get(url, headers=self._get_headers())
             response.raise_for_status()
             return response
 
         self._get_response: Callable = get_response
 
-    def _get_headers(self):
+    def _get_headers(self) -> dict[str, str]:
         """
         Build headers with precedence
 
@@ -206,7 +206,7 @@ class LinkContentFetcher:
             base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Clean up resources when the component is deleted.
 
@@ -224,7 +224,7 @@ class LinkContentFetcher:
             pass
 
     @component.output_types(streams=list[ByteStream])
-    def run(self, urls: list[str]):
+    def run(self, urls: list[str]) -> dict[str, Any]:
         """
         Fetches content from a list of URLs and returns a list of extracted content streams.
 
@@ -424,7 +424,7 @@ class LinkContentFetcher:
         # This should never happen, but just in case
         raise httpx.RequestError("Failed to get response after retries", request=None)
 
-    def _get_content_type(self, response: httpx.Response):
+    def _get_content_type(self, response: httpx.Response) -> str:
         """
         Get the content type of the response.
 

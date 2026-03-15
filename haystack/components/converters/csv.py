@@ -84,7 +84,7 @@ class CSVToDocument:
         *,
         content_column: str | None = None,
         meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Converts CSV files to a Document (file mode) or to one Document per row (row mode).
 

@@ -172,7 +172,7 @@ class LLMRanker:
             self._chat_generator = chat_generator
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the underlying chat generator.
         """

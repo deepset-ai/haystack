@@ -101,7 +101,7 @@ class DALLEImageGenerator:
         size: Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"] | None = None,
         quality: Literal["standard", "hd"] | None = None,
         response_format: Literal["url", "b64_json"] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Invokes the image generation inference based on the provided prompt and generation parameters.
 

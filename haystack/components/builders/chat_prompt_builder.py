@@ -298,7 +298,7 @@ class ChatPromptBuilder:
 
         return messages
 
-    def _validate_variables(self, provided_variables: set[str]):
+    def _validate_variables(self, provided_variables: set[str]) -> None:
         """
         Checks if all the required template variables are provided.
 

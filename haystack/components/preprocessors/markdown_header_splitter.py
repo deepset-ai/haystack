@@ -69,7 +69,7 @@ class MarkdownHeaderSplitter:
                 split_threshold=self.split_threshold,
             )
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the MarkdownHeaderSplitter.
         """

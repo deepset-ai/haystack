@@ -163,7 +163,7 @@ class LLMDocumentContentExtractor:
         )
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the ChatGenerator if it has a warm_up method.
         """

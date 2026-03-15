@@ -75,7 +75,7 @@ class DOCXTableFormat(Enum):
     MARKDOWN = "markdown"
     CSV = "csv"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -100,7 +100,7 @@ class DOCXLinkFormat(Enum):
     PLAIN = "plain"
     NONE = "none"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -191,7 +191,11 @@ class DOCXToDocument:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Converts DOCX files to Documents.
 

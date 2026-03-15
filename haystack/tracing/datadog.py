@@ -22,6 +22,7 @@ _COMPONENT_RUN_OPERATION_NAME = "haystack.component.run"
 
 class DatadogSpan(Span):
     def __init__(self, span: "ddSpan") -> None:
+        """Creates an instance of DatadogSpan."""
         self._span = span
 
     def set_tag(self, key: str, value: Any) -> None:
@@ -53,8 +54,10 @@ class DatadogSpan(Span):
 
 class DatadogTracer(Tracer):
     def __init__(self, tracer: "ddTracer") -> None:
+        """Creates an instance of DatadogTracer."""
         ddtrace_import.check()
         self._tracer = tracer
+
 
     @staticmethod
     def _get_span_resource_name(operation_name: str, tags: dict[str, Any] | None) -> str | None:

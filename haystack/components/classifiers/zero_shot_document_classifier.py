@@ -141,7 +141,7 @@ class TransformersZeroShotDocumentClassifier:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -184,7 +184,7 @@ class TransformersZeroShotDocumentClassifier:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], batch_size: int = 1):
+    def run(self, documents: list[Document], batch_size: int = 1) -> dict[str, Any]:
         """
         Classifies the documents based on the provided labels and adds them to their metadata.
 

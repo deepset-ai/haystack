@@ -169,7 +169,7 @@ class MetaFieldRanker:
         sort_order: Literal["ascending", "descending"] | None = None,
         missing_meta: Literal["drop", "top", "bottom"] | None = None,
         meta_value_type: Literal["float", "int", "date"] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Ranks a list of Documents based on the selected meta field by:
 

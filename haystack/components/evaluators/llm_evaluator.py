@@ -111,7 +111,7 @@ class LLMEvaluator:
 
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the component by warming up the underlying chat generator.
         """
@@ -123,7 +123,7 @@ class LLMEvaluator:
     @staticmethod
     def validate_init_parameters(
         inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]]
-    ):
+    ) -> None:
         """
         Validate the init parameters.
 

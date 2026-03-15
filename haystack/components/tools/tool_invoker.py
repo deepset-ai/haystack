@@ -530,7 +530,7 @@ class ToolInvoker:
 
         return tool_calls, tool_call_params, error_messages
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the tool invoker.
 

@@ -135,7 +135,7 @@ class HuggingFaceLocalGenerator:
             return (self.pipeline is not None) and (self.stopping_criteria_list is not None)
         return self.pipeline is not None
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -202,7 +202,7 @@ class HuggingFaceLocalGenerator:
         prompt: str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Run the text generation model on the given prompt.
 

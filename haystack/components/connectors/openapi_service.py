@@ -282,7 +282,9 @@ class OpenAPIServiceConnector:
         """
         return default_from_dict(cls, data)
 
-    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: dict | str | None = None):
+    def _authenticate_service(
+        self, openapi_service: "OpenAPI", credentials: dict | str | None = None
+    ) -> None:
         """
         Authentication with an OpenAPI service.
 

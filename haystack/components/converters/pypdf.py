@@ -123,7 +123,7 @@ class PyPDFToDocument:
         self.layout_mode_strip_rotated = layout_mode_strip_rotated
         self.layout_mode_font_height_weight = layout_mode_font_height_weight
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -143,7 +143,7 @@ class PyPDFToDocument:
         )
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict[str, Any]) -> "PyPDFToDocument":
         """
         Deserializes the component from a dictionary.
 
@@ -171,7 +171,11 @@ class PyPDFToDocument:
         return "\f".join(texts)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Converts PDF files to documents.
 

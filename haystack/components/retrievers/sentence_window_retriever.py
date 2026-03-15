@@ -178,7 +178,11 @@ class SentenceWindowRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])
-    def run(self, retrieved_documents: list[Document], window_size: int | None = None):
+    def run(
+        self,
+        retrieved_documents: list[Document],
+        window_size: int | None = None,
+    ) -> dict[str, Any]:
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 

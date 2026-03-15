@@ -68,7 +68,7 @@ class DocumentNDCGEvaluator:
         return {"score": score, "individual_scores": individual_scores}
 
     @staticmethod
-    def validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]]):
+    def validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]]) -> None:
         """
         Validate the input parameters.
 

@@ -111,7 +111,7 @@ class AutoMergingRetriever:
             raise ValueError("The matched leaf documents do not have the required meta field '__block_size'")
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, Any]:
         """
         Run the AutoMergingRetriever.
 

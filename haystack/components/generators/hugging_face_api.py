@@ -213,7 +213,7 @@ class HuggingFaceAPIGenerator:
         prompt: str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Invoke the text generation inference for the given prompt and generation parameters.
 
@@ -250,7 +250,7 @@ class HuggingFaceAPIGenerator:
 
     def _stream_and_build_response(
         self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: SyncStreamingCallbackT
-    ):
+    ) -> dict[str, Any]:
         chunks: list[StreamingChunk] = []
         first_chunk_time = None
 
@@ -291,7 +291,7 @@ class HuggingFaceAPIGenerator:
         }
         return {"replies": ["".join([chunk.content for chunk in chunks])], "meta": [metadata]}
 
-    def _build_non_streaming_response(self, hf_output: "TextGenerationOutput"):
+    def _build_non_streaming_response(self, hf_output: "TextGenerationOutput") -> dict[str, Any]:
         meta = [
             {
                 "model": self._client.model,

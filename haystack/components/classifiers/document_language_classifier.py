@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
+from typing import Any
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -74,7 +75,7 @@ class DocumentLanguageClassifier:
         self.languages = languages
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, Any]:
         """
         Classifies the language of each document and adds it to its metadata.
 

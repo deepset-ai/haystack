@@ -77,7 +77,7 @@ class HTMLToDocument:
         sources: list[str | Path | ByteStream],
         meta: dict[str, Any] | list[dict[str, Any]] | None = None,
         extraction_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Converts a list of HTML files to Documents.
 

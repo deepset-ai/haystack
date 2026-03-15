@@ -194,7 +194,7 @@ class SentenceTransformersDiversityRanker:
         self.config_kwargs = config_kwargs
         self.backend = backend
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
