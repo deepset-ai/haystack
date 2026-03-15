@@ -446,7 +446,7 @@ class _SpacyBackend(_NerBackend):
         if self.device.has_multiple_devices:
             raise ValueError("spaCy backend for named entity extractor only supports inference on single devices")
 
-    def initialize(self):
+    def initialize(self) -> None:
         # We need to initialize the model on the GPU if needed.
         with self._select_device():
             self.pipeline = spacy.load(self._model_name_or_path)

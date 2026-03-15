@@ -178,7 +178,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         return cls(**data, meta={**meta, **flatten_meta})
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         """
         Returns the type of the content for the document.
 

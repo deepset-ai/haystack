@@ -303,7 +303,7 @@ class ConditionalRouter:
                 init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Executes the routing logic.
 

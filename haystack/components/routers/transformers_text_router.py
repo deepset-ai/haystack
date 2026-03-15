@@ -121,7 +121,7 @@ class TransformersTextRouter:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """

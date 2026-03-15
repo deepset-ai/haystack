@@ -61,7 +61,7 @@ class TopPSampler:
         self.min_top_k = min_top_k
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], top_p: float | None = None):
+    def run(self, documents: list[Document], top_p: float | None = None) -> dict[str, Any]:
         """
         Filters documents using top-p sampling based on their scores.
 

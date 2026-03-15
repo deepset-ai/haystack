@@ -64,12 +64,12 @@ class InputSocket:
     wrap_input_in_list: bool = True
 
     @property
-    def is_variadic(self):
+    def is_variadic(self) -> bool:
         """Check if the input is variadic."""
         return self.is_greedy or self.is_lazy_variadic
 
     @property
-    def is_mandatory(self):
+    def is_mandatory(self) -> bool:
         """Check if the input is mandatory."""
         return self.default_value == _empty
 

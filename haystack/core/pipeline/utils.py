@@ -5,6 +5,7 @@
 import heapq
 from copy import deepcopy
 from functools import wraps
+from collections.abc import Callable
 from itertools import count
 from typing import Any
 
@@ -169,7 +170,7 @@ class FIFOPriorityQueue:
         return bool(self._queue)
 
 
-def args_deprecated(func):
+def args_deprecated(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator to warn about the use of positional arguments in a function.
 
@@ -190,7 +191,7 @@ def args_deprecated(func):
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # call the function first, to make sure the signature matches
         ret_value = func(*args, **kwargs)
 

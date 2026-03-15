@@ -130,7 +130,7 @@ class InMemoryDocumentStore:
         if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
             self.executor.shutdown(wait=True)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """
         Explicitly shutdown the executor if we own it.
         """

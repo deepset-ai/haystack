@@ -230,7 +230,7 @@ class ComponentMeta(type):
 
     @staticmethod
     def _parse_and_set_input_sockets(component_cls: type, instance: Any) -> None:
-        def inner(method, sockets):
+        def inner(method: Callable[..., Any], sockets: Sockets) -> inspect.Signature:
             from inspect import Parameter
 
             run_signature = inspect.signature(method)
@@ -446,7 +446,7 @@ class _Component:
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)  # type: ignore
         instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)  # type: ignore
 
-    def set_input_types(self, instance, **types):
+    def set_input_types(self, instance: Any, **types: type[Any]) -> None:
         """
         Method that specifies the input types when 'kwargs' is passed to the run method.
 
@@ -496,7 +496,7 @@ class _Component:
             instance, {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}, InputSocket
         )
 
-    def set_output_types(self, instance, **types):
+    def set_output_types(self, instance: Any, **types: type[Any]) -> None:
         """
         Method that specifies the output types when the 'run' method is not decorated with 'component.output_types'.
 
@@ -579,7 +579,7 @@ class _Component:
         if not hasattr(cls, "run"):
             raise ComponentError(f"{cls.__name__} must have a 'run()' method. See the docs for more information.")
 
-        def copy_class_namespace(namespace):
+        def copy_class_namespace(namespace: dict[str, Any]) -> None:
             """
             This is the callback that `typing.new_class` will use to populate the newly created class.
 

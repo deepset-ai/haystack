@@ -88,7 +88,7 @@ class LLMMessagesRouter:
             self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], list[ChatMessage])}
         )
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the underlying LLM.
         """
