@@ -87,7 +87,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         sentence_transformers_import.check()
 
         self.model = SparseEncoder(

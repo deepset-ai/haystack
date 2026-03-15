@@ -58,7 +58,7 @@ class OpenAIDocumentEmbedder:
         http_client_kwargs: dict[str, Any] | None = None,
         *,
         raise_on_failure: bool = False,
-    ):
+    ) -> None:
         """
         Creates an OpenAIDocumentEmbedder component.
 

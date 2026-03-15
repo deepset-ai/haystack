@@ -34,7 +34,7 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False):
+    def __init__(self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False) -> None:
         """
         Create an HTMLToDocument component.
 

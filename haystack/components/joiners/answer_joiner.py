@@ -86,7 +86,7 @@ class AnswerJoiner:
 
     def __init__(
         self, join_mode: str | JoinMode = JoinMode.CONCATENATE, top_k: int | None = None, sort_by_score: bool = False
-    ):
+    ) -> None:
         """
         Creates an AnswerJoiner component.
 

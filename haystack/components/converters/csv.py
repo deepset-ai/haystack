@@ -46,7 +46,7 @@ class CSVToDocument:
         conversion_mode: Literal["file", "row"] = "file",
         delimiter: str = ",",
         quotechar: str = '"',
-    ):
+    ) -> None:
         """
         Creates a CSVToDocument component.
 

@@ -142,7 +142,7 @@ class ChatPromptBuilder:
         template: list[ChatMessage] | str | None = None,
         required_variables: list[str] | Literal["*"] | None = None,
         variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Constructs a ChatPromptBuilder component.
 

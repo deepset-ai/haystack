@@ -88,7 +88,7 @@ class OpenAIResponsesChatGenerator:
         tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
 

@@ -196,7 +196,7 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self, ssl_verify: bool | str | None = None):
+    def __init__(self, ssl_verify: bool | str | None = None) -> None:
         """
         Initializes the OpenAPIServiceConnector instance
 

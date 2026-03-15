@@ -131,7 +131,7 @@ class SentenceTransformersDiversityRanker:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         """
         Initialize a SentenceTransformersDiversityRanker.
 

@@ -54,7 +54,7 @@ class HuggingFaceLocalGenerator:
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
         stop_words: list[str] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of a HuggingFaceLocalGenerator.
 

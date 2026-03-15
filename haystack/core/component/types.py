@@ -73,7 +73,7 @@ class InputSocket:
         """Check if the input is mandatory."""
         return self.default_value == _empty
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         try:
             # __metadata__ is a tuple
             self.is_lazy_variadic = (

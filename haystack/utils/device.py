@@ -65,7 +65,7 @@ class Device:
     type: DeviceType
     id: int | None = field(default=None)
 
-    def __init__(self, type: DeviceType, id: int | None = None):  # noqa:A002
+    def __init__(self, type: DeviceType, id: int | None = None) -> None:  # noqa:A002
         """
         Create a generic device.
 

@@ -61,7 +61,7 @@ class DocumentLanguageClassifier:
     ```
     """
 
-    def __init__(self, languages: list[str] | None = None):
+    def __init__(self, languages: list[str] | None = None) -> None:
         """
         Initializes the DocumentLanguageClassifier component.
 

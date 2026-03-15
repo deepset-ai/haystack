@@ -74,7 +74,7 @@ class AnswerBuilder:
         last_message_only: bool = False,
         *,
         return_only_referenced_documents: bool = True,
-    ):
+    ) -> None:
         """
         Creates an instance of the AnswerBuilder component.
 

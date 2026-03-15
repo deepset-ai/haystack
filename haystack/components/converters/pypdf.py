@@ -79,7 +79,7 @@ class PyPDFToDocument:
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Create an PyPDFToDocument component.
 

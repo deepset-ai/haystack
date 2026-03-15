@@ -70,7 +70,7 @@ class AzureOCRDocumentConverter:
         page_layout: Literal["natural", "single_column"] = "natural",
         threshold_y: float | None = 0.05,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Creates an AzureOCRDocumentConverter component.
 

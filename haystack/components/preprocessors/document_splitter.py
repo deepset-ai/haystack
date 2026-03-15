@@ -65,7 +65,7 @@ class DocumentSplitter:
         extend_abbreviations: bool = True,
         *,
         skip_empty_documents: bool = True,
-    ):
+    ) -> None:
         """
         Initialize DocumentSplitter.
 

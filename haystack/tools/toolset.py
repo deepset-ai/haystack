@@ -82,7 +82,7 @@ class Toolset:
        class CalculatorToolset(Toolset):
            '''A toolset for calculator operations.'''
 
-           def __init__(self):
+           def __init__(self) -> None:
                tools = self._create_tools()
                super().__init__(tools)
 
@@ -323,7 +323,7 @@ class _ToolsetWrapper(Toolset):
     their individual configurations while still being usable with ToolInvoker.
     """
 
-    def __init__(self, toolsets: list[Toolset]):
+    def __init__(self, toolsets: list[Toolset]) -> None:
         super().__init__([tool for toolset in toolsets for tool in toolset])
         self.toolsets = toolsets
 

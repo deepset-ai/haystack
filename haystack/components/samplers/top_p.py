@@ -41,7 +41,7 @@ class TopPSampler:
     ```
     """
 
-    def __init__(self, top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None):
+    def __init__(self, top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None) -> None:
         """
         Creates an instance of TopPSampler.
 

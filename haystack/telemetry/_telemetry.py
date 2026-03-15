@@ -42,7 +42,7 @@ class Telemetry:
     Check out the documentation for more details: [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the telemetry.
 

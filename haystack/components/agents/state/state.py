@@ -112,7 +112,7 @@ class State:
     ```
     """
 
-    def __init__(self, schema: dict[str, Any], data: dict[str, Any] | None = None):
+    def __init__(self, schema: dict[str, Any], data: dict[str, Any] | None = None) -> None:
         """
         Initialize a State object with a schema and optional data.
 

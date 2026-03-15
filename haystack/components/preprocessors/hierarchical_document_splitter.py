@@ -39,7 +39,7 @@ class HierarchicalDocumentSplitter:
         block_sizes: set[int],
         split_overlap: int = 0,
         split_by: Literal["word", "sentence", "page", "passage"] = "word",
-    ):
+    ) -> None:
         """
         Initialize HierarchicalDocumentSplitter.
 

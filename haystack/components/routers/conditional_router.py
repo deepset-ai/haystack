@@ -125,7 +125,7 @@ class ConditionalRouter:
         unsafe: bool = False,
         validate_output_type: bool = False,
         optional_variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 

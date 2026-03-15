@@ -417,7 +417,7 @@ class _Component:
         ComponentError: if the class provided has no `run()` method or otherwise doesn't respect the component contract.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.registry = {}
 
     def set_input_type(
@@ -456,7 +456,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
@@ -473,7 +473,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
@@ -506,7 +506,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_output_types(self, output_1=int, output_2=str)
                 ...
 

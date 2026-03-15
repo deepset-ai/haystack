@@ -51,7 +51,7 @@ class ImageFileToImageContent:
     ```
     """
 
-    def __init__(self, *, detail: Literal["auto", "high", "low"] | None = None, size: tuple[int, int] | None = None):
+    def __init__(self, *, detail: Literal["auto", "high", "low"] | None = None, size: tuple[int, int] | None = None) -> None:
         """
         Create the ImageFileToImageContent component.
 

@@ -134,7 +134,7 @@ class LLMDocumentContentExtractor:
         size: tuple[int, int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
-    ):
+    ) -> None:
         """
         Initialize the LLMDocumentContentExtractor component.
 

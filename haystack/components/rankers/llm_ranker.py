@@ -140,7 +140,7 @@ class LLMRanker:
         prompt: str = DEFAULT_PROMPT_TEMPLATE,
         top_k: int = 10,
         raise_on_failure: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the LLMRanker component.
 

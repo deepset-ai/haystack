@@ -63,7 +63,7 @@ class AutoMergingRetriever:
     ```
     """  # noqa: E501
 
-    def __init__(self, document_store: DocumentStore, threshold: float = 0.5):
+    def __init__(self, document_store: DocumentStore, threshold: float = 0.5) -> None:
         """
         Initialize the AutoMergingRetriever.
 

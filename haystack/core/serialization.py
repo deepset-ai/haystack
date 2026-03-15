@@ -193,7 +193,7 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
 
     ```python
     class MyClass:
-        def __init__(self, my_param: int = 10):
+        def __init__(self, my_param: int = 10) -> None:
             self.my_param = my_param
 
         def to_dict(self):

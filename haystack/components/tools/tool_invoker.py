@@ -37,14 +37,14 @@ logger = logging.getLogger(__name__)
 class ToolInvokerError(Exception):
     """Base exception class for ToolInvoker errors."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
 class ToolNotFoundException(ToolInvokerError):
     """Exception raised when a tool is not found in the list of available tools."""
 
-    def __init__(self, tool_name: str, available_tools: list[str]):
+    def __init__(self, tool_name: str, available_tools: list[str]) -> None:
         message = f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools)}"
         super().__init__(message)
 
@@ -52,7 +52,7 @@ class ToolNotFoundException(ToolInvokerError):
 class StringConversionError(ToolInvokerError):
     """Exception raised when the conversion of a tool result to a string fails."""
 
-    def __init__(self, tool_name: str, conversion_function: str, error: Exception):
+    def __init__(self, tool_name: str, conversion_function: str, error: Exception) -> None:
         message = f"Failed to convert tool result from tool {tool_name} using '{conversion_function}'. Error: {error}"
         super().__init__(message)
 
@@ -60,7 +60,7 @@ class StringConversionError(ToolInvokerError):
 class ResultConversionError(ToolInvokerError):
     """Exception raised when the conversion of a tool output to a result fails."""
 
-    def __init__(self, tool_name: str, conversion_function: str, error: Exception):
+    def __init__(self, tool_name: str, conversion_function: str, error: Exception) -> None:
         message = f"Failed to convert tool output from tool {tool_name} using '{conversion_function}'. Error: {error}"
         super().__init__(message)
 
@@ -189,7 +189,7 @@ class ToolInvoker:
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
-    ):
+    ) -> None:
         """
         Initialize the ToolInvoker component.
 

@@ -98,7 +98,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
             return False
         return self.to_dict() == other.to_dict()
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Generate the ID based on the init parameters.
         """

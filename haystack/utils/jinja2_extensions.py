@@ -19,7 +19,7 @@ class Jinja2TimeExtension(Extension):
     # Syntax for current date
     tags = {"now"}
 
-    def __init__(self, environment: Environment):
+    def __init__(self, environment: Environment) -> None:
         """
         Initializes the JinjaTimeExtension object.
 

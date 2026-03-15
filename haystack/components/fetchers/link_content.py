@@ -121,7 +121,7 @@ class LinkContentFetcher:
         http2: bool = False,
         client_kwargs: dict | None = None,
         request_headers: dict[str, str] | None = None,
-    ):
+    ) -> None:
         """
         Initializes the component.
 

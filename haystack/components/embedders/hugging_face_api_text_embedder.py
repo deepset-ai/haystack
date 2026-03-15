@@ -81,7 +81,7 @@ class HuggingFaceAPITextEmbedder:
         suffix: str = "",
         truncate: bool | None = True,
         normalize: bool | None = False,
-    ):
+    ) -> None:
         """
         Creates a HuggingFaceAPITextEmbedder component.
 

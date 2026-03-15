@@ -63,7 +63,7 @@ class RecursiveDocumentSplitter:
         split_unit: Literal["word", "char", "token"] = "word",
         separators: list[str] | None = None,
         sentence_splitter_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initializes a RecursiveDocumentSplitter.
 

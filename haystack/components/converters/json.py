@@ -95,7 +95,7 @@ class JSONConverter:
         content_key: str | None = None,
         extra_meta_fields: set[str] | Literal["*"] | None = None,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Creates a JSONConverter component.
 

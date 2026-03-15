@@ -101,7 +101,7 @@ class HuggingFaceAPIGenerator:
         generation_kwargs: dict[str, Any] | None = None,
         stop_words: list[str] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
-    ):
+    ) -> None:
         """
         Initialize the HuggingFaceAPIGenerator instance.
 

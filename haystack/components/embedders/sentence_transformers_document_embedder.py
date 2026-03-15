@@ -61,7 +61,7 @@ class SentenceTransformersDocumentEmbedder:
         encode_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         revision: str | None = None,
-    ):
+    ) -> None:
         """
         Creates a SentenceTransformersDocumentEmbedder component.
 

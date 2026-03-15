@@ -156,7 +156,7 @@ class LLMMetadataExtractor:
         page_range: list[str | int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
-    ):
+    ) -> None:
         """
         Initializes the LLMMetadataExtractor.
 

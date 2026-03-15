@@ -65,7 +65,7 @@ class TransformersSimilarityRanker:
         model_kwargs: dict[str, Any] | None = None,
         tokenizer_kwargs: dict[str, Any] | None = None,
         batch_size: int = 16,
-    ):
+    ) -> None:
         """
         Creates an instance of TransformersSimilarityRanker.
 

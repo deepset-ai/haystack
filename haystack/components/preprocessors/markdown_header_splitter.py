@@ -33,7 +33,7 @@ class MarkdownHeaderSplitter:
         split_overlap: int = 0,
         split_threshold: int = 0,
         skip_empty_documents: bool = True,
-    ):
+    ) -> None:
         """
         Initialize the MarkdownHeaderSplitter.
 

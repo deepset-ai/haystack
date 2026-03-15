@@ -43,8 +43,8 @@ class RemoteWhisperTranscriber:
         api_base_url: str | None = None,
         organization: str | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Creates an instance of the RemoteWhisperTranscriber component.
 

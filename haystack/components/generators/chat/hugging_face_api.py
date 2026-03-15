@@ -319,7 +319,7 @@ class HuggingFaceAPIChatGenerator:
         stop_words: list[str] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         tools: ToolsType | None = None,
-    ):
+    ) -> None:
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
 

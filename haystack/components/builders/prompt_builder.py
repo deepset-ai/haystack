@@ -143,7 +143,7 @@ class PromptBuilder:
         template: str,
         required_variables: list[str] | Literal["*"] | None = None,
         variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Constructs a PromptBuilder component.
 

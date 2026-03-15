@@ -70,7 +70,7 @@ class InMemoryDocumentStore:
         index: str | None = None,
         async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
-    ):
+    ) -> None:
         """
         Initializes the DocumentStore.
 

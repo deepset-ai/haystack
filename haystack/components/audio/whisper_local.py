@@ -54,7 +54,7 @@ class LocalWhisperTranscriber:
         model: WhisperLocalModel = "large",
         device: ComponentDevice | None = None,
         whisper_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of the LocalWhisperTranscriber component.
 

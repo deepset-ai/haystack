@@ -141,7 +141,7 @@ class DOCXToDocument:
         table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
         link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Create a DOCXToDocument component.
 

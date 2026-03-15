@@ -59,7 +59,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         azure_ad_token_provider: AzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
         raise_on_failure: bool = False,
-    ):
+    ) -> None:
         """
         Creates an AzureOpenAIDocumentEmbedder component.
 

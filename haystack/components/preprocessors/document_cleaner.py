@@ -51,7 +51,7 @@ class DocumentCleaner:
         ascii_only: bool = False,
         strip_whitespaces: bool = False,
         replace_regexes: dict[str, str] | None = None,
-    ):
+    ) -> None:
         """
         Initialize DocumentCleaner.
 

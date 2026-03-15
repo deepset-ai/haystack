@@ -36,7 +36,7 @@ class FilterRetriever:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, filters: dict[str, Any] | None = None):
+    def __init__(self, document_store: DocumentStore, filters: dict[str, Any] | None = None) -> None:
         """
         Create the FilterRetriever component.
 

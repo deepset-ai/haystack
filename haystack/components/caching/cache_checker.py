@@ -37,7 +37,7 @@ class CacheChecker:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str):
+    def __init__(self, document_store: DocumentStore, cache_field: str) -> None:
         """
         Creates a CacheChecker component.
 

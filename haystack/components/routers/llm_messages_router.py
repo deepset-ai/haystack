@@ -58,7 +58,7 @@ class LLMMessagesRouter:
         output_names: list[str],
         output_patterns: list[str],
         system_prompt: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize the LLMMessagesRouter component.
 

@@ -116,7 +116,7 @@ class BreakpointException(Exception):
         pipeline_snapshot_file_path: str | None = None,
         *,
         break_point: AgentBreakpoint | Breakpoint | ToolBreakpoint | None = None,
-    ):
+    ) -> None:
         super().__init__(message)
         self.component = component
         self.pipeline_snapshot = pipeline_snapshot
@@ -183,5 +183,5 @@ class PipelineInvalidPipelineSnapshotError(Exception):
     Exception raised when a pipeline is resumed from an invalid snapshot.
     """
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)

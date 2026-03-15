@@ -85,7 +85,7 @@ class BranchJoiner:
     have more than one downstream component.
     """
 
-    def __init__(self, type_: type):
+    def __init__(self, type_: type) -> None:
         """
         Creates a `BranchJoiner` component.
 

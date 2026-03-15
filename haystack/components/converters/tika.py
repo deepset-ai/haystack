@@ -24,7 +24,7 @@ class XHTMLParser(HTMLParser):
     Custom parser to extract pages from Tika XHTML content.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ingest = True
         self.page = ""
@@ -74,7 +74,7 @@ class TikaDocumentConverter:
     ```
     """
 
-    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False):
+    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False) -> None:
         """
         Create a TikaDocumentConverter component.
 

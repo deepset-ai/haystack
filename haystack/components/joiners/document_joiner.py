@@ -90,7 +90,7 @@ class DocumentJoiner:
         weights: list[float] | None = None,
         top_k: int | None = None,
         sort_by_score: bool = True,
-    ):
+    ) -> None:
         """
         Creates a DocumentJoiner component.
 

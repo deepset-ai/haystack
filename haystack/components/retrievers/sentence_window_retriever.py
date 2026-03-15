@@ -89,7 +89,7 @@ class SentenceWindowRetriever:
         source_id_meta_field: str | list[str] = "source_id",
         split_id_meta_field: str = "split_id",
         raise_on_missing_meta_fields: bool = True,
-    ):
+    ) -> None:
         """
         Creates a new SentenceWindowRetriever component.
 

@@ -46,7 +46,7 @@ class OpenAPIServiceToFunctions:
 
     MIN_REQUIRED_OPENAPI_SPEC_VERSION = 3
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Create an OpenAPIServiceToFunctions component.
         """
