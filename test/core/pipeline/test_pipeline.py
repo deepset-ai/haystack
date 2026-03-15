@@ -311,3 +311,36 @@ class TestPipeline:
             ChatMessage.from_user("Hello, world!"),
             ChatMessage.from_assistant("Hello, world!"),
         ]
+
+    def test_pipeline_warns_on_mismatched_component_output_keys(self, caplog):
+        """
+        Test that the pipeline emits a warning when a component returns output keys
+        that don't match its declared @component.output_types().
+        This helps users debug misleading 'Pipeline Blocked' errors caused by
+        misconfigured custom components (see issue #10655).
+        """
+
+        @component
+        class MismatchedOutput:
+            @component.output_types(some_key=str)
+            def run(self, inp: str) -> dict[str, str]:
+                return {"wrong_key": inp}  # Returns wrong key
+
+        @component
+        class Receiver:
+            @component.output_types(result=str)
+            def run(self, some_key: str) -> dict[str, str]:
+                return {"result": some_key}
+
+        p = Pipeline()
+        p.add_component("mismatched", MismatchedOutput())
+        p.add_component("receiver", Receiver())
+        p.connect("mismatched.some_key", "receiver.some_key")
+
+        with caplog.at_level(logging.WARNING):
+            # The pipeline will run but receiver won't get input due to key mismatch
+            result = p.run({"mismatched": {"inp": "hello"}})
+
+        # Verify the warning was emitted about unexpected output keys
+        assert any("unexpected output keys" in record.message for record in caplog.records)
+        assert any("wrong_key" in record.message for record in caplog.records)

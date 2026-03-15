@@ -419,6 +419,26 @@ class Pipeline(PipelineBase):
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error
 
+                # Validate that the component's output keys match its declared output sockets.
+                # A mismatch (e.g. returning {"wrong_key": ...} when output_types declares "some_key")
+                # would silently cause downstream components to never receive input, eventually
+                # triggering a misleading "Pipeline Blocked" error.
+                expected_output_keys = set(component.get("output_sockets", {}).keys())
+                actual_output_keys = set(component_outputs.keys())
+                unexpected_keys = actual_output_keys - expected_output_keys
+                missing_keys = expected_output_keys - actual_output_keys
+                if unexpected_keys:
+                    logger.warning(
+                        "Component '{component_name}' returned unexpected output keys: {unexpected_keys}. "
+                        "Declared output keys are: {expected_keys}. "
+                        "This is likely a bug in the component's run() method — the returned dictionary keys "
+                        "must match the keys declared via @component.output_types(). "
+                        "Downstream components connected to the declared keys will not receive any input.",
+                        component_name=component_name,
+                        unexpected_keys=unexpected_keys,
+                        expected_keys=expected_output_keys,
+                    )
+
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
                 component_pipeline_outputs = self._write_component_outputs(
