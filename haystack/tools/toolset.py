@@ -353,7 +353,7 @@ class _ToolsetWrapper(Toolset):
                 return tool
         raise IndexError("ToolsetWrapper index out of range")
 
-    def __add__(self, other: Toolset | Tool | list[Tool]) -> _ToolsetWrapper:
+    def __add__(self, other: Toolset | Tool | list[Tool]) -> "_ToolsetWrapper":
         """Add another toolset or tool to this wrapper."""
         if isinstance(other, Toolset):
             return _ToolsetWrapper(self.toolsets + [other])

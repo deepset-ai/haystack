@@ -418,7 +418,7 @@ class _Component:
     """
 
     def __init__(self) -> None:
-        self.registry = {}
+        self.registry: dict[str, type] = {}
 
     def set_input_type(
         self,

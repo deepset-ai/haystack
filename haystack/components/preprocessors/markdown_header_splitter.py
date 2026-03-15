@@ -216,7 +216,7 @@ class MarkdownHeaderSplitter:
         )
         return result_docs
 
-    def _update_page_number_with_breaks(self, content: str, current_page: int) -> int:
+    def _update_page_number_with_breaks(self, content: str | None, current_page: int) -> int:
         """
         Update page number based on page breaks in content.
 

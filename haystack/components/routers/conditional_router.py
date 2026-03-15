@@ -249,7 +249,7 @@ class ConditionalRouter:
             component.set_input_type(self, name=optional_var_name, type=Any, default=None)
 
         # set output types
-        component.set_output_types(self, **output_types)
+        component.set_output_types(self, **output_types)  # type: ignore[arg-type]
 
     def to_dict(self) -> dict[str, Any]:
         """

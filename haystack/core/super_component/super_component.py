@@ -578,7 +578,7 @@ def super_component(cls: type[T]) -> type[T]:
     original_init = cls.__init__
 
     # Create a new __init__ method that will initialize both the original class and SuperComponent
-    def init_wrapper(self, *args: Any, **kwargs: Any) -> None:
+    def init_wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
         # Call the original __init__ to set up pipeline and mappings
         original_init(self, *args, **kwargs)
 

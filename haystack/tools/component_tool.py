@@ -202,7 +202,7 @@ class ComponentTool(Tool):
                 component_type=type(component),
                 converted_kwargs=converted_kwargs,
             )
-            return component.run(**converted_kwargs)
+            return dict(component.run(**converted_kwargs))
 
         # Generate a name for the tool if not provided
         if not name:

@@ -30,7 +30,7 @@ class XHTMLParser(HTMLParser):
         self.page = ""
         self.pages: list[str] = []
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str]]) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         """Identify the start of a page div."""
         if tag == "div" and any(attr == "class" and value == "page" for attr, value in attrs):
             self.ingest = True
