@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import heapq
+from collections.abc import Callable
 from copy import deepcopy
 from functools import wraps
-from collections.abc import Callable
 from itertools import count
 from typing import Any
 

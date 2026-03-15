@@ -52,9 +52,7 @@ class TextFileToDocument:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
     ) -> dict[str, list[Document]]:
         """
         Converts text files to documents.

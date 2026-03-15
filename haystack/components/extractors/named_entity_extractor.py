@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from enum import Enum
-from collections.abc import Iterator
 from typing import Any
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict

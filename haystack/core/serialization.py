@@ -156,9 +156,7 @@ def component_from_dict(
         The deserialized component.
     """
 
-    def component_pre_init_callback(
-        component_cls: type, init_params: dict[str, Any]
-    ) -> None:
+    def component_pre_init_callback(component_cls: type, init_params: dict[str, Any]) -> None:
         assert callbacks is not None
         assert callbacks.component_pre_init is not None
         callbacks.component_pre_init(name, component_cls, init_params)

@@ -16,7 +16,9 @@ class Greet:
     Logs a greeting message without affecting the value passing on the connection.
     """
 
-    def __init__(self, message: str = "\nGreeting component says: Hi! The value is {value}\n", log_level: str = "INFO") -> None:
+    def __init__(
+        self, message: str = "\nGreeting component says: Hi! The value is {value}\n", log_level: str = "INFO"
+    ) -> None:
         """
         Class constructor
 

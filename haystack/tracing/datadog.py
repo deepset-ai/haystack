@@ -58,7 +58,6 @@ class DatadogTracer(Tracer):
         ddtrace_import.check()
         self._tracer = tracer
 
-
     @staticmethod
     def _get_span_resource_name(operation_name: str, tags: dict[str, Any] | None) -> str | None:
         """

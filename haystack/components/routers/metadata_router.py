@@ -107,9 +107,7 @@ class MetadataRouter:
                 )
         component.set_output_types(self, unmatched=self.output_type, **dict.fromkeys(rules, self.output_type))
 
-    def run(
-        self, documents: list[Document] | list[ByteStream]
-    ) -> dict[str, list[Document] | list[ByteStream]]:
+    def run(self, documents: list[Document] | list[ByteStream]) -> dict[str, list[Document] | list[ByteStream]]:
         """
         Routes documents or byte streams to different connections based on their metadata fields.
 

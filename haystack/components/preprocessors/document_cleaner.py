@@ -7,7 +7,7 @@ from collections.abc import Generator
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Any, Literal
+from typing import Literal
 from unicodedata import normalize
 
 from haystack import Document, component, logging

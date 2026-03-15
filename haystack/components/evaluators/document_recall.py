@@ -68,7 +68,9 @@ class DocumentRecallEvaluator:
     ```
     """
 
-    def __init__(self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content") -> None:
+    def __init__(
+        self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content"
+    ) -> None:
         """
         Create a DocumentRecallEvaluator component.
 

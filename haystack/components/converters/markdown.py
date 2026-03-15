@@ -39,7 +39,9 @@ class MarkdownToDocument:
     ```
     """
 
-    def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = False) -> None:
+    def __init__(
+        self, table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = False
+    ) -> None:
         """
         Create a MarkdownToDocument component.
 
@@ -59,9 +61,7 @@ class MarkdownToDocument:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[str | Path | ByteStream],
-        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
     ) -> dict[str, Any]:
         """
         Converts a list of Markdown files to Documents.

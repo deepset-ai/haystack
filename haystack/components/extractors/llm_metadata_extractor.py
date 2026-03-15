@@ -294,9 +294,7 @@ class LLMMetadataExtractor:
         return result
 
     @component.output_types(documents=list[Document], failed_documents=list[Document])
-    def run(
-        self, documents: list[Document], page_range: list[str | int] | None = None
-    ) -> dict[str, Any]:
+    def run(self, documents: list[Document], page_range: list[str | int] | None = None) -> dict[str, Any]:
         """
         Extract metadata from documents using a Large Language Model.
 

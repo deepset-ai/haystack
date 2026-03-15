@@ -522,9 +522,7 @@ def _apply_tool_execution_decisions(
             "match decisions to tool calls."
         )
 
-    def make_assistant_message(
-        chat_message: ChatMessage, tool_calls: list[ToolCall]
-    ) -> ChatMessage:
+    def make_assistant_message(chat_message: ChatMessage, tool_calls: list[ToolCall]) -> ChatMessage:
         return ChatMessage.from_assistant(
             text=chat_message.text,
             meta=chat_message.meta,

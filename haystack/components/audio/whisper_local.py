@@ -106,9 +106,7 @@ class LocalWhisperTranscriber:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[str | Path | ByteStream],
-        whisper_params: dict[str, Any] | None = None,
+        self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Transcribes a list of audio files into a list of documents.
