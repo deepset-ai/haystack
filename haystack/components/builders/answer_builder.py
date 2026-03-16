@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @component
 class AnswerBuilder:
     """
-    Converts a query and Generator replies into a `GeneratedAnswer` object.
+    Converts a query and Generator replies into a `GeneratedAnswer` object. TRIGGER!!
 
     AnswerBuilder parses Generator replies using custom regular expressions.
     Check out the usage example below to see how it works.

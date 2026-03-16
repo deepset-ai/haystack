@@ -10,5 +10,3 @@ renderer:
   id: agents-api
   description: Tool-using agents with provider-agnostic chat model support.
   filename: agents_api.md
-
-# Trigger
