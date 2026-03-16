@@ -57,7 +57,6 @@ jobs:
           filters: |
             changes:
               - "haystack/**/*.py"
-              - "haystack/core/pipeline/predefined/*"
               - "test/**/*.py"
               - "pyproject.toml"
               - ".github/utils/*.py"
