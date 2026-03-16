@@ -25,7 +25,7 @@ Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
 ```python
 __init__(
-    bm25_tokenization_regex: str = "(?u)\\b\\w\\w+\\b",
+    bm25_tokenization_regex: str = "(?u)\\b\\w+\\b",
     bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
     bm25_parameters: dict | None = None,
     embedding_similarity_function: Literal[
