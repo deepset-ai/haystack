@@ -65,7 +65,7 @@ class DocumentSplitter:
         extend_abbreviations: bool = True,
         *,
         skip_empty_documents: bool = True,
-    ):
+    ) -> None:
         """
         Initialize DocumentSplitter.
 
@@ -157,7 +157,7 @@ class DocumentSplitter:
             )
             self.respect_sentence_boundary = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the DocumentSplitter by loading the sentence tokenizer.
         """
@@ -170,7 +170,7 @@ class DocumentSplitter:
             )
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Split documents into smaller parts.
 

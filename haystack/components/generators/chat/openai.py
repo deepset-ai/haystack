@@ -128,7 +128,7 @@ class OpenAIChatGenerator:
         tools: ToolsType | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
 
@@ -225,7 +225,7 @@ class OpenAIChatGenerator:
         )
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the OpenAI chat generator.
 

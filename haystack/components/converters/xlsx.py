@@ -52,7 +52,7 @@ class XLSXToDocument:
         *,
         link_format: Literal["markdown", "plain", "none"] = "none",
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Creates a XLSXToDocument component.
 

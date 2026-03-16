@@ -36,7 +36,7 @@ class TextCleaner:
         convert_to_lowercase: bool = False,
         remove_punctuation: bool = False,
         remove_numbers: bool = False,
-    ):
+    ) -> None:
         """
         Initializes the TextCleaner component.
 

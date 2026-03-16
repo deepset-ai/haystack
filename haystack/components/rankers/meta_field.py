@@ -50,7 +50,7 @@ class MetaFieldRanker:
         sort_order: Literal["ascending", "descending"] = "descending",
         missing_meta: Literal["drop", "top", "bottom"] = "bottom",
         meta_value_type: Literal["float", "int", "date"] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of MetaFieldRanker.
 
@@ -116,7 +116,7 @@ class MetaFieldRanker:
         sort_order: Literal["ascending", "descending"],
         missing_meta: Literal["drop", "top", "bottom"],
         meta_value_type: Literal["float", "int", "date"] | None,
-    ):
+    ) -> None:
         if top_k is not None and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
@@ -169,7 +169,7 @@ class MetaFieldRanker:
         sort_order: Literal["ascending", "descending"] | None = None,
         missing_meta: Literal["drop", "top", "bottom"] | None = None,
         meta_value_type: Literal["float", "int", "date"] | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Ranks a list of Documents based on the selected meta field by:
 

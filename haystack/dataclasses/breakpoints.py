@@ -118,6 +118,10 @@ class AgentBreakpoint:
 @_warn_on_inplace_mutation
 @dataclass
 class AgentSnapshot:
+    """
+    Snapshot of an Agent's state at a breakpoint (component inputs, visit counts, and breakpoint).
+    """
+
     component_inputs: dict[str, Any]
     component_visits: dict[str, int]
     break_point: AgentBreakpoint

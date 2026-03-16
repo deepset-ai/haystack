@@ -37,7 +37,7 @@ class CacheChecker:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, cache_field: str):
+    def __init__(self, document_store: DocumentStore, cache_field: str) -> None:
         """
         Creates a CacheChecker component.
 
@@ -72,7 +72,7 @@ class CacheChecker:
         return default_from_dict(cls, data)
 
     @component.output_types(hits=list[Document], misses=list)
-    def run(self, items: list[Any]):
+    def run(self, items: list[Any]) -> dict[str, Any]:
         """
         Checks if any document associated with the specified cache field is already present in the store.
 
