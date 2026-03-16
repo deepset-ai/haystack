@@ -607,6 +607,28 @@ messages = [ChatMessage.from_user("What's the weather in Paris?")]
 response = chat_generator_with_tools.run(messages=messages)
 ```
 
+### Usage example with structured output
+
+```python
+from pydantic import BaseModel
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+
+class City(BaseModel):
+    name: str
+    country: str
+    population: int
+
+chat_generator = GoogleGenAIChatGenerator(
+    model="gemini-2.5-flash",
+    generation_kwargs={"response_format": City}
+)
+
+messages = [ChatMessage.from_user("Tell me about Paris")]
+response = chat_generator.run(messages=messages)
+print(response["replies"][0].text)  # JSON output matching the City schema
+```
+
 ### Usage example with FileContent embedded in a ChatMessage
 
 ```python
@@ -623,6 +645,9 @@ response = chat_generator.run(messages=[chat_message])
 
 ```python
 SUPPORTED_MODELS: list[str] = [
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite-preview",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
