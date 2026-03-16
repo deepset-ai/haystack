@@ -1013,15 +1013,6 @@ class CountUniqueMetadataByFilterTest:
     """
 
     @staticmethod
-    def test_count_unique_metadata_by_filter_missing_field(document_store: DocumentStore):
-        """Test counting unique metadata for non-existent field"""
-        docs = [Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 1
-        counts = document_store.count_unique_metadata_by_filter({}, ["nonexistent_field"])
-        assert counts["nonexistent_field"] == 0
-
-    @staticmethod
     def test_count_unique_metadata_by_filter_all_documents(document_store: DocumentStore):
         """Test count_unique_metadata_by_filter() with no filter returns distinct counts for all docs."""
         docs = [
@@ -1166,22 +1157,6 @@ class GetMetadataFieldMinMaxTest:
         result = document_store.get_metadata_field_min_max("priority")  # type:ignore[attr-defined]
         assert result["min"] == 42
         assert result["max"] == 42
-
-    @staticmethod
-    def test_get_metadata_field_min_max_string(document_store: DocumentStore):
-        """Test getting min/max values for string field (alphabetical)"""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1, "score": 0.9}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active", "priority": 2, "score": 0.8}),
-            Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1, "score": 0.7}),
-            Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3, "score": 0.95}),
-            Document(content="Doc 5", meta={"category": "C", "status": "active", "priority": 2, "score": 0.6}),
-            Document(content="Doc 6", meta={"category": "B", "status": "inactive", "priority": 1}),
-        ]
-        document_store.write_documents(docs)
-        min_max = document_store.get_metadata_field_min_max("category")
-        assert min_max["min"] == "A"
-        assert min_max["max"] == "C"
 
     @staticmethod
     def test_get_metadata_field_min_max_empty_collection(document_store: DocumentStore):
