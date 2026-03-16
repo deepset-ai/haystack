@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 import typing
 from collections import deque
 from types import UnionType
@@ -47,13 +48,6 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.List[dict]", List[dict]),
     pytest.param("typing.List[float]", List[float]),
     pytest.param("typing.List[bool]", List[bool]),
-    # typing Optional
-    pytest.param("typing.Optional", Optional),
-    pytest.param("typing.Optional[str]", Optional[str]),
-    pytest.param("typing.Optional[int]", Optional[int]),
-    pytest.param("typing.Optional[dict]", Optional[dict]),
-    pytest.param("typing.Optional[float]", Optional[float]),
-    pytest.param("typing.Optional[bool]", Optional[bool]),
     # PEP 604 X | None
     pytest.param("str | None", str | None),
     pytest.param("int | None", int | None),
@@ -90,13 +84,6 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Tuple[dict]", Tuple[dict]),
     pytest.param("typing.Tuple[float]", Tuple[float]),
     pytest.param("typing.Tuple[bool]", Tuple[bool]),
-    # Union
-    pytest.param("typing.Union", Union),
-    pytest.param("typing.Union[str, int]", Union[str, int]),
-    pytest.param("typing.Union[int, float]", Union[int, float]),
-    pytest.param("typing.Union[dict, str]", Union[dict, str]),
-    pytest.param("typing.Union[float, bool]", Union[float, bool]),
-    pytest.param("typing.Optional[str]", typing.Union[None, str]),  # Union with None becomes Optional
     # PEP 604 X | Y
     pytest.param("str | int", str | int),
     pytest.param("int | float", int | float),
@@ -174,13 +161,10 @@ def test_output_builtin_type_deserialization():
 
 def test_output_type_serialization_nested():
     # typing
-    assert serialize_type(List[Union[str, int]]) == "typing.List[typing.Union[str, int]]"
-    assert serialize_type(List[Optional[str]]) == "typing.List[typing.Optional[str]]"
     assert serialize_type(List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
     assert serialize_type(typing.List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
     # builtins
-    assert serialize_type(list[Union[str, int]]) == "list[typing.Union[str, int]]"
-    assert serialize_type(list[Optional[str]]) == "list[typing.Optional[str]]"
+
     assert serialize_type(list[dict[str, int]]) == "list[dict[str, int]]"
     assert serialize_type(list[list[int]]) == "list[list[int]]"
     assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
@@ -291,10 +275,6 @@ def test_output_type_deserialization_haystack_dataclasses():
 def test_output_type_serialization_pep_604():
     # PEP 604 allows for union types to be defined with the `|` operator
     assert serialize_type(str | int) == "str | int"
-    assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
-    assert (
-        serialize_type(Dict[str, int] | Dict[int, str]) == "typing.Union[typing.Dict[str, int], typing.Dict[int, str]]"
-    )
     assert serialize_type(str | None) == "str | None"
     assert serialize_type(list[str] | None) == "list[str] | None"
     assert serialize_type(int | float | str) == "int | float | str"
@@ -370,3 +350,30 @@ def test_build_pep604_union_type():
 
     result = _build_pep604_union_type([list[str], dict[str, int]])
     assert result == list[str] | dict[str, int]
+
+
+if sys.version_info < (3, 14):
+
+    def test_type_de_se_union_and_optional():
+        """Tests for old typing.Union and typing.Optional types that are converted to builtins in python 3.14+."""
+        assert serialize_type(List[Union[str, int]]) == "typing.List[typing.Union[str, int]]"
+        assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
+        assert serialize_type(List[Optional[str]]) == "typing.List[typing.Optional[str]]"
+        assert (
+            serialize_type(Dict[str, int] | Dict[int, str])
+            == "typing.Union[typing.Dict[str, int], typing.Dict[int, str]]"
+        )
+        assert serialize_type(list[Union[str, int]]) == "list[typing.Union[str, int]]"
+        assert serialize_type(list[Optional[str]]) == "list[typing.Optional[str]]"
+        # Union
+        assert serialize_type(Union) == "typing.Union"
+        assert serialize_type(Union[str, int]) == "typing.Union[str, int]"
+        assert serialize_type(Union[int, float]) == "typing.Union[int, float]"
+        assert serialize_type(Union[dict, str]) == "typing.Union[dict, str]"
+        assert serialize_type(Union[float, bool]) == "typing.Union[float, bool]"
+        assert serialize_type(Optional) == "typing.Optional"
+        assert serialize_type(Optional[str]) == "typing.Optional[str]"
+        assert serialize_type(Optional[int]) == "typing.Optional[int]"
+        assert serialize_type(Optional[dict]) == "typing.Optional[dict]"
+        assert serialize_type(Optional[float]) == "typing.Optional[float]"
+        assert serialize_type(Optional[bool]) == "typing.Optional[bool]"
