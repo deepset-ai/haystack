@@ -19,7 +19,7 @@ __init__(
     run_name: str,
     inputs: dict[str, list[Any]],
     results: dict[str, dict[str, Any]],
-)
+) -> None
 ```
 
 Initialize a new evaluation run result.

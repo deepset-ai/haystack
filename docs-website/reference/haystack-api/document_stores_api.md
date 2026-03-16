@@ -34,7 +34,7 @@ __init__(
     index: str | None = None,
     async_executor: ThreadPoolExecutor | None = None,
     return_embedding: bool = True,
-)
+) -> None
 ```
 
 Initializes the DocumentStore.
@@ -58,7 +58,7 @@ Initializes the DocumentStore.
 #### shutdown
 
 ```python
-shutdown()
+shutdown() -> None
 ```
 
 Explicitly shutdown the executor if we own it.
