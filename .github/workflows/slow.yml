@@ -163,7 +163,7 @@ jobs:
     # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
     name: Slow Integration Tests completed
     runs-on: ubuntu-slim
-    if: ${{ always() }}
+    if: ${{ always() && !cancelled() }}
     needs: slow-integration-tests
 
     steps:
