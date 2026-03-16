@@ -109,7 +109,8 @@ def _extract_reasoning_content(message_or_delta: Any) -> ReasoningContent | None
 
 
 def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
-    """Resolve ``$ref`` references in a JSON schema by inlining ``$defs`` definitions.
+    """
+    Resolve ``$ref`` references in a JSON schema by inlining ``$defs`` definitions.
 
     The HuggingFace API does not support ``$defs`` and ``$ref`` in tool parameter schemas.
     This function expands all ``$ref`` pointers and removes the ``$defs`` section.

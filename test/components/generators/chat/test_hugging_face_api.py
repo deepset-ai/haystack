@@ -1690,16 +1690,10 @@ class TestHuggingFaceAPIChatGenerator:
         """Schema with nested $ref references is expanded correctly."""
         schema = {
             "$defs": {
-                "Address": {
-                    "type": "object",
-                    "properties": {"street": {"type": "string"}},
-                },
+                "Address": {"type": "object", "properties": {"street": {"type": "string"}}},
                 "User": {
                     "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "address": {"$ref": "#/$defs/Address"},
-                    },
+                    "properties": {"name": {"type": "string"}, "address": {"$ref": "#/$defs/Address"}},
                 },
             },
             "type": "object",
@@ -1717,12 +1711,7 @@ class TestHuggingFaceAPIChatGenerator:
             name="get_user",
             description="Get user info",
             parameters={
-                "$defs": {
-                    "User": {
-                        "type": "object",
-                        "properties": {"name": {"type": "string"}},
-                    }
-                },
+                "$defs": {"User": {"type": "object", "properties": {"name": {"type": "string"}}}},
                 "type": "object",
                 "properties": {"user": {"$ref": "#/$defs/User"}},
             },
