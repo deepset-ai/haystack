@@ -992,7 +992,7 @@ class PipelineBase:  # noqa: PLW1641
 
         raise error_type(
             f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
-            f"It is already connected to component '{receiver_socket.senders[0]}', and it can only can only accept "
+            f"It is already connected to component '{receiver_socket.senders[0]}', and it can only accept "
             f"inputs from multiple senders if its type is list, Optional[list], or union of list types."
         )
 
