@@ -741,6 +741,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         doc_store.delete_documents(["d1"])
         # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
         assert doc_store._avg_doc_len == pytest.approx(3.0)
+
     def test_bm25_tokenization_includes_single_char_tokens(self):
         doc_store = InMemoryDocumentStore()
         tokens = doc_store._tokenize_bm25("Luna is a dog")
