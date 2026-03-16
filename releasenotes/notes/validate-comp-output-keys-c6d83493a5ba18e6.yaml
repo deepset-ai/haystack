@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added runtime validation of component output keys in ``Pipeline`` and ``AsyncPipeline``.
+    When a component returns keys that were not declared in its ``@component.output_types``, the pipeline now logs a warning identifying the misconfigured component.
+    This helps diagnose issues where a component returns unexpected keys, which previously caused a confusing "Pipeline Blocked" error pointing to an unexpected (downstream) component.
