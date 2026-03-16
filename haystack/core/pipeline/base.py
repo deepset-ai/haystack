@@ -992,7 +992,7 @@ class PipelineBase:  # noqa: PLW1641
 
         raise error_type(
             f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
-            f"It is already connected to component '{receiver_socket.senders[0]}', and it can only can only accept "
+            f"It is already connected to component '{receiver_socket.senders[0]}', and it can only accept "
             f"inputs from multiple senders if its type is list, Optional[list], or union of list types."
         )
 
@@ -1183,6 +1183,8 @@ class PipelineBase:  # noqa: PLW1641
         :param comp_inputs: Inputs to the component.
         :returns: Priority value for the component.
         """
+        # NOTE: Even if a component can run, it doesn't mean it's ready to run since it could be waiting for optional
+        # inputs. This is why it's only used to determine if a component is BLOCKED or not.
         if not can_component_run(comp, comp_inputs):
             return ComponentPriority.BLOCKED
         if is_any_greedy_socket_ready(comp, comp_inputs) and are_all_sockets_ready(comp, comp_inputs):
@@ -1298,6 +1300,10 @@ class PipelineBase:  # noqa: PLW1641
         """
         Decides which component to run when multiple components are waiting for inputs with the same priority.
 
+        NOTE: This was designed to only tie-break for priorities DEFER and DEFER_LAST. Since this function also removes
+        these components from the priority queue we rely on _is_queue_stale to then refill the priority queue.
+        And _is_queue_stale only triggers when all remaining components have BLOCKED priority.
+
         :param component_name: The name of the component.
         :param priority: Priority of the component.
         :param priority_queue: Priority queue of component names.
@@ -1308,10 +1314,16 @@ class PipelineBase:  # noqa: PLW1641
         """
         # Create a list of all components that have the same priority as the current component, including the
         # current component itself and remove them from the priority queue.
+        has_deferred_priority = priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
         components_with_same_priority = [component_name]
         while len(priority_queue) > 0:
             next_priority, next_component_name = priority_queue.peek()
-            if next_priority == priority:
+            # For tiebreaking purposes we treat DEFER and DEFER_LAST as the same priority.
+            if (
+                has_deferred_priority
+                and next_priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
+                or next_priority == priority
+            ):
                 priority_queue.pop()  # actually remove the component
                 components_with_same_priority.append(next_component_name)
             else:
@@ -1666,7 +1678,47 @@ def _connections_status(
     return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
 
 
-# Utility functions for writing to sockets
+# Utility functions
+
+
+def _validate_component_output_keys(
+    component_name: str, comp: dict[str, Any], component_output: Mapping[str, Any]
+) -> None:
+    """
+    Validate that the output keys returned by a component match its declared output types.
+
+    Logs a warning for any actually returned output key(s) that was not declared as an output socket(s).
+    This helps catch bugs where a component returns wrong keys, which would otherwise cause downstream components to
+    wait forever for expected data, resulting in a confusing "Pipeline Blocked" error that points to an unexpected
+    component.
+
+    :param component_name: Name of the Component as registered in the Pipeline.
+    :param comp: The component metadata dictionary containing the component instance and its input/output socket
+        metadata.
+    :param component_output: The actual output dictionary returned by the component's run method.
+    """
+    output_sockets = comp.get("output_sockets", {})
+    if not output_sockets:
+        return
+
+    declared_keys = set(output_sockets.keys())
+    actual_keys = set(component_output.keys())
+
+    extra_keys = actual_keys - declared_keys
+
+    instance = comp["instance"]
+    component_type = instance.__class__.__name__
+
+    if extra_keys:
+        logger.warning(
+            "Component '{component_name}' (type: {component_type}) returned output keys {extra_keys} "
+            "that are not declared in its output types. "
+            "These keys will be ignored and not passed to downstream components. "
+            "Make sure the component's output keys match its declared @component.output_types.",
+            component_name=component_name,
+            component_type=component_type,
+            extra_keys=extra_keys,
+        )
 
 
 def _write_to_lazy_variadic_socket(

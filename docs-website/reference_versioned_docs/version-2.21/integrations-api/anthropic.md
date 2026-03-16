@@ -62,6 +62,26 @@ generator = AnthropicChatGenerator()
 result = generator.run(messages)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-5-20250929",
+    "claude-opus-4-5-20251101",
+    "claude-opus-4-1-20250805",
+    "claude-sonnet-4-20250514",
+    "claude-opus-4-20250514",
+    "claude-3-haiku-20240307",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component. See
+https://platform.claude.com/docs/en/about-claude/models/overview for the full list.
+
 #### __init__
 
 ```python
@@ -244,6 +264,25 @@ For more details on supported models and their capabilities, refer to the Anthro
 
 For a list of available model IDs when using Claude on Vertex AI, see
 [Claude on Vertex AI - model availability](https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-availability).
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-sonnet-4-5@20250929",
+    "claude-sonnet-4@20250514",
+    "claude-opus-4-5@20251101",
+    "claude-opus-4-1@20250805",
+    "claude-opus-4@20250514",
+    "claude-haiku-4-5@20251001",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component. See
+https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-availability for the full list.
 
 #### __init__
 

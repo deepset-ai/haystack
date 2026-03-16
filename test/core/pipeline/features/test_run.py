@@ -1126,7 +1126,7 @@ def pipeline_that_has_multiple_branches_of_different_lengths_that_merge_into_a_c
                     ("first_addition", 1): {"add": None, "value": 1},
                     ("fourth_addition", 1): {"add": None, "value": 11},
                     ("second_addition", 1): {"add": None, "value": 3},
-                    ("sum", 1): {"values": [3, 3, 5]},
+                    ("sum", 1): {"values": AnyOrder([3, 3, 5])},
                     ("third_addition", 1): {"add": None, "value": 1},
                 },
             )
@@ -2473,7 +2473,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                 content="some text about investigation and treatment of Alzheimer disease",
                                 meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
                                 id="doc2",
-                                score=3.324112496100923,
+                                score=4.046232292105687,
                             )
                         ]
                     }
@@ -2487,7 +2487,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                     id="doc2",
                                     content="some text about investigation and treatment of Alzheimer disease",
                                     meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
-                                    score=3.324112496100923,
+                                    score=4.046232292105687,
                                 )
                             ]
                         ],
@@ -2841,11 +2841,12 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
 class AnyOrder:  # noqa: PLW1641 # Object does not implement `__hash__` method but it's ok
     """List wrapper with order-insensitive equality"""
 
-    def __init__(self, items):
+    def __init__(self, items, key=None):
         self.items = items
+        self.key = key
 
     def __eq__(self, other):
-        return isinstance(other, list) and sorted(self.items) == sorted(other)
+        return isinstance(other, list) and sorted(self.items, key=self.key) == sorted(other, key=self.key)
 
 
 @given("a pipeline that has a string variadic component", target_fixture="pipeline_data")
@@ -4416,11 +4417,16 @@ some,header,row
                     ("txt_converter", 1): {"sources": [sources[1]], "meta": None},
                     ("json_converter", 1): {"sources": [sources[2]], "meta": None},
                     ("b_joiner", 1): {
-                        "documents": [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]],
+                        "documents": AnyOrder(
+                            [[expected_pre_split_docs[0]], [expected_pre_split_docs[1]]], key=lambda d: d[0].id
+                        ),
                         "top_k": None,
                     },
                     ("splitter", 1): {"documents": expected_pre_split_docs},
-                    ("a_joiner", 1): {"documents": [expected_csv_docs, expected_splits_docs], "top_k": None},
+                    ("a_joiner", 1): {
+                        "documents": AnyOrder([expected_csv_docs, expected_splits_docs], key=lambda d: d[0].id),
+                        "top_k": None,
+                    },
                 },
             )
         ],
@@ -4471,26 +4477,57 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
     pipe.connect("page_splitter.documents", "DocumentJoiner_2.documents")
 
     expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
+    # Need to use ANY for id since not sure how it's calculated in splitter
+    expected_html_doc_aft_splitter = Document(
+        id=ANY,
+        content="Some content",
+        meta={
+            "file_type": "html",
+            "page_number": 1,
+            "split_id": 0,
+            "split_idx_start": 0,
+            "source_id": expected_html_doc.id,
+        },
+    )
     expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
+    # Need to use ANY for id since not sure how it's calculated in splitter
+    expected_txt_doc_aft_splitter = Document(
+        id=ANY,
+        content=txt_data,
+        meta={
+            "file_type": "txt",
+            "page_number": 1,
+            "split_id": 0,
+            "split_idx_start": 0,
+            "source_id": expected_txt_doc.id,
+        },
+    )
 
     return (
         pipe,
         [
             PipelineRunData(
                 inputs={"router": {"sources": sources}},
-                # HTML converter takes longer than TXT Converter and this is why the order of documents is not stable
-                # for AsyncPipeline. We use [ANY, ANY] to indicate that we do not care about the order here.
-                # In real usage, if the user cares about the order of documents arriving at a lazy variadic component,
-                # the user should pick a different component (OutputAdapter) to combine the lists.
-                expected_outputs={"DocumentJoiner_2": {"documents": [ANY, ANY]}},
+                expected_outputs={
+                    "DocumentJoiner_2": {
+                        "documents": AnyOrder(
+                            [expected_html_doc_aft_splitter, expected_txt_doc_aft_splitter], key=lambda d: d.content
+                        )
+                    }
+                },
                 expected_component_calls={
                     ("router", 1): {"sources": sources, "meta": None},
                     ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
                     ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
                     ("joiner", 1): {"documents": [[expected_txt_doc]], "top_k": None},
                     ("DocumentJoiner_1", 1): {"documents": [[expected_html_doc]], "top_k": None},
-                    # Same as above
-                    ("DocumentJoiner_2", 1): {"documents": [ANY, ANY], "top_k": None},
+                    ("DocumentJoiner_2", 1): {
+                        "documents": AnyOrder(
+                            [[expected_html_doc_aft_splitter], [expected_txt_doc_aft_splitter]],
+                            key=lambda d: d[0].content,
+                        ),
+                        "top_k": None,
+                    },
                     ("splitter", 1): {"documents": [expected_txt_doc]},
                     ("page_splitter", 1): {"documents": [expected_html_doc]},
                 },
@@ -4898,6 +4935,17 @@ def pipeline_that_converts_files_with_three_auto_joiners(pipeline_class):
     pipe.connect("splitter.documents", "writer.documents")
     pipe.connect("page_splitter.documents", "writer.documents")
 
+    expected_txt_document = Document(
+        id=ANY,
+        content=txt_data,
+        meta={"file_type": "txt", "source_id": ANY, "page_number": 1, "split_id": 0, "split_idx_start": 0},
+    )
+    expected_html_document = Document(
+        id=ANY,
+        content="Some content",
+        meta={"file_type": "html", "source_id": ANY, "page_number": 1, "split_id": 0, "split_idx_start": 0},
+    )
+
     return (
         pipe,
         [
@@ -4908,10 +4956,9 @@ def pipeline_that_converts_files_with_three_auto_joiners(pipeline_class):
                     ("router", 1): {"sources": sources, "meta": None},
                     ("html_converter", 1): {"sources": [sources[1]], "meta": None, "extraction_kwargs": None},
                     ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
-                    # HTML converter takes longer than TXT Converter and this is why the order of documents is not
-                    # stable for AsyncPipeline. We test for [ANY, ANY] here to ensure at least two documents are
-                    # present.
-                    ("writer", 1): {"documents": [ANY, ANY]},
+                    ("writer", 1): {
+                        "documents": AnyOrder([expected_txt_document, expected_html_document], key=lambda d: d.content)
+                    },
                     ("splitter", 1): {"documents": [Document(content=txt_data, meta={"file_type": "txt"})]},
                     ("page_splitter", 1): {"documents": [Document(content="Some content", meta={"file_type": "html"})]},
                 },
