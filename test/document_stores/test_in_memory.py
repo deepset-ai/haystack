@@ -715,8 +715,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         """Average document length should be computed correctly after writes."""
         doc_store = InMemoryDocumentStore()
         # Write documents with known token counts.
-        # The default BM25 tokenizer regex r"(?u)\b\w\w+\b" requires 2+ chars,
-        # so we use words with at least 2 characters.
         # "hello world" -> 2 tokens, "foo bar baz" -> 3 tokens, "go" -> 1 token
         doc_store.write_documents(
             [
