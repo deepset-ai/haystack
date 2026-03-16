@@ -715,12 +715,14 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         """Average document length should be computed correctly after writes."""
         doc_store = InMemoryDocumentStore()
         # Write documents with known token counts.
-        # "hello world" -> 2 tokens, "foo bar baz" -> 3 tokens, "a" -> 1 token
+        # The default BM25 tokenizer regex r"(?u)\b\w\w+\b" requires 2+ chars,
+        # so we use words with at least 2 characters.
+        # "hello world" -> 2 tokens, "foo bar baz" -> 3 tokens, "go" -> 1 token
         doc_store.write_documents(
             [
                 Document(content="hello world", id="d1"),
                 Document(content="foo bar baz", id="d2"),
-                Document(content="a", id="d3"),
+                Document(content="go", id="d3"),
             ]
         )
         # Average should be (2 + 3 + 1) / 3 = 2.0
