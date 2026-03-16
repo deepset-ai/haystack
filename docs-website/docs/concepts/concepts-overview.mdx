@@ -52,5 +52,17 @@ Finally, you can combine various components, Document Stores, and integrations i
 
 If you want to reuse pipelines, you can save them into a convenient format (YAML, TOML, and more) on a disk or share them around using the [serialization](pipelines/serialization.mdx) process.
 
+### Retrieval-Augmented Generation (RAG)
+
+One of the most common patterns built with Haystack pipelines is Retrieval-Augmented Generation(RAG). In this architecture, a Retriever first finds relevant documents from a Document Store based on a user query. These documents are then provided as context to a Generator powered by a large language model (LLM).
+
+By grounding the LLM with retrieved documents, RAG systems can produce answers that are more accurate, up-to-date, and traceable to their sources.
+
+A typical RAG pipeline in haystack consists of:
+1. A user query.
+2. A Retriever that searches the Document Store.
+3. A Generator that produces the final answer using the retrieved context.
+
+
 Here is a short Haystack pipeline, illustrated:
 <ClickableImage src="/img/00f5fe8-Pipeline_Illustrations_2.png" alt="RAG architecture overview showing query flow through retrieval and generation stages, with document stores providing context for the language model" />
