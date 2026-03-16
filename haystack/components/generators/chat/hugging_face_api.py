@@ -356,7 +356,7 @@ class HuggingFaceAPIChatGenerator:
         stop_words: list[str] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         tools: ToolsType | None = None,
-    ):
+    ) -> None:
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
 
@@ -445,7 +445,7 @@ class HuggingFaceAPIChatGenerator:
         self.tools = tools
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the Hugging Face API chat generator.
 

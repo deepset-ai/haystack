@@ -88,7 +88,7 @@ class OpenAIResponsesChatGenerator:
         tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
 
@@ -190,7 +190,7 @@ class OpenAIResponsesChatGenerator:
         )
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the OpenAI responses chat generator.
 
@@ -802,7 +802,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         If the message format is invalid.
     """
 
-    def convert_part(part) -> dict[str, str | None]:
+    def convert_part(part: Any) -> dict[str, str | None]:
         if isinstance(part, TextContent):
             return {"type": "input_text", "text": part.text}
         if isinstance(part, ImageContent):

@@ -89,7 +89,7 @@ class SentenceWindowRetriever:
         source_id_meta_field: str | list[str] = "source_id",
         split_id_meta_field: str = "split_id",
         raise_on_missing_meta_fields: bool = True,
-    ):
+    ) -> None:
         """
         Creates a new SentenceWindowRetriever component.
 
@@ -178,7 +178,7 @@ class SentenceWindowRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])
-    def run(self, retrieved_documents: list[Document], window_size: int | None = None):
+    def run(self, retrieved_documents: list[Document], window_size: int | None = None) -> dict[str, Any]:
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 
@@ -211,7 +211,7 @@ class SentenceWindowRetriever:
         return {"context_windows": context_text, "context_documents": context_documents}
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])
-    async def run_async(self, retrieved_documents: list[Document], window_size: int | None = None):
+    async def run_async(self, retrieved_documents: list[Document], window_size: int | None = None) -> dict[str, Any]:
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 

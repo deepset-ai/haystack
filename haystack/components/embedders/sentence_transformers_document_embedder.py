@@ -61,7 +61,7 @@ class SentenceTransformersDocumentEmbedder:
         encode_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         revision: str | None = None,
-    ):
+    ) -> None:
         """
         Creates a SentenceTransformersDocumentEmbedder component.
 
@@ -201,7 +201,7 @@ class SentenceTransformersDocumentEmbedder:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -223,7 +223,7 @@ class SentenceTransformersDocumentEmbedder:
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Embed a list of documents.
 

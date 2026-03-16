@@ -123,7 +123,7 @@ The language of the original query is preserved in the expanded queries.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the LLM provider component.

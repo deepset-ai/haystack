@@ -118,6 +118,7 @@ class ProxyTracer(Tracer):
     """
 
     def __init__(self, provided_tracer: Tracer) -> None:
+        """Creates an instance of ProxyTracer."""
         self.actual_tracer: Tracer = provided_tracer
         self.is_content_tracing_enabled = os.getenv(HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR, "false").lower() == "true"
 

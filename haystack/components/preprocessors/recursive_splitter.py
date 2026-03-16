@@ -63,7 +63,7 @@ class RecursiveDocumentSplitter:
         split_unit: Literal["word", "char", "token"] = "word",
         separators: list[str] | None = None,
         sentence_splitter_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initializes a RecursiveDocumentSplitter.
 
@@ -117,7 +117,7 @@ class RecursiveDocumentSplitter:
             raise ValueError("All separators must be strings.")
 
     @staticmethod
-    def _get_custom_sentence_tokenizer(sentence_splitter_params: dict[str, Any]):
+    def _get_custom_sentence_tokenizer(sentence_splitter_params: dict[str, Any]) -> Any:
         from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
 
         return SentenceSplitter(**sentence_splitter_params)
@@ -224,7 +224,7 @@ class RecursiveDocumentSplitter:
 
         return overlapped_chunks
 
-    def _create_chunk_starting_with_overlap(self, chunk, overlap):
+    def _create_chunk_starting_with_overlap(self, chunk: str, overlap: str) -> str:
         if self.split_units == "word":
             current_chunk = overlap + " " + chunk
         elif self.split_units == "token":

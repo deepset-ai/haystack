@@ -104,7 +104,7 @@ class OutputAdapter:
         component.set_output_types(self, output=output_type)
         self.output_type = output_type
 
-    def run(self, **kwargs):
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Renders the Jinja template with the provided inputs.
 

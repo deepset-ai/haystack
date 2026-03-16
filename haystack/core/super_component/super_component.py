@@ -578,7 +578,7 @@ def super_component(cls: type[T]) -> type[T]:
     original_init = cls.__init__
 
     # Create a new __init__ method that will initialize both the original class and SuperComponent
-    def init_wrapper(self, *args, **kwargs):
+    def init_wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
         # Call the original __init__ to set up pipeline and mappings
         original_init(self, *args, **kwargs)
 
@@ -598,7 +598,7 @@ def super_component(cls: type[T]) -> type[T]:
     init_wrapper = functools.wraps(original_init)(init_wrapper)
 
     # Function to copy namespace from the original class
-    def copy_class_namespace(namespace):
+    def copy_class_namespace(namespace: dict[str, Any]) -> None:
         """Copy all attributes from the original class except special ones."""
         for key, val in dict(cls.__dict__).items():
             # Skip special attributes that should be recreated

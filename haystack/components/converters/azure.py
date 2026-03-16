@@ -70,7 +70,7 @@ class AzureOCRDocumentConverter:
         page_layout: Literal["natural", "single_column"] = "natural",
         threshold_y: float | None = 0.05,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Creates an AzureOCRDocumentConverter component.
 
@@ -117,7 +117,9 @@ class AzureOCRDocumentConverter:
             self.threshold_y = 0.05
 
     @component.output_types(documents=list[Document], raw_azure_response=list[dict])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Convert a list of files to Documents using Azure's Document Intelligence service.
 

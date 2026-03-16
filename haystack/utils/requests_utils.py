@@ -81,7 +81,7 @@ def request_with_retry(
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    def run():
+    def run() -> requests.Response:
         timeout = kwargs.pop("timeout", 10)
         res = requests.request(**kwargs, timeout=timeout)
 

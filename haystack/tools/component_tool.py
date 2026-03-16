@@ -185,7 +185,7 @@ class ComponentTool(Tool):
         # Create the tools schema from the component run method parameters
         tool_schema = parameters or self._create_tool_parameters_schema(component, inputs_from_state or {})
 
-        def component_invoker(**kwargs):
+        def component_invoker(**kwargs: Any) -> dict[str, Any]:
             """
             Invokes the component using keyword arguments provided by the LLM function calling/tool-generated response.
 
@@ -202,7 +202,7 @@ class ComponentTool(Tool):
                 component_type=type(component),
                 converted_kwargs=converted_kwargs,
             )
-            return component.run(**converted_kwargs)
+            return dict(component.run(**converted_kwargs))
 
         # Generate a name for the tool if not provided
         if not name:
@@ -254,7 +254,7 @@ class ComponentTool(Tool):
         """
         return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Prepare the ComponentTool for use.
         """
