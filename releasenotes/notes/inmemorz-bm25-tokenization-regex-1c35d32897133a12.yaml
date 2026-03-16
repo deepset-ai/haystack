@@ -1,20 +1,7 @@
 ---
-upgrade:
-  - |
-    The default ``bm25_tokenization_regex`` for ``InMemoryDocumentStore`` changed from
-    ``r"(?u)\b\w\w+\b"`` (2+ character tokens) to ``r"(?u)\b\w+\b"`` (1+ character tokens).
-    This means single-character words (e.g., ``"a"``, ``"C"``) are now included in BM25 scoring,
-    which may slightly alter retrieval results. If you rely on the previous behavior, you can
-    restore it by explicitly passing the old regex:
-
-    .. code:: python
-      from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-      document_store = InMemoryDocumentStore(bm25_tokenization_regex=r"(?u)\b\w\w+\b")
-
 fixes:
   - |
-    Fixed the default BM25 tokenization regex in ``InMemoryDocumentStore`` to include
-    single-character tokens. The previous regex ``r"(?u)\b\w\w+\b"`` silently discarded
-    single-character words, which could hurt retrieval quality for queries or documents
-    where such tokens are meaningful.
+    The default ``bm25_tokenization_regex`` in ``InMemoryDocumentStore`` now uses ``r"(?u)\b\w+\b"``, including
+    single-character words (e.g., ``"a"``, ``"C"``) in BM25 scoring. Previously, the regex ``r"(?u)\b\w\w+\b"``
+    excluded these tokens. This change may slightly alter retrieval results. To restore the old behavior, explicitly
+    pass the previous regex when initializing the document store.
