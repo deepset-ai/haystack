@@ -131,7 +131,7 @@ class SentenceTransformersDiversityRanker:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         """
         Initialize a SentenceTransformersDiversityRanker.
 
@@ -194,7 +194,7 @@ class SentenceTransformersDiversityRanker:
         self.config_kwargs = config_kwargs
         self.backend = backend
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """

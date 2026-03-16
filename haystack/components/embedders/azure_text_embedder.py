@@ -52,7 +52,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         default_headers: dict[str, str] | None = None,
         azure_ad_token_provider: AzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an AzureOpenAITextEmbedder component.
 

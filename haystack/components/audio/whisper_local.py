@@ -54,7 +54,7 @@ class LocalWhisperTranscriber:
         model: WhisperLocalModel = "large",
         device: ComponentDevice | None = None,
         whisper_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of the LocalWhisperTranscriber component.
 
@@ -105,7 +105,9 @@ class LocalWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Transcribes a list of audio files into a list of documents.
 

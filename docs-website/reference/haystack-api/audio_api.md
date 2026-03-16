@@ -32,7 +32,7 @@ __init__(
     model: WhisperLocalModel = "large",
     device: ComponentDevice | None = None,
     whisper_params: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Creates an instance of the LocalWhisperTranscriber component.
@@ -87,7 +87,7 @@ Deserializes the component from a dictionary.
 run(
     sources: list[str | Path | ByteStream],
     whisper_params: dict[str, Any] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Transcribes a list of audio files into a list of documents.
@@ -101,7 +101,7 @@ Transcribes a list of audio files into a list of documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents where each document is a transcribed audio file. The content of
   the document is the transcription text, and the document's metadata contains the values returned by
   the Whisper model, such as the alignment data and the path to the audio file used
@@ -159,8 +159,8 @@ __init__(
     api_base_url: str | None = None,
     organization: str | None = None,
     http_client_kwargs: dict[str, Any] | None = None,
-    **kwargs: dict[str, Any] | None
-)
+    **kwargs: Any
+) -> None
 ```
 
 Creates an instance of the RemoteWhisperTranscriber component.
@@ -177,7 +177,7 @@ Creates an instance of the RemoteWhisperTranscriber component.
   OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio).
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
-- **kwargs** – Other optional parameters for the model. These are sent directly to the OpenAI
+- **kwargs** (<code>Any</code>) – Other optional parameters for the model. These are sent directly to the OpenAI
   endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/audio) for more details.
   Some of the supported parameters are:
 - `language`: The language of the input audio.
@@ -226,7 +226,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(sources: list[str | Path | ByteStream])
+run(sources: list[str | Path | ByteStream]) -> dict[str, Any]
 ```
 
 Transcribes the list of audio files into a list of documents.
@@ -237,6 +237,6 @@ Transcribes the list of audio files into a list of documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents, one document for each file.
   The content of each document is the transcribed text.

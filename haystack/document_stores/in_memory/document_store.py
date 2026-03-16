@@ -63,14 +63,14 @@ class InMemoryDocumentStore:
 
     def __init__(
         self,
-        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
+        bm25_tokenization_regex: str = r"(?u)\b\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
         bm25_parameters: dict | None = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
         index: str | None = None,
         async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
-    ):
+    ) -> None:
         """
         Initializes the DocumentStore.
 
@@ -123,14 +123,14 @@ class InMemoryDocumentStore:
         )
         self.return_embedding = return_embedding
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Cleanup when the instance is being destroyed.
         """
         if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
             self.executor.shutdown(wait=True)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """
         Explicitly shutdown the executor if we own it.
         """
@@ -737,7 +737,7 @@ class InMemoryDocumentStore:
         :param filters: The filters to apply to the document list.
         :returns: A list of Documents that match the given filters.
         """
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.filter_documents(filters=filters)
         )
 
@@ -749,7 +749,7 @@ class InMemoryDocumentStore:
 
         If `policy` is set to `DuplicatePolicy.NONE` defaults to `DuplicatePolicy.FAIL`.
         """
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.write_documents(documents=documents, policy=policy)
         )
 
@@ -759,7 +759,7 @@ class InMemoryDocumentStore:
 
         :param document_ids: The object_ids to delete.
         """
-        await asyncio.get_event_loop().run_in_executor(
+        await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
         )
 
@@ -775,7 +775,7 @@ class InMemoryDocumentStore:
         :param scale_score: Whether to scale the scores of the retrieved documents. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
         """
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             self.executor,
             lambda: self.bm25_retrieval(query=query, filters=filters, top_k=top_k, scale_score=scale_score),
         )
@@ -798,7 +798,7 @@ class InMemoryDocumentStore:
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
         """
-        return await asyncio.get_event_loop().run_in_executor(
+        return await asyncio.get_running_loop().run_in_executor(
             self.executor,
             lambda: self.embedding_retrieval(
                 query_embedding=query_embedding,

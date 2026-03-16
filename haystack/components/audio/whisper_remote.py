@@ -43,8 +43,8 @@ class RemoteWhisperTranscriber:
         api_base_url: str | None = None,
         organization: str | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         """
         Creates an instance of the RemoteWhisperTranscriber component.
 
@@ -135,7 +135,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream]):
+    def run(self, sources: list[str | Path | ByteStream]) -> dict[str, Any]:
         """
         Transcribes the list of audio files into a list of documents.
 

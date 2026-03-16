@@ -125,7 +125,7 @@ class ConditionalRouter:
         unsafe: bool = False,
         validate_output_type: bool = False,
         optional_variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -249,7 +249,7 @@ class ConditionalRouter:
             component.set_input_type(self, name=optional_var_name, type=Any, default=None)
 
         # set output types
-        component.set_output_types(self, **output_types)
+        component.set_output_types(self, **output_types)  # type: ignore[arg-type]
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -303,7 +303,7 @@ class ConditionalRouter:
                 init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Executes the routing logic.
 

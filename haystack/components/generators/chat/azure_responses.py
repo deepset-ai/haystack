@@ -103,7 +103,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         tools: ToolsType | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the AzureOpenAIResponsesChatGenerator component.
 

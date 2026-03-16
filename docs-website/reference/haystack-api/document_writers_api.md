@@ -32,7 +32,7 @@ writer.run(docs)
 __init__(
     document_store: DocumentStore,
     policy: DuplicatePolicy = DuplicatePolicy.NONE,
-)
+) -> None
 ```
 
 Create a DocumentWriter component.

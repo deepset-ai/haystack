@@ -74,7 +74,7 @@ class TestSentenceWindowRetriever:
                     "init_parameters": {
                         "bm25_algorithm": "BM25L",
                         "bm25_parameters": {},
-                        "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                        "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
                         "embedding_similarity_function": "dot_product",
                         "index": ANY,
                         "return_embedding": True,

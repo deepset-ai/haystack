@@ -99,7 +99,7 @@ class JsonSchemaValidator:
         "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
-    def __init__(self, json_schema: dict[str, Any] | None = None, error_template: str | None = None):
+    def __init__(self, json_schema: dict[str, Any] | None = None, error_template: str | None = None) -> None:
         """
         Initialize the JsonSchemaValidator component.
 

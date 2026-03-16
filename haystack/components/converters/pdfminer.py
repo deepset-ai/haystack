@@ -156,7 +156,9 @@ class PDFMinerToDocument:
         return {"total_chars": total_chars, "cid_chars": cid_chars, "percentage": round(percentage, 2)}
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Converts PDF files to Documents.
 
