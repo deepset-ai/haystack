@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The default ``bm25_tokenization_regex`` in ``InMemoryDocumentStore`` now uses ``r"(?u)\b\w+\b"``, including
+    single-character words (e.g., ``"a"``, ``"C"``) in BM25 scoring. Previously, the regex ``r"(?u)\b\w\w+\b"``
+    excluded these tokens. This change may slightly alter retrieval results. To restore the old behavior, explicitly
+    pass the previous regex when initializing the document store.

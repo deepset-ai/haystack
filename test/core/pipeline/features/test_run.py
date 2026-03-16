@@ -2473,7 +2473,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                 content="some text about investigation and treatment of Alzheimer disease",
                                 meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
                                 id="doc2",
-                                score=3.324112496100923,
+                                score=4.046232292105687,
                             )
                         ]
                     }
@@ -2487,7 +2487,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                     id="doc2",
                                     content="some text about investigation and treatment of Alzheimer disease",
                                     meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
-                                    score=3.324112496100923,
+                                    score=4.046232292105687,
                                 )
                             ]
                         ],
