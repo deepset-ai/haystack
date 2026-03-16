@@ -62,6 +62,26 @@ generator = AnthropicChatGenerator()
 result = generator.run(messages)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-5-20250929",
+    "claude-opus-4-5-20251101",
+    "claude-opus-4-1-20250805",
+    "claude-sonnet-4-20250514",
+    "claude-opus-4-20250514",
+    "claude-3-haiku-20240307",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component. See
+https://platform.claude.com/docs/en/about-claude/models/overview for the full list.
+
 #### __init__
 
 ```python
@@ -203,9 +223,8 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 
 Bases: <code>AnthropicChatGenerator</code>
 
-Enables text generation using state-of-the-art Claude 3 LLMs via the Anthropic Vertex AI API.
-It supports models such as `Claude 3.5 Sonnet`, `Claude 3 Opus`, `Claude 3 Sonnet`, and `Claude 3 Haiku`,
-accessible through the Vertex AI API endpoint.
+Enables text generation using Anthropic's Claude models via the Anthropic Vertex AI API.
+A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through the Vertex AI API endpoint.
 
 To use AnthropicVertexChatGenerator, you must have a GCP project with Vertex AI enabled.
 Additionally, ensure that the desired Anthropic model is activated in the Vertex AI Model Garden.
@@ -242,6 +261,28 @@ print(response)
 
 For more details on supported models and their capabilities, refer to the Anthropic
 [documentation](https://docs.anthropic.com/claude/docs/intro-to-claude).
+
+For a list of available model IDs when using Claude on Vertex AI, see
+[Claude on Vertex AI - model availability](https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-availability).
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-sonnet-4-5@20250929",
+    "claude-sonnet-4@20250514",
+    "claude-opus-4-5@20251101",
+    "claude-opus-4-1@20250805",
+    "claude-opus-4@20250514",
+    "claude-haiku-4-5@20251001",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component. See
+https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#model-availability for the full list.
 
 #### __init__
 

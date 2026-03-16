@@ -55,7 +55,6 @@ git push -u origin HEAD
 - [Working with Templates](#working-with-templates)
 - [Testing](#testing)
   - [Build Testing](#build-testing)
-  - [Prose and Style Linting with Vale](#prose-and-style-linting-with-vale)
 - [API Reference Contributions](#api-reference-contributions)
 - [Understanding Documentation Versions and Where to Make Changes](#understanding-documentation-versions-and-where-to-make-changes)
 - [Preview Deployments](#preview-deployments)
@@ -63,7 +62,6 @@ git push -u origin HEAD
   - [Blank Page on npm start](#blank-page-on-npm-start)
   - [Cache Issues](#cache-issues)
   - [Build Errors](#build-errors)
-  - [Vale Errors](#vale-errors)
 - [Moving or Removing Pages](#moving-or-removing-pages)
 - [Images and Assets](#images-and-assets)
 - [Pull Request Process](#pull-request-process)
@@ -222,36 +220,6 @@ This command:
 
 **Fix all warnings before submitting your PR.** For minor changes like typo fixes, you may skip the local build and rely on CI feedback, but for substantial changes (new pages, restructuring, multiple edits), a local build helps catch issues early and saves CI time.
 
-### Prose and Style Linting with Vale
-
-Vale is a prose linter that checks documentation for style consistency. It runs automatically in CI on all pull requests - you don't need to run it locally.
-
-**CI behavior:**
-
-- Runs automatically on all PRs and pushes to `main`
-- Creates GitHub PR review comments on issues
-- Does not fail the build
-- Shows errors, warnings, and suggestions as annotations
-
-**Common Vale rules:**
-
-- Google.FirstPerson (avoid "I", "we")
-- Google.Passive (prefer active voice)
-- Google.WordList (use recommended terminology)
-- MyStyle.Branding (capitalize product names correctly)
-- MyStyle.WeakWords (avoid "just", "simply", and similar words)
-
-**Running Vale locally (optional):**
-
-If you want to check your prose before pushing, you can run Vale locally:
-
-1. Install Vale CLI: https://vale.sh/docs/vale-cli/installation/
-2. Navigate to the `docs-website/` directory
-3. Download Vale styles: `vale sync`
-4. Run Vale: `vale --config .vale.ini "docs/**/*.{md,mdx}"`
-
-The GitHub Action will provide the final validation on your PR, so running Vale locally is completely optional.
-
 ## API Reference Contributions
 
 The API reference documentation is automatically generated from Python docstrings in the main Haystack codebase.
@@ -358,10 +326,6 @@ This removes:
 - Check that images exist in `static/img/` or local `assets/` directories
 - Use relative paths from the markdown file location
 
-### Vale Errors
-
-If you see Vale-related errors when running locally, ensure you've run `vale sync` from the `docs-website/` directory to download the required style packages. The Vale GitHub Action in CI automatically handles this, so local setup issues won't affect your PR validation.
-
 ## Moving or Removing Pages
 
 **Moving a page:**
@@ -443,7 +407,6 @@ Before submitting your PR, verify:
 - [ ] Images optimized and include alt text
 - [ ] Local build passes (`npm run build`) - recommended for substantial changes
 - [ ] Vercel preview deployment succeeds (fix any deployment errors)
-- [ ] Vale checks pass or issues are addressed
 - [ ] Conventional commit message format used in PR title
 - [ ] PR description includes context and related issues
 
@@ -469,7 +432,7 @@ Include:
 ## Review Process
 
 1. Open a PR from your branch to `main`
-2. Automated checks will run (Vale linting, build validation)
+2. Automated checks will run (build validation)
 3. Maintainers will review your changes
 4. Address any requested changes
 5. Once approved and checks pass, a maintainer will merge
@@ -501,7 +464,6 @@ Ensure your documentation is accessible to all users:
 
 **Style or writing questions:**
 - Refer to the [Google Developer Documentation Style Guide](https://developers.google.com/style)
-- Check Vale output for specific style issues
 - Ask maintainers for clarification in your PR
 
 Thank you for contributing to Haystack documentation! Your efforts help make Haystack more accessible and easier to use for everyone.
