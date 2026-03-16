@@ -2167,7 +2167,7 @@ class TestValidateInput:
         with pytest.raises(
             ValueError,
             match="Component 'comp2' cannot accept multiple inputs to 'input_'. "
-            "It is already connected to component 'comp1', and it can only can only accept inputs from multiple "
+            "It is already connected to component 'comp1', and it can only accept inputs from multiple "
             r"senders if its type is list, Optional\[list\], or union of list types.",
         ):
             pipe.validate_input(data={"comp1": {"input_": "test"}, "comp2": {"input_": "extra_input"}})
