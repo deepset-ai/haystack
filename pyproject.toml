@@ -38,6 +38,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
@@ -168,7 +169,7 @@ types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:h
 template = "test"
 extra-dependencies = [
   # NamedEntityExtractor
-  "spacy>=3.8,<3.9",
+  "spacy>=3.8,<3.9; python_version < '3.14'",
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
 ]
 
