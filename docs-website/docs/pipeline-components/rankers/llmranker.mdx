@@ -27,7 +27,7 @@ Ranks documents for a query using a Large Language Model (LLM). The LLM is promp
 
 Before ranking, duplicate documents are removed. You can set `top_k` to limit how many documents are returned. If generation or parsing fails, the ranker either raises (when `raise_on_failure=True`) or returns the input documents in their original order (when `raise_on_failure=False`, the default).
 
-You can pass any Haystack `ChatGenerator` that supports structured JSON output. If you omit `chat_generator`, a default `OpenAIChatGenerator` (e.g. `gpt-4.1-mini`) with JSON schema for the ranking response is used. You need to provide an OPENAI_API_KEY for this Chat Generator. You can also provide a custom `prompt` template. It must include exactly the variables `query` and `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
+You can pass any Haystack `ChatGenerator` that supports structured JSON output. If you omit `chat_generator`, a default `OpenAIChatGenerator` (e.g. `gpt-4.1-mini`) with JSON schema for the ranking response is used. You need to provide an OPENAI_API_KEY for this `ChatGenerator`. You can also provide a custom `prompt` template. It must include exactly the variables `query` and `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
 
 ## Usage
 
