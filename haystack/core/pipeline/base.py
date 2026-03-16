@@ -1675,10 +1675,10 @@ def _validate_component_output_keys(
     """
     Validate that the output keys returned by a component match its declared output types.
 
-    Logs a warning for any mismatch between the actual output keys and the declared output sockets.
-    This helps catch bugs where a component returns wrong keys, which would otherwise cause
-    downstream components to wait forever for expected data, resulting in a confusing
-    "Pipeline Blocked" error that points to the wrong component.
+    Logs a warning for any actually returned output key(s) that was not declared as an output socket(s).
+    This helps catch bugs where a component returns wrong keys, which would otherwise cause downstream components to
+    wait forever for expected data, resulting in a confusing "Pipeline Blocked" error that points to an unexpected
+    component.
 
     :param component_name: Name of the Component as registered in the Pipeline.
     :param comp: The component metadata dictionary containing the component instance and its input/output socket
