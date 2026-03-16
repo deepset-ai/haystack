@@ -1,7 +1,0 @@
----
-fixes:
-  - |
-    Fixed an off-by-one error in `InMemoryDocumentStore.write_documents` that caused the BM25
-    average document length (`_avg_doc_len`) to be systematically underestimated. This affected
-    BM25 retrieval scoring accuracy for all three algorithms (BM25L, BM25Okapi, BM25Plus) by
-    inflating the length normalization term, over-penalizing longer documents relative to shorter ones.
