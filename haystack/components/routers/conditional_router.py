@@ -475,6 +475,8 @@ class ConditionalRouter:
 
         # Handle Sequence types (List, Tuple, etc)
         if isinstance(origin, type) and issubclass(origin, Sequence):
+            if isinstance(value, (str, bytes)):
+                return False
             if not isinstance(value, Sequence):
                 return False
             # Empty sequence is valid
@@ -482,10 +484,6 @@ class ConditionalRouter:
                 return True
             # Check each element against the sequence's type parameter
             return all(self._output_matches_type(item, args[0]) for item in value)
-
-        # Handle basic types (int, str, etc)
-        if origin is None:
-            return isinstance(value, expected_type)
 
         # Handle Mapping types (Dict, etc)
         if isinstance(origin, type) and issubclass(origin, Mapping):

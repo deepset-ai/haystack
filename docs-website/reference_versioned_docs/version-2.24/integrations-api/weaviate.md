@@ -271,7 +271,7 @@ __init__(
     document_store: WeaviateDocumentStore,
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
-    alpha: float | None = None,
+    alpha: float = 0.7,
     max_vector_distance: float | None = None,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
 )
@@ -284,7 +284,7 @@ Creates a new instance of WeaviateHybridRetriever.
 - **document_store** (<code>WeaviateDocumentStore</code>) – Instance of WeaviateDocumentStore that will be used from this retriever.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Custom filters applied when running the retriever.
 - **top_k** (<code>int</code>) – Maximum number of documents to return.
-- **alpha** (<code>float | None</code>) – Blending factor for hybrid retrieval in Weaviate. Must be in the range `[0.0, 1.0]`.
+- **alpha** (<code>float</code>) – Blending factor for hybrid retrieval in Weaviate. Must be in the range `[0.0, 1.0]`.
 
 Weaviate hybrid search combines keyword (BM25) and vector scores into a single ranking. `alpha` controls
 how much each part contributes to the final score:
@@ -293,7 +293,7 @@ how much each part contributes to the final score:
 - `alpha = 1.0`: only vector similarity scoring is used.
 - Values in between blend the two; higher values favor the vector score, lower values favor BM25.
 
-If `None`, the Weaviate server default is used.
+By default, 0.7 is used which is the Weaviate server default.
 
 See the official Weaviate docs on Hybrid Search parameters for more details:
 
@@ -575,7 +575,7 @@ __init__(
     additional_config: AdditionalConfig | None = None,
     grpc_port: int = 50051,
     grpc_secure: bool = False
-)
+) -> None
 ```
 
 Create a new instance of WeaviateDocumentStore and connects to the Weaviate instance.
@@ -667,6 +667,14 @@ count_documents() -> int
 ```
 
 Returns the number of documents present in the DocumentStore.
+
+#### count_documents_async
+
+```python
+count_documents_async() -> int
+```
+
+Asynchronously returns the number of documents present in the DocumentStore.
 
 #### count_documents_by_filter
 
@@ -935,6 +943,29 @@ building the filter.
 
 - <code>list\[Document\]</code> – A list of Documents that match the given filters.
 
+#### filter_documents_async
+
+```python
+filter_documents_async(filters: dict[str, Any] | None = None) -> list[Document]
+```
+
+Asynchronously returns the documents that match the filters provided.
+
+For a detailed specification of the filters, refer to the
+DocumentStore.filter_documents() protocol documentation.
+
+Note: The `contains` filter operator is case-sensitive (substring
+matching). For case-insensitive matching, normalize the value before
+building the filter.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\] | None</code>) – The filters to apply to the document list.
+
+**Returns:**
+
+- <code>list\[Document\]</code> – A list of Documents that match the given filters.
+
 #### write_documents
 
 ```python
@@ -950,6 +981,51 @@ We can't use the batch API for other policies as it doesn't return any informati
 already exists or not. That prevents us from returning errors when using the FAIL policy or skipping a
 Document when using the SKIP policy.
 
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of documents to write into the document store.
+- **policy** (<code>DuplicatePolicy</code>) – DuplicatePolicy to apply when a document with the same ID already exists in the document store.
+
+**Returns:**
+
+- <code>int</code> – The number of documents written.
+
+**Raises:**
+
+- <code>ValueError</code> – When input is not valid.
+- <code>DuplicateDocumentError</code> – When duplicate documents are found and using a FAIL policy.
+- <code>DocumentStoreError</code> – When documents have failed to be batch written.
+
+#### write_documents_async
+
+```python
+write_documents_async(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
+) -> int
+```
+
+Asynchronously writes documents to Weaviate using the specified policy.
+We recommend using a OVERWRITE policy as it's faster than other policies for Weaviate since it uses
+the batch API.
+We can't use the batch API for other policies as it doesn't return any information whether the document
+already exists or not. That prevents us from returning errors when using the FAIL policy or skipping a
+Document when using the SKIP policy.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of documents to write into the document store.
+- **policy** (<code>DuplicatePolicy</code>) – DuplicatePolicy to apply when a document with the same ID already exists in the document store.
+
+**Returns:**
+
+- <code>int</code> – The number of documents written.
+
+**Raises:**
+
+- <code>ValueError</code> – When input is not valid.
+- <code>DuplicateDocumentError</code> – When duplicate documents are found and using a FAIL policy.
+- <code>DocumentStoreError</code> – When documents have failed to be batch written.
+
 #### delete_documents
 
 ```python
@@ -957,6 +1033,18 @@ delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes all documents with matching document_ids from the DocumentStore.
+
+**Parameters:**
+
+- **document_ids** (<code>list\[str\]</code>) – The object_ids to delete.
+
+#### delete_documents_async
+
+```python
+delete_documents_async(document_ids: list[str]) -> None
+```
+
+Asynchronously deletes all documents with matching document_ids from the DocumentStore.
 
 **Parameters:**
 
@@ -971,6 +1059,28 @@ delete_all_documents(
 ```
 
 Deletes all documents in a collection.
+
+If recreate_index is False, it keeps the collection but deletes documents iteratively.
+If recreate_index is True, the collection is dropped and faithfully recreated.
+This is recommended for performance reasons.
+
+**Parameters:**
+
+- **recreate_index** (<code>bool</code>) – Use drop and recreate strategy. (recommended for performance)
+- **batch_size** (<code>int</code>) – Only relevant if recreate_index is false. Defines the deletion batch size.
+  Note that this parameter needs to be less or equal to the set `QUERY_MAXIMUM_RESULTS` variable
+  set for the weaviate deployment (default is 10000).
+  Reference: https://docs.weaviate.io/weaviate/manage-objects/delete#delete-all-objects
+
+#### delete_all_documents_async
+
+```python
+delete_all_documents_async(
+    *, recreate_index: bool = False, batch_size: int = 1000
+) -> None
+```
+
+Asynchronously deletes all documents in a collection.
 
 If recreate_index is False, it keeps the collection but deletes documents iteratively.
 If recreate_index is True, the collection is dropped and faithfully recreated.

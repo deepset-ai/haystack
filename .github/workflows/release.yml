@@ -141,7 +141,7 @@ jobs:
         run: .github/utils/prepare_release_notification.sh
 
       - name: Send release notification to Slack
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@v3
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
           webhook-type: incoming-webhook

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added gpt-5.4 to OpenAIChatGenerator's list of supported models.

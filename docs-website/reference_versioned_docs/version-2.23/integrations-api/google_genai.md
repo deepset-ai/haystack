@@ -99,7 +99,7 @@ Creates an GoogleGenAIDocumentEmbedder component.
 - **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
   Required when using Vertex AI with Application Default Credentials.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
-  The default model is `text-embedding-ada-002`.
+  The default model is `gemini-embedding-001`.
 - **prefix** (<code>str</code>) – A string to add at the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
 - **batch_size** (<code>int</code>) – Number of documents to embed at once.
@@ -137,6 +137,158 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>GoogleGenAIDocumentEmbedder</code> – Deserialized component.
+
+#### run
+
+```python
+run(documents: list[Document]) -> dict[str, list[Document]] | dict[str, Any]
+```
+
+Embeds a list of documents.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
+- `documents`: A list of documents with embeddings.
+- `meta`: Information about the usage of the model.
+
+#### run_async
+
+```python
+run_async(
+    documents: list[Document],
+) -> dict[str, list[Document]] | dict[str, Any]
+```
+
+Embeds a list of documents asynchronously.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
+- `documents`: A list of documents with embeddings.
+- `meta`: Information about the usage of the model.
+
+## haystack_integrations.components.embedders.google_genai.multimodal_document_embedder
+
+### GoogleGenAIMultimodalDocumentEmbedder
+
+Computes non-textual document embeddings using Google AI models.
+
+It supports images, PDFs, video and audio files. They are mapped to vectors in a single vector space.
+
+To embed textual documents, use the GoogleGenAIDocumentEmbedder.
+To embed a string, like a user query, use the GoogleGenAITextEmbedder.
+
+### Authentication examples
+
+**1. Gemini Developer API (API Key Authentication)**
+
+````python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIMultimodalDocumentEmbedder
+
+# export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+document_embedder = GoogleGenAIMultimodalDocumentEmbedder(model="gemini-embedding-2-preview")
+
+**2. Vertex AI (Application Default Credentials)**
+```python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIMultimodalDocumentEmbedder
+
+# Using Application Default Credentials (requires gcloud auth setup)
+document_embedder = GoogleGenAIMultimodalDocumentEmbedder(
+    api="vertex",
+    vertex_ai_project="my-project",
+    vertex_ai_location="us-central1",
+    model="gemini-embedding-2-preview"
+)
+````
+
+**3. Vertex AI (API Key Authentication)**
+
+```python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIMultimodalDocumentEmbedder
+
+# export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+document_embedder = GoogleGenAIMultimodalDocumentEmbedder(
+    api="vertex",
+    model="gemini-embedding-2-preview"
+)
+```
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIMultimodalDocumentEmbedder
+
+doc = Document(content=None, meta={"file_path": "path/to/image.jpg"})
+
+document_embedder = GoogleGenAIMultimodalDocumentEmbedder()
+
+result = document_embedder.run([doc])
+print(result['documents'][0].embedding)
+
+# [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    api_key: Secret = Secret.from_env_var(
+        ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False
+    ),
+    api: Literal["gemini", "vertex"] = "gemini",
+    vertex_ai_project: str | None = None,
+    vertex_ai_location: str | None = None,
+    file_path_meta_field: str = "file_path",
+    root_path: str | None = None,
+    image_size: tuple[int, int] | None = None,
+    model: str = "gemini-embedding-2-preview",
+    batch_size: int = 6,
+    progress_bar: bool = True,
+    config: dict[str, Any] | None = None
+) -> None
+```
+
+Creates an GoogleGenAIMultimodalDocumentEmbedder component.
+
+**Parameters:**
+
+- **api_key** (<code>Secret</code>) – Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment variables.
+  Not needed if using Vertex AI with Application Default Credentials.
+  Go to https://aistudio.google.com/app/apikey for a Gemini API key.
+  Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a Vertex AI API key.
+- **api** (<code>Literal['gemini', 'vertex']</code>) – Which API to use. Either "gemini" for the Gemini Developer API or "vertex" for Vertex AI.
+- **vertex_ai_project** (<code>str | None</code>) – Google Cloud project ID for Vertex AI. Required when using Vertex AI with
+  Application Default Credentials.
+- **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
+  Required when using Vertex AI with Application Default Credentials.
+- **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the file to embed.
+- **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
+  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+- **image_size** (<code>tuple\[int, int\] | None</code>) – Only used for images and PDF pages. If provided, resizes the image to fit within the specified dimensions
+  (width, height) while maintaining aspect ratio. This reduces file size, memory usage, and processing time,
+  which is beneficial when working with models that have resolution constraints or when transmitting images
+  to remote services.
+- **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
+- **batch_size** (<code>int</code>) – Number of documents to embed at once. Maximum batch size varies depending on the input type.
+  See [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#supported-modalities) for
+  more information.
+- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
+  You can for example set the output dimensionality of the embedding: `{"output_dimensionality": 768}`.
+  It also allows customizing the task type. If the task type is not specified, it defaults to
+  `{"task_type": "RETRIEVAL_DOCUMENT"}`.
+  For more information, see the [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 
 #### run
 
@@ -455,6 +607,28 @@ messages = [ChatMessage.from_user("What's the weather in Paris?")]
 response = chat_generator_with_tools.run(messages=messages)
 ```
 
+### Usage example with structured output
+
+```python
+from pydantic import BaseModel
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+
+class City(BaseModel):
+    name: str
+    country: str
+    population: int
+
+chat_generator = GoogleGenAIChatGenerator(
+    model="gemini-2.5-flash",
+    generation_kwargs={"response_format": City}
+)
+
+messages = [ChatMessage.from_user("Tell me about Paris")]
+response = chat_generator.run(messages=messages)
+print(response["replies"][0].text)  # JSON output matching the City schema
+```
+
 ### Usage example with FileContent embedded in a ChatMessage
 
 ```python
@@ -466,6 +640,24 @@ chat_message = ChatMessage.from_user(content_parts=[file_content, "Summarize thi
 chat_generator = GoogleGenAIChatGenerator()
 response = chat_generator.run(messages=[chat_message])
 ```
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+
+See https://ai.google.dev/gemini-api/docs/models for the full list of models and up-to-date model IDs.
 
 #### __init__
 
@@ -482,7 +674,9 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
-    tools: ToolsType | None = None
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 )
 ```
 
@@ -519,6 +713,10 @@ Initialize a GoogleGenAIChatGenerator instance.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
+- **timeout** (<code>float | None</code>) – Timeout for Google GenAI client calls. If not set, it defaults to the default set by the Google GenAI
+  client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
+  the Google GenAI client.
 
 #### to_dict
 

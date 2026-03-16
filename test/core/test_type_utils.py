@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
@@ -363,34 +364,10 @@ asymmetric_cases = generate_strict_asymmetric_cases()
         pytest.param(str, "str", id="primitive-types"),
         pytest.param(Any, "Any", id="any"),
         pytest.param(Class1, "Class1", id="class"),
-        pytest.param((Optional[int]), "Optional[int]", id="shallow-optional-with-primitive"),
-        pytest.param((Optional[Any]), "Optional[Any]", id="shallow-optional-with-any"),
-        pytest.param((Optional[Class1]), "Optional[Class1]", id="shallow-optional-with-class"),
-        pytest.param((Union[(bool, Class1)]), "Union[bool, Class1]", id="shallow-union"),
         pytest.param((List[str]), "List[str]", id="shallow-sequence-of-primitives"),
         pytest.param((list[str]), "list[str]", id="shallow-sequence-of-primitives"),
         pytest.param((List[Set[Sequence[str]]]), "List[Set[Sequence[str]]]", id="nested-sequence-of-primitives"),
         pytest.param((list[set[Sequence[str]]]), "list[set[Sequence[str]]]", id="nested-sequence-of-primitives"),
-        pytest.param(
-            (Optional[List[Set[Sequence[str]]]]),
-            "Optional[List[Set[Sequence[str]]]]",
-            id="optional-nested-sequence-of-primitives",
-        ),
-        pytest.param(
-            (Optional[list[set[Sequence[str]]]]),
-            "Optional[list[set[Sequence[str]]]]",
-            id="optional-nested-sequence-of-primitives",
-        ),
-        pytest.param(
-            (List[Set[Sequence[Optional[str]]]]),
-            "List[Set[Sequence[Optional[str]]]]",
-            id="nested-optional-sequence-of-primitives",
-        ),
-        pytest.param(
-            (list[set[Sequence[Optional[str]]]]),
-            "list[set[Sequence[Optional[str]]]]",
-            id="nested-optional-sequence-of-primitives",
-        ),
         pytest.param((List[Class1]), "List[Class1]", id="shallow-sequence-of-classes"),
         pytest.param((list[Class1]), "list[Class1]", id="shallow-sequence-of-classes"),
         pytest.param((List[Set[Sequence[Class1]]]), "List[Set[Sequence[Class1]]]", id="nested-sequence-of-classes"),
@@ -432,16 +409,6 @@ asymmetric_cases = generate_strict_asymmetric_cases()
         pytest.param((Literal["a", "b", "c"]), "Literal['a', 'b', 'c']", id="string-literal"),
         pytest.param((Literal[1, 2, 3]), "Literal[1, 2, 3]", id="primitive-literal"),
         pytest.param((Literal[Enum1.TEST1]), "Literal[Enum1.TEST1]", id="enum-literal"),
-        pytest.param(
-            (Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])]),
-            "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, Class1]]]",
-            id="deeply-nested-complex-type",
-        ),
-        pytest.param(
-            (tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, dict[(int, Class1)])])]),
-            "tuple[Optional[Literal['a', 'b', 'c']], Union[Path, dict[int, Class1]]]",
-            id="deeply-nested-complex-type",
-        ),
         pytest.param((int | str), "int | str", id="pep604-union"),
         pytest.param((int | None), "int | None", id="pep604-optional"),
         pytest.param((list[int] | None), "list[int] | None", id="pep604-optional-list"),
@@ -453,6 +420,52 @@ asymmetric_cases = generate_strict_asymmetric_cases()
 )
 def test_type_name(type_, repr_):
     assert _type_name(type_) == repr_
+
+
+if sys.version_info < (3, 14):
+
+    @pytest.mark.parametrize(
+        "type_,repr_",
+        [
+            pytest.param((Union[(bool, Class1)]), "Union[bool, Class1]", id="shallow-union"),
+            pytest.param((Optional[int]), "Optional[int]", id="shallow-optional-with-primitive"),
+            pytest.param((Optional[Any]), "Optional[Any]", id="shallow-optional-with-any"),
+            pytest.param((Optional[Class1]), "Optional[Class1]", id="shallow-optional-with-class"),
+            pytest.param(
+                (Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])]),
+                "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, Class1]]]",
+                id="deeply-nested-complex-type",
+            ),
+            pytest.param(
+                (tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, dict[(int, Class1)])])]),
+                "tuple[Optional[Literal['a', 'b', 'c']], Union[Path, dict[int, Class1]]]",
+                id="deeply-nested-complex-type",
+            ),
+            pytest.param(
+                (Optional[List[Set[Sequence[str]]]]),
+                "Optional[List[Set[Sequence[str]]]]",
+                id="optional-nested-sequence-of-primitives",
+            ),
+            pytest.param(
+                (Optional[list[set[Sequence[str]]]]),
+                "Optional[list[set[Sequence[str]]]]",
+                id="optional-nested-sequence-of-primitives",
+            ),
+            pytest.param(
+                (List[Set[Sequence[Optional[str]]]]),
+                "List[Set[Sequence[Optional[str]]]]",
+                id="nested-optional-sequence-of-primitives",
+            ),
+            pytest.param(
+                (list[set[Sequence[Optional[str]]]]),
+                "list[set[Sequence[Optional[str]]]]",
+                id="nested-optional-sequence-of-primitives",
+            ),
+        ],
+    )
+    def test_type_name_union_and_optional(type_, repr_):
+        """Tests for old typing.Union and typing.Optional types that are converted to builtins in python 3.14+."""
+        assert _type_name(type_) == repr_
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases)
@@ -842,20 +855,21 @@ asymmetric_cases_pep_604 = generate_strict_asymmetric_cases_pep_604()
             "list[set[Sequence[str]]] | None",
             id="optional-nested-sequence-of-primitives",
         ),
-        pytest.param(
-            (list[set[Sequence[str | None]]]),
-            "list[set[Sequence[Optional[str]]]]",
-            id="nested-optional-sequence-of-primitives",
-        ),
-        pytest.param(
-            (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
-            "tuple[Optional[Literal['a', 'b', 'c']], Path | dict[int, Class1]]",
-            id="deeply-nested-complex-type",
-        ),
     ],
 )
 def test_type_name_pep_604(type_, repr_):
     assert _type_name(type_) == repr_
+
+
+def test_type_name_pep_604_explicit():
+    """Sometimes the internal str | None can be treated as an Optional instead of a UnionType"""
+    type_name = _type_name(list[set[Sequence[str | None]]])
+    assert type_name == "list[set[Sequence[str | None]]]" or type_name == "list[set[Sequence[Optional[str]]]]"
+    type_name = _type_name(tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]])
+    assert (
+        type_name == "tuple[Literal['a', 'b', 'c'] | None, Path | dict[int, Class1]]"
+        or type_name == "tuple[Optional[Literal['a', 'b', 'c']], Path | dict[int, Class1]]"
+    )
 
 
 @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases_pep_604)
