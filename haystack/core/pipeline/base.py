@@ -1678,7 +1678,47 @@ def _connections_status(
     return f"'{sender_node}':\n{sender_sockets_list}\n'{receiver_node}':\n{receiver_sockets_list}"
 
 
-# Utility functions for writing to sockets
+# Utility functions
+
+
+def _validate_component_output_keys(
+    component_name: str, comp: dict[str, Any], component_output: Mapping[str, Any]
+) -> None:
+    """
+    Validate that the output keys returned by a component match its declared output types.
+
+    Logs a warning for any actually returned output key(s) that was not declared as an output socket(s).
+    This helps catch bugs where a component returns wrong keys, which would otherwise cause downstream components to
+    wait forever for expected data, resulting in a confusing "Pipeline Blocked" error that points to an unexpected
+    component.
+
+    :param component_name: Name of the Component as registered in the Pipeline.
+    :param comp: The component metadata dictionary containing the component instance and its input/output socket
+        metadata.
+    :param component_output: The actual output dictionary returned by the component's run method.
+    """
+    output_sockets = comp.get("output_sockets", {})
+    if not output_sockets:
+        return
+
+    declared_keys = set(output_sockets.keys())
+    actual_keys = set(component_output.keys())
+
+    extra_keys = actual_keys - declared_keys
+
+    instance = comp["instance"]
+    component_type = instance.__class__.__name__
+
+    if extra_keys:
+        logger.warning(
+            "Component '{component_name}' (type: {component_type}) returned output keys {extra_keys} "
+            "that are not declared in its output types. "
+            "These keys will be ignored and not passed to downstream components. "
+            "Make sure the component's output keys match its declared @component.output_types.",
+            component_name=component_name,
+            component_type=component_type,
+            extra_keys=extra_keys,
+        )
 
 
 def _write_to_lazy_variadic_socket(

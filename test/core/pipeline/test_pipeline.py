@@ -178,6 +178,51 @@ class TestPipeline:
         assert "empty_processor" in result
         assert result["empty_processor"] == {}
 
+    def test__run_component_warns_on_extra_output_keys(self, caplog):
+        """Test that a warning is raised when a component returns undeclared output keys."""
+        caplog.set_level(logging.WARNING)
+
+        @component
+        class ExtraKeyComponent:
+            @component.output_types(output=str)
+            def run(self, value: str) -> dict[str, str]:
+                return {"output": value, "extra_key": "unexpected"}
+
+        pp = Pipeline()
+        pp.add_component("extra", ExtraKeyComponent())
+
+        pp._run_component(
+            component_name="extra",
+            component=pp._get_component_with_graph_metadata_and_visits("extra", 0),
+            inputs={"value": "test"},
+            component_visits={"extra": 0},
+        )
+        assert "returned output keys" in caplog.text
+        assert "extra_key" in caplog.text
+        assert "not declared" in caplog.text
+
+    def test__run_component_no_warning_on_correct_output_keys(self, caplog):
+        """Test that no warning is raised when a component returns the correct output keys."""
+        caplog.set_level(logging.WARNING)
+
+        @component
+        class CorrectComponent:
+            @component.output_types(output=str)
+            def run(self, value: str) -> dict[str, str]:
+                return {"output": value}
+
+        pp = Pipeline()
+        pp.add_component("correct", CorrectComponent())
+
+        pp._run_component(
+            component_name="correct",
+            component=pp._get_component_with_graph_metadata_and_visits("correct", 0),
+            inputs={"value": "test"},
+            component_visits={"correct": 0},
+        )
+        assert "returned output keys" not in caplog.text
+        assert "did not produce output keys" not in caplog.text
+
     def test_pipeline_is_possibly_blocked_warning_message(self, caplog):
         """
         Test that the pipeline raises a warning when it is possibly blocked due to missing inputs.
