@@ -282,6 +282,7 @@ export default {
             'pipeline-components/embedders/fastembedtextembedder',
             'pipeline-components/embedders/googlegenaidocumentembedder',
             'pipeline-components/embedders/googlegenaitextembedder',
+            'pipeline-components/embedders/googlegenaimultimodaldocumentembedder',
             'pipeline-components/embedders/huggingfaceapidocumentembedder',
             'pipeline-components/embedders/huggingfaceapitextembedder',
             'pipeline-components/embedders/jinadocumentembedder',
@@ -603,6 +604,7 @@ export default {
             id: 'pipeline-components/websearch'
           },
           items: [
+            'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
             'pipeline-components/websearch/external-integrations-websearch',

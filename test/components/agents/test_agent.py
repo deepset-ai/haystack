@@ -11,15 +11,17 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from jinja2 import TemplateSyntaxError
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents import Agent
+from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import merge_lists
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -34,6 +36,10 @@ from haystack.utils import Secret, serialize_callable
 
 def _user_msg(text: str) -> str:
     return f'{{% message role="user" %}}{text}{{% endmessage %}}'
+
+
+def _sys_msg(text: str) -> str:
+    return f'{{% message role="system" %}}{text}{{% endmessage %}}'
 
 
 def sync_streaming_callback(chunk: StreamingChunk) -> None:
@@ -77,6 +83,14 @@ def weather_tool():
 @pytest.fixture
 def component_tool():
     return ComponentTool(name="parrot", description="This is a parrot.", component=PromptBuilder(template="{{parrot}}"))
+
+
+@pytest.fixture
+def make_agent(weather_tool):
+    def _factory(**kwargs):
+        return Agent(chat_generator=MockChatGenerator(), tools=[weather_tool], **kwargs)
+
+    return _factory
 
 
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
@@ -1373,50 +1387,158 @@ class TestAgentToolSelection:
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
 
-def _make_agent_with_user_prompt(
-    user_prompt: str, *, chat_generator: MockChatGenerator | None = None, **agent_kwargs
-) -> Agent:
-    return Agent(chat_generator=chat_generator or MockChatGenerator(), user_prompt=user_prompt, **agent_kwargs)
+class TestRegisterPromptVariables:
+    def test_register_prompt_variables_warning_when_no_prompt_and_required_variables(self, make_agent, caplog):
+        make_agent(required_variables=["name"])
+        assert "The parameter required_variables is provided but neither" in caplog.text
+
+    def test_register_prompt_variables_set_all_variables_as_required(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables="*")
+        assert agent._user_chat_prompt_builder.required_variables == "*"
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "question" in input_names
+
+    def test_register_prompt_variables_set_required_variables_on_builder(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables=["question"])
+        assert agent._user_chat_prompt_builder.required_variables == ["question"]
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "question" in input_names
+
+    def test_register_prompt_variables_raises_on_state_schema_conflict(self, make_agent):
+        with pytest.raises(
+            ValueError, match="Variable 'question' from user_prompt is already defined in the state schema."
+        ):
+            make_agent(user_prompt=_user_msg("Question: {{question}}"), state_schema={"question": {"type": str}})
+
+    def test_register_prompt_variables_raises_on_run_param_conflict(self, make_agent):
+        with pytest.raises(
+            ValueError, match="Variable 'system_prompt' from user_prompt conflicts with input names in the run method."
+        ):
+            make_agent(user_prompt=_user_msg("{{system_prompt}} is already a run parameter."))
 
 
-class TestUserPromptInitialization:
-    def test_user_prompt_conflict_with_state_schema_raises(self, weather_tool):
-        with pytest.raises(ValueError, match="already defined in the state schema"):
-            _make_agent_with_user_prompt(
-                _user_msg("Query: {{custom_field}}"), tools=[weather_tool], state_schema={"custom_field": {"type": str}}
+class TestInitializeFreshExecution:
+    def test_initialize_fresh_execution_raises_with_init_run_mismatch(self, make_agent):
+        agent = make_agent(system_prompt="Plain init prompt.")
+        with pytest.raises(ValueError, match="no system prompt builder is initialized"):
+            agent._initialize_fresh_execution(
+                messages=None,
+                streaming_callback=None,
+                requires_async=False,
+                user_prompt=None,
+                system_prompt=_sys_msg("Jinja2 syntax."),
             )
 
-    def test_user_prompt_conflict_with_run_param_raises(self, weather_tool):
-        with pytest.raises(ValueError, match="conflicts with input names in the run method"):
-            _make_agent_with_user_prompt(_user_msg("{{system_prompt}} is the system prompt."), tools=[weather_tool])
+        agent = make_agent()
+        with pytest.raises(ValueError, match="user_prompt is provided but the ChatPromptBuilder is not initialized"):
+            agent._initialize_fresh_execution(
+                messages=None,
+                streaming_callback=None,
+                requires_async=False,
+                user_prompt=_user_msg("Jinja2 syntax."),
+                system_prompt=None,
+            )
 
-    def test_user_prompt_only_variables_forwarded_to_builder(self, weather_tool):
-        agent = _make_agent_with_user_prompt(_user_msg("Question: {{question}}"), tools=[weather_tool])
+    def test_initialize_fresh_execution_raises_with_wrong_role(self, make_agent):
+        agent = make_agent(system_prompt=_user_msg("This is a user message, not system."))
+        with pytest.raises(ValueError, match="system_prompt must render to a system message"):
+            agent._initialize_fresh_execution(
+                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
+            )
+
+        agent = make_agent(user_prompt=_sys_msg("This is a user message, not system."))
+        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
+            agent._initialize_fresh_execution(
+                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
+            )
+
+    def test_initialize_fresh_execution_raises_with_incorrect_prompt_length(self, make_agent):
+        multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
+        {% message role='user' %}How are you?{% endmessage %}"""
+
+        agent = make_agent(system_prompt=multi_message_prompt)
+        with pytest.raises(ValueError, match="system_prompt must render to exactly one system message"):
+            agent._initialize_fresh_execution(
+                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
+            )
+
+        agent = make_agent(user_prompt=multi_message_prompt)
+        with pytest.raises(ValueError, match="user_prompt must render to exactly one user message"):
+            agent._initialize_fresh_execution(
+                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
+            )
+
+
+class TestPrompts:
+    def test_system_prompt_incorrect_jinja2_syntax_raises(self, make_agent):
+        with pytest.raises(TemplateSyntaxError):
+            make_agent(system_prompt="{% message role='system' %}Incomplete syntax.")
+
+    def test_system_prompt_plain_string(self, make_agent):
+        agent = make_agent(system_prompt="You are a helpful assistant.")
+        assert agent._system_chat_prompt_builder is None
+        result = agent.run(messages=[ChatMessage.from_user("Hi")])
+        assert result["messages"][0].is_from(ChatRole.SYSTEM)
+        assert result["messages"][0].text == "You are a helpful assistant."
+
+    def test_system_prompt_with_template_variables(self, make_agent):
+        agent = make_agent(system_prompt=_sys_msg("You are an assistant for {{company}}. Your role is {{role}}."))
+        assert agent._system_chat_prompt_builder is not None
+        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
+
+        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
+        sys_msg = result["messages"][0]
+        assert sys_msg.is_from(ChatRole.SYSTEM)
+        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "company" in input_names
+        assert "role" in input_names
+
+    def test_system_prompt_with_meta(self, make_agent):
+        agent = make_agent(
+            system_prompt="{% message role='system' meta={'key': 'value'} %}System message with meta{% endmessage %}"
+        )
+        assert agent._system_chat_prompt_builder is not None
+
+        result = agent.run(messages=[ChatMessage.from_user("Hi")])
+        messages = result["messages"]
+        assert messages[0].is_from(ChatRole.SYSTEM)
+        assert messages[0].text == "System message with meta"
+        assert messages[0].meta == {"key": "value"}
+
+    def test_system_prompt_runtime_override(self, make_agent):
+        agent = make_agent(system_prompt=_sys_msg("You are a helpful assistant."))
+        result = agent.run(
+            messages=[ChatMessage.from_user("Hi")], system_prompt=_sys_msg("You are an Haystack expert.")
+        )
+        assert result["messages"][0].text == "You are an Haystack expert."
+        assert result["messages"][1].text == "Hi"
+
+    def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
+        with pytest.raises(
+            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
+        ):
+            agent.run()
+
+    def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
+        result = agent.run(question="Will it snow?", irrelevant_kwarg="unused")
         assert "messages" in result
 
-
-class TestUserPromptOnly:
-    def test_simple_literal_user_prompt(self, weather_tool):
-        agent = _make_agent_with_user_prompt(_user_msg("Tell me the weather."), tools=[weather_tool])
-        result = agent.run(messages=[])
-        messages = result["messages"]
-        # The rendered user_prompt should be the first (and only) non-system message
-        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
-        assert len(user_messages) == 1
-        assert user_messages[0].text == "Tell me the weather."
-
-    def test_user_prompt_with_template_variables(self, weather_tool):
-        agent = _make_agent_with_user_prompt(
-            _user_msg(
+    def test_user_prompt_with_template_variables(self, make_agent):
+        agent = make_agent(
+            user_prompt=_user_msg(
                 "Hello {{name|upper}}, check weather for: "
                 + "{% for c in cities %}{{c}}{% if not loop.last %}, {% endif %}{% endfor %}"
                 + " on {{date}}?"
-            ),
-            tools=[weather_tool],
+            )
         )
-        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
+        result = agent.run(name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
 
@@ -1425,53 +1547,22 @@ class TestUserPromptOnly:
         assert "cities" in input_names
         assert "date" in input_names
 
-    def test_user_prompt_with_system_prompt(self, weather_tool):
-        agent = _make_agent_with_user_prompt(
-            _user_msg("What is the weather in {{city}}?"),
-            tools=[weather_tool],
-            system_prompt="You are a helpful weather assistant.",
-        )
-        result = agent.run(messages=[], city="Berlin")
-        messages = result["messages"]
-        assert messages[0].is_from(ChatRole.SYSTEM)
-        assert messages[0].text == "You are a helpful weather assistant."
-        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "What is the weather in Berlin?"
-
-    def test_user_prompt_with_documents_variable(self, weather_tool):
-        agent = _make_agent_with_user_prompt(
-            _user_msg(
-                "Answer based on these documents:\n"
-                "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
-                "Question: {{question}}"
-            ),
-            tools=[weather_tool],
-        )
-        docs = [Document(content="Doc A"), Document(content="Doc B")]
-        result = agent.run(messages=[], documents=docs, question="What is in the docs?")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert "Doc A" in user_messages[0].text
-        assert "Doc B" in user_messages[0].text
-        assert "What is in the docs?" in user_messages[0].text
-
-    def test_runtime_user_prompt_overrides_init_prompt(self, weather_tool):
-        agent = _make_agent_with_user_prompt(_user_msg("Default prompt for {{city}}."), tools=[weather_tool])
-        result = agent.run(messages=[], user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
+    def test_runtime_user_prompt_overrides_init_prompt(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Default prompt for {{city}}."))
+        result = agent.run(user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Runtime prompt for Berlin."
 
-
-class TestUserPromptWithMessages:
-    def test_user_prompt_appended_after_initial_messages(self, weather_tool):
-        agent = _make_agent_with_user_prompt(_user_msg("And now: {{query}}"), tools=[weather_tool])
+    def test_user_prompt_appended_after_initial_messages(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("And now: {{query}}"))
         initial_messages = [ChatMessage.from_user("First message")]
         result = agent.run(messages=initial_messages, query="What is the weather?")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "First message"
         assert user_messages[1].text == "And now: What is the weather?"
 
-    def test_runtime_user_prompt_appended_after_initial_messages(self, weather_tool):
-        agent = _make_agent_with_user_prompt(_user_msg("Init prompt: {{question}}"), tools=[weather_tool])
+    def test_runtime_user_prompt_appended_after_initial_messages(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Init prompt: {{question}}"))
         initial_messages = [ChatMessage.from_user("Context message")]
         result = agent.run(
             messages=initial_messages, user_prompt=_user_msg("Follow-up: {{question}}"), question="Is it raining?"
@@ -1481,60 +1572,23 @@ class TestUserPromptWithMessages:
         assert user_messages[0].text == "Context message"
         assert user_messages[1].text == "Follow-up: Is it raining?"
 
-    def test_messages_plus_user_prompt_with_multiple_kwargs(self, weather_tool):
-        agent = _make_agent_with_user_prompt(
-            _user_msg("Documents:\n{% for d in documents %}{{d.content}}\n{% endfor %}Q: {{question}}"),
-            tools=[weather_tool],
-            system_prompt="You are very smart.",
+    def test_system_prompt_and_user_prompt(self, make_agent):
+        agent = make_agent(
+            system_prompt=_sys_msg("You help users of {{project}}."),
+            user_prompt=_user_msg("Tell me about {{topic}} in the {{project}} context."),
         )
-        history = [ChatMessage.from_user("Previous question?"), ChatMessage.from_assistant("Previous answer.")]
-        docs = [Document(content="Fact A"), Document(content="Fact B")]
-        result = agent.run(messages=history, documents=docs, question="Summarise the facts.")
+        assert agent._system_chat_prompt_builder is not None
+        assert agent._user_chat_prompt_builder is not None
+
+        result = agent.run(project="Haystack", topic="pipelines")
         messages = result["messages"]
-        assert len(messages) == 5
-
-        assert messages[0].role.value == ChatRole.SYSTEM
-        assert messages[0].text == "You are very smart."
-
-        assert messages[1].role.value == ChatRole.USER
-        assert messages[1].text == "Previous question?"
-
-        assert messages[2].role.value == ChatRole.ASSISTANT
-        assert messages[2].text == "Previous answer."
-
-        assert messages[3].role.value == ChatRole.USER
-        rendered = messages[3].text
-        assert "Fact A" in rendered
-        assert "Fact B" in rendered
-        assert "Summarise the facts." in rendered
-
-        assert messages[4].role.value == ChatRole.ASSISTANT
-        assert messages[4].text == "Hello"
+        assert messages[0].is_from(ChatRole.SYSTEM)
+        assert messages[0].text == "You help users of Haystack."
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
 
 
-def _make_rag_pipeline(
-    document_store_with_docs: InMemoryDocumentStore, weather_tool: Tool, *, user_prompt: str | None = None
-):
-    agent = _make_agent_with_user_prompt(
-        user_prompt=user_prompt
-        or _user_msg(
-            "Use the following documents to answer the question.\n"
-            "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}"
-            "Question: {{query}}"
-        ),
-        tools=[weather_tool],
-        system_prompt="You are a knowledgeable assistant.",
-        required_variables=["query", "documents"],
-    )
-
-    pp = Pipeline()
-    pp.add_component("retriever", InMemoryBM25Retriever(document_store=document_store_with_docs))
-    pp.add_component("agent", agent)
-    pp.connect("retriever.documents", "agent.documents")
-
-    return pp
-
-
+@pytest.mark.integration
 class TestAgentUserPromptInPipeline:
     @pytest.fixture
     def document_store_with_docs(self):
@@ -1548,10 +1602,34 @@ class TestAgentUserPromptInPipeline:
         )
         return store
 
-    def test_rag_pipeline_user_prompt_init_only(self, document_store_with_docs, weather_tool):
-        pipeline = _make_rag_pipeline(document_store_with_docs, weather_tool)
+    @pytest.fixture
+    def make_rag_pipeline(self, document_store_with_docs: InMemoryDocumentStore, make_agent):
+
+        def _factory(user_prompt: str | None = None):
+            agent = make_agent(
+                user_prompt=user_prompt
+                or _user_msg(
+                    "Use the following documents to answer the question.\n"
+                    "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}"
+                    "Question: {{query}}"
+                ),
+                system_prompt="You are a knowledgeable assistant.",
+                required_variables=["query", "documents"],
+            )
+
+            pp = Pipeline()
+            pp.add_component("retriever", InMemoryBM25Retriever(document_store=document_store_with_docs))
+            pp.add_component("agent", agent)
+            pp.connect("retriever.documents", "agent.documents")
+
+            return pp
+
+        return _factory
+
+    def test_rag_pipeline_user_prompt_init_only(self, make_rag_pipeline):
+        pipeline = make_rag_pipeline()
         query = "Where is the Colosseum?"
-        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "query": query}})
+        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query}})
         assert "agent" in result
         agent_output = result["agent"]
         assert "messages" in agent_output
@@ -1567,18 +1645,17 @@ class TestAgentUserPromptInPipeline:
         assert "Question: Where is the Colosseum?" in rendered
         assert "Documents:" in rendered
 
-    def test_rag_pipeline_user_prompt_runtime_override(self, document_store_with_docs, weather_tool):
+    def test_rag_pipeline_user_prompt_runtime_override(self, make_rag_pipeline):
         user_prompt = _user_msg(
             "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}Question: {{query}}"
         )
-        pipeline = _make_rag_pipeline(document_store_with_docs, weather_tool, user_prompt=user_prompt)
+        pipeline = make_rag_pipeline(user_prompt=user_prompt)
 
         query = "Where is the Eiffel Tower?"
         result = pipeline.run(
             data={
                 "retriever": {"query": query},
                 "agent": {
-                    "messages": [],
                     "user_prompt": _user_msg(
                         "OVERRIDE: Using docs:\n"
                         "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
@@ -1629,93 +1706,38 @@ class TestAgentUserPromptInPipeline:
         assert "Relevant docs:" in rendered
 
 
-class TestAgentPipelineStaticToolInput:
+class TestAgentWaitsForBlockedPredecessor:
     """
     Regression test for the scheduling bug introduced by making the 'messages'
     run parameter non-required in https://github.com/deepset-ai/haystack/pull/10638.
 
-        pipeline inputs:
-            query    →  history_parser          # feeds the messages chain
-            filters  →  agent.retrieval_filters # static, sender=None  ← the trigger
-            (files is optional / absent)
+    Pipeline shape
+    --------------
+    Two paths feed into a lazy-variadic joiner that collects messages for the Agent:
 
-        pipeline connections:
-            history_parser.messages  →  messages_joiner.values
-            files_processor.prompt   →  messages_joiner.values  # needs 'files' (mandatory)
-            messages_joiner.values   →  system_concat.messages
-            system_concat.output     →  agent.messages
+        Path A (works):   query → history_parser → messages_joiner.values
+        Path B (blocked): files=[] → files_processor (returns {}) → attachments_builder ──╳──→ messages_joiner.values
 
-        agent.tools = [ComponentTool(inputs_from_state={"documents": "docs"})]
+        messages_joiner.values → agent.messages
+        filters → agent.retrieval_filters   (static input from pipeline.run data)
 
     The bug
     -------
-    When the optional 'files' pipeline input is NOT provided:
-    1. files_processor is BLOCKED (its mandatory 'files' input is absent).
-    2. messages_joiner stays DEFER_LAST.
-    3. system_concat is BLOCKED – cannot receive 'messages'.
-    4. agent.messages is therefore never delivered.
+    1. history_parser runs → sends messages to messages_joiner.
+    2. files_processor runs with files=[] → returns {} (no output).
+    3. attachments_builder is BLOCKED — its mandatory processed_files input never arrives.
+    4. messages_joiner gets DEFER_LAST (priority=4): it has a lazy-variadic socket and attachments_builder hasn't
+       executed yet, so the joiner doesn't know if more data might still come. It keeps waiting.
+    5. agent gets DEFER (priority=3): retrieval_filters arrives with sender=None (static pipeline input), which
+       satisfies has_any_trigger() on the first visit. The Agent has no mandatory sockets, so can_component_run()
+       returns True. It also has no unresolved lazy-variadic sockets, so it gets DEFER rather than DEFER_LAST.
+    6. Since DEFER (3) < DEFER_LAST (4), the scheduler picks the Agent before the joiner runs.
+       The Agent executes without messages and raises:
 
-    Meanwhile, 'filters' → agent.retrieval_filters (sender=None) fires the pipeline's
-    "user trigger" gate on the Agent's first visit.  Because none of the Agent's
-    sockets are mandatory, can_component_run() returns True and the Agent gets
-    DEFER priority instead of BLOCKED.
-
-    The scheduler eventually pops the Agent (DEFER) from the queue — the only
-    non-BLOCKED component left — and runs it.  _add_missing_input_defaults fills
-    messages=None, and Agent._initialize_fresh_execution raises:
-
-        ValueError("No messages provided to the Agent and neither
-                    user_prompt nor system_prompt is set.")
+        ValueError("No messages provided to the Agent and neither user_prompt nor system_prompt is set.")
     """
 
-    @pytest.fixture()
-    def search_tool(self):
-        return ComponentTool(
-            name="search",
-            description="Searches documents.",
-            component=PromptBuilder(template="{% for d in docs %}{{ d.content }}{% endfor %}"),
-            inputs_from_state={"documents": "docs"},
-        )
-
-    def _make_agent(self, search_tool):
-        chat_generator = MockChatGenerator()
-        agent = Agent(
-            chat_generator=chat_generator,
-            tools=[search_tool],
-            state_schema={"retrieval_filters": {"type": dict[str, Any]}, "documents": {"type": list[Document]}},
-        )
-        # Mock after __init__ so Agent sees the real 'tools' param in the signature.
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
-        return agent
-
-    def test_agent_runs_prematurely_when_messages_predecessor_is_blocked(self, search_tool):
-        """
-        Demonstrates the bug: the Agent executes without 'messages' when its
-        messages-providing predecessor chain is permanently BLOCKED.
-
-        Pipeline shape:
-            query   →  history_parser             →  messages_joiner.values
-            files=[]→  files_processor             →  attachments_builder  →  messages_joiner.values
-            messages_joiner  →  system_concat  →  agent.messages
-            filters →  agent.retrieval_filters   (static, triggers the user gate)
-
-        Scheduling sequence that exposes the bug:
-        1. history_parser runs (query provided) → sends to messages_joiner.
-        2. files_processor runs with files=[] → returns {} (_NO_OUTPUT_PRODUCED).
-        3. attachments_builder receives _NO_OUTPUT_PRODUCED → BLOCKED (mandatory
-           processed_files socket never filled).
-        4. messages_joiner is DEFER_LAST (lazy-variadic; attachments_builder
-           has not executed yet → are_all_lazy_variadic_sockets_resolved=False).
-        5. system_concat is BLOCKED (mandatory messages from messages_joiner
-           never received).
-        6. agent is DEFER (static retrieval_filters triggered the user gate;
-           no mandatory sockets → can_component_run=True).
-
-        DEFER (priority=3) < DEFER_LAST (priority=4) → the scheduler picks the
-        Agent before messages_joiner gets a chance to run.  _add_missing_input_defaults
-        fills messages=None, and Agent._initialize_fresh_execution raises:
-            ValueError("No messages provided …")
-        """
+    def test_agent_waits_for_messages_when_predecessor_is_blocked(self, weather_tool):
 
         @component
         class HistoryParser:
@@ -1741,37 +1763,34 @@ class TestAgentPipelineStaticToolInput:
             def run(self, processed_files: list[str]) -> dict:
                 return {"prompt": [ChatMessage.from_user(f"Files: {processed_files}")]}
 
-        @component
-        class SystemConcat:
-            @component.output_types(output=list[ChatMessage])
-            def run(self, messages: list[ChatMessage]) -> dict:
-                return {"output": messages}
-
-        from haystack.components.joiners.list_joiner import ListJoiner
-
-        agent = self._make_agent(search_tool)
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool],
+            state_schema={"retrieval_filters": {"type": dict[str, Any]}},
+        )
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
 
         pipeline = Pipeline()
         pipeline.add_component("history_parser", HistoryParser())
         pipeline.add_component("files_processor", FilesProcessor())
         pipeline.add_component("attachments_builder", AttachmentsBuilder())
         pipeline.add_component("messages_joiner", ListJoiner(list[ChatMessage]))
-        pipeline.add_component("system_concat", SystemConcat())
         pipeline.add_component("agent", agent)
 
         pipeline.connect("history_parser.messages", "messages_joiner.values")
         pipeline.connect("files_processor.processed_files", "attachments_builder.processed_files")
         pipeline.connect("attachments_builder.prompt", "messages_joiner.values")
-        pipeline.connect("messages_joiner.values", "system_concat.messages")
-        pipeline.connect("system_concat.output", "agent.messages")
+        pipeline.connect("messages_joiner.values", "agent.messages")
 
         # files=[] → files_processor produces no output → attachments_builder BLOCKED
-        # → messages_joiner stays DEFER_LAST → system_concat BLOCKED
+        # → messages_joiner stays DEFER_LAST
         # → agent (DEFER) runs first without messages → ValueError
-        pipeline.run(
+        result = pipeline.run(
             data={
                 "history_parser": {"query": "What case law applies?"},
                 "files_processor": {"files": []},  # empty → no output
                 "agent": {"retrieval_filters": {"field": "date", "value": "2024-01-01"}},
             }
         )
+        assert "agent" in result

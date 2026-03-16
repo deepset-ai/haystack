@@ -354,6 +354,48 @@ response = client.run(messages)
 print(response)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5.4-pro",
+    "gpt-5.4",
+    "gpt-5.3-chat",
+    "gpt-5.3-codex",
+    "gpt-5.2-codex",
+    "gpt-5.2",
+    "gpt-5.2-chat",
+    "gpt-5.1-codex-max",
+    "gpt-5.1",
+    "gpt-5.1-chat",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5-pro",
+    "gpt-5-codex",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-chat",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "computer-use-preview",
+    "gpt-4.1",
+    "gpt-4.1-nano",
+    "gpt-4.1-mini",
+    "gpt-image-1",
+    "gpt-image-1-mini",
+    "gpt-image-1.5",
+    "o1",
+    "o3-mini",
+    "o3",
+    "o4-mini",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/responses#model-support for the full list.
+
 #### __init__
 
 ```python
@@ -1285,6 +1327,7 @@ SUPPORTED_MODELS = [
     "gpt-5.1",
     "gpt-5.2",
     "gpt-5.2-pro",
+    "gpt-5.4",
     "gpt-5-pro",
     "gpt-4.1",
     "gpt-4.1-mini",

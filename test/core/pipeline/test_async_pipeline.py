@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import logging
+from dataclasses import replace
 
 import pytest
 
@@ -119,6 +121,91 @@ def test_component_with_empty_dict_as_output_appears_in_results():
     assert result["empty_processor"] == {}
 
 
+@pytest.mark.asyncio
+async def test__run_component_async_warns_on_extra_output_keys(caplog):
+    """Test that a warning is raised when a component returns undeclared output keys."""
+    caplog.set_level(logging.WARNING)
+
+    @component
+    class ExtraKeyComponent:
+        @component.output_types(output=str)
+        def run(self, value: str) -> dict[str, str]:
+            return {"output": value, "extra_key": "unexpected"}
+
+    pp = AsyncPipeline()
+    pp.add_component("extra", ExtraKeyComponent())
+
+    await pp._run_component_async(
+        component_name="extra",
+        component=pp._get_component_with_graph_metadata_and_visits("extra", 0),
+        component_inputs={"value": "test"},
+        component_visits={"extra": 0},
+    )
+    assert "returned output keys" in caplog.text
+    assert "extra_key" in caplog.text
+    assert "not declared" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test__run_component_async_no_warning_on_correct_output_keys(caplog):
+    """Test that no warning is raised when a component returns the correct output keys."""
+    caplog.set_level(logging.WARNING)
+
+    @component
+    class CorrectComponent:
+        @component.output_types(output=str)
+        def run(self, value: str) -> dict[str, str]:
+            return {"output": value}
+
+    pp = AsyncPipeline()
+    pp.add_component("correct", CorrectComponent())
+
+    await pp._run_component_async(
+        component_name="correct",
+        component=pp._get_component_with_graph_metadata_and_visits("correct", 0),
+        component_inputs={"value": "test"},
+        component_visits={"correct": 0},
+    )
+    assert "returned output keys" not in caplog.text
+    assert "did not produce output keys" not in caplog.text
+
+
+def test_async_pipeline_is_possibly_blocked_warning_message(caplog):
+    """
+    Test that the pipeline raises a warning when it is possibly blocked due to missing inputs.
+
+    The situation below looks a little contrived, but it has happened in practice that users create pipelines
+    and accidentally made a mistake in their component code.
+    """
+    caplog.set_level(logging.WARNING)
+
+    @component
+    class MisconfiguredComponent:
+        # Here we purposely declare other_output which is not actually returned by the run() method
+        @component.output_types(output=str, other_output=str)
+        def run(self, required_input: str) -> dict[str, str]:
+            return {"output": "test"}
+
+    @component
+    class SimpleComponentTwoInputs:
+        @component.output_types(output=str)
+        def run(self, required_input: str, second_required_input: str) -> dict[str, str]:
+            return {"output": "test"}
+
+    pp = AsyncPipeline()
+    pp.add_component("first", MisconfiguredComponent())
+    pp.add_component("second", SimpleComponentTwoInputs())
+
+    # NOTE: We connect both outputs from the first component to the second component, but the first component
+    # doesn't actually produce other_output, so the second component will be blocked due to missing input.
+    pp.connect("first.output", "second.required_input")
+    pp.connect("first.other_output", "second.second_required_input")
+
+    pp.run({"first": {"required_input": "test"}})
+    assert "Cannot run pipeline - the pipeline appears to be blocked." in caplog.text
+    assert " - 'second' (SimpleComponentTwoInputs)" in caplog.text
+
+
 def test_async_pipeline_ensure_inputs_are_deep_copied():
     """
     Test to ensure that async pipeline deep copies the inputs before passing them to components.
@@ -145,9 +232,7 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
     class ModifyingComponent:
         @component.output_types(output=Document)
         def run(self, document: Document) -> dict[str, Document]:
-            # Modifies the incoming document inplace
-            document.content = "modified"
-            return {"output": document}
+            return {"output": replace(document, content="modified")}
 
     pp = AsyncPipeline()
     pp.add_component("first", SimpleComponent())
@@ -184,8 +269,7 @@ def test_async_pipeline_does_not_corrupt_outputs():
     class Mutator:
         @component.output_types(doc=Document)
         def run(self, doc: Document) -> dict:
-            doc.content = "mutated"
-            return {"doc": doc}
+            return {"doc": replace(doc, content="mutated")}
 
     pipe = AsyncPipeline()
     pipe.add_component("producer", Producer())

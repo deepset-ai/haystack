@@ -14,7 +14,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.16.4"
+  HATCH_VERSION: "1.16.5"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
 
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Check for changed code
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           # List of Python files that trigger slow integration tests when modified
           filters: |
@@ -139,8 +139,7 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          # https://github.com/pypa/hatch/issues/2193
-          pip install hatch==${{ env.HATCH_VERSION }} "virtualenv<21.0.0"
+          pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Run Tika
         if: matrix.os == 'ubuntu-latest'
@@ -154,31 +153,17 @@ jobs:
       - name: Run tests
         run: hatch run test:integration-only-slow
 
-      - name: Send event to Datadog for nightly failures
+      - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'
-        uses: masci/datadog@v1
+        uses: deepset-ai/notify-slack-action@v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "error"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   slow-integration-tests-completed:
     # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
     name: Slow Integration Tests completed
     runs-on: ubuntu-slim
-    if: ${{ always() }}
+    if: ${{ always() && !cancelled() }}
     needs: slow-integration-tests
 
     steps:
