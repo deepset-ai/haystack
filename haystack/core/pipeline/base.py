@@ -1183,6 +1183,8 @@ class PipelineBase:  # noqa: PLW1641
         :param comp_inputs: Inputs to the component.
         :returns: Priority value for the component.
         """
+        # NOTE: Even if a component can run, it doesn't mean it's ready to run since it could be waiting for optional
+        # inputs. This is why it's only used to determine if a component is BLOCKED or not.
         if not can_component_run(comp, comp_inputs):
             return ComponentPriority.BLOCKED
         if is_any_greedy_socket_ready(comp, comp_inputs) and are_all_sockets_ready(comp, comp_inputs):
@@ -1298,6 +1300,10 @@ class PipelineBase:  # noqa: PLW1641
         """
         Decides which component to run when multiple components are waiting for inputs with the same priority.
 
+        NOTE: This was designed to only tie-break for priorities DEFER and DEFER_LAST. Since this function also removes
+        these components from the priority queue we rely on _is_queue_stale to then refill the priority queue.
+        And _is_queue_stale only triggers when all remaining components have BLOCKED priority.
+
         :param component_name: The name of the component.
         :param priority: Priority of the component.
         :param priority_queue: Priority queue of component names.
@@ -1308,10 +1314,16 @@ class PipelineBase:  # noqa: PLW1641
         """
         # Create a list of all components that have the same priority as the current component, including the
         # current component itself and remove them from the priority queue.
+        has_deferred_priority = priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
         components_with_same_priority = [component_name]
         while len(priority_queue) > 0:
             next_priority, next_component_name = priority_queue.peek()
-            if next_priority == priority:
+            # For tiebreaking purposes we treat DEFER and DEFER_LAST as the same priority.
+            if (
+                has_deferred_priority
+                and next_priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
+                or next_priority == priority
+            ):
                 priority_queue.pop()  # actually remove the component
                 components_with_same_priority.append(next_component_name)
             else:
