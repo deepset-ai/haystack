@@ -38,6 +38,11 @@ def _is_valid_type(obj: Any) -> bool:
     if (origin := get_origin(obj)) and _is_union_type(origin):
         return True
 
+    # Bare Union type (without parameters) is not a valid type annotation
+    # Previously handled by inspect.isclass(obj) but in python 3.14 this returns True for typing.Union
+    if obj == Union:
+        return False
+
     # Handle normal classes and generic types
     return inspect.isclass(obj) or type(obj).__name__ in {"_GenericAlias", "GenericAlias"}
 

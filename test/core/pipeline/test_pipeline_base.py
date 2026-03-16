@@ -53,6 +53,15 @@ class FakeComponentSquared:
         return {"value": input_}
 
 
+@component
+class FakeRouter:
+    @component.output_types(route1=str, route2=str)
+    def run(self, inp: str) -> dict[str, str]:
+        if inp == "route1":
+            return {"route1": "output from route 1"}
+        return {"route2": "output from route 2"}
+
+
 @pytest.fixture
 def regular_output_socket():
     """Output socket for a regular (non-variadic) connection with receivers"""
@@ -1383,7 +1392,10 @@ class TestPipelineBase:
     def test_fill_queue(self, mock_get_metadata, mock_calc_priority):
         pipeline = PipelineBase()
         component_names = ["comp1", "comp2"]
-        inputs = {"comp1": {"input1": "value1"}, "comp2": {"input2": "value2"}}
+        inputs = {
+            "comp1": {"input1": [{"sender": None, "value": "value1"}]},
+            "comp2": {"input2": [{"sender": None, "value": "value2"}]},
+        }
 
         mock_get_metadata.side_effect = lambda name, _: {"component": f"mock_{name}"}
         mock_calc_priority.side_effect = [1, 2]  # Different priorities for testing
@@ -1395,11 +1407,15 @@ class TestPipelineBase:
 
         # Verify correct calls for first component
         mock_get_metadata.assert_any_call("comp1", 1)
-        mock_calc_priority.assert_any_call({"component": "mock_comp1"}, {"input1": "value1"})
+        mock_calc_priority.assert_any_call(
+            {"component": "mock_comp1"}, {"input1": [{"sender": None, "value": "value1"}]}
+        )
 
         # Verify correct calls for second component
         mock_get_metadata.assert_any_call("comp2", 1)
-        mock_calc_priority.assert_any_call({"component": "mock_comp2"}, {"input2": "value2"})
+        mock_calc_priority.assert_any_call(
+            {"component": "mock_comp2"}, {"input2": [{"sender": None, "value": "value2"}]}
+        )
 
         assert queue.pop() == (1, "comp1")
         assert queue.pop() == (2, "comp2")
@@ -2090,6 +2106,40 @@ class TestPipelineConnect:
         )
 
 
+class TestMakeSocketAutoVariadic:
+    @pytest.mark.parametrize(
+        "receiver_type,current_sender_type,new_sender_type",
+        [
+            # All lists
+            (list[int], list[int], list[int]),
+            # List unions
+            (list[str] | list[ChatMessage], list[str], list[str]),
+            (list[str] | list[ChatMessage], list[ChatMessage], list[ChatMessage]),
+            # Optional list
+            (list[int] | None, list[int], list[int]),
+        ],
+    )
+    def test_successful(self, receiver_type, current_sender_type, new_sender_type):
+        pipe = PipelineBase()
+        inp_socket = pipe._make_socket_auto_variadic(
+            component_name="comp",
+            receiver_socket=InputSocket(name="input_to_comp3", type=receiver_type, senders=["comp1"]),
+            error_type=PipelineConnectError,
+        )
+        assert inp_socket.is_variadic is True
+        assert inp_socket.is_lazy_variadic is True
+        assert inp_socket.wrap_input_in_list is False
+
+    def test_raises_error_all_int(self):
+        with pytest.raises(PipelineConnectError):
+            pipe = PipelineBase()
+            _ = pipe._make_socket_auto_variadic(
+                component_name="comp",
+                receiver_socket=InputSocket(name="input_to_comp3", type=int, senders=["comp1"]),
+                error_type=PipelineConnectError,
+            )
+
+
 class TestValidateInput:
     def test_validate_input_wrong_comp_name(self):
         pipe = PipelineBase()
@@ -2117,7 +2167,8 @@ class TestValidateInput:
         with pytest.raises(
             ValueError,
             match="Component 'comp2' cannot accept multiple inputs to 'input_'. "
-            "It is already connected to component 'comp1' so it cannot accept additional inputs.",
+            "It is already connected to component 'comp1', and it can only accept inputs from multiple "
+            r"senders if its type is list, Optional\[list\], or union of list types.",
         ):
             pipe.validate_input(data={"comp1": {"input_": "test"}, "comp2": {"input_": "extra_input"}})
 
@@ -2140,3 +2191,98 @@ class TestValidateInput:
         inp_socket.wrap_input_in_list = False
         assert comp2.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert comp2.__haystack_input__._sockets_dict["numbers"].senders == ["comp1"]  # type: ignore[attr-defined]
+
+
+class TestFindComponentsBlockingPipeline:
+    def test_missing_input(self):
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent())
+        pipe.add_component("comp2", FakeComponent())
+        pipe.connect("comp1.value", "comp2.input_")
+
+        priority_queue = FIFOPriorityQueue()
+        priority_queue.push("comp1", ComponentPriority.BLOCKED)
+        priority_queue.push("comp2", ComponentPriority.BLOCKED)
+
+        blocking_comps, blocking_comp_types = pipe._find_components_blocking_pipeline(
+            priority_queue=priority_queue,
+            component_visits={"comp1": 1, "comp2": 0},
+            inputs={
+                "comp1": {"input_": [{"sender": None, "value": "some user input"}]},
+                # We are mimicking the state where the output of comp1 was misnamed (e.g. output_types doesn't match
+                # the actually returned output dict). This results in an _empty input to comp2.
+                "comp2": {"input_": [{"sender": "comp1", "value": _empty}]},
+            },
+        )
+        assert blocking_comps == ["comp2"]
+        assert blocking_comp_types == ["FakeComponent"]
+
+    def test_blocked_components_linear(self):
+        """Tests that we only return the component directly blocked by missing input, and not downstream components"""
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent())
+        pipe.add_component("comp2", FakeComponent())
+        pipe.add_component("comp3", FakeComponent())
+        pipe.connect("comp1.value", "comp2.input_")
+        pipe.connect("comp2.value", "comp3.input_")
+
+        priority_queue = FIFOPriorityQueue()
+        priority_queue.push("comp1", ComponentPriority.BLOCKED)
+        priority_queue.push("comp2", ComponentPriority.BLOCKED)
+        priority_queue.push("comp3", ComponentPriority.BLOCKED)
+
+        blocking_comps, blocking_comp_types = pipe._find_components_blocking_pipeline(
+            priority_queue=priority_queue,
+            component_visits={"comp1": 1, "comp2": 0, "comp3": 0},
+            inputs={
+                "comp1": {"input_": [{"sender": None, "value": "some user input"}]},
+                # We are mimicking the state where the output of comp1 was misnamed (e.g. output_types doesn't match
+                # the actually returned output dict). This results in an _empty input to comp2.
+                "comp2": {"input_": [{"sender": "comp1", "value": _empty}]},
+            },
+        )
+        assert blocking_comps == ["comp2"]
+        assert blocking_comp_types == ["FakeComponent"]
+
+    def test_blocking_components_from_two_branches(self):
+        """Tests that we can correctly identify both potentially blocking components"""
+        pipe = PipelineBase()
+        pipe.add_component("comp1", FakeComponent())
+        pipe.add_component("router", FakeRouter())
+        pipe.add_component("comp2", FakeComponent())
+        pipe.add_component("blocking_comp", FakeComponent())
+        pipe.add_component("a_comp3", FakeComponent())
+        pipe.connect("comp1.value", "router.inp")
+        pipe.connect("router.route1", "comp2.input_")
+        pipe.connect("comp2.value", "blocking_comp.input_")
+        pipe.connect("router.route2", "a_comp3.input_")
+
+        priority_queue = FIFOPriorityQueue()
+        priority_queue.push("comp1", ComponentPriority.BLOCKED)
+        priority_queue.push("router", ComponentPriority.BLOCKED)
+        priority_queue.push("comp2", ComponentPriority.BLOCKED)
+        priority_queue.push("blocking_comp", ComponentPriority.BLOCKED)
+        priority_queue.push("a_comp3", ComponentPriority.BLOCKED)
+
+        blocking_comps, blocking_comp_types = pipe._find_components_blocking_pipeline(
+            priority_queue=priority_queue,
+            component_visits={"comp1": 1, "router": 1, "comp2": 1, "a_comp3": 0, "blocking_comp": 0},
+            inputs={
+                # Mimicking the user providing "route1" as input to the pipeline.run
+                "comp1": {"input_": [{"sender": None, "value": "route1"}]},
+                # For educational purposes I've left what the inputs would have looked like while running the pipeline.
+                # These aren't actually present when trying to execute "blocking_comp" since we consume (i.e. remove)
+                # inputs passed between components.
+                # "router": {"value": [{"sender": "comp1", "value": "route1"}]},
+                # "comp2": {"input_": [{"sender": "router", "value": "output from route 1"}]},
+                # We are mimicking the state where the output of comp2 was misnamed (e.g. output_types doesn't match
+                # the actually returned output dict). This results in an _empty input to blocking_comp.
+                "blocking_comp": {"input_": [{"sender": "comp2", "value": _empty}]},
+                # The input to a_comp3 should be present and the value should be _empty since route 2 wasn't activated
+                "a_comp3": {"input_": [{"sender": "router", "value": _empty}]},
+            },
+        )
+        # We correctly label as both potentially blocking since it's unclear from the input state which component is
+        # actually blocking.
+        assert blocking_comps == ["a_comp3", "blocking_comp"]
+        assert blocking_comp_types == ["FakeComponent", "FakeComponent"]

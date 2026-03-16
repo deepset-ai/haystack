@@ -206,3 +206,10 @@ def _parse_dict_from_json(
         return None
 
     return parsed_json
+
+
+def _normalize_metadata_field_name(metadata_field: str) -> str:
+    """
+    Normalizes a metadata field name by removing the "meta." prefix if present.
+    """
+    return metadata_field[5:] if metadata_field.startswith("meta.") else metadata_field
