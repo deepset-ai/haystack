@@ -179,6 +179,143 @@ if a score is present.
 - <code>RuntimeError</code> – - If the API returns an error response.
 - <code>TypeError</code> – - If the API response is not in the expected list format.
 
+## llm_ranker
+
+### LLMRanker
+
+Ranks documents for a query using a Large Language Model.
+
+The LLM is expected to return a JSON object containing ranked document indices.
+
+Usage example:
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.rankers import LLMRanker
+
+chat_generator = OpenAIChatGenerator(
+    model="gpt-4.1-mini",
+    generation_kwargs={
+        "temperature": 0.0,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "document_ranking",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "documents": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {"index": {"type": "integer"}},
+                                "required": ["index"],
+                                "additionalProperties": False,
+                            },
+                        }
+                    },
+                    "required": ["documents"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+    },
+)
+
+ranker = LLMRanker(chat_generator=chat_generator)
+
+documents = [
+    Document(id="paris", content="Paris is the capital of France."),
+    Document(id="berlin", content="Berlin is the capital of Germany."),
+]
+
+result = ranker.run(query="capital of Germany", documents=documents)
+print(result["documents"][0].id)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    chat_generator: ChatGenerator | None = None,
+    prompt: str = DEFAULT_PROMPT_TEMPLATE,
+    top_k: int = 10,
+    raise_on_failure: bool = False
+)
+```
+
+Initialize the LLMRanker component.
+
+**Parameters:**
+
+- **chat_generator** (<code>ChatGenerator | None</code>) – The chat generator to use for reranking. If `None`, a default `OpenAIChatGenerator` configured for JSON
+  output is used.
+- **prompt** (<code>str</code>) – Custom prompt template for reranking. The prompt must include exactly the variables `query` and
+  `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
+- **top_k** (<code>int</code>) – The maximum number of documents to return.
+- **raise_on_failure** (<code>bool</code>) – If `True`, raise when generation or response parsing fails. If `False`, log the failure and return the
+  input documents in fallback order.
+
+#### warm_up
+
+```python
+warm_up()
+```
+
+Warm up the underlying chat generator.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> LLMRanker
+```
+
+Deserialize this component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of the component.
+
+**Returns:**
+
+- <code>LLMRanker</code> – The deserialized component instance.
+
+#### run
+
+```python
+run(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Rank documents for a query using an LLM.
+
+Before ranking, duplicate documents are removed.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query used for reranking.
+- **documents** (<code>list\[Document\]</code>) – Candidate documents to rerank.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the ranked documents under the `documents` key.
+
 ## lost_in_the_middle
 
 ### LostInTheMiddleRanker
