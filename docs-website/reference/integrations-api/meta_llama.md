@@ -47,6 +47,21 @@ response = client.run(messages)
 print(response)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "Llama-4-Scout-17B-16E-Instruct-FP8",
+    "Llama-3.3-70B-Instruct",
+    "Llama-3.3-8B-Instruct",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://llama.developer.meta.com/docs/models for the full list.
+
 #### __init__
 
 ```python
