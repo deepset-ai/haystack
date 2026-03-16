@@ -120,7 +120,7 @@ class DocumentCleaner:
             if doc.content is None:
                 logger.warning(
                     "DocumentCleaner only cleans text documents but document.content for document ID"
-                    " %{document_id} is None.",
+                    " {document_id} is None.",
                     document_id=doc.id,
                 )
                 cleaned_docs.append(doc)
