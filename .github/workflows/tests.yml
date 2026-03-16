@@ -1,5 +1,12 @@
-# If you change this name also do it in tests_skipper.yml and ci_metrics.yml
+# If you change this name also do it in ci_metrics.yml
 name: Tests
+
+# The workflow will always run, but the actual tests will only execute when:
+# - The workflow is triggered manually.
+# - The push is to main or a release branch.
+# - There are changes to relevant files on a pull request.
+# Note: If no conditions are met, the workflow will complete successfully without running tests
+# to satisfy Branch Protection rules.
 
 on:
   workflow_dispatch: # Activate this workflow manually
@@ -8,6 +15,7 @@ on:
       - main
       # release branches have the form v1.9.x
       - "v[0-9].*[0-9].x"
+    # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
     paths-ignore:
       - 'docs/**'
       - 'docs-website/**'
@@ -16,14 +24,6 @@ on:
       - opened
       - reopened
       - synchronize
-    paths:
-      # Keep the list in sync with the paths defined in the `tests_skipper_trigger.yml` workflow
-      - "haystack/**/*.py"
-      - "haystack/core/pipeline/predefined/*"
-      - "test/**/*.py"
-      - "pyproject.toml"
-      - ".github/utils/*.py"
-      - "scripts/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -37,7 +37,38 @@ env:
   HATCH_VERSION: "1.16.5"
 
 jobs:
+  check-if-changed:
+  # This job checks if the relevant files have been changed.
+  # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
+  # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
+    name: Check if changed
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: read
+    # Specifying outputs is not needed to make the job work, but only to comply with actionlint
+    outputs:
+      changes: ${{ steps.changes.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check for changed code
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changes:
+              - "haystack/**/*.py"
+              - "test/**/*.py"
+              - "pyproject.toml"
+              - ".github/utils/*.py"
+              - "scripts/*.py"
+
   format:
+    needs: check-if-changed
+    # Run tests if: manual trigger, push to main/release, or relevant files changed
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (needs.check-if-changed.outputs.changes == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -249,18 +280,28 @@ jobs:
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
-  trigger-catch-all:
-    name: Tests completed
-    # This job will be executed only after all the other tests
-    # are successful.
-    # This way we'll be able to mark only this test as required
-    # and skip it accordingly.
+  tests-completed:
+    # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
+    name: Mark tests as completed
+    runs-on: ubuntu-slim
+    if: ${{ always() && !cancelled() }}
     needs:
       - check-imports
       - mypy
       - integration-tests-linux
       - integration-tests-macos
       - integration-tests-windows
-    uses: ./.github/workflows/tests_skipper_workflow.yml
-    with:
-      tests_were_skipped: false
+
+    steps:
+    - name: Mark tests as completed
+      run: |
+        if [ "${{ needs.check-imports.result }}" = "failure" ] ||
+           [ "${{ needs.mypy.result }}" = "failure" ] ||
+           [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
+           [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
+           [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
+          echo "Tests failed!"
+          exit 1
+        else
+          echo "Tests completed!"
+        fi
