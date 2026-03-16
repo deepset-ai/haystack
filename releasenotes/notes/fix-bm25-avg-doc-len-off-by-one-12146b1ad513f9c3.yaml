@@ -2,4 +2,4 @@
 fixes:
   - |
     Fixed an off-by-one error in ``InMemoryDocumentStore.write_documents`` that caused the BM25
-    average document length (`_avg_doc_len`) to be systematically underestimated.
+    average document length to be systematically underestimated.
