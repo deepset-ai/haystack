@@ -212,17 +212,6 @@ result = retriever.run(query="languages")
 
 assert res['retriever']['documents'][0].content == "There are over 7,000 languages spoken around the world today."
 
-
-
-
-
-
-
-
-
-
-
-
 #### __init__
 
 ```python
