@@ -1,7 +1,7 @@
 name: Approve and merge API reference sync PRs
 
-# Automatically approve and merge API reference sync PRs from Haystack, Haystack Core Integrations, Haystack Experimental
-# and Haystack Core Integrations
+# Automatically approve and merge API reference sync PRs from Haystack, Haystack Core Integrations,
+# and Haystack Experimental
 
 on:
   pull_request:
