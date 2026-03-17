@@ -21,7 +21,7 @@ class RecallMode(Enum):
     # Score is based on how many documents were retrieved.
     MULTI_HIT = "multi_hit"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -68,7 +68,9 @@ class DocumentRecallEvaluator:
     ```
     """
 
-    def __init__(self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content"):
+    def __init__(
+        self, mode: str | RecallMode = RecallMode.SINGLE_HIT, document_comparison_field: str = "content"
+    ) -> None:
         """
         Create a DocumentRecallEvaluator component.
 

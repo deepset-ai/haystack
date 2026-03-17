@@ -70,7 +70,7 @@ __init__(
     last_message_only: bool = False,
     *,
     return_only_referenced_documents: bool = True
-)
+) -> None
 ```
 
 Creates an instance of the AnswerBuilder component.
@@ -107,7 +107,7 @@ run(
     documents: list[Document] | None = None,
     pattern: str | None = None,
     reference_pattern: str | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
@@ -140,7 +140,7 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `answers`: The answers received from the output of the Generator.
 
 ## chat_prompt_builder
@@ -259,7 +259,7 @@ __init__(
     template: list[ChatMessage] | str | None = None,
     required_variables: list[str] | Literal["*"] | None = None,
     variables: list[str] | None = None,
-)
+) -> None
 ```
 
 Constructs a ChatPromptBuilder component.
@@ -473,7 +473,7 @@ __init__(
     template: str,
     required_variables: list[str] | Literal["*"] | None = None,
     variables: list[str] | None = None,
-)
+) -> None
 ```
 
 Constructs a PromptBuilder component.
@@ -511,8 +511,8 @@ Returns a dictionary representation of the component.
 run(
     template: str | None = None,
     template_variables: dict[str, Any] | None = None,
-    **kwargs: dict[str, Any] | None
-)
+    **kwargs: Any
+) -> dict[str, Any]
 ```
 
 Renders the prompt template with the provided variables.
@@ -526,11 +526,11 @@ In order to overwrite pipeline kwargs, you can set the `template_variables` para
 - **template** (<code>str | None</code>) – An optional string template to overwrite PromptBuilder's default template. If None, the default template
   provided at initialization is used.
 - **template_variables** (<code>dict\[str, Any\] | None</code>) – An optional dictionary of template variables to overwrite the pipeline variables.
-- **kwargs** – Pipeline variables used for rendering the prompt.
+- **kwargs** (<code>Any</code>) – Pipeline variables used for rendering the prompt.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `prompt`: The updated prompt text after rendering the prompt template.
 
 **Raises:**

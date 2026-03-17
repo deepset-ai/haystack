@@ -62,7 +62,7 @@ __init__(
     root_path: str | None = None,
     detail: Literal["auto", "high", "low"] | None = None,
     size: tuple[int, int] | None = None
-)
+) -> None
 ```
 
 Initialize the DocumentToImageContent component.
@@ -139,7 +139,7 @@ print(documents)
 #### __init__
 
 ```python
-__init__(*, store_full_path: bool = False)
+__init__(*, store_full_path: bool = False) -> None
 ```
 
 Initialize the ImageFileToDocument component.
@@ -211,7 +211,7 @@ __init__(
     *,
     detail: Literal["auto", "high", "low"] | None = None,
     size: tuple[int, int] | None = None
-)
+) -> None
 ```
 
 Create the ImageFileToImageContent component.
@@ -292,7 +292,7 @@ __init__(
     detail: Literal["auto", "high", "low"] | None = None,
     size: tuple[int, int] | None = None,
     page_range: list[str | int] | None = None
-)
+) -> None
 ```
 
 Create the PDFToImageContent component.

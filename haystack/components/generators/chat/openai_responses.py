@@ -5,7 +5,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.lib._pydantic import to_strict_json_schema
@@ -74,6 +74,31 @@ class OpenAIResponsesChatGenerator:
     ```
     """
 
+    SUPPORTED_MODELS: ClassVar[list[str]] = [
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5",
+        "gpt-5.1",
+        "gpt-5.2",
+        "gpt-5.2-pro",
+        "gpt-5.4",
+        "gpt-5-pro",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "o1",
+        "o1-mini",
+        "o1-pro",
+        "o3",
+        "o3-mini",
+        "o3-pro",
+        "o4-mini",
+    ]
+    """A non-exhaustive list of chat models supported by this component.
+    See https://platform.openai.com/docs/models for the full list and snapshot IDs."""
+
     def __init__(
         self,
         *,
@@ -88,7 +113,7 @@ class OpenAIResponsesChatGenerator:
         tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
 
@@ -190,7 +215,7 @@ class OpenAIResponsesChatGenerator:
         )
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the OpenAI responses chat generator.
 
@@ -802,7 +827,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         If the message format is invalid.
     """
 
-    def convert_part(part) -> dict[str, str | None]:
+    def convert_part(part: Any) -> dict[str, str | None]:
         if isinstance(part, TextContent):
             return {"type": "input_text", "text": part.text}
         if isinstance(part, ImageContent):

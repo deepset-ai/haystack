@@ -123,7 +123,6 @@ Translate the following document to {{ language }}: {{ document }}
 
 # The template variables 'language' and 'document' become inputs to the run method
 result = agent.run(
-    messages=[],
     language="French",
     document="The weather is lovely today and the sun is shining.",
 )
@@ -228,7 +227,7 @@ Deserialize the agent from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     *,
     generation_kwargs: dict[str, Any] | None = None,
@@ -247,7 +246,7 @@ Process messages and execute tools until an exit condition is met.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
   The same callback can be configured to emit tool results when a tool is called.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
@@ -286,7 +285,7 @@ Process messages and execute tools until an exit condition is met.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     *,
     generation_kwargs: dict[str, Any] | None = None,
@@ -309,7 +308,7 @@ if available.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
+- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed from the
   LLM. The same callback can be configured to emit tool results when a tool is called.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
@@ -383,7 +382,7 @@ my_state = State(
 #### __init__
 
 ```python
-__init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
+__init__(schema: dict[str, Any], data: dict[str, Any] | None = None) -> None
 ```
 
 Initialize a State object with a schema and optional data.
@@ -440,7 +439,7 @@ Value is merged or overwritten according to these rules:
 #### data
 
 ```python
-data
+data: dict[str, Any]
 ```
 
 All current data of the state.
@@ -464,7 +463,7 @@ Check if a key exists in the state.
 #### to_dict
 
 ```python
-to_dict()
+to_dict() -> dict[str, Any]
 ```
 
 Convert the State object to a dictionary.
@@ -472,7 +471,7 @@ Convert the State object to a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any])
+from_dict(data: dict[str, Any]) -> State
 ```
 
 Convert a dictionary back to a State object.

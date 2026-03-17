@@ -174,7 +174,7 @@ class ExtractiveReader:
 
         return default_from_dict(cls, data)
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -542,7 +542,7 @@ class ExtractiveReader:
         answers_per_seq: int | None = None,
         no_answer: bool | None = None,
         overlap_threshold: float | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Locates and extracts answers from the given Documents using the given query.
 

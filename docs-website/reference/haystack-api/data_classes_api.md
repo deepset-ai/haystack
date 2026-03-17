@@ -10,6 +10,8 @@ slug: "/data-classes-api"
 
 ### ExtractedAnswer
 
+Holds an answer extracted by an extractive Reader (query, score, text, and optional document/context).
+
 #### to_dict
 
 ```python
@@ -39,6 +41,8 @@ Deserialize the object from a dictionary.
 - <code>ExtractedAnswer</code> – Deserialized object.
 
 ### GeneratedAnswer
+
+Holds a generated answer from a Generator (answer text, query, referenced documents, and metadata).
 
 #### to_dict
 
@@ -170,6 +174,8 @@ Populate the AgentBreakpoint from a dictionary representation.
 - <code>AgentBreakpoint</code> – An instance of AgentBreakpoint.
 
 ### AgentSnapshot
+
+Snapshot of an Agent's state at a breakpoint (component inputs, visit counts, and breakpoint).
 
 #### to_dict
 
@@ -922,7 +928,7 @@ The `blob` field is converted to its original type.
 #### content_type
 
 ```python
-content_type
+content_type: str
 ```
 
 Returns the type of the content for the document.

@@ -64,7 +64,7 @@ print(retrieved_docs["documents"])
 #### __init__
 
 ```python
-__init__(document_store: DocumentStore, threshold: float = 0.5)
+__init__(document_store: DocumentStore, threshold: float = 0.5) -> None
 ```
 
 Initialize the AutoMergingRetriever.
@@ -105,7 +105,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Run the AutoMergingRetriever.
@@ -119,12 +119,12 @@ continuing up the hierarchy until no more merges are possible.
 
 **Returns:**
 
-- – List of documents (could be a mix of different hierarchy levels)
+- <code>dict\[str, list\[Document\]\]</code> – List of documents (could be a mix of different hierarchy levels)
 
 #### run_async
 
 ```python
-run_async(documents: list[Document])
+run_async(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the AutoMergingRetriever.
@@ -138,7 +138,7 @@ continuing up the hierarchy until no more merges are possible.
 
 **Returns:**
 
-- – List of documents (could be a mix of different hierarchy levels)
+- <code>dict\[str, list\[Document\]\]</code> – List of documents (could be a mix of different hierarchy levels)
 
 ## filter_retriever
 
@@ -171,7 +171,9 @@ print(result["documents"])
 #### __init__
 
 ```python
-__init__(document_store: DocumentStore, filters: dict[str, Any] | None = None)
+__init__(
+    document_store: DocumentStore, filters: dict[str, Any] | None = None
+) -> None
 ```
 
 Create the FilterRetriever component.
@@ -212,7 +214,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(filters: dict[str, Any] | None = None)
+run(filters: dict[str, Any] | None = None) -> dict[str, Any]
 ```
 
 Run the FilterRetriever on the given input data.
@@ -224,12 +226,12 @@ Run the FilterRetriever on the given input data.
 
 **Returns:**
 
-- – A list of retrieved documents.
+- <code>dict\[str, Any\]</code> – A list of retrieved documents.
 
 #### run_async
 
 ```python
-run_async(filters: dict[str, Any] | None = None)
+run_async(filters: dict[str, Any] | None = None) -> dict[str, Any]
 ```
 
 Asynchronously run the FilterRetriever on the given input data.
@@ -241,7 +243,7 @@ Asynchronously run the FilterRetriever on the given input data.
 
 **Returns:**
 
-- – A list of retrieved documents.
+- <code>dict\[str, Any\]</code> – A list of retrieved documents.
 
 ## in_memory/bm25_retriever
 
@@ -281,7 +283,7 @@ __init__(
     top_k: int = 10,
     scale_score: bool = False,
     filter_policy: FilterPolicy = FilterPolicy.REPLACE,
-)
+) -> None
 ```
 
 Create the InMemoryBM25Retriever component.
@@ -440,7 +442,7 @@ __init__(
     scale_score: bool = False,
     return_embedding: bool = False,
     filter_policy: FilterPolicy = FilterPolicy.REPLACE,
-)
+) -> None
 ```
 
 Create the InMemoryEmbeddingRetriever component.
@@ -890,7 +892,7 @@ __init__(
     source_id_meta_field: str | list[str] = "source_id",
     split_id_meta_field: str = "split_id",
     raise_on_missing_meta_fields: bool = True
-)
+) -> None
 ```
 
 Creates a new SentenceWindowRetriever component.
@@ -950,7 +952,9 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(retrieved_documents: list[Document], window_size: int | None = None)
+run(
+    retrieved_documents: list[Document], window_size: int | None = None
+) -> dict[str, Any]
 ```
 
 Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
@@ -966,7 +970,7 @@ document from the document store.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
   - `context_windows`: A list of strings, where each string represents the concatenated text from the
     context window of the corresponding document in `retrieved_documents`.
   - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
@@ -976,7 +980,9 @@ document from the document store.
 #### run_async
 
 ```python
-run_async(retrieved_documents: list[Document], window_size: int | None = None)
+run_async(
+    retrieved_documents: list[Document], window_size: int | None = None
+) -> dict[str, Any]
 ```
 
 Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
@@ -992,7 +998,7 @@ document from the document store.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
   - `context_windows`: A list of strings, where each string represents the concatenated text from the
     context window of the corresponding document in `retrieved_documents`.
   - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context

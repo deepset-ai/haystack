@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from typing import Any
+
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
 
@@ -41,7 +43,7 @@ class TopPSampler:
     ```
     """
 
-    def __init__(self, top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None):
+    def __init__(self, top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None) -> None:
         """
         Creates an instance of TopPSampler.
 
@@ -61,7 +63,7 @@ class TopPSampler:
         self.min_top_k = min_top_k
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], top_p: float | None = None):
+    def run(self, documents: list[Document], top_p: float | None = None) -> dict[str, Any]:
         """
         Filters documents using top-p sampling based on their scores.
 

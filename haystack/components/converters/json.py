@@ -95,7 +95,7 @@ class JSONConverter:
         content_key: str | None = None,
         extra_meta_fields: set[str] | Literal["*"] | None = None,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Creates a JSONConverter component.
 
@@ -247,7 +247,9 @@ class JSONConverter:
         return result
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Converts a list of JSON files to documents.
 

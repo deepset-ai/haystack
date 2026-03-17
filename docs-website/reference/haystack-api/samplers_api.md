@@ -41,7 +41,7 @@ __init__(
     top_p: float = 1.0,
     score_field: str | None = None,
     min_top_k: int | None = None,
-)
+) -> None
 ```
 
 Creates an instance of TopPSampler.
@@ -58,7 +58,7 @@ Creates an instance of TopPSampler.
 #### run
 
 ```python
-run(documents: list[Document], top_p: float | None = None)
+run(documents: list[Document], top_p: float | None = None) -> dict[str, Any]
 ```
 
 Filters documents using top-p sampling based on their scores.
@@ -73,7 +73,7 @@ method returns the document with the highest score.
 
 **Returns:**
 
-- – A dictionary with the following key:
+- <code>dict\[str, Any\]</code> – A dictionary with the following key:
 - `documents`: List of Document objects that have been selected based on the top-p sampling.
 
 **Raises:**

@@ -291,6 +291,36 @@ response = client.run(messages)
 print(response)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "ibm/granite-3-1-8b-base",
+    "ibm/granite-3-8b-instruct",
+    "ibm/granite-4-h-small",
+    "ibm/granite-8b-code-instruct",
+    "ibm/granite-guardian-3-8b",
+    "meta-llama/llama-3-1-70b-gptq",
+    "meta-llama/llama-3-1-8b",
+    "meta-llama/llama-3-2-11b-vision-instruct",
+    "meta-llama/llama-3-2-90b-vision-instruct",
+    "meta-llama/llama-3-3-70b-instruct",
+    "meta-llama/llama-3-405b-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct-fp8",
+    "meta-llama/llama-guard-3-11b-vision",
+    "mistral-large-2512",
+    "mistralai/mistral-medium-2505",
+    "mistralai/mistral-small-3-1-24b-instruct-2503",
+    "openai/gpt-oss-120b",
+]
+
+```
+
+A non-exhaustive list of models supported by this component.
+
+See https://www.ibm.com/docs/en/watsonx/saas?topic=solutions-supported-foundation-models for the
+full list of models and up-to-date model IDs.
+
 #### __init__
 
 ```python
@@ -491,6 +521,36 @@ Output:
     ],
 }
 ```
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "ibm/granite-3-1-8b-base",
+    "ibm/granite-3-8b-instruct",
+    "ibm/granite-4-h-small",
+    "ibm/granite-8b-code-instruct",
+    "ibm/granite-guardian-3-8b",
+    "meta-llama/llama-3-1-70b-gptq",
+    "meta-llama/llama-3-1-8b",
+    "meta-llama/llama-3-2-11b-vision-instruct",
+    "meta-llama/llama-3-2-90b-vision-instruct",
+    "meta-llama/llama-3-3-70b-instruct",
+    "meta-llama/llama-3-405b-instruct",
+    "meta-llama/llama-4-maverick-17b-128e-instruct-fp8",
+    "meta-llama/llama-guard-3-11b-vision",
+    "mistral-large-2512",
+    "mistralai/mistral-medium-2505",
+    "mistralai/mistral-small-3-1-24b-instruct-2503",
+    "openai/gpt-oss-120b",
+]
+
+```
+
+A non-exhaustive list of models supported by this component.
+
+See https://www.ibm.com/docs/en/watsonx/saas?topic=solutions-supported-foundation-models for the
+full list of models and up-to-date model IDs.
 
 #### __init__
 

@@ -60,7 +60,7 @@ class SentenceTransformersSimilarityRanker:
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         batch_size: int = 16,
-    ):
+    ) -> None:
         """
         Creates an instance of SentenceTransformersSimilarityRanker.
 

@@ -87,7 +87,7 @@ __init__(
     size: tuple[int, int] | None = None,
     raise_on_failure: bool = False,
     max_workers: int = 3
-)
+) -> None
 ```
 
 Initialize the LLMDocumentContentExtractor component.
@@ -108,7 +108,7 @@ Initialize the LLMDocumentContentExtractor component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the ChatGenerator if it has a warm_up method.
@@ -292,7 +292,7 @@ __init__(
     page_range: list[str | int] | None = None,
     raise_on_failure: bool = False,
     max_workers: int = 3,
-)
+) -> None
 ```
 
 Initializes the LLMMetadataExtractor.
@@ -316,7 +316,7 @@ Initializes the LLMMetadataExtractor.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the LLM provider component.
@@ -352,7 +352,9 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(documents: list[Document], page_range: list[str | int] | None = None)
+run(
+    documents: list[Document], page_range: list[str | int] | None = None
+) -> dict[str, Any]
 ```
 
 Extract metadata from documents using a Large Language Model.
@@ -375,7 +377,7 @@ The original documents will be returned updated with the extracted metadata.
 
 **Returns:**
 
-- – A dictionary with the keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the keys:
 - "documents": A list of documents that were successfully updated with the extracted metadata.
 - "failed_documents": A list of documents that failed to extract metadata. These documents will have
   "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
@@ -469,7 +471,7 @@ Create a Named Entity extractor component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initialize the component.
@@ -582,7 +584,7 @@ result = parser.run(text_or_messages=messages)
 #### __init__
 
 ```python
-__init__(regex_pattern: str)
+__init__(regex_pattern: str) -> None
 ```
 
 Creates an instance of the RegexTextExtractor component.

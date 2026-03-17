@@ -124,6 +124,14 @@ Bases: <code>ConfirmationPolicy</code>
 
 Ask only once per tool with specific parameters.
 
+#### __init__
+
+```python
+__init__() -> None
+```
+
+Creates an instance of AskOncePolicy.
+
 #### should_ask
 
 ```python
@@ -290,6 +298,14 @@ Deserializes the BlockingConfirmationStrategy from a dictionary.
 Bases: <code>ConfirmationUI</code>
 
 Rich console interface for user interaction.
+
+#### __init__
+
+```python
+__init__(console: Console | None = None) -> None
+```
+
+Creates an instance of RichConsoleUI.
 
 #### get_user_confirmation
 

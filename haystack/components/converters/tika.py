@@ -24,18 +24,18 @@ class XHTMLParser(HTMLParser):
     Custom parser to extract pages from Tika XHTML content.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ingest = True
         self.page = ""
         self.pages: list[str] = []
 
-    def handle_starttag(self, tag: str, attrs: list[tuple]):
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         """Identify the start of a page div."""
         if tag == "div" and any(attr == "class" and value == "page" for attr, value in attrs):
             self.ingest = True
 
-    def handle_endtag(self, tag: str):
+    def handle_endtag(self, tag: str) -> None:
         """Identify the end of a page div."""
         if self.ingest and tag in ("div", "body"):
             self.ingest = False
@@ -43,7 +43,7 @@ class XHTMLParser(HTMLParser):
             self.pages.append(self.page.replace("-\n", ""))
             self.page = ""
 
-    def handle_data(self, data: str):
+    def handle_data(self, data: str) -> None:
         """Populate the page content."""
         if self.ingest:
             self.page += data
@@ -74,7 +74,7 @@ class TikaDocumentConverter:
     ```
     """
 
-    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False):
+    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False) -> None:
         """
         Create a TikaDocumentConverter component.
 
@@ -89,7 +89,9 @@ class TikaDocumentConverter:
         self.store_full_path = store_full_path
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, list[Document]]:
         """
         Converts files to Documents.
 
