@@ -22,7 +22,7 @@ class JoinMode(Enum):
 
     CONCATENATE = "concatenate"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -86,7 +86,7 @@ class AnswerJoiner:
 
     def __init__(
         self, join_mode: str | JoinMode = JoinMode.CONCATENATE, top_k: int | None = None, sort_by_score: bool = False
-    ):
+    ) -> None:
         """
         Creates an AnswerJoiner component.
 
@@ -110,7 +110,7 @@ class AnswerJoiner:
         self.sort_by_score = sort_by_score
 
     @component.output_types(answers=list[AnswerType])
-    def run(self, answers: Variadic[list[AnswerType]], top_k: int | None = None):
+    def run(self, answers: Variadic[list[AnswerType]], top_k: int | None = None) -> dict[str, Any]:
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 

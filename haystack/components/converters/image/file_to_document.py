@@ -42,7 +42,7 @@ class ImageFileToDocument:
     ```
     """
 
-    def __init__(self, *, store_full_path: bool = False):
+    def __init__(self, *, store_full_path: bool = False) -> None:
         """
         Initialize the ImageFileToDocument component.
 

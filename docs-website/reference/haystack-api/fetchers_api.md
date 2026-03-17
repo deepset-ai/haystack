@@ -56,7 +56,7 @@ __init__(
     http2: bool = False,
     client_kwargs: dict | None = None,
     request_headers: dict[str, str] | None = None,
-)
+) -> None
 ```
 
 Initializes the component.
@@ -77,7 +77,7 @@ Initializes the component.
 #### run
 
 ```python
-run(urls: list[str])
+run(urls: list[str]) -> dict[str, Any]
 ```
 
 Fetches content from a list of URLs and returns a list of extracted content streams.
@@ -93,7 +93,7 @@ the key "content_type". The URL of the fetched content is stored under the key "
 
 **Returns:**
 
-- – `ByteStream` objects representing the extracted content.
+- <code>dict\[str, Any\]</code> – `ByteStream` objects representing the extracted content.
 
 **Raises:**
 
@@ -105,7 +105,7 @@ the key "content_type". The URL of the fetched content is stored under the key "
 #### run_async
 
 ```python
-run_async(urls: list[str])
+run_async(urls: list[str]) -> dict[str, Any]
 ```
 
 Asynchronously fetches content from a list of URLs and returns a list of extracted content streams.
@@ -118,4 +118,4 @@ This is the asynchronous version of the `run` method with the same parameters an
 
 **Returns:**
 
-- – `ByteStream` objects representing the extracted content.
+- <code>dict\[str, Any\]</code> – `ByteStream` objects representing the extracted content.

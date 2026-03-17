@@ -56,7 +56,7 @@ assert written_docs[0] == Document(id="1", content="This is an English document"
 #### __init__
 
 ```python
-__init__(languages: list[str] | None = None)
+__init__(languages: list[str] | None = None) -> None
 ```
 
 Initializes the DocumentLanguageClassifier component.
@@ -70,7 +70,7 @@ Initializes the DocumentLanguageClassifier component.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Classifies the language of each document and adds it to its metadata.
@@ -84,7 +84,7 @@ sets the metadata value to "unmatched".
 
 **Returns:**
 
-- – A dictionary with the following key:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: A list of documents with an added `language` metadata field.
 
 **Raises:**
@@ -161,7 +161,7 @@ __init__(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
     ),
     huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Initializes the TransformersZeroShotDocumentClassifier.
@@ -191,7 +191,7 @@ for the full list of zero-shot classification models (NLI) models.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -227,7 +227,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(documents: list[Document], batch_size: int = 1)
+run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
 ```
 
 Classifies the documents based on the provided labels and adds them to their metadata.
@@ -243,5 +243,5 @@ the `details` key within the `classification` dictionary.
 
 **Returns:**
 
-- – A dictionary with the following key:
+- <code>dict\[str, Any\]</code> – A dictionary with the following key:
 - `documents`: A list of documents with an added metadata field called `classification`.

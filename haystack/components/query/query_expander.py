@@ -243,7 +243,7 @@ class QueryExpander:
             logger.exception("Failed to expand query {query}: {error}", query=query, error=str(e))
             return response
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the LLM provider component.
         """

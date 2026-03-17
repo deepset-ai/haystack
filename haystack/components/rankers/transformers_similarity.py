@@ -65,7 +65,7 @@ class TransformersSimilarityRanker:
         model_kwargs: dict[str, Any] | None = None,
         tokenizer_kwargs: dict[str, Any] | None = None,
         batch_size: int = 16,
-    ):
+    ) -> None:
         """
         Creates an instance of TransformersSimilarityRanker.
 
@@ -153,7 +153,7 @@ class TransformersSimilarityRanker:
         """
         return {"model": self.model_name_or_path}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -227,7 +227,7 @@ class TransformersSimilarityRanker:
         scale_score: bool | None = None,
         calibration_factor: float | None = None,
         score_threshold: float | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
@@ -286,13 +286,13 @@ class TransformersSimilarityRanker:
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
         class _Dataset(Dataset):
-            def __init__(self, batch_encoding):
+            def __init__(self, batch_encoding: Any) -> None:
                 self.batch_encoding = batch_encoding
 
-            def __len__(self):
+            def __len__(self) -> int:
                 return len(self.batch_encoding["input_ids"])
 
-            def __getitem__(self, item):
+            def __getitem__(self, item: int) -> dict[str, Any]:
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
         # mypy doesn't know this is set in warm_up

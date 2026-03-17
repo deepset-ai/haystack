@@ -88,7 +88,7 @@ _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
 ```python
 __init__(
     json_schema: dict[str, Any] | None = None, error_template: str | None = None
-)
+) -> None
 ```
 
 Initialize the JsonSchemaValidator component.

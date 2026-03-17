@@ -303,7 +303,7 @@ class ChatMessage:
 
         return super(ChatMessage, cls).__new__(cls)  # noqa: UP008
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str) -> Any:
         """
         This method is reimplemented to make the `content` attribute removal more visible.
         """
@@ -318,7 +318,7 @@ class ChatMessage:
             raise AttributeError(msg)
         return object.__getattribute__(self, name)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._content)
 
     @property

@@ -160,7 +160,7 @@ __init__(
     *,
     enable_streaming_callback_passthrough: bool = False,
     max_workers: int = 4
-)
+) -> None
 ````
 
 Initialize the ToolInvoker component.
@@ -191,7 +191,7 @@ Initialize the ToolInvoker component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the tool invoker.

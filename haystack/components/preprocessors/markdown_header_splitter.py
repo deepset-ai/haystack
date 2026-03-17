@@ -33,7 +33,7 @@ class MarkdownHeaderSplitter:
         split_overlap: int = 0,
         split_threshold: int = 0,
         skip_empty_documents: bool = True,
-    ):
+    ) -> None:
         """
         Initialize the MarkdownHeaderSplitter.
 
@@ -69,7 +69,7 @@ class MarkdownHeaderSplitter:
                 split_threshold=self.split_threshold,
             )
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the MarkdownHeaderSplitter.
         """
@@ -216,7 +216,7 @@ class MarkdownHeaderSplitter:
         )
         return result_docs
 
-    def _update_page_number_with_breaks(self, content: str, current_page: int) -> int:
+    def _update_page_number_with_breaks(self, content: str | None, current_page: int) -> int:
         """
         Update page number based on page breaks in content.
 

@@ -45,7 +45,7 @@ class PDFToImageContent:
         detail: Literal["auto", "high", "low"] | None = None,
         size: tuple[int, int] | None = None,
         page_range: list[str | int] | None = None,
-    ):
+    ) -> None:
         """
         Create the PDFToImageContent component.
 

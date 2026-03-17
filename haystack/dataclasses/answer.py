@@ -28,6 +28,10 @@ class Answer(Protocol):
 @_warn_on_inplace_mutation
 @dataclass
 class ExtractedAnswer:
+    """
+    Holds an answer extracted by an extractive Reader (query, score, text, and optional document/context).
+    """
+
     query: str
     score: float
     data: str | None = None
@@ -90,6 +94,10 @@ class ExtractedAnswer:
 @_warn_on_inplace_mutation
 @dataclass
 class GeneratedAnswer:
+    """
+    Holds a generated answer from a Generator (answer text, query, referenced documents, and metadata).
+    """
+
     data: str
     query: str
     documents: list[Document]

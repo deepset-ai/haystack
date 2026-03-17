@@ -112,7 +112,7 @@ class State:
     ```
     """
 
-    def __init__(self, schema: dict[str, Any], data: dict[str, Any] | None = None):
+    def __init__(self, schema: dict[str, Any], data: dict[str, Any] | None = None) -> None:
         """
         Initialize a State object with a schema and optional data.
 
@@ -173,7 +173,7 @@ class State:
         self._data[key] = handler(current_value, value)
 
     @property
-    def data(self):
+    def data(self) -> dict[str, Any]:
         """
         All current data of the state.
         """
@@ -188,7 +188,7 @@ class State:
         """
         return key in self._data
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the State object to a dictionary.
         """
@@ -198,7 +198,7 @@ class State:
         return serialized
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]):
+    def from_dict(cls, data: dict[str, Any]) -> "State":
         """
         Convert a dictionary back to a State object.
         """

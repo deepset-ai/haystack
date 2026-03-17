@@ -63,7 +63,7 @@ class AutoMergingRetriever:
     ```
     """  # noqa: E501
 
-    def __init__(self, document_store: DocumentStore, threshold: float = 0.5):
+    def __init__(self, document_store: DocumentStore, threshold: float = 0.5) -> None:
         """
         Initialize the AutoMergingRetriever.
 
@@ -111,7 +111,7 @@ class AutoMergingRetriever:
             raise ValueError("The matched leaf documents do not have the required meta field '__block_size'")
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Run the AutoMergingRetriever.
 
@@ -167,7 +167,7 @@ class AutoMergingRetriever:
         return {"documents": _try_merge_level(documents, [])}
 
     @component.output_types(documents=list[Document])
-    async def run_async(self, documents: list[Document]):
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Asynchronously run the AutoMergingRetriever.
 

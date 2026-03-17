@@ -64,7 +64,7 @@ class SearchableToolset(Toolset):
         search_tool_name: str = "search_tools",
         search_tool_description: str | None = None,
         search_tool_parameters_description: dict[str, str] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the SearchableToolset.
 

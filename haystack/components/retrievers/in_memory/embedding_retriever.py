@@ -56,7 +56,7 @@ class InMemoryEmbeddingRetriever:
         scale_score: bool = False,
         return_embedding: bool = False,
         filter_policy: FilterPolicy = FilterPolicy.REPLACE,
-    ):
+    ) -> None:
         """
         Create the InMemoryEmbeddingRetriever component.
 

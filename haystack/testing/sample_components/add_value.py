@@ -11,7 +11,7 @@ class AddFixedValue:
     Adds two values together.
     """
 
-    def __init__(self, add: int = 1):
+    def __init__(self, add: int = 1) -> None:
         self.add = add
 
     @component.output_types(result=int)
