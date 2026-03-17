@@ -2,8 +2,8 @@
 
 ## Report a Vulnerability
 
-If you found a security vulnerability in Haystack, send a message to
-[security@deepset.ai](mailto:security@deepset.ai).
+If you have found a security vulnerability in Haystack, please report via email to
+[opensource-security@deepset.ai](mailto:opensource-security@deepset.ai).
 
 In your message, please include:
 
@@ -24,7 +24,7 @@ If you are uncertain whether a finding falls within scope, feel free to reach ou
 
 ## Vulnerability Response
 
-We'll review your report within 5 business days and we will do a preliminary analysis
+We aim to review your report within 5 business days where we do a preliminary analysis
 to confirm that the vulnerability is plausible. Otherwise, we'll decline the report.
 
 We won't disclose any information you share with us but we'll use it to get the issue
