@@ -8,7 +8,7 @@ import math
 import re
 import uuid
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -160,7 +160,7 @@ class InMemoryDocumentStore:
     def _freq_vocab_for_idf(self) -> Counter:
         return _FREQ_VOCAB_FOR_IDF_STORAGES.get(self.index, Counter())
 
-    def _dispatch_bm25(self):
+    def _dispatch_bm25(self) -> "Callable[[str, list[Document]], list[tuple[Document, float]]]":
         """
         Select the correct BM25 algorithm based on user specification.
 

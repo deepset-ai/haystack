@@ -4,7 +4,7 @@
 
 import warnings
 from functools import wraps
-from typing import TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -21,7 +21,7 @@ def _warn_on_inplace_mutation(cls: T) -> T:
     original_setattr = cls.__setattr__
 
     @wraps(original_init)
-    def __init_track__(self, *args, **kwargs):
+    def __init_track__(self: T, *args: Any, **kwargs: Any) -> None:
         # We don't raise warnings during initialization, i.e. during the first call to __init__ and __post_init__.
         initializing.add(id(self))
         try:
@@ -30,7 +30,7 @@ def _warn_on_inplace_mutation(cls: T) -> T:
             initializing.discard(id(self))
 
     @wraps(original_setattr)
-    def __setattr_warn__(self, name, value):
+    def __setattr_warn__(self: T, name: str, value: Any) -> None:
         # We raise warnings if the dataclass is mutated in-place after initialization.
         if (
             id(self) not in initializing

@@ -282,7 +282,7 @@ class ChatMessage:
     _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
-    def __new__(cls, *args, **kwargs):  # noqa: ARG004
+    def __new__(cls, *args: Any, **kwargs: Any) -> "ChatMessage":  # noqa: ARG004
         """
         This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
 

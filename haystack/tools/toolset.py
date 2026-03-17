@@ -146,7 +146,7 @@ class Toolset:
     # Use field() with default_factory to initialize the list
     tools: list[Tool] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Validate and set up the toolset after initialization.
 

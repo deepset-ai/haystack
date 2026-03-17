@@ -255,6 +255,7 @@ max-statements = 56                               # Default is 50
 [tool.ruff.lint]
 select = [
   "A001",   # builtin-variable-shadowing
+  "ANN",    # flake8-annotations
   "A002",   # builtin-argument-shadowing
   "A003",   # builtin-attribute-shadowing
   "ARG",    # flake8-unused-arguments
@@ -298,6 +299,7 @@ select = [
 ]
 
 ignore = [
+  "ANN401",  # Allow `Any` - used legitimately for dynamic types and SDK boundaries
   "B008",    # function-call-as-argument-default
   "B904",    # raise-without-from-inside-except
   "BLE001",  # blind-except
@@ -331,6 +333,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
+  "ANN",     # flake8-annotations
   "ARG",     # flake8-unused-arguments
   "B018",    # useless-expression
   "D",       # pydocstyle (docstring checks)
@@ -345,6 +348,8 @@ ignore = [
 # UP007: Union[X, Y] syntax
 # UP035: Deprecated import
 # UP045: Optional[X] syntax
+"haystack/components/**" = ["ANN"]
+"haystack/testing/**" = ["ANN"]
 "haystack/components/agents/state/state_utils.py" = ["UP007"]
 "haystack/core/super_component/utils.py" = ["UP007"]
 "haystack/core/type_utils.py" = ["UP007"]
