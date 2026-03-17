@@ -1,0 +1,32 @@
+name: Approve and merge API reference sync PRs
+
+# Automatically approve and merge API reference API reference sync PRs from Haystack, Haystack Experimental
+# and Haystack Core Integrations
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docs-website/reference/**"
+      - "docs-website/reference_versioned_docs/**"
+
+permissions:
+  pull-requests: write
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  auto-approve-and-merge:
+    if: |
+      github.event.pull_request.user.login == 'HaystackBot' &&
+      startsWith(github.event.pull_request.head.ref, 'sync-docusaurus-api-reference')
+    runs-on: ubuntu-slim
+    steps:
+      - name: Approve PR
+        run: gh pr review --approve ${{ github.event.pull_request.number }} --repo ${{ github.repository }}
+
+      - name: Enable auto-merge
+        run: gh pr merge --squash --auto ${{ github.event.pull_request.number }} --repo ${{ github.repository }}
