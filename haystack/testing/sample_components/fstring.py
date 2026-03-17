@@ -13,7 +13,7 @@ class FString:
     Takes a template string and a list of variables in input and returns the formatted string in output.
     """
 
-    def __init__(self, template: str, variables: list[str] | None = None):
+    def __init__(self, template: str, variables: list[str] | None = None) -> None:
         self.template = template
         self.variables = variables or []
         if "template" in self.variables:

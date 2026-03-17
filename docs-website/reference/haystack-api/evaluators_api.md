@@ -129,7 +129,7 @@ __init__(
     progress_bar: bool = True,
     raise_on_failure: bool = True,
     chat_generator: ChatGenerator | None = None,
-)
+) -> None
 ```
 
 Creates an instance of ContextRelevanceEvaluator.
@@ -250,7 +250,7 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content')
+__init__(document_comparison_field: str = 'content') -> None
 ```
 
 Create a DocumentMAPEvaluator component.
@@ -339,7 +339,7 @@ print(result["score"])
 #### __init__
 
 ```python
-__init__(document_comparison_field: str = 'content')
+__init__(document_comparison_field: str = 'content') -> None
 ```
 
 Create a DocumentMRREvaluator component.
@@ -445,7 +445,9 @@ The list items within `ground_truth_documents` and `retrieved_documents` can dif
 #### validate_inputs
 
 ```python
-validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]])
+validate_inputs(
+    gt_docs: list[list[Document]], ret_docs: list[list[Document]]
+) -> None
 ```
 
 Validate the input parameters.
@@ -547,7 +549,7 @@ print(result["score"])
 __init__(
     mode: str | RecallMode = RecallMode.SINGLE_HIT,
     document_comparison_field: str = "content",
-)
+) -> None
 ```
 
 Create a DocumentRecallEvaluator component.
@@ -644,7 +646,7 @@ __init__(
     progress_bar: bool = True,
     raise_on_failure: bool = True,
     chat_generator: ChatGenerator | None = None,
-)
+) -> None
 ```
 
 Creates an instance of FaithfulnessEvaluator.
@@ -774,7 +776,7 @@ __init__(
     *,
     raise_on_failure: bool = True,
     chat_generator: ChatGenerator | None = None
-)
+) -> None
 ```
 
 Creates an instance of LLMEvaluator.
@@ -802,7 +804,7 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the component by warming up the underlying chat generator.
@@ -814,7 +816,7 @@ validate_init_parameters(
     inputs: list[tuple[str, type[list]]],
     outputs: list[str],
     examples: list[dict[str, Any]],
-)
+) -> None
 ```
 
 Validate the init parameters.

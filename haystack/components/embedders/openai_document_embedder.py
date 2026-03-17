@@ -58,7 +58,7 @@ class OpenAIDocumentEmbedder:
         http_client_kwargs: dict[str, Any] | None = None,
         *,
         raise_on_failure: bool = False,
-    ):
+    ) -> None:
         """
         Creates an OpenAIDocumentEmbedder component.
 
@@ -285,7 +285,7 @@ class OpenAIDocumentEmbedder:
         return doc_ids_to_embeddings, meta
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, Any]:
         """
         Embeds a list of documents.
 
@@ -317,7 +317,7 @@ class OpenAIDocumentEmbedder:
         return {"documents": new_documents, "meta": meta}
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
-    async def run_async(self, documents: list[Document]):
+    async def run_async(self, documents: list[Document]) -> dict[str, Any]:
         """
         Embeds a list of documents asynchronously.
 

@@ -45,7 +45,7 @@ class InMemoryBM25Retriever:
         top_k: int = 10,
         scale_score: bool = False,
         filter_policy: FilterPolicy = FilterPolicy.REPLACE,
-    ):
+    ) -> None:
         """
         Create the InMemoryBM25Retriever component.
 

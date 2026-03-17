@@ -47,7 +47,7 @@ __init__(
     openapi_spec: str,
     credentials: Secret | None = None,
     service_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Initialize the OpenAPIConnector with a specification and optional credentials.
@@ -185,7 +185,7 @@ print(result)
 #### __init__
 
 ```python
-__init__(ssl_verify: bool | str | None = None)
+__init__(ssl_verify: bool | str | None = None) -> None
 ```
 
 Initializes the OpenAPIServiceConnector instance

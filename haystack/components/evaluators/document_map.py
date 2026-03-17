@@ -43,7 +43,7 @@ class DocumentMAPEvaluator:
     ```
     """
 
-    def __init__(self, document_comparison_field: str = "content"):
+    def __init__(self, document_comparison_field: str = "content") -> None:
         """
         Create a DocumentMAPEvaluator component.
 

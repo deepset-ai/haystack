@@ -156,7 +156,7 @@ class LLMMetadataExtractor:
         page_range: list[str | int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
-    ):
+    ) -> None:
         """
         Initializes the LLMMetadataExtractor.
 
@@ -191,7 +191,7 @@ class LLMMetadataExtractor:
         self._chat_generator = chat_generator
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the LLM provider component.
         """
@@ -261,7 +261,7 @@ class LLMMetadataExtractor:
                 pages = self.splitter.run(documents=[doc_copy])
                 content = ""
                 for idx, page in enumerate(pages["documents"]):
-                    if idx + 1 in expanded_range:
+                    if idx + 1 in expanded_range and page.content is not None:
                         content += page.content
                 doc_copy = replace(doc_copy, content=content)
             else:
@@ -294,7 +294,7 @@ class LLMMetadataExtractor:
         return result
 
     @component.output_types(documents=list[Document], failed_documents=list[Document])
-    def run(self, documents: list[Document], page_range: list[str | int] | None = None):
+    def run(self, documents: list[Document], page_range: list[str | int] | None = None) -> dict[str, Any]:
         """
         Extract metadata from documents using a Large Language Model.
 

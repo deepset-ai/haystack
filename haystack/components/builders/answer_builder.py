@@ -74,7 +74,7 @@ class AnswerBuilder:
         last_message_only: bool = False,
         *,
         return_only_referenced_documents: bool = True,
-    ):
+    ) -> None:
         """
         Creates an instance of the AnswerBuilder component.
 
@@ -122,7 +122,7 @@ class AnswerBuilder:
         documents: list[Document] | None = None,
         pattern: str | None = None,
         reference_pattern: str | None = None,
-    ):
+    ) -> dict[str, Any]:
         """
         Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
 
@@ -247,7 +247,7 @@ class AnswerBuilder:
         return {int(idx) - 1 for idx in document_idxs}
 
     @staticmethod
-    def _check_num_groups_in_regex(pattern: str):
+    def _check_num_groups_in_regex(pattern: str) -> None:
         num_groups = re.compile(pattern).groups
         if num_groups > 1:
             raise ValueError(

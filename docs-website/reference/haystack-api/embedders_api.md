@@ -58,7 +58,7 @@ __init__(
     azure_ad_token_provider: AzureADTokenProvider | None = None,
     http_client_kwargs: dict[str, Any] | None = None,
     raise_on_failure: bool = False
-)
+) -> None
 ```
 
 Creates an AzureOpenAIDocumentEmbedder component.
@@ -175,7 +175,7 @@ __init__(
     default_headers: dict[str, str] | None = None,
     azure_ad_token_provider: AzureADTokenProvider | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates an AzureOpenAITextEmbedder component.
@@ -489,7 +489,7 @@ __init__(
     suffix: str = "",
     truncate: bool | None = True,
     normalize: bool | None = False,
-)
+) -> None
 ```
 
 Creates a HuggingFaceAPITextEmbedder component.
@@ -545,7 +545,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(text: str)
+run(text: str) -> dict[str, Any]
 ```
 
 Embeds a single string.
@@ -556,13 +556,13 @@ Embeds a single string.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
 #### run_async
 
 ```python
-run_async(text: str)
+run_async(text: str) -> dict[str, Any]
 ```
 
 Embeds a single string asynchronously.
@@ -573,7 +573,7 @@ Embeds a single string asynchronously.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
 ## image/sentence_transformers_doc_image_embedder
@@ -774,7 +774,7 @@ __init__(
     http_client_kwargs: dict[str, Any] | None = None,
     *,
     raise_on_failure: bool = False
-)
+) -> None
 ```
 
 Creates an OpenAIDocumentEmbedder component.
@@ -842,7 +842,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, Any]
 ```
 
 Embeds a list of documents.
@@ -853,14 +853,14 @@ Embeds a list of documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
 #### run_async
 
 ```python
-run_async(documents: list[Document])
+run_async(documents: list[Document]) -> dict[str, Any]
 ```
 
 Embeds a list of documents asynchronously.
@@ -871,7 +871,7 @@ Embeds a list of documents asynchronously.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
@@ -913,7 +913,7 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Creates an OpenAITextEmbedder component.
@@ -975,7 +975,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(text: str)
+run(text: str) -> dict[str, Any]
 ```
 
 Embeds a single string.
@@ -986,14 +986,14 @@ Embeds a single string.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
 #### run_async
 
 ```python
-run_async(text: str)
+run_async(text: str) -> dict[str, Any]
 ```
 
 Asynchronously embed a single string.
@@ -1007,7 +1007,7 @@ but can be used with `await` in async code.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
@@ -1064,7 +1064,7 @@ __init__(
     encode_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
     revision: str | None = None,
-)
+) -> None
 ```
 
 Creates a SentenceTransformersDocumentEmbedder component.
@@ -1140,7 +1140,7 @@ Deserializes the component from a dictionary.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1148,7 +1148,7 @@ Initializes the component.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embed a list of documents.
@@ -1159,7 +1159,7 @@ Embed a list of documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
 ## sentence_transformers_sparse_document_embedder
@@ -1211,7 +1211,7 @@ __init__(
     config_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
     revision: str | None = None
-)
+) -> None
 ```
 
 Creates a SentenceTransformersSparseDocumentEmbedder component.
@@ -1274,7 +1274,7 @@ Deserializes the component from a dictionary.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1282,7 +1282,7 @@ Initializes the component.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embed a list of documents.
@@ -1293,7 +1293,7 @@ Embed a list of documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with sparse embeddings under the `sparse_embedding` field.
 
 ## sentence_transformers_sparse_text_embedder
@@ -1337,7 +1337,7 @@ __init__(
     config_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
     revision: str | None = None
-)
+) -> None
 ```
 
 Create a SentenceTransformersSparseTextEmbedder component.
@@ -1395,7 +1395,7 @@ Deserializes the component from a dictionary.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1403,7 +1403,7 @@ Initializes the component.
 #### run
 
 ```python
-run(text: str)
+run(text: str) -> dict[str, Any]
 ```
 
 Embed a single string.
@@ -1414,7 +1414,7 @@ Embed a single string.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `sparse_embedding`: The sparse embedding of the input text.
 
 ## sentence_transformers_text_embedder
@@ -1465,7 +1465,7 @@ __init__(
     encode_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
     revision: str | None = None,
-)
+) -> None
 ```
 
 Create a SentenceTransformersTextEmbedder component.
@@ -1539,7 +1539,7 @@ Deserializes the component from a dictionary.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1547,7 +1547,7 @@ Initializes the component.
 #### run
 
 ```python
-run(text: str)
+run(text: str) -> dict[str, Any]
 ```
 
 Embed a single string.
@@ -1558,5 +1558,5 @@ Embed a single string.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.

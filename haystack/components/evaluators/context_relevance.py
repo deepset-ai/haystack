@@ -103,7 +103,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         progress_bar: bool = True,
         raise_on_failure: bool = True,
         chat_generator: ChatGenerator | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of ContextRelevanceEvaluator.
 

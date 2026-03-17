@@ -81,7 +81,7 @@ class HuggingFaceAPITextEmbedder:
         suffix: str = "",
         truncate: bool | None = True,
         normalize: bool | None = False,
-    ):
+    ) -> None:
         """
         Creates a HuggingFaceAPITextEmbedder component.
 
@@ -202,7 +202,7 @@ class HuggingFaceAPITextEmbedder:
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=list[float])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string.
 
@@ -230,7 +230,7 @@ class HuggingFaceAPITextEmbedder:
         return {"embedding": embedding}
 
     @component.output_types(embedding=list[float])
-    async def run_async(self, text: str):
+    async def run_async(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string asynchronously.
 

@@ -37,7 +37,7 @@ class LostInTheMiddleRanker:
     ```
     """
 
-    def __init__(self, word_count_threshold: int | None = None, top_k: int | None = None):
+    def __init__(self, word_count_threshold: int | None = None, top_k: int | None = None) -> None:
         """
         Initialize the LostInTheMiddleRanker.
 

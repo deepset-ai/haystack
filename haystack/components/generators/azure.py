@@ -71,7 +71,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         default_headers: dict[str, str] | None = None,
         *,
         azure_ad_token_provider: AzureADTokenProvider | None = None,
-    ):
+    ) -> None:
         """
         Initialize the Azure OpenAI Generator.
 

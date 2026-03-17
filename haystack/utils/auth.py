@@ -11,6 +11,10 @@ from typing import Any
 
 
 class SecretType(Enum):
+    """
+    Type of secret: token (API key) or environment variable.
+    """
+
     TOKEN = "token"
     ENV_VAR = "env_var"
 

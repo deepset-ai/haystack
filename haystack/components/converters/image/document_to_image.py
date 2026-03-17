@@ -69,7 +69,7 @@ class DocumentToImageContent:
         root_path: str | None = None,
         detail: Literal["auto", "high", "low"] | None = None,
         size: tuple[int, int] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the DocumentToImageContent component.
 

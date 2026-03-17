@@ -16,6 +16,6 @@ class ToolInvocationError(Exception):
     Exception raised when a Tool invocation fails.
     """
 
-    def __init__(self, message: str, tool_name: str):
+    def __init__(self, message: str, tool_name: str) -> None:
         super().__init__(message)
         self.tool_name = tool_name

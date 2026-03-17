@@ -70,7 +70,7 @@ class InMemoryDocumentStore:
         index: str | None = None,
         async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
-    ):
+    ) -> None:
         """
         Initializes the DocumentStore.
 
@@ -123,14 +123,14 @@ class InMemoryDocumentStore:
         )
         self.return_embedding = return_embedding
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Cleanup when the instance is being destroyed.
         """
         if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
             self.executor.shutdown(wait=True)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """
         Explicitly shutdown the executor if we own it.
         """
