@@ -142,7 +142,7 @@ class ChatPromptBuilder:
         template: list[ChatMessage] | str | None = None,
         required_variables: list[str] | Literal["*"] | None = None,
         variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Constructs a ChatPromptBuilder component.
 
@@ -298,7 +298,7 @@ class ChatPromptBuilder:
 
         return messages
 
-    def _validate_variables(self, provided_variables: set[str]):
+    def _validate_variables(self, provided_variables: set[str]) -> None:
         """
         Checks if all the required template variables are provided.
 

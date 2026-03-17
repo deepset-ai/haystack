@@ -52,7 +52,6 @@ npm start
 - Edit a page: update files under `docs/` or `versioned_docs/` and preview at http://localhost:3000
 - Add to sidebar: update `sidebars.js` with your doc ID
 - Production check: `npm run build && npm run serve`
-- Prose lint (optional): `vale --config .vale.ini "docs/**/*.{md,mdx}"`
 - Full guidance: see `CONTRIBUTING.md`
 
 ## Project Structure
@@ -94,7 +93,6 @@ docs-website/
 | [React](https://react.dev/) | 19.0.0 | UI framework |
 | [MDX](https://mdxjs.com/) | 3.0.0 | Markdown with JSX |
 | [Node.js](https://nodejs.org/) | ≥18.0 | Runtime environment |
-| [Vale](https://vale.sh/) | Latest | Prose linting |
 
 **Key Docusaurus Plugins:**
 - `@docusaurus/plugin-content-docs` — Two separate instances of this plugin run simultaneously:
@@ -138,7 +136,7 @@ For code contributions to Haystack itself, see the [main repository's contributi
 
 ## CI/CD and Automation
 
-This site uses automated workflows for prose linting, API reference sync, and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+This site uses automated workflows for API reference sync and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 ### Versioning
 

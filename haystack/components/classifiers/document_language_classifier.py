@@ -60,7 +60,7 @@ class DocumentLanguageClassifier:
     ```
     """
 
-    def __init__(self, languages: list[str] | None = None):
+    def __init__(self, languages: list[str] | None = None) -> None:
         """
         Initializes the DocumentLanguageClassifier component.
 
@@ -74,7 +74,7 @@ class DocumentLanguageClassifier:
         self.languages = languages
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Classifies the language of each document and adds it to its metadata.
 

@@ -69,7 +69,7 @@ __init__(
     default_headers: dict[str, str] | None = None,
     *,
     azure_ad_token_provider: AzureADTokenProvider | None = None
-)
+) -> None
 ```
 
 Initialize the Azure OpenAI Generator.
@@ -282,7 +282,7 @@ Initialize the Azure OpenAI Chat Generator component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the Azure OpenAI chat generator.
@@ -354,6 +354,48 @@ response = client.run(messages)
 print(response)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5.4-pro",
+    "gpt-5.4",
+    "gpt-5.3-chat",
+    "gpt-5.3-codex",
+    "gpt-5.2-codex",
+    "gpt-5.2",
+    "gpt-5.2-chat",
+    "gpt-5.1-codex-max",
+    "gpt-5.1",
+    "gpt-5.1-chat",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5-pro",
+    "gpt-5-codex",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-chat",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "computer-use-preview",
+    "gpt-4.1",
+    "gpt-4.1-nano",
+    "gpt-4.1-mini",
+    "gpt-image-1",
+    "gpt-image-1-mini",
+    "gpt-image-1.5",
+    "o1",
+    "o3-mini",
+    "o3",
+    "o4-mini",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/responses#model-support for the full list.
+
 #### __init__
 
 ```python
@@ -372,7 +414,7 @@ __init__(
     tools: ToolsType | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Initialize the AzureOpenAIResponsesChatGenerator component.
@@ -704,7 +746,7 @@ __init__(
     stop_words: list[str] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None,
-)
+) -> None
 ```
 
 Initialize the HuggingFaceAPIChatGenerator instance.
@@ -737,7 +779,7 @@ Initialize the HuggingFaceAPIChatGenerator instance.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the Hugging Face API chat generator.
@@ -1278,7 +1320,7 @@ Output:
 #### SUPPORTED_MODELS
 
 ```python
-SUPPORTED_MODELS = [
+SUPPORTED_MODELS: list[str] = [
     "gpt-5-mini",
     "gpt-5-nano",
     "gpt-5",
@@ -1317,7 +1359,7 @@ __init__(
     tools: ToolsType | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -1381,7 +1423,7 @@ in the OpenAI client.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the OpenAI chat generator.
@@ -1518,6 +1560,37 @@ response = client.run(messages)
 print(response)
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5",
+    "gpt-5.1",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "gpt-5.4",
+    "gpt-5-pro",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o1",
+    "o1-mini",
+    "o1-pro",
+    "o3",
+    "o3-mini",
+    "o3-pro",
+    "o4-mini",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://platform.openai.com/docs/models for the full list and snapshot IDs.
+
 #### __init__
 
 ```python
@@ -1534,7 +1607,7 @@ __init__(
     tools: ToolsType | list[dict] | None = None,
     tools_strict: bool = False,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
@@ -1604,7 +1677,7 @@ in the OpenAI client.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the OpenAI responses chat generator.
@@ -1792,7 +1865,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     stop_words: list[str] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
-)
+) -> None
 ```
 
 Initialize the HuggingFaceAPIGenerator instance.
@@ -1846,7 +1919,7 @@ run(
     prompt: str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Invoke the text generation inference for the given prompt and generation parameters.
@@ -1859,7 +1932,7 @@ Invoke the text generation inference for the given prompt and generation paramet
 
 **Returns:**
 
-- – A dictionary with the generated replies and metadata. Both are lists of length n.
+- <code>dict\[str, Any\]</code> – A dictionary with the generated replies and metadata. Both are lists of length n.
 - replies: A list of strings representing the generated replies.
 
 ## hugging_face_local
@@ -1899,7 +1972,7 @@ __init__(
     huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     stop_words: list[str] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
-)
+) -> None
 ```
 
 Creates an instance of a HuggingFaceLocalGenerator.
@@ -1938,7 +2011,7 @@ Creates an instance of a HuggingFaceLocalGenerator.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1978,7 +2051,7 @@ run(
     prompt: str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Run the text generation model on the given prompt.
@@ -1991,7 +2064,7 @@ Run the text generation model on the given prompt.
 
 **Returns:**
 
-- – A dictionary containing the generated replies.
+- <code>dict\[str, Any\]</code> – A dictionary containing the generated replies.
 - replies: A list of strings representing the generated replies.
 
 ## openai
@@ -2040,7 +2113,7 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -2175,7 +2248,7 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
@@ -2217,7 +2290,7 @@ run(
     ) = None,
     quality: Literal["standard", "hd"] | None = None,
     response_format: Literal["url", "b64_json"] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Invokes the image generation inference based on the provided prompt and generation parameters.
@@ -2231,7 +2304,7 @@ Invokes the image generation inference based on the provided prompt and generati
 
 **Returns:**
 
-- – A dictionary containing the generated list of images and the revised prompt.
+- <code>dict\[str, Any\]</code> – A dictionary containing the generated list of images and the revised prompt.
   Depending on the `response_format` parameter, the list of images can be URLs or base64 encoded JSON strings.
   The revised prompt is the prompt that was used to generate the image, if there was any revision
   to the prompt made by OpenAI.

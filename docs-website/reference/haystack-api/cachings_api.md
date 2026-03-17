@@ -38,7 +38,7 @@ assert results == {"hits": [documents[0], documents[2]], "misses": ["https://exa
 #### __init__
 
 ```python
-__init__(document_store: DocumentStore, cache_field: str)
+__init__(document_store: DocumentStore, cache_field: str) -> None
 ```
 
 Creates a CacheChecker component.
@@ -80,7 +80,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(items: list[Any])
+run(items: list[Any]) -> dict[str, Any]
 ```
 
 Checks if any document associated with the specified cache field is already present in the store.
@@ -91,6 +91,6 @@ Checks if any document associated with the specified cache field is already pres
 
 **Returns:**
 
-- – A dictionary with two keys:
+- <code>dict\[str, Any\]</code> – A dictionary with two keys:
 - `hits` - Documents that matched with at least one of the items.
 - `misses` - Items that were not present in any documents.

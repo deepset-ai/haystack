@@ -15,6 +15,7 @@ from haystack.core.pipeline.base import (
     _COMPONENT_VISITS,
     ComponentPriority,
     PipelineBase,
+    _validate_component_output_keys,
 )
 from haystack.core.pipeline.breakpoint import (
     SnapshotCallback,
@@ -102,6 +103,8 @@ class Pipeline(PipelineBase):
 
             if not isinstance(component_output, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, component_output)
+
+            _validate_component_output_keys(component_name, component, component_output)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
             span.set_content_tag(_COMPONENT_OUTPUT, component_output)

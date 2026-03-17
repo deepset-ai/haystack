@@ -41,11 +41,6 @@ if __name__ == "__main__":
     # Get all Haystack and rest_api python files
     root: Path = args.root.absolute()
     haystack_files = root.glob("haystack/**/*.py")
-    rest_api_files = root.glob("rest_api/**/*.py")
 
-    import itertools
-
-    python_files = itertools.chain(haystack_files, rest_api_files)
-
-    md5 = docstrings_checksum(python_files)
+    md5 = docstrings_checksum(haystack_files)
     print(md5)

@@ -37,7 +37,9 @@ class PPTXToDocument:
     ```
     """
 
-    def __init__(self, store_full_path: bool = False, link_format: Literal["markdown", "plain", "none"] = "none"):
+    def __init__(
+        self, store_full_path: bool = False, link_format: Literal["markdown", "plain", "none"] = "none"
+    ) -> None:
         """
         Create a PPTXToDocument component.
 
@@ -105,7 +107,9 @@ class PPTXToDocument:
         return "".join(parts)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Converts PPTX files to Documents.
 
