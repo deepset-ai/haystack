@@ -5,7 +5,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.lib._pydantic import to_strict_json_schema
@@ -74,7 +74,7 @@ class OpenAIResponsesChatGenerator:
     ```
     """
 
-    SUPPORTED_MODELS = [
+    SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
         "gpt-5-nano",
         "gpt-5",
