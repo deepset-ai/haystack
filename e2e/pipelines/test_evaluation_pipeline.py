@@ -95,7 +95,7 @@ def evaluation_pipeline():
     return eval_pipeline
 
 
-def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers):
+def built_eval_input(questions, truth_docs, truth_answers, retrieved_docs, contexts, pred_answers) -> dict:
     """Helper function to build the input for the evaluation pipeline"""
     return {
         "doc_mrr": {"ground_truth_documents": truth_docs, "retrieved_documents": retrieved_docs},
@@ -134,7 +134,7 @@ def run_rag_pipeline(documents, evaluation_questions, rag_pipeline_a):
     return contexts, predicted_answers, retrieved_docs, truth_docs
 
 
-def built_input_for_results_eval(rag_results):
+def built_input_for_results_eval(rag_results) -> dict:
     """Helper function to build the input for the results evaluation"""
     return {
         "Mean Reciprocal Rank": {
