@@ -8,7 +8,6 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -49,15 +48,14 @@ class QueryEmbeddingRetriever:
     # Run the retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
     query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-
     retriever = QueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
-
     result = retriever.run(query="Geothermal energy")
+
     for doc in result["documents"]:
         print(f"Content: {doc.content}, Score: {doc.score}")
     # >> Content: Geothermal energy is heat that comes from the sub-surface of the earth., Score: 0.8509603046266574
     ```
-    """  # noqa E501
+    """
 
     def __init__(self, *, retriever: EmbeddingRetriever, query_embedder: TextEmbedder) -> None:
         """
@@ -102,8 +100,7 @@ class QueryEmbeddingRetriever:
         result = self.retriever.run(query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k)
         docs: list[Document] = result["documents"]
 
-        # de-duplicate and sort
-        docs = _deduplicate_documents(docs)
+        # sort
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 
