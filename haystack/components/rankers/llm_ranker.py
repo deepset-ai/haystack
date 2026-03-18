@@ -140,7 +140,11 @@ class LLMRanker:
         prompt: str = DEFAULT_PROMPT_TEMPLATE,
         top_k: int = 10,
         raise_on_failure: bool = False,
+<<<<<<< fix/bm25-avg-doc-len-off-by-one
     ):
+=======
+    ) -> None:
+>>>>>>> main
         """
         Initialize the LLMRanker component.
 
@@ -172,7 +176,11 @@ class LLMRanker:
             self._chat_generator = chat_generator
         self._is_warmed_up = False
 
+<<<<<<< fix/bm25-avg-doc-len-off-by-one
     def warm_up(self):
+=======
+    def warm_up(self) -> None:
+>>>>>>> main
         """
         Warm up the underlying chat generator.
         """

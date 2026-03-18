@@ -134,7 +134,7 @@ class LLMDocumentContentExtractor:
         size: tuple[int, int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
-    ):
+    ) -> None:
         """
         Initialize the LLMDocumentContentExtractor component.
 
@@ -163,7 +163,7 @@ class LLMDocumentContentExtractor:
         )
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the ChatGenerator if it has a warm_up method.
         """

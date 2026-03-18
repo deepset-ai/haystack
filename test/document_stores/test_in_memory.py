@@ -711,6 +711,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
             gc.collect()
             mock_shutdown.assert_called_once_with(wait=True)
 
+<<<<<<< fix/bm25-avg-doc-len-off-by-one
     def test_bm25_avg_doc_len_correctness(self):
         """Average document length should be computed correctly after writes."""
         doc_store = InMemoryDocumentStore()
@@ -740,6 +741,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
         assert doc_store._avg_doc_len == pytest.approx(3.0)
 
+=======
+>>>>>>> main
     def test_bm25_tokenization_includes_single_char_tokens(self):
         doc_store = InMemoryDocumentStore()
         tokens = doc_store._tokenize_bm25("Luna is a dog")

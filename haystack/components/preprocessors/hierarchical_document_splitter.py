@@ -39,7 +39,7 @@ class HierarchicalDocumentSplitter:
         block_sizes: set[int],
         split_overlap: int = 0,
         split_by: Literal["word", "sentence", "page", "passage"] = "word",
-    ):
+    ) -> None:
         """
         Initialize HierarchicalDocumentSplitter.
 
@@ -55,7 +55,7 @@ class HierarchicalDocumentSplitter:
         self._build_block_sizes()
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Builds a hierarchical document structure for each document in a list of documents.
 

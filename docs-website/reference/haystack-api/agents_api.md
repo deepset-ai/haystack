@@ -382,7 +382,7 @@ my_state = State(
 #### __init__
 
 ```python
-__init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
+__init__(schema: dict[str, Any], data: dict[str, Any] | None = None) -> None
 ```
 
 Initialize a State object with a schema and optional data.
@@ -439,7 +439,7 @@ Value is merged or overwritten according to these rules:
 #### data
 
 ```python
-data
+data: dict[str, Any]
 ```
 
 All current data of the state.
@@ -463,7 +463,7 @@ Check if a key exists in the state.
 #### to_dict
 
 ```python
-to_dict()
+to_dict() -> dict[str, Any]
 ```
 
 Convert the State object to a dictionary.
@@ -471,7 +471,7 @@ Convert the State object to a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any])
+from_dict(data: dict[str, Any]) -> State
 ```
 
 Convert a dictionary back to a State object.

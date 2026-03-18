@@ -96,7 +96,7 @@ class TransformersZeroShotTextRouter:
         device: ComponentDevice | None = None,
         token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initializes the TransformersZeroShotTextRouter component.
 
@@ -142,7 +142,7 @@ class TransformersZeroShotTextRouter:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """

@@ -73,7 +73,7 @@ __init__(
     join_mode: str | JoinMode = JoinMode.CONCATENATE,
     top_k: int | None = None,
     sort_by_score: bool = False,
-)
+) -> None
 ```
 
 Creates an AnswerJoiner component.
@@ -89,7 +89,9 @@ Creates an AnswerJoiner component.
 #### run
 
 ```python
-run(answers: Variadic[list[AnswerType]], top_k: int | None = None)
+run(
+    answers: Variadic[list[AnswerType]], top_k: int | None = None
+) -> dict[str, Any]
 ```
 
 Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
@@ -101,7 +103,7 @@ Joins multiple lists of Answers into a single list depending on the `join_mode` 
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `answers`: Merged list of Answers
 
 #### to_dict
@@ -213,7 +215,7 @@ have more than one downstream component.
 #### __init__
 
 ```python
-__init__(type_: type)
+__init__(type_: type) -> None
 ```
 
 Creates a `BranchJoiner` component.
@@ -332,7 +334,7 @@ __init__(
     weights: list[float] | None = None,
     top_k: int | None = None,
     sort_by_score: bool = True,
-)
+) -> None
 ```
 
 Creates a DocumentJoiner component.
@@ -356,7 +358,9 @@ Creates a DocumentJoiner component.
 #### run
 
 ```python
-run(documents: Variadic[list[Document]], top_k: int | None = None)
+run(
+    documents: Variadic[list[Document]], top_k: int | None = None
+) -> dict[str, Any]
 ```
 
 Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
@@ -368,7 +372,7 @@ Joins multiple lists of Documents into a single list depending on the `join_mode
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Merged list of Documents
 
 #### to_dict
@@ -457,7 +461,7 @@ print(ans["list_joiner"]["values"])
 #### __init__
 
 ```python
-__init__(list_type_: type | None = None)
+__init__(list_type_: type | None = None) -> None
 ```
 
 Creates a ListJoiner component.

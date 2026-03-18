@@ -49,7 +49,7 @@ class OpenAITextEmbedder:
         timeout: float | None = None,
         max_retries: int | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an OpenAITextEmbedder component.
 
@@ -173,7 +173,7 @@ class OpenAITextEmbedder:
         return {"embedding": result.data[0].embedding, "meta": {"model": result.model, "usage": dict(result.usage)}}
 
     @component.output_types(embedding=list[float], meta=dict[str, Any])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string.
 
@@ -190,7 +190,7 @@ class OpenAITextEmbedder:
         return self._prepare_output(result=response)
 
     @component.output_types(embedding=list[float], meta=dict[str, Any])
-    async def run_async(self, text: str):
+    async def run_async(self, text: str) -> dict[str, Any]:
         """
         Asynchronously embed a single string.
 

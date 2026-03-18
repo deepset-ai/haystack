@@ -46,7 +46,7 @@ class OpenAPIConnector:
 
     def __init__(
         self, openapi_spec: str, credentials: Secret | None = None, service_kwargs: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """
         Initialize the OpenAPIConnector with a specification and optional credentials.
 

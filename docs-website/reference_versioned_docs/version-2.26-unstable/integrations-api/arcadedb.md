@@ -257,3 +257,49 @@ Delete documents by their IDs.
 **Parameters:**
 
 - **document_ids** (<code>list\[str\]</code>) – List of document IDs to delete.
+<<<<<<< fix/bm25-avg-doc-len-off-by-one
+=======
+
+#### delete_all_documents
+
+```python
+delete_all_documents() -> None
+```
+
+Deletes all documents in the document store.
+
+#### delete_by_filter
+
+```python
+delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for deletion.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns:**
+
+- <code>int</code> – The number of documents deleted.
+
+#### update_by_filter
+
+```python
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update.
+
+**Returns:**
+
+- <code>int</code> – The number of documents updated.
+>>>>>>> main

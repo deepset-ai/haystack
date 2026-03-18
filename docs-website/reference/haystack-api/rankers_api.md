@@ -243,7 +243,11 @@ __init__(
     prompt: str = DEFAULT_PROMPT_TEMPLATE,
     top_k: int = 10,
     raise_on_failure: bool = False
+<<<<<<< fix/bm25-avg-doc-len-off-by-one
 )
+=======
+) -> None
+>>>>>>> main
 ```
 
 Initialize the LLMRanker component.
@@ -261,7 +265,11 @@ Initialize the LLMRanker component.
 #### warm_up
 
 ```python
+<<<<<<< fix/bm25-avg-doc-len-off-by-one
 warm_up()
+=======
+warm_up() -> None
+>>>>>>> main
 ```
 
 Warm up the underlying chat generator.
@@ -350,7 +358,9 @@ for doc in result["documents"]:
 #### __init__
 
 ```python
-__init__(word_count_threshold: int | None = None, top_k: int | None = None)
+__init__(
+    word_count_threshold: int | None = None, top_k: int | None = None
+) -> None
 ```
 
 Initialize the LostInTheMiddleRanker.
@@ -434,7 +444,7 @@ __init__(
     sort_order: Literal["ascending", "descending"] = "descending",
     missing_meta: Literal["drop", "top", "bottom"] = "bottom",
     meta_value_type: Literal["float", "int", "date"] | None = None,
-)
+) -> None
 ```
 
 Creates an instance of MetaFieldRanker.
@@ -483,7 +493,7 @@ run(
     sort_order: Literal["ascending", "descending"] | None = None,
     missing_meta: Literal["drop", "top", "bottom"] | None = None,
     meta_value_type: Literal["float", "int", "date"] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Ranks a list of Documents based on the selected meta field by:
@@ -533,7 +543,7 @@ if a score is present.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of Documents sorted by the specified meta field.
 
 **Raises:**
@@ -599,7 +609,7 @@ __init__(
     group_by: str,
     subgroup_by: str | None = None,
     sort_docs_by: str | None = None,
-)
+) -> None
 ```
 
 Creates an instance of MetaFieldGroupingRanker.
@@ -616,7 +626,7 @@ Creates an instance of MetaFieldGroupingRanker.
 #### run
 
 ```python
-run(documents: list[Document]) -> dict[str, Any]
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
@@ -632,7 +642,7 @@ The output is a list of documents reordered based on how they were grouped.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - documents: The list of documents ordered by the `group_by` and `subgroup_by` metadata values.
 
 ## sentence_transformers_diversity
@@ -729,7 +739,7 @@ __init__(
     tokenizer_kwargs: dict[str, Any] | None = None,
     config_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
-)
+) -> None
 ```
 
 Initialize a SentenceTransformersDiversityRanker.
@@ -770,7 +780,7 @@ Initialize a SentenceTransformersDiversityRanker.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -880,7 +890,7 @@ __init__(
     config_kwargs: dict[str, Any] | None = None,
     backend: Literal["torch", "onnx", "openvino"] = "torch",
     batch_size: int = 16
-)
+) -> None
 ```
 
 Creates an instance of SentenceTransformersSimilarityRanker.
@@ -1043,7 +1053,7 @@ __init__(
     model_kwargs: dict[str, Any] | None = None,
     tokenizer_kwargs: dict[str, Any] | None = None,
     batch_size: int = 16,
-)
+) -> None
 ```
 
 Creates an instance of TransformersSimilarityRanker.
@@ -1080,7 +1090,7 @@ Creates an instance of TransformersSimilarityRanker.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1123,7 +1133,7 @@ run(
     scale_score: bool | None = None,
     calibration_factor: float | None = None,
     score_threshold: float | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Returns a list of documents ranked by their similarity to the given query.
@@ -1144,7 +1154,7 @@ if a score is present.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
 
 **Raises:**

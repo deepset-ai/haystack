@@ -196,7 +196,7 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self, ssl_verify: bool | str | None = None):
+    def __init__(self, ssl_verify: bool | str | None = None) -> None:
         """
         Initializes the OpenAPIServiceConnector instance
 
@@ -282,7 +282,7 @@ class OpenAPIServiceConnector:
         """
         return default_from_dict(cls, data)
 
-    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: dict | str | None = None):
+    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: dict | str | None = None) -> None:
         """
         Authentication with an OpenAPI service.
 

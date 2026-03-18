@@ -156,12 +156,12 @@ def component_from_dict(
         The deserialized component.
     """
 
-    def component_pre_init_callback(component_cls, init_params):
+    def component_pre_init_callback(component_cls: type, init_params: dict[str, Any]) -> None:
         assert callbacks is not None
         assert callbacks.component_pre_init is not None
         callbacks.component_pre_init(name, component_cls, init_params)
 
-    def do_from_dict():
+    def do_from_dict() -> Any:
         if hasattr(cls, "from_dict"):
             return cls.from_dict(data)
 
@@ -191,7 +191,7 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
 
     ```python
     class MyClass:
-        def __init__(self, my_param: int = 10):
+        def __init__(self, my_param: int = 10) -> None:
             self.my_param = my_param
 
         def to_dict(self):

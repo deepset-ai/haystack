@@ -27,7 +27,7 @@ class DocumentWriter:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.NONE):
+    def __init__(self, document_store: DocumentStore, policy: DuplicatePolicy = DuplicatePolicy.NONE) -> None:
         """
         Create a DocumentWriter component.
 
