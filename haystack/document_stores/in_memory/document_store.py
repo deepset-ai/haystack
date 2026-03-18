@@ -476,7 +476,8 @@ class InMemoryDocumentStore:
 
             self._bm25_attr[document.id] = BM25DocumentStats(Counter(tokens), len(tokens))
             self._freq_vocab_for_idf.update(set(tokens))
-            self._avg_doc_len = (len(tokens) + self._avg_doc_len * len(self._bm25_attr)) / (len(self._bm25_attr) + 1)
+            n = len(self._bm25_attr)  # N already includes the new document
+            self._avg_doc_len = (len(tokens) + self._avg_doc_len * (n - 1)) / n
         return written_documents
 
     def delete_documents(self, document_ids: list[str]) -> None:
