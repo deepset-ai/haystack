@@ -153,8 +153,6 @@ class MultiRetriever:
         :param data:
             Dictionary with the data to create the component.
         """
-        # TODO This is a bit messy. We could update default_from_dict to handle lists of components to simplify the
-        #      implementation here.
         retrievers_data = data.get("init_parameters", {}).get("retrievers", [])
         if retrievers_data:
             retrievers = []
@@ -165,9 +163,7 @@ class MultiRetriever:
                     raise ImportError(
                         f"Could not import class {retriever_data['type']} for retriever. Error: {str(e)}"
                     ) from e
-                retriever = component_from_dict(
-                    cls=imported_class, data=retriever_data["init_parameters"], name="retriever"
-                )
+                retriever = component_from_dict(cls=imported_class, data=retriever_data, name="retriever")
                 retrievers.append(retriever)
             data["init_parameters"]["retrievers"] = retrievers
         return default_from_dict(cls, data)
