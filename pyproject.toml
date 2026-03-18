@@ -255,9 +255,9 @@ max-statements = 56                               # Default is 50
 [tool.ruff.lint]
 select = [
   "A001",   # builtin-variable-shadowing
-  "ANN",    # flake8-annotations
   "A002",   # builtin-argument-shadowing
   "A003",   # builtin-attribute-shadowing
+  "ANN",    # flake8-annotations
   "ARG",    # flake8-unused-arguments
   "ASYNC",  # flake8-async
   "B",      # flake8-bugbear
