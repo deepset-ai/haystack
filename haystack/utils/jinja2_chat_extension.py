@@ -8,6 +8,7 @@ from typing import Any
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension
+from markupsafe import Markup
 
 from haystack import logging
 from haystack.dataclasses.chat_message import (
@@ -28,6 +29,26 @@ logger = logging.getLogger(__name__)
 
 START_TAG = "<haystack_content_part>"
 END_TAG = "</haystack_content_part>"
+
+ESCAPED_START_TAG = "&lt;haystack_content_part&gt;"
+ESCAPED_END_TAG = "&lt;/haystack_content_part&gt;"
+
+
+def _escape_sentinel_tags(value: str) -> str:
+    """
+    Jinja2 `finalize` callback that prevents sentinel tag injection.
+
+    Called automatically on every `{{ }}` expression result during template rendering.
+    Legitimate structured content from the `templatize_part` filter is wrapped in `Markup` and passes.
+    Any other value containing sentinel tags has those tags replaced with harmless HTML entities so that
+    `_parse_content_parts` will not treat them as structured content.
+    """
+    if isinstance(value, Markup):
+        return value
+    s = str(value)
+    if START_TAG in s or END_TAG in s:
+        return s.replace(START_TAG, ESCAPED_START_TAG).replace(END_TAG, ESCAPED_END_TAG)
+    return s
 
 
 class ChatMessageExtension(Extension):
@@ -67,6 +88,11 @@ class ChatMessageExtension(Extension):
     SUPPORTED_ROLES = [role.value for role in ChatRole]
 
     tags = {"message"}
+
+    def __init__(self, environment: Any) -> None:
+        super().__init__(environment)
+        environment.finalize = _escape_sentinel_tags
+        environment.filters["templatize_part"] = templatize_part
 
     def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
         """
@@ -275,7 +301,7 @@ def templatize_part(value: ChatMessageContentT) -> str:
     Jinja filter to convert an ChatMessageContentT object into JSON string wrapped in special XML content tags.
 
     :param value: The ChatMessageContentT object to convert
-    :return: A JSON string wrapped in special XML content tags
+    :return: A JSON string wrapped in special XML content tags marked as safe
     :raises ValueError: If the value is not an instance of ChatMessageContentT
     """
-    return f"{START_TAG}{json.dumps(_serialize_content_part(value))}{END_TAG}"
+    return Markup(f"{START_TAG}{json.dumps(_serialize_content_part(value))}{END_TAG}")
