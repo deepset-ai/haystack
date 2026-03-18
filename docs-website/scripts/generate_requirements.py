@@ -30,7 +30,7 @@ def _package_name(dep: str) -> str:
     return candidate.strip()
 
 
-def fetch_haystack_deps(version="main"):
+def fetch_haystack_deps(version: str = "main") -> list[str]:
     """
     Fetch and parse Haystack's pyproject.toml to extract dependencies.
 
@@ -110,7 +110,7 @@ def fetch_haystack_deps(version="main"):
     return filtered_deps
 
 
-def main():
+def main() -> None:
     """Entry point for generating requirements for docs snippet tests."""
     parser = argparse.ArgumentParser(
         description="Generate requirements.txt from Haystack's pyproject.toml for docs snippet testing"

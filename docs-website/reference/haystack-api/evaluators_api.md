@@ -166,7 +166,7 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 #### run
 
 ```python
-run(**inputs) -> dict[str, Any]
+run(**inputs: Any) -> dict[str, Any]
 ```
 
 Run the LLM evaluator.
@@ -685,7 +685,7 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 #### run
 
 ```python
-run(**inputs) -> dict[str, Any]
+run(**inputs: Any) -> dict[str, Any]
 ```
 
 Run the LLM evaluator.
@@ -837,14 +837,14 @@ Validate the init parameters.
 #### run
 
 ```python
-run(**inputs) -> dict[str, Any]
+run(**inputs: Any) -> dict[str, Any]
 ```
 
 Run the LLM evaluator.
 
 **Parameters:**
 
-- **inputs** – The input values to evaluate. The keys are the input names and the values are lists of input values.
+- **inputs** (<code>Any</code>) – The input values to evaluate. The keys are the input names and the values are lists of input values.
 
 **Returns:**
 

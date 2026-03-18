@@ -89,7 +89,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         *,
         azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the Azure OpenAI Chat Generator component.
 

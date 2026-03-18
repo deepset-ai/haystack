@@ -511,7 +511,7 @@ class Agent:
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> _ExecutionContext:
         """
         Initialize execution context for a fresh run of the agent.

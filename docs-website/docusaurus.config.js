@@ -69,7 +69,7 @@ const config = {
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.25',
+          lastVersion: '2.26',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -110,7 +110,7 @@ const config = {
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.25',
+        lastVersion: '2.26',
       },
     ],
     [

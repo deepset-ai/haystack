@@ -291,7 +291,7 @@ class ComponentMeta(type):
                     f"Parameters of 'run' and 'run_async' methods must be the same.\nDifferences found:\n{sig_diff}"
                 )
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
         This method is called when clients instantiate a Component and runs before __new__ and __init__.
         """

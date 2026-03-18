@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 
-def docstrings_checksum(python_files: Iterator[Path]):
+def docstrings_checksum(python_files: Iterator[Path]) -> str:
     """
     Calculate the checksum of the docstrings in the given Python files.
     """

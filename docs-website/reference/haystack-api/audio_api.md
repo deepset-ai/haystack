@@ -111,8 +111,7 @@ Transcribes a list of audio files into a list of documents.
 
 ```python
 transcribe(
-    sources: list[str | Path | ByteStream],
-    **kwargs: list[str | Path | ByteStream]
+    sources: list[str | Path | ByteStream], **kwargs: Any
 ) -> list[Document]
 ```
 

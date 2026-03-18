@@ -190,7 +190,7 @@ async def async_request_with_retry(
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    async def run():
+    async def run() -> httpx.Response:
         timeout = kwargs.pop("timeout", 10)
         async with httpx.AsyncClient() as client:
             res = await client.request(**kwargs, timeout=timeout)
