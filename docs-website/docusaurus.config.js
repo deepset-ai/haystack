@@ -209,7 +209,7 @@ const config = {
                 label: '1.x archived documentation',
               },
               {
-                href: '/docs/faq#where-is-the-documentation-for-haystack-217-and-older',
+                href: '/docs/faq#where-can-i-find-documentation-for-older-haystack-versions',
                 label: '2.x archived documentation',
               },
             ],
