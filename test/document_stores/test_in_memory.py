@@ -16,28 +16,23 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
-    DeleteAllTest,
-    DeleteByFilterTest,
+    DocumentStoreBaseExtendedTests,
     DocumentStoreBaseTests,
     FilterableDocsFixtureMixin,
     GetMetadataFieldMinMaxTest,
     GetMetadataFieldsInfoTest,
     GetMetadataFieldUniqueValuesTest,
-    UpdateByFilterTest,
 )
 
 
 class TestMemoryDocumentStore(
+    DocumentStoreBaseExtendedTests,
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
-    DeleteAllTest,
-    DeleteByFilterTest,
-    DocumentStoreBaseTests,
     FilterableDocsFixtureMixin,
     GetMetadataFieldMinMaxTest,
     GetMetadataFieldUniqueValuesTest,
     GetMetadataFieldsInfoTest,
-    UpdateByFilterTest,
 ):
     """
     Test InMemoryDocumentStore's specific features
