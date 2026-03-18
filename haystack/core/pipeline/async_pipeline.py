@@ -320,7 +320,7 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
-                async def _runner() -> None:
+                async def _runner() -> Mapping[str, Any]:
                     async with ready_sem:
                         component_pipeline_outputs = await self._run_component_async(
                             component_name=component_name,

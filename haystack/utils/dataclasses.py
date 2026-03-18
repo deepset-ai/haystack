@@ -48,7 +48,7 @@ def _warn_on_inplace_mutation(cls: T) -> T:
                 stacklevel=2,
             )
         # mypy infers original_setattr as bound to the type, expecting (str, Any), we call the unbound form
-        return original_setattr(self, name, value)  # type: ignore[call-arg]
+        return original_setattr(self, name, value)  # type: ignore[call-arg, arg-type]
 
     # mypy considers direct dunder access on a class unsound, ruff prefers direct access
     cls.__init__ = __init_track__  # type: ignore[misc]
