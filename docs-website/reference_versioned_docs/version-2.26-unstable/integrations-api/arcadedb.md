@@ -257,8 +257,6 @@ Delete documents by their IDs.
 **Parameters:**
 
 - **document_ids** (<code>list\[str\]</code>) – List of document IDs to delete.
-<<<<<<< fix/bm25-avg-doc-len-off-by-one
-=======
 
 #### delete_all_documents
 
@@ -302,4 +300,3 @@ Updates the metadata of all documents that match the provided filters.
 **Returns:**
 
 - <code>int</code> – The number of documents updated.
->>>>>>> main

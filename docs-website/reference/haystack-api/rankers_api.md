@@ -243,11 +243,7 @@ __init__(
     prompt: str = DEFAULT_PROMPT_TEMPLATE,
     top_k: int = 10,
     raise_on_failure: bool = False
-<<<<<<< fix/bm25-avg-doc-len-off-by-one
-)
-=======
 ) -> None
->>>>>>> main
 ```
 
 Initialize the LLMRanker component.
@@ -265,11 +261,7 @@ Initialize the LLMRanker component.
 #### warm_up
 
 ```python
-<<<<<<< fix/bm25-avg-doc-len-off-by-one
-warm_up()
-=======
 warm_up() -> None
->>>>>>> main
 ```
 
 Warm up the underlying chat generator.
