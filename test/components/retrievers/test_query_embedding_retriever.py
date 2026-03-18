@@ -95,7 +95,7 @@ class TestQueryEmbeddingRetriever:
                         "document_store": {
                             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
                             "init_parameters": {
-                                "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                                "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
                                 "bm25_algorithm": "BM25L",
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
