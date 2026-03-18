@@ -1,78 +1,71 @@
-import inspect
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.components.embedders.types.protocol import TextEmbedder
-from haystack.components.retrievers.types.protocol import EmbeddingRetriever, TextRetriever
+from haystack.components.retrievers.types.protocol import TextRetriever
+from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
 from haystack.utils.misc import _deduplicate_documents
-
-RETRIEVERS_TYPE = list[TextRetriever] | list[EmbeddingRetriever] | list[TextRetriever | EmbeddingRetriever]
-
-# NOTES:
-# Draft version of my basic idea
-# Some open questions:
-# - Do we need the flexibility to provide multiple text embedders --> E.g. if different EmbeddingRetrievers need
-#   different embedders
-#   - If yes we may need to create a new component (e.g. VectorSearch) that takes in a TextEmbedder + EmbeddingRetriever
-#     that would ideally satisfy the TextRetriever protocol.
-#     Then the updated type would just be RETRIEVERS_TYPE = list[TextRetriever]
 
 
 @component
 class MultiRetriever:
-    def __init__(self, retrievers: RETRIEVERS_TYPE, text_embedder: TextEmbedder | None) -> None:
+    def __init__(
+        self, *, retrievers: list[TextRetriever], filters: dict[str, Any] | None = None, top_k: int = 10
+    ) -> None:
+        """
+        Create the MultiRetriever component.
+
+        :param retrievers:
+            A list of retriever components to run in parallel.
+        :param filters:
+            A dictionary of filters to apply when retrieving documents.
+        :param top_k:
+            The maximum number of documents to return per retriever.
+        """
         self.retrievers = retrievers
-        self.text_embedder = text_embedder
+        self.filters = filters
+        self.top_k = top_k
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the Agent.
+        Warm up the retrievers if any has a warm_up method.
         """
         if self._is_warmed_up:
             return
         for retriever in self.retrievers:
             if hasattr(retriever, "warm_up") and callable(retriever.warm_up):
                 retriever.warm_up()
-        if hasattr(self.text_embedder, "warm_up") and callable(self.text_embedder.warm_up):
-            self.text_embedder.warm_up()
         self._is_warmed_up = True
 
     @component.output_types(documents=list[Document])
-    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10) -> dict[str, list[Document]]:
+    def run(
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+    ) -> dict[str, list[Document]]:
         """
         Runs the retriever on the given query and filters.
 
         :param query:
             The query to run the retriever on.
         :param filters:
-            The filters to apply to the retriever.
+            The filters to apply to the retriever. If not provided, the filters from the initialization of the
+            component will be used. If those are also not provided, no filters will be applied.
         :param top_k:
-            The number of documents to return per retriever.
+            The number of documents to return per retriever. If not provided, the top_k from the initialization of
+            the component will be used. If that is also not provided, all retrieved documents will be returned.
 
         :returns:
             A dictionary with the keys:
                 - "documents": A list of retrieved documents.
         """
-        all_documents = []
+        resolved_top_k = top_k if top_k is not None else self.top_k
+        resolved_filters = filters if filters is not None else self.filters
+
+        all_documents: list[Document] = []
         # TODO Update to run in parallel
         for retriever in self.retrievers:
-            sig = inspect.signature(retriever.run)
-
-            # TODO One option to distinguish between the two types.
-            #      Could also use isinstance if we add runtime_checkable to the protocols.
-            if "query_embedding" in sig.parameters:
-                embedding = self.text_embedder.run(text=query)["embedding"]
-                result = retriever.run(query_embedding=embedding, filters=filters, top_k=top_k)
-            elif "query" in sig.parameters:
-                result = retriever.run(query=query, filters=filters, top_k=top_k)
-            else:
-                raise ValueError(f"Unknown retriever type: {type(retriever)}")
-
-            documents = result.get("documents", [])
-            all_documents.extend(documents)
-
+            result = retriever.run(query=query, filters=resolved_filters, top_k=resolved_top_k)
+            all_documents.extend(result.get("documents", []))
         all_documents = _deduplicate_documents(all_documents)
         return {"documents": all_documents}
 
@@ -84,9 +77,7 @@ class MultiRetriever:
             Dictionary with serialized data.
         """
         return default_to_dict(
-            self,
-            retrievers=[default_to_dict(retriever) for retriever in self.retrievers],
-            text_embedder=default_to_dict(self.text_embedder) if self.text_embedder else None,
+            self, retrievers=[component_to_dict(obj=retriever, name="retriever") for retriever in self.retrievers]
         )
 
     @classmethod
@@ -97,5 +88,21 @@ class MultiRetriever:
         :param data:
             Dictionary with the data to create the component.
         """
-        # TODO Finish need to deserialize each one individually
+        # TODO This is a bit messy. We could update default_from_dict to handle lists of components to simplify the
+        #      implementation here.
+        retrievers_data = data.get("init_parameters", {}).get("retrievers", [])
+        if retrievers_data:
+            retrievers = []
+            for retriever_data in retrievers_data:
+                try:
+                    imported_class = import_class_by_name(retriever_data["type"])
+                except ImportError as e:
+                    raise ImportError(
+                        f"Could not import class {retriever_data['type']} for retriever. Error: {str(e)}"
+                    ) from e
+                retriever = component_from_dict(
+                    cls=imported_class, data=retriever_data["init_parameters"], name="retriever"
+                )
+                retrievers.append(retriever)
+            data["init_parameters"]["retrievers"] = retrievers
         return default_from_dict(cls, data)
