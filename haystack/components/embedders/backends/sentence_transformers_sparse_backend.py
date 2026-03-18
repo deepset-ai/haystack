@@ -103,7 +103,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, *, data: list[str], **kwargs) -> list[SparseEmbedding]:
+    def embed(self, *, data: list[str], **kwargs: Any) -> list[SparseEmbedding]:
         embeddings_list = self.model.encode(
             data,
             convert_to_tensor=False,  # output is a list of individual tensors

@@ -157,7 +157,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
 
     @component.output_types(score=float, results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 

@@ -348,7 +348,6 @@ ignore = [
 # UP007: Union[X, Y] syntax
 # UP035: Deprecated import
 # UP045: Optional[X] syntax
-"haystack/components/**" = ["ANN"]
 "haystack/testing/**" = ["ANN"]
 "haystack/components/agents/state/state_utils.py" = ["UP007"]
 "haystack/core/super_component/utils.py" = ["UP007"]
