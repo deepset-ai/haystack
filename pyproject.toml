@@ -225,9 +225,10 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 warn_return_any = false
 
+
 [[tool.mypy.overrides]]
-# TODO: Fix component typings
-module = ["haystack.components.*", "haystack.testing.*"]
+# TODO: Fix testing typings
+module = ["haystack.testing.*"]
 disallow_incomplete_defs = false
 
 [tool.ruff]
