@@ -255,14 +255,14 @@ Deserializes a `BranchJoiner` instance from a dictionary.
 #### run
 
 ```python
-run(**kwargs) -> dict[str, Any]
+run(**kwargs: Any) -> dict[str, Any]
 ```
 
 Executes the `BranchJoiner`, selecting the first available input value and passing it downstream.
 
 **Parameters:**
 
-- \*\***kwargs** – The input data. Must be of the type declared by `type_` during initialization.
+- \*\***kwargs** (<code>Any</code>) – The input data. Must be of the type declared by `type_` during initialization.
 
 **Returns:**
 
