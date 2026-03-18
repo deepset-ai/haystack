@@ -133,7 +133,7 @@ class LocalWhisperTranscriber:
         documents = self.transcribe(sources, **whisper_params)
         return {"documents": documents}
 
-    def transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> list[Document]:
+    def transcribe(self, sources: list[str | Path | ByteStream], **kwargs: Any) -> list[Document]:
         """
         Transcribes the audio files into a list of Documents, one for each input file.
 
@@ -166,7 +166,7 @@ class LocalWhisperTranscriber:
             source.to_file(path)
         return path
 
-    def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> dict[Path, Any]:
+    def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs: Any) -> dict[Path, Any]:
         """
         Transcribes the given audio files. Returns the output of the model, a dictionary, for each input file.
 

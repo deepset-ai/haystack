@@ -213,7 +213,7 @@ class ChatPromptBuilder:
         self,
         template: list[ChatMessage] | str | None = None,
         template_variables: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, list[ChatMessage]]:
         """
         Renders the prompt template with the provided variables.

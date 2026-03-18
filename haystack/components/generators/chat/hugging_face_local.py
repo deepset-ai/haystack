@@ -6,7 +6,7 @@ import asyncio
 import json
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
 from typing import Any, Literal, Union
@@ -523,7 +523,9 @@ class HuggingFaceLocalChatGenerator:
         return {"replies": chat_messages}
 
     @asynccontextmanager
-    async def _manage_queue_processor(self, async_handler: "AsyncHFTokenStreamingHandler"):
+    async def _manage_queue_processor(
+        self, async_handler: "AsyncHFTokenStreamingHandler"
+    ) -> AsyncIterator["asyncio.Task[None]"]:
         """Context manager for proper queue processor lifecycle management."""
         queue_processor = asyncio.create_task(async_handler.process_queue())
         try:

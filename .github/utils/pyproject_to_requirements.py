@@ -13,7 +13,7 @@ parser.add_argument("pyproject_path")
 parser.add_argument("--extra", default="")
 
 
-def resolve(target: str, extras: dict, results: set):
+def resolve(target: str, extras: dict, results: set) -> None:
     """
     Resolve the dependencies for a given target.
     """
@@ -30,7 +30,7 @@ def resolve(target: str, extras: dict, results: set):
             resolve(t, extras, results)
 
 
-def main(pyproject_path: Path, extra: str = ""):
+def main(pyproject_path: Path, extra: str = "") -> None:
     """
     Convert a pyproject.toml file to a requirements.txt file.
     """

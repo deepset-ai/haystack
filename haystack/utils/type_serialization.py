@@ -85,7 +85,7 @@ def serialize_type(target: Any) -> str:
     return f"{module_name}.{name}" if module_name else f"{name}"
 
 
-def _parse_generic_args(args_str):
+def _parse_generic_args(args_str: str) -> list[str]:
     args = []
     bracket_count = 0
     current_arg = ""
