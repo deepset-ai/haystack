@@ -8,7 +8,7 @@ from copy import copy
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.dataclasses import ChatMessage, ToolCall, ChatRole
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install openapi3'") as openapi_imports:
@@ -178,20 +178,22 @@ class OpenAPIServiceConnector:
     from haystack.dataclasses import ChatMessage
 
 
-    fc_payload = [{'function': {'arguments': '{"q": "Why was Sam Altman ousted from OpenAI?"}', 'name': 'search'},
-                   'id': 'call_PmEBYvZ7mGrQP5PUASA5m9wO', 'type': 'function'}]
+    tool_call = ToolCall(
+        tool_name="search",
+        arguments={"q": "Why was Sam Altman ousted from OpenAI?"},
+    )
+    message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-    serper_token = <your_serper_dev_token>
+    serper_token = "your_serper_dev_token"  # or use Secret.from_env_var("SERPERDEV_API_KEY")
     serperdev_openapi_spec = json.loads(requests.get("https://bit.ly/serper_dev_spec").text)
     service_connector = OpenAPIServiceConnector()
-    result = service_connector.run(messages=[ChatMessage.from_assistant(json.dumps(fc_payload))],
-                                   service_openapi_spec=serperdev_openapi_spec, service_credentials=serper_token)
+    result = service_connector.run(
+        messages=[message],
+        service_openapi_spec=serperdev_openapi_spec,
+        service_credentials=serper_token,
+    )
     print(result)
-
-    >> {'service_response': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    >> '{"searchParameters": {"q": "Why was Sam Altman ousted from OpenAI?",
-    >> "type": "search", "engine": "google"}, "answerBox": {"snippet": "Concerns over AI safety and OpenAI\'s role
-    >> in protecting were at the center of Altman\'s brief ouster from the company."...
+    # {'service_response': [ChatMessage(...)]}
     ```
 
     """
