@@ -5,6 +5,16 @@
 // @ts-check
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import versions from './versions.json' with { type: 'json' };
+
+// Only build the current version (docs/) plus the 5 most recent stable versions (e.g. 2.x) and the unstable
+// versioned docs (e.g. 2.x-unstable; only present during the release process).
+const MAX_STABLE_VERSIONS = 5;
+const activeVersions = [
+  'current',
+  ...versions.filter(v => v.endsWith('-unstable')),
+  ...versions.filter(v => !v.endsWith('-unstable')).slice(0, MAX_STABLE_VERSIONS),
+];
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -44,6 +54,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
+          onlyIncludeVersions: activeVersions,
           sidebarPath: './sidebars.js',
            // Exclude internal templates from the docs build
            exclude: ['**/_templates/**'],
@@ -82,6 +93,7 @@ const config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'reference',
+        onlyIncludeVersions: activeVersions,
         path: 'reference',
         routeBasePath: 'reference',
         sidebarPath: './reference-sidebars.js',
