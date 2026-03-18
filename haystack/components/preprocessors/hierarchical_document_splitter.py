@@ -67,14 +67,14 @@ class HierarchicalDocumentSplitter:
             hierarchical_docs.extend(self.build_hierarchy_from_doc(doc))
         return {"documents": hierarchical_docs}
 
-    def _build_block_sizes(self):
+    def _build_block_sizes(self) -> None:
         for block_size in self.block_sizes:
             self.splitters[block_size] = DocumentSplitter(
                 split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by
             )
 
     @staticmethod
-    def _add_meta_data(document: Document):
+    def _add_meta_data(document: Document) -> Document:
         document.meta["__block_size"] = 0
         document.meta["__parent_id"] = None
         document.meta["__children_ids"] = []

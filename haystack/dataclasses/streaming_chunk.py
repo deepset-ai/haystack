@@ -136,7 +136,7 @@ class StreamingChunk:
     finish_reason: FinishReason | None = field(default=None)
     reasoning: ReasoningContent | None = field(default=None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result, self.reasoning))
         if fields_set > 1:
             raise ValueError(

@@ -72,7 +72,7 @@ def _greater_than(value: Any, filter_value: Any) -> bool:
     return value > filter_value
 
 
-def _parse_date(value):
+def _parse_date(value: str) -> datetime:
     """Try parsing the value as an ISO format date, then fall back to dateutil.parser."""
     try:
         return datetime.fromisoformat(value)

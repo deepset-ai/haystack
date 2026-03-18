@@ -20,7 +20,7 @@ class _BackwardCompatible(type):
     Metaclass that handles Document backward compatibility.
     """
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
         Called before Document.__init__, handles legacy fields.
 
