@@ -612,7 +612,7 @@ class InMemoryDocumentStore:
         Returns the minimum and maximum values for the given metadata field across all documents.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
-        :returns: A dictionary with "min" and "max" keys. Returns {"min": None, "max": None}
+        :returns: A dictionary with "min" and "max" keys. Returns `{"min": None, "max": None}`
             if the field is missing or has no values.
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
