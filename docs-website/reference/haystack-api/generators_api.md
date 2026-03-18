@@ -220,7 +220,7 @@ __init__(
         AzureADTokenProvider | AsyncAzureADTokenProvider | None
     ) = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Initialize the Azure OpenAI Chat Generator component.

@@ -100,7 +100,7 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 
 ```python
 patch_request(
-    self,
+    self: Operation,
     base_url: str,
     *,
     data: Any | None = None,
