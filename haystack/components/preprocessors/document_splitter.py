@@ -240,9 +240,9 @@ class DocumentSplitter:
 
         return split_docs
 
-    def _split_by_character(self, doc) -> list[Document]:
+    def _split_by_character(self, doc: Document) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
-        units = doc.content.split(split_at)
+        units = doc.content.split(split_at)  # type: ignore[union-attr]
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
             units[i] += split_at
@@ -255,7 +255,7 @@ class DocumentSplitter:
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
 
-    def _split_by_function(self, doc) -> list[Document]:
+    def _split_by_function(self, doc: Document) -> list[Document]:
         # the check for None is done already in the run method
         splits = self.splitting_function(doc.content)  # type: ignore
         docs: list[Document] = []
@@ -344,7 +344,7 @@ class DocumentSplitter:
     @staticmethod
     def _add_split_overlap_information(
         current_doc: Document, current_doc_start_idx: int, previous_doc: Document, previous_doc_start_idx: int
-    ):
+    ) -> None:
         """
         Adds split overlap information to the current and previous Document's meta.
 

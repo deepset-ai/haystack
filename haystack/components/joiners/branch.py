@@ -116,7 +116,7 @@ class BranchJoiner:
         data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs) -> dict[str, Any]:
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Executes the `BranchJoiner`, selecting the first available input value and passing it downstream.
 

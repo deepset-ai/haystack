@@ -146,7 +146,7 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     )
 
 
-def _check_callable_compatibility(sender_args, receiver_args):
+def _check_callable_compatibility(sender_args: tuple[Any, ...], receiver_args: tuple[Any, ...]) -> bool:
     """Helper function to check compatibility of Callable types"""
     if not receiver_args:
         return True
