@@ -26,7 +26,7 @@ class Accumulate:
     are not directly serializable.
     """
 
-    def __init__(self, function: Callable | None = None):
+    def __init__(self, function: Callable | None = None) -> None:
         """
         Class constructor
 

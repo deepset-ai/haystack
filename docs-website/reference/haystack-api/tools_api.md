@@ -156,7 +156,7 @@ Example:
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Prepare the ComponentTool for use.
@@ -685,7 +685,7 @@ __init__(
     search_tool_name: str = "search_tools",
     search_tool_description: str | None = None,
     search_tool_parameters_description: dict[str, str] | None = None
-)
+) -> None
 ```
 
 Initialize the SearchableToolset.
@@ -979,7 +979,7 @@ Toolset serves two main purposes:
    class CalculatorToolset(Toolset):
        '''A toolset for calculator operations.'''
 
-       def __init__(self):
+       def __init__(self) -> None:
            tools = self._create_tools()
            super().__init__(tools)
 

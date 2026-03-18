@@ -21,7 +21,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
     # If you see that https://github.com/Dorthu/openapi3/pull/124/
     # is merged, we can remove this patch - notify authors of this code
     def patch_request(
-        self,
+        self: "Operation",
         base_url: str,
         *,
         data: Any | None = None,
@@ -196,7 +196,7 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self, ssl_verify: bool | str | None = None):
+    def __init__(self, ssl_verify: bool | str | None = None) -> None:
         """
         Initializes the OpenAPIServiceConnector instance
 
@@ -282,7 +282,7 @@ class OpenAPIServiceConnector:
         """
         return default_from_dict(cls, data)
 
-    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: dict | str | None = None):
+    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: dict | str | None = None) -> None:
         """
         Authentication with an OpenAPI service.
 

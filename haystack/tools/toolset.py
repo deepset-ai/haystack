@@ -82,7 +82,7 @@ class Toolset:
        class CalculatorToolset(Toolset):
            '''A toolset for calculator operations.'''
 
-           def __init__(self):
+           def __init__(self) -> None:
                tools = self._create_tools()
                super().__init__(tools)
 
@@ -146,7 +146,7 @@ class Toolset:
     # Use field() with default_factory to initialize the list
     tools: list[Tool] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Validate and set up the toolset after initialization.
 
@@ -305,7 +305,7 @@ class Toolset:
         """
         return len(self.tools)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tool:
         """
         Get a Tool by index.
 
@@ -323,29 +323,29 @@ class _ToolsetWrapper(Toolset):
     their individual configurations while still being usable with ToolInvoker.
     """
 
-    def __init__(self, toolsets: list[Toolset]):
+    def __init__(self, toolsets: list[Toolset]) -> None:
         super().__init__([tool for toolset in toolsets for tool in toolset])
         self.toolsets = toolsets
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tool]:
         """Iterate over all tools from all toolsets."""
         for toolset in self.toolsets:
             yield from toolset
 
-    def __contains__(self, item):
+    def __contains__(self, item: Any) -> bool:
         """Check if a tool is in any of the toolsets."""
         return any(item in toolset for toolset in self.toolsets)
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """Warm up all toolsets."""
         for toolset in self.toolsets:
             toolset.warm_up()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return total number of tools across all toolsets."""
         return sum(len(toolset) for toolset in self.toolsets)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tool:
         """Get a tool by index across all toolsets."""
         # Leverage iteration instead of manual index tracking
         for i, tool in enumerate(self):
@@ -353,7 +353,7 @@ class _ToolsetWrapper(Toolset):
                 return tool
         raise IndexError("ToolsetWrapper index out of range")
 
-    def __add__(self, other):
+    def __add__(self, other: Toolset | Tool | list[Tool]) -> "_ToolsetWrapper":
         """Add another toolset or tool to this wrapper."""
         if isinstance(other, Toolset):
             return _ToolsetWrapper(self.toolsets + [other])

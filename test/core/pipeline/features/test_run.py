@@ -779,7 +779,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
                                 Document(
                                     id="328f0cbb6722c5cfa290aa2b78bcda8dc5afa09f0e2c23092afc502ba89c85e7",
                                     content="This is a simple document",
-                                    score=0.5993376509412102,
+                                    score=0.7192051811294521,
                                 )
                             ]
                         ]
@@ -789,7 +789,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
                             Document(
                                 id="328f0cbb6722c5cfa290aa2b78bcda8dc5afa09f0e2c23092afc502ba89c85e7",
                                 content="This is a simple document",
-                                score=0.5993376509412102,
+                                score=0.7192051811294521,
                             )
                         ],
                         "query": "This is my question",
@@ -865,13 +865,13 @@ def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
                                     Document(
                                         id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
                                         content="Paris is the capital of France",
-                                        score=1.600237583702734,
+                                        score=1.7780417596697045,
                                         meta={"source_index": 1},
                                     ),
                                     Document(
                                         id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                         content="Rome is the capital of Italy",
-                                        score=1.2536639934227616,
+                                        score=1.3448247718197388,
                                         meta={"source_index": 2},
                                     ),
                                 ],
@@ -886,12 +886,12 @@ def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
                             Document(
                                 id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
                                 content="Paris is the capital of France",
-                                score=1.600237583702734,
+                                score=1.7780417596697045,
                             ),
                             Document(
                                 id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                 content="Rome is the capital of Italy",
-                                score=1.2536639934227616,
+                                score=1.3448247718197388,
                             ),
                         ],
                         "meta": None,
@@ -912,12 +912,12 @@ def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
                             Document(
                                 id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
                                 content="Paris is the capital of France",
-                                score=1.600237583702734,
+                                score=1.7780417596697045,
                             ),
                             Document(
                                 id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                 content="Rome is the capital of Italy",
-                                score=1.2536639934227616,
+                                score=1.3448247718197388,
                             ),
                         ],
                         "query": "What is the capital of France?",
@@ -2473,7 +2473,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                 content="some text about investigation and treatment of Alzheimer disease",
                                 meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
                                 id="doc2",
-                                score=3.324112496100923,
+                                score=4.148111588215998,
                             )
                         ]
                     }
@@ -2487,7 +2487,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
                                     id="doc2",
                                     content="some text about investigation and treatment of Alzheimer disease",
                                     meta={"year": 2023, "disease": "Alzheimer", "author": "John Bread"},
-                                    score=3.324112496100923,
+                                    score=4.148111588215998,
                                 )
                             ]
                         ],

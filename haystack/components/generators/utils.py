@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
@@ -158,7 +159,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
 
 
-def _serialize_object(obj):
+def _serialize_object(obj: Any) -> Any:
     """Convert an object to a serializable dict recursively"""
     if hasattr(obj, "model_dump"):
         return obj.model_dump()

@@ -38,7 +38,7 @@ class RegexTextExtractor:
     ```
     """
 
-    def __init__(self, regex_pattern: str):
+    def __init__(self, regex_pattern: str) -> None:
         """
         Creates an instance of the RegexTextExtractor component.
 

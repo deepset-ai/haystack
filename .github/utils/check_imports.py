@@ -46,7 +46,7 @@ def validate_module_imports(root_dir: str, exclude_subdirs: list[str] | None = N
     return imported, failed
 
 
-def main():
+def main() -> None:
     """
     This script checks that all Haystack modules can be imported successfully.
 

@@ -13,7 +13,7 @@ class Threshold:
     :param threshold: the number to compare the input value against. This is also a parameter.
     """
 
-    def __init__(self, threshold: int = 10):
+    def __init__(self, threshold: int = 10) -> None:
         """
         :param threshold: the number to compare the input value against.
         """

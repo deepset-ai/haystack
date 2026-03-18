@@ -89,7 +89,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         *,
         azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the Azure OpenAI Chat Generator component.
 
@@ -203,7 +203,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         )
         self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the Azure OpenAI chat generator.
 

@@ -117,7 +117,7 @@ Deserializes the component from a dictionary.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -163,7 +163,7 @@ run(
     answers_per_seq: int | None = None,
     no_answer: bool | None = None,
     overlap_threshold: float | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Locates and extracts answers from the given Documents using the given query.
@@ -190,4 +190,4 @@ Locates and extracts answers from the given Documents using the given query.
 
 **Returns:**
 
-- – List of answers sorted by (desc.) answer score.
+- <code>dict\[str, Any\]</code> – List of answers sorted by (desc.) answer score.

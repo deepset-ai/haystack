@@ -38,7 +38,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         assert data == {
             "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
             "init_parameters": {
-                "bm25_tokenization_regex": r"(?u)\b\w\w+\b",
+                "bm25_tokenization_regex": r"(?u)\b\w+\b",
                 "bm25_algorithm": "BM25L",
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
@@ -710,3 +710,59 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
             del doc_store
             gc.collect()
             mock_shutdown.assert_called_once_with(wait=True)
+
+    def test_bm25_tokenization_includes_single_char_tokens(self):
+        doc_store = InMemoryDocumentStore()
+        tokens = doc_store._tokenize_bm25("Luna is a dog")
+        assert tokens == ["luna", "is", "a", "dog"]
+
+    def test_bm25_retrieval_with_single_char_query(self):
+        doc_store = InMemoryDocumentStore()
+        docs = [
+            Document(content="C programming language"),
+            Document(content="Java programming language"),
+            Document(content="Python programming language"),
+        ]
+        doc_store.write_documents(docs)
+
+        results = doc_store.bm25_retrieval(query="C", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "C programming language"
+
+    def test_bm25_retrieval_single_char_content_token(self):
+        doc_store = InMemoryDocumentStore()
+        docs = [Document(content="I like R"), Document(content="I like Python")]
+        doc_store.write_documents(docs)
+
+        results = doc_store.bm25_retrieval(query="R programming", top_k=1)
+        assert len(results) == 1
+        assert results[0].content == "I like R"
+
+    def test_bm25_avg_doc_len_correctness(self):
+        """Average document length should be computed correctly after writes."""
+        doc_store = InMemoryDocumentStore()
+        # Write documents with known token counts.
+        # "hello world" -> 2 tokens, "foo bar baz" -> 3 tokens, "go" -> 1 token
+        doc_store.write_documents(
+            [
+                Document(content="hello world", id="d1"),
+                Document(content="foo bar baz", id="d2"),
+                Document(content="go", id="d3"),
+            ]
+        )
+        # Average should be (2 + 3 + 1) / 3 = 2.0
+        assert doc_store._avg_doc_len == pytest.approx(2.0)
+
+    def test_bm25_avg_doc_len_after_delete(self):
+        """Average document length should remain correct after deletion."""
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(
+            [
+                Document(content="hello world", id="d1"),  # 2 tokens
+                Document(content="foo bar baz", id="d2"),  # 3 tokens
+            ]
+        )
+        assert doc_store._avg_doc_len == pytest.approx(2.5)
+        doc_store.delete_documents(["d1"])
+        # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
+        assert doc_store._avg_doc_len == pytest.approx(3.0)

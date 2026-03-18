@@ -11,10 +11,14 @@ from typing import Any
 
 
 class SecretType(Enum):
+    """
+    Type of secret: token (API key) or environment variable.
+    """
+
     TOKEN = "token"
     ENV_VAR = "env_var"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -140,7 +144,7 @@ class TokenSecret(Secret):
     _token: str
     _type: SecretType = SecretType.TOKEN
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__init__()
         assert self._type == SecretType.TOKEN
 
@@ -180,7 +184,7 @@ class EnvVarSecret(Secret):
     _strict: bool = True
     _type: SecretType = SecretType.ENV_VAR
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__init__()
         assert self._type == SecretType.ENV_VAR
 

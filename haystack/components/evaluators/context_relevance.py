@@ -103,7 +103,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         progress_bar: bool = True,
         raise_on_failure: bool = True,
         chat_generator: ChatGenerator | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of ContextRelevanceEvaluator.
 
@@ -157,7 +157,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
 
     @component.output_types(score=float, results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 

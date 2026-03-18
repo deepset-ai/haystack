@@ -36,7 +36,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> "_SentenceTransformersEmbeddingBackend":
         cache_params = {
             "model": model,
             "device": device,
@@ -93,7 +93,7 @@ class _SentenceTransformersEmbeddingBackend:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         sentence_transformers_import.check()
 
         self.model = SentenceTransformer(

@@ -60,7 +60,7 @@ class FileTypeRouter:
 
     def __init__(
         self, mime_types: list[str], additional_mimetypes: dict[str, str] | None = None, raise_on_failure: bool = False
-    ):
+    ) -> None:
         """
         Initialize the FileTypeRouter component.
 

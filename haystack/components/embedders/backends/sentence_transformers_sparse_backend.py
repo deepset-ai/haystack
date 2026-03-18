@@ -33,7 +33,7 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> "_SentenceTransformersSparseEncoderEmbeddingBackend":
         cache_params = {
             "model": model,
             "device": device,
@@ -87,7 +87,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         sentence_transformers_import.check()
 
         self.model = SparseEncoder(
@@ -103,7 +103,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, *, data: list[str], **kwargs) -> list[SparseEmbedding]:
+    def embed(self, *, data: list[str], **kwargs: Any) -> list[SparseEmbedding]:
         embeddings_list = self.model.encode(
             data,
             convert_to_tensor=False,  # output is a list of individual tensors

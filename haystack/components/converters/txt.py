@@ -35,7 +35,7 @@ class TextFileToDocument:
     ```
     """
 
-    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False):
+    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False) -> None:
         """
         Creates a TextFileToDocument component.
 
@@ -51,7 +51,9 @@ class TextFileToDocument:
         self.store_full_path = store_full_path
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, list[Document]]:
         """
         Converts text files to documents.
 

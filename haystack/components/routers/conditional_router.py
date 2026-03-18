@@ -125,7 +125,7 @@ class ConditionalRouter:
         unsafe: bool = False,
         validate_output_type: bool = False,
         optional_variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
 
@@ -249,7 +249,7 @@ class ConditionalRouter:
             component.set_input_type(self, name=optional_var_name, type=Any, default=None)
 
         # set output types
-        component.set_output_types(self, **output_types)
+        component.set_output_types(self, **output_types)  # type: ignore[arg-type]
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -303,7 +303,7 @@ class ConditionalRouter:
                 init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Executes the routing logic.
 
@@ -374,7 +374,7 @@ class ConditionalRouter:
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
-    def _validate_routes(self, routes: list[Route]):
+    def _validate_routes(self, routes: list[Route]) -> None:
         """
         Validates a list of routes.
 
@@ -440,7 +440,7 @@ class ConditionalRouter:
             variables.update(template_variables - assigned_variables)
         return variables
 
-    def _validate_template(self, env: Environment, template_text: str):
+    def _validate_template(self, env: Environment, template_text: str) -> bool:
         """
         Validates a template string by parsing it with Jinja.
 
@@ -457,7 +457,7 @@ class ConditionalRouter:
         except TemplateSyntaxError:
             return False
 
-    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911
+    def _output_matches_type(self, value: Any, expected_type: type) -> bool:  # noqa: PLR0911
         """
         Checks whether `value` type matches the `expected_type`.
         """

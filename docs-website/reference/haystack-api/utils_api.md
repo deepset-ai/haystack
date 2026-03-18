@@ -30,6 +30,8 @@ Returns if the given callable is usable inside a component's `run_async` method.
 
 Bases: <code>Enum</code>
 
+Type of secret: token (API key) or environment variable.
+
 #### from_str
 
 ```python
@@ -372,7 +374,7 @@ A generic representation of a device.
 #### __init__
 
 ```python
-__init__(type: DeviceType, id: int | None = None)
+__init__(type: DeviceType, id: int | None = None) -> None
 ```
 
 Create a generic device.
@@ -862,7 +864,7 @@ A Jinja2 extension for formatting dates and times.
 #### __init__
 
 ```python
-__init__(environment: Environment)
+__init__(environment: Environment) -> None
 ```
 
 Initializes the JinjaTimeExtension object.

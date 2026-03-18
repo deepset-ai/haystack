@@ -92,7 +92,7 @@ class PipelineBase:  # noqa: PLW1641
         metadata: dict[str, Any] | None = None,
         max_runs_per_component: int = 100,
         connection_type_validation: bool = True,
-    ):
+    ) -> None:
         """
         Creates the Pipeline.
 
