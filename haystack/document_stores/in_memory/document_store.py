@@ -247,7 +247,7 @@ class InMemoryDocumentStore:
             The list of documents to score, should be produced by
             the filter_documents method; may be an empty list.
         :returns:
-            A list of tuples, each containing a Document and its BM25L score.
+            A list of tuples, each containing a Document and its BM25Okapi score.
         """
         k = self.bm25_parameters.get("k1", 1.5)
         b = self.bm25_parameters.get("b", 0.75)
@@ -274,7 +274,7 @@ class InMemoryDocumentStore:
             return {tok: idf.get(tok, 0.0) for tok in tokens}
 
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
-            """Per-token BM25L computation."""
+            """Per-token BM25Okapi computation."""
             freq_term = freq.get(token, 0.0)
             freq_norm = freq_term + k * (1 - b + b * doc_len / self._avg_doc_len)
             return freq_term * (1.0 + k) / freq_norm
@@ -376,7 +376,7 @@ class InMemoryDocumentStore:
 
     def save_to_disk(self, path: str) -> None:
         """
-        Write the database and its' data to disk as a JSON file.
+        Write the database and its data to disk as a JSON file.
 
         :param path: The path to the JSON file.
         """
@@ -388,7 +388,7 @@ class InMemoryDocumentStore:
     @classmethod
     def load_from_disk(cls, path: str) -> "InMemoryDocumentStore":
         """
-        Load the database and its' data from disk as a JSON file.
+        Load the database and its data from disk as a JSON file.
 
         :param path: The path to the JSON file.
         :returns: The loaded InMemoryDocumentStore.
@@ -411,7 +411,7 @@ class InMemoryDocumentStore:
 
     def count_documents(self) -> int:
         """
-        Returns the number of how many documents are present in the DocumentStore.
+        Returns the number of documents present in the DocumentStore.
         """
         return len(self.storage.keys())
 
@@ -419,10 +419,8 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
-        documentation.
-
-        :param filters: The filters to apply to the document list.
+        :param filters: The filters to apply. For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
         :returns: A list of Documents that match the given filters.
         """
         if filters:
@@ -485,7 +483,7 @@ class InMemoryDocumentStore:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
 
-        :param document_ids: The object_ids to delete.
+        :param document_ids: The document_ids to delete.
         """
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
@@ -594,7 +592,7 @@ class InMemoryDocumentStore:
         """
         Returns information about the metadata fields present in the stored documents.
 
-        Types are inferred from the stored values (keyword, long, float, boolean).
+        Types are inferred from the stored values (keyword, int, float, boolean).
 
         :returns: A dictionary mapping each metadata field name to a dict with a "type" key.
         """
@@ -827,7 +825,7 @@ class InMemoryDocumentStore:
 
     async def count_documents_async(self) -> int:
         """
-        Returns the number of how many documents are present in the DocumentStore.
+        Returns the number of documents present in the DocumentStore.
         """
         return len(self.storage.keys())
 
@@ -835,10 +833,8 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
-        documentation.
-
-        :param filters: The filters to apply to the document list.
+        :param filters: The filters to apply. For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
         :returns: A list of Documents that match the given filters.
         """
         return await asyncio.get_running_loop().run_in_executor(
@@ -861,7 +857,7 @@ class InMemoryDocumentStore:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
 
-        :param document_ids: The object_ids to delete.
+        :param document_ids: The document_ids to delete.
         """
         await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
