@@ -12,7 +12,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
-from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
+from haystack.utils.jinja2_chat_extension import ChatMessageExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
@@ -164,7 +164,6 @@ class ChatPromptBuilder:
         self.template = template
 
         self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
-        self._env.filters["templatize_part"] = templatize_part
         if arrow_import.is_successful():
             self._env.add_extension(Jinja2TimeExtension)
 
