@@ -34,7 +34,7 @@ ESCAPED_START_TAG = "&lt;haystack_content_part&gt;"
 ESCAPED_END_TAG = "&lt;/haystack_content_part&gt;"
 
 
-def _escape_sentinel_tags(value: str) -> str:
+def _escape_sentinel_tags(value: object) -> str:
     """
     Jinja2 `finalize` callback that prevents sentinel tag injection.
 
@@ -45,10 +45,8 @@ def _escape_sentinel_tags(value: str) -> str:
     """
     if isinstance(value, Markup):
         return value
-    s = str(value)
-    if START_TAG in s or END_TAG in s:
-        return s.replace(START_TAG, ESCAPED_START_TAG).replace(END_TAG, ESCAPED_END_TAG)
-    return s
+
+    return str(value).replace(START_TAG, ESCAPED_START_TAG).replace(END_TAG, ESCAPED_END_TAG)
 
 
 class ChatMessageExtension(Extension):
