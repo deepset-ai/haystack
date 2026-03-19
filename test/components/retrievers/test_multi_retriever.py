@@ -29,6 +29,20 @@ class MockRetriever:
         return {"documents": []}
 
 
+@component
+class RetrieverA:
+    @component.output_types(documents=list[Document])
+    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+        return {"documents": [Document(content="Solar energy", id="doc1", score=0.9)]}
+
+
+@component
+class RetrieverB:
+    @component.output_types(documents=list[Document])
+    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+        return {"documents": [Document(content="Wind energy", id="doc2", score=0.8)]}
+
+
 class TestMultiRetriever:
     @pytest.fixture
     def sample_documents(self):
@@ -51,7 +65,7 @@ class TestMultiRetriever:
         return document_store
 
     def test_init_default_parameters(self):
-        retrievers = [MockRetriever(), MockRetriever()]
+        retrievers = {"mock": MockRetriever()}
         retriever = MultiRetriever(retrievers=retrievers)
         assert retriever.retrievers == retrievers
         assert retriever.filters is None
@@ -59,7 +73,7 @@ class TestMultiRetriever:
         assert retriever.max_workers == 4
 
     def test_init_custom_parameters(self):
-        retrievers = [MockRetriever()]
+        retrievers = {"mock": MockRetriever()}
         retriever = MultiRetriever(retrievers=retrievers, filters={"field": "meta.category"}, top_k=5, max_workers=2)
         assert retriever.retrievers == retrievers
         assert retriever.filters == {"field": "meta.category"}
@@ -67,28 +81,13 @@ class TestMultiRetriever:
         assert retriever.max_workers == 2
 
     def test_run_with_empty_document_store(self):
-        retriever = MultiRetriever(retrievers=[MockRetriever()])
+        retriever = MultiRetriever(retrievers={"mock": MockRetriever()})
         result = retriever.run(query="green energy")
         assert "documents" in result
         assert result["documents"] == []
 
     def test_run_combines_results_from_multiple_retrievers(self):
-        doc1 = Document(content="Solar energy", id="doc1", score=0.9)
-        doc2 = Document(content="Wind energy", id="doc2", score=0.8)
-
-        @component
-        class RetrieverA:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                return {"documents": [doc1]}
-
-        @component
-        class RetrieverB:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                return {"documents": [doc2]}
-
-        retriever = MultiRetriever(retrievers=[RetrieverA(), RetrieverB()], max_workers=2)
+        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()}, max_workers=2)
         result = retriever.run(query="energy")
 
         assert len(result["documents"]) == 2
@@ -100,18 +99,18 @@ class TestMultiRetriever:
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
 
         @component
-        class RetrieverA:
+        class RetrieverC:
             @component.output_types(documents=list[Document])
             def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
                 return {"documents": [doc1, doc2]}
 
         @component
-        class RetrieverB:
+        class RetrieverD:
             @component.output_types(documents=list[Document])
             def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
                 return {"documents": [doc1_duplicate]}
 
-        retriever = MultiRetriever(retrievers=[RetrieverA(), RetrieverB()], max_workers=2)
+        retriever = MultiRetriever(retrievers={"c": RetrieverC(), "d": RetrieverD()}, max_workers=2)
         result = retriever.run(query="energy")
 
         assert len(result["documents"]) == 2
@@ -129,7 +128,9 @@ class TestMultiRetriever:
                 received["top_k"] = top_k
                 return {"documents": []}
 
-        retriever = MultiRetriever(retrievers=[CapturingRetriever()], filters={"field": "meta.category"}, top_k=5)
+        retriever = MultiRetriever(
+            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k=5
+        )
 
         # Should use init-time values when not overridden
         retriever.run(query="energy")
@@ -141,9 +142,33 @@ class TestMultiRetriever:
         assert received["filters"] == {"field": "meta.other"}
         assert received["top_k"] == 2
 
+    def test_run_with_active_retrievers(self):
+        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()}, max_workers=2)
+
+        # Only run retriever "a"
+        result = retriever.run(query="energy", active_retrievers=["a"])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].id == "doc1"
+
+    def test_run_with_unknown_active_retriever_raises(self):
+        retriever = MultiRetriever(retrievers={"mock": MockRetriever()})
+        with pytest.raises(ValueError, match="Unknown retriever name"):
+            retriever.run(query="energy", active_retrievers=["nonexistent"])
+
+    def test_run_retriever_failure_raises_with_name(self):
+        @component
+        class FailingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                raise RuntimeError("connection error")
+
+        retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
+        with pytest.raises(RuntimeError, match="Retriever 'failing' failed"):
+            retriever.run(query="energy")
+
     def test_to_dict(self):
         retriever = MultiRetriever(
-            retrievers=[InMemoryBM25Retriever(document_store=InMemoryDocumentStore())],
+            retrievers={"bm25": InMemoryBM25Retriever(document_store=InMemoryDocumentStore())},
             filters=None,
             top_k=5,
             max_workers=2,
@@ -152,8 +177,8 @@ class TestMultiRetriever:
         assert result == {
             "type": "haystack.components.retrievers.multi_retriever.MultiRetriever",
             "init_parameters": {
-                "retrievers": [
-                    {
+                "retrievers": {
+                    "bm25": {
                         "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
                         "init_parameters": {
                             "document_store": {
@@ -173,7 +198,7 @@ class TestMultiRetriever:
                             "filter_policy": "replace",
                         },
                     }
-                ],
+                },
                 "filters": None,
                 "top_k": 5,
                 "max_workers": 2,
@@ -184,8 +209,8 @@ class TestMultiRetriever:
         data = {
             "type": "haystack.components.retrievers.multi_retriever.MultiRetriever",
             "init_parameters": {
-                "retrievers": [
-                    {
+                "retrievers": {
+                    "bm25": {
                         "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
                         "init_parameters": {
                             "document_store": {
@@ -205,7 +230,7 @@ class TestMultiRetriever:
                             "filter_policy": "replace",
                         },
                     }
-                ],
+                },
                 "filters": None,
                 "top_k": 5,
                 "max_workers": 2,
@@ -214,24 +239,27 @@ class TestMultiRetriever:
         result = MultiRetriever.from_dict(data)
         assert isinstance(result, MultiRetriever)
         assert len(result.retrievers) == 1
-        assert isinstance(result.retrievers[0], InMemoryBM25Retriever)
+        assert "bm25" in result.retrievers
+        assert isinstance(result.retrievers["bm25"], InMemoryBM25Retriever)
         assert result.top_k == 5
         assert result.max_workers == 2
 
     def test_from_dict_with_no_retrievers(self):
         data = {
             "type": "haystack.components.retrievers.multi_retriever.MultiRetriever",
-            "init_parameters": {"retrievers": [], "filters": None, "top_k": 10, "max_workers": 4},
+            "init_parameters": {"retrievers": {}, "filters": None, "top_k": 10, "max_workers": 4},
         }
         result = MultiRetriever.from_dict(data)
         assert isinstance(result, MultiRetriever)
-        assert result.retrievers == []
+        assert result.retrievers == {}
 
     def test_from_dict_with_unknown_retriever_type_raises(self):
         data = {
             "type": "haystack.components.retrievers.multi_retriever.MultiRetriever",
             "init_parameters": {
-                "retrievers": [{"type": "haystack.components.retrievers.NonExistentRetriever", "init_parameters": {}}],
+                "retrievers": {
+                    "bad": {"type": "haystack.components.retrievers.NonExistentRetriever", "init_parameters": {}}
+                },
                 "filters": None,
                 "top_k": 10,
                 "max_workers": 4,
@@ -244,13 +272,13 @@ class TestMultiRetriever:
     @pytest.mark.slow
     def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
         retriever = MultiRetriever(
-            retrievers=[
-                InMemoryBM25Retriever(document_store=document_store_with_embeddings),
-                QueryEmbeddingRetriever(
+            retrievers={
+                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
+                "embedding": QueryEmbeddingRetriever(
                     retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
                     query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
                 ),
-            ]
+            }
         )
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert "documents" in result
@@ -260,15 +288,35 @@ class TestMultiRetriever:
     @pytest.mark.slow
     def test_run_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
         retriever = MultiRetriever(
-            retrievers=[
-                InMemoryBM25Retriever(document_store=document_store_with_embeddings),
-                QueryEmbeddingRetriever(
+            retrievers={
+                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
+                "embedding": QueryEmbeddingRetriever(
                     retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
                     query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
                 ),
-            ]
+            }
         )
         result = retriever.run(query="energy", top_k=2)
         assert "documents" in result
         # top_k applies per retriever, so total may be up to top_k * len(retrievers) before deduplication
         assert len(result["documents"]) <= 4
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_run_with_active_retrievers_integration(self, del_hf_env_vars, document_store_with_embeddings):
+        retriever = MultiRetriever(
+            retrievers={
+                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
+                "embedding": QueryEmbeddingRetriever(
+                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
+                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+                ),
+            }
+        )
+        result_bm25_only = retriever.run(query="energy", active_retrievers=["bm25"])
+        result_all = retriever.run(query="energy")
+
+        # BM25-only results should be a subset of all results
+        bm25_ids = {doc.id for doc in result_bm25_only["documents"]}
+        all_ids = {doc.id for doc in result_all["documents"]}
+        assert bm25_ids.issubset(all_ids)

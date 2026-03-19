@@ -43,18 +43,24 @@ class MultiRetriever:
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
-    # Run the multi-retriever
+    # Run the multi-retriever with all retrievers
     retriever = MultiRetriever(
-        retrievers=[
-            InMemoryBM25Retriever(document_store=doc_store),
-            QueryEmbeddingRetriever(
+        retrievers={
+            "bm25": InMemoryBM25Retriever(document_store=doc_store),
+            "embedding": QueryEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
                 query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
             ),
-        ],
+        },
         top_k=3,
     )
+
+    # Run all retrievers
     result = retriever.run(query="green energy sources")
+
+    # Run only the BM25 retriever
+    result = retriever.run(query="green energy sources", active_retrievers=["bm25"])
+
     for doc in result["documents"]:
         print(doc.content)
     ```
@@ -63,7 +69,7 @@ class MultiRetriever:
     def __init__(
         self,
         *,
-        retrievers: list[TextRetriever],
+        retrievers: dict[str, TextRetriever],
         filters: dict[str, Any] | None = None,
         top_k: int = 10,
         max_workers: int = 4,
@@ -72,7 +78,7 @@ class MultiRetriever:
         Create the MultiRetriever component.
 
         :param retrievers:
-            A list of retriever components to run in parallel.
+            A dictionary mapping names to retriever components to run in parallel.
         :param filters:
             A dictionary of filters to apply when retrieving documents.
         :param top_k:
@@ -92,20 +98,22 @@ class MultiRetriever:
         """
         if self._is_warmed_up:
             return
-        for retriever in self.retrievers:
+        for retriever in self.retrievers.values():
             if hasattr(retriever, "warm_up") and callable(retriever.warm_up):
                 retriever.warm_up()
         self._is_warmed_up = True
 
-    # TODO Could be nice to have a way of turning retrievers on and off at runtime.
-    #      Not sure how to do this since we don't store any sort of name or id for the retrievers.
-    #      Could make retrievers a dict instead of a list?
     @component.output_types(documents=list[Document])
     def run(
-        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+        self,
+        query: str,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        *,
+        active_retrievers: list[str] | None = None,
     ) -> dict[str, list[Document]]:
         """
-        Runs all retrievers in parallel on the given query and returns deduplicated results.
+        Runs retrievers in parallel on the given query and returns deduplicated results.
 
         :param query:
             The query to run the retrievers on.
@@ -115,10 +123,16 @@ class MultiRetriever:
         :param top_k:
             The number of documents to return per retriever. If not provided, the top_k from the initialization of
             the component will be used.
+        :param active_retrievers:
+            A list of retriever names to run. If not provided, all retrievers will be run.
+            Names must match the keys provided in the `retrievers` dictionary at initialization.
 
         :returns:
             A dictionary with the keys:
                 - "documents": A deduplicated list of retrieved documents.
+
+        :raises ValueError:
+            If any name in `active_retrievers` does not match a retriever name.
         """
         if not self._is_warmed_up:
             self.warm_up()
@@ -126,14 +140,29 @@ class MultiRetriever:
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters
 
+        if active_retrievers is not None:
+            unknown = set(active_retrievers) - self.retrievers.keys()
+            if unknown:
+                raise ValueError(
+                    f"Unknown retriever name(s): {sorted(unknown)}. "
+                    f"Available retrievers: {sorted(self.retrievers.keys())}"
+                )
+            retrievers_to_run = {name: self.retrievers[name] for name in active_retrievers}
+        else:
+            retrievers_to_run = self.retrievers
+
         all_documents: list[Document] = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = {
-                executor.submit(retriever.run, query=query, filters=resolved_filters, top_k=resolved_top_k)
-                for retriever in self.retrievers
+            future_to_name = {
+                executor.submit(retriever.run, query=query, filters=resolved_filters, top_k=resolved_top_k): name
+                for name, retriever in retrievers_to_run.items()
             }
-            for future in as_completed(futures):
-                all_documents.extend(future.result().get("documents", []))
+            for future in as_completed(future_to_name):
+                name = future_to_name[future]
+                try:
+                    all_documents.extend(future.result().get("documents", []))
+                except Exception as e:
+                    raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
         return {"documents": _deduplicate_documents(all_documents)}
 
@@ -146,7 +175,7 @@ class MultiRetriever:
         """
         return default_to_dict(
             self,
-            retrievers=[component_to_dict(obj=r, name="retriever") for r in self.retrievers],
+            retrievers={name: component_to_dict(obj=r, name=name) for name, r in self.retrievers.items()},
             filters=self.filters,
             top_k=self.top_k,
             max_workers=self.max_workers,
@@ -160,17 +189,16 @@ class MultiRetriever:
         :param data:
             Dictionary with the data to create the component.
         """
-        retrievers_data = data.get("init_parameters", {}).get("retrievers", [])
+        retrievers_data = data.get("init_parameters", {}).get("retrievers", {})
         if retrievers_data:
-            retrievers = []
-            for retriever_data in retrievers_data:
+            retrievers = {}
+            for name, retriever_data in retrievers_data.items():
                 try:
                     imported_class = import_class_by_name(retriever_data["type"])
                 except ImportError as e:
                     raise ImportError(
-                        f"Could not import class {retriever_data['type']} for retriever. Error: {str(e)}"
+                        f"Could not import class {retriever_data['type']} for retriever '{name}'. Error: {str(e)}"
                     ) from e
-                retriever = component_from_dict(cls=imported_class, data=retriever_data, name="retriever")
-                retrievers.append(retriever)
+                retrievers[name] = component_from_dict(cls=imported_class, data=retriever_data, name=name)
             data["init_parameters"]["retrievers"] = retrievers
         return default_from_dict(cls, data)
