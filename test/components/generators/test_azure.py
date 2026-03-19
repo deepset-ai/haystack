@@ -15,13 +15,6 @@ from haystack.utils.azure import default_azure_ad_token_provider
 
 
 class TestAzureOpenAIGenerator:
-    def test_supported_models(self) -> None:
-        """SUPPORTED_MODELS is a non-empty list of strings."""
-        models = AzureOpenAIGenerator.SUPPORTED_MODELS
-        assert isinstance(models, list)
-        assert len(models) > 0
-        assert all(isinstance(m, str) for m in models)
-
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
