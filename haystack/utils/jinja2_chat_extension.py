@@ -296,7 +296,7 @@ class ChatMessageExtension(Extension):
         raise ValueError(f"Unsupported role: {role}")
 
 
-def templatize_part(value: ChatMessageContentT) -> str:
+def templatize_part(value: ChatMessageContentT) -> Markup:
     """
     Jinja filter to convert an ChatMessageContentT object into JSON string wrapped in special XML content tags.
 
