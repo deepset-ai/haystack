@@ -1175,7 +1175,14 @@ __init__(
     mappings: dict[str, Any] | None = None,
     settings: dict[str, Any] | None = DEFAULT_SETTINGS,
     create_index: bool = True,
-    http_auth: Any = (
+    http_auth: (
+        tuple[Secret, Secret]
+        | tuple[str, str]
+        | list[str]
+        | str
+        | AWSAuth
+        | None
+    ) = (
         Secret.from_env_var("OPENSEARCH_USERNAME", strict=False),
         Secret.from_env_var("OPENSEARCH_PASSWORD", strict=False),
     ),
@@ -1210,7 +1217,7 @@ For more information on connection parameters, see the [official OpenSearch docu
 - **settings** (<code>dict\[str, Any\] | None</code>) – The settings of the index to be created. Please see the [official OpenSearch docs](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#index-settings)
   for more information. Defaults to `{"index.knn": True}`.
 - **create_index** (<code>bool</code>) – Whether to create the index if it doesn't exist. Defaults to True
-- **http_auth** (<code>Any</code>) – http_auth param passed to the underlying connection class.
+- **http_auth** (<code>tuple\[Secret, Secret\] | tuple\[str, str\] | list\[str\] | str | AWSAuth | None</code>) – http_auth param passed to the underlying connection class.
   For basic authentication with default connection class `Urllib3HttpConnection` this can be
 - a tuple of (username, password)
 - a list of [username, password]
