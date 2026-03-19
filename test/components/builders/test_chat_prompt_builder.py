@@ -1037,6 +1037,7 @@ Hello, my name is {{name}}!
         res = builder.run(name="John")
         assert res["prompt"][0].text == "x=0, y=1\nHello, my name is John!"
 
+    @pytest.mark.integration
     def test_poisoned_document_does_not_inject_image(self):
         store = InMemoryDocumentStore()
         store.write_documents([Document(content="Python is a high-level programming language.")])
