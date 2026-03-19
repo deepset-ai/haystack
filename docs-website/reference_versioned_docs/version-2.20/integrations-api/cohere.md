@@ -30,6 +30,22 @@ print(result['documents'][0].embedding)
 # [-0.453125, 1.2236328, 2.0058594, ...]
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "embed-v4.0",
+    "embed-english-v3.0",
+    "embed-english-light-v3.0",
+    "embed-multilingual-v3.0",
+    "embed-multilingual-light-v3.0",
+]
+
+```
+
+A non-exhaustive list of embed models supported by this component.
+See https://docs.cohere.com/docs/models#embed for the full list.
+
 #### __init__
 
 ```python
@@ -45,7 +61,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     embedding_type: EmbeddingTypes | None = None,
-)
+) -> None
 ```
 
 **Parameters:**
@@ -181,6 +197,22 @@ print(documents_with_embeddings)
 #  ...]
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "embed-v4.0",
+    "embed-english-v3.0",
+    "embed-english-light-v3.0",
+    "embed-multilingual-v3.0",
+    "embed-multilingual-light-v3.0",
+]
+
+```
+
+A non-exhaustive list of embed models supported by this component.
+See https://docs.cohere.com/docs/models#embed for the full list.
+
 #### __init__
 
 ```python
@@ -305,6 +337,22 @@ print(text_embedder.run(text_to_embed))
 # 'meta': {'api_version': {'version': '1'}, 'billed_units': {'input_tokens': 4}}}
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "embed-v4.0",
+    "embed-english-v3.0",
+    "embed-english-light-v3.0",
+    "embed-multilingual-v3.0",
+    "embed-multilingual-light-v3.0",
+]
+
+```
+
+A non-exhaustive list of embed models supported by this component.
+See https://docs.cohere.com/docs/models#embed for the full list.
+
 #### __init__
 
 ```python
@@ -316,7 +364,7 @@ __init__(
     truncate: str = "END",
     timeout: float = 120.0,
     embedding_type: EmbeddingTypes | None = None,
-)
+) -> None
 ```
 
 **Parameters:**
@@ -588,6 +636,30 @@ print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
 # Output: "The weather in Paris is sunny and 32°C"
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "command-a-03-2025",
+    "command-r7b-12-2024",
+    "command-a-translate-08-2025",
+    "command-a-reasoning-08-2025",
+    "command-a-vision-07-2025",
+    "command-r-08-2024",
+    "command-r-plus-08-2024",
+    "command-r-03-2024",
+    "command-r-plus-04-2024",
+    "command-r-plus",
+    "command-r",
+    "command-light",
+    "command",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://docs.cohere.com/docs/models#command for the full list.
+
 #### __init__
 
 ```python
@@ -601,7 +673,7 @@ __init__(
     *,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Initialize the CohereChatGenerator instance.
@@ -738,6 +810,30 @@ generator = CohereGenerator(api_key="test-api-key")
 generator.run(prompt="What's the capital of France?")
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "command-a-03-2025",
+    "command-r7b-12-2024",
+    "command-a-translate-08-2025",
+    "command-a-reasoning-08-2025",
+    "command-a-vision-07-2025",
+    "command-r-08-2024",
+    "command-r-plus-08-2024",
+    "command-r-03-2024",
+    "command-r-plus-04-2024",
+    "command-r-plus",
+    "command-r",
+    "command-light",
+    "command",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://docs.cohere.com/docs/models#command for the full list.
+
 #### __init__
 
 ```python
@@ -747,7 +843,7 @@ __init__(
     streaming_callback: Callable | None = None,
     api_base_url: str | None = None,
     **kwargs: Any
-)
+) -> None
 ```
 
 Instantiates a `CohereGenerator` component.
@@ -832,7 +928,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     meta_data_separator: str = "\n",
     max_tokens_per_doc: int = 4096,
-)
+) -> None
 ```
 
 Creates an instance of the 'CohereRanker'.
