@@ -555,7 +555,9 @@ class InMemoryDocumentStore:
         """
         Returns the number of documents that match the provided filters.
 
-        :param filters: The filters to apply. For filter syntax, see filter_documents.
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
         :returns: The number of documents that match the filters.
         """
         if filters:
@@ -567,7 +569,9 @@ class InMemoryDocumentStore:
         """
         Returns the number of unique values for each specified metadata field from documents matching the filters.
 
-        :param filters: The filters to apply. For filter syntax, see filter_documents.
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
         :param metadata_fields: List of field names to count unique values for.
             Field names can include or omit the "meta." prefix.
         :returns: A dictionary mapping each metadata field name (without "meta." prefix)
@@ -602,7 +606,7 @@ class InMemoryDocumentStore:
                 if isinstance(value, bool):
                     type_map[key] = "boolean"
                 elif isinstance(value, int):
-                    type_map[key] = "long"
+                    type_map[key] = "int"
                 elif isinstance(value, float):
                     type_map[key] = "float"
                 else:
@@ -631,19 +635,15 @@ class InMemoryDocumentStore:
             return {"min": None, "max": None}
 
     def get_metadata_field_unique_values(
-        self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
+        self, metadata_field: str, search_term: str | None = None
     ) -> tuple[list[str], int]:
         """
-        Returns unique values for a metadata field.
-
-        Optionally filtered by a search term in content with pagination support.
+        Returns unique values for a metadata field, optionally filtered by a search term in content.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
         :param search_term: If set, only documents whose content contains this term (case-insensitive)
             are considered.
-        :param from_: Offset for pagination.
-        :param size: Maximum number of unique values to return.
-        :returns: A tuple (list of unique values for the requested page, total count of unique values).
+        :returns: A tuple of (list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
         if search_term:
@@ -651,9 +651,7 @@ class InMemoryDocumentStore:
         else:
             docs = list(self.storage.values())
         values = sorted({str(doc.meta[key]) for doc in docs if key in doc.meta and doc.meta[key] is not None}, key=str)
-        total = len(values)
-        page = values[from_ : from_ + size]
-        return (page, total)
+        return values, len(values)
 
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
