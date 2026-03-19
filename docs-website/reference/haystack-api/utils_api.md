@@ -836,7 +836,7 @@ This method handles the parsing of role (mandatory), name (optional), meta (opti
 ### templatize_part
 
 ```python
-templatize_part(value: ChatMessageContentT) -> str
+templatize_part(value: ChatMessageContentT) -> Markup
 ```
 
 Jinja filter to convert an ChatMessageContentT object into JSON string wrapped in special XML content tags.
@@ -847,7 +847,7 @@ Jinja filter to convert an ChatMessageContentT object into JSON string wrapped i
 
 **Returns:**
 
-- <code>str</code> – A JSON string wrapped in special XML content tags
+- <code>Markup</code> – A JSON string wrapped in special XML content tags marked as safe
 
 **Raises:**
 
