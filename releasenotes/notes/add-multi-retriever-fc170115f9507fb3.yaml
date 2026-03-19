@@ -5,15 +5,16 @@ features:
 
     ``MultiRetriever`` is a generalisation of hybrid retrieval.
     Where hybrid retrieval traditionally combines keyword search (BM25) with vector search, ``MultiRetriever`` lets
-    you compose **any number of retrievers** into a single component.
-    This unlocks several new retrieval strategies:
+    you compose any number of retrievers into a single component.
 
-    - Employ additional retrieval methods such as sparse vector search alongside existing keyword and dense retrievers.
-    - Fan out across **multiple knowledge bases** by pointing the same retriever type at different document stores or indices and aggregating the results.
+    This allows users to:
+    - Combine multiple retrieval strategies without wiring each retriever individually in a Pipeline.
+    - Easily enable or disable specific retrievers at runtime using the ``active_retrievers`` parameter, avoiding complex ConditionalRouter setups.
 
-    All retrievers are queried **in parallel** and their results are deduplicated before being returned.
+    All retrievers are queried in parallel and their results are deduplicated before being returned.
 
     ``QueryEmbeddingRetriever`` wraps an embedding-based retriever together with a query embedder into a single
-    self-contained component. This is what makes it possible for
-    ``MultiRetriever`` to combine text-based and embedding-based retrieval strategies in a single list of retrievers
-    that all follow the same protocol.
+    self-contained component that follows the ``TextRetriever`` protocol.
+
+    This simplifies integration with ``MultiRetriever``, allowing both text-based and embedding-based retrievers
+    to be used together seamlessly in a single dict.
