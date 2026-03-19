@@ -97,6 +97,9 @@ class MultiRetriever:
                 retriever.warm_up()
         self._is_warmed_up = True
 
+    # TODO Could be nice to have a way of turning retrievers on and off at runtime.
+    #      Not sure how to do this since we don't store any sort of name or id for the retrievers.
+    #      Could make retrievers a dict instead of a list?
     @component.output_types(documents=list[Document])
     def run(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
