@@ -4,6 +4,25 @@ Haystack is a framework. The EU AI Act regulates AI *systems*, not frameworks. B
 
 This guide covers what the regulation requires, what Haystack already provides, and what you need to add.
 
+## Is your system in scope?
+
+The detailed obligations in Articles 12, 13, and 14 only apply to **high-risk AI systems** as defined in Annex III of the EU AI Act. A RAG pipeline is high-risk if it is used for:
+
+- **Recruitment and HR** — screening CVs, ranking candidates, evaluating employee performance
+- **Credit scoring and insurance** — assessing creditworthiness or setting premiums
+- **Law enforcement** — profiling, criminal risk assessment, border control
+- **Critical infrastructure** — managing energy, water, transport, or telecommunications systems
+- **Education assessment** — grading students, determining admissions
+- **Essential public services** — evaluating eligibility for benefits, housing, or emergency services
+
+Most Haystack RAG pipelines (customer support chatbots, internal knowledge search, document Q&A) are **not** high-risk. If your pipeline does not fall into one of the categories above:
+
+- **Article 50** (end-user transparency) still applies if users interact with your pipeline directly. See the [Article 50 section](#article-50-end-user-transparency) below.
+- **GDPR** still applies if you process personal data. See the [GDPR section](#gdpr-considerations) below.
+- You can skip the Articles 11-14 requirements and focus on transparency and data protection instead.
+
+If you are unsure whether your use case qualifies as high-risk, consult a qualified legal professional before proceeding.
+
 ## Who this applies to
 
 The EU AI Act applies to AI systems placed on the EU market or used within the EU, regardless of where the provider is based. If your Haystack pipeline serves EU users or processes EU residents' data, these obligations apply.
@@ -94,7 +113,9 @@ Article 12 requires automatic event recording over the lifetime of high-risk AI 
 | Error recording | Exception handling in pipeline | Partial |
 | Token consumption | Tracked by LLM components | Covered |
 | Operation latency | Span duration in tracing | Covered |
-| Data retention (6+ months) | Depends on your tracing backend | Your responsibility |
+| Data retention | Depends on your tracing backend | Your responsibility |
+
+**Retention periods:** The required retention period depends on your role under the Act. Article 18 requires **providers** of high-risk systems to retain logs and technical documentation for **10 years** after market placement. Article 26(6) requires **deployers** to retain logs for at least **6 months**. Most Haystack users are deployers, but if you have substantially modified the system, you may be classified as a provider. Confirm the applicable retention period with legal counsel.
 
 Audit your traces against Article 12 requirements by reviewing the table above and verifying coverage for each requirement in your deployment.
 
