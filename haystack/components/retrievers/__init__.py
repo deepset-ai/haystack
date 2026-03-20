@@ -11,9 +11,11 @@ _import_structure = {
     "auto_merging_retriever": ["AutoMergingRetriever"],
     "filter_retriever": ["FilterRetriever"],
     "in_memory": ["InMemoryBM25Retriever", "InMemoryEmbeddingRetriever"],
+    "multi_retriever": ["MultiRetriever"],
     "multi_query_embedding_retriever": ["MultiQueryEmbeddingRetriever"],
     "multi_query_text_retriever": ["MultiQueryTextRetriever"],
     "sentence_window_retriever": ["SentenceWindowRetriever"],
+    "query_embedding_retriever": ["QueryEmbeddingRetriever"],
 }
 
 if TYPE_CHECKING:
@@ -23,6 +25,8 @@ if TYPE_CHECKING:
     from .in_memory import InMemoryEmbeddingRetriever as InMemoryEmbeddingRetriever
     from .multi_query_embedding_retriever import MultiQueryEmbeddingRetriever as MultiQueryEmbeddingRetriever
     from .multi_query_text_retriever import MultiQueryTextRetriever as MultiQueryTextRetriever
+    from .multi_retriever import MultiRetriever as MultiRetriever
+    from .query_embedding_retriever import QueryEmbeddingRetriever as QueryEmbeddingRetriever
     from .sentence_window_retriever import SentenceWindowRetriever as SentenceWindowRetriever
 
 else:
