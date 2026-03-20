@@ -298,7 +298,7 @@ class ToolInvoker:
                     "Tool result is not JSON serializable. Falling back to str conversion. "
                     "Result: {result}\nError: {error}",
                     result=result,
-                    err=error,
+                    error=error,
                 )
                 str_result = str(result)
             return str_result
