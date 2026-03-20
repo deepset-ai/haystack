@@ -19,7 +19,7 @@ Most Haystack RAG pipelines (customer support chatbots, internal knowledge searc
 
 - **Article 50** (end-user transparency) still applies if users interact with your pipeline directly. See the [Article 50 section](#article-50-end-user-transparency) below.
 - **GDPR** still applies if you process personal data. See the [GDPR section](#gdpr-considerations) below.
-- You can skip the Articles 11-14 requirements and focus on transparency and data protection instead.
+- The high-risk obligations (Articles 9-15) are less likely to apply, but risk classification is context-dependent. **Do not self-classify without legal review.** Focus on Article 50 (transparency) and GDPR (data protection) as your baseline obligations.
 
 If you are unsure whether your use case qualifies as high-risk, consult a qualified legal professional before proceeding.
 
