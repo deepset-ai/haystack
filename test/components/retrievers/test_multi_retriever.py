@@ -73,6 +73,19 @@ def document_store_with_embeddings(sample_documents):
     return document_store
 
 
+@pytest.fixture
+def bm25_retriever(document_store_with_embeddings):
+    return InMemoryBM25Retriever(document_store=document_store_with_embeddings)
+
+
+@pytest.fixture
+def embedding_retriever(document_store_with_embeddings):
+    return QueryEmbeddingRetriever(
+        retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
+        query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+    )
+
+
 class TestMultiRetriever:
     def test_init_default_parameters(self):
         retrievers = {"mock": MockRetriever()}
@@ -263,49 +276,23 @@ class TestMultiRetriever:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
-        retriever = MultiRetriever(
-            retrievers={
-                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
-                "embedding": QueryEmbeddingRetriever(
-                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-                ),
-            }
-        )
+    def test_run_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+        retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
-        retriever = MultiRetriever(
-            retrievers={
-                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
-                "embedding": QueryEmbeddingRetriever(
-                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-                ),
-            }
-        )
+    def test_run_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+        retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", top_k=2)
-        assert "documents" in result
         assert len(result["documents"]) == 2
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_active_retrievers_integration(self, del_hf_env_vars, document_store_with_embeddings):
-        bm25_retriever = InMemoryBM25Retriever(document_store=document_store_with_embeddings)
-        retriever = MultiRetriever(
-            retrievers={
-                "bm25": bm25_retriever,
-                "embedding": QueryEmbeddingRetriever(
-                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-                ),
-            }
-        )
+    def test_run_with_active_retrievers_integration(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+        retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
         result_bm25 = bm25_retriever.run(query="energy")
         assert result_bm25_active == result_bm25
@@ -408,16 +395,8 @@ class TestMultiRetrieverAsync:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.asyncio
-    async def test_run_async_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
-        retriever = MultiRetriever(
-            retrievers={
-                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
-                "embedding": QueryEmbeddingRetriever(
-                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-                ),
-            }
-        )
+    async def test_run_async_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+        retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(
             query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"}
         )
@@ -427,34 +406,18 @@ class TestMultiRetrieverAsync:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.asyncio
-    async def test_run_async_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
-        retriever = MultiRetriever(
-            retrievers={
-                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
-                "embedding": QueryEmbeddingRetriever(
-                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-                ),
-            }
-        )
+    async def test_run_async_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+        retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(query="energy", top_k=2)
-        assert "documents" in result
         assert len(result["documents"]) == 2
 
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.asyncio
-    async def test_run_async_with_active_retrievers_integration(self, del_hf_env_vars, document_store_with_embeddings):
-        bm25_retriever = InMemoryBM25Retriever(document_store=document_store_with_embeddings)
-        retriever = MultiRetriever(
-            retrievers={
-                "bm25": bm25_retriever,
-                "embedding": QueryEmbeddingRetriever(
-                    retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-                    query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
-                ),
-            }
-        )
+    async def test_run_async_with_active_retrievers_integration(
+        self, del_hf_env_vars, bm25_retriever, embedding_retriever
+    ):
+        retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")
         assert result_bm25_active == result_bm25
