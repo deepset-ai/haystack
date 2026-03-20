@@ -4,6 +4,10 @@
 
 Haystack uses **Hatch** for environment and dependency management.
 
+Before running code on this project, you must be able to run `hatch --version` and get a correct output.
+
+If Hatch is not installed, refer to https://hatch.pypa.io/latest/install/#installation and ask the user for preferences.
+
 Do not run `python` or `pip` directly.
 
 ### Run scripts with test dependencies
