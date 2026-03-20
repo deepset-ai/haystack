@@ -44,34 +44,27 @@ The agent then continues with the human's decision.
 ### Basic setup
 
 ```python
+from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
     SimpleConsoleUI,
 )
-from haystack.tools import Tool
+from haystack.tools import tool
 
 
-def send_email(to: str, subject: str, body: str) -> str:
+@tool
+def send_email(
+    to: Annotated[str, "The recipient email address"],
+    subject: Annotated[str, "The email subject line"],
+    body: Annotated[str, "The email body"],
+) -> str:
+    """Send an email to a recipient."""
     return f"Email sent to {to}."
 
-
-email_tool = Tool(
-    name="send_email",
-    description="Send an email to a recipient.",
-    function=send_email,
-    parameters={
-        "type": "object",
-        "properties": {
-            "to": {"type": "string"},
-            "subject": {"type": "string"},
-            "body": {"type": "string"},
-        },
-        "required": ["to", "subject", "body"],
-    },
-)
 
 strategy = BlockingConfirmationStrategy(
     confirmation_policy=AlwaysAskPolicy(),
@@ -80,7 +73,7 @@ strategy = BlockingConfirmationStrategy(
 
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
-    tools=[email_tool],
+    tools=[send_email],
     confirmation_strategies={"send_email": strategy},
 )
 
@@ -112,11 +105,7 @@ pip install rich
 ```
 
 ```python
-from haystack.human_in_the_loop import (
-    BlockingConfirmationStrategy,
-    AlwaysAskPolicy,
-    RichConsoleUI,
-)
+from haystack.human_in_the_loop import RichConsoleUI
 
 strategy = BlockingConfirmationStrategy(
     confirmation_policy=AlwaysAskPolicy(),
@@ -129,21 +118,39 @@ strategy = BlockingConfirmationStrategy(
 You can configure different strategies per tool, or share one strategy across a group of tools using a tuple key:
 
 ```python
+@tool
+def delete_record(record_id: Annotated[str, "The ID of the record to delete"]) -> str:
+    """Delete a record from the database."""
+    return f"Record {record_id} deleted."
+
+
+@tool
+def update_record(
+    record_id: Annotated[str, "The ID of the record to update"],
+    data: Annotated[str, "The new data as a JSON string"],
+) -> str:
+    """Update a record in the database."""
+    return f"Record {record_id} updated."
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the knowledge base."""
+    return f"Results for: {query}"
+
+
+ask_strategy = BlockingConfirmationStrategy(
+    confirmation_policy=AlwaysAskPolicy(),
+    confirmation_ui=SimpleConsoleUI(),
+)
+
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
-    tools=[send_email_tool, delete_record_tool, search_tool],
+    tools=[send_email, delete_record, update_record, search],
     confirmation_strategies={
-        # Ask every time for send_email
-        "send_email": BlockingConfirmationStrategy(
-            confirmation_policy=AlwaysAskPolicy(),
-            confirmation_ui=SimpleConsoleUI(),
-        ),
-        # Share one strategy across multiple sensitive tools
-        ("delete_record", "update_record"): BlockingConfirmationStrategy(
-            confirmation_policy=AlwaysAskPolicy(),
-            confirmation_ui=SimpleConsoleUI(),
-        ),
-        # search_tool has no strategy — always executes without asking
+        # Share one strategy across multiple sensitive tools using a tuple key
+        ("send_email", "delete_record", "update_record"): ask_strategy,
+        # search has no strategy — always executes without asking
     },
 )
 ```
