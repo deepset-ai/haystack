@@ -31,16 +31,29 @@ class MockRetriever:
 
 @component
 class RetrieverA:
+    def __init__(self, documents: list[Document] | None = None):
+        self.documents = documents or [Document(content="Solar energy", id="doc1", score=0.9)]
+
     @component.output_types(documents=list[Document])
     def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-        return {"documents": [Document(content="Solar energy", id="doc1", score=0.9)]}
+        return {"documents": self.documents}
 
 
 @component
 class RetrieverB:
+    def __init__(self, documents: list[Document] | None = None):
+        self.documents = documents or [Document(content="Wind energy", id="doc2", score=0.8)]
+
     @component.output_types(documents=list[Document])
     def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-        return {"documents": [Document(content="Wind energy", id="doc2", score=0.8)]}
+        return {"documents": self.documents}
+
+
+@component
+class FailingRetriever:
+    @component.output_types(documents=list[Document])
+    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+        raise RuntimeError("connection error")
 
 
 class TestMultiRetriever:
@@ -98,19 +111,10 @@ class TestMultiRetriever:
         doc1_duplicate = Document(content="Solar energy is renewable", id="doc1", score=0.7)
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
 
-        @component
-        class RetrieverC:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                return {"documents": [doc1, doc2]}
-
-        @component
-        class RetrieverD:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                return {"documents": [doc1_duplicate]}
-
-        retriever = MultiRetriever(retrievers={"c": RetrieverC(), "d": RetrieverD()}, max_workers=2)
+        retriever = MultiRetriever(
+            retrievers={"c": RetrieverA(documents=[doc1, doc2]), "d": RetrieverB(documents=[doc1_duplicate])},
+            max_workers=2,
+        )
         result = retriever.run(query="energy")
 
         assert len(result["documents"]) == 2
@@ -156,12 +160,6 @@ class TestMultiRetriever:
             retriever.run(query="energy", active_retrievers=["nonexistent"])
 
     def test_run_retriever_failure_raises_with_name(self):
-        @component
-        class FailingRetriever:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                raise RuntimeError("connection error")
-
         retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
         with pytest.raises(RuntimeError, match="Retriever 'failing' failed"):
             retriever.run(query="energy")
@@ -343,19 +341,9 @@ class TestMultiRetrieverAsync:
         doc1_duplicate = Document(content="Solar energy is renewable", id="doc1", score=0.7)
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
 
-        @component
-        class RetrieverC:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                return {"documents": [doc1, doc2]}
-
-        @component
-        class RetrieverD:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                return {"documents": [doc1_duplicate]}
-
-        retriever = MultiRetriever(retrievers={"c": RetrieverC(), "d": RetrieverD()})
+        retriever = MultiRetriever(
+            retrievers={"c": RetrieverA(documents=[doc1, doc2]), "d": RetrieverB(documents=[doc1_duplicate])}
+        )
         result = await retriever.run_async(query="energy")
         assert len(result["documents"]) == 2
         assert [doc.id for doc in result["documents"]].count("doc1") == 1
@@ -399,12 +387,6 @@ class TestMultiRetrieverAsync:
 
     @pytest.mark.asyncio
     async def test_run_async_retriever_failure_raises_with_name(self):
-        @component
-        class FailingRetriever:
-            @component.output_types(documents=list[Document])
-            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-                raise RuntimeError("connection error")
-
         retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
         with pytest.raises(RuntimeError, match="Retriever 'failing' failed"):
             await retriever.run_async(query="energy")
