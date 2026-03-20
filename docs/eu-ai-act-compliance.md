@@ -25,15 +25,12 @@ Not all AI systems face the same requirements. The AI Act defines four risk tier
 
 If your system is high-risk, the August 2, 2026 deadline for full compliance applies.
 
-## What the scanner found
+## Supported providers and models
 
-Running [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) (`aitrace comply`) against the Haystack codebase:
+Haystack integrates with a range of AI providers and models. The following are the key ones relevant to compliance:
 
-- **Files scanned:** 573
-- **AI providers detected:** OpenAI, HuggingFace
-- **Model identifiers:** 15 (including gpt-4o, gpt-4-turbo, whisper-1, dall-e-3, text-embedding-ada-002)
-- **External services:** 3
-- **Auto-populated Annex IV sections:** 33%
+- **AI providers:** OpenAI, HuggingFace
+- **Model identifiers include:** gpt-4o, gpt-4-turbo, whisper-1, dall-e-3, text-embedding-ada-002
 
 These are the providers and models Haystack *supports*. Your deployment will use a subset. Document which ones are active in your system.
 
@@ -62,35 +59,28 @@ graph LR
 ```
 
 **GDPR roles:**
-- **Your organization:** Controller (you determine the purpose and means of processing)
-- **OpenAI / Azure OpenAI:** Processor (processes data on your behalf). Requires a Data Processing Agreement under GDPR Article 28.
-- **HuggingFace:** Processor if using Inference API; no data transfer if running models locally.
-- **Self-hosted models (Ollama, vLLM):** No third-party transfer. You remain controller with no processor relationship.
+- **Your organization** is the controller (you determine the purpose and means of processing).
+- **Organizations using OpenAI / Azure OpenAI** act as processors (processing data on your behalf). Requires a Data Processing Agreement under GDPR Article 28.
+- **Organizations using HuggingFace Inference API** act as processors; no data transfer occurs if running models locally.
+- **Self-hosted models (Ollama, vLLM):** No third-party transfer. Your organization remains the controller with no processor relationship.
 
 Your actual data flow depends on which components you use. Adapt this diagram to your deployment.
 
 ## Article 11: Technical documentation (Annex IV)
 
-High-risk AI systems require technical documentation *before* market placement. Annex IV specifies 9 sections. Here is what can be auto-populated from a Haystack deployment and what requires your input:
+High-risk AI systems require technical documentation *before* market placement. Annex IV specifies 9 sections. Here is what can be derived from a Haystack deployment and what requires your input:
 
-| Section | What the tool provides | What you must add |
-|---------|----------------------|-------------------|
-| 1. General description | Detected providers, models, endpoints | Intended purpose, target users, version history |
+| Section | What can be derived from the codebase | What you must add |
+|---------|--------------------------------------|-------------------|
+| 1. General description | Providers, models, endpoints used | Intended purpose, target users, version history |
 | 2. Development process | SDK versions, model identifiers, component list | Algorithm rationale, design choices, development methodology |
-| 3. Monitoring and control | Existing tracing coverage (if traces provided) | Human oversight measures, override mechanisms |
+| 3. Monitoring and control | Existing tracing coverage | Human oversight measures, override mechanisms |
 | 4. Performance metrics | Evaluation metrics in code (if present) | Metric selection rationale, fairness measures, thresholds |
-| 5. Risk management | Known risk surfaces (API dependencies, data flows) | Risk assessment methodology, mitigations, residual risks |
-| 6. Lifecycle changes | Model versions from traces (if provided) | Change management process, update validation |
+| 5. Risk management | Risk surfaces (API dependencies, data flows) | Risk assessment methodology, mitigations, residual risks |
+| 6. Lifecycle changes | Model versions from traces (if available) | Change management process, update validation |
 | 7. Applied standards | — | ISO/IEC 42001, ISO/IEC 23894, etc. |
 | 8. Declaration of conformity | — | Provider details, risk classification, signatory |
-| 9. Post-market monitoring | Logging coverage from traces (if provided) | Monitoring plan, incident response, feedback collection |
-
-Generate a starting template:
-
-```bash
-pip install ai-trace-auditor
-aitrace docs ./your-haystack-project -o annex-iv-docs.md
-```
+| 9. Post-market monitoring | Logging coverage from traces (if available) | Monitoring plan, incident response, feedback collection |
 
 ## Article 12: Record-keeping
 
@@ -106,11 +96,7 @@ Article 12 requires automatic event recording over the lifetime of high-risk AI 
 | Operation latency | Span duration in tracing | Covered |
 | Data retention (6+ months) | Depends on your tracing backend | Your responsibility |
 
-Audit your traces against Article 12:
-
-```bash
-aitrace audit your-traces.json -r "EU AI Act" -o audit-report.md
-```
+Audit your traces against Article 12 requirements by reviewing the table above and verifying coverage for each requirement in your deployment.
 
 ## Article 13: Transparency
 
@@ -135,11 +121,7 @@ If your pipeline processes personal data (user queries, documents containing per
 3. **Record of Processing Activities** (Article 30): Document each processing activity, purpose, data categories, and recipients
 4. **Data Protection Impact Assessment** (Article 35): Required if processing poses high risk to individuals
 
-Generate a GDPR Article 30 template:
-
-```bash
-aitrace flow ./your-haystack-project -o data-flows.md
-```
+Create a GDPR Article 30 Record of Processing Activities based on your actual data flows. Map each AI provider and data store in your deployment to the categories above.
 
 ## Recommendations
 
@@ -153,9 +135,8 @@ aitrace flow ./your-haystack-project -o data-flows.md
 
 - [EU AI Act full text](https://artificialintelligenceact.eu/)
 - [Haystack tracing documentation](https://docs.haystack.deepset.ai/docs/tracing)
-- [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) — open-source compliance scanning
 - [EU AI Office guidance](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai)
 
 ---
 
-*This guide was generated with assistance from [AI Trace Auditor](https://github.com/BipinRimal314/ai-trace-auditor) and reviewed for accuracy. It is not legal advice. Consult a qualified professional for compliance decisions.*
+*This is not legal advice. Consult a qualified professional for compliance decisions.*
