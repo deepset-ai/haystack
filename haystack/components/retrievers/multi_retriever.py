@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
@@ -163,6 +164,78 @@ class MultiRetriever:
                     all_documents.extend(future.result().get("documents", []))
                 except Exception as e:
                     raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
+
+        return {"documents": _deduplicate_documents(all_documents)}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(
+        self,
+        query: str,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        *,
+        active_retrievers: list[str] | None = None,
+    ) -> dict[str, list[Document]]:
+        """
+        Runs retrievers concurrently on the given query and returns deduplicated results.
+
+        Uses each retriever's `run_async` method if available, otherwise runs `run` in a thread executor.
+
+        :param query:
+            The query to run the retrievers on.
+        :param filters:
+            The filters to apply to the retrievers. If not provided, the filters from the initialization of the
+            component will be used. If those are also not provided, no filters will be applied.
+        :param top_k:
+            The number of documents to return per retriever. If not provided, the top_k from the initialization of
+            the component will be used.
+        :param active_retrievers:
+            A list of retriever names to run. If not provided, all retrievers will be run.
+            Names must match the keys provided in the `retrievers` dictionary at initialization.
+
+        :returns:
+            A dictionary with the keys:
+                - "documents": A deduplicated list of retrieved documents.
+
+        :raises ValueError:
+            If any name in `active_retrievers` does not match a retriever name.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        resolved_top_k = top_k if top_k is not None else self.top_k
+        resolved_filters = filters if filters is not None else self.filters
+
+        if active_retrievers is not None:
+            unknown = set(active_retrievers) - self.retrievers.keys()
+            if unknown:
+                raise ValueError(
+                    f"Unknown retriever name(s): {sorted(unknown)}. "
+                    f"Available retrievers: {sorted(self.retrievers.keys())}"
+                )
+            retrievers_to_run = {name: self.retrievers[name] for name in active_retrievers}
+        else:
+            retrievers_to_run = self.retrievers
+
+        loop = asyncio.get_running_loop()
+
+        async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
+            try:
+                if hasattr(retriever, "run_async") and callable(retriever.run_async):
+                    result = await retriever.run_async(query=query, filters=resolved_filters, top_k=resolved_top_k)
+                else:
+                    result = await loop.run_in_executor(
+                        None, lambda: retriever.run(query=query, filters=resolved_filters, top_k=resolved_top_k)
+                    )
+                return result.get("documents", [])
+            except Exception as e:
+                raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
+
+        results = await asyncio.gather(*[_run_one(name, r) for name, r in retrievers_to_run.items()])
+
+        all_documents: list[Document] = []
+        for docs in results:
+            all_documents.extend(docs)
 
         return {"documents": _deduplicate_documents(all_documents)}
 

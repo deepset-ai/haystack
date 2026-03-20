@@ -320,3 +320,114 @@ class TestMultiRetriever:
         bm25_ids = {doc.id for doc in result_bm25_only["documents"]}
         all_ids = {doc.id for doc in result_all["documents"]}
         assert bm25_ids.issubset(all_ids)
+
+
+class TestMultiRetrieverAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_with_empty_results(self):
+        retriever = MultiRetriever(retrievers={"mock": MockRetriever()})
+        result = await retriever.run_async(query="green energy")
+        assert "documents" in result
+        assert result["documents"] == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_combines_results_from_multiple_retrievers(self):
+        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()})
+        result = await retriever.run_async(query="energy")
+        assert len(result["documents"]) == 2
+        assert {doc.id for doc in result["documents"]} == {"doc1", "doc2"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_deduplicates_results(self):
+        doc1 = Document(content="Solar energy is renewable", id="doc1", score=0.9)
+        doc1_duplicate = Document(content="Solar energy is renewable", id="doc1", score=0.7)
+        doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
+
+        @component
+        class RetrieverC:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                return {"documents": [doc1, doc2]}
+
+        @component
+        class RetrieverD:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                return {"documents": [doc1_duplicate]}
+
+        retriever = MultiRetriever(retrievers={"c": RetrieverC(), "d": RetrieverD()})
+        result = await retriever.run_async(query="energy")
+        assert len(result["documents"]) == 2
+        assert [doc.id for doc in result["documents"]].count("doc1") == 1
+
+    @pytest.mark.asyncio
+    async def test_run_async_resolves_filters_and_top_k(self):
+        received: dict = {}
+
+        @component
+        class CapturingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                received["filters"] = filters
+                received["top_k"] = top_k
+                return {"documents": []}
+
+        retriever = MultiRetriever(
+            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k=5
+        )
+
+        await retriever.run_async(query="energy")
+        assert received["filters"] == {"field": "meta.category"}
+        assert received["top_k"] == 5
+
+        await retriever.run_async(query="energy", filters={"field": "meta.other"}, top_k=2)
+        assert received["filters"] == {"field": "meta.other"}
+        assert received["top_k"] == 2
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_active_retrievers(self):
+        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()})
+        result = await retriever.run_async(query="energy", active_retrievers=["a"])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_unknown_active_retriever_raises(self):
+        retriever = MultiRetriever(retrievers={"mock": MockRetriever()})
+        with pytest.raises(ValueError, match="Unknown retriever name"):
+            await retriever.run_async(query="energy", active_retrievers=["nonexistent"])
+
+    @pytest.mark.asyncio
+    async def test_run_async_retriever_failure_raises_with_name(self):
+        @component
+        class FailingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                raise RuntimeError("connection error")
+
+        retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
+        with pytest.raises(RuntimeError, match="Retriever 'failing' failed"):
+            await retriever.run_async(query="energy")
+
+    @pytest.mark.asyncio
+    async def test_run_async_uses_run_async_on_retriever_if_available(self):
+        @component
+        class AsyncCapableRetriever:
+            def __init__(self):
+                self.used_async = False
+
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                self.used_async = True
+                return {"documents": [Document(content="async result", id="async1")]}
+
+        inner = AsyncCapableRetriever()
+        retriever = MultiRetriever(retrievers={"async_capable": inner})
+        result = await retriever.run_async(query="energy")
+        assert inner.used_async is True
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].id == "async1"
