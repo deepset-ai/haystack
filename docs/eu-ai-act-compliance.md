@@ -60,8 +60,8 @@ graph LR
 
 **GDPR roles:**
 - **Your organization** is the controller (you determine the purpose and means of processing).
-- **Organizations using OpenAI / Azure OpenAI** act as processors (processing data on your behalf). Requires a Data Processing Agreement under GDPR Article 28.
-- **Organizations using HuggingFace Inference API** act as processors; no data transfer occurs if running models locally.
+- **OpenAI / Azure OpenAI** are typically processors for customer-submitted data (processing data on your behalf), but the exact role depends on each provider's terms of service and processing purpose. Review each provider's DPA. Requires a Data Processing Agreement under GDPR Article 28.
+- **HuggingFace Inference API** typically acts as a processor, but review HuggingFace's DPA for specifics; no data transfer occurs if running models locally.
 - **Self-hosted models (Ollama, vLLM):** No third-party transfer. Your organization remains the controller with no processor relationship.
 
 Your actual data flow depends on which components you use. Adapt this diagram to your deployment.
