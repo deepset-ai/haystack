@@ -22,27 +22,8 @@ from haystack.document_stores.types import DuplicatePolicy
 
 @component
 class MockRetriever:
-    @component.output_types(documents=list[Document])
-    def run(
-        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
-    ) -> dict[str, list[Document]]:
-        return {"documents": []}
-
-
-@component
-class RetrieverA:
     def __init__(self, documents: list[Document] | None = None):
         self.documents = documents or [Document(content="Solar energy", id="doc1", score=0.9)]
-
-    @component.output_types(documents=list[Document])
-    def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
-        return {"documents": self.documents}
-
-
-@component
-class RetrieverB:
-    def __init__(self, documents: list[Document] | None = None):
-        self.documents = documents or [Document(content="Wind energy", id="doc2", score=0.8)]
 
     @component.output_types(documents=list[Document])
     def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
@@ -116,9 +97,8 @@ class TestMultiRetriever:
         assert result["documents"] == []
 
     def test_run_combines_results_from_multiple_retrievers(self):
-        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()}, max_workers=2)
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(), "b": MockRetriever()}, max_workers=2)
         result = retriever.run(query="energy")
-
         assert len(result["documents"]) == 2
         assert {doc.id for doc in result["documents"]} == {"doc1", "doc2"}
 
@@ -128,7 +108,7 @@ class TestMultiRetriever:
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
 
         retriever = MultiRetriever(
-            retrievers={"c": RetrieverA(documents=[doc1, doc2]), "d": RetrieverB(documents=[doc1_duplicate])},
+            retrievers={"c": MockRetriever(documents=[doc1, doc2]), "d": MockRetriever(documents=[doc1_duplicate])},
             max_workers=2,
         )
         result = retriever.run(query="energy")
@@ -163,8 +143,7 @@ class TestMultiRetriever:
         assert received["top_k"] == 2
 
     def test_run_with_active_retrievers(self):
-        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()}, max_workers=2)
-
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(), "b": MockRetriever()}, max_workers=2)
         # Only run retriever "a"
         result = retriever.run(query="energy", active_retrievers=["a"])
         assert len(result["documents"]) == 1
@@ -296,7 +275,7 @@ class TestMultiRetriever:
         )
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert len(result["documents"]) == 1
-        assert all(doc.meta.get("category") == "solar" for doc in result["documents"])
+        assert result["documents"][0].meta["category"] == "solar"
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -312,28 +291,24 @@ class TestMultiRetriever:
         )
         result = retriever.run(query="energy", top_k=2)
         assert "documents" in result
-        # top_k applies per retriever, so total may be up to top_k * len(retrievers) before deduplication
-        assert len(result["documents"]) <= 4
+        assert len(result["documents"]) == 2
 
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_with_active_retrievers_integration(self, del_hf_env_vars, document_store_with_embeddings):
+        bm25_retriever = InMemoryBM25Retriever(document_store=document_store_with_embeddings)
         retriever = MultiRetriever(
             retrievers={
-                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
+                "bm25": bm25_retriever,
                 "embedding": QueryEmbeddingRetriever(
                     retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
                     query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
                 ),
             }
         )
-        result_bm25_only = retriever.run(query="energy", active_retrievers=["bm25"])
-        result_all = retriever.run(query="energy")
-
-        # BM25-only results should be a subset of all results
-        bm25_ids = {doc.id for doc in result_bm25_only["documents"]}
-        all_ids = {doc.id for doc in result_all["documents"]}
-        assert bm25_ids.issubset(all_ids)
+        result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
+        result_bm25 = bm25_retriever.run(query="energy")
+        assert result_bm25_active == result_bm25
 
 
 class TestMultiRetrieverAsync:
@@ -346,7 +321,7 @@ class TestMultiRetrieverAsync:
 
     @pytest.mark.asyncio
     async def test_run_async_combines_results_from_multiple_retrievers(self):
-        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()})
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(), "b": MockRetriever()})
         result = await retriever.run_async(query="energy")
         assert len(result["documents"]) == 2
         assert {doc.id for doc in result["documents"]} == {"doc1", "doc2"}
@@ -358,7 +333,7 @@ class TestMultiRetrieverAsync:
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
 
         retriever = MultiRetriever(
-            retrievers={"c": RetrieverA(documents=[doc1, doc2]), "d": RetrieverB(documents=[doc1_duplicate])}
+            retrievers={"c": MockRetriever(documents=[doc1, doc2]), "d": MockRetriever(documents=[doc1_duplicate])}
         )
         result = await retriever.run_async(query="energy")
         assert len(result["documents"]) == 2
@@ -390,7 +365,7 @@ class TestMultiRetrieverAsync:
 
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers(self):
-        retriever = MultiRetriever(retrievers={"a": RetrieverA(), "b": RetrieverB()})
+        retriever = MultiRetriever(retrievers={"a": MockRetriever(), "b": MockRetriever()})
         result = await retriever.run_async(query="energy", active_retrievers=["a"])
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "doc1"
@@ -447,7 +422,7 @@ class TestMultiRetrieverAsync:
             query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"}
         )
         assert len(result["documents"]) == 1
-        assert all(doc.meta.get("category") == "solar" for doc in result["documents"])
+        assert result["documents"][0].meta["category"] == "solar"
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -464,26 +439,22 @@ class TestMultiRetrieverAsync:
         )
         result = await retriever.run_async(query="energy", top_k=2)
         assert "documents" in result
-        # top_k applies per retriever, so total may be up to top_k * len(retrievers) before deduplication
-        assert len(result["documents"]) <= 4
+        assert len(result["documents"]) == 2
 
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers_integration(self, del_hf_env_vars, document_store_with_embeddings):
+        bm25_retriever = InMemoryBM25Retriever(document_store=document_store_with_embeddings)
         retriever = MultiRetriever(
             retrievers={
-                "bm25": InMemoryBM25Retriever(document_store=document_store_with_embeddings),
+                "bm25": bm25_retriever,
                 "embedding": QueryEmbeddingRetriever(
                     retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
                     query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
                 ),
             }
         )
-        result_bm25_only = await retriever.run_async(query="energy", active_retrievers=["bm25"])
-        result_all = await retriever.run_async(query="energy")
-
-        # BM25-only results should be a subset of all results
-        bm25_ids = {doc.id for doc in result_bm25_only["documents"]}
-        all_ids = {doc.id for doc in result_all["documents"]}
-        assert bm25_ids.issubset(all_ids)
+        result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
+        result_bm25 = await bm25_retriever.run_async(query="energy")
+        assert result_bm25_active == result_bm25
