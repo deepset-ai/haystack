@@ -93,6 +93,28 @@ class MultiRetriever:
         self.max_workers = max_workers
         self._is_warmed_up = False
 
+    def _resolve_retrievers(self, active_retrievers: list[str] | None) -> dict[str, TextRetriever]:
+        """
+        Returns the subset of retrievers to run based on the active_retrievers list.
+
+        :param active_retrievers:
+            A list of retriever names to run. If None, all retrievers are returned.
+
+        :returns:
+            A dictionary of retriever names to retriever instances.
+
+        :raises ValueError:
+            If any name in `active_retrievers` does not match a retriever name.
+        """
+        if active_retrievers is None:
+            return self.retrievers
+        unknown = set(active_retrievers) - self.retrievers.keys()
+        if unknown:
+            raise ValueError(
+                f"Unknown retriever name(s): {sorted(unknown)}. Available retrievers: {sorted(self.retrievers.keys())}"
+            )
+        return {name: self.retrievers[name] for name in active_retrievers}
+
     def warm_up(self) -> None:
         """
         Warm up the retrievers if any has a warm_up method.
@@ -141,16 +163,7 @@ class MultiRetriever:
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters
 
-        if active_retrievers is not None:
-            unknown = set(active_retrievers) - self.retrievers.keys()
-            if unknown:
-                raise ValueError(
-                    f"Unknown retriever name(s): {sorted(unknown)}. "
-                    f"Available retrievers: {sorted(self.retrievers.keys())}"
-                )
-            retrievers_to_run = {name: self.retrievers[name] for name in active_retrievers}
-        else:
-            retrievers_to_run = self.retrievers
+        retrievers_to_run = self._resolve_retrievers(active_retrievers)
 
         all_documents: list[Document] = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -206,16 +219,7 @@ class MultiRetriever:
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters
 
-        if active_retrievers is not None:
-            unknown = set(active_retrievers) - self.retrievers.keys()
-            if unknown:
-                raise ValueError(
-                    f"Unknown retriever name(s): {sorted(unknown)}. "
-                    f"Available retrievers: {sorted(self.retrievers.keys())}"
-                )
-            retrievers_to_run = {name: self.retrievers[name] for name in active_retrievers}
-        else:
-            retrievers_to_run = self.retrievers
+        retrievers_to_run = self._resolve_retrievers(active_retrievers)
 
         loop = asyncio.get_running_loop()
 
