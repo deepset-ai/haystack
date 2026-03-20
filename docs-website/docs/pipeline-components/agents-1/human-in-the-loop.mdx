@@ -211,6 +211,18 @@ Returned by the strategy to the agent.
 | `feedback` | `str \| None` | Feedback message passed back to the LLM on rejection or modification |
 | `final_tool_params` | `dict \| None` | Final parameters to use for execution |
 
+## Example: HITL with Hayhooks and Open WebUI
+
+The [hitl-hayhooks-redis-openwebui](https://github.com/deepset-ai/hitl-hayhooks-redis-openwebui) repository shows a full production-style HITL setup using a Haystack Agent served via [Hayhooks](https://github.com/deepset-ai/hayhooks) with approval dialogs rendered in [Open WebUI](https://openwebui.com/).
+
+The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that uses `confirmation_strategy_context` to pass per-request resources - a Redis client and an async event queue - into the strategy at runtime:
+
+- When a tool call is about to execute, the strategy emits a `tool_call_start` SSE event and blocks on `Redis BLPOP` waiting for an approval decision.
+- The Open WebUI Pipe function receives the SSE event, shows the user a confirmation dialog, then writes `approved` or `rejected` to Redis via `LPUSH`.
+- Once Redis unblocks, the strategy returns a `ToolExecutionDecision` and the agent continues.
+
+This is a good reference if you need non-blocking HITL in a web or server environment where `SimpleConsoleUI` and `RichConsoleUI` are not suitable.
+
 ## Custom UI
 
 Implement `ConfirmationUI` from `haystack.human_in_the_loop.types` to build your own interface - for example, a web-based approval queue:
