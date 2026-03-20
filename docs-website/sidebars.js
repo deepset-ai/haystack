@@ -148,6 +148,7 @@ export default {
           label: 'Agents',
           items: [
             'pipeline-components/agents-1/agent',
+            'pipeline-components/agents-1/human-in-the-loop',
           ],
         },
         {
