@@ -98,19 +98,34 @@ Article 12 requires automatic event recording over the lifetime of high-risk AI 
 
 Audit your traces against Article 12 requirements by reviewing the table above and verifying coverage for each requirement in your deployment.
 
-## Article 13: Transparency
+## Article 13: Transparency to deployers
 
-You must provide clear information to users about:
-- That they are interacting with an AI system
-- The system's capabilities and limitations
-- How it was trained and what data it uses
-- How to interpret its output
+Article 13 requires providers of high-risk AI systems to supply deployers with the information they need to understand and operate the system correctly. For Haystack deployments, this means the upstream model providers (OpenAI, HuggingFace, etc.) must give you:
 
-For RAG pipelines, this includes documenting:
-- Which documents are in the knowledge base
-- How retrieval affects the response
-- Confidence levels or source attribution
+- Instructions for use, including intended purpose and known limitations
+- Accuracy metrics and performance benchmarks
+- Known or foreseeable risks and residual risks after mitigation
+- Technical specifications: input/output formats, training data characteristics, model architecture details
+- System documentation sufficient for you to conduct your own risk assessment
+
+For RAG pipelines specifically, document:
+- Which documents are in the knowledge base and how they were curated
+- How retrieval affects the response (retrieval strategy, ranking, context window)
+- Confidence levels or source attribution mechanisms
 - When the system might hallucinate or give incomplete answers
+
+This is provider-to-deployer transparency. You should collect model cards, system documentation, and accuracy reports from each AI provider you use, and maintain them as part of your Annex IV technical documentation.
+
+## Article 50: End-user transparency
+
+Article 50 requires deployers to inform end users that they are interacting with an AI system. This is a separate obligation from Article 13 and applies even to limited-risk systems (chatbots, content generators) — not only high-risk ones.
+
+For Haystack pipelines that serve end users, you must:
+- Clearly disclose that the user is interacting with an AI system
+- Disclose the system's capabilities and limitations in user-facing terms
+- Identify AI-generated content as such
+
+> **Note:** Article 50 applies to chatbots and systems interacting directly with natural persons. It has a separate scope from the high-risk designation under Annex III — it applies even to limited-risk systems.
 
 ## GDPR considerations
 
