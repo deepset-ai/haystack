@@ -4,6 +4,7 @@ about: Errors you encountered
 title: ''
 labels: ''
 assignees: ''
+type: Bug
 
 ---
 
