@@ -100,7 +100,8 @@ if nltk_imports.is_successful():
             """
             try:
                 return self._re_period_context  # type: ignore
-            except:  # noqa: E722
+            except:  
+                # TODO: be more specific about exception type
                 self._re_period_context = re.compile(
                     self._period_context_fmt
                     % {
