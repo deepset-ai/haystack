@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import time
 from collections.abc import Mapping
 from dataclasses import replace
 from typing import Any
@@ -17,6 +18,7 @@ from haystack.core.pipeline.base import (
     PipelineBase,
     _validate_component_output_keys,
 )
+from haystack.core.pipeline.benchmark import PipelineBenchmarkResult, _compute_metrics
 from haystack.core.pipeline.breakpoint import (
     SnapshotCallback,
     _create_pipeline_snapshot,
@@ -227,6 +229,10 @@ class Pipeline(PipelineBase):
             When a pipeline_breakpoint is triggered. Contains the component name, state, and partial results.
         """
         pipeline_running(self)
+        if self._collect_times:
+            _pipeline_t0 = time.perf_counter()
+        else:
+            _pipeline_t0 = 0.0
 
         if break_point and pipeline_snapshot:
             msg = (
@@ -370,6 +376,11 @@ class Pipeline(PipelineBase):
                     component_inputs["snapshot_callback"] = snapshot_callback
 
                 try:
+                    if self._collect_times:
+                        _component_t0 = time.perf_counter()
+                    else:
+                        _component_t0 = 0.0
+
                     component_outputs = self._run_component(
                         component_name=component_name,
                         component=component,
@@ -379,6 +390,12 @@ class Pipeline(PipelineBase):
                         # A break point is provided to stop the pipeline at a specific component
                         break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
+
+                    if self._collect_times:
+                        self._times["component_times"].setdefault(component_name, []).append(
+                            time.perf_counter() - _component_t0
+                        )
+
                 except (BreakpointException, PipelineRuntimeError) as error:
                     saved_break_point: Breakpoint | AgentBreakpoint
                     if isinstance(error, PipelineRuntimeError):
@@ -445,4 +462,87 @@ class Pipeline(PipelineBase):
                     pipeline_breakpoint=break_point,
                 )
 
+            if self._collect_times:
+                self._times["pipeline_times"].append(time.perf_counter() - _pipeline_t0)
+
             return pipeline_outputs
+
+    def _compute_benchmark_results(self, num_runs: int) -> PipelineBenchmarkResult:
+        """
+        Compute collected benchmark results.
+
+        :param num_runs: Number of timed runs that were executed.
+        :returns: Aggregated benchmark result.
+        """
+        pipeline_times: list[float] = self._times["pipeline_times"]
+        component_times: dict[str, list[float]] = self._times["component_times"]
+
+        pipeline_metrics = _compute_metrics(pipeline_times)
+
+        component_metrics = {name: _compute_metrics(times) for name, times in component_times.items()}
+
+        slowest_component = (
+            max(component_metrics, key=lambda name: component_metrics[name].avg) if component_metrics else ""
+        )
+
+        return PipelineBenchmarkResult(
+            pipeline=pipeline_metrics,
+            components=component_metrics,
+            slowest_component=slowest_component,
+            fastest_run=min(pipeline_times),
+            slowest_run=max(pipeline_times),
+            num_runs=num_runs,
+        )
+
+    def benchmark(
+        self,
+        data: dict[str, Any],
+        num_runs: int = 10,
+        warmup_runs: int = 1,
+        include_outputs_from: set[str] | None = None,
+    ) -> PipelineBenchmarkResult:
+        """
+        Runs the pipeline multiple times and returns aggregated benchmark results.
+
+        Usage:
+
+        ```python
+            benchmark_results = pipeline.benchmark(
+                data={"retriever": {"query": "What is Haystack?"}},
+                num_runs=20,
+                warmup_runs=1,
+            )
+            benchmark_results.display()
+        ```
+
+        :param data:
+            Input data dict passed to :meth:`run` on every benchmark iteration.
+        :param num_runs:
+            Number of timed pipeline runs. Defaults to `10`.
+        :param warmup_runs:
+            Number of un-timed warmup runs performed before actual benchmarking.
+            Defaults to `1`.
+        :param include_outputs_from:
+            Set of component names whose outputs should be included in each
+            :meth:`run` call during benchmarking. Forwarded to :meth:`run`.
+        :returns:
+            Pipeline Benchmark Result containing aggregated timing results.
+        """
+        if num_runs < 1:
+            raise ValueError(f"num_runs must be at least 1, got {num_runs}.")
+        if warmup_runs < 0:
+            raise ValueError(f"warmup_runs must be >= 0, got {warmup_runs}.")
+
+        self._collect_times = False
+        for _ in range(warmup_runs):
+            self.run(data, include_outputs_from=include_outputs_from)
+
+        self._times = {"pipeline_times": [], "component_times": {}}
+        self._collect_times = True
+        try:
+            for _ in range(num_runs):
+                self.run(data, include_outputs_from=include_outputs_from)
+        finally:
+            self._collect_times = False
+
+        return self._compute_benchmark_results(num_runs)

@@ -113,6 +113,10 @@ class PipelineBase:  # noqa: PLW1641
         self._max_runs_per_component = max_runs_per_component
         self._connection_type_validation = connection_type_validation
 
+        # Enabled only via `Pipeline.benchmark()`
+        self._collect_times: bool = False
+        self._times: dict[str, Any] = {"pipeline_times": [], "component_times": {}}
+
     def __eq__(self, other: object) -> bool:
         """
         Pipeline equality is defined by their type and the equality of their serialized form.
