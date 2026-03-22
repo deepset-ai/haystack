@@ -135,15 +135,15 @@ class PipelineBase:  # noqa: PLW1641
         """
         res = f"{object.__repr__(self)}\n"
         if self.metadata:
-            res += "🧱 Metadata\n"
+            res += "Metadata\n"
             for k, v in self.metadata.items():
                 res += f"  - {k}: {v}\n"
 
-        res += "🚅 Components\n"
+        res += "Components\n"
         for name, instance in self.graph.nodes(data="instance"):
             res += f"  - {name}: {instance.__class__.__name__}\n"
 
-        res += "🛤️ Connections\n"
+        res += "Connections\n"
         for sender, receiver, edge_data in self.graph.edges(data=True):
             sender_socket = edge_data["from_socket"].name
             receiver_socket = edge_data["to_socket"].name

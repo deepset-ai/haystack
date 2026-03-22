@@ -104,13 +104,13 @@ class TestPipelineBenchmark:
             def run(self, value: int) -> dict:
                 raise RuntimeError("boom")
 
-        pp = Pipeline()
-        pp.add_component("boom", Boom())
+        p = Pipeline()
+        p.add_component("boom", Boom())
 
         with pytest.raises(PipelineRuntimeError):
-            pp.benchmark({"boom": {"value": 1}}, num_runs=3, warmup_runs=0)
+            p.benchmark({"boom": {"value": 1}}, num_runs=3, warmup_runs=0)
 
-        assert pp._collect_times is False
+        assert p._collect_times is False
 
     def test_invalid_num_runs_raises(self, pipeline, default_data):
         with pytest.raises(ValueError, match="num_runs"):
@@ -119,3 +119,11 @@ class TestPipelineBenchmark:
     def test_invalid_warmup_runs_raises(self, pipeline, default_data):
         with pytest.raises(ValueError, match="warmup_runs"):
             pipeline.benchmark(default_data, warmup_runs=-1)
+
+    def test_display_without_benchmark(self, pipeline, default_data):
+        result = pipeline.run(default_data)
+        assert isinstance(result, dict)
+        assert not hasattr(result, "display")
+
+        with pytest.raises(AttributeError):
+            result.display()
