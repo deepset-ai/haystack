@@ -152,6 +152,7 @@ Create a S3Storage object from environment variables.
 ### S3Downloader
 
 A component for downloading files from AWS S3 Buckets to local filesystem.
+
 Supports filtering by file extensions.
 
 #### __init__
@@ -283,6 +284,7 @@ Deserializes the component from a dictionary.
 ### AmazonBedrockDocumentEmbedder
 
 A component for computing Document embeddings using Amazon Bedrock.
+
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 Usage example:
@@ -338,8 +340,9 @@ __init__(
 ) -> None
 ```
 
-Initializes the AmazonBedrockDocumentEmbedder with the provided parameters. The parameters are passed to the
-Amazon Bedrock client.
+Initializes the AmazonBedrockDocumentEmbedder with the provided parameters.
+
+The parameters are passed to the Amazon Bedrock client.
 
 Note that the AWS credentials are not required if the AWS environment is configured correctly. These are loaded
 automatically from the environment or the AWS configuration file and do not need to be provided explicitly via
@@ -621,8 +624,9 @@ __init__(
 ) -> None
 ```
 
-Initializes the AmazonBedrockTextEmbedder with the provided parameters. The parameters are passed to the
-Amazon Bedrock client.
+Initializes the AmazonBedrockTextEmbedder with the provided parameters.
+
+The parameters are passed to the Amazon Bedrock client.
 
 Note that the AWS credentials are not required if the AWS environment is configured correctly. These are loaded
 automatically from the environment or the AWS configuration file and do not need to be provided explicitly via
@@ -728,6 +732,7 @@ prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
 ```
 
 Prepares the body for the Amazon Bedrock request.
+
 Each subclass should implement this method to prepare the request body for the specific model.
 
 **Parameters:**
@@ -1117,8 +1122,9 @@ __init__(
 ) -> None
 ```
 
-Initializes the `AmazonBedrockChatGenerator` with the provided parameters. The parameters are passed to the
-Amazon Bedrock client.
+Initializes the `AmazonBedrockChatGenerator` with the provided parameters.
+
+The parameters are passed to the Amazon Bedrock client.
 
 Note that the AWS credentials are not required if the AWS environment is configured correctly. These are loaded
 automatically from the environment or the AWS configuration file and do not need to be provided explicitly via
@@ -1484,6 +1490,52 @@ If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_a
 and `aws_region_name` as environment variables or pass them as
 [Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments. Make sure the region you set
 supports Amazon Bedrock.
+
+#### __init__
+
+```python
+__init__(
+    model: str = "cohere.rerank-v3-5:0",
+    top_k: int = 10,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        ["AWS_ACCESS_KEY_ID"], strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        ["AWS_SECRET_ACCESS_KEY"], strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        ["AWS_SESSION_TOKEN"], strict=False
+    ),
+    aws_region_name: Secret | None = Secret.from_env_var(
+        ["AWS_DEFAULT_REGION"], strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        ["AWS_PROFILE"], strict=False
+    ),
+    max_chunks_per_doc: int | None = None,
+    meta_fields_to_embed: list[str] | None = None,
+    meta_data_separator: str = "\n",
+) -> None
+```
+
+Creates an instance of the 'AmazonBedrockRanker'.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – Amazon Bedrock model name for Cohere Rerank. Default is "cohere.rerank-v3-5:0".
+- **top_k** (<code>int</code>) – The maximum number of documents to return.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | None</code>) – AWS region name.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **max_chunks_per_doc** (<code>int | None</code>) – If your document exceeds 512 tokens, this determines the maximum number of
+  chunks a document can be split into. If `None`, the default of 10 is used.
+  Note: This parameter is not currently used in the implementation but is included for future compatibility.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be concatenated
+  with the document content for reranking.
+- **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
+  to the Document content.
 
 #### to_dict
 
