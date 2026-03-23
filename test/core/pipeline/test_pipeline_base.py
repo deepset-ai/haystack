@@ -281,13 +281,13 @@ class TestPipelineBase:
         pipe.connect("double", "add_default")
         expected_repr = (
             f"{object.__repr__(pipe)}\n"
-            "🧱 Metadata\n"
+            "Metadata\n"
             "  - test: test\n"
-            "🚅 Components\n"
+            "Components\n"
             "  - add_two: AddFixedValue\n"
             "  - add_default: AddFixedValue\n"
             "  - double: Double\n"
-            "🛤️ Connections\n"
+            "Connections\n"
             "  - add_two.result -> double.value (int)\n"
             "  - double.value -> add_default.value (int)\n"
         )
