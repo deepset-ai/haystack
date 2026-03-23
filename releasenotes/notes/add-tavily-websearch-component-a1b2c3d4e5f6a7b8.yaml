@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added `TavilyWebSearch` component that uses the Tavily API to search the web for relevant documents. Supports both synchronous and asynchronous execution, configurable search parameters, and follows the same output contract as `SerperDevWebSearch` and `SearchApiWebSearch`.

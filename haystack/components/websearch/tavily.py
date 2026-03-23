@@ -133,7 +133,7 @@ class TavilyWebSearch:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(TAVILY_BASE_URL, headers=headers, json=payload, timeout=90)
-                response.raise_for_status()
+            response.raise_for_status()
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
         except httpx.HTTPError as e:
@@ -152,10 +152,10 @@ class TavilyWebSearch:
         api_key = self.api_key.resolve_value()
         if api_key is None:
             raise ValueError("API key cannot be `None`.")
-        payload: dict[str, Any] = {"query": query, "api_key": api_key, **self.search_params}
+        payload: dict[str, Any] = {"query": query, **self.search_params}
         if "max_results" not in payload:
             payload["max_results"] = self.top_k or 10
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
         return payload, headers
 
     @staticmethod
