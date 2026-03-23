@@ -126,4 +126,4 @@ class TestPipelineBenchmark:
         assert not hasattr(result, "display")
 
         with pytest.raises(AttributeError):
-            result.display()
+            result.display()  # type: ignore[attr-defined]
