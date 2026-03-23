@@ -103,6 +103,7 @@ class RemoteWhisperTranscriber:
             organization=organization,
             base_url=api_base_url,
             http_client=init_http_client(self.http_client_kwargs, async_client=False),
+            timeout=60.0,
         )
 
     def to_dict(self) -> dict[str, Any]:
