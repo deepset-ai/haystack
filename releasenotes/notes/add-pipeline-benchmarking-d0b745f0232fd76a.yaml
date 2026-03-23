@@ -1,11 +1,9 @@
 ---
 features:
   - |
-    Added `Pipeline.benchmark()` method for profiling pipeline execution performance.
-    Call `pipeline.benchmark(data, num_runs=10, warmup_runs=1)` to run the pipeline
-    multiple times and receive a `PipelineBenchmarkResult` with timing metrics
+    Added ``Pipeline.benchmark()`` method for profiling pipeline execution performance.
+    Call ``pipeline.benchmark(data, num_runs=10, warmup_runs=1)`` to run the pipeline
+    multiple times and receive a ``PipelineBenchmarkResult`` with timing metrics
     (p50, p90, p99, avg, total) at both the overall pipeline level and per-component
     granularity. The result also reports the slowest component, fastest run, and
-    slowest run. Use `result.display()` to print a formatted summary table.
-    The new `PipelineBenchmarkMetrics` and `PipelineBenchmarkResult` dataclasses are
-    importable from `haystack.core.pipeline`.
+    slowest run. Use ``result.display()`` to print a formatted summary table.
