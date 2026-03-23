@@ -27,8 +27,8 @@ class SerperDevWebSearch:
     See the [Serper Dev website](https://serper.dev/) for more details.
 
     See also: `TavilyWebSearch` – a drop-in alternative web search component powered by
-    [Tavily](https://tavily.com/). Available in the `haystack-ai` extras or via the
-    `tavily-haystack` integration.
+    [Tavily](https://tavily.com/). Available as `TavilyWebSearch` in `haystack.components.websearch`
+    — importable via `from haystack.components.websearch import TavilyWebSearch`.
 
     Usage example:
     ```python
