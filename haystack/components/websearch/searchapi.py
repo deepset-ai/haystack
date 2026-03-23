@@ -23,6 +23,9 @@ class SearchApiWebSearch:
     """
     Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
+    See also: `TavilyWebSearch` for an alternative web search component powered by
+    [Tavily](https://tavily.com/).
+
     Usage example:
     ```python
     from haystack.components.websearch import SearchApiWebSearch
