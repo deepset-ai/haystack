@@ -35,7 +35,7 @@ __init__(
     mode: JinaReaderMode | str,
     api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
     json_response: bool = True,
-)
+) -> None
 ```
 
 Initialize a JinaReader instance.
@@ -107,6 +107,7 @@ Process the query/URL using the Jina AI reader service.
 ### JinaDocumentEmbedder
 
 A component for computing Document embeddings using Jina AI models.
+
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 Usage example:
@@ -142,7 +143,9 @@ __init__(
     task: str | None = None,
     dimensions: int | None = None,
     late_chunking: bool | None = None,
-)
+    *,
+    base_url: str = JINA_API_URL
+) -> None
 ```
 
 Create a JinaDocumentEmbedder component.
@@ -167,6 +170,7 @@ Create a JinaDocumentEmbedder component.
 - **late_chunking** (<code>bool | None</code>) – A boolean to enable or disable late chunking.
   Apply the late chunking technique to leverage the model's long-context capabilities for
   generating contextual chunk embeddings.
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 
 The support of `task` and `late_chunking` parameters is only available for jina-embeddings-v3.
 
@@ -260,12 +264,13 @@ __init__(
     *,
     api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
     model: str = "jina-clip-v2",
+    base_url: str = JINA_API_URL,
     file_path_meta_field: str = "file_path",
     root_path: str | None = None,
     embedding_dimension: int | None = None,
     image_size: tuple[int, int] | None = None,
     batch_size: int = 5
-)
+) -> None
 ```
 
 Create a JinaDocumentImageEmbedder component.
@@ -280,6 +285,7 @@ Create a JinaDocumentImageEmbedder component.
 - "jina-clip-v2" (default)
 - "jina-embeddings-v4"
   Check the list of available models on [Jina documentation](https://jina.ai/embeddings/).
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
   document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
@@ -370,7 +376,9 @@ __init__(
     task: str | None = None,
     dimensions: int | None = None,
     late_chunking: bool | None = None,
-)
+    *,
+    base_url: str = JINA_API_URL
+) -> None
 ```
 
 Create a JinaTextEmbedder component.
@@ -391,6 +399,7 @@ Create a JinaTextEmbedder component.
 - **late_chunking** (<code>bool | None</code>) – A boolean to enable or disable late chunking.
   Apply the late chunking technique to leverage the model's long-context capabilities for
   generating contextual chunk embeddings.
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 
 The support of `task` and `late_chunking` parameters is only available for jina-embeddings-v3.
 
@@ -472,7 +481,9 @@ __init__(
     api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
     top_k: int | None = None,
     score_threshold: float | None = None,
-)
+    *,
+    base_url: str = JINA_API_URL
+) -> None
 ```
 
 Creates an instance of JinaRanker.
@@ -484,6 +495,7 @@ Creates an instance of JinaRanker.
 - **model** (<code>str</code>) – The name of the Jina model to use. Check the list of available models on `https://jina.ai/reranker/`
 - **top_k** (<code>int | None</code>) – The maximum number of Documents to return per query. If `None`, all documents are returned
 - **score_threshold** (<code>float | None</code>) – If provided only returns documents with a score above this threshold.
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 
 **Raises:**
 
@@ -525,7 +537,7 @@ run(
     documents: list[Document],
     top_k: int | None = None,
     score_threshold: float | None = None,
-)
+) -> dict[str, list[Document]]
 ```
 
 Returns a list of Documents ranked by their similarity to the given query.
@@ -539,7 +551,7 @@ Returns a list of Documents ranked by their similarity to the given query.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
 
 **Raises:**
