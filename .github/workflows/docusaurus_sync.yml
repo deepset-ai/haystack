@@ -57,4 +57,3 @@ jobs:
             docs-website/reference/haystack-api
           body: |
             This PR syncs the Haystack API reference on Docusaurus. Just approve and merge it.
-          reviewers: "${{ github.actor }}"

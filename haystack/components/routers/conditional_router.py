@@ -374,7 +374,7 @@ class ConditionalRouter:
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
-    def _validate_routes(self, routes: list[Route]):
+    def _validate_routes(self, routes: list[Route]) -> None:
         """
         Validates a list of routes.
 
@@ -440,7 +440,7 @@ class ConditionalRouter:
             variables.update(template_variables - assigned_variables)
         return variables
 
-    def _validate_template(self, env: Environment, template_text: str):
+    def _validate_template(self, env: Environment, template_text: str) -> bool:
         """
         Validates a template string by parsing it with Jinja.
 
@@ -457,7 +457,7 @@ class ConditionalRouter:
         except TemplateSyntaxError:
             return False
 
-    def _output_matches_type(self, value: Any, expected_type: type):  # noqa: PLR0911
+    def _output_matches_type(self, value: Any, expected_type: type) -> bool:  # noqa: PLR0911
         """
         Checks whether `value` type matches the `expected_type`.
         """

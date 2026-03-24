@@ -56,8 +56,10 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
+
+Initialize FAISSEmbeddingRetriever.
 
 **Parameters:**
 
@@ -169,7 +171,7 @@ __init__(
     index_path: str | None = None,
     index_string: str = "Flat",
     embedding_dim: int = 768,
-)
+) -> None
 ```
 
 Initializes the FAISSDocumentStore.
@@ -398,7 +400,7 @@ Returns all unique values for a specific metadata field.
 
 ```python
 count_unique_metadata_by_filter(
-    filters: dict[str, Any], fields: list[str]
+    filters: dict[str, Any], metadata_fields: list[str]
 ) -> dict[str, int]
 ```
 
@@ -407,7 +409,7 @@ Returns a count of unique values for multiple metadata fields, optionally scoped
 **Parameters:**
 
 - **filters** (<code>dict\[str, Any\]</code>) – A dictionary of filters to apply.
-- **fields** (<code>list\[str\]</code>) – A list of metadata field names to count unique values for.
+- **metadata_fields** (<code>list\[str\]</code>) – A list of metadata field names to count unique values for.
 
 **Returns:**
 

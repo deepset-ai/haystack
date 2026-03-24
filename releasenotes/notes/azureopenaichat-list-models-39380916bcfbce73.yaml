@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    ``AzureOpenAIChatGenerator`` now exposes a ``SUPPORTED_MODELS`` class variable listing supported model IDs, for example ``gpt-5-mini`` and ``gpt-4o``. To view all supported models go to the [API reference](https://docs.haystack.deepset.ai/reference/generators-api#azureopenaichatgenerator) or run:
+
+    .. code:: python
+
+      from haystack.components.generators.chat import AzureOpenAIChatGenerator
+      print(AzureOpenAIChatGenerator.SUPPORTED_MODELS)
+
+    We will add this for other model providers in their respective ChatGenerator components step by step.

@@ -194,6 +194,50 @@ print(response)
 }
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5.4",
+    "gpt-5.4-pro",
+    "gpt-5.3-codex",
+    "gpt-5.2",
+    "gpt-5.2-codex",
+    "gpt-5.2-chat",
+    "gpt-5.1",
+    "gpt-5.1-chat",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-chat",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-4o-audio-preview",
+    "gpt-realtime-1.5",
+    "gpt-audio-1.5",
+    "o1",
+    "o1-mini",
+    "o3",
+    "o3-mini",
+    "o4-mini",
+    "codex-mini",
+    "gpt-4",
+    "gpt-35-turbo",
+    "gpt-oss-120b",
+    "computer-use-preview",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+for the full list.
+
 #### __init__
 
 ```python
@@ -220,7 +264,7 @@ __init__(
         AzureADTokenProvider | AsyncAzureADTokenProvider | None
     ) = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Initialize the Azure OpenAI Chat Generator component.
@@ -1320,7 +1364,7 @@ Output:
 #### SUPPORTED_MODELS
 
 ```python
-SUPPORTED_MODELS = [
+SUPPORTED_MODELS: list[str] = [
     "gpt-5-mini",
     "gpt-5-nano",
     "gpt-5",
@@ -1559,6 +1603,37 @@ client = OpenAIResponsesChatGenerator(generation_kwargs={"reasoning": {"effort":
 response = client.run(messages)
 print(response)
 ```
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5",
+    "gpt-5.1",
+    "gpt-5.2",
+    "gpt-5.2-pro",
+    "gpt-5.4",
+    "gpt-5-pro",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o1",
+    "o1-mini",
+    "o1-pro",
+    "o3",
+    "o3-mini",
+    "o3-pro",
+    "o4-mini",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://platform.openai.com/docs/models for the full list and snapshot IDs.
 
 #### __init__
 

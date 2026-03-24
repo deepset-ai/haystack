@@ -13,10 +13,27 @@ import pytest
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.testing.document_store import DocumentStoreBaseTests
+from haystack.testing.document_store import (
+    CountDocumentsByFilterTest,
+    CountUniqueMetadataByFilterTest,
+    DocumentStoreBaseExtendedTests,
+    DocumentStoreBaseTests,
+    FilterableDocsFixtureMixin,
+    GetMetadataFieldMinMaxTest,
+    GetMetadataFieldsInfoTest,
+    GetMetadataFieldUniqueValuesTest,
+)
 
 
-class TestMemoryDocumentStore(DocumentStoreBaseTests):
+class TestMemoryDocumentStore(
+    DocumentStoreBaseExtendedTests,
+    CountDocumentsByFilterTest,
+    CountUniqueMetadataByFilterTest,
+    FilterableDocsFixtureMixin,
+    GetMetadataFieldMinMaxTest,
+    GetMetadataFieldUniqueValuesTest,
+    GetMetadataFieldsInfoTest,
+):
     """
     Test InMemoryDocumentStore's specific features
     """
@@ -108,88 +125,6 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         assert document_store.write_documents(docs) == 1
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(docs)
-
-    def test_delete_all_documents(self, document_store: InMemoryDocumentStore):
-        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 2
-
-        document_store.delete_all_documents()
-        assert document_store.count_documents() == 0
-        assert document_store.filter_documents() == []
-
-        # Store remains functional after delete_all
-        document_store.write_documents([Document(content="New doc")])
-        assert document_store.count_documents() == 1
-
-    def test_delete_all_documents_empty_store(self, document_store: InMemoryDocumentStore):
-        document_store.delete_all_documents()
-        assert document_store.count_documents() == 0
-
-    def test_update_by_filter(self, document_store: InMemoryDocumentStore):
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
-            Document(content="Doc 2", meta={"category": "B", "year": 2023}),
-            Document(content="Doc 3", meta={"category": "A", "year": 2024}),
-        ]
-        document_store.write_documents(docs)
-
-        updated = document_store.update_by_filter(
-            filters={"field": "meta.category", "operator": "==", "value": "A"}, meta={"updated": True, "tag": "foo"}
-        )
-        assert updated == 2
-
-        all_docs = document_store.filter_documents()
-        category_a = [d for d in all_docs if d.meta.get("category") == "A"]
-        category_b = [d for d in all_docs if d.meta.get("category") == "B"]
-        assert len(category_a) == 2
-        assert all(d.meta.get("updated") is True and d.meta.get("tag") == "foo" for d in category_a)
-        assert len(category_b) == 1
-        assert "updated" not in category_b[0].meta and "tag" not in category_b[0].meta
-
-    def test_update_by_filter_no_matches(self, document_store: InMemoryDocumentStore):
-        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
-        document_store.write_documents(docs)
-
-        updated = document_store.update_by_filter(
-            filters={"field": "meta.category", "operator": "==", "value": "C"}, meta={"updated": True}
-        )
-        assert updated == 0
-        assert document_store.count_documents() == 2
-
-    def test_delete_by_filter(self, document_store: InMemoryDocumentStore):
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
-            Document(content="Doc 2", meta={"category": "B", "year": 2023}),
-            Document(content="Doc 3", meta={"category": "A", "year": 2024}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 3
-
-        deleted = document_store.delete_by_filter(filters={"field": "meta.category", "operator": "==", "value": "A"})
-        assert deleted == 2
-        assert document_store.count_documents() == 1
-        remaining = document_store.filter_documents()
-        assert remaining[0].meta["category"] == "B"
-
-        deleted = document_store.delete_by_filter(filters={"field": "meta.year", "operator": "==", "value": 2023})
-        assert deleted == 1
-        assert document_store.count_documents() == 0
-
-    def test_delete_by_filter_no_matches(self, document_store: InMemoryDocumentStore):
-        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
-        document_store.write_documents(docs)
-
-        deleted = document_store.delete_by_filter(filters={"field": "meta.category", "operator": "==", "value": "C"})
-        assert deleted == 0
-        assert document_store.count_documents() == 2
-
-    def test_delete_by_filter_invalid_filters(self, document_store: InMemoryDocumentStore):
-        document_store.write_documents([Document(content="Doc 1")])
-        with pytest.raises(ValueError, match="Invalid filter syntax"):
-            document_store.delete_by_filter(filters={"invalid": "filter"})
-        with pytest.raises(ValueError, match="Invalid filter syntax"):
-            document_store.update_by_filter(filters={"invalid": "filter"}, meta={"key": "value"})
 
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
@@ -737,3 +672,32 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):
         results = doc_store.bm25_retrieval(query="R programming", top_k=1)
         assert len(results) == 1
         assert results[0].content == "I like R"
+
+    def test_bm25_avg_doc_len_correctness(self):
+        """Average document length should be computed correctly after writes."""
+        doc_store = InMemoryDocumentStore()
+        # Write documents with known token counts.
+        # "hello world" -> 2 tokens, "foo bar baz" -> 3 tokens, "go" -> 1 token
+        doc_store.write_documents(
+            [
+                Document(content="hello world", id="d1"),
+                Document(content="foo bar baz", id="d2"),
+                Document(content="go", id="d3"),
+            ]
+        )
+        # Average should be (2 + 3 + 1) / 3 = 2.0
+        assert doc_store._avg_doc_len == pytest.approx(2.0)
+
+    def test_bm25_avg_doc_len_after_delete(self):
+        """Average document length should remain correct after deletion."""
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(
+            [
+                Document(content="hello world", id="d1"),  # 2 tokens
+                Document(content="foo bar baz", id="d2"),  # 3 tokens
+            ]
+        )
+        assert doc_store._avg_doc_len == pytest.approx(2.5)
+        doc_store.delete_documents(["d1"])
+        # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
+        assert doc_store._avg_doc_len == pytest.approx(3.0)

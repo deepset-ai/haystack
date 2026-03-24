@@ -81,7 +81,7 @@ class AgentBreakpoint:
     agent_name: str
     break_point: Breakpoint | ToolBreakpoint
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             isinstance(self.break_point, Breakpoint) and not isinstance(self.break_point, ToolBreakpoint)
         ) and self.break_point.component_name != "chat_generator":
@@ -215,7 +215,7 @@ class PipelineSnapshot:
     timestamp: datetime | None = None
     include_outputs_from: set[str] = field(default_factory=set)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Validate consistency between component_visits and ordered_component_names
         components_in_state = set(self.pipeline_state.component_visits.keys())
         components_in_order = set(self.ordered_component_names)

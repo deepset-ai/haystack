@@ -48,6 +48,7 @@ dependencies = [
   "openai>=1.99.2",
   "pydantic",
   "Jinja2",
+  "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
@@ -225,9 +226,10 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 warn_return_any = false
 
+
 [[tool.mypy.overrides]]
-# TODO: Fix component typings
-module = ["haystack.components.*", "haystack.testing.*"]
+# TODO: Fix testing typings
+module = ["haystack.testing.*"]
 disallow_incomplete_defs = false
 
 [tool.ruff]
@@ -257,6 +259,7 @@ select = [
   "A001",   # builtin-variable-shadowing
   "A002",   # builtin-argument-shadowing
   "A003",   # builtin-attribute-shadowing
+  "ANN",    # flake8-annotations
   "ARG",    # flake8-unused-arguments
   "ASYNC",  # flake8-async
   "B",      # flake8-bugbear
@@ -298,6 +301,7 @@ select = [
 ]
 
 ignore = [
+  "ANN401",  # Allow `Any` - used legitimately for dynamic types and SDK boundaries
   "B008",    # function-call-as-argument-default
   "B904",    # raise-without-from-inside-except
   "BLE001",  # blind-except
@@ -331,6 +335,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "test/**" = [
+  "ANN",     # flake8-annotations
   "ARG",     # flake8-unused-arguments
   "B018",    # useless-expression
   "D",       # pydocstyle (docstring checks)
@@ -345,6 +350,7 @@ ignore = [
 # UP007: Union[X, Y] syntax
 # UP035: Deprecated import
 # UP045: Optional[X] syntax
+"haystack/testing/**" = ["ANN"]
 "haystack/components/agents/state/state_utils.py" = ["UP007"]
 "haystack/core/super_component/utils.py" = ["UP007"]
 "haystack/core/type_utils.py" = ["UP007"]

@@ -99,7 +99,7 @@ class AutoMergingRetriever:
         return default_from_dict(cls, data)
 
     @staticmethod
-    def _check_valid_documents(matched_leaf_documents: list[Document]):
+    def _check_valid_documents(matched_leaf_documents: list[Document]) -> None:
         # check if the matched leaf documents have the required meta fields
         if not all(doc.meta.get("__parent_id") for doc in matched_leaf_documents):
             raise ValueError("The matched leaf documents do not have the required meta field '__parent_id'")
