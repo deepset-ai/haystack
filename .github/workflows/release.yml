@@ -82,7 +82,7 @@ jobs:
       docker_url: ${{ steps.set-outputs.outputs.docker_url }}
     env:
       GH_TOKEN: ${{ github.token }}
-      VERSION: "2.26.1rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+      VERSION: "2.26.1-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -127,7 +127,7 @@ jobs:
     outputs:
       pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
     env:
-      VERSION: "2.26.1rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+      VERSION: "2.26.1-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout dc-pipeline-templates
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -178,15 +178,18 @@ jobs:
           DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
         run: .github/utils/prepare_release_notification.sh
 
-      - name: Send release notification to Slack
-        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
-          webhook-type: incoming-webhook
-          payload: |
-            text: "${{ steps.prepare-notification.outputs.text }}"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: "${{ steps.prepare-notification.outputs.text }}"
+      - name: Print notification (for testing)  # TODO: Restore Slack step after testing
+        run: echo "${{ steps.prepare-notification.outputs.text }}"
+
+      # - name: Send release notification to Slack
+      #   uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
+      #   with:
+      #     webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
+      #     webhook-type: incoming-webhook
+      #     payload: |
+      #       text: "${{ steps.prepare-notification.outputs.text }}"
+      #       blocks:
+      #         - type: "section"
+      #           text:
+      #             type: "mrkdwn"
+      #             text: "${{ steps.prepare-notification.outputs.text }}"
