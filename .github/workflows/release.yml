@@ -23,7 +23,7 @@ jobs:
       is_first_rc: ${{ steps.parse-validate.outputs.is_first_rc }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0  # needed to fetch tags and branches
 
@@ -48,7 +48,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # needed to fetch tags and branches
           fetch-depth: 0
@@ -87,7 +87,7 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0  # needed to fetch tags
 
@@ -158,7 +158,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Prepare release notification
         id: prepare-notification
@@ -177,7 +177,7 @@ jobs:
         run: .github/utils/prepare_release_notification.sh
 
       - name: Send release notification to Slack
-        uses: slackapi/slack-github-action@v3
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
           webhook-type: incoming-webhook
