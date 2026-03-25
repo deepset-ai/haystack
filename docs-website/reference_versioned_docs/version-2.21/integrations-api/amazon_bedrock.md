@@ -230,7 +230,9 @@ and `aws_region_name`.
 - **aws_session_token** (<code>Secret | None</code>) – AWS session token.
 - **aws_region_name** (<code>Secret | None</code>) – AWS region name.
 - **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **file_root_path** (<code>str | None</code>) – The path where the file will be downloaded.
   Can be set through this parameter or the `FILE_ROOT_PATH` environment variable.
   If none of them is set, a `ValueError` is raised.
@@ -402,7 +404,9 @@ and `aws_region_name`.
   to keep the logs clean.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document text.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
   Cohere models.
 
@@ -550,7 +554,9 @@ Creates a AmazonBedrockDocumentImageEmbedder component.
   maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
   when working with models that have resolution constraints or when transmitting images to remote services.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference.
   For example, `embeddingConfig` for Amazon Titan models and
   `embedding_types` for Cohere models.
@@ -680,7 +686,9 @@ and `aws_region_name`.
 - **aws_session_token** (<code>Secret | None</code>) – AWS session token.
 - **aws_region_name** (<code>Secret | None</code>) – AWS region name.
 - **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
   Cohere models.
 
@@ -1181,7 +1189,9 @@ and `aws_region_name`.
   function that handles the streaming chunks. The callback function receives a
   [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk) object and switches
   the streaming mode on.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
 - **guardrail_config** (<code>dict\[str, str\] | None</code>) – Optional configuration for a guardrail that has been created in Amazon Bedrock.
@@ -1382,7 +1392,9 @@ Create a new `AmazonBedrockGenerator` instance.
 - **truncate** (<code>bool | None</code>) – Deprecated. This parameter no longer has any effect.
 - **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
   The callback function accepts StreamingChunk as an argument.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **model_family** (<code>MODEL_FAMILIES | None</code>) – The model family to use. If not provided, the model adapter is selected based on the model
   name.
 - **kwargs** (<code>Any</code>) – Additional keyword arguments to be passed to the model.
