@@ -136,7 +136,7 @@ jobs:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
 
       - name: Update haystack pin
-        run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-tests.txt
+        run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-test.txt
 
       - name: Create Pull Request
         id: create-pr
