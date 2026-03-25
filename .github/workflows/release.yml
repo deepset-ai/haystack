@@ -250,6 +250,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          IS_RC: ${{ needs.parse-validate-version.outputs.is_rc }}
           IS_FIRST_RC: ${{ needs.parse-validate-version.outputs.is_first_rc }}
           MAJOR_MINOR: ${{ needs.parse-validate-version.outputs.major_minor }}
           GITHUB_URL: ${{ needs.check-artifacts.outputs.github_url }}

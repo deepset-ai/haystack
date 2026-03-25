@@ -1,9 +1,10 @@
 #!/bin/bash
 # prepare_release_notification.sh - Prepare Slack notification for release outcome
 #
-# Requires: VERSION, RUN_URL, HAS_FAILURE, GH_TOKEN, GITHUB_REPOSITORY, GITHUB_WORKSPACE
-# Optional: IS_FIRST_RC, MAJOR_MINOR, GITHUB_URL, PYPI_URL, DOCKER_URL, BUMP_VERSION_PR_URL,
-#           DC_PIPELINE_TEMPLATES_PR_URL, CUSTOM_NODES_PR_URL, DC_PIPELINE_IMAGES_PR_URL
+# Requires: VERSION, RUN_URL, HAS_FAILURE, GH_TOKEN, GITHUB_REPOSITORY
+# Optional: IS_RC, IS_FIRST_RC, MAJOR_MINOR, GITHUB_URL, PYPI_URL, DOCKER_URL,
+#           BUMP_VERSION_PR_URL, DC_PIPELINE_TEMPLATES_PR_URL, CUSTOM_NODES_PR_URL,
+#           DC_PIPELINE_IMAGES_PR_URL, GITHUB_WORKSPACE
 # Output: slack_payload.json
 #
 # This script is used in the release.yml workflow to prepare the notification payload
@@ -14,16 +15,17 @@ set -euo pipefail
 
 PAYLOAD_FILE="${GITHUB_WORKSPACE:-/tmp}/slack_payload.json"
 
-IS_RC="false"
-[[ "${VERSION}" == *"-rc"* ]] && IS_RC="true"
-
-if [[ "${HAS_FAILURE}" == "true" ]]; then
-  TXT=":red_circle: Release *${VERSION}* failed"
-  TXT+=$'\n'"Check workflow run for details: <${RUN_URL}|View Logs>"
+write_payload() {
   jq -n --arg text "$TXT" '{
     text: $text,
     blocks: [{ type: "section", text: { type: "mrkdwn", text: $text } }]
   }' > "$PAYLOAD_FILE"
+}
+
+if [[ "${HAS_FAILURE}" == "true" ]]; then
+  TXT=":red_circle: Release *${VERSION}* failed"
+  TXT+=$'\n'"Check workflow run for details: <${RUN_URL}|View Logs>"
+  write_payload
   exit 0
 fi
 
@@ -40,7 +42,7 @@ if [[ -n "${GITHUB_URL:-}" || -n "${PYPI_URL:-}" || -n "${DOCKER_URL:-}" ]]; the
 fi
 
 # For RCs, include link to the Tests workflow run
-if [[ "${IS_RC}" == "true" ]]; then
+if [[ "${IS_RC:-}" == "true" ]]; then
   COMMIT_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${VERSION}" --jq '.sha' 2>/dev/null || echo "")
   if [[ -n "${COMMIT_SHA}" ]]; then
     TESTS_RUN=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${COMMIT_SHA}" \
@@ -58,7 +60,7 @@ if [[ "${IS_FIRST_RC:-}" == "true" && -n "${BUMP_VERSION_PR_URL:-}" ]]; then
 fi
 
 # For RCs, include Platform test PRs
-if [[ "${IS_RC}" == "true" ]]; then
+if [[ "${IS_RC:-}" == "true" ]]; then
   PLATFORM_PRS=""
   [[ -n "${DC_PIPELINE_TEMPLATES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_PIPELINE_TEMPLATES_PR_URL}|dc-pipeline-templates>"
   [[ -n "${CUSTOM_NODES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${CUSTOM_NODES_PR_URL}|deepset-cloud-custom-nodes>"
@@ -68,10 +70,11 @@ if [[ "${IS_RC}" == "true" ]]; then
   fi
 fi
 
-# For RCs, request testing from Platform Engineering
-if [[ "${IS_RC}" == "true" ]]; then
+# For RCs, request Platform Engineering taking over testing
+if [[ "${IS_RC:-}" == "true" ]]; then
   TXT+=$'\n\n'"This release is marked as a Release Candidate."
-  TXT+=$'\n'"Notify #deepset-platform-engineering channel on Slack that the RC is available and that Platform tests pass/fail, linking the PRs opened on the Platform repositories."
+  TXT+=$'\n'"Notify #deepset-platform-engineering channel on Slack that the RC is available"
+  TXT+=" and that Platform tests pass/fail, linking the PRs opened on the Platform repositories."
 fi
 
 # For final minor releases (vX.Y.0), include the docs promotion PR
@@ -85,13 +88,9 @@ if [[ "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.0$ && -n "${MAJOR_MINOR:-}" ]]; then
 fi
 
 # For final releases (not RCs), include info about pushing release notes to website
-if [[ "${IS_RC}" == "false" ]]; then
+if [[ "${IS_RC:-}" != "true" ]]; then
   TXT+=$'\n\n'":memo: After refining and finalizing release notes, push them to Haystack website:"
   TXT+=$'\n'"\`gh workflow run push_release_notes_to_website.yml -R deepset-ai/haystack -f version=${VERSION}\`"
 fi
 
-# Write JSON payload file for Slack action (jq handles newline escaping)
-jq -n --arg text "$TXT" '{
-  text: $text,
-  blocks: [{ type: "section", text: { type: "mrkdwn", text: $text } }]
-}' > "$PAYLOAD_FILE"
+write_payload
