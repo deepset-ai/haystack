@@ -117,8 +117,43 @@ jobs:
             echo "docker_url=https://hub.docker.com/r/deepset/haystack/tags?name=base-v${{ env.VERSION }}"
           } >> "$GITHUB_OUTPUT"
 
+  bump-dc-pipeline-templates:
+    needs: ["parse-validate-version", "check-artifacts"]
+    if: >
+      always()
+      && needs.check-artifacts.result == 'success'
+      && contains(needs.parse-validate-version.outputs.version, '-rc')
+    runs-on: ubuntu-slim
+    outputs:
+      pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
+    env:
+      VERSION: ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Checkout dc-pipeline-templates
+        uses: actions/checkout@v6
+        with:
+          repository: deepset-ai/dc-pipeline-templates
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+
+      - name: Update haystack pin
+        run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-tests.txt
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Bump haystack to ${{ env.VERSION }}"
+          branch: bump-haystack-${{ env.VERSION }}
+          base: main
+          title: "chore: bump haystack to ${{ env.VERSION }}"
+          draft: true
+          add-paths: requirements-tests.txt
+          body: |
+            Bump haystack pin to `${{ env.VERSION }}` for platform testing.
+
   notify:
-    needs: ["parse-validate-version", "branch-off", "create-release-tag", "check-artifacts"]
+    needs: ["parse-validate-version", "branch-off", "create-release-tag", "check-artifacts", "bump-dc-pipeline-templates"]
     if: always()
     runs-on: ubuntu-slim
     steps:
@@ -138,6 +173,7 @@ jobs:
           PYPI_URL: ${{ needs.check-artifacts.outputs.pypi_url }}
           DOCKER_URL: ${{ needs.check-artifacts.outputs.docker_url }}
           BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
+          DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
         run: .github/utils/prepare_release_notification.sh
 
       - name: Send release notification to Slack

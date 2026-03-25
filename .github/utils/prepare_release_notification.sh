@@ -2,7 +2,8 @@
 # prepare_release_notification.sh - Prepare Slack notification for release outcome
 #
 # Requires: VERSION, RUN_URL, HAS_FAILURE, GH_TOKEN, GITHUB_REPOSITORY
-# Optional: IS_FIRST_RC, MAJOR_MINOR, GITHUB_URL, PYPI_URL, DOCKER_URL, BUMP_VERSION_PR_URL
+# Optional: IS_FIRST_RC, MAJOR_MINOR, GITHUB_URL, PYPI_URL, DOCKER_URL, BUMP_VERSION_PR_URL,
+#           DC_PIPELINE_TEMPLATES_PR_URL
 # Output: text (via GITHUB_OUTPUT or stdout)
 #
 # This script is used in the release.yml workflow to prepare the notification payload
@@ -54,6 +55,12 @@ fi
 if [[ "${IS_FIRST_RC:-}" == "true" && -n "${BUMP_VERSION_PR_URL:-}" ]]; then
   TXT+=$'\n\n'":clipboard: *PRs to merge:*"
   TXT+=$'\n'"- <${BUMP_VERSION_PR_URL}|Bump unstable version and create unstable docs>"
+fi
+
+# For RCs, include Platform test PRs
+if [[ "${IS_RC}" == "true" && -n "${DC_PIPELINE_TEMPLATES_PR_URL:-}" ]]; then
+  TXT+=$'\n\n'":test_tube: *Test PRs opened on Platform:*"
+  TXT+=$'\n'"- <${DC_PIPELINE_TEMPLATES_PR_URL}|dc-pipeline-templates>"
 fi
 
 # For RCs, request testing from Platform Engineering
