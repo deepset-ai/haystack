@@ -82,7 +82,7 @@ jobs:
       docker_url: ${{ steps.set-outputs.outputs.docker_url }}
     env:
       GH_TOKEN: ${{ github.token }}
-      VERSION: "2.26.1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+      VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -97,15 +97,16 @@ jobs:
       #       "Project release on Github" \
       #       "Docker image release"
 
-      - name: Check artifacts
-        run: |
-          check() {
-            for _ in {1..5}; do curl -sf "$2" > /dev/null && echo "✅ $1" && return 0; sleep 30; done
-            echo "❌ $1 not found" && return 1
-          }
-          check "GitHub Release" "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VERSION }}"
-          check "PyPI package" "https://pypi.org/pypi/haystack-ai/${{ env.VERSION }}/json"
-          check "Docker image" "https://hub.docker.com/v2/repositories/deepset/haystack/tags/base-v${{ env.VERSION }}"
+      # TODO: Restore artifact check after testing
+      # - name: Check artifacts
+      #   run: |
+      #     check() {
+      #       for _ in {1..5}; do curl -sf "$2" > /dev/null && echo "✅ $1" && return 0; sleep 30; done
+      #       echo "❌ $1 not found" && return 1
+      #     }
+      #     check "GitHub Release" "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VERSION }}"
+      #     check "PyPI package" "https://pypi.org/pypi/haystack-ai/${{ env.VERSION }}/json"
+      #     check "Docker image" "https://hub.docker.com/v2/repositories/deepset/haystack/tags/base-v${{ env.VERSION }}"
 
       - name: Set artifact URLs
         id: set-outputs
@@ -127,7 +128,7 @@ jobs:
   #   outputs:
   #     pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
   #   env:
-  #     VERSION: "2.26.1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+  #     VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
   #   steps:
   #     - name: Checkout dc-pipeline-templates
   #       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -164,7 +165,7 @@ jobs:
   #   outputs:
   #     pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
   #   env:
-  #     VERSION: "2.26.1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+  #     VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
   #   steps:
   #     - name: Checkout haystack (for utils)
   #       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -217,7 +218,7 @@ jobs:
     outputs:
       pr_url: ${{ steps.wait-pr.outputs.pr_url }}
     env:
-      VERSION: "2.26.1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+      VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Trigger "Update package version" workflow
         env:
@@ -260,7 +261,7 @@ jobs:
       - name: Prepare release notification
         id: prepare-notification
         env:
-          VERSION: "v2.26.1"  # TODO: Restore to ${{ inputs.version }}
+          VERSION: "v2.99.0-rc1"  # TODO: Restore to ${{ inputs.version }}
           GH_TOKEN: ${{ github.token }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
