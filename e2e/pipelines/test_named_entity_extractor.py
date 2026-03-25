@@ -18,12 +18,6 @@ from haystack.components.extractors import (
     NamedEntityExtractorBackend,
 )
 
-# spacy uses pydantic.v1 which is not compatible with Python 3.14 (PEP 649 deferred annotations)
-skip_spacy = pytest.mark.skipif(
-    sys.version_info >= (3, 14),
-    reason="spacy/pydantic.v1 not compatible with Python 3.14",
-)
-
 
 @pytest.fixture
 def raw_texts() -> list:
@@ -90,7 +84,6 @@ def test_ner_extractor_hf_backend_private_models(raw_texts, hf_annotations, batc
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
-@skip_spacy
 def test_ner_extractor_spacy_backend(raw_texts, spacy_annotations, batch_size) -> None:
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.SPACY, model="en_core_web_trf")
     extractor.warm_up()
