@@ -148,7 +148,7 @@ jobs:
           base: main
           title: "chore: bump haystack to ${{ env.VERSION }}"
           draft: true
-          add-paths: requirements-tests.txt
+          add-paths: requirements-test.txt
           body: |
             Bump haystack pin to `${{ env.VERSION }}` for platform testing.
 
