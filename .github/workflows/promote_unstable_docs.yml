@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         # use VERSION.txt file from main branch
         with:
           ref: main
@@ -32,7 +32,7 @@ jobs:
           MINOR=$((MINOR - 1))
           echo "version=${MAJOR}.${MINOR}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -41,7 +41,7 @@ jobs:
           python ./.github/utils/promote_unstable_docs_docusaurus.py --version ${{ steps.version.outputs.version }}
 
       - name: Create Pull Request with Docusaurus docs updates
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
