@@ -117,41 +117,41 @@ jobs:
             echo "docker_url=https://hub.docker.com/r/deepset/haystack/tags?name=base-v${{ env.VERSION }}"
           } >> "$GITHUB_OUTPUT"
 
-  # bump-dc-pipeline-templates:
-  #   needs: ["check-artifacts"]  # TODO: Restore to ["parse-validate-version", "check-artifacts"]
-  #   if: >
-  #     always()
-  #     && needs.check-artifacts.result == 'success'
-  #   # TODO: Restore RC condition after testing
-  #   # && contains(needs.parse-validate-version.outputs.version, '-rc')
-  #   runs-on: ubuntu-slim
-  #   outputs:
-  #     pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
-  #   env:
-  #     VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
-  #   steps:
-  #     - name: Checkout dc-pipeline-templates
-  #       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-  #       with:
-  #         repository: deepset-ai/dc-pipeline-templates
-  #         token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+  bump-dc-pipeline-templates:
+    needs: ["check-artifacts"]  # TODO: Restore to ["parse-validate-version", "check-artifacts"]
+    if: >
+      always()
+      && needs.check-artifacts.result == 'success'
+    # TODO: Restore RC condition after testing
+    # && contains(needs.parse-validate-version.outputs.version, '-rc')
+    runs-on: ubuntu-slim
+    outputs:
+      pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
+    env:
+      VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Checkout dc-pipeline-templates
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: deepset-ai/dc-pipeline-templates
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
 
-  #     - name: Update haystack pin
-  #       run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-test.txt
+      - name: Update haystack pin
+        run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-test.txt
 
-  #     - name: Create Pull Request
-  #       id: create-pr
-  #       uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
-  #       with:
-  #         token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-  #         commit-message: "Bump haystack to ${{ env.VERSION }}"
-  #         branch: bump-haystack-${{ env.VERSION }}
-  #         base: main
-  #         title: "chore: bump haystack to ${{ env.VERSION }}"
-  #         draft: true
-  #         add-paths: requirements-test.txt
-  #         body: |
-  #           Bump haystack pin to `${{ env.VERSION }}` for platform testing.
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Bump haystack to ${{ env.VERSION }}"
+          branch: bump-haystack-${{ env.VERSION }}
+          base: main
+          title: "chore: bump haystack to ${{ env.VERSION }}"
+          draft: true
+          add-paths: requirements-test.txt
+          body: |
+            Bump haystack pin to `${{ env.VERSION }}` for platform testing.
 
   # TODO: Restore bump-deepset-cloud-custom-nodes job after testing
   # bump-deepset-cloud-custom-nodes:
@@ -207,51 +207,52 @@ jobs:
   #         body: |
   #           Bump haystack pin to `${{ env.VERSION }}` for platform testing.
 
-  bump-dc-pipeline-images:
-    needs: ["check-artifacts"]  # TODO: Restore to ["parse-validate-version", "check-artifacts"]
-    if: >
-      always()
-      && needs.check-artifacts.result == 'success'
-    # TODO: Restore RC condition after testing
-    # && contains(needs.parse-validate-version.outputs.version, '-rc')
-    runs-on: ubuntu-slim
-    outputs:
-      pr_url: ${{ steps.wait-pr.outputs.pr_url }}
-    env:
-      VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
-    steps:
-      - name: Trigger "Update package version" workflow
-        env:
-          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-        run: |
-          gh workflow run update-package-version.yaml \
-            -R deepset-ai/dc-pipeline-images \
-            -f haystack_version="${{ env.VERSION }}"
-
-      - name: Wait for PR
-        id: wait-pr
-        env:
-          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-        run: |
-          TRIGGER_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          for i in $(seq 1 30); do
-            PR_URL=$(gh pr list -R deepset-ai/dc-pipeline-images \
-              --head "bump/hs${{ env.VERSION }}" \
-              --json url,createdAt \
-              --jq ".[] | select(.createdAt >= \"$TRIGGER_TIME\") | .url")
-            if [[ -n "$PR_URL" ]]; then
-              echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
-              echo "Found PR: $PR_URL"
-              exit 0
-            fi
-            echo "Attempt $i: PR not found yet, waiting 10s..."
-            sleep 10
-          done
-          echo "PR not found after 5 minutes"
+  # TODO: Restore bump-dc-pipeline-images job after testing
+  # bump-dc-pipeline-images:
+  #   needs: ["check-artifacts"]  # TODO: Restore to ["parse-validate-version", "check-artifacts"]
+  #   if: >
+  #     always()
+  #     && needs.check-artifacts.result == 'success'
+  #   # TODO: Restore RC condition after testing
+  #   # && contains(needs.parse-validate-version.outputs.version, '-rc')
+  #   runs-on: ubuntu-slim
+  #   outputs:
+  #     pr_url: ${{ steps.wait-pr.outputs.pr_url }}
+  #   env:
+  #     VERSION: "2.99.0-rc1"  # TODO: Restore to ${{ needs.parse-validate-version.outputs.version }}
+  #   steps:
+  #     - name: Trigger "Update package version" workflow
+  #       env:
+  #         GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+  #       run: |
+  #         gh workflow run update-package-version.yaml \
+  #           -R deepset-ai/dc-pipeline-images \
+  #           -f haystack_version="${{ env.VERSION }}"
+  #
+  #     - name: Wait for PR
+  #       id: wait-pr
+  #       env:
+  #         GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+  #       run: |
+  #         TRIGGER_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  #         for i in $(seq 1 30); do
+  #           PR_URL=$(gh pr list -R deepset-ai/dc-pipeline-images \
+  #             --head "bump/hs${{ env.VERSION }}" \
+  #             --json url,createdAt \
+  #             --jq ".[] | select(.createdAt >= \"$TRIGGER_TIME\") | .url")
+  #           if [[ -n "$PR_URL" ]]; then
+  #             echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+  #             echo "Found PR: $PR_URL"
+  #             exit 0
+  #           fi
+  #           echo "Attempt $i: PR not found yet, waiting 10s..."
+  #           sleep 10
+  #         done
+  #         echo "PR not found after 5 minutes"
 
   notify:
     # TODO: Restore to ["parse-validate-version", "branch-off", "create-release-tag", "check-artifacts", "bump-dc-pipeline-templates", "bump-deepset-cloud-custom-nodes", "bump-dc-pipeline-images"]
-    needs: ["check-artifacts", "bump-dc-pipeline-images"] # bump-dc-pipeline-templates, bump-deepset-cloud-custom-nodes
+    needs: ["check-artifacts", "bump-dc-pipeline-templates"] # bump-deepset-cloud-custom-nodes, bump-dc-pipeline-images
     if: always()
     runs-on: ubuntu-slim
     steps:
@@ -259,7 +260,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Prepare release notification
-        id: prepare-notification
         env:
           VERSION: "v2.99.0-rc1"  # TODO: Restore to ${{ inputs.version }}
           GH_TOKEN: ${{ github.token }}
@@ -272,23 +272,17 @@ jobs:
           PYPI_URL: ${{ needs.check-artifacts.outputs.pypi_url }}
           DOCKER_URL: ${{ needs.check-artifacts.outputs.docker_url }}
           # BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
-          # DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
+          DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
           # CUSTOM_NODES_PR_URL: ${{ needs.bump-deepset-cloud-custom-nodes.outputs.pr_url }}
-          DC_PIPELINE_IMAGES_PR_URL: ${{ needs.bump-dc-pipeline-images.outputs.pr_url }}
+          # DC_PIPELINE_IMAGES_PR_URL: ${{ needs.bump-dc-pipeline-images.outputs.pr_url }}
         run: .github/utils/prepare_release_notification.sh
 
-      - name: Print notification (for testing)  # TODO: Restore Slack step after testing
-        run: echo "${{ steps.prepare-notification.outputs.text }}"
+      - name: Print notification (for testing)  # TODO: Remove after testing
+        run: jq -r .text slack_payload.json
 
       - name: Send release notification to Slack
         uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
           webhook-type: incoming-webhook
-          payload: |
-            text: "${{ steps.prepare-notification.outputs.text }}"
-            blocks:
-              - type: "section"
-                text:
-                  type: "mrkdwn"
-                  text: "${{ steps.prepare-notification.outputs.text }}"
+          payload-file-path: slack_payload.json
