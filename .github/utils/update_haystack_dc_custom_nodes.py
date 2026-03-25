@@ -8,7 +8,6 @@ preserving the existing lock file formatting.
 
 import argparse
 import json
-import re
 import sys
 import urllib.request
 
@@ -21,7 +20,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # PEP 440 normalized version for filenames
-    file_version = args.version.replace("-", "")
+    new_version = args.version.replace("-", "")
 
     # Fetch hashes from PyPI
     pypi_data = json.load(urllib.request.urlopen(f"https://pypi.org/pypi/haystack-ai/{args.version}/json"))
@@ -42,27 +41,17 @@ if __name__ == "__main__":
         if pkg["name"] == "haystack-ai":
             old_version = pkg["version"]
 
-            pkg["version"] = file_version
+            pkg["version"] = new_version
 
-            sdist_url = re.sub(
-                r"/haystack-ai/[^/]+/haystack_ai-[^.]+\.",
-                f"/haystack-ai/{file_version}/haystack_ai-{file_version}.",
-                pkg["sdist"]["url"],
-            )
-            pkg["sdist"]["url"] = sdist_url
+            pkg["sdist"]["url"] = pkg["sdist"]["url"].replace(old_version, new_version)
             pkg["sdist"]["hash"] = f"sha256:{sdist_sha}"
 
             wheel = pkg["wheels"][0]
-            wheel_url = re.sub(
-                r"/haystack-ai/[^/]+/haystack_ai-[^-]+-",
-                f"/haystack-ai/{file_version}/haystack_ai-{file_version}-",
-                wheel["url"],
-            )
-            wheel["url"] = wheel_url
+            wheel["url"] = wheel["url"].replace(old_version, new_version)
             wheel["hash"] = f"sha256:{wheel_sha}"
 
             found = True
-            print(f"Updated haystack-ai from {old_version} to {file_version}")
+            print(f"Updated haystack-ai from {old_version} to {new_version}")
             break
 
     if not found:
