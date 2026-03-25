@@ -159,7 +159,7 @@ jobs:
           fetch-depth: 0
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47.0.0
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
         with:
           files: |
             **/*.py
