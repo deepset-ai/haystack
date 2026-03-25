@@ -14,10 +14,8 @@ set -euo pipefail
 
 PAYLOAD_FILE="${GITHUB_WORKSPACE:-/tmp}/slack_payload.json"
 
-# TODO: Restore RC detection after testing
-# IS_RC="false"
-# [[ "${VERSION}" == *"-rc"* ]] && IS_RC="true"
-IS_RC="true"
+IS_RC="false"
+[[ "${VERSION}" == *"-rc"* ]] && IS_RC="true"
 
 if [[ "${HAS_FAILURE}" == "true" ]]; then
   TXT=":red_circle: Release *${VERSION}* failed"
