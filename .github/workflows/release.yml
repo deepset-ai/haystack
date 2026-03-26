@@ -142,7 +142,6 @@ jobs:
           branch: bump-haystack-${{ env.VERSION }}
           base: main
           title: "chore: bump haystack to ${{ env.VERSION }}"
-          draft: true
           add-paths: requirements-test.txt
           body: |
             Bump haystack pin to `${{ env.VERSION }}` for platform testing.
@@ -191,7 +190,6 @@ jobs:
           branch: bump-haystack-${{ env.VERSION }}
           base: main
           title: "chore: bump haystack to ${{ env.VERSION }}"
-          draft: true
           add-paths: uv.lock
           body: |
             Bump haystack pin to `${{ env.VERSION }}` for platform testing.
