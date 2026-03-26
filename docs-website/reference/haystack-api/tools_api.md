@@ -662,8 +662,8 @@ from haystack.tools import Tool, SearchableToolset
 
 # Create a catalog of tools
 catalog = [
-    Tool(name="get_weather", description="Get weather for a city", ...),
-    Tool(name="search_web", description="Search the web", ...),
+    Tool(name="get_weather", description="Get weather for a city"),
+    Tool(name="search_web", description="Search the web"),
     # ... 100s more tools
 ]
 toolset = SearchableToolset(catalog=catalog)

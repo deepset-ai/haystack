@@ -1842,13 +1842,14 @@ created for each sheet. The content of the Document is the table which can be sa
 
 ```python
 from haystack.components.converters.xlsx import XLSXToDocument
+from datetime import datetime
 
 converter = XLSXToDocument()
 results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
 documents = results["documents"]
 print(documents[0].content)
 # ",A,B
-````
+```
 
 1,col_a,col_b
 2,1.5,test

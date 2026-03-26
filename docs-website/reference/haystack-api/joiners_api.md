@@ -49,8 +49,8 @@ messages = [ChatMessage.from_system("You are a helpful, respectful and honest as
             ChatMessage.from_user(query)]
 
 pipe = Pipeline()
-pipe.add_component("llm_1", OpenAIChatGenerator()
-pipe.add_component("llm_2", OpenAIChatGenerator()
+pipe.add_component("llm_1", OpenAIChatGenerator())
+pipe.add_component("llm_2", OpenAIChatGenerator())
 pipe.add_component("aba", AnswerBuilder())
 pipe.add_component("abb", AnswerBuilder())
 pipe.add_component("joiner", AnswerJoiner())
@@ -198,9 +198,8 @@ result = pipe.run(
 
 print(json.loads(result["validator"]["validated"][0].text))
 
-
->> {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
->> 'Superhero', 'age': 23, 'location': 'New York City'}
+# >> {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
+# >> 'Superhero', 'age': 23, 'location': 'New York City'}
 ```
 
 Note that `BranchJoiner` can manage only one data type at a time. In this case, `BranchJoiner` is created for

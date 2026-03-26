@@ -746,7 +746,7 @@ print(result)
 
 #### With paid inference endpoints
 
-````python
+```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
@@ -764,6 +764,7 @@ print(result)
 
 #### With self-hosted text generation inference
 
+
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -776,7 +777,7 @@ generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
 
 result = generator.run(messages)
 print(result)
-````
+```
 
 #### __init__
 
