@@ -8,7 +8,7 @@ from copy import copy
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, ToolCall, ChatRole
+from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install openapi3'") as openapi_imports:
@@ -184,7 +184,7 @@ class OpenAPIServiceConnector:
     )
     message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-    serper_token = "your_serper_dev_token"  # or use Secret.from_env_var("SERPERDEV_API_KEY")
+    serper_token = "your_serper_dev_token"
     serperdev_openapi_spec = json.loads(requests.get("https://bit.ly/serper_dev_spec").text)
     service_connector = OpenAPIServiceConnector()
     result = service_connector.run(
