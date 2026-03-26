@@ -195,6 +195,7 @@ class TestOpenAPIConnectorIntegration:
         assert "response" in response
 
     @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_open_meteo_integration(self):
         open_meteo_spec = {
             "openapi": "3.0.0",

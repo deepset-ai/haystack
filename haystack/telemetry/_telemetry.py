@@ -7,6 +7,7 @@ import logging
 import os
 import uuid
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
@@ -113,7 +114,7 @@ class Telemetry:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
-def send_telemetry(func):
+def send_telemetry(func: Callable[..., Any]) -> Callable[..., None]:
     """
     Decorator that sends the output of the wrapped function to PostHog.
 

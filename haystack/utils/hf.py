@@ -46,7 +46,7 @@ class HFGenerationAPIType(Enum):
     # HF [Serverless Inference API](https://huggingface.co/inference-api).
     SERVERLESS_INFERENCE_API = "serverless_inference_api"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -80,7 +80,7 @@ class HFEmbeddingAPIType(Enum):
     # HF [Serverless Inference API](https://huggingface.co/inference-api).
     SERVERLESS_INFERENCE_API = "serverless_inference_api"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod

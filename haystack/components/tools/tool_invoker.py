@@ -296,7 +296,7 @@ class ToolInvoker:
                 # If the result is not JSON serializable, we fall back to str
                 logger.warning(
                     "Tool result is not JSON serializable. Falling back to str conversion. "
-                    "Result: {result}\nError: {error}",
+                    "Result: {result}\nError: {err}",
                     result=result,
                     err=error,
                 )

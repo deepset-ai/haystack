@@ -282,7 +282,7 @@ Constructs a ChatPromptBuilder component.
 run(
     template: list[ChatMessage] | str | None = None,
     template_variables: dict[str, Any] | None = None,
-    **kwargs: dict[str, Any] | None
+    **kwargs: Any
 ) -> dict[str, list[ChatMessage]]
 ```
 
@@ -298,7 +298,7 @@ To overwrite pipeline kwargs, you can set the `template_variables` parameter.
   template.
   If `None`, the default template provided at initialization is used.
 - **template_variables** (<code>dict\[str, Any\] | None</code>) – An optional dictionary of template variables to overwrite the pipeline variables.
-- **kwargs** – Pipeline variables used for rendering the prompt.
+- **kwargs** (<code>Any</code>) – Pipeline variables used for rendering the prompt.
 
 **Returns:**
 

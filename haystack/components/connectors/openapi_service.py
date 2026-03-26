@@ -21,7 +21,7 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
     # If you see that https://github.com/Dorthu/openapi3/pull/124/
     # is merged, we can remove this patch - notify authors of this code
     def patch_request(
-        self,
+        self: "Operation",
         base_url: str,
         *,
         data: Any | None = None,

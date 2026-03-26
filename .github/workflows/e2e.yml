@@ -27,9 +27,9 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -41,6 +41,6 @@ jobs:
 
     - name: Notify Slack on nightly failure
       if: failure() && github.event_name == 'schedule'
-      uses: deepset-ai/notify-slack-action@v1
+      uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
       with:
         slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

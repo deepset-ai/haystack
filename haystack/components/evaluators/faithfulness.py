@@ -147,7 +147,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         )
 
     @component.output_types(individual_scores=list[int], score=float, results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 

@@ -76,7 +76,7 @@ class WriteDocumentsTest(AssertDocumentsEqualMixin):
 
     To use it create a custom test class and override the `document_store` fixture to return your Document Store.
     The Document Store `filter_documents` method must be at least partly implemented to return all stored Documents
-    for this tests to work correctly.
+    for these tests to work correctly.
     Example usage:
 
     ```python
@@ -928,6 +928,311 @@ class UpdateByFilterTest:
             filters={"field": "meta.featured", "operator": "==", "value": True}
         )
         assert len(featured_docs) == 2
+
+
+class CountDocumentsByFilterTest:
+    """
+    Tests for Document Store count_documents_by_filter().
+
+    Only mix in for stores that implement count_documents_by_filter.
+    """
+
+    @staticmethod
+    def test_count_documents_by_filter_simple(document_store: DocumentStore):
+        """Test count_documents_by_filter() with a simple equality filter."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
+            Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
+            Document(content="Doc 4", meta={"category": "A", "status": "active"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 4
+
+        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "A"}
+        )
+        assert count == 3
+
+        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "B"}
+        )
+        assert count == 1
+
+    @staticmethod
+    def test_count_documents_by_filter_compound(document_store: DocumentStore):
+        """Test count_documents_by_filter() with AND filter."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
+            Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
+            Document(content="Doc 4", meta={"category": "A", "status": "active"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 4
+
+        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "A"},
+                    {"field": "meta.status", "operator": "==", "value": "active"},
+                ],
+            }
+        )
+        assert count == 2
+
+    @staticmethod
+    def test_count_documents_by_filter_no_matches(document_store: DocumentStore):
+        """Test count_documents_by_filter() when filter matches no documents."""
+        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "Z"}
+        )
+        assert count == 0
+
+    @staticmethod
+    def test_count_documents_by_filter_empty_collection(document_store: DocumentStore):
+        """Test count_documents_by_filter() on an empty store."""
+        assert document_store.count_documents() == 0
+
+        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "A"}
+        )
+        assert count == 0
+
+
+class CountUniqueMetadataByFilterTest:
+    """
+    Tests for Document Store count_unique_metadata_by_filter().
+
+    Only mix in for stores that implement count_unique_metadata_by_filter.
+    """
+
+    @staticmethod
+    def test_count_unique_metadata_by_filter_all_documents(document_store: DocumentStore):
+        """Test count_unique_metadata_by_filter() with no filter returns distinct counts for all docs."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active", "priority": 2}),
+            Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
+            Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
+            Document(content="Doc 5", meta={"category": "C", "status": "active", "priority": 2}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 5
+
+        counts = document_store.count_unique_metadata_by_filter(  # type:ignore[attr-defined]
+            filters={}, metadata_fields=["category", "status", "priority"]
+        )
+        assert counts["category"] == 3
+        assert counts["status"] == 2
+        assert counts["priority"] == 3
+
+    @staticmethod
+    def test_count_unique_metadata_by_filter_with_filter(document_store: DocumentStore):
+        """Test count_unique_metadata_by_filter() with a filter."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active", "priority": 2}),
+            Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
+            Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 4
+
+        counts = document_store.count_unique_metadata_by_filter(  # type:ignore[attr-defined]
+            filters={"field": "meta.category", "operator": "==", "value": "A"}, metadata_fields=["status", "priority"]
+        )
+        assert counts["status"] == 2
+        assert counts["priority"] == 2
+
+    @staticmethod
+    def test_count_unique_metadata_by_filter_with_multiple_filters(document_store: DocumentStore):
+        """Test counting with multiple filters"""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
+            Document(content="Doc 2", meta={"category": "A", "year": 2024}),
+            Document(content="Doc 3", meta={"category": "B", "year": 2023}),
+            Document(content="Doc 4", meta={"category": "B", "year": 2024}),
+        ]
+        document_store.write_documents(docs)
+        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.category", "operator": "==", "value": "B"},
+                    {"field": "meta.year", "operator": "==", "value": 2023},
+                ],
+            }
+        )
+        assert count == 1
+
+
+class GetMetadataFieldsInfoTest:
+    """
+    Tests for Document Store get_metadata_fields_info().
+
+    Only mix in for stores that implement get_metadata_fields_info.
+    """
+
+    @staticmethod
+    def test_get_metadata_fields_info(document_store: DocumentStore):
+        """Test get_metadata_fields_info() returns field names and types after writing documents."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
+            Document(content="Doc 2", meta={"category": "B", "status": "inactive", "rating": 0.5}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        fields_info = document_store.get_metadata_fields_info()  # type:ignore[attr-defined]
+
+        assert "category" in fields_info
+        assert "status" in fields_info
+        assert "priority" in fields_info
+        assert "rating" in fields_info
+        for field_name, info in fields_info.items():  # noqa: B007, PERF102
+            assert isinstance(info, dict)
+            assert "type" in info
+
+    @staticmethod
+    def test_get_metadata_fields_info_empty_collection(document_store: DocumentStore):
+        """Test get_metadata_fields_info() on an empty store."""
+        assert document_store.count_documents() == 0
+
+        fields_info = document_store.get_metadata_fields_info()  # type:ignore[attr-defined]
+        assert fields_info == {}
+
+
+class GetMetadataFieldMinMaxTest:
+    """
+    Tests for Document Store get_metadata_field_min_max().
+
+    Only mix in for stores that implement get_metadata_field_min_max.
+    """
+
+    @staticmethod
+    def test_get_metadata_field_min_max_numeric(document_store: DocumentStore):
+        """Test get_metadata_field_min_max() with integer field."""
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": 5}),
+            Document(content="Doc 3", meta={"priority": 3}),
+            Document(content="Doc 4", meta={"priority": 10}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 4
+
+        result = document_store.get_metadata_field_min_max("priority")  # type:ignore[attr-defined]
+        assert result["min"] == 1
+        assert result["max"] == 10
+
+    @staticmethod
+    def test_get_metadata_field_min_max_float(document_store: DocumentStore):
+        """Test get_metadata_field_min_max() with float field."""
+        docs = [
+            Document(content="Doc 1", meta={"rating": 0.6}),
+            Document(content="Doc 2", meta={"rating": 0.95}),
+            Document(content="Doc 3", meta={"rating": 0.8}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 3
+
+        result = document_store.get_metadata_field_min_max("rating")  # type:ignore[attr-defined]
+
+        assert result["min"] == pytest.approx(0.6)
+        assert result["max"] == pytest.approx(0.95)
+
+    @staticmethod
+    def test_get_metadata_field_min_max_single_value(document_store: DocumentStore):
+        """Test get_metadata_field_min_max() when field has only one value."""
+        docs = [Document(content="Doc 1", meta={"priority": 42})]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 1
+
+        result = document_store.get_metadata_field_min_max("priority")  # type:ignore[attr-defined]
+        assert result["min"] == 42
+        assert result["max"] == 42
+
+    @staticmethod
+    def test_get_metadata_field_min_max_empty_collection(document_store: DocumentStore):
+        """Test get_metadata_field_min_max() on an empty store."""
+        assert document_store.count_documents() == 0
+
+        result = document_store.get_metadata_field_min_max("priority")  # type:ignore[attr-defined]
+        assert result["min"] is None
+        assert result["max"] is None
+
+    @staticmethod
+    def test_get_metadata_field_min_max_meta_prefix(document_store: DocumentStore):
+        """Test get_metadata_field_min_max() with field names that include 'meta.' prefix."""
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1, "age": 10}),
+            Document(content="Doc 2", meta={"priority": 5, "age": 20}),
+            Document(content="Doc 3", meta={"priority": 3, "age": 15}),
+            Document(content="Doc 4", meta={"priority": 10, "age": 5}),
+            Document(content="Doc 6", meta={"rating": 10.5}),
+            Document(content="Doc 7", meta={"rating": 20.3}),
+            Document(content="Doc 8", meta={"rating": 15.7}),
+            Document(content="Doc 9", meta={"rating": 5.2}),
+        ]
+        document_store.write_documents(docs)
+
+        min_max_priority = document_store.get_metadata_field_min_max("meta.priority")  # type:ignore[attr-defined]
+        assert min_max_priority["min"] == 1
+        assert min_max_priority["max"] == 10
+
+        # Test with float values and "meta." prefix
+        min_max_score = document_store.get_metadata_field_min_max("meta.rating")  # type:ignore[attr-defined]
+        assert min_max_score["min"] == pytest.approx(5.2)
+        assert min_max_score["max"] == pytest.approx(20.3)
+
+
+class GetMetadataFieldUniqueValuesTest:
+    """
+    Tests for Document Store get_metadata_field_unique_values().
+
+    Only mix in for stores that implement get_metadata_field_unique_values.
+    Expects the method to return (values_list, total_count) or (values_list, pagination_key).
+    """
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_basic(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() returns unique values and total count."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A"}),
+            Document(content="Doc 2", meta={"category": "B"}),
+            Document(content="Doc 3", meta={"category": "A"}),
+            Document(content="Doc 4", meta={"category": "C"}),
+            Document(content="Doc 5", meta={"category": "B"}),
+        ]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 5
+
+        sig = inspect.signature(document_store.get_metadata_field_unique_values)  # type:ignore[attr-defined]
+        params: dict = {}
+        if "search_term" in sig.parameters:
+            params["search_term"] = None
+        if "from_" in sig.parameters:
+            params["from_"] = 0
+        elif "offset" in sig.parameters:
+            params["offset"] = 0
+        if "size" in sig.parameters:
+            params["size"] = 10
+        elif "limit" in sig.parameters:
+            params["limit"] = 10
+
+        result = document_store.get_metadata_field_unique_values("category", **params)  # type:ignore[attr-defined]
+
+        values = result[0] if isinstance(result, tuple) else result
+        assert isinstance(values, list)
+        assert set(values) == {"A", "B", "C"}
+        if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[1], int):
+            assert result[1] == 3
 
 
 class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):

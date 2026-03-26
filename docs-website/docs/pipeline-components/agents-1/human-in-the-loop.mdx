@@ -1,0 +1,251 @@
+---
+title: "Human in the Loop"
+id: human-in-the-loop
+slug: "/human-in-the-loop"
+description: "Human-in-the-loop allows you to intercept agent tool calls before execution, letting a human confirm, reject, or modify the tool parameters."
+---
+
+# Human in the Loop
+
+Human-in-the-loop (HITL) lets you intercept an agent's tool calls before they are executed.
+A human can **confirm**, **reject**, or **modify** the parameters of each tool call in real time.
+This is useful for high-stakes operations - such as sending emails, modifying databases, or making API calls - where you want a human to review the action first.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Configured on**       | The [`Agent`](./agent.mdx) component via `confirmation_strategies`                               |
+| **Key classes**         | `BlockingConfirmationStrategy`, `AlwaysAskPolicy`, `AskOncePolicy`, `NeverAskPolicy`, `RichConsoleUI`, `SimpleConsoleUI` |
+| **Import path**         | `haystack.human_in_the_loop`                                                                     |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/human_in_the_loop/                    |
+
+</div>
+
+## Overview
+
+The HITL system is composed of three layers:
+
+- **Strategy** - decides what to do when a tool is about to be called. The built-in `BlockingConfirmationStrategy` pauses execution and asks a human.
+- **Policy** - decides *when* to ask. Built-in policies: `AlwaysAskPolicy`, `NeverAskPolicy`, `AskOncePolicy`.
+- **UI** - the interface used to ask the human. Built-in UIs: `RichConsoleUI` (requires `rich`) and `SimpleConsoleUI` (stdlib only).
+
+When the agent is about to invoke a tool, the strategy checks the policy.
+If the policy says to ask, the UI prompts the human with the tool name, description, and parameters. The human can:
+
+- **Confirm** (`y`) - execute as-is
+- **Reject** (`n`) - skip execution and feed rejection feedback back to the LLM
+- **Modify** (`m`) - edit the parameters before execution
+
+The agent then continues with the human's decision.
+
+## Usage
+
+### Basic setup
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.human_in_the_loop import (
+    AlwaysAskPolicy,
+    BlockingConfirmationStrategy,
+    SimpleConsoleUI,
+)
+from haystack.tools import tool
+
+
+@tool
+def send_email(
+    to: Annotated[str, "The recipient email address"],
+    subject: Annotated[str, "The email subject line"],
+    body: Annotated[str, "The email body"],
+) -> str:
+    """Send an email to a recipient."""
+    return f"Email sent to {to}."
+
+
+strategy = BlockingConfirmationStrategy(
+    confirmation_policy=AlwaysAskPolicy(),
+    confirmation_ui=SimpleConsoleUI(),
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
+    tools=[send_email],
+    confirmation_strategies={"send_email": strategy},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Send a welcome email to alice@example.com")],
+)
+```
+
+When the agent calls `send_email`, the terminal will pause and show:
+
+```
+--- Tool Execution Request ---
+Tool: send_email
+Description: Send an email to a recipient.
+Arguments:
+  to: alice@example.com
+  subject: Welcome!
+  body: Hi Alice, welcome aboard!
+------------------------------
+Confirm execution? (y=confirm / n=reject / m=modify):
+```
+
+### Using RichConsoleUI
+
+`RichConsoleUI` provides a styled terminal prompt using the [`rich`](https://github.com/Textualize/rich) library:
+
+```shell
+pip install rich
+```
+
+```python
+from haystack.human_in_the_loop import RichConsoleUI
+
+strategy = BlockingConfirmationStrategy(
+    confirmation_policy=AlwaysAskPolicy(),
+    confirmation_ui=RichConsoleUI(),
+)
+```
+
+### Applying strategies to multiple tools
+
+You can configure different strategies per tool, or share one strategy across a group of tools using a tuple key:
+
+```python
+@tool
+def delete_record(record_id: Annotated[str, "The ID of the record to delete"]) -> str:
+    """Delete a record from the database."""
+    return f"Record {record_id} deleted."
+
+
+@tool
+def update_record(
+    record_id: Annotated[str, "The ID of the record to update"],
+    data: Annotated[str, "The new data as a JSON string"],
+) -> str:
+    """Update a record in the database."""
+    return f"Record {record_id} updated."
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the knowledge base."""
+    return f"Results for: {query}"
+
+
+ask_strategy = BlockingConfirmationStrategy(
+    confirmation_policy=AlwaysAskPolicy(),
+    confirmation_ui=SimpleConsoleUI(),
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
+    tools=[send_email, delete_record, update_record, search],
+    confirmation_strategies={
+        # Share one strategy across multiple sensitive tools using a tuple key
+        ("send_email", "delete_record", "update_record"): ask_strategy,
+        # search has no strategy - always executes without asking
+    },
+)
+```
+
+## Policies
+
+Policies control *when* the human is asked.
+
+| Policy | Behavior |
+| --- | --- |
+| `AlwaysAskPolicy` | Ask every time the tool is called |
+| `NeverAskPolicy` | Never ask - always proceed (useful for toggling HITL off without removing the strategy) |
+| `AskOncePolicy` | Ask once per unique `(tool_name, parameters)` combination. Remembers confirmed calls and skips asking on repeats. |
+
+### Custom policy
+
+You can implement your own policy by subclassing `ConfirmationPolicy` from `haystack.human_in_the_loop.types`:
+
+```python
+from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationUIResult
+from typing import Any
+
+
+class AskForSensitiveParamsPolicy(ConfirmationPolicy):
+    """Only ask when the 'to' parameter looks like an external email domain."""
+
+    def should_ask(
+        self,
+        tool_name: str,
+        tool_description: str,
+        tool_params: dict[str, Any],
+    ) -> bool:
+        to = tool_params.get("to", "")
+        return not to.endswith("@mycompany.com")
+```
+
+## Dataclasses
+
+### `ConfirmationUIResult`
+
+Returned by the UI after the human responds.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `action` | `str` | `"confirm"`, `"reject"`, or `"modify"` |
+| `feedback` | `str \| None` | Optional free-text feedback from the human |
+| `new_tool_params` | `dict \| None` | Replacement parameters when action is `"modify"` |
+
+### `ToolExecutionDecision`
+
+Returned by the strategy to the agent.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `tool_name` | `str` | Name of the tool |
+| `execute` | `bool` | Whether to execute the tool |
+| `tool_call_id` | `str \| None` | ID of the tool call |
+| `feedback` | `str \| None` | Feedback message passed back to the LLM on rejection or modification |
+| `final_tool_params` | `dict \| None` | Final parameters to use for execution |
+
+## Example: HITL with Hayhooks and Open WebUI
+
+The [hitl-hayhooks-redis-openwebui](https://github.com/deepset-ai/hitl-hayhooks-redis-openwebui) repository shows a full production-style HITL setup using a Haystack Agent served via [Hayhooks](https://github.com/deepset-ai/hayhooks) with approval dialogs rendered in [Open WebUI](https://github.com/open-webui/open-webui).
+
+The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that uses `confirmation_strategy_context` to pass per-request resources - a Redis client and an async event queue - into the strategy at runtime:
+
+- When a tool call is about to execute, the strategy emits a `tool_call_start` SSE event and blocks on `Redis BLPOP` waiting for an approval decision.
+- The Open WebUI Pipe function receives the SSE event, shows the user a confirmation dialog, then writes `approved` or `rejected` to Redis via `LPUSH`.
+- Once Redis unblocks, the strategy returns a `ToolExecutionDecision` and the agent continues.
+
+This is a good reference if you need non-blocking HITL in a web or server environment where `SimpleConsoleUI` and `RichConsoleUI` are not suitable.
+
+## Custom UI
+
+Implement `ConfirmationUI` from `haystack.human_in_the_loop.types` to build your own interface - for example, a web-based approval queue:
+
+```python
+from haystack.human_in_the_loop.types import ConfirmationUI
+from haystack.human_in_the_loop import ConfirmationUIResult
+from typing import Any
+
+
+class WebhookApprovalUI(ConfirmationUI):
+    """Sends a webhook and waits for an async approval response."""
+
+    def get_user_confirmation(
+        self,
+        tool_name: str,
+        tool_description: str,
+        tool_params: dict[str, Any],
+    ) -> ConfirmationUIResult:
+        # Send approval request to your system and wait for response
+        response = send_approval_request_and_wait(tool_name, tool_params)
+        return ConfirmationUIResult(
+            action=response["action"],
+            feedback=response.get("feedback"),
+        )
+```
