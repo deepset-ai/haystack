@@ -89,12 +89,12 @@ class TestLoggingTracer:
         records = caplog.records
 
         assert any(
-            record.operation_name == "haystack.component.run"  # type: ignore[attr-defined]
+            record.operation_name == "haystack.component.run"
             for record in records
             if hasattr(record, "operation_name")
         )
         assert any(
-            record.operation_name == "haystack.pipeline.run"  # type: ignore[attr-defined]
+            record.operation_name == "haystack.pipeline.run"
             for record in records
             if hasattr(record, "operation_name")
         )
@@ -154,12 +154,12 @@ class TestLoggingTracer:
         records = caplog.records
 
         assert any(
-            record.operation_name == "haystack.component.run"  # type: ignore[attr-defined]
+            record.operation_name == "haystack.component.run"
             for record in records
             if hasattr(record, "operation_name")
         )
         assert any(
-            record.operation_name == "haystack.pipeline.run"  # type: ignore[attr-defined]
+            record.operation_name == "haystack.pipeline.run"
             for record in records
             if hasattr(record, "operation_name")
         )
