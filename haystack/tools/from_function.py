@@ -134,9 +134,16 @@ def create_tool_from_function(
     fields: dict[str, Any] = {}
     descriptions = {}
 
+    # Local import to avoid circular imports; State is in haystack.components which imports haystack.tools
+    from haystack.components.agents.state.state import State
+
     for param_name, param in signature.parameters.items():
         # Skip adding parameter names that will be passed to the tool from State
         if inputs_from_state and param_name in inputs_from_state.values():
+            continue
+
+        # Skip State-typed parameters — ToolInvoker injects them at runtime, hidden from the LLM
+        if param.annotation is State:
             continue
 
         if param.annotation is param.empty:
