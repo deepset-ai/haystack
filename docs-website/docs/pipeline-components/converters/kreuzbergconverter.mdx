@@ -118,7 +118,7 @@ result = converter.run(sources=["multipage.pdf"])
 
 ### Token Reduction
 
-Reduce output size for LLM consumption with `TokenReductionConfig`. Five levels are available: `"off"`, `"light"`, `"moderate"`, `"aggressive"`, `"maximum"`:
+Reduce output size for LLM consumption with `TokenReductionConfig`. Token reduction uses TF-IDF-based extractive summarization to identify and preserve the most important terms and phrases, progressively removing less critical content such as extra whitespace, filler words, and redundant phrases. Five levels are available: `"off"` (no reduction), `"light"` (~15%), `"moderate"` (~30%), `"aggressive"` (~50%), and `"maximum"` (>50% reduction):
 
 ```python
 from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
