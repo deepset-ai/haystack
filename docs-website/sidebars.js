@@ -235,6 +235,7 @@ export default {
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
             'pipeline-components/converters/jsonconverter',
+            'pipeline-components/converters/libreofficefileconverter',
             'pipeline-components/converters/markdowntodocument',
             'pipeline-components/converters/markitdownconverter',
             'pipeline-components/converters/mistralocrdocumentconverter',
