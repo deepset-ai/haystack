@@ -146,6 +146,7 @@ It can attach metadata to the resulting documents.
 ### Usage example
 
 ```python
+from datetime import datetime
 from haystack.components.converters.csv import CSVToDocument
 converter = CSVToDocument()
 results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
@@ -1264,7 +1265,7 @@ from haystack import Document
 from haystack.components.converters import OutputAdapter
 
 adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
-documents = [Document(content="Test content"]
+documents = [Document(content="Test content")]
 result = adapter.run(documents=documents)
 
 assert result["output"] == "Test content"
@@ -1832,7 +1833,6 @@ Converts text files to documents.
 
 ### XLSXToDocument
 
-````
 Converts XLSX (Excel) files into Documents.
 
 Supports reading data from specific sheets or all sheets in the Excel file. If all sheets are read, a Document is

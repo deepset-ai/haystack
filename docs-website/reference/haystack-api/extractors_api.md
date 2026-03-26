@@ -267,19 +267,19 @@ extractor = LLMMetadataExtractor(
 )
 
 extractor.run(documents=docs)
->> {'documents': [
-    Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-    meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
-          {'entity': 'Haystack', 'entity_type': 'product'}]}),
-    Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
-    meta: {'entities': [
-            {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
-            {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
-            ]})
-       ]
-    'failed_documents': []
-   }
->>
+# >> {'documents': [
+# >>    Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+# >>    meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
+# >>          {'entity': 'Haystack', 'entity_type': 'product'}]}),
+# >>    Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
+# >>    meta: {'entities': [
+# >>            {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
+# >>            {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
+# >>            ]})
+# >>       ]
+# >>    'failed_documents': []
+# >>   }
+# >>>>
 ```
 
 #### __init__
