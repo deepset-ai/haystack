@@ -1,6 +1,0 @@
----
-enhancements:
-  - |
-    Added mypy type checking to `test/tracing/`, `test/marshal/`, and `test/testing/` directories.
-    Fixed type errors including missing type annotations, unhandled Optional returns, incorrect
-    generator return types, and dynamic attribute access on LogRecord objects.

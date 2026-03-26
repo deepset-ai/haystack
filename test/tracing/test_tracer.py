@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Generator
 from unittest.mock import Mock
 
 import ddtrace
@@ -44,9 +44,9 @@ class TestNullTracer:
             span.set_tags({"key": "value"})
 
         assert isinstance(tracer.current_span(), NullSpan)
-        current = tracer.current_span()
-        assert current is not None
-        assert isinstance(current.raw_span(), NullSpan)
+        current_span = tracer.current_span()
+        assert current_span is not None
+        assert isinstance(current_span.raw_span(), NullSpan)
 
 
 class TestProxyTracer:
@@ -88,7 +88,7 @@ class TestConfigureTracer:
 
 class TestAutoEnableTracer:
     @pytest.fixture()
-    def configured_opentelemetry_tracing(self) -> Iterator[None]:
+    def configured_opentelemetry_tracing(self) -> Generator[None]:
         resource = Resource(attributes={SERVICE_NAME: "haystack-testing"})
 
         traceProvider = TracerProvider(resource=resource)
