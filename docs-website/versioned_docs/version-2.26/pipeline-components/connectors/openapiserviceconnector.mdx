@@ -55,24 +55,40 @@ To run the following code snippet, note that you have to have your own Serper an
 import json
 import requests
 
+from typing import Any
+
 from haystack import Pipeline
+from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.byte_stream import ByteStream
+
+
+def prepare_fc_params(openai_functions_schema: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "tools": [{"type": "function", "function": openai_functions_schema}],
+        "tool_choice": {
+            "type": "function",
+            "function": {"name": openai_functions_schema["name"]},
+        },
+    }
+
 
 serperdev_spec = requests.get("https://bit.ly/serper_dev_spec").json()
 system_prompt = requests.get("https://bit.ly/serper_dev_system").text
 user_prompt = "Why was Sam Altman ousted from OpenAI?"
 
-# Prepare generation_kwargs with tool definitions from the spec
-converter = OpenAPIServiceToFunctions()
-result = converter.run(sources=[ByteStream.from_string(json.dumps(serperdev_spec))])
-functions = result["functions"]
-generation_kwargs = {"tools": [{"type": "function", "function": f} for f in functions]}
-
 pipe = Pipeline()
+pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
+pipe.add_component(
+    "prepare_fc_adapter",
+    OutputAdapter(
+        "{{functions[0] | prepare_fc}}",
+        dict[str, Any],
+        {"prepare_fc": prepare_fc_params},
+    ),
+)
 pipe.add_component("functions_llm", OpenAIChatGenerator())
 pipe.add_component("openapi_connector", OpenAPIServiceConnector())
 pipe.add_component(
@@ -85,6 +101,12 @@ pipe.add_component(
 )
 pipe.add_component("llm", OpenAIChatGenerator())
 
+pipe.connect("spec_to_functions.functions", "prepare_fc_adapter.functions")
+pipe.connect(
+    "spec_to_functions.openapi_specs",
+    "openapi_connector.service_openapi_spec",
+)
+pipe.connect("prepare_fc_adapter", "functions_llm.generation_kwargs")
 pipe.connect("functions_llm.replies", "openapi_connector.messages")
 pipe.connect("openapi_connector.service_response", "message_adapter.service_response")
 pipe.connect("message_adapter", "llm.messages")
@@ -96,11 +118,12 @@ result = pipe.run(
                 ChatMessage.from_system("Only do tool/function calling"),
                 ChatMessage.from_user(user_prompt),
             ],
-            "generation_kwargs": generation_kwargs,
         },
         "openapi_connector": {
-            "service_openapi_spec": serperdev_spec,
             "service_credentials": serper_dev_key,
+        },
+        "spec_to_functions": {
+            "sources": [ByteStream.from_string(json.dumps(serperdev_spec))],
         },
         "message_adapter": {
             "system_message": [ChatMessage.from_system(system_prompt)],
@@ -109,7 +132,6 @@ result = pipe.run(
 )
 
 print(result["llm"]["replies"][0].text)
-
 
 # Sam Altman was ousted from OpenAI on November 17, 2023, following
 # a "deliberative review process" by the board of directors. The board concluded
