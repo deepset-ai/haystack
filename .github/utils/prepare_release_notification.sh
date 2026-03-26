@@ -63,7 +63,7 @@ fi
 if [[ "${IS_RC:-}" == "true" ]]; then
   PLATFORM_PRS=""
   [[ -n "${DC_PIPELINE_TEMPLATES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_PIPELINE_TEMPLATES_PR_URL}|dc-pipeline-templates>"
-  [[ -n "${CUSTOM_NODES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${CUSTOM_NODES_PR_URL}|deepset-cloud-custom-nodes>"
+  [[ -n "${DC_CUSTOM_NODES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_CUSTOM_NODES_PR_URL}|deepset-cloud-custom-nodes>"
   [[ -n "${DC_PIPELINE_IMAGES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_PIPELINE_IMAGES_PR_URL}|dc-pipeline-images>"
   if [[ -n "${PLATFORM_PRS}" ]]; then
     TXT+=$'\n\n'":factory: *Test PRs opened on Platform:*${PLATFORM_PRS}"
