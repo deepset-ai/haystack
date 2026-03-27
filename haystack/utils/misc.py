@@ -173,6 +173,23 @@ def _parse_dict_from_json(
         and `raise_on_failure` is True.
     """
     cleaned_text = text.strip()
+    # Strip Markdown code-block fences produced by some LLMs (e.g. ollama/gemma3).
+    # Some models wrap their JSON output in a fenced code block like:
+    #   ```json
+    #   {"key": "value"}
+    #   ```
+    # We strip those fences only when the whole string is wrapped so we do not
+    # accidentally mangle JSON that legitimately contains backtick characters.
+    if cleaned_text.startswith("```"):
+        # Drop the opening fence line (e.g. "```json" or bare "```")
+        first_newline = cleaned_text.find("
+")
+        if first_newline != -1:
+            cleaned_text = cleaned_text[first_newline + 1:]
+        # Drop the closing fence
+        if cleaned_text.endswith("```"):
+            cleaned_text = cleaned_text[:-3]
+        cleaned_text = cleaned_text.strip()
 
     try:
         parsed_json = json.loads(cleaned_text)
