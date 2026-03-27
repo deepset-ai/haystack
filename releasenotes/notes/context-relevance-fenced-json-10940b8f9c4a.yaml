@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed LLM-based evaluators such as `ContextRelevanceEvaluator` so they can parse valid JSON replies that are
+    wrapped in markdown code fences by some chat models.

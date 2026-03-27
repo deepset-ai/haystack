@@ -200,6 +200,27 @@ class TestContextRelevanceEvaluator:
             "individual_scores": [1, 0],
         }
 
+    def test_run_parses_markdown_fenced_json(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator()
+
+        def chat_generator_run(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('```json\n{"relevant_statements": ["a"]}\n```')]}
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(
+            questions=["Which is the most popular global sport?"],
+            contexts=[["Football is the world's most popular sport."]],
+        )
+
+        assert results == {
+            "results": [{"score": 1, "relevant_statements": ["a"]}],
+            "score": 1,
+            "meta": None,
+            "individual_scores": [1],
+        }
+
     def test_run_missing_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator()

@@ -174,6 +174,12 @@ def _parse_dict_from_json(
     """
     cleaned_text = text.strip()
 
+    # Some chat models wrap an otherwise valid JSON object in a markdown code fence.
+    if cleaned_text.startswith("```"):
+        lines = cleaned_text.splitlines()
+        if len(lines) >= 3 and lines[-1].strip() == "```":
+            cleaned_text = "\n".join(lines[1:-1]).strip()
+
     try:
         parsed_json = json.loads(cleaned_text)
     except json.JSONDecodeError as e:

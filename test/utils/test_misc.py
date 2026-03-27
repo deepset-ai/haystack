@@ -60,6 +60,10 @@ class TestJsonParsing:
         text = '{"key": "value"}'
         assert _parse_dict_from_json(text) == {"key": "value"}
 
+    def test_parse_dict_from_json_markdown_fenced(self):
+        text = '```json\n{"key": "value"}\n```'
+        assert _parse_dict_from_json(text) == {"key": "value"}
+
     def test_parse_dict_from_json_invalid(self):
         text = "invalid json"
         with pytest.raises(json.JSONDecodeError):
