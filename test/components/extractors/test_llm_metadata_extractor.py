@@ -12,7 +12,6 @@ from haystack.components.extractors import LLMMetadataExtractor
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestLLMMetadataExtractor:
@@ -264,7 +263,7 @@ class TestLLMMetadataExtractor:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_live_run(self):
+    def test_live_run(self, in_memory_doc_store):
         docs = [
             Document(content="deepset was founded in 2018 in Berlin, and is known for its Haystack framework"),
             Document(
@@ -310,7 +309,6 @@ text: {{ document.content }}
 output:
 """  # noqa: E501
 
-        doc_store = InMemoryDocumentStore()
         extractor = LLMMetadataExtractor(
             prompt=ner_prompt,
             expected_keys=["entities"],
@@ -345,14 +343,14 @@ output:
                 },
             ),
         )
-        writer = DocumentWriter(document_store=doc_store)
+        writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
         pipeline.add_component("doc_writer", writer)
         pipeline.connect("extractor.documents", "doc_writer.documents")
         pipeline.run(data={"documents": docs})
 
-        doc_store_docs = doc_store.filter_documents()
+        doc_store_docs = in_memory_doc_store.filter_documents()
         assert len(doc_store_docs) == 2
         assert "entities" in doc_store_docs[0].meta
         assert "entities" in doc_store_docs[1].meta

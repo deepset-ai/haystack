@@ -9,7 +9,6 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import ComponentDevice, Secret
 
 
@@ -154,10 +153,9 @@ class TestTransformersZeroShotDocumentClassifier:
         assert "classification" not in positive_document.to_dict()
         assert "classification" not in negative_document.to_dict()
 
-    def test_serialization_and_deserialization_pipeline(self):
+    def test_serialization_and_deserialization_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
-        document_store = InMemoryDocumentStore()
-        retriever = InMemoryBM25Retriever(document_store=document_store)
+        retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         document_classifier = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )

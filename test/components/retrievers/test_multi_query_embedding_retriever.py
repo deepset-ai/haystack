@@ -73,16 +73,16 @@ class TestMultiQueryEmbeddingRetriever:
         doc_writer.run(documents=embedded_docs)
         return document_store
 
-    def test_init_with_default_parameters(self):
-        embedding_retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
+    def test_init_with_default_parameters(self, in_memory_doc_store):
+        embedding_retriever = InMemoryEmbeddingRetriever(document_store=in_memory_doc_store)
         query_embedder = MockQueryEmbedder()
         retriever = MultiQueryEmbeddingRetriever(retriever=embedding_retriever, query_embedder=query_embedder)
         assert retriever.retriever == embedding_retriever
         assert retriever.query_embedder == query_embedder
         assert retriever.max_workers == 3
 
-    def test_init_with_custom_parameters(self):
-        embedding_retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
+    def test_init_with_custom_parameters(self, in_memory_doc_store):
+        embedding_retriever = InMemoryEmbeddingRetriever(document_store=in_memory_doc_store)
         query_embedder = MockQueryEmbedder()
         retriever = MultiQueryEmbeddingRetriever(
             retriever=embedding_retriever, query_embedder=query_embedder, max_workers=2
@@ -91,27 +91,25 @@ class TestMultiQueryEmbeddingRetriever:
         assert retriever.query_embedder == query_embedder
         assert retriever.max_workers == 2
 
-    def test_run_with_empty_queries(self):
+    def test_run_with_empty_queries(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockQueryEmbedder()
         )
         result = multi_retriever.run(queries=[])
         assert "documents" in result
         assert result["documents"] == []
 
-    def test_run_with_empty_results(self):
+    def test_run_with_empty_results(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockQueryEmbedder()
         )
         result = multi_retriever.run(queries=["query"])
         assert "documents" in result
         assert result["documents"] == []
 
-    def test_to_dict(self):
+    def test_to_dict(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
+            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store),
             query_embedder=MockQueryEmbedder(),
             max_workers=2,
         )
