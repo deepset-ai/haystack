@@ -329,6 +329,7 @@ class HuggingFaceAPIChatGenerator:
 
     result = generator.run(messages)
     print(result)
+    ```
 
     #### With self-hosted text generation inference
 

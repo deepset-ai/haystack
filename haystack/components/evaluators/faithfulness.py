@@ -80,7 +80,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
     # 0.5
     print(result["results"])
     # [{'statements': ['Python is a high-level general-purpose programming language.',
-    'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+    # 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
     ```
     """
 
