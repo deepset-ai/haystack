@@ -151,7 +151,7 @@ class HuggingFaceLocalChatGenerator:
             - `text-generation`: Supported by decoder models, like GPT.
             - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
               Previously supported by encoder–decoder models such as T5.
-            - `image-text-to-text`: Supported by vision-language models, like Qwen2-VL.
+            - `image-text-to-text`: Supported by vision-language models.
             If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
             If not specified, the component calls the Hugging Face API to infer the task from the model name.
         :param device: The device for loading the model. If `None`, automatically selects the default device.

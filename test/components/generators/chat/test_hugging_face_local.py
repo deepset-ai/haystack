@@ -3,14 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import base64
 from unittest.mock import Mock, patch
 
 import pytest
 from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, TextContent, ToolCall
+from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
@@ -165,10 +164,7 @@ class TestHuggingFaceLocalChatGenerator:
         with pytest.raises(ValueError, match="is not supported."):
             HuggingFaceLocalChatGenerator(task="text-classification")
 
-    @patch("haystack.components.generators.chat.hugging_face_local.transformers")
-    def test_init_text2text_generation_raises_error(self, version_mock):
-        version_mock.__version__ = "5.0.0"
-
+    def test_init_text2text_generation_raises_error(self):
         with pytest.raises(
             ValueError, match="Task 'text2text-generation' is not supported with transformers v5 or higher."
         ):
@@ -838,6 +834,13 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert len(total_streamed_content.strip()) > 0
         assert "Paris" in total_streamed_content
 
+    def test_init_image_text_to_text(self, model_info_mock):
+        llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen2-VL-2B-Instruct")
+
+        assert llm
+        assert isinstance(llm, HuggingFaceLocalChatGenerator)
+        assert "model" in llm.huggingface_pipeline_kwargs
+
     def test_init_image_text_to_text_task(self, model_info_mock):
         generator = HuggingFaceLocalChatGenerator(
             model="Qwen/Qwen2-VL-2B-Instruct",
@@ -852,42 +855,3 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             "token": None,
             "device": "cpu",
         }
-
-    @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
-    def test_run_image_text_to_text(self, pipeline_init_mock, model_info_mock, chat_messages):
-        mock_pipeline_obj = Mock()
-        mock_pipeline_obj.return_value = [{"generated_text": "I see a cat in the image"}]
-        pipeline_init_mock.return_value = mock_pipeline_obj
-
-        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
-        mock_tokenizer.encode.return_value = [1, 2, 3]
-        mock_tokenizer.apply_chat_template.return_value = "formatted multimodal prompt"
-        mock_tokenizer.pad_token_id = 100
-        mock_pipeline_obj.tokenizer = mock_tokenizer
-
-        # Multimodal Messages
-        message = ChatMessage(
-            _role=ChatRole.USER,
-            _content=[
-                TextContent(text="What is in this image?"),
-                ImageContent(base64_image=base64.b64encode(b"fake_image_bytes").decode("utf-8"), mime_type="image/png"),
-            ],
-        )
-
-        messages = [ChatMessage.from_system("You are a helpful assistant"), message]
-
-        # Generator Pipeline
-        generator = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen2-VL-2B-Instruct", task="image-text-to-text", device=ComponentDevice.from_str("cpu")
-        )
-        generator.pipeline = mock_pipeline_obj
-
-        results = generator.run(messages=messages)
-
-        assert "replies" in results
-        assert isinstance(results["replies"][0], ChatMessage)
-        assert results["replies"][0].text == "I see a cat in the image"
-
-        assert "replies" in results
-        assert isinstance(results["replies"][0], ChatMessage)
-        assert results["replies"][0].text == "I see a cat in the image"

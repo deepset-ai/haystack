@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added partial support for the ``image-text-to-text`` task in ``HuggingFaceLocalChatGenerator``.
+
+    Passing images to the component is not yet supported, and full multimodal inference is out of scope for this change.
+    Complete multimodal support is tracked separately (https://github.com/deepset-ai/haystack/issues/9672) and will be addressed in future releases.
