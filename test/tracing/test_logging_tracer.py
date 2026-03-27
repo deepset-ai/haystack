@@ -4,6 +4,8 @@
 
 import logging
 
+import pytest
+
 from haystack import Pipeline, component, tracing
 from haystack.tracing.logging_tracer import LoggingTracer
 
@@ -11,14 +13,14 @@ from haystack.tracing.logging_tracer import LoggingTracer
 @component
 class Hello:
     @component.output_types(output=str)
-    def run(self, word: str | None):
+    def run(self, word: str | None) -> dict[str, str]:
         return {"output": f"Hello, {word}!"}
 
 
 @component
 class FailingComponent:
     @component.output_types(output=str)
-    def run(self, word: str | None):
+    def run(self, word: str | None) -> dict[str, str]:
         raise Exception("Failing component")
 
 
@@ -30,7 +32,7 @@ class TestLoggingTracer:
         tracer = LoggingTracer(tags_color_strings={"tag_name": "color_string"})
         assert tracer.tags_color_strings == {"tag_name": "color_string"}
 
-    def test_logging_tracer(self, caplog) -> None:
+    def test_logging_tracer(self, caplog: pytest.LogCaptureFixture) -> None:
         tracer = LoggingTracer()
 
         caplog.set_level(logging.DEBUG)
@@ -41,12 +43,12 @@ class TestLoggingTracer:
         assert "key=value" in caplog.text
         assert len(caplog.records) == 2
 
-        # structured logging
-        assert caplog.records[0].operation_name == "test"
-        assert caplog.records[1].tag_name == "key"
-        assert caplog.records[1].tag_value == "value"
+        # structured logging - LoggingTracer dynamically adds these attributes to LogRecord
+        assert caplog.records[0].operation_name == "test"  # type: ignore[attr-defined]
+        assert caplog.records[1].tag_name == "key"  # type: ignore[attr-defined]
+        assert caplog.records[1].tag_value == "value"  # type: ignore[attr-defined]
 
-    def test_tracing_complex_values(self, caplog) -> None:
+    def test_tracing_complex_values(self, caplog: pytest.LogCaptureFixture) -> None:
         tracer = LoggingTracer()
 
         caplog.set_level(logging.DEBUG)
@@ -58,12 +60,12 @@ class TestLoggingTracer:
         assert 'key={"a": 1, "b": [2, 3, 4]}' in caplog.text
         assert len(caplog.records) == 2
 
-        # structured logging
-        assert caplog.records[0].operation_name == "test"
-        assert caplog.records[1].tag_name == "key"
-        assert caplog.records[1].tag_value == '{"a": 1, "b": [2, 3, 4]}'
+        # structured logging - LoggingTracer dynamically adds these attributes to LogRecord
+        assert caplog.records[0].operation_name == "test"  # type: ignore[attr-defined]
+        assert caplog.records[1].tag_name == "key"  # type: ignore[attr-defined]
+        assert caplog.records[1].tag_value == '{"a": 1, "b": [2, 3, 4]}'  # type: ignore[attr-defined]
 
-    def test_apply_color_strings(self, caplog) -> None:
+    def test_apply_color_strings(self, caplog: pytest.LogCaptureFixture) -> None:
         tracer = LoggingTracer(tags_color_strings={"key": "color_string"})
 
         caplog.set_level(logging.DEBUG)
@@ -73,7 +75,7 @@ class TestLoggingTracer:
 
         assert "color_string" in caplog.text
 
-    def test_logging_pipeline(self, caplog) -> None:
+    def test_logging_pipeline(self, caplog: pytest.LogCaptureFixture) -> None:
         pipeline = Pipeline()
         pipeline.add_component("hello", Hello())
         pipeline.add_component("hello2", Hello())
@@ -95,11 +97,11 @@ class TestLoggingTracer:
 
         tags_records = [record for record in records if hasattr(record, "tag_name")]
         assert any(record.tag_name == "haystack.component.name" for record in tags_records)
-        assert any(record.tag_value == "hello" for record in tags_records)
+        assert any(record.tag_value == "hello" for record in tags_records)  # type: ignore[attr-defined]
 
         tracing.disable_tracing()
 
-    def test_logging_pipeline_with_content_tracing(self, caplog) -> None:
+    def test_logging_pipeline_with_content_tracing(self, caplog: pytest.LogCaptureFixture) -> None:
         pipeline = Pipeline()
         pipeline.add_component("hello", Hello())
 
@@ -114,19 +116,23 @@ class TestLoggingTracer:
         tags_records = [record for record in records if hasattr(record, "tag_name")]
 
         input_tag_value = [
-            record.tag_value for record in tags_records if record.tag_name == "haystack.component.input"
+            record.tag_value  # type: ignore[attr-defined]
+            for record in tags_records
+            if record.tag_name == "haystack.component.input"
         ][0]
         assert input_tag_value == '{"word": "world"}'
 
         output_tag_value = [
-            record.tag_value for record in tags_records if record.tag_name == "haystack.component.output"
+            record.tag_value  # type: ignore[attr-defined]
+            for record in tags_records
+            if record.tag_name == "haystack.component.output"
         ][0]
         assert output_tag_value == '{"output": "Hello, world!"}'
 
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
-    def test_logging_pipeline_on_failure(self, caplog) -> None:
+    def test_logging_pipeline_on_failure(self, caplog: pytest.LogCaptureFixture) -> None:
         """
         Test that the LoggingTracer also logs events when a component fails.
         """
@@ -152,6 +158,6 @@ class TestLoggingTracer:
 
         tags_records = [record for record in records if hasattr(record, "tag_name")]
         assert any(record.tag_name == "haystack.component.name" for record in tags_records)
-        assert any(record.tag_value == "failing_component" for record in tags_records)
+        assert any(record.tag_value == "failing_component" for record in tags_records)  # type: ignore[attr-defined]
 
         tracing.disable_tracing()
