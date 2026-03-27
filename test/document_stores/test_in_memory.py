@@ -33,14 +33,14 @@ from haystack.testing.document_store_async import (
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
     CountDocumentsAsyncTest,
+    WriteDocumentsAsyncTest,
+    DeleteDocumentsAsyncTest,
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
-    DeleteDocumentsAsyncTest,
     FilterableDocsFixtureMixin,
     GetMetadataFieldMinMaxTest,
     GetMetadataFieldUniqueValuesTest,
     GetMetadataFieldsInfoTest,
-    WriteDocumentsAsyncTest,
 ):
     """
     Test InMemoryDocumentStore's specific features

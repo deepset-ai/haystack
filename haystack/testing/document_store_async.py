@@ -4,14 +4,12 @@
 
 from typing import Any, Protocol
 
+import pytest
+
 from haystack.dataclasses import Document
 from haystack.document_stores.errors import DuplicateDocumentError
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
-from haystack.lazy_imports import LazyImport
 from haystack.testing.document_store import AssertDocumentsEqualMixin
-
-with LazyImport("Run 'pip install pytest'") as pytest_import:
-    import pytest
 
 
 class AsyncDocumentStore(DocumentStore, Protocol):
