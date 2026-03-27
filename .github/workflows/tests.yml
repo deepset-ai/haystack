@@ -133,7 +133,6 @@ jobs:
 
       - uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         id: cache
-        if: matrix.os != 'ubuntu-latest'
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
