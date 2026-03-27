@@ -863,6 +863,12 @@ class InMemoryDocumentStore:
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
         )
 
+    async def delete_all_documents_async(self) -> None:
+        """
+        Deletes all documents in the document store.
+        """
+        await asyncio.get_running_loop().run_in_executor(self.executor, self.delete_all_documents)
+
     async def bm25_retrieval_async(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
