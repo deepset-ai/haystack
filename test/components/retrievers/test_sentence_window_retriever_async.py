@@ -71,7 +71,8 @@ class TestSentenceWindowRetrieverAsync:
 
     @pytest.mark.asyncio
     async def test_constructor_parameter_does_not_change(self):
-        retriever = SentenceWindowRetriever(InMemoryDocumentStore(), window_size=5)
+        doc_store = InMemoryDocumentStore()
+        retriever = SentenceWindowRetriever(doc_store, window_size=5)
         assert retriever.window_size == 5
 
         doc = {
@@ -86,6 +87,7 @@ class TestSentenceWindowRetrieverAsync:
 
         await retriever.run_async(retrieved_documents=[Document.from_dict(doc)], window_size=1)
         assert retriever.window_size == 5
+        doc_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_context_documents_returned_are_ordered_by_split_idx_start(self):
@@ -118,6 +120,7 @@ class TestSentenceWindowRetrieverAsync:
         # assert that the context documents are in the correct order
         assert len(result["context_documents"]) == 7
         assert [doc.meta["split_idx_start"] for doc in result["context_documents"]] == [11, 22, 33, 44, 55, 66, 77]
+        doc_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_run_async_custom_fields(self):
@@ -152,6 +155,7 @@ class TestSentenceWindowRetrieverAsync:
         # run the retriever with a document whose content = "Sentence 4."
         result = await retriever.run_async(retrieved_documents=[doc for doc in docs if doc.content == "Sentence 4."])
         assert len(result["context_documents"]) == 7
+        doc_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_run_async_with_multiple_source_ids(self):
@@ -180,6 +184,7 @@ class TestSentenceWindowRetrieverAsync:
         assert len(result["context_windows"]) == 1
         assert len(result["context_documents"]) == 3
         assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
+        doc_store.shutdown()
 
     @pytest.mark.asyncio
     @pytest.mark.integration

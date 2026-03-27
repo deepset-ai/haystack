@@ -13,12 +13,6 @@ from haystack.testing.factory import document_store_class
 
 @pytest.fixture
 def document_store():
-    """
-    Create a fresh InMemoryDocumentStore for each test with proper cleanup.
-
-    Using a fixture ensures the ThreadPoolExecutor is shut down immediately after test completion rather than
-    during (unpredictable) garbage collection, which can make the CI hang.
-    """
     store = InMemoryDocumentStore()
     yield store
     store.shutdown()
@@ -128,19 +122,22 @@ class TestDocumentWriter:
             await writer.run_async(documents=documents)
 
     @pytest.mark.asyncio
-    async def test_run_async(self, document_store):
-        writer = DocumentWriter(document_store)
+    async def test_run_async(self):
+        doc_store = InMemoryDocumentStore()
+        writer = DocumentWriter(doc_store)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
         ]
 
         result = await writer.run_async(documents=documents)
+        doc_store.shutdown()
         assert result["documents_written"] == 2
 
     @pytest.mark.asyncio
-    async def test_run_async_skip_policy(self, document_store):
-        writer = DocumentWriter(document_store, policy=DuplicatePolicy.SKIP)
+    async def test_run_async_skip_policy(self):
+        doc_store = InMemoryDocumentStore()
+        writer = DocumentWriter(doc_store, policy=DuplicatePolicy.SKIP)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
@@ -150,4 +147,5 @@ class TestDocumentWriter:
         assert result["documents_written"] == 2
 
         result = await writer.run_async(documents=documents)
+        doc_store.shutdown()
         assert result["documents_written"] == 0

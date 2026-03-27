@@ -478,6 +478,7 @@ class TestMemoryDocumentStore(
         assert await document_store.write_documents_async(docs) == 1
         with pytest.raises(DuplicateDocumentError):
             await document_store.write_documents_async(docs)
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_count_documents(self, document_store: InMemoryDocumentStore):
@@ -485,6 +486,7 @@ class TestMemoryDocumentStore(
             [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
         )
         assert await document_store.count_documents_async() == 3
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_filter_documents(self, document_store: InMemoryDocumentStore):
@@ -496,6 +498,7 @@ class TestMemoryDocumentStore(
         DocumentStoreBaseTests().assert_documents_are_equal(
             result, [d for d in filterable_docs if d.meta.get("number") == 100]
         )
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_delete_documents(self, document_store: InMemoryDocumentStore):
@@ -505,6 +508,7 @@ class TestMemoryDocumentStore(
 
         await document_store.delete_documents_async([doc.id])
         assert await document_store.count_documents_async() == 0
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore):
@@ -514,6 +518,7 @@ class TestMemoryDocumentStore(
         results = await document_store.bm25_retrieval_async(query="What languages?", top_k=1)
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_embedding_retrieval_async(self):
@@ -529,6 +534,7 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+        docstore.shutdown()
 
     @pytest.mark.asyncio
     async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore):
@@ -550,6 +556,7 @@ class TestMemoryDocumentStore(
         for query, result in zip(queries, results, strict=True):
             assert len(result) == 1
             assert result[0].content == f"{query} is a popular programming language"
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_concurrent_embedding_retrievals(self):
@@ -578,6 +585,7 @@ class TestMemoryDocumentStore(
         for result, expected in zip(results, expected_contents, strict=True):
             assert len(result) == 1
             assert result[0].content == expected
+        docstore.shutdown()
 
     @pytest.mark.asyncio
     async def test_mixed_concurrent_operations(self, document_store: InMemoryDocumentStore):
@@ -603,6 +611,7 @@ class TestMemoryDocumentStore(
         assert results[1] == 1  # Write operation
         assert len(results[2]) == 1  # Fourth retrieval
         assert len(results[3]) == 4  # Filter operation
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_concurrent_operations_with_errors(self, document_store: InMemoryDocumentStore):
@@ -620,6 +629,7 @@ class TestMemoryDocumentStore(
         # Gather results and expect some to raise exceptions
         with pytest.raises(ValueError):
             await asyncio.gather(*tasks)
+        document_store.shutdown()
 
     @pytest.mark.asyncio
     async def test_concurrent_operations_with_large_dataset(self, document_store: InMemoryDocumentStore):
@@ -637,6 +647,7 @@ class TestMemoryDocumentStore(
         for i, result in enumerate(results):
             assert len(result) == 1
             assert result[0].content == f"Document {i * 10} content"
+        document_store.shutdown()
 
     def test_executor_shutdown(self):
         doc_store = InMemoryDocumentStore()

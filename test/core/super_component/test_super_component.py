@@ -48,7 +48,8 @@ def document_store(documents):
     """Create and populate a test document store."""
     store = InMemoryDocumentStore()
     store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
-    return store
+    yield store
+    store.shutdown()
 
 
 @pytest.fixture
@@ -240,7 +241,7 @@ class TestSuperComponent:
         assert isinstance(result["final_answers"][0], GeneratedAnswer)
 
     @pytest.mark.asyncio
-    async def test_super_component_run_async(self, async_rag_pipeline):
+    async def test_super_component_run_async(self, async_rag_pipeline, document_store):
         input_mapping = {"search_query": ["retriever.query", "prompt_builder.query", "answer_builder.query"]}
         output_mapping = {"answer_builder.answers": "final_answers"}
         wrapper = SuperComponent(
@@ -248,6 +249,7 @@ class TestSuperComponent:
         )
         wrapper.warm_up()
         result = await wrapper.run_async(search_query="What is the capital of France?")
+        document_store.shutdown()
         assert "final_answers" in result
         assert isinstance(result["final_answers"][0], GeneratedAnswer)
 
