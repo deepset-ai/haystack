@@ -261,9 +261,8 @@ class TestPipelineTool:
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    def test_live_pipeline_tool(self):
+    def test_live_pipeline_tool(self, in_memory_doc_store):
         # Initialize a document store and add some documents
-        document_store = InMemoryDocumentStore()
         document_embedder = OpenAIDocumentEmbedder()
         documents = [
             Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
@@ -273,12 +272,12 @@ class TestPipelineTool:
             ),
         ]
         docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
-        document_store.write_documents(docs_with_embeddings)
+        in_memory_doc_store.write_documents(docs_with_embeddings)
 
         # Build a simple retrieval pipeline
         retrieval_pipeline = Pipeline()
         retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
-        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
 
         retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
@@ -307,9 +306,8 @@ class TestPipelineTool:
     @pytest.mark.asyncio
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    async def test_live_async_pipeline_tool(self):
+    async def test_live_async_pipeline_tool(self, in_memory_doc_store):
         # Initialize a document store and add some documents
-        document_store = InMemoryDocumentStore()
         document_embedder = OpenAIDocumentEmbedder()
         documents = [
             Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
@@ -319,12 +317,12 @@ class TestPipelineTool:
             ),
         ]
         docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
-        document_store.write_documents(docs_with_embeddings)
+        in_memory_doc_store.write_documents(docs_with_embeddings)
 
         # Build a simple retrieval pipeline
         retrieval_pipeline = AsyncPipeline()
         retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
-        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
 
         retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 

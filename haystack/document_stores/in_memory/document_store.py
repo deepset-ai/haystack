@@ -908,6 +908,12 @@ class InMemoryDocumentStore:
             lambda: self.count_unique_metadata_by_filter(filters=filters, metadata_fields=metadata_fields),
         )
 
+    async def delete_all_documents_async(self) -> None:
+        """
+        Deletes all documents in the document store.
+        """
+        await asyncio.get_running_loop().run_in_executor(self.executor, self.delete_all_documents)
+
     async def bm25_retrieval_async(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
