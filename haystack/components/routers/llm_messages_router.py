@@ -39,7 +39,7 @@ class LLMMessagesRouter:
     print(router.run([ChatMessage.from_user("How to rob a bank?")]))
 
     # {
-    #     'chat_generator_text': 'unsafe\nS2',
+    #     'chat_generator_text': 'unsafe\\nS2',
     #     'unsafe': [
     #         ChatMessage(
     #             _role=<ChatRole.USER: 'user'>,

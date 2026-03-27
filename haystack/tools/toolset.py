@@ -22,7 +22,7 @@ class Toolset:
        to manage and use them as a unit in Haystack pipelines.
 
        Example:
-       ```python
+    ```python
     from haystack.tools import Tool, Toolset
     from haystack.components.tools import ToolInvoker
 
@@ -67,14 +67,14 @@ class Toolset:
 
     # Use the toolset with a ToolInvoker or ChatGenerator component
     invoker = ToolInvoker(tools=math_toolset)
-       ```
+    ```
 
     2. Base class for dynamic tool loading:
        By subclassing Toolset, you can create implementations that dynamically load tools
        from external sources like OpenAPI URLs, MCP servers, or other resources.
 
        Example:
-       ```python
+    ```python
     from haystack.core.serialization import generate_qualified_class_name
     from haystack.tools import Tool, Toolset
     from haystack.components.tools import ToolInvoker
@@ -130,7 +130,7 @@ class Toolset:
     # Create the dynamic toolset and use it with ToolInvoker
     calculator_toolset = CalculatorToolset()
     invoker = ToolInvoker(tools=calculator_toolset)
-       ```
+    ```
 
     Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
     making it behave like a list of Tools. This makes it compatible with components that expect
