@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 from typing import Any, Protocol
 
 import pytest
@@ -30,6 +31,12 @@ class AsyncDocumentStore(DocumentStore, Protocol):
     ) -> int:
         """
         Writes Documents into the DocumentStore.
+        """
+        ...
+
+    async def delete_documents_async(self, document_ids: list[str]) -> None:
+        """
+        Deletes all documents with matching document_ids from the DocumentStore.
         """
         ...
 
@@ -84,11 +91,6 @@ class DeleteAllAsyncTest:
         """
         assert await document_store.count_documents_async() == 0
         await document_store.delete_all_documents_async()  # type:ignore[attr-defined]
-    async def delete_documents_async(self, document_ids: list[str]) -> None:
-        """
-        Deletes all documents with matching document_ids from the DocumentStore.
-        """
-        ...
 
 
 class CountDocumentsAsyncTest:
@@ -255,6 +257,7 @@ class DeleteByFilterAsyncTest:
         )
         assert deleted_count == 2
         assert await document_store.count_documents_async() == 0
+
     async def test_count_not_empty_async(document_store: AsyncDocumentStore):
         """Test count is greater than zero if the document store contains documents."""
         await document_store.write_documents_async(
