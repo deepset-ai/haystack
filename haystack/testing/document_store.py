@@ -948,9 +948,7 @@ class UpdateByFilterAsyncTest:
         sig = inspect.signature(document_store.update_by_filter_async)  # type:ignore[attr-defined]
         params = {"refresh": True} if "refresh" in sig.parameters else {}
         updated_count = await document_store.update_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.chapter", "operator": "==", "value": "intro"},
-            meta={"updated": True},
-            **params,
+            filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}, **params
         )
         assert updated_count == expected_count
 
@@ -1232,8 +1230,7 @@ class CountUniqueMetadataByFilterAsyncTest:
         assert document_store.count_documents() == 4
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.category", "operator": "==", "value": "A"},
-            metadata_fields=["status", "priority"],
+            filters={"field": "meta.category", "operator": "==", "value": "A"}, metadata_fields=["status", "priority"]
         )
         assert counts["status"] == 2
         assert counts["priority"] == 2
