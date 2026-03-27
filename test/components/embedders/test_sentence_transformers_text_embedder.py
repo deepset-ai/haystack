@@ -24,6 +24,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is True
         assert embedder.normalize_embeddings is False
         assert embedder.trust_remote_code is False
+        assert embedder.revision is None
         assert embedder.local_files_only is False
         assert embedder.truncate_dim is None
         assert embedder.precision == "float32"
@@ -39,6 +40,7 @@ class TestSentenceTransformersTextEmbedder:
             progress_bar=False,
             normalize_embeddings=True,
             trust_remote_code=True,
+            revision="v1.0",
             local_files_only=True,
             truncate_dim=256,
             precision="int8",
@@ -52,6 +54,7 @@ class TestSentenceTransformersTextEmbedder:
         assert embedder.progress_bar is False
         assert embedder.normalize_embeddings is True
         assert embedder.trust_remote_code is True
+        assert embedder.revision == "v1.0"
         assert embedder.local_files_only is True
         assert embedder.truncate_dim == 256
         assert embedder.precision == "int8"
@@ -71,6 +74,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "revision": None,
                 "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": None,
@@ -114,6 +118,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": False,
                 "normalize_embeddings": True,
                 "trust_remote_code": True,
+                "revision": None,
                 "local_files_only": True,
                 "truncate_dim": 256,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
@@ -143,6 +148,7 @@ class TestSentenceTransformersTextEmbedder:
                 "progress_bar": True,
                 "normalize_embeddings": False,
                 "trust_remote_code": False,
+                "revision": "v1.0",
                 "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
@@ -161,6 +167,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.revision == "v1.0"
         assert component.local_files_only is False
         assert component.truncate_dim is None
         assert component.model_kwargs == {"torch_dtype": torch.float32}
@@ -183,6 +190,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.revision is None
         assert component.local_files_only is False
         assert component.truncate_dim is None
         assert component.precision == "float32"
@@ -215,6 +223,7 @@ class TestSentenceTransformersTextEmbedder:
         assert component.progress_bar is True
         assert component.normalize_embeddings is False
         assert component.trust_remote_code is False
+        assert component.revision is None
         assert component.local_files_only is False
         assert component.truncate_dim == 256
         assert component.precision == "int8"
@@ -237,6 +246,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=None,
@@ -258,9 +268,7 @@ class TestSentenceTransformersTextEmbedder:
     def test_run(self):
         embedder = SentenceTransformersTextEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
-        ]
+        embedder.embedding_backend.embed = lambda x, **_: [[random.random() for _ in range(16)] for _ in range(len(x))]
 
         text = "a nice text to embed"
 
@@ -278,48 +286,6 @@ class TestSentenceTransformersTextEmbedder:
 
         with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a string as input"):
             embedder.run(text=list_integers_input)
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_trunc(self, monkeypatch):
-        """
-        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector
-        space
-        """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
-        text = "a nice text to embed"
-
-        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint)
-        embedder_def.warm_up()
-        result_def = embedder_def.run(text=text)
-        embedding_def = result_def["embedding"]
-
-        embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=128)
-        embedder_trunc.warm_up()
-        result_trunc = embedder_trunc.run(text=text)
-        embedding_trunc = result_trunc["embedding"]
-
-        assert len(embedding_def) == 768
-        assert len(embedding_trunc) == 128
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_quantization(self):
-        """
-        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector
-        space
-        """
-        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
-        text = "a nice text to embed"
-
-        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
-        embedder_def.warm_up()
-        result_def = embedder_def.run(text=text)
-        embedding_def = result_def["embedding"]
-
-        assert len(embedding_def) == 768
-        assert all(isinstance(el, int) for el in embedding_def)
 
     def test_embed_encode_kwargs(self):
         embedder = SentenceTransformersTextEmbedder(model="model", encode_kwargs={"task": "retrieval.query"})
@@ -355,6 +321,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "onnx/model.onnx"},
@@ -383,6 +350,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
@@ -409,6 +377,7 @@ class TestSentenceTransformersTextEmbedder:
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=model_kwargs,
@@ -416,3 +385,37 @@ class TestSentenceTransformersTextEmbedder:
             config_kwargs=None,
             backend="torch",
         )
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_run_trunc(self, del_hf_env_vars):
+        """
+        sentence-transformers-testing/stsb-bert-tiny-safetensors maps sentences & paragraphs to a 128 dimensional dense
+        vector space
+        """
+        checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
+        text = "a nice text to embed"
+
+        embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=64)
+        result_trunc = embedder_trunc.run(text=text)
+        embedding_trunc = result_trunc["embedding"]
+
+        # without truncation, the embedding has 128 length
+        assert len(embedding_trunc) == 64
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_run_quantization(self, del_hf_env_vars):
+        """
+        sentence-transformers-testing/stsb-bert-tiny-safetensors maps sentences & paragraphs to a 128 dimensional dense
+        vector space
+        """
+        checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
+        text = "a nice text to embed"
+
+        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
+        result_def = embedder_def.run(text=text)
+        embedding_def = result_def["embedding"]
+
+        assert len(embedding_def) == 128
+        assert all(isinstance(el, int) for el in embedding_def)

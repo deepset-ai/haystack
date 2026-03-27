@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Added ``link_format`` parameter to ``PPTXToDocument`` and ``XLSXToDocument`` converters,
+    allowing extraction of hyperlink addresses from PPTX and XLSX files.
+
+    Supported formats:
+
+    - ``"markdown"``: ``[text](url)``
+    - ``"plain"``: ``text (url)``
+    - ``"none"`` (default): Only text is extracted, link addresses are ignored.
+
+    This follows the same pattern already available in ``DOCXToDocument``.

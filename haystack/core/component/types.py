@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Iterable, TypedDict, TypeVar, get_args
-
-from typing_extensions import TypeAlias  # Python 3.9 compatibility
+from types import UnionType
+from typing import Annotated, Any, TypeAlias, TypedDict, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"
@@ -44,63 +44,68 @@ class InputSocket:
         The type of the input.
     :param default_value:
         The default value of the input. If not set, the input is mandatory.
-    :param is_variadic:
-        Whether the input is variadic or not.
-    :param is_greedy
+    :param is_lazy_variadic:
+        Whether the input is a lazy variadic or not.
+    :param is_greedy:
         Whether the input is a greedy variadic or not.
     :param senders:
         The list of components that send data to this input.
+    :param wrap_input_in_list:
+        Whether to wrap the input in a list before passing it to the component.
+        Only applies to lazy variadic inputs so when is_lazy_variadic is True.
     """
 
     name: str
-    type: type
+    type: type | UnionType
     default_value: Any = _empty
-    is_variadic: bool = field(init=False)
+    is_lazy_variadic: bool = field(init=False)
     is_greedy: bool = field(init=False)
     senders: list[str] = field(default_factory=list)
+    wrap_input_in_list: bool = True
 
     @property
-    def is_mandatory(self):
+    def is_variadic(self) -> bool:
+        """Check if the input is variadic."""
+        return self.is_greedy or self.is_lazy_variadic
+
+    @property
+    def is_mandatory(self) -> bool:
         """Check if the input is mandatory."""
         return self.default_value == _empty
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         try:
             # __metadata__ is a tuple
-            self.is_variadic = hasattr(self.type, "__metadata__") and self.type.__metadata__[0] in [
-                HAYSTACK_VARIADIC_ANNOTATION,
-                HAYSTACK_GREEDY_VARIADIC_ANNOTATION,
-            ]
+            self.is_lazy_variadic = (
+                hasattr(self.type, "__metadata__") and self.type.__metadata__[0] == HAYSTACK_VARIADIC_ANNOTATION
+            )
             self.is_greedy = (
                 hasattr(self.type, "__metadata__") and self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
             )
         except AttributeError:
-            self.is_variadic = False
+            self.is_lazy_variadic = False
             self.is_greedy = False
-        if self.is_variadic:
-            # We need to "unpack" the type inside the Variadic annotation,
-            # otherwise the pipeline connection api will try to match
-            # `Annotated[type, HAYSTACK_VARIADIC_ANNOTATION]`.
-            #
-            # Note1: Variadic is expressed as an annotation of one single type,
-            # so the return value of get_args will always be a one-item tuple.
-            #
-            # Note2: a pipeline always passes a list of items when a component
-            # input is declared as Variadic, so the type itself always wraps
-            # an iterable of the declared type. For example, Variadic[int]
-            # is eventually an alias for Iterable[int]. Since we're interested
-            # in getting the inner type `int`, we call `get_args` twice: the
-            # first time to get `list[int]` out of `Variadic`, the second time
-            # to get `int` out of `list[int]`.
+
+        # We need to "unpack" the type inside the Variadic annotation, otherwise the pipeline connection api will try
+        # to match `Annotated[type, HAYSTACK_VARIADIC_ANNOTATION]`.
+        #
+        # Note1: Variadic is expressed as an annotation of one single type, so the return value of get_args will
+        # always be a one-item tuple.
+        #
+        # Note2: a pipeline always passes a list of items when a component input is declared as Variadic, so the
+        # type itself always wraps an iterable of the declared type. For example, Variadic[int] is eventually an
+        # alias for Iterable[int]. Since we're interested in getting the inner type `int`, we call `get_args`
+        # twice: the first time to get `list[int]` out of `Variadic`, the second time to get `int` out of `list[int]`.
+        if self.is_lazy_variadic or self.is_greedy:
             self.type = get_args(get_args(self.type)[0])[0]
 
 
 class InputSocketTypeDescriptor(TypedDict):
     """
-    Describes the type of an `InputSocket`.
+    Describes the type of `InputSocket`.
     """
 
-    type: type
+    type: type | UnionType
     is_mandatory: bool
 
 

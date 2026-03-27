@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added a ``snapshot_callback`` parameter to ``Pipeline.run()`` that allows users to customize how pipeline snapshots are handled.
+    When a callback is provided, it is invoked instead of the default file-saving behavior whenever a snapshot is created (e.g., during breakpoints or error handling).
+    This enables use cases like saving snapshots to a database, sending them to a remote service, or implementing custom logging.
+    If no callback is provided, the default behavior of saving to a JSON file remains unchanged.

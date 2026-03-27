@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Iterator, Union
+from typing import Any, Union
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
@@ -81,7 +82,7 @@ class Toolset:
        class CalculatorToolset(Toolset):
            '''A toolset for calculator operations.'''
 
-           def __init__(self):
+           def __init__(self) -> None:
                tools = self._create_tools()
                super().__init__(tools)
 
@@ -145,7 +146,7 @@ class Toolset:
     # Use field() with default_factory to initialize the list
     tools: list[Tool] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Validate and set up the toolset after initialization.
 
@@ -168,7 +169,7 @@ class Toolset:
         """
         return iter(self.tools)
 
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, item: str | Tool) -> bool:
         """
         Check if a tool is in this Toolset.
 
@@ -184,6 +185,35 @@ class Toolset:
         if isinstance(item, Tool):
             return item in self.tools
         return False
+
+    def warm_up(self) -> None:
+        """
+        Prepare the Toolset for use.
+
+        By default, this method iterates through and warms up all tools in the Toolset.
+        Subclasses can override this method to customize initialization behavior, such as:
+
+        - Setting up shared resources (database connections, HTTP sessions) instead of
+          warming individual tools
+        - Implementing custom initialization logic for dynamically loaded tools
+        - Controlling when and how tools are initialized
+
+        For example, a Toolset that manages tools from an external service (like MCPToolset)
+        might override this to initialize a shared connection rather than warming up
+        individual tools:
+
+        ```python
+        class MCPToolset(Toolset):
+            def warm_up(self) -> None:
+                # Only warm up the shared MCP connection, not individual tools
+                self.mcp_connection = establish_connection(self.server_url)
+        ```
+
+        This method should be idempotent, as it may be called multiple times.
+        """
+        for tool in self.tools:
+            if hasattr(tool, "warm_up"):
+                tool.warm_up()
 
     def add(self, tool: Union[Tool, "Toolset"]) -> None:
         """
@@ -260,18 +290,12 @@ class Toolset:
         :raises ValueError: If the combination would result in duplicate tool names
         """
         if isinstance(other, Tool):
-            combined_tools = self.tools + [other]
-        elif isinstance(other, Toolset):
-            combined_tools = self.tools + list(other)
-        elif isinstance(other, list) and all(isinstance(item, Tool) for item in other):
-            combined_tools = self.tools + other
-        else:
-            raise TypeError(f"Cannot add {type(other).__name__} to Toolset")
-
-        # Check for duplicates
-        _check_duplicate_tool_names(combined_tools)
-
-        return Toolset(tools=combined_tools)
+            return Toolset(tools=self.tools + [other])
+        if isinstance(other, Toolset):
+            return _ToolsetWrapper([self, other])
+        if isinstance(other, list) and all(isinstance(item, Tool) for item in other):
+            return Toolset(tools=self.tools + other)
+        raise TypeError(f"Cannot add {type(other).__name__} to Toolset")
 
     def __len__(self) -> int:
         """
@@ -281,7 +305,7 @@ class Toolset:
         """
         return len(self.tools)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tool:
         """
         Get a Tool by index.
 
@@ -289,3 +313,52 @@ class Toolset:
         :returns: The Tool at the specified index
         """
         return self.tools[index]
+
+
+class _ToolsetWrapper(Toolset):
+    """
+    A wrapper that holds multiple toolsets and provides a unified interface.
+
+    This is used internally when combining different types of toolsets to preserve
+    their individual configurations while still being usable with ToolInvoker.
+    """
+
+    def __init__(self, toolsets: list[Toolset]) -> None:
+        super().__init__([tool for toolset in toolsets for tool in toolset])
+        self.toolsets = toolsets
+
+    def __iter__(self) -> Iterator[Tool]:
+        """Iterate over all tools from all toolsets."""
+        for toolset in self.toolsets:
+            yield from toolset
+
+    def __contains__(self, item: Any) -> bool:
+        """Check if a tool is in any of the toolsets."""
+        return any(item in toolset for toolset in self.toolsets)
+
+    def warm_up(self) -> None:
+        """Warm up all toolsets."""
+        for toolset in self.toolsets:
+            toolset.warm_up()
+
+    def __len__(self) -> int:
+        """Return total number of tools across all toolsets."""
+        return sum(len(toolset) for toolset in self.toolsets)
+
+    def __getitem__(self, index: int) -> Tool:
+        """Get a tool by index across all toolsets."""
+        # Leverage iteration instead of manual index tracking
+        for i, tool in enumerate(self):
+            if i == index:
+                return tool
+        raise IndexError("ToolsetWrapper index out of range")
+
+    def __add__(self, other: Toolset | Tool | list[Tool]) -> "_ToolsetWrapper":
+        """Add another toolset or tool to this wrapper."""
+        if isinstance(other, Toolset):
+            return _ToolsetWrapper(self.toolsets + [other])
+        if isinstance(other, Tool):
+            return _ToolsetWrapper(self.toolsets + [Toolset([other])])
+        if isinstance(other, list) and all(isinstance(item, Tool) for item in other):
+            return _ToolsetWrapper(self.toolsets + [Toolset(other)])
+        raise TypeError(f"Cannot add {type(other).__name__} to ToolsetWrapper")

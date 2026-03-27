@@ -1,0 +1,41 @@
+---
+features:
+  - |
+    Pipelines now natively support connecting multiple outputs directly to a single component input without requiring
+    an explicit Joiner component. This only works when the connected outputs and inputs are of compatible list types,
+    such as ``list[Document]``.
+
+    This simplifies pipeline definitions when multiple components produce compatible outputs.
+    For example, multiple outputs from a ``FileTypeRouter`` can now be connected directly to a single converter or writer, without defining an intermediate ``ListJoiner`` or ``DocumentJoiner``.
+
+    .. code:: python
+        from haystack import Pipeline
+        from haystack.components.converters import HTMLToDocument, TextFileToDocument
+        from haystack.components.routers import FileTypeRouter
+        from haystack.components.writers import DocumentWriter
+        from haystack.dataclasses import ByteStream
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        sources = [
+            ByteStream.from_string(text="Text file content", mime_type="text/plain", meta={"file_type": "txt"}),
+            ByteStream.from_string(
+                text="\n<html><body>Some content</body></html>\n", mime_type="text/html", meta={"file_type": "html"},
+            ),
+        ]
+
+        doc_store = InMemoryDocumentStore()
+        pipe = Pipeline()
+
+        pipe.add_component("router", FileTypeRouter(mime_types=["text/plain", "text/html"]))
+        pipe.add_component("txt_converter", TextFileToDocument())
+        pipe.add_component("html_converter", HTMLToDocument())
+        pipe.add_component("writer", DocumentWriter(doc_store))
+
+        pipe.connect("router.text/plain", "txt_converter.sources")
+        pipe.connect("router.text/html", "html_converter.sources")
+        # The DocumentWriter accepts documents from both converters without needing a DocumentJoiner
+        pipe.connect("txt_converter.documents", "writer.documents")
+        pipe.connect("html_converter.documents", "writer.documents")
+
+        result = pipe.run({"router": {"sources": sources}})
+        # result["writer"]["documents_written"] == 2

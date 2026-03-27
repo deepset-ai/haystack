@@ -5,6 +5,8 @@
 import inspect
 from typing import Any, TypeVar, Union, get_origin
 
+from haystack.utils.type_serialization import _is_union_type
+
 T = TypeVar("T")
 
 
@@ -15,7 +17,7 @@ def _is_valid_type(obj: Any) -> bool:
     Valid types include:
     - Normal classes (str, dict, CustomClass)
     - Generic types (list[str], dict[str, int])
-    - Union types (Union[str, int], Optional[str])
+    - Union types (Union[str, int], Optional[str], str | int, str | None)
 
     :param obj: The object to check
     :return: True if the object is a valid type annotation, False otherwise
@@ -27,12 +29,19 @@ def _is_valid_type(obj: Any) -> bool:
         True
         >>> _is_valid_type(Union[str, int])
         True
+        >>> _is_valid_type(str | int)
+        True
         >>> _is_valid_type(42)
         False
     """
     # Handle Union types (including Optional)
-    if hasattr(obj, "__origin__") and obj.__origin__ == Union:
+    if (origin := get_origin(obj)) and _is_union_type(origin):
         return True
+
+    # Bare Union type (without parameters) is not a valid type annotation
+    # Previously handled by inspect.isclass(obj) but in python 3.14 this returns True for typing.Union
+    if obj == Union:
+        return False
 
     # Handle normal classes and generic types
     return inspect.isclass(obj) or type(obj).__name__ in {"_GenericAlias", "GenericAlias"}
@@ -66,7 +75,7 @@ def merge_lists(current: Union[list[T], T, None], new: Union[list[T], T]) -> lis
     return current_list + new_list
 
 
-def replace_values(current: Any, new: Any) -> Any:
+def replace_values(current: Any, new: Any) -> Any:  # noqa: ARG001
     """
     Replace the `current` value with the `new` value.
 

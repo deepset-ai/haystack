@@ -4,7 +4,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from tqdm import tqdm
 
@@ -39,7 +39,9 @@ class MarkdownToDocument:
     ```
     """
 
-    def __init__(self, table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = False):
+    def __init__(
+        self, table_to_single_line: bool = False, progress_bar: bool = True, store_full_path: bool = False
+    ) -> None:
         """
         Create a MarkdownToDocument component.
 
@@ -59,10 +61,8 @@ class MarkdownToDocument:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Converts a list of Markdown files to Documents.
 
@@ -88,7 +88,7 @@ class MarkdownToDocument:
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, metadata in tqdm(
-            zip(sources, meta_list),
+            zip(sources, meta_list, strict=True),
             total=len(sources),
             desc="Converting markdown files to Documents",
             disable=not self.progress_bar,

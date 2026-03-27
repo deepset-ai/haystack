@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed Agent to correctly raise a `BreakpointException` when a `ToolBreakpoint` with a specific `tool_name` is provided in an assistant chat message containing multiple tool calls.

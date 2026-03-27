@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from tqdm import tqdm
 
@@ -14,6 +14,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class LLMEvaluator:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         instructions: str,
         inputs: list[tuple[str, type[list]]],
@@ -59,8 +60,8 @@ class LLMEvaluator:
         progress_bar: bool = True,
         *,
         raise_on_failure: bool = True,
-        chat_generator: Optional[ChatGenerator] = None,
-    ):
+        chat_generator: ChatGenerator | None = None,
+    ) -> None:
         """
         Creates an instance of LLMEvaluator.
 
@@ -108,10 +109,21 @@ class LLMEvaluator:
             generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
             self._chat_generator = OpenAIChatGenerator(generation_kwargs=generation_kwargs)
 
+        self._is_warmed_up = False
+
+    def warm_up(self) -> None:
+        """
+        Warm up the component by warming up the underlying chat generator.
+        """
+        if not self._is_warmed_up:
+            if hasattr(self._chat_generator, "warm_up"):
+                self._chat_generator.warm_up()
+            self._is_warmed_up = True
+
     @staticmethod
     def validate_init_parameters(
         inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]]
-    ):
+    ) -> None:
         """
         Validate the init parameters.
 
@@ -164,7 +176,7 @@ class LLMEvaluator:
                 raise ValueError(msg)
 
     @component.output_types(results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -181,14 +193,17 @@ class LLMEvaluator:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         self.validate_input_parameters(dict(self.inputs), inputs)
 
         # inputs is a dictionary with keys being input names and values being a list of input values
         # We need to iterate through the lists in parallel for all keys of the dictionary
-        input_names, values = inputs.keys(), list(zip(*inputs.values()))
-        list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
+        input_names, values = inputs.keys(), list(zip(*inputs.values(), strict=True))
+        list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
 
-        results: list[Optional[dict[str, Any]]] = []
+        results: list[dict[str, Any] | None] = []
         metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
@@ -198,18 +213,20 @@ class LLMEvaluator:
                 result = self._chat_generator.run(messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
-                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}")
+                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
                 logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
                 results.append(None)
                 errors += 1
                 continue
 
-            if self.is_valid_json_and_has_expected_keys(expected=self.outputs, received=result["replies"][0].text):
-                parsed_result = json.loads(result["replies"][0].text)
-                results.append(parsed_result)
-            else:
+            parsed_result = _parse_dict_from_json(
+                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
+            )
+            if parsed_result is None:
                 results.append(None)
                 errors += 1
+            else:
+                results.append(parsed_result)
 
             if result["replies"][0].meta:
                 metadata.append(result["replies"][0].meta)
@@ -343,43 +360,3 @@ class LLMEvaluator:
                 f"{[len(_input) for _input in inputs]}."
             )
             raise ValueError(msg)
-
-    def is_valid_json_and_has_expected_keys(self, expected: list[str], received: str) -> bool:
-        """
-        Output must be a valid JSON with the expected keys.
-
-        :param expected:
-            Names of expected outputs
-        :param received:
-            Names of received outputs
-
-        :raises ValueError:
-            If the output is not a valid JSON with the expected keys:
-            - with `raise_on_failure` set to True a ValueError is raised.
-            - with `raise_on_failure` set to False a warning is issued and False is returned.
-
-        :returns:
-            True if the received output is a valid JSON with the expected keys, False otherwise.
-        """
-        try:
-            parsed_output = json.loads(received)
-        except json.JSONDecodeError:
-            msg = "Response from LLM evaluator is not a valid JSON."
-            if self.raise_on_failure:
-                raise ValueError(msg)
-            logger.warning(msg)
-            return False
-
-        if not all(output in parsed_output for output in expected):
-            if self.raise_on_failure:
-                raise ValueError(
-                    f"Expected response from LLM evaluator to be JSON with keys {expected}, got {received}."
-                )
-            logger.warning(
-                "Expected response from LLM evaluator to be JSON with keys {expected}, got {received}.",
-                expected=expected,
-                received=received,
-            )
-            return False
-
-        return True

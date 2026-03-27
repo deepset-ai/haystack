@@ -5,7 +5,7 @@
 import asyncio
 import copy
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import (
@@ -13,6 +13,7 @@ from haystack.dataclasses import (
     ChatMessage,
     ComponentInfo,
     ImageContent,
+    ReasoningContent,
     StreamingChunk,
     SyncStreamingCallbackT,
     TextContent,
@@ -45,7 +46,7 @@ class HFGenerationAPIType(Enum):
     # HF [Serverless Inference API](https://huggingface.co/inference-api).
     SERVERLESS_INFERENCE_API = "serverless_inference_api"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -79,7 +80,7 @@ class HFEmbeddingAPIType(Enum):
     # HF [Serverless Inference API](https://huggingface.co/inference-api).
     SERVERLESS_INFERENCE_API = "serverless_inference_api"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -140,7 +141,7 @@ def deserialize_hf_model_kwargs(kwargs: dict[str, Any]) -> None:
             deserialize_hf_model_kwargs(v)
 
 
-def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[dict[str, Any]]) -> dict[str, Any]:
+def resolve_hf_device_map(device: ComponentDevice | None, model_kwargs: dict[str, Any] | None) -> dict[str, Any]:
     """
     Update `model_kwargs` to include the keyword argument `device_map`.
 
@@ -174,13 +175,13 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
     return model_kwargs
 
 
-def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
+def resolve_hf_pipeline_kwargs(
     huggingface_pipeline_kwargs: dict[str, Any],
     model: str,
-    task: Optional[str],
+    task: str | None,
     supported_tasks: list[str],
-    device: Optional[ComponentDevice],
-    token: Optional[Secret],
+    device: ComponentDevice | None,
+    token: Secret | None,
 ) -> dict[str, Any]:
     """
     Resolve the HuggingFace pipeline keyword arguments based on explicit user inputs.
@@ -218,7 +219,7 @@ def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     return huggingface_pipeline_kwargs
 
 
-def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Secret]) -> None:
+def check_valid_model(model_id: str, model_type: HFModelType, token: Secret | None) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
 
@@ -256,17 +257,26 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
 def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     """
     Convert a message to the format expected by Hugging Face.
+
+    Note: ReasoningContent is skipped during conversion because the HuggingFace Inference API
+    (which follows the OpenAI-compatible chat completion format) does not support reasoning
+    in input messages. Reasoning is captured from model outputs for transparency but is not
+    sent back to the API in multi-turn conversations.
     """
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
     images = message.images
 
+    # Filter out ReasoningContent from the content list for validation
+    # ReasoningContent is for human transparency only, not sent to the API
+    non_reasoning_content = [c for c in message._content if not isinstance(c, ReasoningContent)]
+
     if not text_contents and not tool_calls and not tool_call_results and not images:
         raise ValueError(
             "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
         )
-    if len(tool_call_results) > 0 and len(message._content) > 1:
+    if len(tool_call_results) > 0 and len(non_reasoning_content) > 1:
         raise ValueError(
             "For compatibility with the Hugging Face API, a `ChatMessage` with a `ToolCallResult` "
             "cannot contain any other content."
@@ -312,9 +322,13 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
 
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import StoppingCriteria, TextStreamer
-    from transformers.tokenization_utils import PreTrainedTokenizer
-    from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
+    from transformers import (
+        PreTrainedTokenizer,
+        PreTrainedTokenizerBase,
+        PreTrainedTokenizerFast,
+        StoppingCriteria,
+        TextStreamer,
+    )
 
     torch_import.check()
     transformers_import.check()
@@ -333,14 +347,15 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stop_words: list[str],
-            device: Union[str, torch.device] = "cpu",
-        ):
+            device: str | torch.device = "cpu",
+        ) -> None:
+            """Creates an instance of StopWordsCriteria."""
             super().__init__()
             # check if tokenizer is a valid tokenizer
             if not isinstance(tokenizer, (PreTrainedTokenizer, PreTrainedTokenizerFast)):
-                raise ValueError(
+                raise TypeError(
                     f"Invalid tokenizer provided for StopWordsCriteria - {tokenizer}. "
                     f"Please provide a valid tokenizer from the HuggingFace Transformers library."
                 )
@@ -352,7 +367,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
             self.stop_ids = encoded_stop_words.input_ids.to(device)
 
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:  # noqa: ARG002
             """Check if any of the stop words are generated in the current text generation step."""
             for stop_id in self.stop_ids:
                 found_stop_word = self.is_stop_word_found(input_ids, stop_id)
@@ -370,8 +385,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             generated_text_ids = generated_text_ids[-1]
             len_generated_text_ids = generated_text_ids.size(0)
             len_stop_id = stop_id.size(0)
-            result = all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
-            return result
+            return all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
 
     class HFTokenStreamingHandler(TextStreamer):
         """
@@ -385,12 +399,13 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizerBase,
             stream_handler: SyncStreamingCallbackT,
-            stop_words: Optional[list[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
-        ):
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            stop_words: list[str] | None = None,
+            component_info: ComponentInfo | None = None,
+        ) -> None:
+            """Creates an instance of HFTokenStreamingHandler."""
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info
@@ -419,12 +434,13 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizerBase,
             stream_handler: AsyncStreamingCallbackT,
-            stop_words: Optional[list[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
-        ):
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
+            stop_words: list[str] | None = None,
+            component_info: ComponentInfo | None = None,
+        ) -> None:
+            """Creates an instance of AsyncHFTokenStreamingHandler."""
+            super().__init__(tokenizer=tokenizer, skip_prompt=True)
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info

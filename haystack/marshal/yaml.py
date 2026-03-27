@@ -2,19 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union
+from typing import Any
 
 import yaml
 
 
 # Custom YAML safe loader that supports loading Python tuples
-class YamlLoader(yaml.SafeLoader):  # pylint: disable=too-many-ancestors
+class YamlLoader(yaml.SafeLoader):
     def construct_python_tuple(self, node: yaml.SequenceNode) -> tuple:
         """Construct a Python tuple from the sequence."""
         return tuple(self.construct_sequence(node))
 
 
-class YamlDumper(yaml.SafeDumper):  # pylint: disable=too-many-ancestors
+class YamlDumper(yaml.SafeDumper):
     def represent_tuple(self, data: tuple) -> yaml.SequenceNode:
         """Represent a Python tuple."""
         return self.represent_sequence("tag:yaml.org,2002:python/tuple", data)
@@ -34,7 +34,7 @@ class YamlMarshaller:
                 "Error dumping pipeline to YAML - Ensure that all pipeline components only serialize basic Python types"
             ) from e
 
-    def unmarshal(self, data_: Union[str, bytes, bytearray]) -> dict[str, Any]:
+    def unmarshal(self, data_: str | bytes | bytearray) -> dict[str, Any]:
         """Return a dictionary from the given YAML data."""
         try:
             return yaml.load(data_, Loader=YamlLoader)

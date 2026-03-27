@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    We were setting response_format to None in OpenAIChatGenerator by default which doesn't follow the API spec. We now omit the variable if response_format is not passed by the user.

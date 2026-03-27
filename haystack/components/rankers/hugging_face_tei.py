@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import copy
+from dataclasses import replace
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 from urllib.parse import urljoin
 
 from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
+from haystack.utils.misc import _deduplicate_documents
 from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
 
 
@@ -53,8 +54,8 @@ class HuggingFaceTEIRanker:
 
     ranked_docs = result["documents"]
     print(ranked_docs)
-    >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
-    >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
+    # >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
+    # >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
     ```
     """
 
@@ -64,10 +65,10 @@ class HuggingFaceTEIRanker:
         url: str,
         top_k: int = 10,
         raw_scores: bool = False,
-        timeout: Optional[int] = 30,
+        timeout: int | None = 30,
         max_retries: int = 3,
-        retry_status_codes: Optional[list[int]] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        retry_status_codes: list[int] | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
         Initializes the TEI reranker component.
@@ -103,7 +104,7 @@ class HuggingFaceTEIRanker:
             url=self.url,
             top_k=self.top_k,
             timeout=self.timeout,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             max_retries=self.max_retries,
             retry_status_codes=self.retry_status_codes,
         )
@@ -118,11 +119,10 @@ class HuggingFaceTEIRanker:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
     def _compose_response(
-        self, result: Union[dict[str, str], list[dict[str, Any]]], top_k: Optional[int], documents: list[Document]
+        self, result: dict[str, str] | list[dict[str, Any]], top_k: int | None, documents: list[Document]
     ) -> dict[str, list[Document]]:
         """
         Processes the API response into a structured format.
@@ -137,6 +137,9 @@ class HuggingFaceTEIRanker:
 
         :raises RuntimeError:
             - If the API returns an error response.
+
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         if isinstance(result, dict) and "error" in result:
             error_type = result.get("error_type", "UnknownError")
@@ -148,7 +151,7 @@ class HuggingFaceTEIRanker:
             # Expected list or dict, but encountered an unknown response format.
             error_msg = f"Expected a list of score dictionaries, but got `{type(result).__name__}`. "
             error_msg += f"Response content: {result}"
-            raise RuntimeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
+            raise TypeError(f"Unexpected response format from text-embeddings-inference rerank API: {error_msg}")
 
         # Determine number of docs to return
         final_k = min(top_k or self.top_k, len(result))
@@ -157,9 +160,7 @@ class HuggingFaceTEIRanker:
         ranked_docs = []
         for item in result[:final_k]:
             index: int = item["index"]
-            doc_copy = copy.copy(documents[index])
-            doc_copy.score = item["score"]
-            ranked_docs.append(doc_copy)
+            ranked_docs.append(replace(documents[index], score=item["score"]))
         return {"documents": ranked_docs}
 
     @component.output_types(documents=list[Document])
@@ -167,11 +168,14 @@ class HuggingFaceTEIRanker:
         self,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        truncation_direction: Optional[TruncationDirection] = None,
+        top_k: int | None = None,
+        truncation_direction: TruncationDirection | None = None,
     ) -> dict[str, list[Document]]:
         """
         Reranks the provided documents by relevance to the query using the TEI API.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
@@ -186,13 +190,17 @@ class HuggingFaceTEIRanker:
 
         :raises RuntimeError:
             - If the API returns an error response.
+
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         # Return empty if no documents provided
         if not documents:
             return {"documents": []}
 
         # Prepare the payload
-        texts = [doc.content for doc in documents]
+        deduplicated_documents = _deduplicate_documents(documents)
+        texts = [doc.content for doc in deduplicated_documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
@@ -212,20 +220,23 @@ class HuggingFaceTEIRanker:
             status_codes_to_retry=self.retry_status_codes,
         )
 
-        result: Union[dict[str, str], list[dict[str, Any]]] = response.json()
+        result: dict[str, str] | list[dict[str, Any]] = response.json()
 
-        return self._compose_response(result, top_k, documents)
+        return self._compose_response(result, top_k, deduplicated_documents)
 
     @component.output_types(documents=list[Document])
     async def run_async(
         self,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        truncation_direction: Optional[TruncationDirection] = None,
+        top_k: int | None = None,
+        truncation_direction: TruncationDirection | None = None,
     ) -> dict[str, list[Document]]:
         """
         Asynchronously reranks the provided documents by relevance to the query using the TEI API.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param query: The user query string to guide reranking.
         :param documents: List of `Document` objects to rerank.
@@ -239,13 +250,16 @@ class HuggingFaceTEIRanker:
             - If the API request fails.
         :raises RuntimeError:
             - If the API returns an error response.
+        :raises TypeError:
+            - If the API response is not in the expected list format.
         """
         # Return empty if no documents provided
         if not documents:
             return {"documents": []}
 
         # Prepare the payload
-        texts = [doc.content for doc in documents]
+        deduplicated_documents = _deduplicate_documents(documents)
+        texts = [doc.content for doc in deduplicated_documents]
         payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
@@ -265,6 +279,6 @@ class HuggingFaceTEIRanker:
             status_codes_to_retry=self.retry_status_codes,
         )
 
-        result: Union[dict[str, str], list[dict[str, Any]]] = response.json()
+        result: dict[str, str] | list[dict[str, Any]] = response.json()
 
-        return self._compose_response(result, top_k, documents)
+        return self._compose_response(result, top_k, deduplicated_documents)

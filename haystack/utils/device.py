@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, Union
@@ -30,7 +31,7 @@ class DeviceType(Enum):
     MPS = "mps"
     XPU = "xpu"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -62,9 +63,9 @@ class Device:
     """
 
     type: DeviceType
-    id: Optional[int] = field(default=None)
+    id: int | None = field(default=None)
 
-    def __init__(self, type: DeviceType, id: Optional[int] = None):  # noqa:A002
+    def __init__(self, type: DeviceType, id: int | None = None) -> None:  # noqa:A002
         """
         Create a generic device.
 
@@ -79,11 +80,10 @@ class Device:
         self.type = type
         self.id = id
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.id is None:
             return str(self.type)
-        else:
-            return f"{self.type}:{self.id}"
+        return f"{self.type}:{self.id}"
 
     @staticmethod
     def cpu() -> "Device":
@@ -176,7 +176,7 @@ class DeviceMap:
     def __len__(self) -> int:
         return len(self.mapping)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, Device]]:
         return iter(self.mapping.items())
 
     def to_dict(self) -> dict[str, str]:
@@ -189,7 +189,7 @@ class DeviceMap:
         return {key: str(device) for key, device in self.mapping.items()}
 
     @property
-    def first_device(self) -> Optional[Device]:
+    def first_device(self) -> Device | None:
         """
         Return the first device in the mapping, if any.
 
@@ -198,8 +198,7 @@ class DeviceMap:
         """
         if not self.mapping:
             return None
-        else:
-            return next(iter(self.mapping.values()))
+        return next(iter(self.mapping.values()))
 
     @staticmethod
     def from_dict(dict: dict[str, str]) -> "DeviceMap":  # noqa:A002
@@ -225,6 +224,7 @@ class DeviceMap:
             The HuggingFace device map.
         :returns:
             The deserialized device map.
+        :raises TypeError: If a device value in the map is not an int, str, or torch.device.
         """
         mapping = {}
         for key, device in hf_device_map.items():
@@ -238,7 +238,7 @@ class DeviceMap:
                 device_id = device.index
                 mapping[key] = Device(DeviceType.from_str(device_type), device_id)
             else:
-                raise ValueError(
+                raise TypeError(
                     f"Couldn't convert HuggingFace device map - unexpected device '{str(device)}' for '{key}'"
                 )
         return DeviceMap(mapping)
@@ -252,8 +252,8 @@ class ComponentDevice:
     This can be either a single device or a device map.
     """
 
-    _single_device: Optional[Device] = field(default=None)
-    _multiple_devices: Optional[DeviceMap] = field(default=None)
+    _single_device: Device | None = field(default=None)
+    _multiple_devices: DeviceMap | None = field(default=None)
 
     @classmethod
     def from_str(cls, device_str: str) -> "ComponentDevice":
@@ -299,7 +299,7 @@ class ComponentDevice:
         """
         return cls(_multiple_devices=device_map)
 
-    def _validate(self):
+    def _validate(self) -> None:
         """
         Validate the component device representation.
         """
@@ -361,10 +361,9 @@ class ComponentDevice:
         if self._single_device.type == DeviceType.GPU:
             assert self._single_device.id is not None
             return self._single_device.id
-        else:
-            return -1
+        return -1
 
-    def to_hf(self) -> Union[Union[int, str], dict[str, Union[int, str]]]:
+    def to_hf(self) -> int | str | dict[str, int | str]:
         """
         Convert the component device representation to HuggingFace format.
 
@@ -373,12 +372,11 @@ class ComponentDevice:
         """
         self._validate()
 
-        def convert_device(device: Device, *, gpu_id_only: bool = False) -> Union[int, str]:
+        def convert_device(device: Device, *, gpu_id_only: bool = False) -> int | str:
             if gpu_id_only and device.type == DeviceType.GPU:
                 assert device.id is not None
                 return device.id
-            else:
-                return str(device)
+            return str(device)
 
         if self._single_device is not None:
             return convert_device(self._single_device)
@@ -464,11 +462,10 @@ class ComponentDevice:
         """
         if self._single_device is not None:
             return {"type": "single", "device": str(self._single_device)}
-        elif self._multiple_devices is not None:
+        if self._multiple_devices is not None:
             return {"type": "multiple", "device_map": self._multiple_devices.to_dict()}
-        else:
-            # Unreachable
-            assert False
+        # Unreachable
+        raise AssertionError()
 
     @classmethod
     def from_dict(cls, dict: dict[str, Any]) -> "ComponentDevice":  # noqa:A002
@@ -482,10 +479,9 @@ class ComponentDevice:
         """
         if dict["type"] == "single":
             return cls.from_str(dict["device"])
-        elif dict["type"] == "multiple":
+        if dict["type"] == "multiple":
             return cls.from_multiple(DeviceMap.from_dict(dict["device_map"]))
-        else:
-            raise ValueError(f"Unknown component device type '{dict['type']}' in serialized data")
+        raise ValueError(f"Unknown component device type '{dict['type']}' in serialized data")
 
 
 def _get_default_device() -> Device:
@@ -520,15 +516,14 @@ def _get_default_device() -> Device:
 
     if has_cuda:
         return Device.gpu()
-    elif has_xpu:
+    if has_xpu:
         return Device.xpu()
-    elif has_mps:
+    if has_mps:
         return Device.mps()
-    else:
-        return Device.cpu()
+    return Device.cpu()
 
 
-def _split_device_string(string: str) -> tuple[str, Optional[int]]:
+def _split_device_string(string: str) -> tuple[str, int | None]:
     """
     Split a device string into device type and device id.
 
@@ -541,8 +536,8 @@ def _split_device_string(string: str) -> tuple[str, Optional[int]]:
         device_type, device_id_str = string.split(":")
         try:
             device_id = int(device_id_str)
-        except ValueError:
-            raise ValueError(f"Device id must be an integer, got {device_id_str}")
+        except ValueError as e:
+            raise ValueError(f"Device id must be an integer, got {device_id_str}") from e
     else:
         device_type = string
         device_id = None

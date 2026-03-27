@@ -27,6 +27,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
         assert embedder.trust_remote_code is False
+        assert embedder.revision is None
         assert embedder.local_files_only is False
         assert embedder.truncate_dim is None
         assert embedder.precision == "float32"
@@ -44,6 +45,7 @@ class TestSentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
             trust_remote_code=True,
+            revision="v1.0",
             local_files_only=True,
             truncate_dim=256,
             precision="int8",
@@ -59,6 +61,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
         assert embedder.trust_remote_code
+        assert embedder.revision == "v1.0"
         assert embedder.local_files_only
         assert embedder.truncate_dim == 256
         assert embedder.precision == "int8"
@@ -80,6 +83,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "embedding_separator": "\n",
                 "meta_fields_to_embed": [],
                 "trust_remote_code": False,
+                "revision": None,
                 "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": None,
@@ -127,6 +131,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "normalize_embeddings": True,
                 "embedding_separator": " - ",
                 "trust_remote_code": True,
+                "revision": None,
                 "local_files_only": True,
                 "meta_fields_to_embed": ["meta_field"],
                 "truncate_dim": 256,
@@ -152,6 +157,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "embedding_separator": " - ",
             "meta_fields_to_embed": ["meta_field"],
             "trust_remote_code": True,
+            "revision": "v1.0",
             "local_files_only": True,
             "truncate_dim": 256,
             "model_kwargs": {"torch_dtype": "torch.float32"},
@@ -175,6 +181,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.normalize_embeddings is True
         assert component.embedding_separator == " - "
         assert component.trust_remote_code
+        assert component.revision == "v1.0"
         assert component.local_files_only
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim == 256
@@ -200,6 +207,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.normalize_embeddings is False
         assert component.embedding_separator == "\n"
         assert component.trust_remote_code is False
+        assert component.revision is None
         assert component.local_files_only is False
         assert component.meta_fields_to_embed == []
         assert component.truncate_dim is None
@@ -238,6 +246,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.normalize_embeddings is True
         assert component.embedding_separator == " - "
         assert component.trust_remote_code
+        assert component.revision is None
         assert component.local_files_only is False
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim is None
@@ -262,6 +271,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=None,
@@ -283,9 +293,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_run(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
-        ]
+        embedder.embedding_backend.embed = lambda x, **_: [[random.random() for _ in range(16)] for _ in range(len(x))]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
@@ -293,7 +301,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert new_doc is not doc
             assert doc.embedding is None
             assert isinstance(new_doc, Document)
@@ -321,6 +329,7 @@ class TestSentenceTransformersDocumentEmbedder:
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
         )
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)] for _ in range(5)]
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -340,6 +349,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_embed_encode_kwargs(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model", encode_kwargs={"task": "retrieval.passage"})
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)] for _ in range(5)]
         documents = [Document(content=f"document number {i}") for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -360,6 +370,7 @@ class TestSentenceTransformersDocumentEmbedder:
             embedding_separator="\n",
         )
         embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)] for _ in range(5)]
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
@@ -396,6 +407,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "onnx/model.onnx"},
@@ -424,6 +436,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
@@ -450,6 +463,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=model_kwargs,

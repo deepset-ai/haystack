@@ -6,7 +6,7 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -15,7 +15,7 @@ from haystack.dataclasses import ByteStream
 from haystack.utils.misc import _guess_mime_type  # ruff: isort: skip
 
 # We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
-from haystack.utils.misc import CUSTOM_MIMETYPES  # pylint: disable=unused-import
+from haystack.utils.misc import CUSTOM_MIMETYPES  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +59,8 @@ class FileTypeRouter:
     """
 
     def __init__(
-        self,
-        mime_types: list[str],
-        additional_mimetypes: Optional[dict[str, str]] = None,
-        raise_on_failure: bool = False,
-    ):
+        self, mime_types: list[str], additional_mimetypes: dict[str, str] | None = None, raise_on_failure: bool = False
+    ) -> None:
         """
         Initialize the FileTypeRouter component.
 
@@ -91,17 +88,17 @@ class FileTypeRouter:
         for mime_type in mime_types:
             try:
                 pattern = re.compile(mime_type)
-            except re.error:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.")
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
         # but this would cause PipelineConnectError with Converters
         component.set_output_types(
             self,
-            unclassified=list[Union[str, Path, ByteStream]],
-            failed=list[Union[str, Path, ByteStream]],
-            **dict.fromkeys(mime_types, list[Union[str, Path, ByteStream]]),
+            unclassified=list[str | Path | ByteStream],
+            failed=list[str | Path | ByteStream],
+            **dict.fromkeys(mime_types, list[str | Path | ByteStream]),
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
@@ -134,10 +131,8 @@ class FileTypeRouter:
         return default_from_dict(cls, data)
 
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ) -> dict[str, list[Union[ByteStream, Path]]]:
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, list[ByteStream | Path]]:
         """
         Categorize files or byte streams according to their MIME types.
 
@@ -154,12 +149,13 @@ class FileTypeRouter:
         :returns: A dictionary where the keys are MIME types and the values are lists of data sources.
                   Two extra keys may be returned: `"unclassified"` when a source's MIME type doesn't match any pattern
                    and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
+        :raises TypeError: If a source is not a Path, str, or ByteStream.
         """
 
-        mime_types: defaultdict[str, list[Union[Path, ByteStream]]] = defaultdict(list)
+        mime_types: defaultdict[str, list[Path | ByteStream]] = defaultdict(list)
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, meta_dict in zip(sources, meta_list):
+        for source, meta_dict in zip(sources, meta_list, strict=True):
             if isinstance(source, str):
                 source = Path(source)
 
@@ -167,7 +163,7 @@ class FileTypeRouter:
                 if not source.exists():
                     if self._raise_on_failure:
                         raise FileNotFoundError(f"File not found: {source}")
-                    logger.warning(f"File not found: {source}. Skipping it.", source=source)
+                    logger.warning("File not found: {source}. Skipping it.", source=source)
                     mime_types["failed"].append(source)
                     continue
 
@@ -176,7 +172,7 @@ class FileTypeRouter:
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
-                raise ValueError(f"Unsupported data source type: {type(source).__name__}")
+                raise TypeError(f"Unsupported data source type: {type(source).__name__}")
 
             # If we have metadata, we convert the source to ByteStream and add the metadata
             if meta_dict:

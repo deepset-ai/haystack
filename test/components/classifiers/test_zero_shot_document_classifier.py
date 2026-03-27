@@ -9,7 +9,6 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import ComponentDevice, Secret
 
 
@@ -43,9 +42,7 @@ class TestTransformersZeroShotDocumentClassifier:
             },
         }
 
-    def test_from_dict(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_from_dict(self, del_hf_env_vars):
         data = {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",  # noqa: E501
             "init_parameters": {
@@ -72,9 +69,7 @@ class TestTransformersZeroShotDocumentClassifier:
             "token": None,
         }
 
-    def test_from_dict_no_default_parameters(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_from_dict_no_default_parameters(self, del_hf_env_vars):
         data = {
             "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",  # noqa: E501
             "init_parameters": {"model": "cross-encoder/nli-deberta-v3-xsmall", "labels": ["positive", "negative"]},
@@ -100,13 +95,19 @@ class TestTransformersZeroShotDocumentClassifier:
         component.warm_up()
         assert component.pipeline is not None
 
-    def test_run_fails_without_warm_up(self):
+    @patch("haystack.components.classifiers.zero_shot_document_classifier.pipeline")
+    @patch.object(TransformersZeroShotDocumentClassifier, "warm_up")
+    def test_run_calls_warm_up(self, warm_up_mock, hf_pipeline_mock):
+        hf_pipeline_mock.return_value = [
+            {"sequence": "That's good. I like it.", "labels": ["positive", "negative"], "scores": [0.99, 0.01]}
+        ]
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
+        warm_up_mock.side_effect = lambda: setattr(component, "pipeline", hf_pipeline_mock)
         positive_documents = [Document(content="That's good. I like it.")]
-        with pytest.raises(RuntimeError):
-            component.run(documents=positive_documents)
+        component.run(documents=positive_documents)
+        warm_up_mock.assert_called_once()
 
     @patch("haystack.components.classifiers.zero_shot_document_classifier.pipeline")
     def test_run_fails_with_non_document_input(self, hf_pipeline_mock):
@@ -114,7 +115,6 @@ class TestTransformersZeroShotDocumentClassifier:
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
-        component.warm_up()
         text_list = ["That's good. I like it.", "That's bad. I don't like it."]
         with pytest.raises(TypeError):
             component.run(documents=text_list)
@@ -140,12 +140,10 @@ class TestTransformersZeroShotDocumentClassifier:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run(self, del_hf_env_vars):
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
-        component.warm_up()
         positive_document = Document(content="That's good. I like it. " * 1000)
         negative_document = Document(content="That's bad. I don't like it.")
         result = component.run(documents=[positive_document, negative_document])
@@ -155,10 +153,9 @@ class TestTransformersZeroShotDocumentClassifier:
         assert "classification" not in positive_document.to_dict()
         assert "classification" not in negative_document.to_dict()
 
-    def test_serialization_and_deserialization_pipeline(self):
+    def test_serialization_and_deserialization_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
-        document_store = InMemoryDocumentStore()
-        retriever = InMemoryBM25Retriever(document_store=document_store)
+        retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         document_classifier = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )

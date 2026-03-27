@@ -2,16 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Device, DeviceMap, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
+    import accelerate  # noqa: F401 # the library is used but not directly referenced
     import torch
     from torch.utils.data import DataLoader, Dataset
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -41,30 +43,29 @@ class TransformersSimilarityRanker:
     ranker = TransformersSimilarityRanker()
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "City in Germany"
-    ranker.warm_up()
     result = ranker.run(query=query, documents=docs)
     docs = result["documents"]
     print(docs[0].content)
     ```
     """
 
-    def __init__(  # noqa: PLR0913, pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
-        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
-        calibration_factor: Optional[float] = 1.0,
-        score_threshold: Optional[float] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        calibration_factor: float | None = 1.0,
+        score_threshold: float | None = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
         batch_size: int = 16,
-    ):
+    ) -> None:
         """
         Creates an instance of TransformersSimilarityRanker.
 
@@ -122,8 +123,8 @@ class TransformersSimilarityRanker:
         self.model = None
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
-        self.tokenizer = None
-        self.device = None
+        self.tokenizer: Any = None
+        self.device: ComponentDevice | None = None
         self.top_k = top_k
         self.token = token
         self.meta_fields_to_embed = meta_fields_to_embed or []
@@ -152,7 +153,7 @@ class TransformersSimilarityRanker:
         """
         return {"model": self.model_name_or_path}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -165,8 +166,13 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
-            assert self.model is not None
-            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
+            assert self.model is not None  # mypy doesn't know this is set in the line above
+            # hf_device_map appears to only be set now when mixed devices are actually used.
+            # So if it's missing then we can use the device attribute which is set even for single-device models.
+            if hf_device_map := getattr(self.model, "hf_device_map", None):
+                self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(hf_device_map))
+            else:
+                self.device = ComponentDevice.from_single(Device.from_str(str(self.model.device)))
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -179,7 +185,7 @@ class TransformersSimilarityRanker:
             self,
             device=None,
             model=self.model_name_or_path,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             top_k=self.top_k,
             query_prefix=self.query_prefix,
             document_prefix=self.document_prefix,
@@ -207,26 +213,26 @@ class TransformersSimilarityRanker:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
 
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(  # pylint: disable=too-many-positional-arguments
+    def run(
         self,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        calibration_factor: Optional[float] = None,
-        score_threshold: Optional[float] = None,
-    ):
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        calibration_factor: float | None = None,
+        score_threshold: float | None = None,
+    ) -> dict[str, Any]:
         """
         Returns a list of documents ranked by their similarity to the given query.
+
+        Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         :param query:
             The input query to compare the documents to.
@@ -249,14 +255,10 @@ class TransformersSimilarityRanker:
         :raises ValueError:
             If `top_k` is not > 0.
             If `scale_score` is True and `calibration_factor` is not provided.
-        :raises RuntimeError:
-            If the model is not loaded because `warm_up()` was not called before.
         """
         # If a model path is provided but the model isn't loaded
         if self.model is None:
-            raise RuntimeError(
-                "The component TransformersSimilarityRanker wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"documents": []}
@@ -275,7 +277,8 @@ class TransformersSimilarityRanker:
             )
 
         query_doc_pairs = []
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
@@ -283,40 +286,40 @@ class TransformersSimilarityRanker:
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])
 
         class _Dataset(Dataset):
-            def __init__(self, batch_encoding):
+            def __init__(self, batch_encoding: Any) -> None:
                 self.batch_encoding = batch_encoding
 
-            def __len__(self):
+            def __len__(self) -> int:
                 return len(self.batch_encoding["input_ids"])
 
-            def __getitem__(self, item):
+            def __getitem__(self, item: int) -> dict[str, Any]:
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
+        # mypy doesn't know this is set in warm_up
         batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
-            self.device.first_device.to_torch()
+            self.device.first_device.to_torch()  # type: ignore[union-attr]
         )
         dataset = _Dataset(batch_enc)
         inp_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
 
-        similarity_scores = []
+        list_similarity_scores = []
         with torch.inference_mode():
             for features in inp_dataloader:
-                model_preds = self.model(**features).logits.squeeze(dim=1)
-                similarity_scores.extend(model_preds)
-        similarity_scores = torch.stack(similarity_scores)
+                model_preds = self.model(**features).logits.squeeze(dim=1)  # type: ignore[misc]
+                list_similarity_scores.extend(model_preds)
+        similarity_scores = torch.stack(list_similarity_scores)
 
-        if scale_score:
+        if scale_score and calibration_factor is not None:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
 
-        sorted_indices = sorted_indices.cpu().tolist()
-        similarity_scores = similarity_scores.cpu().tolist()
+        list_sorted_indices = sorted_indices.cpu().tolist()
+        list_similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
-        for sorted_index in sorted_indices:
+        for sorted_index in list_sorted_indices:
             i = sorted_index
-            documents[i].score = similarity_scores[i]
-            ranked_docs.append(documents[i])
+            ranked_docs.append(replace(deduplicated_documents[i], score=list_similarity_scores[i]))
 
         if score_threshold is not None:
             ranked_docs = [doc for doc in ranked_docs if doc.score >= score_threshold]

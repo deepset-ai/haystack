@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from haystack import DeserializationError, Document
+from haystack import Document
 from haystack.components.caching.cache_checker import CacheChecker
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import document_store_class
@@ -54,35 +54,28 @@ class TestCacheChecker:
 
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.cache_checker.CacheChecker", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
-            CacheChecker.from_dict(data)
-
-    def test_from_dict_without_docstore_type(self):
-        data = {
-            "type": "haystack.components.caching.cache_checker.UrlCacheChecker",
-            "init_parameters": {"document_store": {"init_parameters": {}}},
-        }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(
+            TypeError, match="missing 2 required positional arguments: 'document_store' and 'cache_field'"
+        ):
             CacheChecker.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "haystack.components.caching.cache_checker.UrlCacheChecker",
+            "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.DocumentStore"):
             CacheChecker.from_dict(data)
 
-    def test_run(self):
-        docstore = InMemoryDocumentStore()
+    def test_run(self, in_memory_doc_store):
         documents = [
             Document(content="doc1", meta={"url": "https://example.com/1"}),
             Document(content="doc2", meta={"url": "https://example.com/2"}),
             Document(content="doc3", meta={"url": "https://example.com/1"}),
             Document(content="doc4", meta={"url": "https://example.com/2"}),
         ]
-        docstore.write_documents(documents)
-        checker = CacheChecker(docstore, cache_field="url")
+        in_memory_doc_store.write_documents(documents)
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
         results = checker.run(items=["https://example.com/1", "https://example.com/5"])
         assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
 

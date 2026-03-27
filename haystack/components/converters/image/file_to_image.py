@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import mimetypes
+from dataclasses import replace
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import component, logging
 from haystack.components.converters.image.image_utils import _encode_image_to_base64
@@ -18,7 +19,7 @@ with LazyImport(
     "Image resizing will be applied, which requires the Pillow library. "
     "Run 'pip install pillow'"
 ) as pillow_import:
-    import PIL  # pylint: disable=unused-import
+    import PIL  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +52,8 @@ class ImageFileToImageContent:
     """
 
     def __init__(
-        self, *, detail: Optional[Literal["auto", "high", "low"]] = None, size: Optional[tuple[int, int]] = None
-    ):
+        self, *, detail: Literal["auto", "high", "low"] | None = None, size: tuple[int, int] | None = None
+    ) -> None:
         """
         Create the ImageFileToImageContent component.
 
@@ -71,11 +72,11 @@ class ImageFileToImageContent:
     @component.output_types(image_contents=list[ImageContent])
     def run(
         self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
         *,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int, int]] = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None,
     ) -> dict[str, list[ImageContent]]:
         """
         Converts files to ImageContent objects.
@@ -115,7 +116,7 @@ class ImageFileToImageContent:
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             if isinstance(source, str):
                 source = Path(source)
 
@@ -126,7 +127,7 @@ class ImageFileToImageContent:
                 continue
 
             if bytestream.mime_type is None and isinstance(source, Path):
-                bytestream.mime_type = mimetypes.guess_type(source.as_posix())[0]
+                bytestream = replace(bytestream, mime_type=mimetypes.guess_type(source.as_posix())[0])
 
             if bytestream.data == _EMPTY_BYTE_STRING:
                 logger.warning("File {source} is empty. Skipping it.", source=source)

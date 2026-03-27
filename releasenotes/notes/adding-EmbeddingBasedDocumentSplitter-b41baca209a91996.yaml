@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added an ``EmbeddingBasedDocumentSplitter`` component, allowing to split documents based on embedding similarity using cosine distances between sequential sentence groups.

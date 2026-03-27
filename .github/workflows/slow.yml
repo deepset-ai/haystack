@@ -13,8 +13,8 @@ name: Slow Integration Tests
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
-  PYTHON_VERSION: "3.9"
-  HATCH_VERSION: "1.14.1"
+  PYTHON_VERSION: "3.10"
+  HATCH_VERSION: "1.16.5"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
 
@@ -40,17 +40,17 @@ jobs:
   # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
   # This ensures the "Slow Integration Tests completed" job always runs, which is required by Branch Protection rules.
     name: Check if changed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: read
     # Specifying outputs is not needed to make the job work, but only to comply with actionlint
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Check for changed code
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           # List of Python files that trigger slow integration tests when modified
           filters: |
@@ -60,17 +60,23 @@ jobs:
               - "haystack/components/converters/tika.py"
               - "haystack/components/embedders/hugging_face_api_document_embedder.py"
               - "haystack/components/embedders/hugging_face_api_text_embedder.py"
+              - "haystack/components/embedders/backends/sentence_transformers_backend.py"
+              - "haystack/components/embedders/backends/sentence_transformers_sparse_backend.py"
               - "haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py"
               - "haystack/components/embedders/sentence_transformers_text_embedder.py"
+              - "haystack/components/embedders/sentence_transformers_sparse_document_embedder.py"
+              - "haystack/components/embedders/sentence_transformers_sparse_text_embedder.py"
               - "haystack/components/evaluators/sas_evaluator.py"
               - "haystack/components/generators/chat/hugging_face_api.py"
               - "haystack/components/generators/chat/hugging_face_local.py"
               - "haystack/components/generators/hugging_face_api.py"
               - "haystack/components/generators/hugging_face_local_generator.py"
+              - "haystack/components/preprocessors/embedding_based_document_splitter.py"
               - "haystack/components/rankers/sentence_transformers_diversity.py"
               - "haystack/components/rankers/sentence_transformers_similarity.py"
               - "haystack/components/rankers/transformers_similarity.py"
               - "haystack/components/readers/extractive.py"
+              - "haystack/components/retrievers/multi_query_embedding_retriever.py"
               - "haystack/components/routers/transformers_text_router.py"
               - "haystack/components/routers/zero_shot_text_router.py"
 
@@ -81,15 +87,19 @@ jobs:
               - "test/components/embedders/test_hugging_face_api_text_embedder.py"
               - "test/components/embedders/image/test_sentence_transformers_doc_image_embedder.py"
               - "test/components/embedders/test_sentence_transformers_text_embedder.py"
+              - "test/components/embedders/test_sentence_transformers_sparse_document_embedder.py"
+              - "test/components/embedders/test_sentence_transformers_sparse_text_embedder.py"
               - "test/components/evaluators/test_sas_evaluator.py"
               - "test/components/generators/chat/test_hugging_face_api.py"
               - "test/components/generators/chat/test_hugging_face_local.py"
               - "test/components/generators/test_hugging_face_api.py"
               - "test/components/generators/test_hugging_face_local_generator.py"
+              - "test/components/preprocessors/test_embedding_based_document_splitter.py"
               - "test/components/rankers/test_sentence_transformers_diversity.py"
               - "test/components/rankers/test_sentence_transformers_similarity.py"
               - "test/components/rankers/test_transformers_similarity.py"
               - "test/components/readers/test_extractive.py"
+              - "test/components/retrievers/test_multi_query_embedding_retriever.py"
               - "test/components/routers/test_transformers_text_router.py"
               - "test/components/routers/test_zero_shot_text_router.py"
 
@@ -119,9 +129,9 @@ jobs:
             install_cmd: "echo 'No additional dependencies needed'"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -143,31 +153,17 @@ jobs:
       - name: Run tests
         run: hatch run test:integration-only-slow
 
-      - name: Send event to Datadog for nightly failures
+      - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'
-        uses: masci/datadog@v1
+        uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
         with:
-          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
-          api-url: https://api.datadoghq.eu
-          events: |
-            - title: "${{ github.workflow }} workflow"
-              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
-              alert_type: "error"
-              source_type_name: "Github"
-              host: ${{ github.repository_owner }}
-              tags:
-                - "project:${{ github.repository }}"
-                - "job:${{ github.job }}"
-                - "run_id:${{ github.run_id }}"
-                - "workflow:${{ github.workflow }}"
-                - "branch:${{ github.ref_name }}"
-                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
   slow-integration-tests-completed:
     # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
     name: Slow Integration Tests completed
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    if: ${{ always() && !cancelled() }}
     needs: slow-integration-tests
 
     steps:

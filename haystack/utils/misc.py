@@ -2,12 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import mimetypes
 import tempfile
+from math import inf
 from pathlib import Path
-from typing import Any, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from numpy import exp, ndarray
+
+from haystack import logging
+
+if TYPE_CHECKING:
+    from haystack.dataclasses import Document
 
 CUSTOM_MIMETYPES = {
     # we add markdown because it is not added by the mimetypes module
@@ -18,8 +25,10 @@ CUSTOM_MIMETYPES = {
     ".msg": "application/vnd.ms-outlook",
 }
 
+logger = logging.getLogger(__name__)
 
-def expand_page_range(page_range: list[Union[str, int]]) -> list[int]:
+
+def expand_page_range(page_range: list[str | int]) -> list[int]:
     """
     Takes a list of page numbers and ranges and expands them into a list of page numbers.
 
@@ -61,7 +70,7 @@ def expand_page_range(page_range: list[Union[str, int]]) -> list[int]:
 def expit(x: float) -> float: ...
 @overload
 def expit(x: ndarray[Any, Any]) -> ndarray[Any, Any]: ...
-def expit(x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]:
+def expit(x: float | ndarray[Any, Any]) -> float | ndarray[Any, Any]:
     """
     Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 
@@ -70,7 +79,7 @@ def expit(x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]
     return 1 / (1 + exp(-x))
 
 
-def _guess_mime_type(path: Path) -> Optional[str]:
+def _guess_mime_type(path: Path) -> str | None:
     """
     Guess the MIME type of the provided file path.
 
@@ -115,3 +124,92 @@ def _get_output_dir(out_dir: str) -> str:
     raise RuntimeError(
         f"Could not create a writable directory for output files in any of the following locations: {candidates}"
     )
+
+
+def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
+    """
+    Deduplicate a list of documents by their id keeping the duplicate with the highest score if a score is present.
+
+    :param documents: List of documents to deduplicate.
+    :returns: List of deduplicated documents.
+    """
+    # Keep for each Document id the one with the highest score
+    highest_scoring_docs: dict[str, "Document"] = {}
+    for doc in documents:
+        score = doc.score if doc.score is not None else -inf
+        best = highest_scoring_docs.get(doc.id)
+
+        if best is None or score > (best.score if best.score is not None else -inf):
+            highest_scoring_docs[doc.id] = doc
+
+    return list(highest_scoring_docs.values())
+
+
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: Literal[True] = ...
+) -> dict[str, Any]: ...
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: Literal[False] = ...
+) -> dict[str, Any] | None: ...
+@overload
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = ..., raise_on_failure: bool = ...
+) -> dict[str, Any] | None: ...
+def _parse_dict_from_json(
+    text: str, expected_keys: list[str] | None = None, raise_on_failure: bool = True
+) -> dict[str, Any] | None:
+    """
+    Parses a JSON string containing a dictionary.
+
+    :param text: The string to parse.
+    :param expected_keys: A list of keys that must be present in the parsed dictionary.
+    :param raise_on_failure: If True, raises an exception on failure. If False, logs a warning and returns None.
+
+    :return: The parsed dictionary, or None if parsing fails and raise_on_failure is False.
+    :raises json.JSONDecodeError: If the text is not valid JSON and raise_on_failure is True.
+    :raises ValueError: If the parsed object is not a dictionary or has missing expected keys,
+        and `raise_on_failure` is True.
+    """
+    cleaned_text = text.strip()
+
+    try:
+        parsed_json = json.loads(cleaned_text)
+    except json.JSONDecodeError as e:
+        if raise_on_failure:
+            raise e
+        logger.warning("Failed to parse JSON from text: {text}. Error: {error}", text=text, error=e)
+        return None
+
+    if not isinstance(parsed_json, dict):
+        if raise_on_failure:
+            raise ValueError(f"Expected a JSON object containing a dictionary but got {type(parsed_json).__name__}")
+        logger.warning(
+            "Expected a JSON object containing a dictionary but got {type}. Returning None",
+            type=type(parsed_json).__name__,
+        )
+        return None
+
+    if not expected_keys:
+        return parsed_json
+
+    missing_keys = [key for key in expected_keys if key not in parsed_json]
+    if missing_keys:
+        if raise_on_failure:
+            raise ValueError(f"Missing expected keys in JSON: {missing_keys}. Got keys: {list(parsed_json.keys())}")
+        logger.warning(
+            "Missing expected keys in JSON: {missing_keys}. Got keys: {keys}",
+            missing_keys=missing_keys,
+            keys=list(parsed_json.keys()),
+        )
+        return None
+
+    return parsed_json
+
+
+def _normalize_metadata_field_name(metadata_field: str) -> str:
+    """
+    Normalizes a metadata field name by removing the "meta." prefix if present.
+    """
+    return metadata_field[5:] if metadata_field.startswith("meta.") else metadata_field

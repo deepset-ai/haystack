@@ -4,19 +4,22 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Mapping, Optional
+from collections.abc import AsyncIterator, Mapping
+from typing import Any
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
     _COMPONENT_VISITS,
     ComponentPriority,
     PipelineBase,
+    _validate_component_output_keys,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,9 @@ class AsyncPipeline(PipelineBase):
         component: dict[str, Any],
         component_inputs: dict[str, Any],
         component_visits: dict[str, int],
-        parent_span: Optional[tracing.Span] = None,
+        parent_span: tracing.Span | None = None,
+        *,
+        break_point: Breakpoint | None = None,
     ) -> Mapping[str, Any]:
         """
         Executes a single component asynchronously.
@@ -51,19 +56,27 @@ class AsyncPipeline(PipelineBase):
         :param component_inputs: Inputs for the component.
         :returns: Outputs from the component that can be yielded from run_async_generator.
         """
+        if (
+            isinstance(break_point, Breakpoint)
+            and break_point.component_name == component_name
+            and break_point.visit_count == component_visits[component_name]
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
+
         instance: Component = component["instance"]
 
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
-            # We deepcopy the inputs otherwise we might lose that information
-            # when we delete them in case they're sent to other Components
-            span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(component_inputs))
+            # deepcopy inputs before passing to the tracer so that even if a tracer mutates them
+            # the component always receives the original unmodified values
+            component_inputs_copy = _deepcopy_with_exceptions(component_inputs)
+            span.set_content_tag(_COMPONENT_INPUT, component_inputs)
             logger.info("Running component {component_name}", component_name=component_name)
 
             if getattr(instance, "__haystack_supports_async__", False):
                 try:
-                    outputs = await instance.run_async(**component_inputs)  # type: ignore
+                    outputs = await instance.run_async(**component_inputs_copy)  # type: ignore
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
             else:
@@ -73,7 +86,7 @@ class AsyncPipeline(PipelineBase):
                 ctx = contextvars.copy_context()
                 try:
                     outputs = await loop.run_in_executor(
-                        None, lambda: ctx.run(lambda: instance.run(**component_inputs))
+                        None, lambda: ctx.run(lambda: instance.run(**component_inputs_copy))
                     )
                 except Exception as error:
                     raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
@@ -83,13 +96,15 @@ class AsyncPipeline(PipelineBase):
             if not isinstance(outputs, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
+            _validate_component_output_keys(component_name, component, outputs)
+
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
-            span.set_content_tag(_COMPONENT_OUTPUT, _deepcopy_with_exceptions(outputs))
+            span.set_content_tag(_COMPONENT_OUTPUT, outputs)
 
             return outputs
 
-    async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+    async def run_async_generator(  # noqa: PLR0915,C901
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
@@ -262,16 +277,13 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
-                try:
-                    component_pipeline_outputs = await self._run_component_async(
-                        component_name=component_name,
-                        component=comp_dict,
-                        component_inputs=component_inputs,
-                        component_visits=component_visits,
-                        parent_span=parent_span,
-                    )
-                except PipelineRuntimeError as error:
-                    raise error
+                component_pipeline_outputs = await self._run_component_async(
+                    component_name=component_name,
+                    component=comp_dict,
+                    component_inputs=component_inputs,
+                    component_visits=component_visits,
+                    parent_span=parent_span,
+                )
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
@@ -281,11 +293,11 @@ class AsyncPipeline(PipelineBase):
                     receivers=cached_receivers[component_name],
                     include_outputs_from=include_outputs_from,
                 )
-                if pruned:
+                if pruned or component_name in include_outputs_from:
                     pipeline_outputs[component_name] = pruned
 
                 scheduled_components.remove(component_name)
-                if pruned:
+                if pruned or component_name in include_outputs_from:
                     yield {component_name: _deepcopy_with_exceptions(pruned)}
 
             async def _schedule_task(component_name: str) -> None:
@@ -308,18 +320,15 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
-                async def _runner():
-                    try:
-                        async with ready_sem:
-                            component_pipeline_outputs = await self._run_component_async(
-                                component_name=component_name,
-                                component=comp_dict,
-                                component_inputs=component_inputs,
-                                component_visits=component_visits,
-                                parent_span=parent_span,
-                            )
-                    except PipelineRuntimeError as error:
-                        raise error
+                async def _runner() -> Mapping[str, Any]:
+                    async with ready_sem:
+                        component_pipeline_outputs = await self._run_component_async(
+                            component_name=component_name,
+                            component=comp_dict,
+                            component_inputs=component_inputs,
+                            component_visits=component_visits,
+                            parent_span=parent_span,
+                        )
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(
@@ -329,7 +338,7 @@ class AsyncPipeline(PipelineBase):
                         receivers=cached_receivers[component_name],
                         include_outputs_from=include_outputs_from,
                     )
-                    if pruned:
+                    if pruned or component_name in include_outputs_from:
                         pipeline_outputs[component_name] = pruned
 
                     scheduled_components.remove(component_name)
@@ -391,15 +400,8 @@ class AsyncPipeline(PipelineBase):
                 if priority == ComponentPriority.BLOCKED and not running_tasks:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
-                        logger.warning(
-                            "Cannot run pipeline - the next component that is meant to run is blocked.\n"
-                            "Component name: '{component_name}'\n"
-                            "Component type: '{component_type}'\n"
-                            "This typically happens when the component is unable to receive all of its required "
-                            "inputs.\nCheck the connections to this component and ensure all required inputs are "
-                            "provided.",
-                            component_name=comp_name,
-                            component_type=comp["instance"].__class__.__name__,
+                        self._find_components_blocking_pipeline(
+                            priority_queue=priority_queue, component_visits=component_visits, inputs=inputs_state
                         )
                     # We always exit the loop since we cannot run the next component.
                     break
@@ -461,10 +463,10 @@ class AsyncPipeline(PipelineBase):
                 yield partial_res
 
             # 4) Yield final pipeline outputs
-            yield _deepcopy_with_exceptions(pipeline_outputs)
+            yield pipeline_outputs
 
     async def run_async(
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
         """
         Provides an asynchronous interface to run the pipeline with provided input data.
@@ -531,7 +533,7 @@ class AsyncPipeline(PipelineBase):
 
         print(results["llm"]["replies"])
         # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
-        # _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage':
+        # _name=None, _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage':
         # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75,
         # 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0,
         # audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details':
@@ -581,7 +583,7 @@ class AsyncPipeline(PipelineBase):
         return final or {}
 
     def run(
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
         """
         Provides a synchronous interface to run the pipeline with given input data.
@@ -646,7 +648,7 @@ class AsyncPipeline(PipelineBase):
 
         print(results["llm"]["replies"])
         # [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='Jean lives in Paris.')],
-        # _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage':
+        # _name=None, _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage':
         # {'completion_tokens': 6, 'prompt_tokens': 69, 'total_tokens': 75, 'completion_tokens_details':
         # CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0,
         # rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0,

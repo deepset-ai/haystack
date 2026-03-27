@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import os
 from unittest.mock import Mock, patch
 
@@ -193,15 +194,37 @@ class TestOpenAPIConnectorIntegration:
         assert isinstance(response, dict)
         assert "response" in response
 
-    @pytest.mark.skipif(
-        not os.environ.get("GITHUB_TOKEN", None), reason="Export an env var called GITHUB_TOKEN to run this test."
-    )
     @pytest.mark.integration
-    def test_github_api_integration(self):
-        component = OpenAPIConnector(
-            openapi_spec="https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
-            credentials=Secret.from_env_var("GITHUB_TOKEN"),
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
+    def test_open_meteo_integration(self):
+        open_meteo_spec = {
+            "openapi": "3.0.0",
+            "info": {"title": "Open-Meteo Weather API", "version": "1.0.0"},
+            "servers": [{"url": "https://api.open-meteo.com"}],
+            "paths": {
+                "/v1/forecast": {
+                    "get": {
+                        "operationId": "get_forecast",
+                        "parameters": [
+                            {"name": "latitude", "in": "query", "required": True, "schema": {"type": "number"}},
+                            {"name": "longitude", "in": "query", "required": True, "schema": {"type": "number"}},
+                            {"name": "current", "in": "query", "required": False, "schema": {"type": "string"}},
+                        ],
+                        "responses": {"200": {"description": "Weather forecast"}},
+                    }
+                }
+            },
+        }
+        component = OpenAPIConnector(openapi_spec=json.dumps(open_meteo_spec))
+        response = component.run(
+            operation_id="get_forecast", arguments={"latitude": 52.52, "longitude": 13.41, "current": "temperature_2m"}
         )
-        response = component.run(operation_id="search_repos", arguments={"q": "deepset-ai"})
         assert isinstance(response, dict)
         assert "response" in response
+
+        weather_data = response["response"]
+        assert isinstance(weather_data, dict)
+        assert weather_data["latitude"] == pytest.approx(52.52, abs=0.1)
+        assert weather_data["longitude"] == pytest.approx(13.41, abs=0.1)
+        assert "current" in weather_data
+        assert "temperature_2m" in weather_data["current"]

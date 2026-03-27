@@ -1,0 +1,53 @@
+name: Docs Search Sync
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 1 * * *"
+
+# Running this workflow multiple times in parallel can cause issues with files uploads and deletions.
+concurrency:
+  group: docs-search-sync
+  cancel-in-progress: false
+
+jobs:
+  docs-search-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Haystack repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+
+      - name: Install Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Docusaurus and build docs-website
+        working-directory: docs-website
+        run: |
+          npm install
+          npm run build
+
+      - name: Install script dependencies
+        # sniffio is needed because of https://github.com/deepset-ai/deepset-cloud-sdk/issues/286
+        # we pin pyrate-limiter due to https://github.com/deepset-ai/deepset-cloud-sdk/issues/295
+        run: pip install deepset-cloud-sdk sniffio requests "pyrate-limiter<4"
+
+      - name: Update new docs to Search pipeline and remove outdated docs
+        env:
+          DEEPSET_WORKSPACE_DOCS_SEARCH: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
+          DEEPSET_API_KEY_DOCS_SEARCH: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
+        run: python ./.github/utils/docs_search_sync.py
+
+      - name: Notify Slack on nightly failure
+        if: failure() && github.event_name == 'schedule'
+        uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

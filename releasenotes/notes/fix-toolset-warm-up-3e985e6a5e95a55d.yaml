@@ -1,0 +1,7 @@
+enhancements:
+  - |
+    Improved Toolset warm-up architecture for better encapsulation. The base
+    Toolset.warm_up() method now warms up all tools by default, while subclasses
+    can override it to customize initialization (e.g., setting up shared resources
+    instead of warming individual tools). The warm_up_tools() utility function has
+    been simplified to delegate to Toolset.warm_up().

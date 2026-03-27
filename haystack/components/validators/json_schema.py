@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from jsonschema import ValidationError, validate
 
@@ -79,10 +79,10 @@ class JsonSchemaValidator:
         }
     })
     print(result)
-    >> {'schema_validator': {'validated': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
-    _content=[TextContent(text="\\n{\\n  "name": "John",\\n  "age": 30\\n}")],
-    _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
-    'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
+    # >> {'schema_validator': {'validated': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+    # _content=[TextContent(text="\\n{\\n  "name": "John",\\n  "age": 30\\n}")],
+    # _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
+    # 'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
     ```
     """
 
@@ -99,7 +99,7 @@ class JsonSchemaValidator:
         "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
-    def __init__(self, json_schema: Optional[dict[str, Any]] = None, error_template: Optional[str] = None):
+    def __init__(self, json_schema: dict[str, Any] | None = None, error_template: str | None = None) -> None:
         """
         Initialize the JsonSchemaValidator component.
 
@@ -112,10 +112,7 @@ class JsonSchemaValidator:
 
     @component.output_types(validated=list[ChatMessage], validation_error=list[ChatMessage])
     def run(
-        self,
-        messages: list[ChatMessage],
-        json_schema: Optional[dict[str, Any]] = None,
-        error_template: Optional[str] = None,
+        self, messages: list[ChatMessage], json_schema: dict[str, Any] | None = None, error_template: str | None = None
     ) -> dict[str, list[ChatMessage]]:
         """
         Validates the last of the provided messages against the specified json schema.
@@ -184,7 +181,7 @@ class JsonSchemaValidator:
             )
             return {"validation_error": [ChatMessage.from_user(recovery_prompt)]}
 
-    def _construct_error_recovery_message(  # pylint: disable=too-many-positional-arguments
+    def _construct_error_recovery_message(
         self,
         error_template: str,
         error_message: str,

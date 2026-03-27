@@ -6,13 +6,14 @@ import base64
 from dataclasses import asdict, dataclass, field
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 import filetype
 
 from haystack import logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import is_in_jupyter
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 with LazyImport("The 'show' method requires the 'PIL' library. Run 'pip install pillow'") as pillow_import:
     from PIL import Image
@@ -56,6 +57,7 @@ MIME_TO_FORMAT["image/jpg"] = "JPEG"
 IMAGE_MIME_TYPES = set(MIME_TO_FORMAT.keys())
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ImageContent:
     """
@@ -75,12 +77,12 @@ class ImageContent:
     """
 
     base64_image: str
-    mime_type: Optional[str] = None
-    detail: Optional[Literal["auto", "high", "low"]] = None
+    mime_type: str | None = None
+    detail: Literal["auto", "high", "low"] | None = None
     meta: dict[str, Any] = field(default_factory=dict)
     validation: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.validation:
             return
 
@@ -150,11 +152,11 @@ class ImageContent:
     @classmethod
     def from_file_path(
         cls,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         *,
-        size: Optional[tuple[int, int]] = None,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        meta: Optional[dict[str, Any]] = None,
+        size: tuple[int, int] | None = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        meta: dict[str, Any] | None = None,
     ) -> "ImageContent":
         """
         Create an ImageContent object from a file path.
@@ -191,9 +193,9 @@ class ImageContent:
         *,
         retry_attempts: int = 2,
         timeout: int = 10,
-        size: Optional[tuple[int, int]] = None,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        meta: Optional[dict[str, Any]] = None,
+        size: tuple[int, int] | None = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        meta: dict[str, Any] | None = None,
     ) -> "ImageContent":
         """
         Create an ImageContent object from a URL. The image is downloaded and converted to a base64 string.

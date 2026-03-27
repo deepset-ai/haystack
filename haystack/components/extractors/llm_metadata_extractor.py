@@ -6,7 +6,7 @@ import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from typing import Any, Optional, Union
+from typing import Any
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -18,6 +18,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
+from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +91,34 @@ class LLMMetadataExtractor:
 
     chat_generator = OpenAIChatGenerator(
         generation_kwargs={
-            "max_tokens": 500,
+            "max_completion_tokens": 500,
             "temperature": 0.0,
             "seed": 0,
-            "response_format": {"type": "json_object"},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "entity_extraction",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "entities": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "entity": {"type": "string"},
+                                        "entity_type": {"type": "string"}
+                                    },
+                                    "required": ["entity", "entity_type"],
+                                    "additionalProperties": False
+                                }
+                            }
+                        },
+                        "required": ["entities"],
+                        "additionalProperties": False
+                    }
+                }
+            },
         },
         max_retries=1,
         timeout=60.0,
@@ -106,33 +131,32 @@ class LLMMetadataExtractor:
         raise_on_failure=False,
     )
 
-    extractor.warm_up()
     extractor.run(documents=docs)
-    >> {'documents': [
-        Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-        meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
-              {'entity': 'Haystack', 'entity_type': 'product'}]}),
-        Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
-        meta: {'entities': [
-                {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
-                {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
-                ]})
-           ]
-        'failed_documents': []
-       }
-    >>
+    # >> {'documents': [
+    #     Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+    #     meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
+    #           {'entity': 'Haystack', 'entity_type': 'product'}]}),
+    #     Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
+    #     meta: {'entities': [
+    #             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
+    #             {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
+    #             ]})
+    #        ]
+    #     'failed_documents': []
+    #    }
+    # >>
     ```
     """  # noqa: E501
 
-    def __init__(  # pylint: disable=R0917
+    def __init__(
         self,
         prompt: str,
         chat_generator: ChatGenerator,
-        expected_keys: Optional[list[str]] = None,
-        page_range: Optional[list[Union[str, int]]] = None,
+        expected_keys: list[str] | None = None,
+        page_range: list[str | int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
-    ):
+    ) -> None:
         """
         Initializes the LLMMetadataExtractor.
 
@@ -165,13 +189,16 @@ class LLMMetadataExtractor:
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
         self._chat_generator = chat_generator
+        self._is_warmed_up = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the LLM provider component.
         """
-        if hasattr(self._chat_generator, "warm_up"):
-            self._chat_generator.warm_up()
+        if not self._is_warmed_up:
+            if hasattr(self._chat_generator, "warm_up"):
+                self._chat_generator.warm_up()
+            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -206,33 +233,23 @@ class LLMMetadataExtractor:
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
-        parsed_metadata: dict[str, Any] = {}
-
         try:
-            parsed_metadata = json.loads(llm_answer)
-        except json.JSONDecodeError as e:
+            parsed_metadata = _parse_dict_from_json(llm_answer, expected_keys=self.expected_keys, raise_on_failure=True)
+        except (ValueError, json.JSONDecodeError) as e:
             logger.warning(
-                "Response from the LLM is not valid JSON. Skipping metadata extraction. Received output: {response}",
+                "Response from the LLM is not valid JSON or missing expected keys. Received output: {response}",
                 response=llm_answer,
             )
             if self.raise_on_failure:
                 raise e
-            return {"error": "Response is not valid JSON. Received JSONDecodeError: " + str(e)}
-
-        if not all(key in parsed_metadata for key in self.expected_keys):
-            logger.warning(
-                "Expected response from LLM to be a JSON with keys {expected_keys}, got {parsed_json}. "
-                "Continuing extraction with received output.",
-                expected_keys=self.expected_keys,
-                parsed_json=parsed_metadata,
-            )
+            return {"error": "Response is not valid JSON or missing keys. Error: " + str(e)}
 
         return parsed_metadata
 
     def _prepare_prompts(
-        self, documents: list[Document], expanded_range: Optional[list[int]] = None
-    ) -> list[Union[ChatMessage, None]]:
-        all_prompts: list[Union[ChatMessage, None]] = []
+        self, documents: list[Document], expanded_range: list[int] | None = None
+    ) -> list[ChatMessage | None]:
+        all_prompts: list[ChatMessage | None] = []
         for document in documents:
             if not document.content:
                 logger.warning("Document {doc_id} has no content. Skipping metadata extraction.", doc_id=document.id)
@@ -244,9 +261,9 @@ class LLMMetadataExtractor:
                 pages = self.splitter.run(documents=[doc_copy])
                 content = ""
                 for idx, page in enumerate(pages["documents"]):
-                    if idx + 1 in expanded_range:
+                    if idx + 1 in expanded_range and page.content is not None:
                         content += page.content
-                doc_copy.content = content
+                doc_copy = replace(doc_copy, content=content)
             else:
                 doc_copy = document
 
@@ -258,7 +275,7 @@ class LLMMetadataExtractor:
 
         return all_prompts
 
-    def _run_on_thread(self, prompt: Optional[ChatMessage]) -> dict[str, Any]:
+    def _run_on_thread(self, prompt: ChatMessage | None) -> dict[str, Any]:
         # If prompt is None, return an error dictionary
         if prompt is None:
             return {"error": "Document has no content, skipping LLM call."}
@@ -268,7 +285,7 @@ class LLMMetadataExtractor:
         except Exception as e:
             if self.raise_on_failure:
                 raise e
-            logger.error(
+            logger.exception(
                 "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
                 class_name=self._chat_generator.__class__.__name__,
                 error=e,
@@ -277,7 +294,7 @@ class LLMMetadataExtractor:
         return result
 
     @component.output_types(documents=list[Document], failed_documents=list[Document])
-    def run(self, documents: list[Document], page_range: Optional[list[Union[str, int]]] = None):
+    def run(self, documents: list[Document], page_range: list[str | int] | None = None) -> dict[str, Any]:
         """
         Extract metadata from documents using a Large Language Model.
 
@@ -305,6 +322,9 @@ class LLMMetadataExtractor:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
 
+        if not self._is_warmed_up:
+            self.warm_up()
+
         expanded_range = self.expanded_range
         if page_range:
             expanded_range = expand_page_range(page_range)
@@ -318,7 +338,7 @@ class LLMMetadataExtractor:
 
         successful_documents = []
         failed_documents = []
-        for document, result in zip(documents, results):
+        for document, result in zip(documents, results, strict=True):
             new_meta = {**document.meta}
             if "error" in result:
                 new_meta["metadata_extraction_error"] = result["error"]

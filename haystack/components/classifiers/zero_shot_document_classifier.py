@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Optional
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
@@ -72,16 +72,16 @@ class TransformersZeroShotDocumentClassifier:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str,
         labels: list[str],
         multi_label: bool = False,
-        classification_field: Optional[str] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-    ):
+        classification_field: str | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+    ) -> None:
         """
         Initializes the TransformersZeroShotDocumentClassifier.
 
@@ -131,7 +131,7 @@ class TransformersZeroShotDocumentClassifier:
         )
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline: Optional[HfPipeline] = None
+        self.pipeline: HfPipeline | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -141,7 +141,7 @@ class TransformersZeroShotDocumentClassifier:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -160,7 +160,7 @@ class TransformersZeroShotDocumentClassifier:
             labels=self.labels,
             model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -179,13 +179,12 @@ class TransformersZeroShotDocumentClassifier:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         if data["init_parameters"].get("huggingface_pipeline_kwargs") is not None:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], batch_size: int = 1):
+    def run(self, documents: list[Document], batch_size: int = 1) -> dict[str, Any]:
         """
         Classifies the documents based on the provided labels and adds them to their metadata.
 
@@ -203,10 +202,7 @@ class TransformersZeroShotDocumentClassifier:
         """
 
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TransformerZeroShotDocumentClassifier wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
@@ -231,14 +227,17 @@ class TransformersZeroShotDocumentClassifier:
             for doc in documents
         ]
 
-        predictions = self.pipeline(texts, self.labels, multi_label=self.multi_label, batch_size=batch_size)
+        # mypy doesn't know this is set in warm_up
+        predictions = self.pipeline(  # type: ignore[misc]
+            texts, self.labels, multi_label=self.multi_label, batch_size=batch_size
+        )
 
         new_documents = []
-        for prediction, document in zip(predictions, documents):
+        for prediction, document in zip(predictions, documents, strict=True):
             formatted_prediction = {
                 "label": prediction["labels"][0],
                 "score": prediction["scores"][0],
-                "details": dict(zip(prediction["labels"], prediction["scores"])),
+                "details": dict(zip(prediction["labels"], prediction["scores"], strict=True)),
             }
             new_meta = {**document.meta, "classification": formatted_prediction}
             new_documents.append(replace(document, meta=new_meta))

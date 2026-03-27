@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Ensure type display works correctly for parameterized generics when tracing is enabled.
+    Previously, the ``haystack.component.input_spec`` and ``haystack.component.output_spec`` tag would strip the arguments present within a container type (e.g. ``list[str]`` would become ``"list"``).
+    Now we properly keep the arguments representation (e.g. ``list[str]`` becomes ``"list[str]"``).

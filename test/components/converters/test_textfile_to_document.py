@@ -5,8 +5,6 @@
 import logging
 import os
 
-import pytest
-
 from haystack.components.converters.txt import TextFileToDocument
 from haystack.dataclasses import ByteStream
 

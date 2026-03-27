@@ -84,6 +84,19 @@ class TestLostInTheMiddleRanker:
         doc = Document(content="test")
         assert ranker.run(documents=[doc]) == {"documents": [doc]}
 
+    def test_run_deduplicates_documents(self):
+        ranker = LostInTheMiddleRanker()
+        docs = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+        result = ranker.run(documents=docs)
+
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
+
     @pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8, 12, 20])
     def test_lost_in_the_middle_order_with_top_k(self, top_k: int):
         # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter

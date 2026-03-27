@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types import CreateEmbeddingResponse
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 
@@ -37,19 +37,19 @@ class OpenAITextEmbedder:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
-        dimensions: Optional[int] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
+        dimensions: int | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
         prefix: str = "",
         suffix: str = "",
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
-    ):
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
+    ) -> None:
         """
         Creates an OpenAITextEmbedder component.
 
@@ -131,7 +131,7 @@ class OpenAITextEmbedder:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             model=self.model,
             dimensions=self.dimensions,
             api_base_url=self.api_base_url,
@@ -153,7 +153,6 @@ class OpenAITextEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     def _prepare_input(self, text: str) -> dict[str, Any]:
@@ -174,7 +173,7 @@ class OpenAITextEmbedder:
         return {"embedding": result.data[0].embedding, "meta": {"model": result.model, "usage": dict(result.usage)}}
 
     @component.output_types(embedding=list[float], meta=dict[str, Any])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, Any]:
         """
         Embeds a single string.
 
@@ -191,7 +190,7 @@ class OpenAITextEmbedder:
         return self._prepare_output(result=response)
 
     @component.output_types(embedding=list[float], meta=dict[str, Any])
-    async def run_async(self, text: str):
+    async def run_async(self, text: str) -> dict[str, Any]:
         """
         Asynchronously embed a single string.
 

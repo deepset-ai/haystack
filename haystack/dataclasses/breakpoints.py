@@ -4,7 +4,9 @@
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
+
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 
 @dataclass(frozen=True)
@@ -21,7 +23,7 @@ class Breakpoint:
 
     component_name: str
     visit_count: int = 0
-    snapshot_file_path: Optional[str] = None
+    snapshot_file_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -53,7 +55,7 @@ class ToolBreakpoint(Breakpoint):
     :param tool_name: The name of the tool to target within the Agent component. If None, applies to all tools.
     """
 
-    tool_name: Optional[str] = None
+    tool_name: str | None = None
 
     def __str__(self) -> str:
         tool_str = f", tool_name={self.tool_name}" if self.tool_name else ", tool_name=ALL_TOOLS"
@@ -77,9 +79,9 @@ class AgentBreakpoint:
     """
 
     agent_name: str
-    break_point: Union[Breakpoint, ToolBreakpoint]
+    break_point: Breakpoint | ToolBreakpoint
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if (
             isinstance(self.break_point, Breakpoint) and not isinstance(self.break_point, ToolBreakpoint)
         ) and self.break_point.component_name != "chat_generator":
@@ -105,7 +107,7 @@ class AgentBreakpoint:
         :return: An instance of AgentBreakpoint.
         """
         break_point_data = data["break_point"]
-        break_point: Union[Breakpoint, ToolBreakpoint]
+        break_point: Breakpoint | ToolBreakpoint
         if "tool_name" in break_point_data:
             break_point = ToolBreakpoint(**break_point_data)
         else:
@@ -113,12 +115,17 @@ class AgentBreakpoint:
         return cls(agent_name=data["agent_name"], break_point=break_point)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class AgentSnapshot:
+    """
+    Snapshot of an Agent's state at a breakpoint (component inputs, visit counts, and breakpoint).
+    """
+
     component_inputs: dict[str, Any]
     component_visits: dict[str, int]
     break_point: AgentBreakpoint
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -149,6 +156,7 @@ class AgentSnapshot:
         )
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class PipelineState:
     """
@@ -184,29 +192,30 @@ class PipelineState:
         return cls(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class PipelineSnapshot:
     """
     A dataclass to hold a snapshot of the pipeline at a specific point in time.
 
+    :param original_input_data: The original input data provided to the pipeline.
+    :param ordered_component_names: A list of component names in the order they were visited.
     :param pipeline_state: The state of the pipeline at the time of the snapshot.
     :param break_point: The breakpoint that triggered the snapshot.
     :param agent_snapshot: Optional agent snapshot if the breakpoint is an agent breakpoint.
     :param timestamp: A timestamp indicating when the snapshot was taken.
-    :param original_input_data: The original input data provided to the pipeline.
-    :param ordered_component_names: A list of component names in the order they were visited.
     :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
     """
 
     original_input_data: dict[str, Any]
     ordered_component_names: list[str]
     pipeline_state: PipelineState
-    break_point: Union[AgentBreakpoint, Breakpoint]
-    agent_snapshot: Optional[AgentSnapshot] = None
-    timestamp: Optional[datetime] = None
+    break_point: AgentBreakpoint | Breakpoint
+    agent_snapshot: AgentSnapshot | None = None
+    timestamp: datetime | None = None
     include_outputs_from: set[str] = field(default_factory=set)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Validate consistency between component_visits and ordered_component_names
         components_in_state = set(self.pipeline_state.component_visits.keys())
         components_in_order = set(self.ordered_component_names)
@@ -224,7 +233,7 @@ class PipelineSnapshot:
         :return: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input data,
                  ordered component names, include_outputs_from, and pipeline outputs.
         """
-        data = {
+        return {
             "pipeline_state": self.pipeline_state.to_dict(),
             "break_point": self.break_point.to_dict(),
             "agent_snapshot": self.agent_snapshot.to_dict() if self.agent_snapshot else None,
@@ -233,7 +242,6 @@ class PipelineSnapshot:
             "ordered_component_names": self.ordered_component_names,
             "include_outputs_from": list(self.include_outputs_from),
         }
-        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "PipelineSnapshot":
@@ -258,4 +266,20 @@ class PipelineSnapshot:
             original_input_data=data.get("original_input_data", {}),
             ordered_component_names=data.get("ordered_component_names", []),
             include_outputs_from=include_outputs_from,
+        )
+
+    @classmethod
+    def _from_agent_snapshot(cls, agent_snapshot: AgentSnapshot) -> "PipelineSnapshot":
+        """
+        Create a PipelineSnapshot from an AgentSnapshot.
+        """
+        # Create an empty pipeline snapshot
+        return PipelineSnapshot(
+            pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
+            timestamp=agent_snapshot.timestamp,
+            break_point=agent_snapshot.break_point,
+            agent_snapshot=agent_snapshot,
+            original_input_data={},
+            ordered_component_names=[],
+            include_outputs_from=set(),
         )

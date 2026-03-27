@@ -1,3 +1,0 @@
-self-hosted-runner:
-  # Labels of self-hosted runner in array of string
-  labels: ["cml", "ubuntu-latest-4-cores"]

@@ -2,18 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Awaitable, Callable, Literal, Optional, Union, overload
+from typing import Any, Literal, overload
 
 from haystack.core.component import Component
-from haystack.dataclasses.chat_message import ToolCallResult
+from haystack.dataclasses.chat_message import ReasoningContent, ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 # Type alias for standard finish_reason values following OpenAI's convention
 # plus Haystack-specific value ("tool_call_results")
 FinishReason = Literal["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ToolCallDelta:
     """
@@ -23,18 +26,21 @@ class ToolCallDelta:
     :param tool_name: The name of the Tool to call.
     :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     :param id: The ID of the Tool call.
+    :param extra: Dictionary of extra information about the Tool call. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
     """
 
     index: int
-    tool_name: Optional[str] = field(default=None)
-    arguments: Optional[str] = field(default=None)
-    id: Optional[str] = field(default=None)  # noqa: A003
+    tool_name: str | None = field(default=None)
+    arguments: str | None = field(default=None)
+    id: str | None = field(default=None)
+    extra: dict[str, Any] | None = field(default=None)
 
     def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the ToolCallDelta.
 
-        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', and 'id'.
+        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', 'id', and 'extra'.
         """
         return asdict(self)
 
@@ -49,6 +55,7 @@ class ToolCallDelta:
         return ToolCallDelta(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class ComponentInfo:
     """
@@ -60,7 +67,7 @@ class ComponentInfo:
     """
 
     type: str
-    name: Optional[str] = field(default=None)
+    name: str | None = field(default=None)
 
     @classmethod
     def from_component(cls, component: Component) -> "ComponentInfo":
@@ -95,6 +102,7 @@ class ComponentInfo:
         return ComponentInfo(**data)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class StreamingChunk:
     """
@@ -114,29 +122,32 @@ class StreamingChunk:
     :param finish_reason: An optional value indicating the reason the generation finished.
         Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter",
         plus Haystack-specific value "tool_call_results".
+    :param reasoning: An optional ReasoningContent object representing the reasoning content associated
+        with the message chunk.
     """
 
     content: str
     meta: dict[str, Any] = field(default_factory=dict, hash=False)
-    component_info: Optional[ComponentInfo] = field(default=None)
-    index: Optional[int] = field(default=None)
-    tool_calls: Optional[list[ToolCallDelta]] = field(default=None)
-    tool_call_result: Optional[ToolCallResult] = field(default=None)
+    component_info: ComponentInfo | None = field(default=None)
+    index: int | None = field(default=None)
+    tool_calls: list[ToolCallDelta] | None = field(default=None)
+    tool_call_result: ToolCallResult | None = field(default=None)
     start: bool = field(default=False)
-    finish_reason: Optional[FinishReason] = field(default=None)
+    finish_reason: FinishReason | None = field(default=None)
+    reasoning: ReasoningContent | None = field(default=None)
 
-    def __post_init__(self):
-        fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result))
+    def __post_init__(self) -> None:
+        fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result, self.reasoning))
         if fields_set > 1:
             raise ValueError(
-                "Only one of `content`, `tool_call`, or `tool_call_result` may be set in a StreamingChunk. "
+                "Only one of `content`, `tool_call`, `tool_call_result` or `reasoning` may be set in a StreamingChunk. "
                 f"Got content: '{self.content}', tool_call: '{self.tool_calls}', "
-                f"tool_call_result: '{self.tool_call_result}'"
+                f"tool_call_result: '{self.tool_call_result}', reasoning: '{self.reasoning}'."
             )
 
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
-        if (self.tool_calls or self.tool_call_result) and self.index is None:
-            raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
+        if (self.tool_calls or self.tool_call_result or self.reasoning) and self.index is None:
+            raise ValueError("If `tool_call`, `tool_call_result` or `reasoning` is set, `index` must also be set.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -153,6 +164,7 @@ class StreamingChunk:
             "tool_call_result": self.tool_call_result.to_dict() if self.tool_call_result else None,
             "start": self.start,
             "finish_reason": self.finish_reason,
+            "reasoning": self.reasoning.to_dict() if self.reasoning else None,
         }
 
     @classmethod
@@ -177,32 +189,31 @@ class StreamingChunk:
             else None,
             start=data.get("start", False),
             finish_reason=data.get("finish_reason"),
+            reasoning=ReasoningContent.from_dict(data["reasoning"]) if data.get("reasoning") else None,
         )
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
 AsyncStreamingCallbackT = Callable[[StreamingChunk], Awaitable[None]]
 
-StreamingCallbackT = Union[SyncStreamingCallbackT, AsyncStreamingCallbackT]
+StreamingCallbackT = SyncStreamingCallbackT | AsyncStreamingCallbackT
 
 
 @overload
 def select_streaming_callback(
-    init_callback: Optional[StreamingCallbackT],
-    runtime_callback: Optional[StreamingCallbackT],
+    init_callback: StreamingCallbackT | None,
+    runtime_callback: StreamingCallbackT | None,
     requires_async: Literal[False],
-) -> Optional[SyncStreamingCallbackT]: ...
+) -> SyncStreamingCallbackT | None: ...
 @overload
 def select_streaming_callback(
-    init_callback: Optional[StreamingCallbackT],
-    runtime_callback: Optional[StreamingCallbackT],
-    requires_async: Literal[True],
-) -> Optional[AsyncStreamingCallbackT]: ...
+    init_callback: StreamingCallbackT | None, runtime_callback: StreamingCallbackT | None, requires_async: Literal[True]
+) -> AsyncStreamingCallbackT | None: ...
 
 
 def select_streaming_callback(
-    init_callback: Optional[StreamingCallbackT], runtime_callback: Optional[StreamingCallbackT], requires_async: bool
-) -> Optional[StreamingCallbackT]:
+    init_callback: StreamingCallbackT | None, runtime_callback: StreamingCallbackT | None, requires_async: bool
+) -> StreamingCallbackT | None:
     """
     Picks the correct streaming callback given an optional initial and runtime callback.
 

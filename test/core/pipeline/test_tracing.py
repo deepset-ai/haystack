@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
+from dataclasses import replace
 from unittest.mock import ANY
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
-from haystack import Pipeline, component
+from haystack import AsyncPipeline, Pipeline, component
+from haystack.dataclasses import Document
 from haystack.tracing.tracer import tracer
 from test.tracing.utils import SpyingSpan, SpyingTracer
 
@@ -16,7 +17,7 @@ from test.tracing.utils import SpyingSpan, SpyingTracer
 @component
 class Hello:
     @component.output_types(output=str)
-    def run(self, word: Optional[str]):  # use optional to spice up the typing tags
+    def run(self, word: str | None) -> dict[str, str]:  # use optional to spice up the typing tags
         """
         Takes a string in input and returns "Hello, <string>!" in output.
         """
@@ -56,6 +57,7 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
                     "haystack.component.input_spec": {"word": {"type": ANY, "senders": []}},
                     "haystack.component.input": {"word": "world"},
@@ -72,6 +74,7 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
                     "haystack.component.input_spec": {"word": {"type": ANY, "senders": ["hello"]}},
                     "haystack.component.input": {"word": "Hello, world!"},
@@ -90,6 +93,7 @@ class TestTracing:
         assert spying_tracer.spans[1].tags["haystack.component.input_spec"]["word"]["type"] in [
             "typing.Union[str, NoneType]",
             "typing.Optional[str]",
+            "str | None",
         ]
 
     def test_with_enabled_content_tracing(
@@ -118,8 +122,9 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": ANY, "senders": []}},
+                    "haystack.component.input_spec": {"word": {"type": "str | None", "senders": []}},
                     "haystack.component.output_spec": {"output": {"type": "str", "receivers": ["hello2"]}},
                     "haystack.component.input": {"word": "world"},
                     "haystack.component.visits": 1,
@@ -134,8 +139,9 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
-                    "haystack.component.input_spec": {"word": {"type": ANY, "senders": ["hello"]}},
+                    "haystack.component.input_spec": {"word": {"type": "str | None", "senders": ["hello"]}},
                     "haystack.component.output_spec": {"output": {"type": "str", "receivers": []}},
                     "haystack.component.input": {"word": "Hello, world!"},
                     "haystack.component.visits": 1,
@@ -146,3 +152,26 @@ class TestTracing:
                 span_id=ANY,
             ),
         ]
+
+    @pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
+    def test_span_input_not_affected_by_component_mutation(self, pipeline_class, spying_tracer, monkeypatch):
+        """
+        Verify that the haystack.component.input span tag retains the pre-execution value.
+        """
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
+
+        @component
+        class MutatingComponent:
+            @component.output_types(doc=Document)
+            def run(self, doc: Document) -> dict:
+                return {"doc": replace(doc, content="mutated")}
+
+        pipe = pipeline_class()
+        pipe.add_component("mutator", MutatingComponent())
+
+        result = pipe.run({"mutator": {"doc": Document(content="original")}})
+
+        component_span = spying_tracer.spans[1]
+
+        assert component_span.tags["haystack.component.input"]["doc"].content == "original"
+        assert result["mutator"]["doc"].content == "mutated"

@@ -6,23 +6,35 @@ import builtins
 import importlib
 import inspect
 import sys
-import types
 import typing
 from threading import Lock
-from types import ModuleType
-from typing import Any, get_args
+from types import GenericAlias, ModuleType, NoneType, UnionType
+from typing import Any, Union, get_args
 
 from haystack.core.errors import DeserializationError
 
 _import_lock = Lock()
 
 
-# Sentinel for Python < 3.10
-class _Missing:
-    pass
+def _is_union_type(target: Any) -> bool:
+    """
+    Check if target is a Union type.
+
+    This handles both `typing.Union[X, Y]` and `X | Y` syntax from PEP 604,
+    including parameterized types like `Optional[str]`.
+    """
+    if target is Union or target is UnionType:
+        return True
+    origin = typing.get_origin(target)
+    return origin is Union or origin is UnionType
 
 
-_UnionType = getattr(types, "UnionType", _Missing)
+def _build_pep604_union_type(types: list[type | UnionType]) -> type | UnionType:
+    """Build a union type from a list of types using PEP 604 syntax (X | Y)."""
+    result = types[0]
+    for t in types[1:]:
+        result = result | t
+    return result
 
 
 def serialize_type(target: Any) -> str:
@@ -37,12 +49,12 @@ def serialize_type(target: Any) -> str:
     :return:
         The string representation of the type.
     """
-    if target is type(None):
+    if target is NoneType:
         return "None"
 
     args = get_args(target)
 
-    if isinstance(target, _UnionType):
+    if isinstance(target, UnionType):
         return " | ".join([serialize_type(a) for a in args])
 
     name = getattr(target, "__name__", str(target))
@@ -59,13 +71,21 @@ def serialize_type(target: Any) -> str:
         module_name = f"{module.__name__}"
 
     if args:
-        args_str = ", ".join([serialize_type(a) for a in args if a is not type(None)])
+        # For typing generics, convert PEP 604 union types (X | Y) to typing.Union when serializing.
+        # This avoids issues with Python's internal cache, where List[Union[str, int]] and List[str | int] are treated
+        # as the same key. GenericAlias (builtins like list[...]) can keep the PEP 604 syntax.
+        is_typing_generic = not isinstance(target, GenericAlias)
+        args_str = ", ".join(
+            serialize_type(Union[tuple(get_args(a))] if is_typing_generic and isinstance(a, UnionType) else a)  # noqa: UP007
+            for a in args
+            if a is not NoneType
+        )
         return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
 
     return f"{module_name}.{name}" if module_name else f"{name}"
 
 
-def _parse_generic_args(args_str):
+def _parse_generic_args(args_str: str) -> list[str]:
     args = []
     bracket_count = 0
     current_arg = ""
@@ -88,7 +108,38 @@ def _parse_generic_args(args_str):
     return args
 
 
-def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements
+def _parse_pep604_union_args(union_str: str) -> list[str]:
+    """
+    Parse a PEP 604 union string (e.g., "str | int | None") into individual type strings.
+
+    Handles nested generics properly, e.g., "list[str] | dict[str, int] | None".
+
+    :param union_str: The union string to parse
+    :returns: A list of individual type strings
+    """
+    args = []
+    bracket_count = 0
+    current_arg = ""
+
+    for char in union_str:
+        if char == "[":
+            bracket_count += 1
+        elif char == "]":
+            bracket_count -= 1
+
+        if char == "|" and bracket_count == 0:
+            args.append(current_arg.strip())
+            current_arg = ""
+        else:
+            current_arg += char
+
+    if current_arg.strip():
+        args.append(current_arg.strip())
+
+    return args
+
+
+def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string, including nested generic types.
 
@@ -103,8 +154,13 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
     :raises DeserializationError:
         If the type cannot be deserialized due to missing module or type.
     """
+    # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
+    pep604_union_args = _parse_pep604_union_args(type_str)
+    if len(pep604_union_args) > 1:
+        deserialized_args = [deserialize_type(arg) for arg in pep604_union_args]
+        return _build_pep604_union_type(deserialized_args)
 
-    # Handle generics
+    # Handle generics (including Union[X, Y])
     if "[" in type_str and type_str.endswith("]"):
         main_type_str, generics_str = type_str.split("[", 1)
         generics_str = generics_str[:-1]
@@ -149,7 +205,7 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
 
     # Special case for NoneType
     if type_str == "NoneType":
-        return type(None)
+        return NoneType
 
     # Special case for None
     if type_str == "None":

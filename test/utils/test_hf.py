@@ -6,7 +6,7 @@ import logging
 
 import pytest
 
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, TextContent, ToolCall
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, ReasoningContent, TextContent, ToolCall
 from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import convert_message_to_hf_format, resolve_hf_device_map
@@ -106,3 +106,46 @@ def test_convert_message_to_hf_format_with_multiple_images(base64_image_string):
         ],
     }
     assert result == expected
+
+
+def test_convert_message_to_hf_format_skips_reasoning_content():
+    """
+    Test that ReasoningContent is properly skipped during conversion.
+
+    ReasoningContent is for human transparency only and is not sent to the HuggingFace API
+    because the API (which follows OpenAI-compatible format) does not support reasoning
+    in input messages.
+    """
+    # Assistant message with text and reasoning
+    message = ChatMessage(
+        _role=ChatRole.ASSISTANT,
+        _content=[
+            TextContent(text="The answer is 42."),
+            ReasoningContent(reasoning_text="Let me think step by step..."),
+        ],
+    )
+    result = convert_message_to_hf_format(message)
+    # ReasoningContent should be skipped, only text should be in the output
+    assert result == {"role": "assistant", "content": "The answer is 42."}
+
+
+def test_convert_message_to_hf_format_with_tool_call_and_reasoning():
+    """
+    Test that ReasoningContent is skipped when message contains tool calls.
+    """
+    message = ChatMessage(
+        _role=ChatRole.ASSISTANT,
+        _content=[
+            ReasoningContent(reasoning_text="I need to check the weather."),
+            ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"}),
+        ],
+    )
+    result = convert_message_to_hf_format(message)
+    # ReasoningContent should be skipped
+    assert result == {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {"id": "123", "type": "function", "function": {"name": "weather", "arguments": {"city": "Paris"}}}
+        ],
+    }

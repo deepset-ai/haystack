@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import requests
@@ -13,7 +13,7 @@ logger = logging.getLogger(__file__)
 
 
 def request_with_retry(
-    attempts: int = 3, status_codes_to_retry: Optional[list[int]] = None, **kwargs: Any
+    attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any
 ) -> requests.Response:
     """
     Executes an HTTP request with a configurable exponential backoff retry on failures.
@@ -81,7 +81,7 @@ def request_with_retry(
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    def run():
+    def run() -> requests.Response:
         timeout = kwargs.pop("timeout", 10)
         res = requests.request(**kwargs, timeout=timeout)
 
@@ -99,7 +99,7 @@ def request_with_retry(
 
 
 async def async_request_with_retry(
-    attempts: int = 3, status_codes_to_retry: Optional[list[int]] = None, **kwargs: Any
+    attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any
 ) -> httpx.Response:
     """
     Executes an asynchronous HTTP request with a configurable exponential backoff retry on failures.
@@ -190,7 +190,7 @@ async def async_request_with_retry(
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    async def run():
+    async def run() -> httpx.Response:
         timeout = kwargs.pop("timeout", 10)
         async with httpx.AsyncClient() as client:
             res = await client.request(**kwargs, timeout=timeout)

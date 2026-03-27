@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-
 from haystack.core.component import component
 from haystack.dataclasses import Document
 from haystack.testing.factory import component_class, document_store_class
@@ -15,7 +13,7 @@ def test_document_store_class_default():
     assert store.count_documents() == 0
     assert store.filter_documents() == []
     assert store.write_documents([]) is None
-    assert store.delete_documents([]) is None
+    assert store.delete_documents([]) is None  # type: ignore[func-returns-value]
     assert store.to_dict() == {"type": "haystack.testing.factory.MyStore", "init_parameters": {}}
 
 

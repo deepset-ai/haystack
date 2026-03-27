@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
+import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -16,12 +16,18 @@ from openai.types.chat import (
     ChatCompletionChunk,
     ChatCompletionMessage,
     ChatCompletionMessageFunctionToolCall,
+    ParsedChatCompletion,
+    ParsedChatCompletionMessage,
+    ParsedChoice,
+    ParsedFunction,
+    ParsedFunctionToolCall,
     chat_completion_chunk,
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
+from pydantic import BaseModel
 
 from haystack import component
 from haystack.components.generators.chat.openai import (
@@ -30,10 +36,29 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_chunk_to_streaming_chunk,
 )
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall, ToolCallDelta
+from haystack.dataclasses import (
+    ChatMessage,
+    ChatRole,
+    FileContent,
+    ImageContent,
+    StreamingChunk,
+    ToolCall,
+    ToolCallDelta,
+)
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
+
+
+class CalendarEvent(BaseModel):
+    event_name: str
+    event_date: str
+    event_location: str
+
+
+@pytest.fixture
+def calendar_event_model():
+    return CalendarEvent
 
 
 @pytest.fixture
@@ -92,10 +117,44 @@ def weather_function(city: str) -> dict[str, Any]:
     return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
+# mock chat completions with structured outputs
+@pytest.fixture
+def mock_parsed_chat_completion():
+    with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
+        completion = ParsedChatCompletion[CalendarEvent](
+            id="json_foo",
+            model="gpt-5-mini",
+            object="chat.completion",
+            choices=[
+                ParsedChoice[CalendarEvent](
+                    finish_reason="stop",
+                    index=0,
+                    message=ParsedChatCompletionMessage[CalendarEvent](
+                        content='{"event_name":"Team Meeting","event_date":"2024-03-15",'
+                        '"event_location":"Conference Room A"}',
+                        refusal=None,
+                        role="assistant",
+                        annotations=[],
+                        audio=None,
+                        function_call=None,
+                        tool_calls=None,
+                        parsed=CalendarEvent(
+                            event_name="Team Meeting", event_date="2024-03-15", event_location="Conference Room A"
+                        ),
+                    ),
+                )
+            ],
+            created=1757328264,
+            usage=CompletionUsage(completion_tokens=29, prompt_tokens=86, total_tokens=115),
+        )
+        mock_chat_completion_parse.return_value = completion
+        yield mock_chat_completion_parse
+
+
 @component
 class MessageExtractor:
     @component.output_types(messages=list[str], meta=dict[str, Any])
-    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], meta: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 
@@ -127,11 +186,18 @@ def tools():
 
 
 class TestOpenAIChatGenerator:
+    def test_supported_models(self):
+        """SUPPORTED_MODELS is a non-empty list of strings."""
+        models = OpenAIChatGenerator.SUPPORTED_MODELS
+        assert isinstance(models, list)
+        assert len(models) > 0
+        assert all(isinstance(m, str) for m in models)
+
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
@@ -159,10 +225,9 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
             max_retries=1,
             tools=[tool],
@@ -170,9 +235,9 @@ class TestOpenAIChatGenerator:
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
         assert component.tools == [tool]
@@ -184,15 +249,14 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
 
@@ -204,7 +268,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -217,16 +281,20 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = OpenAIChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={
+                "max_completion_tokens": 10,
+                "some_test_param": "test-params",
+                "response_format": calendar_event_model,
+                "logprobs": True,
+            },
             tools=[tool],
             tools_strict=True,
             max_retries=10,
@@ -239,13 +307,35 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "max_retries": 10,
                 "timeout": 100.0,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {
+                    "max_completion_tokens": 10,
+                    "some_test_param": "test-params",
+                    "logprobs": True,
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "CalendarEvent",
+                            "strict": True,
+                            "schema": {
+                                "properties": {
+                                    "event_name": {"title": "Event Name", "type": "string"},
+                                    "event_date": {"title": "Event Date", "type": "string"},
+                                    "event_location": {"title": "Event Location", "type": "string"},
+                                },
+                                "required": ["event_name", "event_date", "event_location"],
+                                "title": "CalendarEvent",
+                                "type": "object",
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                },
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -265,18 +355,42 @@ class TestOpenAIChatGenerator:
             },
         }
 
+    def test_to_dict_with_response_format_json_object(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
+            generation_kwargs={"response_format": {"type": "json_object"}},
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-5-mini",
+                "api_base_url": None,
+                "organization": None,
+                "streaming_callback": None,
+                "generation_kwargs": {"response_format": {"type": "json_object"}},
+                "tools": None,
+                "tools_strict": False,
+                "max_retries": None,
+                "timeout": None,
+                "http_client_kwargs": None,
+            },
+        }
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "max_retries": 10,
                 "timeout": 100.0,
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -295,10 +409,10 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator.from_dict(data)
 
         assert isinstance(component, OpenAIChatGenerator)
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
@@ -318,7 +432,7 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "tools": None,
             },
         }
@@ -338,13 +452,14 @@ class TestOpenAIChatGenerator:
 
     def test_run_with_params(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
         )
         response = component.run(chat_messages)
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
+        assert kwargs["max_completion_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
         # check that the tools are not passed to the OpenAI API (the generator is initialized without tools)
@@ -401,6 +516,28 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
+    def test_run_with_response_format(self, chat_messages, mock_parsed_chat_completion):
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"response_format": CalendarEvent}
+        )
+        response = component.run(chat_messages)
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
+
+    def test_run_with_response_format_in_run_method(self, chat_messages, mock_parsed_chat_completion):
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        response = component.run(chat_messages, generation_kwargs={"response_format": CalendarEvent})
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
+
     def test_run_with_wrapped_stream_simulation(self, chat_messages, openai_mock_stream):
         streaming_callback_called = False
 
@@ -450,7 +587,7 @@ class TestOpenAIChatGenerator:
         # check truncation warning
         message_template = (
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions."
+            "Increase the max_completion_tokens parameter to allow for longer completions."
         )
 
         for index in [1, 3]:
@@ -523,6 +660,66 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 40
 
+    def test_run_with_tools_and_response_format(self, tools, mock_parsed_chat_completion):
+        """
+        Test the run method with tools and response format
+            When tools are used, the function call overrides the schema passed in response_format
+        """
+        with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
+            completion = ParsedChatCompletion[CalendarEvent](
+                id="foo",
+                model="gpt-4",
+                object="chat.completion",
+                choices=[
+                    ParsedChoice[CalendarEvent](
+                        finish_reason="tool_calls",
+                        logprobs=None,
+                        index=0,
+                        message=ParsedChatCompletionMessage[CalendarEvent](
+                            role="assistant",
+                            tool_calls=[
+                                ParsedFunctionToolCall(
+                                    id="123",
+                                    type="function",
+                                    function=ParsedFunction(name="weather", arguments='{"city": "Paris"}'),
+                                )
+                            ],
+                        ),
+                    )
+                ],
+                created=int(datetime.now().timestamp()),
+                usage=CompletionUsage(
+                    completion_tokens=40,
+                    prompt_tokens=57,
+                    total_tokens=97,
+                    completion_tokens_details=CompletionTokensDetails(
+                        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    ),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                ),
+            )
+            mock_chat_completion_parse.return_value = completion
+
+            component = OpenAIChatGenerator(
+                api_key=Secret.from_token("test-api-key"), tools=tools[:1], tools_strict=True
+            )
+            response_with_format = component.run(
+                [ChatMessage.from_user("What's the weather like in Paris?")],
+                generation_kwargs={"response_format": CalendarEvent},
+            )
+
+        assert len(response_with_format["replies"]) == 1
+        message_with_format = response_with_format["replies"][0]
+        assert not message_with_format.texts
+        assert not message_with_format.text
+        assert message_with_format.tool_calls
+        tool_call = message_with_format.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message_with_format.meta["finish_reason"] == "tool_calls"
+        assert message_with_format.meta["usage"]["completion_tokens"] == 40
+
     def test_run_with_tools_streaming(self, mock_chat_completion_chunk_with_tools, tools):
         streaming_callback_called = False
 
@@ -561,7 +758,7 @@ class TestOpenAIChatGenerator:
         with patch("openai.resources.chat.completions.Completions.create") as mock_create:
             mock_create.return_value = ChatCompletion(
                 id="test",
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 object="chat.completion",
                 choices=[
                     Choice(
@@ -601,6 +798,18 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 47
 
+    def test_run_with_response_format_and_streaming_pydantic_model(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"response_format": calendar_event_model},
+            streaming_callback=print_streaming_chunk,
+        )
+        with pytest.raises(TypeError):
+            component.run(chat_messages)
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -608,14 +817,166 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_pydantic_model(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIChatGenerator(
+            model="gpt-4.1-nano", generation_kwargs={"response_format": calendar_event_model}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_object(self):
+        chat_messages = [
+            ChatMessage.from_user(
+                'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
+                'For example: {"city": "Paris"}'
+            )
+        ]
+        comp = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"response_format": {"type": "json_object"}})
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "paris" in msg["city"].lower()
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_object_streaming(self):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_messages = [
+            ChatMessage.from_user(
+                'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
+                'For example: {"city": "Paris"}'
+            )
+        ]
+        comp = OpenAIChatGenerator(
+            model="gpt-4.1-nano",
+            generation_kwargs={"response_format": {"type": "json_object"}},
+            streaming_callback=streaming_callback,
+        )
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "paris" in msg["city"].lower()
+        assert message.meta["finish_reason"] == "stop"
+        assert streaming_callback_called is True
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_schema(self):
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        comp = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"response_format": response_schema})
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_schema_streaming(self):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        comp = OpenAIChatGenerator(
+            model="gpt-4.1-nano",
+            generation_kwargs={"response_format": response_schema},
+            streaming_callback=streaming_callback,
+        )
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
+        assert message.meta["finish_reason"] == "stop"
+        assert streaming_callback_called is True
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
@@ -645,7 +1006,9 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+            model="gpt-4.1-nano",
+            streaming_callback=callback,
+            generation_kwargs={"stream_options": {"include_usage": True}},
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -658,7 +1021,7 @@ class TestOpenAIChatGenerator:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4o" in metadata["model"]
+        assert "gpt-4.1-nano" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         # Usage information checks
@@ -683,6 +1046,7 @@ class TestOpenAIChatGenerator:
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
         component = OpenAIChatGenerator(
+            model="gpt-4.1-nano",
             tools=tools,
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"stream_options": {"include_usage": True}},
@@ -702,7 +1066,10 @@ class TestOpenAIChatGenerator:
             assert tool_call.tool_name == "weather"
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
-        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
+        # Check that both cities are present (case-insensitive, allowing for variations like "Paris, France")
+        city_values = [arg["city"].lower() for arg in arguments]
+        assert any("berlin" in city for city in city_values)
+        assert any("paris" in city for city in city_values)
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
@@ -733,7 +1100,7 @@ class TestOpenAIChatGenerator:
     def test_live_run_with_toolset(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
-        component = OpenAIChatGenerator(tools=toolset)
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=toolset)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -744,8 +1111,8 @@ class TestOpenAIChatGenerator:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
+        assert tool_call.arguments.keys() == {"city"}
+        assert "Paris" in tool_call.arguments["city"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -773,6 +1140,177 @@ class TestOpenAIChatGenerator:
         assert not message.tool_calls
         assert not message.tool_call_results
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_file_content(self, test_files_path):
+        pdf_path = test_files_path / "pdf" / "sample_pdf_3.pdf"
+
+        file_content = FileContent.from_file_path(file_path=pdf_path)
+
+        chat_messages = [
+            ChatMessage.from_user(
+                content_parts=[file_content, "Is this document a paper about LLMs? Respond with 'yes' or 'no' only."]
+            )
+        ]
+
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        results = generator.run(chat_messages)
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+
+        assert message.is_from(ChatRole.ASSISTANT)
+
+        assert message.text
+        assert "no" in message.text.lower()
+
+    def test_init_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test initialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+
+        assert component.tools == [toolset1, toolset2]
+        assert isinstance(component.tools, list)
+        assert len(component.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in component.tools)
+
+    def test_serde_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test serialization and deserialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+        data = component.to_dict()
+
+        # Verify serialization preserves list[Toolset] structure
+        tools_data = data["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(isinstance(ts, dict) for ts in tools_data)
+        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        # Deserialize and verify
+        deserialized = OpenAIChatGenerator.from_dict(data)
+        assert isinstance(deserialized.tools, list)
+        assert len(deserialized.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
+
+    def test_warm_up_with_tools(self, monkeypatch):
+        """Test that warm_up() calls warm_up on tools and is idempotent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        # Create a mock tool that tracks if warm_up() was called
+        class MockTool(Tool):
+            warm_up_call_count = 0  # Class variable to track calls
+
+            def __init__(self):
+                super().__init__(
+                    name="mock_tool",
+                    description="A mock tool for testing",
+                    parameters={"x": {"type": "string"}},
+                    function=lambda x: x,
+                )
+
+            def warm_up(self):
+                MockTool.warm_up_call_count += 1
+
+        # Reset the class variable before test
+        MockTool.warm_up_call_count = 0
+        mock_tool = MockTool()
+
+        # Create OpenAIChatGenerator with the mock tool
+        component = OpenAIChatGenerator(tools=[mock_tool])
+
+        # Verify initial state - warm_up not called yet
+        assert MockTool.warm_up_call_count == 0
+        assert not component._is_warmed_up
+
+        # Call warm_up() on the generator
+        component.warm_up()
+
+        # Assert that the tool's warm_up() was called
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+        # Call warm_up() again and verify it's idempotent (only warms up once)
+        component.warm_up()
+
+        # The tool's warm_up should still only have been called once
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+    def test_warm_up_with_no_tools(self, monkeypatch):
+        """Test that warm_up() works when no tools are provided."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = OpenAIChatGenerator()
+
+        # Verify initial state
+        assert not component._is_warmed_up
+        assert component.tools is None
+
+        # Call warm_up() - should not raise an error
+        component.warm_up()
+
+        # Verify the component is warmed up
+        assert component._is_warmed_up
+
+        # Call warm_up() again - should be idempotent
+        component.warm_up()
+        assert component._is_warmed_up
+
+    def test_warm_up_with_multiple_tools(self, monkeypatch):
+        """Test that warm_up() works with multiple tools."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        from haystack.tools import Tool
+
+        # Track warm_up calls
+        warm_up_calls = []
+
+        class MockTool(Tool):
+            def __init__(self, tool_name):
+                super().__init__(
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+                    function=lambda x: f"{tool_name} result: {x}",
+                )
+
+            def warm_up(self):
+                warm_up_calls.append(self.name)
+
+        mock_tool1 = MockTool("tool1")
+        mock_tool2 = MockTool("tool2")
+
+        # Use a LIST of tools, not a Toolset
+        component = OpenAIChatGenerator(tools=[mock_tool1, mock_tool2])
+
+        # Call warm_up()
+        component.warm_up()
+
+        # Assert that both tools' warm_up() were called
+        assert "tool1" in warm_up_calls
+        assert "tool2" in warm_up_calls
+        assert component._is_warmed_up
+
+        # Track count
+        call_count = len(warm_up_calls)
+
+        # Verify idempotency
+        component.warm_up()
+        assert len(warm_up_calls) == call_count
+
 
 @pytest.fixture
 def chat_completion_chunks():
@@ -781,7 +1319,7 @@ def chat_completion_chunks():
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(role="assistant"), index=0)],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -804,7 +1342,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -822,7 +1360,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -840,7 +1378,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -858,7 +1396,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -874,7 +1412,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -897,7 +1435,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -915,7 +1453,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -933,7 +1471,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -951,7 +1489,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -967,7 +1505,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -976,7 +1514,7 @@ def chat_completion_chunks():
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), finish_reason="tool_calls", index=0)],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -985,7 +1523,7 @@ def chat_completion_chunks():
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1003,12 +1541,26 @@ def chat_completion_chunks():
 
 
 @pytest.fixture
+def chat_completion_chunk_delta_none():
+    chunk = ChatCompletionChunk(
+        id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
+        choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), index=0)],
+        created=1742207200,
+        model="gpt-5-mini",
+        object="chat.completion.chunk",
+    )
+    # pydantic complains if we set delta to None at initialization
+    chunk.choices[0].delta = None
+    return chunk
+
+
+@pytest.fixture
 def streaming_chunks():
     return [
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
@@ -1019,7 +1571,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
@@ -1040,7 +1592,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
@@ -1053,7 +1605,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
@@ -1066,7 +1618,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))],
                 "finish_reason": None,
@@ -1079,7 +1631,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))],
                 "finish_reason": None,
@@ -1092,7 +1644,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
@@ -1113,7 +1665,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
@@ -1126,7 +1678,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
@@ -1139,7 +1691,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))],
                 "finish_reason": None,
@@ -1152,7 +1704,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))],
                 "finish_reason": None,
@@ -1165,7 +1717,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": None,
                 "finish_reason": "tool_calls",
@@ -1177,7 +1729,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "received_at": ANY,
                 "usage": {
                     "completion_tokens": 42,
@@ -1199,7 +1751,7 @@ def streaming_chunks():
 class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(self, chat_completion_chunks, streaming_chunks):
         previous_chunks = []
-        for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks):
+        for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
             stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
             )
@@ -1220,7 +1772,7 @@ class TestChatCompletionChunkConversion:
                 )
             ],
             created=1742207200,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
         )
         result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
@@ -1229,13 +1781,39 @@ class TestChatCompletionChunkConversion:
         assert result.tool_calls == [ToolCallDelta(index=0)]
         assert result.tool_call_result is None
         assert result.index == 0
-        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
 
-    def test_handle_stream_response(self, chat_completion_chunks):
-        openai_chunks = chat_completion_chunks
+    def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none):
+        """
+        Test that a chat completion chunk with a delta set to None is converted to a streaming chunk properly.
+        This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
+        """
+
+        result = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk=chat_completion_chunk_delta_none, previous_chunks=[]
+        )
+
+        assert result.content == ""
+        assert result.start is False
+        assert result.tool_calls is None
+        assert result.tool_call_result is None
+        assert result.index == 0
+        assert result.component_info is None
+        assert result.finish_reason is None
+        assert result.reasoning is None
+
+        assert result.meta["model"] == "gpt-5-mini"
+        assert result.meta["received_at"] is not None
+        assert result.meta["index"] == 0
+        assert result.meta["finish_reason"] is None
+        assert result.meta["usage"] is None
+        assert result.meta["tool_calls"] is None
+
+    def test_handle_stream_response(self, chat_completion_chunks, chat_completion_chunk_delta_none):
+        openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        result = comp._handle_stream_response(openai_chunks, callback=lambda chunk: None)[0]  # type: ignore
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore
 
         assert not result.texts
         assert not result.text
@@ -1250,7 +1828,7 @@ class TestChatCompletionChunkConversion:
         assert result.tool_calls[1].arguments == {"city": "Berlin"}
 
         # Verify meta information
-        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
@@ -1272,7 +1850,7 @@ class TestChatCompletionChunkConversion:
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
             choices=[],
             created=1742207200,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_06737a9306",
@@ -1291,5 +1869,5 @@ class TestChatCompletionChunkConversion:
         assert result.start is False
         assert result.tool_calls is None
         assert result.tool_call_result is None
-        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None

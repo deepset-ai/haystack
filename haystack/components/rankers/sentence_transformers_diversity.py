@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
+from haystack.utils.misc import _deduplicate_documents
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as torch_and_sentence_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
     import torch
     from sentence_transformers import SentenceTransformer
 
@@ -94,13 +95,15 @@ class SentenceTransformersDiversityRanker:
         relevance to the query and diversity from already selected documents. The 'lambda_threshold' controls the
         trade-off between relevance and diversity.
 
+    Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+    if a score is present.
+
     ### Usage example
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
     ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
-    ranker.warm_up()
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"
@@ -109,26 +112,26 @@ class SentenceTransformersDiversityRanker:
     ```
     """  # noqa: E501
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        similarity: Union[str, DiversityRankingSimilarity] = "cosine",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        similarity: str | DiversityRankingSimilarity = "cosine",
         query_prefix: str = "",
         query_suffix: str = "",
         document_prefix: str = "",
         document_suffix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-        strategy: Union[str, DiversityRankingStrategy] = "greedy_diversity_order",
+        strategy: str | DiversityRankingStrategy = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         """
         Initialize a SentenceTransformersDiversityRanker.
 
@@ -175,7 +178,7 @@ class SentenceTransformersDiversityRanker:
         self.top_k = top_k
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
-        self.model: Optional[SentenceTransformer] = None
+        self.model: SentenceTransformer | None = None
         self.similarity = DiversityRankingSimilarity.from_str(similarity) if isinstance(similarity, str) else similarity
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
@@ -184,14 +187,14 @@ class SentenceTransformersDiversityRanker:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
-        self.lambda_threshold = lambda_threshold or 0.5
+        self.lambda_threshold = lambda_threshold
         self._check_lambda_threshold(self.lambda_threshold, self.strategy)
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
         self.backend = backend
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -217,8 +220,8 @@ class SentenceTransformersDiversityRanker:
             self,
             model=self.model_name_or_path,
             top_k=self.top_k,
-            device=self.device.to_dict(),
-            token=self.token.to_dict() if self.token else None,
+            device=self.device,
+            token=self.token,
             similarity=str(self.similarity),
             query_prefix=self.query_prefix,
             query_suffix=self.query_suffix,
@@ -248,9 +251,6 @@ class SentenceTransformersDiversityRanker:
             The deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
@@ -319,7 +319,7 @@ class SentenceTransformersDiversityRanker:
 
         return ranked_docs
 
-    def _embed_and_normalize(self, query, texts_to_embed):
+    def _embed_and_normalize(self, query: str, texts_to_embed: list[str]) -> tuple[Any, Any]:
         assert self.model is not None  # verified in run but mypy doesn't see it
 
         # Calculate embeddings
@@ -381,17 +381,13 @@ class SentenceTransformersDiversityRanker:
         return [documents[i] for i in selected]
 
     @staticmethod
-    def _check_lambda_threshold(lambda_threshold: float, strategy: DiversityRankingStrategy):
+    def _check_lambda_threshold(lambda_threshold: float, strategy: DiversityRankingStrategy) -> None:
         if (strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE) and not 0 <= lambda_threshold <= 1:
             raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        query: str,
-        documents: list[Document],
-        top_k: Optional[int] = None,
-        lambda_threshold: Optional[float] = None,
+        self, query: str, documents: list[Document], top_k: int | None = None, lambda_threshold: float | None = None
     ) -> dict[str, list[Document]]:
         """
         Rank the documents based on their diversity.
@@ -406,14 +402,9 @@ class SentenceTransformersDiversityRanker:
             - `documents`: List of Document objects that have been selected based on the diversity ranking.
 
         :raises ValueError: If the top_k value is less than or equal to 0.
-        :raises RuntimeError: If the component has not been warmed up.
         """
         if self.model is None:
-            error_msg = (
-                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
-            raise RuntimeError(error_msg)
+            self.warm_up()
 
         if not documents:
             return {"documents": []}
@@ -423,14 +414,15 @@ class SentenceTransformersDiversityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
+        deduplicated_documents = _deduplicate_documents(documents)
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:
                 lambda_threshold = self.lambda_threshold
             self._check_lambda_threshold(lambda_threshold, self.strategy)
             re_ranked_docs = self._maximum_margin_relevance(
-                query=query, documents=documents, lambda_threshold=lambda_threshold, top_k=top_k
+                query=query, documents=deduplicated_documents, lambda_threshold=lambda_threshold, top_k=top_k
             )
         else:
-            re_ranked_docs = self._greedy_diversity_order(query=query, documents=documents)
+            re_ranked_docs = self._greedy_diversity_order(query=query, documents=deduplicated_documents)
 
         return {"documents": re_ranked_docs[:top_k]}

@@ -34,7 +34,11 @@ Components should take only "basic" Python types as parameters of their `__init_
 dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
 time. If there's the need for such values, consider serializing them to a string.
 
-_(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
+If you need to accept classes or callables, accept either a string import path or the callable itself. Resolve strings
+to objects in `__init__`, and serialize objects back to importable strings in `to_dict()` so that `from_dict()` can load
+them (for example, store `"module_path.symbol_name"` and load it via `importlib`). This keeps init parameters JSON
+serializable for pipeline save/load. See `haystack.testing.sample_components.accumulate.Accumulate` for a reference
+implementation.
 
 The `__init__` must be extremely lightweight, because it's a frequent operation during the construction and
 validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
@@ -70,15 +74,14 @@ method decorated with `@component.input`. This dataclass contains:
 """
 
 import inspect
-from collections.abc import Callable, Coroutine
+import typing
+from collections.abc import Callable, Coroutine, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Iterator, Mapping, Optional, Protocol, TypeVar, Union, overload, runtime_checkable
-
-from typing_extensions import ParamSpec
+from typing import Any, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -89,7 +92,7 @@ from .types import InputSocket, OutputSocket, _empty
 logger = logging.getLogger(__name__)
 
 RunParamsT = ParamSpec("RunParamsT")
-RunReturnT = TypeVar("RunReturnT", bound=Union[Mapping[str, Any], Coroutine[Any, Any, Mapping[str, Any]]])
+RunReturnT = TypeVar("RunReturnT", bound=Mapping[str, Any] | Coroutine[Any, Any, Mapping[str, Any]])
 
 
 @dataclass
@@ -109,7 +112,7 @@ class PreInitHookPayload:
     in_progress: bool = False
 
 
-_COMPONENT_PRE_INIT_HOOK: ContextVar[Optional[PreInitHookPayload]] = ContextVar("component_pre_init_hook", default=None)
+_COMPONENT_PRE_INIT_HOOK: ContextVar[PreInitHookPayload | None] = ContextVar("component_pre_init_hook", default=None)
 
 
 @contextmanager
@@ -177,7 +180,7 @@ class Component(Protocol):
     # [arg-type]
     # note: Protocol member Component.run expected settable variable, got read-only attribute
 
-    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # pylint: disable=missing-function-docstring # noqa: D102
+    def run(self, *args: Any, **kwargs: Any) -> Mapping[str, Any]:  # noqa: D102
         ...
 
 
@@ -191,7 +194,7 @@ class ComponentMeta(type):
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 
         out = {}
-        for arg, (name, info) in zip(args, init_params.items()):
+        for arg, (name, info) in zip(args, init_params.items(), strict=False):
             if info.kind == inspect.Parameter.VAR_POSITIONAL:
                 raise ComponentError(
                     "Pre-init hooks do not support components with variadic positional args in their init method"
@@ -227,16 +230,28 @@ class ComponentMeta(type):
 
     @staticmethod
     def _parse_and_set_input_sockets(component_cls: type, instance: Any) -> None:
-        def inner(method, sockets):
+        def inner(method: Callable[..., Any], sockets: Sockets) -> inspect.Signature:
             from inspect import Parameter
 
             run_signature = inspect.signature(method)
+            try:
+                # TypeError is raised if the argument is not of a type that can contain annotations
+                run_hints = typing.get_type_hints(method)
+            except TypeError:
+                run_hints = None
 
             for param_name, param_info in run_signature.parameters.items():
                 if param_name == "self" or param_info.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
                     continue
 
-                socket_kwargs = {"name": param_name, "type": param_info.annotation}
+                # We prefer the type annotation from inspect.signature, but if it's a string we need to resolve it
+                # using the hints. The type annotation can be a string if the component is using postponed evaluation
+                # of annotations.
+                annotation = param_info.annotation
+                if isinstance(annotation, str) and run_hints is not None:
+                    annotation = run_hints.get(param_name, annotation)
+
+                socket_kwargs = {"name": param_name, "type": annotation}
                 if param_info.default != Parameter.empty:
                     socket_kwargs["default_value"] = param_info.default
 
@@ -257,7 +272,7 @@ class ComponentMeta(type):
         if not hasattr(instance, "__haystack_input__"):
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
 
-        inner(getattr(component_cls, "run"), instance.__haystack_input__)
+        inner(getattr(component_cls, "run"), instance.__haystack_input__)  # noqa: B009
 
         # Ensure that the sockets are the same for the async method, if it exists.
         async_run = getattr(component_cls, "run_async", None)
@@ -267,7 +282,7 @@ class ComponentMeta(type):
 
             # Can't use the sockets from above as they might contain
             # values set with set_input_types().
-            run_sig = inner(getattr(component_cls, "run"), run_sockets)
+            run_sig = inner(getattr(component_cls, "run"), run_sockets)  # noqa: B009
             async_run_sig = inner(async_run, async_run_sockets)
 
             if async_run_sockets != run_sockets or run_sig != async_run_sig:
@@ -276,7 +291,7 @@ class ComponentMeta(type):
                     f"Parameters of 'run' and 'run_async' methods must be the same.\nDifferences found:\n{sig_diff}"
                 )
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
         This method is called when clients instantiate a Component and runs before __new__ and __init__.
         """
@@ -338,10 +353,9 @@ def _component_run_has_kwargs(component_cls: type) -> bool:
     run_method = getattr(component_cls, "run", None)
     if run_method is None:
         return False
-    else:
-        return any(
-            param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
-        )
+    return any(
+        param.kind == inspect.Parameter.VAR_KEYWORD for param in inspect.signature(run_method).parameters.values()
+    )
 
 
 def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: inspect.Signature) -> str:
@@ -363,7 +377,7 @@ def _compare_run_methods_signatures(run_sig: inspect.Signature, async_run_sig: i
             f"Different number of parameters: run has {len(run_params)}, run_async has {len(async_params)}"
         )
 
-    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params):
+    for (run_name, run_param), (async_name, async_param) in zip(run_params, async_params, strict=False):
         if run_name != async_name:
             differences.append(f"Parameter name mismatch: {run_name} vs {async_name}")
 
@@ -403,8 +417,8 @@ class _Component:
         ComponentError: if the class provided has no `run()` method or otherwise doesn't respect the component contract.
     """
 
-    def __init__(self):
-        self.registry = {}
+    def __init__(self) -> None:
+        self.registry: dict[str, type] = {}
 
     def set_input_type(
         self,
@@ -432,7 +446,7 @@ class _Component:
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)  # type: ignore
         instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)  # type: ignore
 
-    def set_input_types(self, instance, **types):
+    def set_input_types(self, instance: Any, **types: type[Any]) -> None:
         """
         Method that specifies the input types when 'kwargs' is passed to the run method.
 
@@ -442,7 +456,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
@@ -459,7 +473,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
@@ -482,7 +496,7 @@ class _Component:
             instance, {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}, InputSocket
         )
 
-    def set_output_types(self, instance, **types):
+    def set_output_types(self, instance: Any, **types: type[Any]) -> None:
         """
         Method that specifies the output types when the 'run' method is not decorated with 'component.output_types'.
 
@@ -492,7 +506,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_output_types(self, output_1=int, output_2=str)
                 ...
 
@@ -546,7 +560,7 @@ class _Component:
             if method_name not in ("run", "run_async"):
                 raise ComponentError("'output_types' decorator can only be used on 'run' and 'run_async' methods")
 
-            setattr(
+            setattr(  # noqa: B010
                 run_method,
                 "_output_types_cache",
                 {name: OutputSocket(name=name, type=type_) for name, type_ in types.items()},
@@ -565,7 +579,7 @@ class _Component:
         if not hasattr(cls, "run"):
             raise ComponentError(f"{cls.__name__} must have a 'run()' method. See the docs for more information.")
 
-        def copy_class_namespace(namespace):
+        def copy_class_namespace(namespace: dict[str, Any]) -> None:
             """
             This is the callback that `typing.new_class` will use to populate the newly created class.
 
@@ -605,7 +619,7 @@ class _Component:
 
         return new_cls
 
-    # Call signature when the the decorator is usead without parens (@component).
+    # Call signature when the decorator is used without parens (@component).
     @overload
     def __call__(self, cls: type[T]) -> type[T]: ...
 
@@ -613,7 +627,7 @@ class _Component:
     @overload
     def __call__(self) -> Callable[[type[T]], type[T]]: ...
 
-    def __call__(self, cls: Optional[type[T]] = None) -> Union[type[T], Callable[[type[T]], type[T]]]:
+    def __call__(self, cls: type[T] | None = None) -> type[T] | Callable[[type[T]], type[T]]:
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls: type[T]) -> type[T]:

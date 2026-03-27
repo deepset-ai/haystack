@@ -4,12 +4,13 @@
 
 import hashlib
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Optional
+from typing import Any
 
 from numpy import ndarray
 
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 LEGACY_FIELDS = ["content_type", "id_hash_keys", "dataframe"]
 
@@ -19,7 +20,7 @@ class _BackwardCompatible(type):
     Metaclass that handles Document backward compatibility.
     """
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
         Called before Document.__init__, handles legacy fields.
 
@@ -42,6 +43,7 @@ class _BackwardCompatible(type):
         return super().__call__(*args, **kwargs)
 
 
+@_warn_on_inplace_mutation
 @dataclass
 class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     """
@@ -60,14 +62,14 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     """
 
     id: str = field(default="")
-    content: Optional[str] = field(default=None)
-    blob: Optional[ByteStream] = field(default=None)
+    content: str | None = field(default=None)
+    blob: ByteStream | None = field(default=None)
     meta: dict[str, Any] = field(default_factory=dict)
-    score: Optional[float] = field(default=None)
-    embedding: Optional[list[float]] = field(default=None)
-    sparse_embedding: Optional[SparseEmbedding] = field(default=None)
+    score: float | None = field(default=None)
+    embedding: list[float] | None = field(default=None)
+    sparse_embedding: SparseEmbedding | None = field(default=None)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         fields = []
         if self.content is not None:
             fields.append(
@@ -86,7 +88,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}(id={self.id}, {fields_str})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         Compares Documents for equality.
 
@@ -94,9 +96,9 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         """
         if type(self) != type(other):
             return False
-        return self.to_dict() == other.to_dict()
+        return self.to_dict() == other.to_dict()  # type: ignore[attr-defined]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Generate the ID based on the init parameters.
         """
@@ -176,7 +178,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         return cls(**data, meta={**meta, **flatten_meta})
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         """
         Returns the type of the content for the document.
 

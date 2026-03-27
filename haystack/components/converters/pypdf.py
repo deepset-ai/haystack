@@ -6,7 +6,7 @@ import io
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -71,7 +71,7 @@ class PyPDFToDocument:
     def __init__(
         self,
         *,
-        extraction_mode: Union[str, PyPDFExtractionMode] = PyPDFExtractionMode.PLAIN,
+        extraction_mode: str | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
         plain_mode_orientations: tuple = (0, 90, 180, 270),
         plain_mode_space_width: float = 200.0,
         layout_mode_space_vertically: bool = True,
@@ -79,7 +79,7 @@ class PyPDFToDocument:
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Create an PyPDFToDocument component.
 
@@ -123,7 +123,7 @@ class PyPDFToDocument:
         self.layout_mode_strip_rotated = layout_mode_strip_rotated
         self.layout_mode_font_height_weight = layout_mode_font_height_weight
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -143,7 +143,7 @@ class PyPDFToDocument:
         )
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict[str, Any]) -> "PyPDFToDocument":
         """
         Deserializes the component from a dictionary.
 
@@ -168,15 +168,12 @@ class PyPDFToDocument:
                 layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             )
             texts.append(extracted_text)
-        text = "\f".join(texts)
-        return text
+        return "\f".join(texts)
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, list[Document]]:
         """
         Converts PDF files to documents.
 
@@ -196,7 +193,7 @@ class PyPDFToDocument:
         documents = []
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

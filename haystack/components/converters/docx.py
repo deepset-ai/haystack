@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from io import StringIO
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -54,13 +54,13 @@ class DOCXMetadata:
     category: str
     comments: str
     content_status: str
-    created: Optional[str]
+    created: str | None
     identifier: str
     keywords: str
     language: str
     last_modified_by: str
-    last_printed: Optional[str]
-    modified: Optional[str]
+    last_printed: str | None
+    modified: str | None
     revision: int
     subject: str
     title: str
@@ -75,7 +75,7 @@ class DOCXTableFormat(Enum):
     MARKDOWN = "markdown"
     CSV = "csv"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -100,7 +100,7 @@ class DOCXLinkFormat(Enum):
     PLAIN = "plain"
     NONE = "none"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -138,17 +138,17 @@ class DOCXToDocument:
 
     def __init__(
         self,
-        table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV,
-        link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.NONE,
+        table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
+        link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
         store_full_path: bool = False,
-    ):
+    ) -> None:
         """
         Create a DOCXToDocument component.
 
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
             DOCXTableFormat.CSV, "markdown", or "csv".
         :param link_format: The format for link output. Can be either:
-            DOCXLinkFormat.MARKDOWN or "markdown" to get [text](address),
+            DOCXLinkFormat.MARKDOWN or "markdown" to get `[text](address)`,
             DOCXLinkFormat.PLAIN or "plain" to get text (address),
             DOCXLinkFormat.NONE or "none" to get text without links.
         :param store_full_path:
@@ -192,10 +192,8 @@ class DOCXToDocument:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """
         Converts DOCX files to Documents.
 
@@ -215,7 +213,7 @@ class DOCXToDocument:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:
@@ -238,7 +236,7 @@ class DOCXToDocument:
 
             if not self.store_full_path and "file_path" in bytestream.meta:
                 file_path = bytestream.meta.get("file_path")
-                if file_path:  # Ensure the value is not None for pylint
+                if file_path:  # Ensure the value is not None for mypy
                     merged_metadata["file_path"] = os.path.basename(file_path)
 
             document = Document(content=text, meta=merged_metadata)

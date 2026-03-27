@@ -16,12 +16,21 @@ from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools.tool_invoker import (
+    ResultConversionError,
     StringConversionError,
     ToolInvoker,
     ToolNotFoundException,
     ToolOutputMergeError,
 )
-from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk, ToolCall, ToolCallResult
+from haystack.dataclasses import (
+    ChatMessage,
+    ChatRole,
+    ImageContent,
+    StreamingChunk,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
+)
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
 
@@ -116,6 +125,30 @@ def faulty_invoker(faulty_tool):
     return ToolInvoker(tools=[faulty_tool], raise_on_failure=True, convert_result_to_json_string=False)
 
 
+class WarmupTrackingTool(Tool):
+    """A tool that tracks whether warm_up was called."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.was_warmed_up = False
+
+    def warm_up(self):
+        self.was_warmed_up = True
+
+
+class WarmupTrackingToolset(Toolset):
+    """A toolset that tracks whether warm_up was called."""
+
+    def __init__(self, tools):
+        super().__init__(tools)
+        self.was_warmed_up = False
+
+    def warm_up(self):
+        self.was_warmed_up = True
+        # Call parent to warm up individual tools
+        super().warm_up()
+
+
 class TestToolInvokerCore:
     def test_init(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
@@ -195,6 +228,7 @@ class TestToolInvokerSerde:
                 "convert_result_to_json_string": False,
                 "enable_streaming_callback_passthrough": False,
                 "streaming_callback": None,
+                "max_workers": 4,
             },
         }
 
@@ -215,6 +249,7 @@ class TestToolInvokerSerde:
                 "convert_result_to_json_string": True,
                 "enable_streaming_callback_passthrough": True,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
+                "max_workers": 4,
             },
         }
 
@@ -265,7 +300,14 @@ class TestToolInvokerSerde:
         pipeline.connect("invoker", "chatgenerator")
 
         pipeline_dict = pipeline.to_dict()
-        assert pipeline_dict == {
+        # Verify the chatgenerator component structure (model will be whatever the default is)
+        chatgen = pipeline_dict["components"]["chatgenerator"]
+        assert chatgen["type"] == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
+        assert "model" in chatgen["init_parameters"]
+        model_name = chatgen["init_parameters"]["model"]
+
+        # Build expected dict with dynamic model value
+        expected = {
             "metadata": {},
             "connection_type_validation": True,
             "max_runs_per_component": 100,
@@ -295,12 +337,13 @@ class TestToolInvokerSerde:
                         "convert_result_to_json_string": False,
                         "enable_streaming_callback_passthrough": False,
                         "streaming_callback": None,
+                        "max_workers": 4,
                     },
                 },
                 "chatgenerator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": "gpt-4o-mini",
+                        "model": model_name,
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,
@@ -316,6 +359,7 @@ class TestToolInvokerSerde:
             },
             "connections": [{"sender": "invoker.tool_messages", "receiver": "chatgenerator.messages"}],
         }
+        assert pipeline_dict == expected
 
         pipeline_yaml = pipeline.dumps()
 
@@ -749,6 +793,25 @@ class TestToolInvokerErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
 
+    def test_outputs_to_string_with_multiple_outputs(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass config that selects two of three outputs
+            outputs_to_string={"weather": {"source": "weather"}, "temp": {"source": "temperature"}},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
+        chat_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
+        assert chat_message.tool_call_results[0].result == "{'weather': 'sunny', 'temp': '25'}"
+
     def test_string_conversion_error(self):
         weather_tool = Tool(
             name="weather_tool",
@@ -756,7 +819,7 @@ class TestToolInvokerErrorHandling:
             parameters=weather_parameters,
             function=weather_function,
             # Pass custom handler that will throw an error when trying to convert tool_result
-            outputs_to_string={"handler": lambda x: json.dumps(x)},
+            outputs_to_string={"handler": json.dumps},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
 
@@ -773,7 +836,7 @@ class TestToolInvokerErrorHandling:
             parameters=weather_parameters,
             function=weather_function,
             # Pass custom handler that will throw an error when trying to convert tool_result
-            outputs_to_string={"handler": lambda x: json.dumps(x)},
+            outputs_to_string={"handler": json.dumps},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
 
@@ -784,6 +847,47 @@ class TestToolInvokerErrorHandling:
             result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
         )
 
+        assert tool_message.tool_call_results[0].error
+        assert "Failed to convert" in tool_message.tool_call_results[0].result
+
+    def test_result_conversion_error(self):
+        def handler(result):
+            raise ValueError("Handler error")
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            outputs_to_string={"handler": handler, "raw_result": True},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = "something"
+        with pytest.raises(ResultConversionError):
+            invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
+
+    def test_result_conversion_error_does_not_raise_exception(self):
+        def handler(result):
+            raise ValueError("Handler error")
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            outputs_to_string={"handler": handler, "raw_result": True},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = "something"
+        tool_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
         assert tool_message.tool_call_results[0].error
         assert "Failed to convert" in tool_message.tool_call_results[0].result
 
@@ -959,7 +1063,7 @@ class TestToolInvokerUtilities:
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
 
     def test_merge_tool_outputs_with_output_mapping_and_handler(self):
-        handler = lambda old, new: f"{new}"
+        handler = lambda _, new: f"{new}"  # noqa: E731
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -973,3 +1077,292 @@ class TestToolInvokerUtilities:
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"temperature": "14"}
+
+    def test_process_output_empty_config(self, invoker, base64_image_string):
+        image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+
+        result = invoker._process_output(
+            config={"raw_result": True},
+            result=[image_content],
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [image_content]
+
+    def test_process_output_source_only(self, invoker, base64_image_string):
+        image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+
+        result = invoker._process_output(
+            config={"source": "images", "raw_result": True},
+            result={"images": [image_content]},
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [image_content]
+
+    def test_process_output_handler_only(self, invoker, base64_image_string):
+        def handler(result: dict) -> list[ImageContent]:
+            return [ImageContent(base64_image=result["base64_image_string"], mime_type=result["mime_type"])]
+
+        result = invoker._process_output(
+            config={"handler": handler, "raw_result": True},
+            result={"base64_image_string": base64_image_string, "mime_type": "image/png"},
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+
+    def test_process_output_source_and_handler(self, invoker, base64_image_string):
+        def handler(result: dict) -> list[ImageContent]:
+            return [ImageContent(base64_image=result["base64_image_string"], mime_type=result["mime_type"])]
+
+        result = invoker._process_output(
+            config={"source": "images", "handler": handler, "raw_result": True},
+            result={
+                "images": {"base64_image_string": base64_image_string, "mime_type": "image/png"},
+                "other_key": "other_value",
+            },
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+        )
+        assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+
+    def test_output_to_result_e2e(self, weather_tool):
+        def handler(result):
+            return [
+                TextContent(text=f"weather: {result['weather']}"),
+                TextContent(text=f"temperature: {result['temperature']} {result['unit']}"),
+            ]
+
+        weather_tool.outputs_to_string = {"handler": handler, "raw_result": True}
+
+        invoker = ToolInvoker(tools=[weather_tool])
+
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+
+        tool_messages = invoker.run(messages=[message])["tool_messages"]
+
+        assert tool_messages[0].tool_call_results[0].result == [
+            TextContent(text="weather: mostly sunny"),
+            TextContent(text="temperature: 7 celsius"),
+        ]
+
+
+class TestWarmUpTools:
+    """Tests for Tool/Toolset warm_up through ToolInvoker"""
+
+    def test_tool_invoker_warm_up_with_single_tool(self):
+        """Test that ToolInvoker.warm_up() calls warm_up on a single tool."""
+        tool = WarmupTrackingTool(
+            name="test_tool",
+            description="A test tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "test",
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+
+        assert not tool.was_warmed_up
+        invoker.warm_up()
+        assert tool.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_multiple_tools(self):
+        """Test that ToolInvoker.warm_up() calls warm_up on multiple tools."""
+        tool1 = WarmupTrackingTool(
+            name="tool1",
+            description="First tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool1",
+        )
+        tool2 = WarmupTrackingTool(
+            name="tool2",
+            description="Second tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool2",
+        )
+
+        invoker = ToolInvoker(tools=[tool1, tool2])
+
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+
+        invoker.warm_up()
+
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_toolset(self, weather_tool):
+        """Test that ToolInvoker.warm_up() calls warm_up on the toolset."""
+        toolset = WarmupTrackingToolset([weather_tool])
+        invoker = ToolInvoker(tools=toolset)
+
+        assert not toolset.was_warmed_up
+        invoker.warm_up()
+        assert toolset.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_mixed_toolsets(self):
+        """Test that ToolInvoker.warm_up() works with combined toolsets using concatenation."""
+        # Create first toolset with a tracking tool
+        tool1 = WarmupTrackingTool(
+            name="tool1",
+            description="First tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool1",
+        )
+        toolset1 = WarmupTrackingToolset([tool1])
+
+        # Create second toolset with another tracking tool
+        tool2 = WarmupTrackingTool(
+            name="tool2",
+            description="Second tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool2",
+        )
+        toolset2 = WarmupTrackingToolset([tool2])
+
+        # Combine toolsets using the + operator (creates _ToolsetWrapper)
+        combined = toolset1 + toolset2
+
+        # Create invoker with the combined toolset
+        invoker = ToolInvoker(tools=combined)
+
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+
+        invoker.warm_up()
+
+        # Both toolsets should be warmed up
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_mixed_list_of_tools_and_toolsets(self):
+        """Test that ToolInvoker.warm_up() works with a mixed list of Tools and Toolsets."""
+        # Create standalone tracking tools
+        tool1 = WarmupTrackingTool(
+            name="standalone_tool1",
+            description="First standalone tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool1",
+        )
+        tool2 = WarmupTrackingTool(
+            name="standalone_tool2",
+            description="Second standalone tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool2",
+        )
+
+        # Create toolsets with tracking
+        tool3 = WarmupTrackingTool(
+            name="toolset_tool1",
+            description="Tool in toolset 1",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool3",
+        )
+        toolset1 = WarmupTrackingToolset([tool3])
+
+        tool4 = WarmupTrackingTool(
+            name="toolset_tool2",
+            description="Tool in toolset 2",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool4",
+        )
+        toolset2 = WarmupTrackingToolset([tool4])
+
+        # Create invoker with mixed list: Tool, Toolset, Tool, Toolset
+        invoker = ToolInvoker(tools=[tool1, toolset1, tool2, toolset2])
+
+        # Verify nothing is warmed up initially
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+
+        # Warm up
+        invoker.warm_up()
+
+        # Verify standalone tools are warmed up
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+
+        # Verify toolsets themselves are warmed up (not just their internal tools)
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
+    def test_tool_invoker_warm_up_is_idempotent(self):
+        """Test that ToolInvoker.warm_up() is idempotent and only warms up once."""
+
+        class WarmupCountingTool(Tool):
+            """A tool that counts how many times warm_up was called."""
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.warm_up_count = 0
+
+            def warm_up(self):
+                self.warm_up_count += 1
+
+        tool = WarmupCountingTool(
+            name="counting_tool",
+            description="A tool that counts warm_up calls",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "test",
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+
+        # Call warm_up multiple times
+        invoker.warm_up()
+        invoker.warm_up()
+        invoker.warm_up()
+
+        # Should only be warmed up once
+        assert tool.warm_up_count == 1
+
+    def test_warm_up_refreshes_tools_with_names(self):
+        """
+        Test that ToolInvoker.warm_up() refreshes _tools_with_names when using a toolset with lazy connection.
+        """
+        # Create placeholder tool that simulates MCPToolset behavior of lazy connection
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+
+        # Create the actual tool that will replace the placeholder during warmup
+        # This simulates what mcp-server-time mcp would provide
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        # Create a toolset that simulates MCPToolset with eager_connect=False (lazy connection)
+        class MockMCPToolset(Toolset):
+            """Simulates MCPToolset behavior with eager_connect=False."""
+
+            def __init__(self):
+                # Start with placeholder tools (like MCPToolset does when not eagerly connected)
+                super().__init__([placeholder_tool])
+                self._warmed_up = False
+
+            def warm_up(self):
+                """Simulate connecting to MCP server and replacing placeholder tools with actual tools."""
+                if not self._warmed_up:
+                    # Replace placeholder tools with actual tools (simulating MCP connection)
+                    self.tools = [actual_tool]
+                    self._warmed_up = True
+
+        mcp_toolset = MockMCPToolset()
+        invoker = ToolInvoker(tools=mcp_toolset)
+
+        # Before warmup: _tools_with_names should contain the placeholder tool
+        assert "mcp_not_connected_placeholder_123" in invoker._tools_with_names
+        assert "get_time" not in invoker._tools_with_names
+
+        # Call warm_up() directly to trigger tool refresh
+        invoker.warm_up()
+
+        # After warmup: _tools_with_names should be refreshed with actual tool names
+        assert "mcp_not_connected_placeholder_123" not in invoker._tools_with_names
+        assert "get_time" in invoker._tools_with_names

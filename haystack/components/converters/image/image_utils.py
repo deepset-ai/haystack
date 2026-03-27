@@ -7,7 +7,7 @@ import mimetypes
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, TypedDict, Union
+from typing import TypedDict, Union
 
 from typing_extensions import NotRequired
 
@@ -28,9 +28,7 @@ with LazyImport("Run 'pip install pillow'") as pillow_import:
 logger = logging.getLogger(__name__)
 
 
-def _encode_image_to_base64(
-    bytestream: ByteStream, size: Optional[tuple[int, int]] = None
-) -> tuple[Optional[str], str]:
+def _encode_image_to_base64(bytestream: ByteStream, size: tuple[int, int] | None = None) -> tuple[str | None, str]:
     """
     Encode an image from a ByteStream into a base64-encoded string.
 
@@ -118,9 +116,9 @@ def _convert_pdf_to_images(
     *,
     bytestream: ByteStream,
     return_base64: bool = False,
-    page_range: Optional[list[int]] = None,
-    size: Optional[tuple[int, int]] = None,
-) -> Union[list[tuple[int, "Image"]], list[tuple[int, str]]]:
+    page_range: list[int] | None = None,
+    size: tuple[int, int] | None = None,
+) -> list[tuple[int, "Image"]] | list[tuple[int, str]]:
     """
     Convert a PDF file into a list of PIL Image objects or base64-encoded images.
 
@@ -220,7 +218,7 @@ def _convert_pdf_to_images(
 
 class _ImageSourceInfo(TypedDict):
     path: Path
-    mime_type: Optional[str]
+    mime_type: str | None
     page_number: NotRequired[int]  # Only present for PDF documents
 
 
@@ -289,8 +287,8 @@ class _PDFPageInfo(TypedDict):
 
 
 def _batch_convert_pdf_pages_to_images(
-    *, pdf_page_infos: list[_PDFPageInfo], return_base64: bool = False, size: Optional[tuple[int, int]] = None
-) -> Union[dict[int, str], dict[int, "Image"]]:
+    *, pdf_page_infos: list[_PDFPageInfo], return_base64: bool = False, size: tuple[int, int] | None = None
+) -> dict[int, str] | dict[int, "Image"]:
     """
     Converts selected PDF pages to images, returning a mapping from document indices to images (PIL or base64).
 

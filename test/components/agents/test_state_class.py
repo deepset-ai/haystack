@@ -43,6 +43,7 @@ def test_is_list_type():
     assert _is_list_type(dict) is False
     assert _is_list_type(int) is False
     assert _is_list_type(Union[list[int], None]) is False
+    assert _is_list_type(list[int] | None) is False
 
 
 class TestMergeLists:
@@ -154,11 +155,23 @@ class TestIsValidType:
         # Test that Union itself is not a valid type (only instantiated Unions are)
         assert _is_valid_type(Union) is False
 
+        # Test PEP 604 union types (X | Y syntax)
+        assert _is_valid_type(str | int) is True
+        assert _is_valid_type(str | None) is True
+        assert _is_valid_type(list[int] | dict[str, str]) is True
+
+        # Test PEP 604 Optional-like types (X | None syntax)
+        assert _is_valid_type(list[int] | None) is True
+        assert _is_valid_type(dict[str, list] | None) is True
+
     def test_nested_generic_types(self):
         assert _is_valid_type(list[list[dict[str, list[int]]]]) is True
         assert _is_valid_type(dict[str, list[dict[str, set]]]) is True
         assert _is_valid_type(dict[str, Optional[list[int]]]) is True
         assert _is_valid_type(list[Union[str, dict[str, list[int]]]]) is True
+        # PEP 604 nested types
+        assert _is_valid_type(dict[str, list[int] | None]) is True
+        assert _is_valid_type(list[str | dict[str, list[int]]]) is True
 
     def test_edge_cases(self):
         # Test None and NoneType
@@ -189,6 +202,10 @@ class TestIsValidType:
             (Dict[str, int], True),
             (Union[str, int], True),
             (Optional[str], True),
+            # PEP 604 union types
+            (str | int, True),
+            (str | None, True),
+            (list[int] | None, True),
             (42, False),
             ("string", False),
             ([1, 2, 3], False),

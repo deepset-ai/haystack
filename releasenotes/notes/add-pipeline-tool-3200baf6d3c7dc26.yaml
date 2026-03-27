@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added `PipelineTool`, a new tool wrapper that allows Haystack Pipelines to be exposed as LLM-compatible tools.
+    - Previously, this was achievable by first wrapping a pipeline in a `SuperComponent` and then passing it to `ComponentTool`.
+    - `PipelineTool` streamlines that pattern into a dedicated abstraction. It uses the same approach under the hood but directly exposes `input_mapping` and `output_mapping` so users can easily control which pipeline inputs and outputs are made available.
+    - Automatically generates input schemas for LLM tool calling from pipeline inputs.
+    - Extracts descriptions from underlying component docstrings for better tool documentation.
+    - Can be passed directly to an `Agent`, enabling seamless integration of full pipelines as tools in multi-step reasoning workflows.

@@ -5,7 +5,10 @@
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
+
+@_warn_on_inplace_mutation
 @dataclass
 class SparseEmbedding:
     """
@@ -18,7 +21,7 @@ class SparseEmbedding:
     indices: list[int]
     values: list[float]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Checks if the indices and values lists are of the same length.
 

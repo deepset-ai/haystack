@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -63,22 +62,22 @@ class SentenceWindowRetriever:
 
     rag.run({'bm25_retriever': {"query":"third"}})
 
-    >> {'sentence_window_retriever': {'context_windows': ['some words. There is a second sentence.
-    >> And there is also a third sentence. It also contains a fourth sentence. And a fifth sentence. And a sixth
-    >> sentence. And a'], 'context_documents': [[Document(id=..., content: 'some words. There is a second sentence.
-    >> And there is ', meta: {'source_id': '...', 'page_number': 1, 'split_id': 1, 'split_idx_start': 20,
-    >> '_split_overlap': [{'doc_id': '...', 'range': (20, 43)}, {'doc_id': '...', 'range': (0, 30)}]}),
-    >> Document(id=..., content: 'second sentence. And there is also a third sentence. It ',
-    >> meta: {'source_id': '74ea87deb38012873cf8c07e...f19d01a26a098447113e1d7b83efd30c02987114', 'page_number': 1,
-    >> 'split_id': 2, 'split_idx_start': 43, '_split_overlap': [{'doc_id': '...', 'range': (23, 53)}, {'doc_id': '...',
-    >> 'range': (0, 26)}]}), Document(id=..., content: 'also a third sentence. It also contains a fourth sentence. ',
-    >> meta: {'source_id': '...', 'page_number': 1, 'split_id': 3, 'split_idx_start': 73, '_split_overlap':
-    >> [{'doc_id': '...', 'range': (30, 56)}, {'doc_id': '...', 'range': (0, 33)}]}), Document(id=..., content:
-    >> 'also contains a fourth sentence. And a fifth sentence. And ', meta: {'source_id': '...', 'page_number': 1,
-    >> 'split_id': 4, 'split_idx_start': 99, '_split_overlap': [{'doc_id': '...', 'range': (26, 59)},
-    >> {'doc_id': '...', 'range': (0, 26)}]}), Document(id=..., content: 'And a fifth sentence. And a sixth sentence.
-    >> And a ', meta: {'source_id': '...', 'page_number': 1, 'split_id': 5, 'split_idx_start': 132,
-    >> '_split_overlap': [{'doc_id': '...', 'range': (33, 59)}, {'doc_id': '...', 'range': (0, 24)}]})]]}}}}
+    # >> {'sentence_window_retriever': {'context_windows': ['some words. There is a second sentence.
+    # >> And there is also a third sentence. It also contains a fourth sentence. And a fifth sentence. And a sixth
+    # >> sentence. And a'], 'context_documents': [[Document(id=..., content: 'some words. There is a second sentence.
+    # >> And there is ', meta: {'source_id': '...', 'page_number': 1, 'split_id': 1, 'split_idx_start': 20,
+    # >> '_split_overlap': [{'doc_id': '...', 'range': (20, 43)}, {'doc_id': '...', 'range': (0, 30)}]}),
+    # >> Document(id=..., content: 'second sentence. And there is also a third sentence. It ',
+    # >> meta: {'source_id': '74ea87deb38012873cf8c07e...f19d01a26a098447113e1d7b83efd30c02987114', 'page_number': 1,
+    # >> 'split_id': 2, 'split_idx_start': 43, '_split_overlap': [{'doc_id': '...', 'range': (23, 53)}, {'doc_id': '.',
+    # >> 'range': (0, 26)}]}), Document(id=..., content: 'also a third sentence. It also contains a fourth sentence. ',
+    # >> meta: {'source_id': '...', 'page_number': 1, 'split_id': 3, 'split_idx_start': 73, '_split_overlap':
+    # >> [{'doc_id': '...', 'range': (30, 56)}, {'doc_id': '...', 'range': (0, 33)}]}), Document(id=..., content:
+    # >> 'also contains a fourth sentence. And a fifth sentence. And ', meta: {'source_id': '...', 'page_number': 1,
+    # >> 'split_id': 4, 'split_idx_start': 99, '_split_overlap': [{'doc_id': '...', 'range': (26, 59)},
+    # >> {'doc_id': '...', 'range': (0, 26)}]}), Document(id=..., content: 'And a fifth sentence. And a sixth sentence.
+    # >> And a ', meta: {'source_id': '...', 'page_number': 1, 'split_id': 5, 'split_idx_start': 132,
+    # >> '_split_overlap': [{'doc_id': '...', 'range': (33, 59)}, {'doc_id': '...', 'range': (0, 24)}]})]]}}}}
     ```
     """
 
@@ -87,10 +86,10 @@ class SentenceWindowRetriever:
         document_store: DocumentStore,
         window_size: int = 3,
         *,
-        source_id_meta_field: Union[str, list[str]] = "source_id",
+        source_id_meta_field: str | list[str] = "source_id",
         split_id_meta_field: str = "split_id",
         raise_on_missing_meta_fields: bool = True,
-    ):
+    ) -> None:
         """
         Creates a new SentenceWindowRetriever component.
 
@@ -159,10 +158,9 @@ class SentenceWindowRetriever:
         :returns:
             Dictionary with serialized data.
         """
-        docstore = self.document_store.to_dict()
         return default_to_dict(
             self,
-            document_store=docstore,
+            document_store=self.document_store,
             window_size=self.window_size,
             source_id_meta_field=self.source_id_meta_field,
             split_id_meta_field=self.split_id_meta_field,
@@ -177,14 +175,10 @@ class SentenceWindowRetriever:
         :returns:
             Deserialized component.
         """
-        # deserialize the document store
-        deserialize_document_store_in_init_params_inplace(data)
-
-        # deserialize the component
         return default_from_dict(cls, data)
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])
-    def run(self, retrieved_documents: list[Document], window_size: Optional[int] = None):
+    def run(self, retrieved_documents: list[Document], window_size: int | None = None) -> dict[str, Any]:
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 
@@ -204,10 +198,57 @@ class SentenceWindowRetriever:
 
         """
         window_size = window_size or self.window_size
+        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
+        self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
+        context_text = []
+        context_documents = []
+        for doc in retrieved_documents:
+            text, docs = self._retrieve_context_for_document(doc, window_size)
+            context_text.append(text)
+            context_documents.extend(docs)
+
+        return {"context_windows": context_text, "context_documents": context_documents}
+
+    @component.output_types(context_windows=list[str], context_documents=list[Document])
+    async def run_async(self, retrieved_documents: list[Document], window_size: int | None = None) -> dict[str, Any]:
+        """
+        Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
+
+        Implements the logic behind the sentence-window technique, retrieving the surrounding documents of a given
+        document from the document store.
+
+        :param retrieved_documents: List of retrieved documents from the previous retriever.
+        :param window_size: The number of documents to retrieve before and after the relevant one. This will overwrite
+                            the `window_size` parameter set in the constructor.
+        :returns:
+            A dictionary with the following keys:
+                - `context_windows`: A list of strings, where each string represents the concatenated text from the
+                                     context window of the corresponding document in `retrieved_documents`.
+                - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
+                                      document surrounding them. The documents are sorted by the `split_idx_start`
+                                      meta field.
+
+        """
+        window_size = window_size or self.window_size
+        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
+        self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
+
+        context_text = []
+        context_documents = []
+        for doc in retrieved_documents:
+            text, docs = await self._retrieve_context_for_document_async(doc, window_size)
+            context_text.append(text)
+            context_documents.extend(docs)
+
+        return {"context_windows": context_text, "context_documents": context_documents}
+
+    @staticmethod
+    def _raise_if_windows_size_is_negative(window_size: int) -> None:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
+    def _raise_if_documents_do_not_have_expected_metadata(self, retrieved_documents: list[Document]) -> None:
         if (
             not all(self.split_id_meta_field in doc.meta for doc in retrieved_documents)
             and self.raise_on_missing_meta_fields
@@ -220,38 +261,61 @@ class SentenceWindowRetriever:
         ):
             raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
-        context_text = []
-        context_documents = []
-        for doc in retrieved_documents:
-            source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
-            split_id = doc.meta.get(self.split_id_meta_field)
+    def _retrieve_context_for_document(self, doc: Document, window_size: int) -> tuple[str, list[Document]]:
+        source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+        split_id = doc.meta.get(self.split_id_meta_field)
 
-            if any(source_id is None for source_id in source_ids) or split_id is None:
-                logger.warning(
-                    "Document {doc_id} is missing required metadata fields to be used with "
-                    "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
-                    doc_id=doc.id,
-                    source_id=self._source_id_meta_fields,
-                    split_id=self.split_id_meta_field,
-                )
-                context_text.append(doc.content or "")
-                context_documents.append(doc)
-                continue
+        if any(source_id is None for source_id in source_ids) or split_id is None:
+            logger.warning(
+                "Document {doc_id} is missing required metadata fields to be used with "
+                "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                doc_id=doc.id,
+                source_id=self._source_id_meta_fields,
+                split_id=self.split_id_meta_field,
+            )
+            return doc.content or "", [doc]
 
-            min_before = split_id - window_size
-            max_after = split_id + window_size
-            source_id_filters = [
-                {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
-                for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
-            ]
-            conditions = [
-                {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
-                {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
-                *source_id_filters,
-            ]
-            context_docs = self.document_store.filter_documents({"operator": "AND", "conditions": conditions})
-            context_text.append(self.merge_documents_text(context_docs))
-            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
-            context_documents.extend(context_docs_sorted)
+        assert split_id is not None
+        filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
+        context_docs = self.document_store.filter_documents(filter_conditions)
+        context_text = self.merge_documents_text(context_docs)
+        context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
 
-        return {"context_windows": context_text, "context_documents": context_documents}
+        return context_text, context_docs_sorted
+
+    async def _retrieve_context_for_document_async(self, doc: Document, window_size: int) -> tuple[str, list[Document]]:
+        source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+        split_id = doc.meta.get(self.split_id_meta_field)
+
+        if any(source_id is None for source_id in source_ids) or split_id is None:
+            logger.warning(
+                "Document {doc_id} is missing required metadata fields to be used with "
+                "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                doc_id=doc.id,
+                source_id=self._source_id_meta_fields,
+                split_id=self.split_id_meta_field,
+            )
+            return doc.content or "", [doc]
+
+        assert split_id is not None
+        filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
+        # Ignoring type error because DocumentStore protocol doesn't define filter_documents_async
+        context_docs = await self.document_store.filter_documents_async(filter_conditions)  # type: ignore[attr-defined]
+        context_text = self.merge_documents_text(context_docs)
+        context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
+
+        return context_text, context_docs_sorted
+
+    def _build_filter_conditions(self, split_id: int, window_size: int, source_ids: list[Any]) -> dict[str, Any]:
+        min_before = split_id - window_size
+        max_after = split_id + window_size
+        source_id_filters = [
+            {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
+            for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids, strict=True)
+        ]
+        conditions = [
+            {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
+            {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
+            *source_id_filters,
+        ]
+        return {"operator": "AND", "conditions": conditions}

@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackend,
     _SentenceTransformersEmbeddingBackendFactory,
 )
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 
@@ -22,7 +22,7 @@ class SentenceTransformersDocumentEmbedder:
     It stores the embeddings in the `embedding` metadata field of each document.
     You can also embed documents' metadata.
     Use this component in indexing pipelines to embed input documents
-    and send them to DocumentWriter to write a into a Document Store.
+    and send them to DocumentWriter to write into a Document Store.
 
     ### Usage example:
 
@@ -31,7 +31,6 @@ class SentenceTransformersDocumentEmbedder:
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
     doc = Document(content="I love pizza!")
     doc_embedder = SentenceTransformersDocumentEmbedder()
-    doc_embedder.warm_up()
 
     result = doc_embedder.run([doc])
     print(result['documents'][0].embedding)
@@ -40,28 +39,29 @@ class SentenceTransformersDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        truncate_dim: Optional[int] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        truncate_dim: int | None = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
-        encode_kwargs: Optional[dict[str, Any]] = None,
+        encode_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+        revision: str | None = None,
+    ) -> None:
         """
         Creates a SentenceTransformersDocumentEmbedder component.
 
@@ -119,6 +119,9 @@ class SentenceTransformersDocumentEmbedder:
             The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         """
 
         self.model = model
@@ -132,13 +135,14 @@ class SentenceTransformersDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.truncate_dim = truncate_dim
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
         self.encode_kwargs = encode_kwargs
-        self.embedding_backend: Optional[_SentenceTransformersEmbeddingBackend] = None
+        self.embedding_backend: _SentenceTransformersEmbeddingBackend | None = None
         self.precision = precision
         self.backend = backend
 
@@ -158,8 +162,8 @@ class SentenceTransformersDocumentEmbedder:
         serialization_dict = default_to_dict(
             self,
             model=self.model,
-            device=self.device.to_dict(),
-            token=self.token.to_dict() if self.token else None,
+            device=self.device,
+            token=self.token,
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
@@ -168,6 +172,7 @@ class SentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
@@ -192,14 +197,11 @@ class SentenceTransformersDocumentEmbedder:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -209,6 +211,7 @@ class SentenceTransformersDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 truncate_dim=self.truncate_dim,
                 model_kwargs=self.model_kwargs,
@@ -220,7 +223,7 @@ class SentenceTransformersDocumentEmbedder:
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Embed a list of documents.
 
@@ -237,7 +240,7 @@ class SentenceTransformersDocumentEmbedder:
                 "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
             )
         if self.embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         texts_to_embed = []
         for doc in documents:
@@ -249,7 +252,8 @@ class SentenceTransformersDocumentEmbedder:
             )
             texts_to_embed.append(text_to_embed)
 
-        embeddings = self.embedding_backend.embed(
+        # # mypy doesn't know this is set in warm_up
+        embeddings = self.embedding_backend.embed(  # type: ignore[union-attr]
             texts_to_embed,
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,
@@ -259,7 +263,7 @@ class SentenceTransformersDocumentEmbedder:
         )
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

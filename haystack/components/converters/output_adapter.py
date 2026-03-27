@@ -4,16 +4,17 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any, TypeAlias
 
 import jinja2.runtime
-from jinja2 import Environment, TemplateSyntaxError, meta
+from jinja2 import TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
-from typing_extensions import TypeAlias
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class OutputAdapter:
     from haystack.components.converters import OutputAdapter
 
     adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
-    documents = [Document(content="Test content"]
+    documents = [Document(content="Test content")]
     result = adapter.run(documents=documents)
 
     assert result["output"] == "Test content"
@@ -44,9 +45,9 @@ class OutputAdapter:
         self,
         template: str,
         output_type: TypeAlias,
-        custom_filters: Optional[dict[str, Callable]] = None,
+        custom_filters: dict[str, Callable] | None = None,
         unsafe: bool = False,
-    ):
+    ) -> None:
         """
         Create an OutputAdapter component.
 
@@ -92,15 +93,18 @@ class OutputAdapter:
             self._env.filters[name] = filter_func
 
         # b) extract variables in the template
-        route_input_names = self._extract_variables(self._env)
+        assigned_variables, template_variables = _extract_template_variables_and_assignments(
+            env=self._env, template=self.template
+        )
+        route_input_names = template_variables - assigned_variables
         input_types.update(route_input_names)
 
         # the env is not needed, discarded automatically
         component.set_input_types(self, **dict.fromkeys(input_types, Any))
-        component.set_output_types(self, **{"output": output_type})
+        component.set_output_types(self, output=output_type)
         self.output_type = output_type
 
-    def run(self, **kwargs):
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Renders the Jinja template with the provided inputs.
 
@@ -122,7 +126,7 @@ class OutputAdapter:
             adapted_output_template = self._env.from_string(self.template)
             output_result = adapted_output_template.render(**kwargs)
             if isinstance(output_result, jinja2.runtime.Undefined):
-                raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")
+                raise OutputAdaptationException(f"Undefined variable in the template {self.template}; kwargs: {kwargs}")  # noqa: TRY301
 
             # We suppress the exception in case the output is already a string, otherwise
             # we try to evaluate it and would fail.
@@ -173,13 +177,3 @@ class OutputAdapter:
                 for name, filter_func in custom_filters.items()
             }
         return default_from_dict(cls, data)
-
-    def _extract_variables(self, env: Environment) -> set[str]:
-        """
-        Extracts all variables from a list of Jinja template strings.
-
-        :param env: A Jinja environment.
-        :return: A set of variable names extracted from the template strings.
-        """
-        ast = env.parse(self.template)
-        return meta.find_undeclared_variables(ast)

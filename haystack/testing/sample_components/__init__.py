@@ -7,6 +7,7 @@ from haystack.testing.sample_components.add_value import AddFixedValue
 from haystack.testing.sample_components.concatenate import Concatenate
 from haystack.testing.sample_components.double import Double
 from haystack.testing.sample_components.fstring import FString
+from haystack.testing.sample_components.future_annotations import HelloUsingFutureAnnotations
 from haystack.testing.sample_components.greet import Greet
 from haystack.testing.sample_components.hello import Hello
 from haystack.testing.sample_components.joiner import StringJoiner, StringListJoiner
@@ -32,6 +33,7 @@ __all__ = [
     "Double",
     "StringJoiner",
     "Hello",
+    "HelloUsingFutureAnnotations",
     "TextSplitter",
     "StringListJoiner",
     "FString",

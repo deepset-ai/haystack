@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union
-
 import pytest
 
 from haystack import Pipeline
@@ -11,7 +9,6 @@ from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.routers.metadata_router import MetadataRouter
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ByteStream, Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestMetadataRouter:
@@ -62,7 +59,7 @@ class TestMetadataRouter:
         docs = [byt1, byt2, doc1, doc2]
         router = MetadataRouter(
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
-            output_type=list[Union[Document, ByteStream]],
+            output_type=list[Document | ByteStream],
         )
         output = router.run(documents=docs)
         assert output["en"][0].data == byt1.data
@@ -118,13 +115,13 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        router = MetadataRouter(rules=rules, output_type=list[Union[ByteStream, Document]])
+        router = MetadataRouter(rules=rules, output_type=list[ByteStream | Document])
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
             "init_parameters": {
                 "rules": rules,
-                "output_type": "list[typing.Union[haystack.dataclasses.byte_stream.ByteStream, "
-                "haystack.dataclasses.document.Document]]",
+                "output_type": "list[haystack.dataclasses.byte_stream.ByteStream "
+                "| haystack.dataclasses.document.Document]",
             },
         }
         assert router.to_dict() == expected_dict
@@ -172,7 +169,7 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        assert router.output_type == list[Union[ByteStream, Document]]
+        assert router.output_type == list[ByteStream | Document]
 
     def test_from_dict_no_output_type(self):
         router_dict = {
@@ -195,8 +192,7 @@ class TestMetadataRouter:
         }
         assert router.output_type == list[Document]
 
-    def test_metadata_router_in_pipeline(self):
-        document_store = InMemoryDocumentStore()
+    def test_metadata_router_in_pipeline(self, in_memory_doc_store):
         p = Pipeline()
         docs = [
             Document(content="Hello, welcome to the world of Haystack!", meta={"language": "en"}),
@@ -207,8 +203,8 @@ class TestMetadataRouter:
             instance=MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}),
             name="router",
         )
-        p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+        p.add_component(instance=DocumentWriter(document_store=in_memory_doc_store), name="writer")
         p.connect("language_classifier.documents", "router.documents")
         p.connect("router.en", "writer.documents")
         p.run({"language_classifier": {"documents": docs}})
-        assert document_store.filter_documents() == [docs[0]]
+        assert in_memory_doc_store.filter_documents() == [docs[0]]

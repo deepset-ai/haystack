@@ -4,35 +4,25 @@
 
 [Haystack](https://github.com/deepset-ai/haystack) is an end-to-end LLM framework that allows you to build applications powered by LLMs, Transformer models, vector search and more. Whether you want to perform retrieval-augmented generation (RAG), document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
 
-## Haystack 2.0
+## Haystack 2.x
 
 For the latest version of Haystack there's only one image available:
 
 - `haystack:base-<version>` contains a working Python environment with Haystack preinstalled. This image is expected to
   be derived `FROM`.
 
-## Haystack 1.x image variants
-
-The Docker image for Haystack 1.x comes in six variants:
-- `haystack:gpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It comes with the CUDA runtime and is capable of running on GPUs.
-- `haystack:cpu-remote-inference-<version>` is a slimmed down version of the CPU image with the REST API and UI. It is specifically designed for PromptNode inferencing using remotely hosted models, such as Hugging Face Inference, OpenAI, Cohere, Anthropic, and similar.
-- `haystack:cpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It has no support for GPU so must be run on CPU.
-- `haystack:base-gpu-<version>` only contains the Haystack dependencies. It comes with the CUDA runtime and can run on GPUs.
-- `haystack:base-cpu-remote-inference-<version>` is a slimmed down version of the CPU image, specifically designed for PromptNode inferencing using remotely hosted models, such as Hugging Face Inference, OpenAI, Cohere, Anthropic, and similar.
-- `haystack:base-cpu-<version>` only contains the Haystack dependencies. It has no support for GPU so must be run on CPU.
-
 ## Image Development
 
 Images are built with BuildKit and we use `bake` to orchestrate the process.
 You can build a specific image by running:
 ```sh
-docker buildx bake gpu
+docker buildx bake base
 ```
 
 You can override any `variable` defined in the `docker-bake.hcl` file and build custom
 images, for example if you want to use a branch from the Haystack repo, run:
 ```sh
-HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake gpu --no-cache
+HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake base --no-cache
 ```
 
 ### Multi-Platform Builds
@@ -51,7 +41,7 @@ To get around this, you need to override the `platform` option and limit local b
 your computer's. For example, on an Apple M1 you can limit the builds to ARM only by invoking `bake` like this:
 
 ```sh
-docker buildx bake base-cpu --set "*.platform=linux/arm64"
+docker buildx bake base --set "*.platform=linux/arm64"
 ```
 
 # License

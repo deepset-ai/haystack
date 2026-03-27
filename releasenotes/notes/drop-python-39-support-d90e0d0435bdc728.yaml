@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Dropped support for Python 3.9 since it reached End of Life (EOL) in October 2025.
+    The minimum supported Python version is now 3.10.

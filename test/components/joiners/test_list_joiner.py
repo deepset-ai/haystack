@@ -120,7 +120,7 @@ class TestListJoiner:
 
     def test_pipeline_connection_validation(self):
         joiner = ListJoiner()
-        llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
+        llm = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         pipe = Pipeline()
         pipe.add_component("joiner", joiner)
         pipe.add_component("llm", llm)
@@ -130,7 +130,7 @@ class TestListJoiner:
 
     def test_pipeline_connection_validation_list_chatmessage(self):
         joiner = ListJoiner(list[ChatMessage])
-        llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
+        llm = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         pipe = Pipeline()
         pipe.add_component("joiner", joiner)
         pipe.add_component("llm", llm)
@@ -149,7 +149,7 @@ class TestListJoiner:
     def test_pipeline_bad_connection_different_list_types(self):
         with pytest.raises(PipelineConnectError):
             joiner = ListJoiner(list[str])
-            llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
+            llm = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
             pipe = Pipeline()
             pipe.add_component("joiner", joiner)
             pipe.add_component("llm", llm)

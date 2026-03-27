@@ -3,12 +3,11 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional
 
-from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
+from haystack import logging  # noqa: F401 # this is needed to avoid circular imports
 
 
-def validate_module_imports(root_dir: str, exclude_subdirs: Optional[list[str]] = None) -> tuple[list, list]:
+def validate_module_imports(root_dir: str, exclude_subdirs: list[str] | None = None) -> tuple[list, list]:
     """
     Recursively search for all Python modules and attempt to import them.
 
@@ -41,13 +40,13 @@ def validate_module_imports(root_dir: str, exclude_subdirs: Optional[list[str]] 
 
                 importlib.import_module(module_to_import)
                 imported.append(module_to_import)
-            except:
+            except Exception:
                 failed.append({"module": module_to_import, "traceback": traceback.format_exc()})
 
     return imported, failed
 
 
-def main():
+def main() -> None:
     """
     This script checks that all Haystack modules can be imported successfully.
 

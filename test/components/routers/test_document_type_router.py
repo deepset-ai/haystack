@@ -2,9 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
 from haystack import Pipeline

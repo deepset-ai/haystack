@@ -4,7 +4,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from haystack import Document, Pipeline, super_component
 from haystack.components.converters import (
@@ -125,10 +125,7 @@ class MultiFileConverter:
     if TYPE_CHECKING:
         # fake method, never executed, but static analyzers will not complain about missing method
         def run(  # noqa: D102
-            self,
-            *,
-            sources: list[Union[str, Path, ByteStream]],
-            meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+            self, *, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
         ) -> dict[str, list[Document]]:  # noqa: D102
             ...
 

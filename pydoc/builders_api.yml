@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/builders]
+    modules: ["answer_builder", "prompt_builder", "chat_prompt_builder"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Builders
+  id: builders-api
+  description: Extract the output of a Generator to an Answer format, and build prompts.
+  filename: builders_api.md

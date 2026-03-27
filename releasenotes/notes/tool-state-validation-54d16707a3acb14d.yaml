@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added validation for ``inputs_from_state`` and ``outputs_to_state`` parameters in the ``Tool`` class. Tools now validate at construction time that state mappings reference valid tool parameters and outputs, catching configuration errors early instead of at runtime. The validation uses function introspection and JSON schema to ensure parameter names exist, and subclasses like ``ComponentTool`` validate against component input/output sockets.

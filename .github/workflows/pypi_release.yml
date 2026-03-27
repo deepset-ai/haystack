@@ -8,7 +8,7 @@ on:
       - "!v[0-9]+.[0-9]+.[0-9]-rc0"
 
 env:
-  HATCH_VERSION: "1.14.1"
+  HATCH_VERSION: "1.16.5"
 
 jobs:
   release-on-pypi:
@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}

@@ -4,7 +4,7 @@
 
 import os
 from dataclasses import replace
-from typing import Any, Optional
+from typing import Any
 
 from more_itertools import batched
 from openai import APIError, AsyncOpenAI, OpenAI
@@ -12,7 +12,7 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -40,25 +40,25 @@ class OpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 (too-many-arguments) # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 (too-many-arguments)
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
-        dimensions: Optional[int] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
+        dimensions: int | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
         prefix: str = "",
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
         *,
         raise_on_failure: bool = False,
-    ):
+    ) -> None:
         """
         Creates an OpenAIDocumentEmbedder component.
 
@@ -156,7 +156,7 @@ class OpenAIDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             model=self.model,
             dimensions=self.dimensions,
             api_base_url=self.api_base_url,
@@ -183,7 +183,6 @@ class OpenAIDocumentEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: list[Document]) -> dict[str, str]:
@@ -230,7 +229,7 @@ class OpenAIDocumentEmbedder:
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -273,7 +272,7 @@ class OpenAIDocumentEmbedder:
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -286,7 +285,7 @@ class OpenAIDocumentEmbedder:
         return doc_ids_to_embeddings, meta
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, Any]:
         """
         Embeds a list of documents.
 
@@ -318,7 +317,7 @@ class OpenAIDocumentEmbedder:
         return {"documents": new_documents, "meta": meta}
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
-    async def run_async(self, documents: list[Document]):
+    async def run_async(self, documents: list[Document]) -> dict[str, Any]:
         """
         Embeds a list of documents asynchronously.
 

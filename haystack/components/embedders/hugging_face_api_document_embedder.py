@@ -2,16 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from asyncio import Semaphore, gather
 from dataclasses import replace
-from typing import Any, Optional, Union
+from itertools import chain
+from typing import Any
 
 from tqdm import tqdm
-from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
@@ -92,18 +93,19 @@ class HuggingFaceAPIDocumentEmbedder:
 
     def __init__(
         self,
-        api_type: Union[HFEmbeddingAPIType, str],
+        api_type: HFEmbeddingAPIType | str,
         api_params: dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
-        truncate: Optional[bool] = True,
-        normalize: Optional[bool] = False,
+        truncate: bool | None = True,
+        normalize: bool | None = False,
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-    ):  # pylint: disable=too-many-positional-arguments
+        concurrency_limit: int = 4,
+    ) -> None:
         """
         Creates a HuggingFaceAPIDocumentEmbedder component.
 
@@ -138,6 +140,9 @@ class HuggingFaceAPIDocumentEmbedder:
             List of metadata fields to embed along with the document text.
         :param embedding_separator:
             Separator used to concatenate the metadata fields to the document text.
+        :param concurrency_limit:
+            The maximum number of requests that should be allowed to run concurrently.
+            This parameter is only used in the `run_async` method.
         """
         huggingface_hub_import.check()
 
@@ -182,6 +187,7 @@ class HuggingFaceAPIDocumentEmbedder:
         self.progress_bar = progress_bar
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
+        self.concurrency_limit = concurrency_limit
         self._client = InferenceClient(**client_args)
         self._async_client = AsyncInferenceClient(**client_args)
 
@@ -198,7 +204,7 @@ class HuggingFaceAPIDocumentEmbedder:
             api_params=self.api_params,
             prefix=self.prefix,
             suffix=self.suffix,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             truncate=self.truncate,
             normalize=self.normalize,
             batch_size=self.batch_size,
@@ -217,7 +223,6 @@ class HuggingFaceAPIDocumentEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: list[Document]) -> list[str]:
@@ -239,8 +244,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
     @staticmethod
     def _adjust_api_parameters(
-        truncate: Optional[bool], normalize: Optional[bool], api_type: HFEmbeddingAPIType
-    ) -> tuple[Optional[bool], Optional[bool]]:
+        truncate: bool | None, normalize: bool | None, api_type: HFEmbeddingAPIType
+    ) -> tuple[bool | None, bool | None]:
         """
         Adjust the truncate and normalize parameters based on the API type.
         """
@@ -286,29 +291,45 @@ class HuggingFaceAPIDocumentEmbedder:
         Embed a list of texts in batches asynchronously.
         """
         truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
+        sem = Semaphore(max(1, self.concurrency_limit))
+        num_batches = (len(texts_to_embed) + batch_size - 1) // batch_size
+        pbar = tqdm(total=num_batches, disable=not self.progress_bar, desc="Calculating embeddings")
 
-        all_embeddings: list = []
-        for i in async_tqdm(
-            range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
-        ):
-            batch = texts_to_embed[i : i + batch_size]
+        async def _runner(batch: list[str]) -> list[list[float]]:
+            async with sem:
+                np_embeddings = await self._async_client.feature_extraction(
+                    # this method does not officially support list of strings, but works as expected
+                    text=batch,  # type: ignore[arg-type]
+                    truncate=truncate,
+                    normalize=normalize,
+                )
 
-            np_embeddings = await self._async_client.feature_extraction(
-                # this method does not officially support list of strings, but works as expected
-                text=batch,  # type: ignore[arg-type]
-                truncate=truncate,
-                normalize=normalize,
-            )
+                if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):
+                    raise ValueError(
+                        f"Expected embedding shape ({batch_size}, embedding_dim), got {np_embeddings.shape}"
+                    )
 
-            if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):
-                raise ValueError(f"Expected embedding shape ({batch_size}, embedding_dim), got {np_embeddings.shape}")
+                pbar.update(1)
+                return np_embeddings.tolist()
 
-            all_embeddings.extend(np_embeddings.tolist())
+        try:
+            all_embeddings = [
+                *chain(
+                    *await gather(
+                        *[
+                            _runner(texts_to_embed[i : i + batch_size])
+                            for i in range(0, len(texts_to_embed), batch_size)
+                        ]
+                    )
+                )
+            ]
+        finally:
+            pbar.close()
 
         return all_embeddings
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Embeds a list of documents.
 
@@ -330,13 +351,13 @@ class HuggingFaceAPIDocumentEmbedder:
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}
 
     @component.output_types(documents=list[Document])
-    async def run_async(self, documents: list[Document]):
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Embeds a list of documents asynchronously.
 
@@ -358,7 +379,7 @@ class HuggingFaceAPIDocumentEmbedder:
         embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         new_documents = []
-        for doc, emb in zip(documents, embeddings):
+        for doc, emb in zip(documents, embeddings, strict=True):
             new_documents.append(replace(doc, embedding=emb))
 
         return {"documents": new_documents}

@@ -37,24 +37,23 @@ def get_sample_pdf_1_text(page_layout: Literal["natural", "single_column"]) -> s
             "only on Adobe's website. Many of them are also not supported by popular third-party implementations of "
             "PDF.\n\x0cPage 2 of Sample PDF\n\x0c\x0cPage 4 of Sample PDF\n... the page 3 is empty.\n"
         )
-    else:
-        return (
-            "A sample PDF file\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification "
-            "available free of\ncharge in 1993. In the early years PDF was popular mainly in desktop\npublishing "
-            "workflows, and competed with a variety of formats such as DjVu,\nEnvoy, Common Ground Digital Paper, "
-            "Farallon Replica and even Adobe's\nown PostScript format. PDF was a proprietary format controlled by "
-            "Adobe\nuntil it was released as an open standard on July 1, 2008, and published by\nthe International "
-            "Organization for Standardization as ISO 32000-1:2008, at\nwhich time control of the specification passed "
-            "to an ISO Committee of\nvolunteer industry experts. In 2008, Adobe published a Public Patent License\nto "
-            "ISO 32000-1 granting royalty-free rights for all patents owned by Adobe\nthat are necessary to make, use, "
-            "sell, and distribute PDF-compliant\nimplementations. PDF 1.7, the sixth edition of the PDF specification "
-            "that\nbecame ISO 32000-1, includes some proprietary technologies defined only by\nAdobe, such as Adobe "
-            "XML Forms Architecture (XFA) and JavaScript\nextension for Acrobat, which are referenced by ISO 32000-1 "
-            "as normative\nand indispensable for the full implementation of the ISO 32000-1\nspecification. These "
-            "proprietary technologies are not standardized and their\nspecification is published only on Adobe's "
-            "website. Many of them are also not\nsupported by popular third-party implementations of PDF.\n\x0cPage 2 "
-            "of Sample PDF\n\x0c\x0cPage 4 of Sample PDF\n... the page 3 is empty.\n"
-        )
+    return (
+        "A sample PDF file\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification "
+        "available free of\ncharge in 1993. In the early years PDF was popular mainly in desktop\npublishing "
+        "workflows, and competed with a variety of formats such as DjVu,\nEnvoy, Common Ground Digital Paper, "
+        "Farallon Replica and even Adobe's\nown PostScript format. PDF was a proprietary format controlled by "
+        "Adobe\nuntil it was released as an open standard on July 1, 2008, and published by\nthe International "
+        "Organization for Standardization as ISO 32000-1:2008, at\nwhich time control of the specification passed "
+        "to an ISO Committee of\nvolunteer industry experts. In 2008, Adobe published a Public Patent License\nto "
+        "ISO 32000-1 granting royalty-free rights for all patents owned by Adobe\nthat are necessary to make, use, "
+        "sell, and distribute PDF-compliant\nimplementations. PDF 1.7, the sixth edition of the PDF specification "
+        "that\nbecame ISO 32000-1, includes some proprietary technologies defined only by\nAdobe, such as Adobe "
+        "XML Forms Architecture (XFA) and JavaScript\nextension for Acrobat, which are referenced by ISO 32000-1 "
+        "as normative\nand indispensable for the full implementation of the ISO 32000-1\nspecification. These "
+        "proprietary technologies are not standardized and their\nspecification is published only on Adobe's "
+        "website. Many of them are also not\nsupported by popular third-party implementations of PDF.\n\x0cPage 2 "
+        "of Sample PDF\n\x0c\x0cPage 4 of Sample PDF\n... the page 3 is empty.\n"
+    )
 
 
 def get_sample_pdf_2_text(page_layout: Literal["natural", "single_column"]) -> str:
@@ -70,18 +69,17 @@ def get_sample_pdf_2_text(page_layout: Literal["natural", "single_column"]) -> s
             "Oh, how boring typing this stuff. But not as boring as watching paint dry. And more text. And more text. "
             "And more text. And more text. Boring. More, a little more text. The end, and just as well.\n"
         )
-    else:
-        return (
-            "A Simple PDF File\nThis is a small demonstration .pdf file -\njust for use in the Virtual Mechanics "
-            "tutorials. More text. And more\ntext. And more text. And more text. And more text.\nAnd more text. And "
-            "more text. And more text. And more text. And more\ntext. And more text. Boring, zzzzz. And more text. "
-            "And more text. And\nmore text. And more text. And more text. And more text. And more text.\nAnd more text. "
-            "And more text.\nAnd more text. And more text. And more text. And more text. And more\ntext. And more text. "
-            "And more text. Even more. Continued on page 2 ...\n\x0cSimple PDF File 2\n... continued from page 1. "
-            "Yet more text. And more text. And more text.\nAnd more text. And more text. And more text. And more text. "
-            "And more\ntext. Oh, how boring typing this stuff. But not as boring as watching\npaint dry. And more text. "
-            "And more text. And more text. And more text.\nBoring. More, a little more text. The end, and just as well.\n"
-        )
+    return (
+        "A Simple PDF File\nThis is a small demonstration .pdf file -\njust for use in the Virtual Mechanics "
+        "tutorials. More text. And more\ntext. And more text. And more text. And more text.\nAnd more text. And "
+        "more text. And more text. And more text. And more\ntext. And more text. Boring, zzzzz. And more text. "
+        "And more text. And\nmore text. And more text. And more text. And more text. And more text.\nAnd more text. "
+        "And more text.\nAnd more text. And more text. And more text. And more text. And more\ntext. And more text. "
+        "And more text. Even more. Continued on page 2 ...\n\x0cSimple PDF File 2\n... continued from page 1. "
+        "Yet more text. And more text. And more text.\nAnd more text. And more text. And more text. And more text. "
+        "And more\ntext. Oh, how boring typing this stuff. But not as boring as watching\npaint dry. And more text. "
+        "And more text. And more text. And more text.\nBoring. More, a little more text. The end, and just as well.\n"
+    )
 
 
 @pytest.fixture
@@ -253,12 +251,11 @@ D,$54.35,$6345.,
         component = AzureOCRDocumentConverter(
             endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"], api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY")
         )
-        output = component.run(sources=[test_files_path / "pdf" / "sample_pdf_1.pdf"])
+        output = component.run(sources=[test_files_path / "pdf" / "non_text_searchable.pdf"])
         documents = output["documents"]
         assert len(documents) == 1
-        assert "A sample PDF file" in documents[0].content
-        assert "Page 2 of Sample PDF" in documents[0].content
-        assert "Page 4 of Sample PDF" in documents[0].content
+        assert "This is an example of a non-text-searchable PDF" in documents[0].content
+        assert "it cannot be rendered as plain text" in documents[0].content
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("CORE_AZURE_CS_ENDPOINT", None), reason="Azure endpoint not available")

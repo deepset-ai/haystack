@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from typing import Any
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,13 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
             print("[ASSISTANT]\n", flush=True, end="")
         print(chunk.content, flush=True, end="")
 
+    ## Reasoning content streaming
+    # Print the reasoning content of the chunk (from ChatGenerator)
+    if chunk.reasoning:
+        if chunk.start:
+            print("[REASONING]\n", flush=True, end="")
+        print(chunk.reasoning.reasoning_text, flush=True, end="")
+
     # End of LLM assistant message so we add two new lines
     # This ensures spacing between multiple LLM messages (e.g. Agent) or multiple Tool Call Results
     if chunk.finish_reason is not None:
@@ -77,7 +85,15 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     :returns: The ChatMessage.
     """
     text = "".join([chunk.content for chunk in chunks])
+    logprobs = []
+    for chunk in chunks:
+        if chunk.meta.get("logprobs"):
+            logprobs.append(chunk.meta.get("logprobs"))
     tool_calls = []
+
+    # Accumulate reasoning content from chunks
+    reasoning_parts = [chunk.reasoning.reasoning_text for chunk in chunks if chunk.reasoning]
+    reasoning = ReasoningContent(reasoning_text="".join(reasoning_parts)) if reasoning_parts else None
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
@@ -119,12 +135,38 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
+    # usage info can appear in different chunks depending on the API provider
+    # (e.g., OpenAI returns it in the last chunk with empty choices, but Qwen3 may return it differently)
+    # so we look for the last non-None usage value across all chunks
+    usage = None
+    for chunk in reversed(chunks):
+        chunk_usage = chunk.meta.get("usage")
+        if chunk_usage is not None:
+            usage = chunk_usage
+            break
+
     meta = {
         "model": chunks[-1].meta.get("model"),
         "index": 0,
         "finish_reason": finish_reason,
         "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+        "usage": usage,
     }
 
-    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
+    if logprobs:
+        meta["logprobs"] = logprobs
+
+    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
+
+
+def _serialize_object(obj: Any) -> Any:
+    """Convert an object to a serializable dict recursively"""
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "__dict__"):
+        return {k: _serialize_object(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
+    if isinstance(obj, dict):
+        return {k: _serialize_object(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_serialize_object(item) for item in obj]
+    return obj

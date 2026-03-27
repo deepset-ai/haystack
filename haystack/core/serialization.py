@@ -3,16 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, TypeVar
+from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.utils.auth import Secret
+from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import thread_safe_import
 
 logger = logging.getLogger(__name__)
+
 
 T = TypeVar("T")
 
@@ -32,7 +35,7 @@ class DeserializationCallbacks:
         are passed to the component's constructor.
     """
 
-    component_pre_init: Optional[Callable] = None
+    component_pre_init: Callable | None = None
 
 
 def component_to_dict(obj: Any, name: str) -> dict[str, Any]:
@@ -89,8 +92,8 @@ def _validate_component_to_dict_output(component: Any, name: str, data: dict[str
     def is_allowed_type(obj: Any) -> bool:
         return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None)))
 
-    def check_iterable(l: Iterable[Any]) -> None:
-        for v in l:
+    def check_iterable(iterable: Iterable[Any]) -> None:
+        for v in iterable:
             if not is_allowed_type(v):
                 raise SerializationError(
                     f"Component '{name}' of type '{type(component).__name__}' has an unsupported value "
@@ -134,7 +137,7 @@ def generate_qualified_class_name(cls: type[object]) -> str:
 
 
 def component_from_dict(
-    cls: type[object], data: dict[str, Any], name: str, callbacks: Optional[DeserializationCallbacks] = None
+    cls: type[object], data: dict[str, Any], name: str, callbacks: DeserializationCallbacks | None = None
 ) -> Any:
     """
     Creates a component instance from a dictionary.
@@ -153,12 +156,12 @@ def component_from_dict(
         The deserialized component.
     """
 
-    def component_pre_init_callback(component_cls, init_params):
+    def component_pre_init_callback(component_cls: type, init_params: dict[str, Any]) -> None:
         assert callbacks is not None
         assert callbacks.component_pre_init is not None
         callbacks.component_pre_init(name, component_cls, init_params)
 
-    def do_from_dict():
+    def do_from_dict() -> Any:
         if hasattr(cls, "from_dict"):
             return cls.from_dict(data)
 
@@ -181,11 +184,14 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
     errors or unexpected behaviours later, when calling `from_dict`.
 
+    Objects in `init_parameters` that have a `to_dict()` method are automatically
+    serialized by calling that method.
+
     An example usage:
 
     ```python
     class MyClass:
-        def __init__(self, my_param: int = 10):
+        def __init__(self, my_param: int = 10) -> None:
             self.my_param = my_param
 
         def to_dict(self):
@@ -209,7 +215,36 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     :returns:
         A dictionary representation of the instance.
     """
-    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": init_parameters}
+    # Automatically serialize objects that have a to_dict method
+    serialized_params = {}
+    for key, value in init_parameters.items():
+        if value is not None and hasattr(value, "to_dict") and callable(value.to_dict):
+            serialized_params[key] = value.to_dict()
+        else:
+            serialized_params[key] = value
+
+    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": serialized_params}
+
+
+def _is_serialized_component_device(value: Any) -> bool:
+    """
+    Check if a value is a serialized ComponentDevice dictionary.
+
+    A dictionary is considered a serialized ComponentDevice if:
+    - It has "type": "single" and a "device" key with a string value, or
+    - It has "type": "multiple" and a "device_map" key with a dict value
+
+    This matches the structure produced by ComponentDevice.to_dict().
+    """
+    if not isinstance(value, dict):
+        return False
+
+    type_value = value.get("type")
+    if type_value == "single":
+        return "device" in value and isinstance(value["device"], str)
+    if type_value == "multiple":
+        return "device_map" in value and isinstance(value["device_map"], dict)
+    return False
 
 
 def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
@@ -223,6 +258,18 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
 
     If `data` contains an `init_parameters` field it will be used as parameters to create
     a new instance of `cls`.
+
+    Serialized Secret dictionaries in `init_parameters` are automatically detected and
+    deserialized. A dictionary is considered a serialized Secret if it has a "type" key
+    with value "env_var".
+
+    Serialized ComponentDevice dictionaries in `init_parameters` are automatically detected
+    and deserialized. A dictionary is considered a serialized ComponentDevice if it has a
+    "type" key with value "single" or "multiple".
+
+    Objects in `init_parameters` that are dictionaries with a "type" key containing a fully
+    qualified class name are automatically detected and deserialized if the class has a
+    `from_dict()` method.
 
     :param cls:
         The class to be used for deserialization.
@@ -239,6 +286,28 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
         raise DeserializationError("Missing 'type' in serialization data")
     if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
+
+    # Automatically detect and deserialize objects with from_dict methods
+    for key, value in init_params.items():
+        if isinstance(value, dict) and "type" in value:
+            type_value = value.get("type")
+            # Special handling for Secret (type == "env_var")
+            if type_value == "env_var":
+                init_params[key] = Secret.from_dict(value)
+            # Special handling for ComponentDevice (type == "single" or "multiple")
+            elif _is_serialized_component_device(value):
+                init_params[key] = ComponentDevice.from_dict(value)
+            # If type looks like a fully qualified class name, try to import it and deserialize
+            elif isinstance(type_value, str) and "." in type_value:
+                try:
+                    imported_class = import_class_by_name(type_value)
+                    if hasattr(imported_class, "from_dict") and callable(imported_class.from_dict):
+                        init_params[key] = imported_class.from_dict(value)
+                    else:
+                        init_params[key] = default_from_dict(imported_class, value)
+                except (ImportError, DeserializationError) as e:
+                    raise type(e)(f"Failed to deserialize '{key}': {e}") from e
+
     return cls(**init_params)
 
 
@@ -262,5 +331,5 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
         module = thread_safe_import(module_path)
         return getattr(module, class_name)
     except (ImportError, AttributeError) as error:
-        logger.error("Failed to import class '{full_name}'", full_name=fully_qualified_name)
+        logger.exception("Failed to import class '{full_name}'", full_name=fully_qualified_name)
         raise ImportError(f"Could not import class '{fully_qualified_name}'") from error

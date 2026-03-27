@@ -3,8 +3,7 @@ import re
 import sys
 from pathlib import Path
 
-# toml is available in the default environment but not in the test environment, so pylint complains
-import toml  # pylint: disable=import-error
+import toml
 
 matcher = re.compile(r"farm-haystack\[(.+)\]")
 parser = argparse.ArgumentParser(
@@ -14,7 +13,7 @@ parser.add_argument("pyproject_path")
 parser.add_argument("--extra", default="")
 
 
-def resolve(target: str, extras: dict, results: set):
+def resolve(target: str, extras: dict, results: set) -> None:
     """
     Resolve the dependencies for a given target.
     """
@@ -31,7 +30,7 @@ def resolve(target: str, extras: dict, results: set):
             resolve(t, extras, results)
 
 
-def main(pyproject_path: Path, extra: str = ""):
+def main(pyproject_path: Path, extra: str = "") -> None:
     """
     Convert a pyproject.toml file to a requirements.txt file.
     """

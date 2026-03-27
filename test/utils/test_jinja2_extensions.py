@@ -12,6 +12,11 @@ from haystack.utils import Jinja2TimeExtension
 
 
 class TestJinja2TimeExtension:
+    @pytest.fixture(autouse=True)
+    def mock_now(self, monkeypatch):
+        """Mock the arrow.now function to return a fixed datetime"""
+        monkeypatch.setattr("arrow.now", lambda timezone="UTC": arrow.get("1970-01-01 00:00:00").to(timezone))
+
     @pytest.fixture
     def jinja_env(self) -> Environment:
         return Environment(extensions=[Jinja2TimeExtension])

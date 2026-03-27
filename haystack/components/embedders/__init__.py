@@ -16,6 +16,8 @@ _import_structure = {
     "openai_text_embedder": ["OpenAITextEmbedder"],
     "sentence_transformers_document_embedder": ["SentenceTransformersDocumentEmbedder"],
     "sentence_transformers_text_embedder": ["SentenceTransformersTextEmbedder"],
+    "sentence_transformers_sparse_document_embedder": ["SentenceTransformersSparseDocumentEmbedder"],
+    "sentence_transformers_sparse_text_embedder": ["SentenceTransformersSparseTextEmbedder"],
 }
 
 if TYPE_CHECKING:
@@ -27,6 +29,12 @@ if TYPE_CHECKING:
     from .openai_text_embedder import OpenAITextEmbedder as OpenAITextEmbedder
     from .sentence_transformers_document_embedder import (
         SentenceTransformersDocumentEmbedder as SentenceTransformersDocumentEmbedder,
+    )
+    from .sentence_transformers_sparse_document_embedder import (
+        SentenceTransformersSparseDocumentEmbedder as SentenceTransformersSparseDocumentEmbedder,
+    )
+    from .sentence_transformers_sparse_text_embedder import (
+        SentenceTransformersSparseTextEmbedder as SentenceTransformersSparseTextEmbedder,
     )
     from .sentence_transformers_text_embedder import (
         SentenceTransformersTextEmbedder as SentenceTransformersTextEmbedder,

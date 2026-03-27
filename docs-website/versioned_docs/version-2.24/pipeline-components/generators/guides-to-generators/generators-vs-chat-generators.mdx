@@ -1,0 +1,127 @@
+---
+title: "Generators vs Chat Generators"
+id: generators-vs-chat-generators
+slug: "/generators-vs-chat-generators"
+description: "This page explains the difference between Generators and Chat Generators in Haystack. It emphasizes choosing the right Generator based on the use case and model."
+---
+
+# Generators vs Chat Generators
+
+This page explains the difference between Generators and Chat Generators in Haystack. It emphasizes choosing the right Generator based on the use case and model.
+
+## Input/Output
+
+|             | **Generators**    | **Chat Generators**                                      |
+| ----------- | ----------------- | -------------------------------------------------------- |
+| **Inputs**  | String (a prompt) | A list of [ChatMessages](../../../concepts/data-classes/chatmessage.mdx) |
+| **Outputs** | Text              | ChatMessage (in "replies")                               |
+
+## Pick the Right Class
+
+### Overview
+
+The choice between Generators (or text Generators) and Chat Generators depends on your use case and the underlying model.
+
+As highlighted by the different input and output characteristics above, Generators and Chat Generators are distinct, often interacting with different models through calls to different APIs. Therefore, they are not automatically interchangeable.
+
+:::tip Multi-turn Interactions
+
+If you anticipate a two-way interaction with the Language Model in a chat scenario, opting for a Chat Generator is generally better. This choice ensures a more structured and straightforward interaction with the Language Model.
+:::
+
+Chat Generators use Chat Messages. They can accommodate roles like "system", "user", "assistant", and even "function", enabling a more structured and nuanced interaction with Language Models. Chat Generators can handle many interactions, including complex queries, mixed conversations using tools, resolving function names and parameters from free text, and more. The format of Chat Messages is also helpful in reducing off-topic responses. Chat Generators are better at keeping the conversation on track by providing a consistent context.
+
+### Function Calling
+
+Some Chat Generators allow to leverage the function-calling capabilities of the models by passing tool/function definitions.
+
+If you'd like to learn more, read the introduction to [Function Calling](function-calling.mdx) in our docs.
+
+Or, you can find more information in relevant providers’ documentation:
+
+- [Function calling](https://platform.openai.com/docs/guides/function-calling) for [`OpenAIChatGenerator`](../openaichatgenerator.mdx)
+- Gemini [function calling](https://codelabs.developers.google.com/codelabs/gemini-function-calling#0) for [`VertexAIGeminiChatGenerator`](../vertexaigeminichatgenerator.mdx)
+
+### Compatibility Exceptions
+
+- The [`HuggingFaceLocalGenerator`](../huggingfacelocalgenerator.mdx) is compatible with Chat models, although the [`HuggingFaceLocalChatGenerator`](../huggingfacelocalchatgenerator.mdx) is more suitable.
+
+In such cases, opting for a Chat Generator simplifies the process, as Haystack handles the conversion of Chat Messages to a prompt that’s fit for the selected model.
+
+### No Corresponding Chat Generator
+
+If a Generator does not have a corresponding Chat Generator, this does not imply that the Generator cannot be utilized in a chat scenario.
+
+For example, [`LlamaCppGenerator`](../llamacppgenerator.mdx) can be used with both chat and non-chat models.
+However, without the `ChatMessage` data class, you need to pay close attention to the model's prompt template and adhere to it.
+
+#### Chat (Prompt) Template
+
+The chat template may be available on the Model card on Hugging Face for open Language Models in a human-readable form.
+See an example for [argilla/notus-7b-v1](https://huggingface.co/argilla/notus-7b-v1#prompt-template) model on the Hugging Face.
+
+Usually, it is also available as a Jinja template in the tokenizer_config.json.
+Here’s an example for [argilla/notus-7b-v1](https://huggingface.co/argilla/notus-7b-v1/blob/main/tokenizer_config.json#L34):
+
+```json
+{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'system' %}\n{{ '<|system|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}
+```
+
+## Different Types of Language Models
+
+:::note Topic Exploration
+
+This field is young, constantly evolving, and distinctions are not always possible and precise.
+:::
+
+The training of Generative Language Models involves several phases, yielding distinct models.
+
+### From Pretraining to Base Language Models
+
+In the pretraining phase, models are trained on vast amounts of raw text in an unsupervised manner. During this stage, the model acquires the ability to generate statistically plausible text completions.
+
+For instance, given the prompt “What is music...” the pretrained model can generate diverse plausible completions:
+
+- Adding more context: “...to your ears?”
+- Adding follow-up questions: “? What is sound? What is harmony?”
+- Providing an answer: “Music is a form of artistic expression…”
+
+The model that emerges from this pretraining is commonly referred to as the **base Language Model**.
+Examples include [meta-llama/Llama-2-70b](https://huggingface.co/meta-llama/Llama-2-70b-hf) and [mistralai/Mistral-7B-v0.1](https://huggingface.co/mistralai/Mistral-7B-v0.1).
+
+Using base Language Models is infrequent in practical applications, as they cannot follow instructions or engage in conversation.
+
+If you want to experiment with them, use the Haystack text Generators.
+
+### Supervised Fine Tuning (SFT) and Alignment with Human Preferences
+
+To make the language model helpful in real applications, two additional training steps are usually performed.
+
+- Supervised Fine Tuning: The language Model is further trained on a dataset containing instruction-response pairs or multi-turn interactions. Depending on the dataset, the model can acquire the capability to follow instructions or engage in chat.
+  _If model training stops at this point, it may perform well on some benchmarks, but it does not behave in a way that aligns with human user preferences._
+- Alignment with Human Preferences: This crucial step ensures that the Language Model aligns with human intent. Various techniques, such as RLHF and DPO, can be employed.
+  _To learn more about these techniques and this evolving landscape, you can read [this blog post](https://ai-scholar.tech/en/articles/rlhf%2FDirect-Preference-Optimization)._
+
+After these phases, a Language Model suitable for practical applications is obtained.
+Examples include [meta-llama/Llama-2-70b-chat-hf](https://huggingface.co/meta-llama/Llama-2-70b-chat-hf) and [mistralai/Mistral-7B-Instruct-v0.2](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2).
+
+#### Instruct vs Chat Language Models
+
+Instruct models are trained to follow instructions, while Chat models are trained for multi-turn conversations.
+
+This information is sometimes evident in the model name (meta-llama/Llama-2-70b-**chat**-hf, mistralai/Mistral-7B-**Instruct**-v0.2) or within the accompanying model card.
+
+- For Chat Models, employing Chat Generators is the most natural choice.
+- Should you opt to utilize Instruct models for single-turn interactions, turning to text Generators is recommended.
+
+It's worth noting that many recent Instruct models are equipped with a [chat template](#chat-prompt-template). An example of this is mistralai/Mistral-7B-Instruct-v0.2 [chat template](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2/blob/main/tokenizer_config.json#L42).
+
+Utilizing a Chat Generator is the optimal choice if the model features a Chat template and you intend to use it in chat scenarios. In these cases, you can expect out-of-the-box support for Chat Messages, and you don’t need to manually apply the aforementioned template.
+
+:::warning Caution
+
+The distinction between Instruct and Chat models is not a strict dichotomy.
+
+- Following pre-training, Supervised Fine Tuning (SFT) and Alignment with Human Preferences can be executed multiple times using diverse datasets. In some cases, the differentiation between Instruct and Chat models may not be particularly meaningful.
+- Some open Language Models on Hugging Face lack explicit indications of their nature.
+:::

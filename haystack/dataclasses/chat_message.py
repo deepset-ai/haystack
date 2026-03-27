@@ -3,17 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Optional, Sequence, Union
+from typing import Any
 
 from haystack import logging
+from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import ImageContent
+from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
 logger = logging.getLogger(__name__)
-
-
-LEGACY_INIT_PARAMETERS = {"role", "content", "meta", "name"}
 
 
 class ChatRole(str, Enum):
@@ -46,81 +46,7 @@ class ChatRole(str, Enum):
         return role
 
 
-@dataclass
-class ToolCall:
-    """
-    Represents a Tool call prepared by the model, usually contained in an assistant message.
-
-    :param id: The ID of the Tool call.
-    :param tool_name: The name of the Tool to call.
-    :param arguments: The arguments to call the Tool with.
-    """
-
-    tool_name: str
-    arguments: dict[str, Any]
-    id: Optional[str] = None  # noqa: A003
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Convert ToolCall into a dictionary.
-
-        :returns: A dictionary with keys 'tool_name', 'arguments', and 'id'.
-        """
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ToolCall":
-        """
-        Creates a new ToolCall object from a dictionary.
-
-        :param data:
-            The dictionary to build the ToolCall object.
-        :returns:
-            The created object.
-        """
-        return ToolCall(**data)
-
-
-@dataclass
-class ToolCallResult:
-    """
-    Represents the result of a Tool invocation.
-
-    :param result: The result of the Tool invocation.
-    :param origin: The Tool call that produced this result.
-    :param error: Whether the Tool invocation resulted in an error.
-    """
-
-    result: str
-    origin: ToolCall
-    error: bool
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Converts ToolCallResult into a dictionary.
-
-        :returns: A dictionary with keys 'result', 'origin', and 'error'.
-        """
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
-        """
-        Creates a ToolCallResult from a dictionary.
-
-        :param data:
-            The dictionary to build the ToolCallResult object.
-        :returns:
-            The created object.
-        """
-        if not all(x in data for x in ["result", "origin", "error"]):
-            raise ValueError(
-                "Fields `result`, `origin`, `error` are required for ToolCallResult deserialization. "
-                f"Received dictionary with keys {list(data.keys())}"
-            )
-        return ToolCallResult(result=data["result"], origin=ToolCall.from_dict(data["origin"]), error=data["error"])
-
-
+@_warn_on_inplace_mutation
 @dataclass
 class TextContent:
     """
@@ -145,6 +71,100 @@ class TextContent:
         return TextContent(**data)
 
 
+@_warn_on_inplace_mutation
+@dataclass
+class ToolCall:
+    """
+    Represents a Tool call prepared by the model, usually contained in an assistant message.
+
+    :param id: The ID of the Tool call.
+    :param tool_name: The name of the Tool to call.
+    :param arguments: The arguments to call the Tool with.
+    :param extra: Dictionary of extra information about the Tool call. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
+    """
+
+    tool_name: str
+    arguments: dict[str, Any]
+    id: str | None = None  # noqa: A003
+    extra: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Convert ToolCall into a dictionary.
+
+        :returns: A dictionary with keys 'tool_name', 'arguments', 'id', and 'extra'.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ToolCall":
+        """
+        Creates a new ToolCall object from a dictionary.
+
+        :param data:
+            The dictionary to build the ToolCall object.
+        :returns:
+            The created object.
+        """
+        return ToolCall(**data)
+
+
+ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
+
+
+@_warn_on_inplace_mutation
+@dataclass
+class ToolCallResult:
+    """
+    Represents the result of a Tool invocation.
+
+    :param result: The result of the Tool invocation.
+    :param origin: The Tool call that produced this result.
+    :param error: Whether the Tool invocation resulted in an error.
+    """
+
+    result: ToolCallResultContentT
+    origin: ToolCall
+    error: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Converts ToolCallResult into a dictionary.
+
+        :returns: A dictionary with keys 'result', 'origin', and 'error'.
+        """
+        serialized = asdict(self)
+        if isinstance(self.result, list):
+            if not all(isinstance(part, (TextContent, ImageContent)) for part in self.result):
+                raise ValueError("ToolCallResult result must be a string or a list of TextContent or ImageContent")
+            serialized["result"] = [_serialize_content_part(part) for part in self.result]
+        return serialized
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
+        """
+        Creates a ToolCallResult from a dictionary.
+
+        :param data:
+            The dictionary to build the ToolCallResult object.
+        :returns:
+            The created object.
+        """
+        if not all(x in data for x in ["result", "origin", "error"]):
+            raise ValueError(
+                "Fields `result`, `origin`, `error` are required for ToolCallResult deserialization. "
+                f"Received dictionary with keys {list(data.keys())}"
+            )
+
+        result = data["result"]
+        if isinstance(result, list):
+            result = [_deserialize_content_part(part) for part in result]
+
+        return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
+
+
+@_warn_on_inplace_mutation
 @dataclass
 class ReasoningContent:
     """
@@ -179,7 +199,7 @@ class ReasoningContent:
         return ReasoningContent(**data)
 
 
-ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent, ReasoningContent]
+ChatMessageContentT = TextContent | ToolCall | ToolCallResult | ImageContent | ReasoningContent | FileContent
 
 _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str] = {
     TextContent: "text",
@@ -187,6 +207,7 @@ _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str
     ToolCallResult: "tool_call_result",
     ImageContent: "image",
     ReasoningContent: "reasoning",
+    FileContent: "file",
 }
 
 
@@ -212,10 +233,10 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
     # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
     msg = (
         f"Unsupported content part in the serialized ChatMessage: {part}. "
-        "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each "
-        "dictionary contains one of these keys: 'text', 'image', 'reasoning', 'tool_call', or 'tool_call_result'. "
+        "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each dictionary "
+        "contains one of these keys: 'text', 'image', 'file', 'reasoning', 'tool_call', or 'tool_call_result'. "
         "Valid formats: [{'text': 'Hello'}, {'image': {'base64_image': '...', ...}}, "
-        "{'reasoning': {'reasoning_text': 'I think...', 'extra': {...}}}, "
+        "{'file': {'base64_data': '...', ...}}, {'reasoning': {'reasoning_text': 'I think...', 'extra': {...}}}, "
         "{'tool_call': {'tool_name': 'search', 'arguments': {}, 'id': 'call_123'}}, "
         "{'tool_call_result': {'result': 'data', 'origin': {...}, 'error': false}}]"
     )
@@ -244,8 +265,9 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     return {serialization_key: part.to_dict()}
 
 
+@_warn_on_inplace_mutation
 @dataclass
-class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we expose several properties
+class ChatMessage:
     """
     Represents a message in a LLM chat conversation.
 
@@ -254,44 +276,10 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     _role: ChatRole
     _content: Sequence[ChatMessageContentT]
-    _name: Optional[str] = None
+    _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
-    def __new__(cls, *args, **kwargs):
-        """
-        This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
-        """
-
-        general_msg = (
-            "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
-            "ChatMessage. For more information about the new API and how to migrate, see the documentation:"
-            " https://docs.haystack.deepset.ai/docs/chatmessage"
-        )
-
-        if any(param in kwargs for param in LEGACY_INIT_PARAMETERS):
-            raise TypeError(
-                "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
-                f"{general_msg}"
-            )
-
-        return super(ChatMessage, cls).__new__(cls)
-
-    def __getattribute__(self, name):
-        """
-        This method is reimplemented to make the `content` attribute removal more visible.
-        """
-
-        if name == "content":
-            msg = (
-                "The `content` attribute of `ChatMessage` has been removed. "
-                "Use the `text` property to access the textual value. "
-                "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/chatmessage"
-            )
-            raise AttributeError(msg)
-        return object.__getattribute__(self, name)
-
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._content)
 
     @property
@@ -309,7 +297,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return self._meta
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """
         Returns the name associated with the message.
         """
@@ -323,7 +311,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content.text for content in self._content if isinstance(content, TextContent)]
 
     @property
-    def text(self) -> Optional[str]:
+    def text(self) -> str | None:
         """
         Returns the first text contained in the message.
         """
@@ -339,7 +327,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ToolCall)]
 
     @property
-    def tool_call(self) -> Optional[ToolCall]:
+    def tool_call(self) -> ToolCall | None:
         """
         Returns the first Tool call contained in the message.
         """
@@ -355,7 +343,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ToolCallResult)]
 
     @property
-    def tool_call_result(self) -> Optional[ToolCallResult]:
+    def tool_call_result(self) -> ToolCallResult | None:
         """
         Returns the first Tool call result contained in the message.
         """
@@ -371,12 +359,28 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ImageContent)]
 
     @property
-    def image(self) -> Optional[ImageContent]:
+    def image(self) -> ImageContent | None:
         """
         Returns the first image contained in the message.
         """
         if images := self.images:
             return images[0]
+        return None
+
+    @property
+    def files(self) -> list[FileContent]:
+        """
+        Returns the list of all files contained in the message.
+        """
+        return [content for content in self._content if isinstance(content, FileContent)]
+
+    @property
+    def file(self) -> FileContent | None:
+        """
+        Returns the first file contained in the message.
+        """
+        if files := self.files:
+            return files[0]
         return None
 
     @property
@@ -387,7 +391,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ReasoningContent)]
 
     @property
-    def reasoning(self) -> Optional[ReasoningContent]:
+    def reasoning(self) -> ReasoningContent | None:
         """
         Returns the first reasoning content contained in the message.
         """
@@ -395,7 +399,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             return reasonings[0]
         return None
 
-    def is_from(self, role: Union[ChatRole, str]) -> bool:
+    def is_from(self, role: ChatRole | str) -> bool:
         """
         Check if the message is from a specific role.
 
@@ -409,11 +413,11 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     @classmethod
     def from_user(
         cls,
-        text: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
-        name: Optional[str] = None,
+        text: str | None = None,
+        meta: dict[str, Any] | None = None,
+        name: str | None = None,
         *,
-        content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None,
+        content_parts: Sequence[TextContent | str | ImageContent | FileContent] | None = None,
     ) -> "ChatMessage":
         """
         Create a message from the user.
@@ -423,13 +427,15 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         :param name: An optional name for the participant. This field is only supported by OpenAI.
         :param content_parts: A list of content parts to include in the message. Specify this or text.
         :returns: A new ChatMessage instance.
+        :raises ValueError: If neither or both of text and content_parts are provided, or if content_parts is empty.
+        :raises TypeError: If a content part is not a str, TextContent, ImageContent, or FileContent.
         """
         if text is None and content_parts is None:
             raise ValueError("Either text or content_parts must be provided.")
         if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
-        content: list[Union[TextContent, ImageContent]] = []
+        content: list[TextContent | ImageContent | FileContent] = []
 
         if text is not None:
             content = [TextContent(text=text)]
@@ -437,19 +443,17 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             for part in content_parts:
                 if isinstance(part, str):
                     content.append(TextContent(text=part))
-                elif isinstance(part, (TextContent, ImageContent)):
+                elif isinstance(part, (TextContent, ImageContent, FileContent)):
                     content.append(part)
                 else:
-                    raise ValueError(
-                        f"The user message must contain only text or image parts. Unsupported part: {part}"
-                    )
+                    raise TypeError(f"The user message must contain only text or image parts. Unsupported part: {part}")
             if len(content) == 0:
-                raise ValueError("The user message must contain at least one textual or image part.")
+                raise ValueError("The user message must contain at least one content part (text, image, file).")
 
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
-    def from_system(cls, text: str, meta: Optional[dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
+    def from_system(cls, text: str, meta: dict[str, Any] | None = None, name: str | None = None) -> "ChatMessage":
         """
         Create a message from the system.
 
@@ -463,12 +467,12 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     @classmethod
     def from_assistant(
         cls,
-        text: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
-        name: Optional[str] = None,
-        tool_calls: Optional[list[ToolCall]] = None,
+        text: str | None = None,
+        meta: dict[str, Any] | None = None,
+        name: str | None = None,
+        tool_calls: list[ToolCall] | None = None,
         *,
-        reasoning: Optional[Union[str, ReasoningContent]] = None,
+        reasoning: str | ReasoningContent | None = None,
     ) -> "ChatMessage":
         """
         Create a message from the assistant.
@@ -479,6 +483,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         :param tool_calls: The Tool calls to include in the message.
         :param reasoning: The reasoning content to include in the message.
         :returns: A new ChatMessage instance.
+        :raises TypeError: If `reasoning` is not a string or ReasoningContent object.
         """
         content: list[ChatMessageContentT] = []
         if reasoning:
@@ -497,7 +502,11 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     @classmethod
     def from_tool(
-        cls, tool_result: str, origin: ToolCall, error: bool = False, meta: Optional[dict[str, Any]] = None
+        cls,
+        tool_result: ToolCallResultContentT,
+        origin: ToolCall,
+        error: bool = False,
+        meta: dict[str, Any] | None = None,
     ) -> "ChatMessage":
         """
         Create a message from a Tool.
@@ -530,6 +539,33 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         serialized["content"] = [_serialize_content_part(part) for part in self._content]
         return serialized
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the ChatMessage to a dictionary representation for tracing.
+
+        For Image Content objects, the base64_image is replaced with a placeholder string to avoid sending large
+        payloads to the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+
+        serialized: dict[str, Any] = {}
+        serialized["role"] = self._role.value
+        serialized["meta"] = self._meta
+        serialized["name"] = self._name
+
+        serialized["content"] = []
+        for part in self._content:
+            serialized_part = _serialize_content_part(part)
+            if isinstance(part, ImageContent):
+                serialized_part["image"]["base64_image"] = f"Base64 string ({len(part.base64_image)} characters)"
+            elif isinstance(part, FileContent):
+                serialized_part["file"]["base64_data"] = f"Base64 string ({len(part.base64_data)} characters)"
+            serialized["content"].append(serialized_part)
+
+        return serialized
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ChatMessage":
         """
@@ -539,10 +575,12 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             The dictionary to build the ChatMessage object.
         :returns:
             The created object.
+        :raises ValueError: If the `role` field is missing from the dictionary.
+        :raises TypeError: If the `content` field is not a list or string.
         """
 
         # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
-        if not "role" in data and not "_role" in data:
+        if "role" not in data and "_role" not in data:
             raise ValueError(
                 "The `role` field is required in the message dictionary. "
                 f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "
@@ -580,81 +618,106 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> dict[str, Any]:
         """
-        Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+        Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
             Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
         :returns:
-            The ChatMessage in the format expected by OpenAI's Chat API.
+            The ChatMessage in the format expected by OpenAI's Chat Completions API.
 
         :raises ValueError:
             If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
             `id` attribute.
         """
-        text_contents = self.texts
-        tool_calls = self.tool_calls
-        tool_call_results = self.tool_call_results
-        images = self.images
-
-        if not text_contents and not tool_calls and not tool_call_results and not images:
+        if not self.texts and not self.tool_calls and not self.tool_call_results and not self.images and not self.files:
             raise ValueError(
                 "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
-                "`ToolCallResult`, or `ImageContent`."
+                "`ToolCallResult`, `ImageContent`, or `FileContent`."
             )
-        if len(tool_call_results) > 0 and len(self._content) > 1:
+        if len(self.tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
                 "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
             )
 
         openai_msg: dict[str, Any] = {"role": self._role.value}
 
-        # Add name field if present
         if self._name is not None:
             openai_msg["name"] = self._name
 
-        # user message
         if openai_msg["role"] == "user":
-            if len(self._content) == 1 and isinstance(self._content[0], TextContent):
-                openai_msg["content"] = self.text
-                return openai_msg
+            return self._user_message_to_openai(openai_msg)
 
-            # if the user message contains a list of text and images, OpenAI expects a list of dictionaries
-            content = []
-            for part in self._content:
-                if isinstance(part, TextContent):
-                    content.append({"type": "text", "text": part.text})
-                elif isinstance(part, ImageContent):
-                    image_item: dict[str, Any] = {
-                        "type": "image_url",
-                        # If no MIME type is provided, default to JPEG.
-                        # OpenAI API appears to tolerate MIME type mismatches.
-                        "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
-                    }
-                    if part.detail:
-                        image_item["image_url"]["detail"] = part.detail
-                    content.append(image_item)
-            openai_msg["content"] = content
+        if self.tool_call_results:
+            return self._tool_result_message_to_openai(openai_msg, require_tool_call_ids)
+
+        return self._system_assistant_message_to_openai(openai_msg, require_tool_call_ids)
+
+    def _user_message_to_openai(self, openai_msg: dict[str, Any]) -> dict[str, Any]:
+        """Build OpenAI dict for a user message."""
+        if len(self._content) == 1 and isinstance(self._content[0], TextContent):
+            openai_msg["content"] = self.text
             return openai_msg
 
-        # tool message
-        if tool_call_results:
-            result = tool_call_results[0]
+        content = []
+        for part in self._content:
+            if isinstance(part, TextContent):
+                content.append({"type": "text", "text": part.text})
+            elif isinstance(part, ImageContent):
+                image_item: dict[str, Any] = {
+                    "type": "image_url",
+                    # If no MIME type is provided, default to JPEG.
+                    # OpenAI API appears to tolerate MIME type mismatches.
+                    "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
+                }
+                if part.detail:
+                    image_item["image_url"]["detail"] = part.detail
+                content.append(image_item)
+            elif isinstance(part, FileContent):
+                file_item: dict[str, Any] = {
+                    "type": "file",
+                    "file": {
+                        "file_data": f"data:{part.mime_type or 'application/pdf'};base64,{part.base64_data}",
+                        # Filename is optional but if not provided, OpenAI expects a file_id of a previous file upload.
+                        # We use a dummy filename.
+                        "filename": part.filename or "filename",
+                    },
+                }
+                content.append(file_item)
+        openai_msg["content"] = content
+        return openai_msg
+
+    def _tool_result_message_to_openai(self, openai_msg: dict[str, Any], require_tool_call_ids: bool) -> dict[str, Any]:
+        """Build OpenAI dict for a tool result message."""
+        result = self.tool_call_results[0]
+        if isinstance(result.result, str):
             openai_msg["content"] = result.result
-            if result.origin.id is not None:
-                openai_msg["tool_call_id"] = result.origin.id
-            elif require_tool_call_ids:
-                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-            # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
-            return openai_msg
+        # OpenAI Chat Completions API does not support multimodal tool results
+        elif isinstance(result.result, list) and all(isinstance(part, TextContent) for part in result.result):
+            openai_msg["content"] = [{"type": "text", "text": part.text} for part in result.result]
+        else:
+            raise ValueError(
+                f"Unsupported tool result: {result}. If you need to pass images in tool results, "
+                "use OpenAI Responses API instead."
+            )
 
-        # system and assistant messages
+        if result.origin.id is not None:
+            openai_msg["tool_call_id"] = result.origin.id
+        elif require_tool_call_ids:
+            raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+        # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
+        return openai_msg
+
+    def _system_assistant_message_to_openai(
+        self, openai_msg: dict[str, Any], require_tool_call_ids: bool
+    ) -> dict[str, Any]:
+        """Build OpenAI dict for system and assistant messages."""
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
-        if text_contents:
-            openai_msg["content"] = text_contents[0]
-        if tool_calls:
+        if self.texts:
+            openai_msg["content"] = self.texts[0]
+        if self.tool_calls:
             openai_tool_calls = []
-            for tc in tool_calls:
+            for tc in self.tool_calls:
                 openai_tool_call = {
                     "type": "function",
                     # We disable ensure_ascii so special chars like emojis are not converted
@@ -742,6 +805,10 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         if role in ["system", "developer"]:
             return cls.from_system(text=content, name=name)
 
+        if isinstance(content, list):
+            if not all("text" in el for el in content):
+                raise ValueError("To be used with OpenAI, tool results must be a string or a list of TextContent")
+            content = [TextContent(text=el["text"]) for el in content]
         return cls.from_tool(
             tool_result=content, origin=ToolCall(id=tool_call_id, tool_name="", arguments={}), error=False
         )

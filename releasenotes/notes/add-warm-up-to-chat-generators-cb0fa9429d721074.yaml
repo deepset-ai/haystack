@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added warm_up() method to all ChatGenerator components (OpenAIChatGenerator,
+    AzureOpenAIChatGenerator, HuggingFaceAPIChatGenerator, HuggingFaceLocalChatGenerator,
+    and FallbackChatGenerator) to properly initialize tools that require warm-up before
+    pipeline execution. The warm_up() method is idempotent and follows the same pattern
+    used in Agent and ToolInvoker components. This enables proper tool initialization
+    in pipelines that use ChatGenerators with tools but without an Agent component.

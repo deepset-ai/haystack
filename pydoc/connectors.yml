@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/connectors]
+    modules: ["openapi_service", "openapi"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Connectors
+  id: connectors-api
+  description: Various connectors to integrate with external services.
+  filename: connectors_api.md

@@ -1,0 +1,273 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v2.99.0-rc1 or v2.99.0)'
+        required: true
+        type: string
+
+# Only one release workflow runs at a time; additional runs are queued.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  parse-validate-version:
+    runs-on: ubuntu-slim
+    outputs:
+      version: ${{ steps.parse-validate.outputs.version }}
+      major_minor: ${{ steps.parse-validate.outputs.major_minor }}
+      release_branch: ${{ steps.parse-validate.outputs.release_branch }}
+      is_rc: ${{ steps.parse-validate.outputs.is_rc }}
+      is_first_rc: ${{ steps.parse-validate.outputs.is_first_rc }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0  # needed to fetch tags and branches
+      - name: Parse and validate version
+        id: parse-validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/utils/parse_validate_version.sh "${{ inputs.version }}"
+
+  branch-off:
+    needs: ["parse-validate-version"]
+    if: needs.parse-validate-version.outputs.is_first_rc == 'true'
+    uses: ./.github/workflows/branch_off.yml
+    # https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#passing-secrets-to-nested-workflows
+    secrets: inherit
+
+  create-release-tag:
+    needs: ["parse-validate-version", "branch-off"]
+    if: always() && needs.parse-validate-version.result == 'success' && needs.branch-off.result != 'failure'
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0  # needed to fetch tags and branches
+          # use this token so the created tag triggers workflows (does not happen with the default github.token)
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+      - name: Update VERSION.txt and create tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout ${{ needs.parse-validate-version.outputs.release_branch }}
+          git pull origin ${{ needs.parse-validate-version.outputs.release_branch }}
+
+          echo "${{ needs.parse-validate-version.outputs.version }}" > VERSION.txt
+          git add VERSION.txt
+          git commit -m "bump version to ${{ needs.parse-validate-version.outputs.version }}"
+          git push origin ${{ needs.parse-validate-version.outputs.release_branch }}
+
+          TAG="v${{ needs.parse-validate-version.outputs.version }}"
+          git tag -m "$TAG" "$TAG"
+          git push origin "$TAG"
+
+  check-artifacts:
+    needs: ["parse-validate-version", "create-release-tag"]
+    if: always() && needs.parse-validate-version.result == 'success' && needs.create-release-tag.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      github_url: ${{ steps.set-outputs.outputs.github_url }}
+      pypi_url: ${{ steps.set-outputs.outputs.pypi_url }}
+      docker_url: ${{ steps.set-outputs.outputs.docker_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0  # needed to fetch tags and branches
+
+      - name: Wait for release workflows
+        run: |
+          .github/utils/wait_for_workflows.sh "v${{ env.VERSION }}" \
+            "Project release on PyPi" \
+            "Project release on Github" \
+            "Docker image release"
+
+      - name: Check artifacts
+        run: |
+          check() {
+            for _ in {1..5}; do curl -sf "$2" > /dev/null && echo "✅ $1" && return 0; sleep 30; done
+            echo "❌ $1 not found" && return 1
+          }
+          check "GitHub Release" "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VERSION }}"
+          check "PyPI package" "https://pypi.org/pypi/haystack-ai/${{ env.VERSION }}/json"
+          check "Docker image" "https://hub.docker.com/v2/repositories/deepset/haystack/tags/base-v${{ env.VERSION }}"
+
+      - name: Set artifact URLs
+        id: set-outputs
+        run: |
+          {
+            echo "github_url=https://github.com/${{ github.repository }}/releases/tag/v${{ env.VERSION }}"
+            echo "pypi_url=https://pypi.org/project/haystack-ai/${{ env.VERSION }}/"
+            echo "docker_url=https://hub.docker.com/r/deepset/haystack/tags?name=base-v${{ env.VERSION }}"
+          } >> "$GITHUB_OUTPUT"
+
+  bump-dc-pipeline-templates:
+    needs: ["parse-validate-version", "check-artifacts"]
+    if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
+    runs-on: ubuntu-slim
+    outputs:
+      pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
+    env:
+      VERSION: ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Checkout dc-pipeline-templates
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: deepset-ai/dc-pipeline-templates
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+
+      - name: Update haystack pin
+        run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-test.txt
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Bump haystack to ${{ env.VERSION }}"
+          branch: bump-haystack-${{ env.VERSION }}
+          base: main
+          title: "chore: bump haystack to ${{ env.VERSION }}"
+          add-paths: requirements-test.txt
+          body: |
+            Bump haystack pin to `${{ env.VERSION }}` for platform testing.
+
+  bump-deepset-cloud-custom-nodes:
+    needs: ["parse-validate-version", "check-artifacts"]
+    if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
+    runs-on: ubuntu-slim
+    outputs:
+      pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
+    env:
+      VERSION: ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Checkout haystack (for utils)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: haystack
+          sparse-checkout: .github/utils/update_haystack_dc_custom_nodes.py
+          sparse-checkout-cone-mode: false
+
+      - name: Checkout deepset-cloud-custom-nodes
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: deepset-ai/deepset-cloud-custom-nodes
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          path: deepset-cloud-custom-nodes
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install tomlkit
+        run: pip install tomlkit
+
+      - name: Update haystack-ai in uv.lock
+        run: python haystack/.github/utils/update_haystack_dc_custom_nodes.py "${{ env.VERSION }}" deepset-cloud-custom-nodes/uv.lock
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          path: deepset-cloud-custom-nodes
+          commit-message: "Bump haystack to ${{ env.VERSION }}"
+          branch: bump-haystack-${{ env.VERSION }}
+          base: main
+          title: "chore: bump haystack to ${{ env.VERSION }}"
+          add-paths: uv.lock
+          body: |
+            Bump haystack pin to `${{ env.VERSION }}` for platform testing.
+
+  bump-dc-pipeline-images:
+    needs: ["parse-validate-version", "check-artifacts"]
+    if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
+    runs-on: ubuntu-slim
+    outputs:
+      pr_url: ${{ steps.wait-pr.outputs.pr_url }}
+    env:
+      VERSION: ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Trigger "Update package version" workflow
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          gh workflow run update-package-version.yaml \
+            -R deepset-ai/dc-pipeline-images \
+            -f haystack_version="${{ env.VERSION }}"
+
+      - name: Wait for PR
+        id: wait-pr
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          TRIGGER_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          for i in $(seq 1 30); do
+            PR_URL=$(gh pr list -R deepset-ai/dc-pipeline-images \
+              --head "bump/hs${{ env.VERSION }}" \
+              --json url,createdAt \
+              --jq ".[] | select(.createdAt >= \"$TRIGGER_TIME\") | .url")
+            if [[ -n "$PR_URL" ]]; then
+              echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+              echo "Found PR: $PR_URL"
+              exit 0
+            fi
+            echo "Attempt $i: PR not found yet, waiting 10s..."
+            sleep 10
+          done
+          echo "PR not found after 5 minutes"
+
+  notify:
+    needs:
+      - "parse-validate-version"
+      - "branch-off"
+      - "create-release-tag"
+      - "check-artifacts"
+      - "bump-dc-pipeline-templates"
+      - "bump-deepset-cloud-custom-nodes"
+      - "bump-dc-pipeline-images"
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Prepare release notification
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          IS_RC: ${{ needs.parse-validate-version.outputs.is_rc }}
+          IS_FIRST_RC: ${{ needs.parse-validate-version.outputs.is_first_rc }}
+          MAJOR_MINOR: ${{ needs.parse-validate-version.outputs.major_minor }}
+          GITHUB_URL: ${{ needs.check-artifacts.outputs.github_url }}
+          PYPI_URL: ${{ needs.check-artifacts.outputs.pypi_url }}
+          DOCKER_URL: ${{ needs.check-artifacts.outputs.docker_url }}
+          BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
+          DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
+          DC_CUSTOM_NODES_PR_URL: ${{ needs.bump-deepset-cloud-custom-nodes.outputs.pr_url }}
+          DC_PIPELINE_IMAGES_PR_URL: ${{ needs.bump-dc-pipeline-images.outputs.pr_url }}
+        run: .github/utils/prepare_release_notification.sh
+
+      - name: Send release notification to Slack
+        uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE }}
+          webhook-type: incoming-webhook
+          payload-file-path: slack_payload.json

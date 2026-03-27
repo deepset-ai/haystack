@@ -7,8 +7,9 @@ import logging
 import os
 import uuid
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import posthog
 import yaml
@@ -42,7 +43,7 @@ class Telemetry:
     Check out the documentation for more details: [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the telemetry.
 
@@ -66,7 +67,7 @@ class Telemetry:
         if CONFIG_PATH.exists():
             # Load the config file
             try:
-                with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
+                with open(CONFIG_PATH, encoding="utf-8") as config_file:
                     config = yaml.safe_load(config_file)
                     if "user_id" in config:
                         self.user_id = config["user_id"]
@@ -96,7 +97,7 @@ class Telemetry:
 
         self.event_properties = collect_system_specs()
 
-    def send_event(self, event_name: str, event_properties: Optional[dict[str, Any]] = None) -> None:
+    def send_event(self, event_name: str, event_properties: dict[str, Any] | None = None) -> None:
         """
         Sends a telemetry event.
 
@@ -113,7 +114,7 @@ class Telemetry:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
-def send_telemetry(func):
+def send_telemetry(func: Callable[..., Any]) -> Callable[..., None]:
     """
     Decorator that sends the output of the wrapped function to PostHog.
 
@@ -121,7 +122,7 @@ def send_telemetry(func):
     """
 
     # FIXME? Somehow, functools.wraps makes `telemetry` out of scope. Let's take care of it later.
-    def send_telemetry_wrapper(*args, **kwargs):
+    def send_telemetry_wrapper(*args: Any, **kwargs: Any) -> None:
         try:
             if telemetry:
                 output = func(*args, **kwargs)
@@ -135,7 +136,7 @@ def send_telemetry(func):
 
 
 @send_telemetry
-def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[tuple[str, dict[str, Any]]]:
+def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> tuple[str, dict[str, Any]] | None:
     """
     Collects telemetry data for a pipeline run and sends it to Posthog.
 
@@ -158,7 +159,7 @@ def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[t
     for component_name, instance in pipeline.walk():
         component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
-            telemetry_data = getattr(instance, "_get_telemetry_data")()
+            telemetry_data = instance._get_telemetry_data()
             if not isinstance(telemetry_data, dict):
                 raise TypeError(
                     f"Telemetry data for component {component_name} must be a dictionary but is {type(telemetry_data)}."

@@ -4,7 +4,7 @@
 
 import csv
 from copy import deepcopy
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 from haystack import logging
 from haystack.lazy_imports import LazyImport
@@ -20,7 +20,7 @@ class EvaluationRunResult:
     Contains the inputs and the outputs of an evaluation pipeline and provides methods to inspect them.
     """
 
-    def __init__(self, run_name: str, inputs: dict[str, list[Any]], results: dict[str, dict[str, Any]]):
+    def __init__(self, run_name: str, inputs: dict[str, list[Any]], results: dict[str, dict[str, Any]]) -> None:
         """
         Initialize a new evaluation run result.
 
@@ -43,7 +43,7 @@ class EvaluationRunResult:
 
         if len(inputs) == 0:
             raise ValueError("No inputs provided.")
-        if len({len(l) for l in inputs.values()}) != 1:
+        if len({len(lst) for lst in inputs.values()}) != 1:
             raise ValueError("Lengths of the inputs should be the same.")
 
         expected_len = len(next(iter(inputs.values())))
@@ -91,14 +91,14 @@ class EvaluationRunResult:
             return f"Data successfully written to {csv_file}"
         except PermissionError:
             return f"Error: Permission denied when writing to {csv_file}"
-        except IOError as e:
+        except OSError as e:
             return f"Error writing to {csv_file}: {str(e)}"
         except Exception as e:
             return f"Error: {str(e)}"
 
     @staticmethod
     def _handle_output(
-        data: dict[str, list[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
+        data: dict[str, list[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: str | None = None
     ) -> Union[str, "DataFrame", dict[str, list[Any]]]:
         """
         Handles output formatting based on `output_format`.
@@ -108,20 +108,19 @@ class EvaluationRunResult:
         if output_format == "json":
             return data
 
-        elif output_format == "df":
+        if output_format == "df":
             pandas_import.check()
             return DataFrame(data)
 
-        elif output_format == "csv":
+        if output_format == "csv":
             if not csv_file:
                 raise ValueError("A file path must be provided in 'csv_file' parameter to save the CSV output.")
             return EvaluationRunResult._write_to_csv(csv_file, data)
 
-        else:
-            raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
+        raise ValueError(f"Invalid output format '{output_format}' provided. Choose from 'json', 'csv', or 'df'.")
 
     def aggregated_report(
-        self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
+        self, output_format: Literal["json", "csv", "df"] = "json", csv_file: str | None = None
     ) -> Union[dict[str, list[Any]], "DataFrame", str]:
         """
         Generates a report with aggregated scores for each metric.
@@ -138,7 +137,7 @@ class EvaluationRunResult:
         return self._handle_output(data, output_format, csv_file)
 
     def detailed_report(
-        self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
+        self, output_format: Literal["json", "csv", "df"] = "json", csv_file: str | None = None
     ) -> Union[dict[str, list[Any]], "DataFrame", str]:
         """
         Generates a report with detailed scores for each metric.
@@ -166,9 +165,9 @@ class EvaluationRunResult:
     def comparative_detailed_report(
         self,
         other: "EvaluationRunResult",
-        keep_columns: Optional[list[str]] = None,
+        keep_columns: list[str] | None = None,
         output_format: Literal["json", "csv", "df"] = "json",
-        csv_file: Optional[str] = None,
+        csv_file: str | None = None,
     ) -> Union[str, "DataFrame", None]:
         """
         Generates a report with detailed scores for each metric from two evaluation runs for comparison.
@@ -181,10 +180,13 @@ class EvaluationRunResult:
         :returns:
             JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
              a message confirming the successful write or an error message.
+        :raises TypeError: If `other` is not an EvaluationRunResult instance, or if the detailed reports are not
+            dictionaries.
+        :raises ValueError: If the `other` parameter is missing required attributes.
         """
 
         if not isinstance(other, EvaluationRunResult):
-            raise ValueError("Comparative scores can only be computed between EvaluationRunResults.")
+            raise TypeError("Comparative scores can only be computed between EvaluationRunResults.")
 
         if not hasattr(other, "run_name") or not hasattr(other, "inputs") or not hasattr(other, "results"):
             raise ValueError("The 'other' parameter must have 'run_name', 'inputs', and 'results' attributes.")
@@ -206,7 +208,7 @@ class EvaluationRunResult:
 
         # ensure both detailed reports are in dictionaries format
         if not isinstance(detailed_a, dict) or not isinstance(detailed_b, dict):
-            raise ValueError("Detailed reports must be dictionaries.")
+            raise TypeError("Detailed reports must be dictionaries.")
 
         # determine which columns to ignore
         if keep_columns is None:

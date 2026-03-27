@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -43,7 +43,6 @@ class RecursiveDocumentSplitter:
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
     AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
-    chunker.warm_up()
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
     print(doc_chunks["documents"])
@@ -62,9 +61,9 @@ class RecursiveDocumentSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         split_unit: Literal["word", "char", "token"] = "word",
-        separators: Optional[list[str]] = None,
-        sentence_splitter_params: Optional[dict[str, Any]] = None,
-    ):
+        separators: list[str] | None = None,
+        sentence_splitter_params: dict[str, Any] | None = None,
+    ) -> None:
         """
         Initializes a RecursiveDocumentSplitter.
 
@@ -93,7 +92,7 @@ class RecursiveDocumentSplitter:
         self.sentence_splitter_params = (
             {"keep_white_spaces": True} if sentence_splitter_params is None else sentence_splitter_params
         )
-        self.tiktoken_tokenizer: Optional["tiktoken.Encoding"] = None
+        self.tiktoken_tokenizer: "tiktoken.Encoding" | None = None
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -118,7 +117,7 @@ class RecursiveDocumentSplitter:
             raise ValueError("All separators must be strings.")
 
     @staticmethod
-    def _get_custom_sentence_tokenizer(sentence_splitter_params: dict[str, Any]):
+    def _get_custom_sentence_tokenizer(sentence_splitter_params: dict[str, Any]) -> Any:
         from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
 
         return SentenceSplitter(**sentence_splitter_params)
@@ -136,17 +135,17 @@ class RecursiveDocumentSplitter:
             current_chunk = " ".join(words[: self.split_length])
             remaining_words = words[self.split_length :]
             return current_chunk, " ".join(remaining_words)
-        elif self.split_units == "char":
+        if self.split_units == "char":
             text = current_chunk
             current_chunk = text[: self.split_length]
             remaining_chars = text[self.split_length :]
             return current_chunk, remaining_chars
-        else:  # token
-            # at this point we know that the tokenizer is already initialized
-            tokens = self.tiktoken_tokenizer.encode(current_chunk)  # type: ignore
-            current_tokens = tokens[: self.split_length]
-            remaining_tokens = tokens[self.split_length :]
-            return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
+
+        # at this point we know that the tokenizer is already initialized
+        tokens = self.tiktoken_tokenizer.encode(current_chunk)  # type: ignore
+        current_tokens = tokens[: self.split_length]
+        remaining_tokens = tokens[self.split_length :]
+        return self.tiktoken_tokenizer.decode(current_tokens), self.tiktoken_tokenizer.decode(remaining_tokens)  # type: ignore
 
     def _apply_overlap(self, chunks: list[str]) -> list[str]:
         """
@@ -225,7 +224,7 @@ class RecursiveDocumentSplitter:
 
         return overlapped_chunks
 
-    def _create_chunk_starting_with_overlap(self, chunk, overlap):
+    def _create_chunk_starting_with_overlap(self, chunk: str, overlap: str) -> str:
         if self.split_units == "word":
             current_chunk = overlap + " " + chunk
         elif self.split_units == "token":
@@ -267,11 +266,11 @@ class RecursiveDocumentSplitter:
         if self.split_units == "word":
             words = [word for word in text.split(" ") if word]
             return len(words)
-        elif self.split_units == "char":
+        if self.split_units == "char":
             return len(text)
-        else:  # token
-            # at this point we know that the tokenizer is already initialized
-            return len(self.tiktoken_tokenizer.encode(text))  # type: ignore
+        # token
+        # at this point we know that the tokenizer is already initialized
+        return len(self.tiktoken_tokenizer.encode(text))  # type: ignore
 
     def _chunk_text(self, text: str) -> list[str]:
         """
@@ -461,14 +460,10 @@ class RecursiveDocumentSplitter:
         :returns:
             A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
             to the input documents.
-
-        :raises RuntimeError: If the component wasn't warmed up but requires it for sentence splitting or tokenization.
         """
         if not self._is_warmed_up and ("sentence" in self.separators or self.split_units == "token"):
-            raise RuntimeError(
-                "The component RecursiveDocumentSplitter wasn't warmed up but requires it "
-                "for sentence splitting or tokenization. Call 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
+
         docs = []
         for doc in documents:
             if not doc.content or doc.content == "":

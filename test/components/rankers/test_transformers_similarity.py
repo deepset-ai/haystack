@@ -223,7 +223,6 @@ class TestSimilarityRanker:
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
         embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -255,7 +254,6 @@ class TestSimilarityRanker:
         embedder.model = MagicMock()
         embedder.tokenizer = MagicMock()
         embedder.device = MagicMock()
-        embedder.warm_up()
 
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
 
@@ -321,9 +319,7 @@ class TestSimilarityRanker:
 
     @patch("haystack.components.rankers.transformers_similarity.AutoTokenizer.from_pretrained")
     @patch("haystack.components.rankers.transformers_similarity.AutoModelForSequenceClassification.from_pretrained")
-    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
+    def test_device_map_dict(self, mocked_automodel, _mocked_autotokenizer, del_hf_env_vars):
         ranker = TransformersSimilarityRanker("model", model_kwargs={"device_map": {"layer_1": 1, "classifier": "cpu"}})
 
         class MockedModel:
@@ -336,19 +332,47 @@ class TestSimilarityRanker:
         mocked_automodel.assert_called_once_with("model", token=None, device_map={"layer_1": 1, "classifier": "cpu"})
         assert ranker.device == ComponentDevice.from_multiple(DeviceMap.from_hf({"layer_1": 1, "classifier": "cpu"}))
 
+    def test_returns_empty_list_if_no_documents_are_provided(self):
+        sampler = TransformersSimilarityRanker()
+        # Mock all attributes that are set during warm_up
+        sampler.model = MagicMock()
+        sampler.tokenizer = MagicMock()
+        sampler.device = MagicMock()
+
+        output = sampler.run(query="City in Germany", documents=[])
+        assert not output["documents"]
+
+    @patch("torch.stack")
+    def test_run_deduplicates_documents(self, mocked_stack):
+        mocked_stack.return_value = torch.tensor([0.42, 0.12])
+        ranker = TransformersSimilarityRanker()
+        ranker.model = MagicMock()
+        ranker.tokenizer = MagicMock()
+        ranker.device = MagicMock()
+
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
+
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run(self):
+    def test_run(self, del_hf_env_vars):
         """
         Test if the component ranks documents correctly.
         """
-        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
-        ranker.warm_up()
+
+        ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
         expected_first_text = "Sarajevo"
-        expected_scores = [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331]
+        expected_scores = [0.14568544924259186, 0.18189962208271027, 0.5728498697280884]
 
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
@@ -362,27 +386,13 @@ class TestSimilarityRanker:
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
-    def test_returns_empty_list_if_no_documents_are_provided(self):
-        sampler = TransformersSimilarityRanker()
-        sampler.model = MagicMock()
-
-        output = sampler.run(query="City in Germany", documents=[])
-        assert not output["documents"]
-
-    #  Raises ComponentError if model is not warmed up
-    def test_raises_component_error_if_model_not_warmed_up(self):
-        sampler = TransformersSimilarityRanker()
-        with pytest.raises(RuntimeError):
-            sampler.run(query="query", documents=[Document(content="document")])
-
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_top_k(self):
+    def test_run_top_k(self, del_hf_env_vars):
         """
         Test if the component ranks documents correctly with a custom top_k.
         """
-        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
-        ranker.warm_up()
+        ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2)
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -400,12 +410,11 @@ class TestSimilarityRanker:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_single_document(self):
+    def test_run_single_document(self, del_hf_env_vars):
         """
         Test if the component runs with a single document.
         """
-        ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
-        ranker.warm_up()
+        ranker = TransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None)
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]

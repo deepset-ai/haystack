@@ -3,17 +3,60 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
+import types
+from collections.abc import Callable, Sequence
+from collections.abc import Callable as ABCCallable
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Sequence, Union, get_args, get_origin
+from typing import Any, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
+
+
+def _contains_callable_type(type_hint: Any) -> bool:
+    """
+    Check if a type hint contains a Callable type, including within Union types.
+
+    The purpose of this function is to help identify Callable types so they can
+    be skipped during schema generation.
+
+    :param type_hint: The type hint to check.
+    :returns: True if the type contains a Callable, False otherwise.
+    """
+    origin = get_origin(type_hint)
+
+    # Check if it's a Callable type (direct or parameterized)
+    if type_hint in (Callable, ABCCallable) or origin in (Callable, ABCCallable):
+        return True
+
+    # Recursively check Union types (both typing.Union and types.UnionType for `X | Y` syntax)
+    if origin in (Union, types.UnionType):
+        return any(_contains_callable_type(arg) for arg in get_args(type_hint))
+
+    return False
+
+
+# Schema placeholder models for Tool and Toolset
+# These are used during JSON schema generation to represent non-serializable types
+class _ToolSchemaPlaceholder(BaseModel):
+    """Placeholder model representing a Tool for JSON schema generation."""
+
+    name: str = Field(description="Name of the tool")
+    description: str = Field(description="Description of the tool")
+    parameters: dict[str, Any] = Field(description="JSON schema of the tool parameters")
+
+
+class _ToolsetSchemaPlaceholder(BaseModel):
+    """Placeholder model representing a Toolset for JSON schema generation."""
+
+    tools: list[_ToolSchemaPlaceholder] = Field(description="List of tools in the toolset")
 
 
 def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
@@ -34,9 +77,10 @@ def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     for param in parsed_doc.params:
         if not param.description:
             logger.warning(
-                "Missing description for parameter '%s'. Please add a description in the component's "
-                "run() method docstring using the format ':param %%s: <description>'. "
-                "This description helps the LLM understand how to use this parameter." % param.arg_name
+                "Missing description for parameter '{arg_name}'. Please add a description in the component's "
+                "run() method docstring using the format ':param {arg_name}: <description>'. "
+                "This description helps the LLM understand how to use this parameter.",
+                arg_name=param.arg_name,
             )
         param_descriptions[param.arg_name] = param.description.strip() if param.description else ""
     return parsed_doc.short_description or "", param_descriptions
@@ -86,7 +130,12 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
                     if input_param_mapping := run_param_descriptions.get(socket_name):
                         descriptions.append(f"Provided to the '{comp_name}' component as: '{input_param_mapping}'")
                 except Exception as e:
-                    logger.debug(f"Error extracting description for {super_param_name} from {path}: {str(e)}")
+                    logger.debug(
+                        "Error extracting description for {super_param_name} from {path}: {e}",
+                        super_param_name=super_param_name,
+                        path=path,
+                        e=str(e),
+                    )
 
             # We don't only handle a one to one description mapping of input parameters, but a one to many mapping.
             # i.e. for a combined_input parameter description:
@@ -131,11 +180,10 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
         description = param_descriptions.get(field_name, f"Field '{field_name}' of '{cls.__name__}'.")
         field_defs[field_name] = (f_type, Field(default, description=description))
 
-    model = create_model(cls.__name__, **field_defs)
-    return model
+    return create_model(cls.__name__, **field_defs)
 
 
-def _resolve_type(_type: Any) -> Any:
+def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
     """
     Recursively resolve and convert complex type annotations, transforming dataclasses into Pydantic-compatible types.
 
@@ -148,6 +196,17 @@ def _resolve_type(_type: Any) -> Any:
     :returns:
         A fully resolved type, with all dataclass types converted to Pydantic models
     """
+    # Special handling for Tool and Toolset types - replace with schema placeholders
+    # These types contain Callables which cannot be serialized to JSON Schema
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
+    if _type is Tool:
+        return _ToolSchemaPlaceholder
+
+    if _type is Toolset:
+        return _ToolsetSchemaPlaceholder
+
     if is_dataclass(_type):
         return _dataclass_to_pydantic_model(_type)
 
@@ -160,7 +219,7 @@ def _resolve_type(_type: Any) -> Any:
     if origin is collections.abc.Sequence:
         return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
-    if origin is Union:
+    if _is_union_type(origin):
         return Union[tuple(_resolve_type(a) for a in args)]
 
     if origin is dict:

@@ -1,10 +1,10 @@
 import ast
 import hashlib
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 
-def docstrings_checksum(python_files: Iterator[Path]):
+def docstrings_checksum(python_files: Iterator[Path]) -> str:
     """
     Calculate the checksum of the docstrings in the given Python files.
     """
@@ -41,11 +41,6 @@ if __name__ == "__main__":
     # Get all Haystack and rest_api python files
     root: Path = args.root.absolute()
     haystack_files = root.glob("haystack/**/*.py")
-    rest_api_files = root.glob("rest_api/**/*.py")
 
-    import itertools
-
-    python_files = itertools.chain(haystack_files, rest_api_files)
-
-    md5 = docstrings_checksum(python_files)
+    md5 = docstrings_checksum(haystack_files)
     print(md5)

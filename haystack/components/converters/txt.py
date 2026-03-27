@@ -4,7 +4,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -35,7 +35,7 @@ class TextFileToDocument:
     ```
     """
 
-    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False):
+    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False) -> None:
         """
         Creates a TextFileToDocument component.
 
@@ -52,10 +52,8 @@ class TextFileToDocument:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, list[Document]]:
         """
         Converts text files to documents.
 
@@ -76,7 +74,7 @@ class TextFileToDocument:
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source)
             except Exception as e:

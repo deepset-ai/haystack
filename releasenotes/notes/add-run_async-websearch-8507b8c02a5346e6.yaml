@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add run_async method to SearchApiWebSearch
+    Add run_async method to SerperDevWebSearch

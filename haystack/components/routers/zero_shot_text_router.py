@@ -2,21 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import Pipeline as HfPipeline
     from transformers import pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        deserialize_hf_model_kwargs,
-        resolve_hf_pipeline_kwargs,
-        serialize_hf_model_kwargs,
-    )
+    from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 
 @component
@@ -38,7 +34,6 @@ class TransformersZeroShotTextRouter:
 
     document_store = InMemoryDocumentStore()
     doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
-    doc_embedder.warm_up()
     docs = [
         Document(
             content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
@@ -93,15 +88,15 @@ class TransformersZeroShotTextRouter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         labels: list[str],
         multi_label: bool = False,
         model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-    ):
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+    ) -> None:
         """
         Initializes the TransformersZeroShotTextRouter component.
 
@@ -137,7 +132,7 @@ class TransformersZeroShotTextRouter:
             token=token,
         )
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline: Optional[HfPipeline] = None
+        self.pipeline: HfPipeline | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -147,7 +142,7 @@ class TransformersZeroShotTextRouter:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -162,10 +157,7 @@ class TransformersZeroShotTextRouter:
             Dictionary with serialized data.
         """
         serialization_dict = default_to_dict(
-            self,
-            labels=self.labels,
-            huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
-            token=self.token.to_dict() if self.token else None,
+            self, labels=self.labels, huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs, token=self.token
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -184,7 +176,6 @@ class TransformersZeroShotTextRouter:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         if data["init_parameters"].get("huggingface_pipeline_kwargs") is not None:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
@@ -199,18 +190,17 @@ class TransformersZeroShotTextRouter:
 
         :raises TypeError:
             If the input is not a str.
-        :raises RuntimeError:
-            If the pipeline has not been loaded because warm_up() was not called before.
         """
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TransformersZeroShotTextRouter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(text, str):
             raise TypeError("TransformersZeroShotTextRouter expects a str as input.")
 
-        prediction = self.pipeline([text], candidate_labels=self.labels, multi_label=self.multi_label)
+        # mypy doesn't know this is set in warm_up
+        prediction = self.pipeline(  # type: ignore[misc]
+            [text], candidate_labels=self.labels, multi_label=self.multi_label
+        )
         predicted_scores = prediction[0]["scores"]
         max_score_index = max(range(len(predicted_scores)), key=predicted_scores.__getitem__)
         label = prediction[0]["labels"][max_score_index]

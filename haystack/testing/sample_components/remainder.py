@@ -7,7 +7,7 @@ from haystack.core.component import component
 
 @component
 class Remainder:
-    def __init__(self, divisor=3):
+    def __init__(self, divisor: int = 3) -> None:
         if divisor == 0:
             raise ValueError("Can't divide by zero")
         self.divisor = divisor
@@ -18,5 +18,4 @@ class Remainder:
         :param value: the value to check the remainder of.
         """
         remainder = value % self.divisor
-        output = {f"remainder_is_{remainder}": value}
-        return output
+        return {f"remainder_is_{remainder}": value}

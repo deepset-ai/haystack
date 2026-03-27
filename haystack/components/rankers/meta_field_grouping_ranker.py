@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Optional
 
 from haystack import Document, component
+from haystack.utils.misc import _deduplicate_documents
 
 
 @component
@@ -56,7 +56,7 @@ class MetaFieldGroupingRanker:
     ```
     """  # noqa: E501
 
-    def __init__(self, group_by: str, subgroup_by: Optional[str] = None, sort_docs_by: Optional[str] = None):
+    def __init__(self, group_by: str, subgroup_by: str | None = None, sort_docs_by: str | None = None) -> None:
         """
         Creates an instance of MetaFieldGroupingRanker.
 
@@ -73,9 +73,12 @@ class MetaFieldGroupingRanker:
         self.subgroup_by = subgroup_by
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, Any]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Groups the provided list of documents based on the `group_by` parameter and optionally the `subgroup_by`.
+
+        Before grouping, documents are deduplicated by their id, retaining only the document with the highest score
+        if a score is present.
 
         The output is a list of documents reordered based on how they were grouped.
 
@@ -91,17 +94,21 @@ class MetaFieldGroupingRanker:
         document_groups: dict[str, dict[str, list[Document]]] = defaultdict(lambda: defaultdict(list))
         no_group_docs = []
 
-        for doc in documents:
+        deduplicated_documents = _deduplicate_documents(documents)
+        for doc in deduplicated_documents:
             group_value = str(doc.meta.get(self.group_by, ""))
 
-            if group_value:
-                subgroup_value = "no_subgroup"
-                if self.subgroup_by and self.subgroup_by in doc.meta:
-                    subgroup_value = doc.meta[self.subgroup_by]
-
-                document_groups[group_value][subgroup_value].append(doc)
-            else:
+            # If no group value, add to no_group_docs and continue
+            if not group_value:
                 no_group_docs.append(doc)
+                continue
+
+            # Get subgroup value or use a default if not specified
+            subgroup_value = "no_subgroup"
+            if self.subgroup_by and self.subgroup_by in doc.meta:
+                subgroup_value = str(doc.meta[self.subgroup_by])
+
+            document_groups[group_value][subgroup_value].append(doc)
 
         ordered_docs = []
         for subgroups in document_groups.values():

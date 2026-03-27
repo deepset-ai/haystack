@@ -22,18 +22,14 @@ def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     # for more details.
     monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function")
 
-    tracer = ddTracer()
-
-    return tracer
+    return ddTracer()
 
 
 def get_traces_from_console(capfd: CaptureFixture) -> list[dict]:
     output = capfd.readouterr().out
     parsed = json.loads(output)
     nested_traces = parsed["traces"]
-    flattened = list(functools.reduce(lambda x, y: x + y, nested_traces, []))
-
-    return flattened
+    return list(functools.reduce(lambda x, y: x + y, nested_traces, []))
 
 
 class TestDatadogTracer:
@@ -75,8 +71,7 @@ class TestDatadogTracer:
 
         with tracer.trace("test"):
             current_span = tracer.current_span()
-            assert tracer.current_span() is not None
-
+            assert current_span is not None
             current_span.set_tag("key1", "value1")
 
             raw_span = current_span.raw_span()
@@ -104,10 +99,9 @@ class TestDatadogTracer:
         tracer = DatadogTracer(datadog_tracer)
         with tracer.trace("test") as span:
             span.set_tag("key", "value")
-            assert span.get_correlation_data_for_logs() == {
-                "dd.trace_id": str((1 << 64) - 1 & span.raw_span().trace_id),
-                "dd.span_id": span.raw_span().span_id,
-                "dd.service": "",
-                "dd.env": "",
-                "dd.version": "",
-            }
+
+            correlation_data = span.get_correlation_data_for_logs()
+
+        for field in ["dd.trace_id", "dd.span_id", "dd.service", "dd.env", "dd.version"]:
+            assert field in correlation_data
+            assert isinstance(correlation_data[field], str)

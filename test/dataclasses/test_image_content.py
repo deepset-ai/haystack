@@ -4,6 +4,7 @@
 
 import base64
 import logging
+import warnings
 from unittest.mock import Mock, patch
 
 import httpx
@@ -221,4 +222,16 @@ def test_image_content_from_url_wrong_mime_type_pdf(test_files_path):
 @pytest.mark.integration
 def test_image_content_from_url_wrong_mime_type():
     with pytest.raises(ValueError):
-        ImageContent.from_url(url="https://example.com", size=(100, 100), detail="high", meta={"test": "test"})
+        ImageContent.from_url(url="https://www.google.com/", size=(100, 100), detail="high", meta={"test": "test"})
+
+
+def test_image_content_no_warning_on_init(base64_image_string):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Warning)
+        ImageContent(base64_image=base64_image_string, mime_type="image/png")
+
+
+def test_image_content_warn_on_inplace_mutation(base64_image_string):
+    ic = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+    with pytest.warns(Warning, match="dataclasses.replace"):
+        ic.detail = "high"

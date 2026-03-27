@@ -4,24 +4,11 @@
 
 import pytest
 
-from haystack import DeserializationError, Document
+from haystack import Document
 from haystack.components.writers.document_writer import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.testing.factory import document_store_class
-
-
-@pytest.fixture
-def document_store():
-    """
-    Create a fresh InMemoryDocumentStore for each test with proper cleanup.
-
-    Using a fixture ensures the ThreadPoolExecutor is shut down immediately after test completion rather than
-    during (unpredictable) garbage collection, which can make the CI hang.
-    """
-    store = InMemoryDocumentStore()
-    yield store
-    store.shutdown()
 
 
 class TestDocumentWriter:
@@ -64,26 +51,35 @@ class TestDocumentWriter:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.policy == DuplicatePolicy.SKIP
 
-    def test_from_dict_without_docstore(self):
-        data = {"type": "DocumentWriter", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
-            DocumentWriter.from_dict(data)
+    def test_from_dict_without_policy(self):
+        data = {
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
+            "init_parameters": {
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                }
+            },
+        }
+        component = DocumentWriter.from_dict(data)
+        assert isinstance(component.document_store, InMemoryDocumentStore)
+        assert component.policy == DuplicatePolicy.NONE
 
-    def test_from_dict_without_docstore_type(self):
-        data = {"type": "DocumentWriter", "init_parameters": {"document_store": {"init_parameters": {}}}}
-        with pytest.raises(DeserializationError):
+    def test_from_dict_without_docstore(self):
+        data = {"type": "haystack.components.writers.document_writer.DocumentWriter", "init_parameters": {}}
+        with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             DocumentWriter.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "DocumentWriter",
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.DocumentStore"):
             DocumentWriter.from_dict(data)
 
-    def test_run(self, document_store):
-        writer = DocumentWriter(document_store)
+    def test_run(self, in_memory_doc_store):
+        writer = DocumentWriter(in_memory_doc_store)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
@@ -92,8 +88,8 @@ class TestDocumentWriter:
         result = writer.run(documents=documents)
         assert result["documents_written"] == 2
 
-    def test_run_skip_policy(self, document_store):
-        writer = DocumentWriter(document_store, policy=DuplicatePolicy.SKIP)
+    def test_run_skip_policy(self, in_memory_doc_store):
+        writer = DocumentWriter(in_memory_doc_store, policy=DuplicatePolicy.SKIP)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
@@ -107,9 +103,9 @@ class TestDocumentWriter:
 
     @pytest.mark.asyncio
     async def test_run_async_invalid_docstore(self):
-        document_store = document_store_class("MockedDocumentStore")
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
 
-        writer = DocumentWriter(document_store)
+        writer = DocumentWriter(mocked_docstore_class)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
@@ -119,8 +115,8 @@ class TestDocumentWriter:
             await writer.run_async(documents=documents)
 
     @pytest.mark.asyncio
-    async def test_run_async(self, document_store):
-        writer = DocumentWriter(document_store)
+    async def test_run_async(self, in_memory_doc_store):
+        writer = DocumentWriter(in_memory_doc_store)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),
@@ -130,8 +126,8 @@ class TestDocumentWriter:
         assert result["documents_written"] == 2
 
     @pytest.mark.asyncio
-    async def test_run_async_skip_policy(self, document_store):
-        writer = DocumentWriter(document_store, policy=DuplicatePolicy.SKIP)
+    async def test_run_async_skip_policy(self, in_memory_doc_store):
+        writer = DocumentWriter(in_memory_doc_store, policy=DuplicatePolicy.SKIP)
         documents = [
             Document(content="This is the text of a document."),
             Document(content="This is the text of another document."),

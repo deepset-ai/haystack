@@ -3,22 +3,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import base64
 import time
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 from unittest.mock import Mock
 
 import pytest
 
 from haystack import component, tracing
-from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.test_utils import set_all_seeds
 from test.tracing.utils import SpyingTracer
 
 set_all_seeds(0)
 
+
 # Tracing is disable by default to avoid failures in CI
 tracing.disable_tracing()
+
+
+@pytest.fixture()
+def in_memory_doc_store():
+    store = InMemoryDocumentStore()
+    yield store
+    store.shutdown()
 
 
 @pytest.fixture()
@@ -45,7 +54,7 @@ def mock_tokenizer():
     """
     tokenizer = Mock()
     tokenizer.encode = lambda text: text.split()
-    tokenizer.decode = lambda tokens: " ".join(tokens)
+    tokenizer.decode = lambda tokens: " ".join(tokens)  # noqa: PLW0108
     return tokenizer
 
 
@@ -83,36 +92,27 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
     tracing.disable_tracing()
 
 
-def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, component_name: str, data: dict = None) -> dict:
-    """
-    Utility function to load and resume pipeline snapshot from a breakpoint file.
-
-    :param pipeline: The pipeline instance to resume
-    :param output_directory: Directory containing the breakpoint files
-    :param component_name: Component name to look for in breakpoint files
-    :param data: Data to pass to the pipeline run (defaults to empty dict)
-
-    :returns:
-        Dict containing the pipeline run results
-
-    :raises:
-        ValueError: If no breakpoint file is found for the given component
-    """
-    data = data or {}
-    all_files = list(output_directory.glob("*"))
-    file_found = False
-
-    for full_path in all_files:
-        f_name = Path(full_path).name
-        if str(f_name).startswith(component_name):
-            pipeline_snapshot = load_pipeline_snapshot(full_path)
-            return pipeline.run(data=data, pipeline_snapshot=pipeline_snapshot)
-
-    if not file_found:
-        msg = f"No files found for {component_name} in {output_directory}."
-        raise ValueError(msg)
-
-
 @pytest.fixture()
 def base64_image_string():
     return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
+
+
+@pytest.fixture()
+def base64_pdf_string(test_files_path):
+    with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+
+@pytest.fixture
+def del_hf_env_vars(monkeypatch):
+    """
+    Delete Hugging Face environment variables for tests.
+
+    Prevents passing empty tokens to Hugging Face, which would cause API calls to fail.
+    This is particularly relevant for PRs opened from forks, where secrets are not available
+    and empty environment variables might be set instead of being removed.
+
+    See https://github.com/deepset-ai/haystack/issues/8811 for more details.
+    """
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)
+    monkeypatch.delenv("HF_TOKEN", raising=False)

@@ -17,10 +17,9 @@ from haystack.utils.auth import Secret
 def mock_encode_response(texts, **kwargs):
     if texts == ["city"]:
         return torch.tensor([[1.0, 1.0]])
-    elif texts == ["Eiffel Tower", "Berlin", "Bananas"]:
+    if texts == ["Eiffel Tower", "Berlin", "Bananas"]:
         return torch.tensor([[1.0, 0.0], [0.8, 0.8], [0.0, 1.0]])
-    else:
-        return torch.tensor([[0.0, 1.0]] * len(texts))
+    return torch.tensor([[0.0, 1.0]] * len(texts))
 
 
 class TestSentenceTransformersDiversityRanker:
@@ -37,6 +36,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.document_suffix == ""
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
+        assert component.lambda_threshold == 0.5
 
     def test_init_with_custom_parameters(self):
         component = SentenceTransformersDiversityRanker(
@@ -51,6 +51,7 @@ class TestSentenceTransformersDiversityRanker:
             document_suffix="document suffix",
             meta_fields_to_embed=["meta_field"],
             embedding_separator="--",
+            lambda_threshold=0,
         )
         assert component.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert component.top_k == 5
@@ -63,6 +64,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.document_suffix == "document suffix"
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.embedding_separator == "--"
+        assert component.lambda_threshold == 0
 
     def test_to_dict(self):
         component = SentenceTransformersDiversityRanker()
@@ -252,26 +254,10 @@ class TestSentenceTransformersDiversityRanker:
             )
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_without_warm_up(self, similarity):
-        """
-        Tests that run method raises ComponentError if model is not warmed up
-        """
-        ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", top_k=1, similarity=similarity
-        )
-        documents = [Document(content="doc1"), Document(content="doc2")]
-
-        error_msg = "The component SentenceTransformersDiversityRanker wasn't warmed up."
-        with pytest.raises(RuntimeError, match=error_msg):
-            ranker.run(query="test query", documents=documents)
-
-    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_warm_up(self, similarity, monkeypatch):
+    def test_warm_up(self, similarity, del_hf_env_vars):
         """
         Test that ranker loads the SentenceTransformer model correctly during warm up.
         """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        monkeypatch.delenv("HF_TOKEN", raising=False)
         mock_model_class = MagicMock()
         mock_model_instance = MagicMock()
         mock_model_class.return_value = mock_model_instance
@@ -348,6 +334,21 @@ class TestSentenceTransformersDiversityRanker:
         assert isinstance(ranked_docs, list)
         assert len(ranked_docs) == 2
         assert all(isinstance(doc, Document) for doc in ranked_docs)
+
+    def test_run_deduplicates_documents(self):
+        ranker = SentenceTransformersDiversityRanker()
+        ranker.model = MagicMock()
+        ranker.model.encode = MagicMock(side_effect=mock_encode_response)
+        documents = [
+            Document(id="duplicate", content="keep me", score=0.9),
+            Document(id="duplicate", content="drop me", score=0.1),
+            Document(id="unique", content="unique"),
+        ]
+
+        result = ranker.run(query="test", documents=documents)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].content == "keep me"
+        assert result["documents"][1].content == "unique"
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_run_negative_top_k_at_init(self, similarity):
@@ -577,12 +578,10 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_real_world_use_case(self, similarity, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_real_world_use_case(self, similarity, del_hf_env_vars):
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+            model="sentence-transformers-testing/stsb-bert-tiny-safetensors", similarity=similarity
         )
-        ranker.warm_up()
         query = "What are the reasons for long-standing animosities between Russia and Poland?"
 
         doc1 = Document(
@@ -652,8 +651,7 @@ class TestSentenceTransformersDiversityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_with_maximum_margin_relevance_strategy(self, similarity, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    def test_run_with_maximum_margin_relevance_strategy(self, similarity, del_hf_env_vars):
         query = "renewable energy sources"
         docs = [
             Document(content="18th-century French literature"),
@@ -667,20 +665,21 @@ class TestSentenceTransformersDiversityRanker:
         ]
 
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
+            model="sentence-transformers-testing/stsb-bert-tiny-safetensors",
+            similarity=similarity,
+            strategy="maximum_margin_relevance",
         )
-        ranker.warm_up()
 
         # lambda_threshold=1, the most relevant document should be returned first
         results = ranker.run(query=query, documents=docs, lambda_threshold=1, top_k=len(docs))
         expected = [
-            "Solar power generation",
-            "Wind turbine technology",
             "Geothermal energy extraction",
-            "Hydroelectric dam systems",
+            "Wind turbine technology",
+            "Solar power generation",
             "Biomass fuel production",
-            "Ancient Egyptian hieroglyphics",
+            "Hydroelectric dam systems",
             "Baking sourdough bread",
+            "Ancient Egyptian hieroglyphics",
             "18th-century French literature",
         ]
         assert [doc.content for doc in results["documents"]] == expected
@@ -688,13 +687,13 @@ class TestSentenceTransformersDiversityRanker:
         # lambda_threshold=0, after the most relevant one, diverse documents should be returned
         results = ranker.run(query=query, documents=docs, lambda_threshold=0, top_k=len(docs))
         expected = [
-            "Solar power generation",
+            "Geothermal energy extraction",
+            "18th-century French literature",
             "Ancient Egyptian hieroglyphics",
             "Baking sourdough bread",
-            "18th-century French literature",
+            "Solar power generation",
             "Biomass fuel production",
             "Hydroelectric dam systems",
-            "Geothermal energy extraction",
             "Wind turbine technology",
         ]
         assert [doc.content for doc in results["documents"]] == expected

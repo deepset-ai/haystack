@@ -176,10 +176,7 @@ class TestFaithfulnessEvaluator:
                 return {
                     "replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1, 0]}')]
                 }
-            else:
-                return {
-                    "replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]
-                }
+            return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
@@ -221,8 +218,7 @@ class TestFaithfulnessEvaluator:
                 return {
                     "replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1, 0]}')]
                 }
-            else:
-                return {"replies": [ChatMessage.from_assistant('{"statements": [], "statement_scores": []}')]}
+            return {"replies": [ChatMessage.from_assistant('{"statements": [], "statement_scores": []}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
@@ -264,10 +260,7 @@ class TestFaithfulnessEvaluator:
         def chat_generator_run(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
                 raise Exception("OpenAI API request failed.")
-            else:
-                return {
-                    "replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]
-                }
+            return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
@@ -311,7 +304,7 @@ class TestFaithfulnessEvaluator:
         questions = ["What is Python and who created it?"]
         contexts = [["Python is a programming language created by Guido van Rossum."]]
         predicted_answers = ["Python is a programming language created by George Lucas."]
-        evaluator = FaithfulnessEvaluator()
+        evaluator = FaithfulnessEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
         result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
         required_fields = {"individual_scores", "results", "score"}

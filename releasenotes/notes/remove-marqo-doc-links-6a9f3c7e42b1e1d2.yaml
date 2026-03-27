@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Remove outdated Marqo document store links from the document store guide and docs sidebars to avoid broken
+    integration URLs.

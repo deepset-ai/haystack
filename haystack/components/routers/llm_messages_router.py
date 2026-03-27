@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.types import ChatGenerator
@@ -57,8 +57,8 @@ class LLMMessagesRouter:
         chat_generator: ChatGenerator,
         output_names: list[str],
         output_patterns: list[str],
-        system_prompt: Optional[str] = None,
-    ):
+        system_prompt: str | None = None,
+    ) -> None:
         """
         Initialize the LLMMessagesRouter component.
 
@@ -88,7 +88,7 @@ class LLMMessagesRouter:
             self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], list[ChatMessage])}
         )
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the underlying LLM.
         """
@@ -97,7 +97,7 @@ class LLMMessagesRouter:
                 self._chat_generator.warm_up()
             self._is_warmed_up = True
 
-    def run(self, messages: list[ChatMessage]) -> dict[str, Union[str, list[ChatMessage]]]:
+    def run(self, messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]:
         """
         Classify the messages based on LLM output and route them to the appropriate output connection.
 
@@ -109,7 +109,6 @@ class LLMMessagesRouter:
             - "unmatched": The messages that did not match any of the output patterns.
 
         :raises ValueError: If messages is an empty list or contains messages with unsupported roles.
-        :raises RuntimeError: If the component is not warmed up and the ChatGenerator has a warm_up method.
         """
         if not messages:
             raise ValueError("`messages` must be a non-empty list.")
@@ -120,8 +119,8 @@ class LLMMessagesRouter:
             )
             raise ValueError(msg)
 
-        if not self._is_warmed_up and hasattr(self._chat_generator, "warm_up"):
-            raise RuntimeError("The component is not warmed up. Please call the `warm_up` method first.")
+        if not self._is_warmed_up:
+            self.warm_up()
 
         messages_for_inference = []
         if self._system_prompt:
@@ -132,7 +131,7 @@ class LLMMessagesRouter:
 
         output = {"chat_generator_text": chat_generator_text}
 
-        for output_name, pattern in zip(self._output_names, self._compiled_patterns):
+        for output_name, pattern in zip(self._output_names, self._compiled_patterns, strict=True):
             if pattern.search(chat_generator_text):
                 output[output_name] = messages
                 break

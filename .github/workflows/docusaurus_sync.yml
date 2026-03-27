@@ -6,69 +6,54 @@ on:
     branches:
       - main
     paths:
-      - "docs/pydoc/config_docusaurus/**"
+      - "pydoc/**"
       - "haystack/**"
       - ".github/workflows/docusaurus_sync.yml"
 
 env:
-  HATCH_VERSION: "1.14.1"
-  PYTHON_VERSION: "3.9"
-  DOCS_REPO: "deepset-ai/haystack-docs"
-  DOCS_REPO_PATH: "reference/haystack-api"
+  HATCH_VERSION: "1.16.5"
+  PYTHON_VERSION: "3.11"
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: write
 
     steps:
       - name: Checkout Haystack repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
-      - name: Generate API docs for Docusaurus
-        # This command simply runs ./.github/utils/pydoc-markdown.sh with a specific config path
-        run: hatch run readme:sync "../config_docusaurus/*"
+      - name: Generate API reference for Docusaurus
+        run: hatch run docs
 
-      - name: Checkout Docusaurus repo
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.DOCS_REPO }}
-          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-          path: haystack-docs
-
-      - name: Sync generated docs to Docusaurus repo
+      - name: Sync generated API reference to docs folder
         run: |
-          SOURCE_PATH="docs/pydoc/temp"
-          DEST_PATH="haystack-docs/${{ env.DOCS_REPO_PATH }}"
+          SOURCE_PATH="tmp_api_reference"
+          DEST_PATH="docs-website/reference/haystack-api"
 
           echo "Syncing from $SOURCE_PATH to $DEST_PATH"
           mkdir -p $DEST_PATH
           # Using rsync to copy files. This will also remove files in dest that are no longer in source.
           rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
 
-      - name: Commit and push changes
-        env:
-            GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          cd haystack-docs
-
-          if [[ -n $(git status -s) ]]; then
-            echo "Syncing docs with Docusaurus..."
-            git add .
-            git commit -m "docs: Sync Haystack API reference"
-            git push
-          else
-            echo "No changes to sync with Docusaurus."
-          fi
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Sync Haystack API reference on Docusaurus"
+          branch: sync-docusaurus-api-reference
+          base: main
+          title: "docs: sync Haystack API reference on Docusaurus"
+          add-paths: |
+            docs-website/reference/haystack-api
+          body: |
+            This PR syncs the Haystack API reference on Docusaurus. Just approve and merge it.

@@ -120,7 +120,6 @@ def test_run_using_custom_sentence_tokenizer():
         separators=["\n\n", "\n", "sentence", " "],
         sentence_splitter_params={"language": "en", "use_split_rules": True, "keep_white_spaces": False},
     )
-    splitter.warm_up()
     text = """Artificial intelligence (AI) - Introduction
 
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -317,7 +316,6 @@ def test_run_split_by_sentence_count_page_breaks_split_unit_char() -> None:
     document_splitter = RecursiveDocumentSplitter(
         separators=["sentence"], split_length=28, split_overlap=0, split_unit="char"
     )
-    document_splitter.warm_up()
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
@@ -462,7 +460,6 @@ def test_run_custom_sentence_tokenizer_document_and_overlap_char_unit():
     splitter = RecursiveDocumentSplitter(split_length=25, split_overlap=10, separators=["sentence"], split_unit="char")
     text = "This is sentence one. This is sentence two. This is sentence three."
 
-    splitter.warm_up()
     doc = Document(content=text)
     doc_chunks = splitter.run([doc])["documents"]
 
@@ -668,7 +665,6 @@ def test_run_split_by_sentence_count_page_breaks_word_unit() -> None:
     document_splitter = RecursiveDocumentSplitter(
         separators=["sentence"], split_length=7, split_overlap=0, split_unit="word"
     )
-    document_splitter.warm_up()
 
     text = (
         "Sentence on page 1. Another on page 1.\fSentence on page 2. Another on page 2.\f"
@@ -847,7 +843,6 @@ def test_run_serialization_in_pipeline():
 @pytest.mark.integration
 def test_run_split_by_token_count():
     splitter = RecursiveDocumentSplitter(split_length=5, separators=["."], split_unit="token")
-    splitter.warm_up()
 
     text = "This is a test. This is another test. This is the final test."
     doc = Document(content=text)
@@ -863,7 +858,6 @@ def test_run_split_by_token_count():
 @pytest.mark.integration
 def test_run_split_by_token_count_with_html_tags():
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["."], split_unit="token")
-    splitter.warm_up()
 
     text = "This is a test. <h><a><y><s><t><a><c><k><c><o><r><e> This is the final test."
     doc = Document(content=text)
@@ -875,7 +869,6 @@ def test_run_split_by_token_count_with_html_tags():
 @pytest.mark.integration
 def test_run_split_by_token_with_sentence_tokenizer():
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["sentence"], split_unit="token")
-    splitter.warm_up()
 
     text = "This is sentence one. This is sentence two."
     doc = Document(content=text)
@@ -891,7 +884,6 @@ def test_run_split_by_token_with_sentence_tokenizer():
 @pytest.mark.integration
 def test_run_split_by_token_with_empty_document(caplog: LogCaptureFixture):
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["."], split_unit="token")
-    splitter.warm_up()
 
     empty_doc = Document(content="")
     doc_chunks = splitter.run([empty_doc])
@@ -904,7 +896,6 @@ def test_run_split_by_token_with_empty_document(caplog: LogCaptureFixture):
 @pytest.mark.integration
 def test_run_split_by_token_with_fallback():
     splitter = RecursiveDocumentSplitter(split_length=2, separators=["."], split_unit="token")
-    splitter.warm_up()
 
     text = "This is a very long sentence that will need to be split into smaller chunks."
     doc = Document(content=text)
@@ -918,7 +909,6 @@ def test_run_split_by_token_with_fallback():
 @pytest.mark.integration
 def test_run_split_by_token_with_overlap_and_fallback():
     splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["."], split_unit="token")
-    splitter.warm_up()
 
     text = "This is a test. This is another test. This is the final test."
     doc = Document(content=text)
@@ -933,24 +923,6 @@ def test_run_split_by_token_with_overlap_and_fallback():
     assert chunks[5].content == ". This is the"
     assert chunks[6].content == " is the final test"
     assert chunks[7].content == " final test."
-
-
-def test_run_without_warm_up_raises_error():
-    docs = [Document(content="text")]
-
-    splitter_token = RecursiveDocumentSplitter(split_unit="token")
-    with pytest.raises(RuntimeError, match="warmed up"):
-        splitter_token.run(docs)
-
-    splitter_sentence = RecursiveDocumentSplitter(separators=["sentence"])
-    with pytest.raises(RuntimeError, match="warmed up"):
-        splitter_sentence.run(docs)
-
-    # Test that no error is raised when warm_up is not required
-    splitter_no_warmup = RecursiveDocumentSplitter(separators=["."])
-    result = splitter_no_warmup.run(docs)
-    assert len(result["documents"]) == 1
-    assert result["documents"][0].content == "text"
 
 
 def test_run_complex_text_with_multiple_separators():
@@ -975,7 +947,6 @@ def test_run_complex_text_with_multiple_separators():
     splitter = RecursiveDocumentSplitter(
         split_length=200, split_overlap=0, split_unit="char", separators=["\n\n", "\n", " "]
     )
-    splitter.warm_up()
     result = splitter.run([doc])
     chunks = result["documents"]
 
@@ -1000,7 +971,6 @@ def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     source_doc = Document(content=text)
 
     splitter = RecursiveDocumentSplitter(split_length=3)
-    splitter.warm_up()
 
     chunks = splitter.run([source_doc])["documents"]
 

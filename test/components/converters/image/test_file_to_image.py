@@ -47,7 +47,7 @@ class TestImageFileToImageContent:
         results = converter.run(sources=[image_path], size=(128, 128))
 
         byte_stream = ByteStream.from_file_path(
-            Path(image_path), mime_type=mime_type, meta={"file_name": image_path.split("/")[-1]}
+            Path(image_path), mime_type=mime_type, meta={"file_name": image_path.rsplit("/", maxsplit=1)[-1]}
         )
         assert len(results["image_contents"]) == 1
         assert results["image_contents"][0].base64_image is not None

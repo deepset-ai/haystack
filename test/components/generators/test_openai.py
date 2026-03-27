@@ -21,7 +21,7 @@ class TestOpenAIGenerator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIGenerator()
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
@@ -37,17 +37,16 @@ class TestOpenAIGenerator:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIGenerator(
             api_key=Secret.from_token("test-api-key"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
             max_retries=1,
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
 
@@ -59,7 +58,7 @@ class TestOpenAIGenerator:
             "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "streaming_callback": None,
                 "system_prompt": None,
                 "api_base_url": None,
@@ -73,25 +72,24 @@ class TestOpenAIGenerator:
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = OpenAIGenerator(
             api_key=Secret.from_env_var("ENV_VAR"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             organization="org-1234567",
             http_client_kwargs={"proxy": "http://localhost:8080"},
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
         assert data == {
             "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "system_prompt": None,
                 "api_base_url": "test-base-url",
                 "organization": "org-1234567",
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
             },
         }
 
@@ -101,20 +99,20 @@ class TestOpenAIGenerator:
             "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "system_prompt": None,
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "http_client_kwargs": None,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
             },
         }
         component = OpenAIGenerator.from_dict(data)
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.http_client_kwargs is None
 
@@ -124,10 +122,10 @@ class TestOpenAIGenerator:
             "type": "haystack.components.generators.openai.OpenAIGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
             },
         }
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
@@ -187,13 +185,14 @@ class TestOpenAIGenerator:
 
     def test_run_with_params(self, openai_mock_chat_completion):
         component = OpenAIGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
         )
         response = component.run("What's Natural Language Processing?")
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
+        assert kwargs["max_completion_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
         # check that the component returns the correct response
@@ -217,7 +216,7 @@ class TestOpenAIGenerator:
         assert "Paris" in response
 
         metadata = results["meta"][0]
-        assert "gpt-4o-mini" in metadata["model"]
+        assert "gpt-5" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         assert "usage" in metadata
@@ -242,7 +241,7 @@ class TestOpenAIGenerator:
     )
     @pytest.mark.integration
     def test_run_with_system_prompt(self):
-        generator = OpenAIGenerator(model="gpt-4o-mini", system_prompt="Answer in Italian using only one word.")
+        generator = OpenAIGenerator(system_prompt="Answer in Italian using only one word.")
         result = generator.run("What's the capital of Italy?")
         assert "roma" in result["replies"][0].lower()
 
@@ -275,7 +274,7 @@ class TestOpenAIGenerator:
 
         # Metadata validation
         metadata = results["meta"][0]
-        assert "gpt-4o-mini" in metadata["model"]
+        assert "gpt-5" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         # Basic usage validation

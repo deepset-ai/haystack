@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack.dataclasses import ByteStream
 
 
-def get_bytestream_from_source(source: Union[str, Path, ByteStream], guess_mime_type: bool = False) -> ByteStream:
+def get_bytestream_from_source(source: str | Path | ByteStream, guess_mime_type: bool = False) -> ByteStream:
     """
     Creates a ByteStream object from a source.
 
@@ -29,9 +29,7 @@ def get_bytestream_from_source(source: Union[str, Path, ByteStream], guess_mime_
     raise ValueError(f"Unsupported source type {type(source)}")
 
 
-def normalize_metadata(
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]], sources_count: int
-) -> list[dict[str, Any]]:
+def normalize_metadata(meta: dict[str, Any] | list[dict[str, Any]] | None, sources_count: int) -> list[dict[str, Any]]:
     """
     Normalize the metadata input for a converter.
 

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Union
 
 import pytest
 
@@ -16,6 +15,7 @@ class TestXLSXToDocument:
         assert converter.sheet_name is None
         assert converter.read_excel_kwargs == {}
         assert converter.table_format == "csv"
+        assert converter.link_format == "none"
         assert converter.table_format_kwargs == {}
 
     def test_run_basic_tables(self, test_files_path) -> None:
@@ -101,7 +101,7 @@ class TestXLSXToDocument:
         ],
     )
     def test_run_sheet_name(
-        self, sheet_name: Union[int, str], expected_sheet_name: str, expected_content: str, test_files_path
+        self, sheet_name: int | str, expected_sheet_name: str, expected_content: str, test_files_path
     ) -> None:
         converter = XLSXToDocument(sheet_name=sheet_name, store_full_path=True)
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]
@@ -141,3 +141,30 @@ class TestXLSXToDocument:
         with caplog.at_level(logging.WARNING):
             converter.run(sources=paths)
             assert "Could not read non_existing_file.docx" in caplog.text
+
+    def test_link_format_invalid(self) -> None:
+        with pytest.raises(ValueError, match="Unknown link format"):
+            XLSXToDocument(link_format="invalid")
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_link_extraction(self, test_files_path, link_format) -> None:
+        converter = XLSXToDocument(link_format=link_format)
+        paths = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]
+        results = converter.run(sources=paths)
+        content = results["documents"][0].content
+
+        if link_format == "markdown":
+            assert "[Click here](https://example.com)" in content
+            assert "[Docs](https://python.org)" in content
+        else:
+            assert "Click here (https://example.com)" in content
+            assert "Docs (https://python.org)" in content
+
+    def test_no_link_extraction(self, test_files_path) -> None:
+        converter = XLSXToDocument()
+        paths = [test_files_path / "xlsx" / "spreadsheet_with_links.xlsx"]
+        results = converter.run(sources=paths)
+        content = results["documents"][0].content
+
+        assert "https://example.com" not in content
+        assert "Click here" in content

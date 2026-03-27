@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/agents]
+    modules: ["agent", "state/state"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Agents
+  id: agents-api
+  description: Tool-using agents with provider-agnostic chat model support.
+  filename: agents_api.md

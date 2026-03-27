@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added async support to `SentenceWindowRetriever` with a new `run_async()` method, allowing the retriever to be used in
+    async pipelines and workflows.

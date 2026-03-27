@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    In ``OpenAIChatGenerator``, streaming now handles cases where a ``ChatCompletionChunk`` has a ``delta`` set to
+    ``None`` in ``choices``. This can occur with some OpenAI-compatible providers, and the component will now handle
+    it gracefully.

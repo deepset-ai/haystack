@@ -2,4 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# ruff: noqa: F401
+
 from haystack.telemetry._telemetry import pipeline_running, tutorial_running

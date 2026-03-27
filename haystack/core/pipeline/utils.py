@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import heapq
+from collections.abc import Callable
 from copy import deepcopy
 from functools import wraps
 from itertools import count
-from typing import Any, Optional
+from typing import Any
 
 from haystack import logging
 from haystack.core.component import Component
-from haystack.tools import Tool, Toolset
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,10 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
     :returns:
         A deep-copied version of the object, or the original object if deepcopying fails.
     """
+    # Import here to avoid circular imports
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
     if isinstance(obj, (list, tuple, set)):
         return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 
@@ -51,7 +55,7 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
         return obj
 
 
-def parse_connect_string(connection: str) -> tuple[str, Optional[str]]:
+def parse_connect_string(connection: str) -> tuple[str, str | None]:
     """
     Returns component-connection pairs from a connect_to/from string.
 
@@ -132,7 +136,7 @@ class FIFOPriorityQueue:
         priority, _, item = self._queue[0]
         return priority, item
 
-    def get(self) -> Optional[tuple[int, Any]]:
+    def get(self) -> tuple[int, Any] | None:
         """
         Remove and return the highest priority item from the queue.
 
@@ -166,7 +170,7 @@ class FIFOPriorityQueue:
         return bool(self._queue)
 
 
-def args_deprecated(func):
+def args_deprecated(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator to warn about the use of positional arguments in a function.
 
@@ -187,7 +191,7 @@ def args_deprecated(func):
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         # call the function first, to make sure the signature matches
         ret_value = func(*args, **kwargs)
 

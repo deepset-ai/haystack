@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Ensure ``Pipeline`` and ``AsyncPipeline`` deep-copies component inputs before execution so mutable outputs (e.g., ``Document`` dataclasses) shared across multiple downstream components don't get mutated by reference.
+    This prevents side effects where one component's in-place modifications could unexpectedly affect other branches in the pipeline.

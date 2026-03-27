@@ -12,25 +12,25 @@ from haystack.components.extractors import LLMMetadataExtractor
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestLLMMetadataExtractor:
     def test_init(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor = LLMMetadataExtractor(
             prompt="prompt {{document.content}}", expected_keys=["key1", "key2"], chat_generator=chat_generator
         )
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
-        assert extractor._chat_generator.model == "gpt-4o-mini"
+        # Not testing specific model name, just that it's set (truthy)
+        assert extractor._chat_generator.model
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
         assert extractor.expected_keys == ["key1", "key2"]
 
     def test_init_missing_prompt_variable(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+        chat_generator = OpenAIChatGenerator()
 
         with pytest.raises(ValueError):
             _ = LLMMetadataExtractor(
@@ -44,7 +44,7 @@ class TestLLMMetadataExtractor:
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
         extractor = LLMMetadataExtractor(
             prompt="some prompt that was used with the LLM {{document.content}}",
             expected_keys=["key1", "key2"],
@@ -67,7 +67,7 @@ class TestLLMMetadataExtractor:
 
     def test_from_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor_dict = {
             "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",
@@ -86,13 +86,9 @@ class TestLLMMetadataExtractor:
 
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
-
         extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
-
         mock_chat_generator.warm_up.assert_not_called()
-
         extractor.warm_up()
-
         mock_chat_generator.warm_up.assert_called_once()
 
     def test_extract_metadata(self, monkeypatch):
@@ -115,7 +111,7 @@ class TestLLMMetadataExtractor:
             prompt="prompt {{document.content}}", chat_generator=OpenAIChatGenerator(), expected_keys=["key1"]
         )
         extractor._extract_metadata(llm_answer='{"output": "valid json"}')
-        assert "Expected response from LLM to be a JSON with keys" in caplog.text
+        assert "Response from the LLM is not valid JSON or missing expected keys" in caplog.text
 
     def test_prepare_prompts(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -267,7 +263,7 @@ class TestLLMMetadataExtractor:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_live_run(self):
+    def test_live_run(self, in_memory_doc_store):
         docs = [
             Document(content="deepset was founded in 2018 in Berlin, and is known for its Haystack framework"),
             Document(
@@ -313,18 +309,48 @@ text: {{ document.content }}
 output:
 """  # noqa: E501
 
-        doc_store = InMemoryDocumentStore()
         extractor = LLMMetadataExtractor(
-            prompt=ner_prompt, expected_keys=["entities"], chat_generator=OpenAIChatGenerator()
+            prompt=ner_prompt,
+            expected_keys=["entities"],
+            chat_generator=OpenAIChatGenerator(
+                model="gpt-4.1-nano",
+                generation_kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "entity_extraction",
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "entities": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "entity": {"type": "string"},
+                                                "entity_type": {"type": "string"},
+                                            },
+                                            "required": ["entity", "entity_type"],
+                                            "additionalProperties": False,
+                                        },
+                                    }
+                                },
+                                "required": ["entities"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    }
+                },
+            ),
         )
-        writer = DocumentWriter(document_store=doc_store)
+        writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
         pipeline.add_component("doc_writer", writer)
         pipeline.connect("extractor.documents", "doc_writer.documents")
         pipeline.run(data={"documents": docs})
 
-        doc_store_docs = doc_store.filter_documents()
+        doc_store_docs = in_memory_doc_store.filter_documents()
         assert len(doc_store_docs) == 2
         assert "entities" in doc_store_docs[0].meta
         assert "entities" in doc_store_docs[1].meta

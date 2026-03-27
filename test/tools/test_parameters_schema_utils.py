@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from typing import Union
+
 import pytest
 from pydantic import Field, create_model
 
@@ -105,6 +107,14 @@ TOOL_CALL_SCHEMA = {
             "description": "The arguments to call the Tool with.",
             "additionalProperties": True,
         },
+        "extra": {
+            "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+            "default": None,
+            "description": "Dictionary of extra information about the Tool call. Use to "
+            "store provider-specific\n"
+            "information. To avoid serialization issues, values should be "
+            "JSON serializable.",
+        },
         "id": {
             "anyOf": [{"type": "string"}, {"type": "null"}],
             "default": None,
@@ -117,7 +127,16 @@ TOOL_CALL_SCHEMA = {
 TOOL_CALL_RESULT_SCHEMA = {
     "type": "object",
     "properties": {
-        "result": {"type": "string", "description": "The result of the Tool invocation."},
+        "result": {
+            "anyOf": [
+                {"type": "string"},
+                {
+                    "items": {"anyOf": [{"$ref": "#/$defs/TextContent"}, {"$ref": "#/$defs/ImageContent"}]},
+                    "type": "array",
+                },
+            ],
+            "description": "The result of the Tool invocation.",
+        },
         "origin": {"$ref": "#/$defs/ToolCall", "description": "The Tool call that produced this result."},
         "error": {"type": "boolean", "description": "Whether the Tool invocation resulted in an error."},
     },
@@ -179,6 +198,45 @@ IMAGE_CONTENT_SCHEMA = {
     "required": ["base64_image"],
 }
 
+FILE_CONTENT_SCHEMA = {
+    "properties": {
+        "base64_data": {"description": "A base64 string representing the file.", "type": "string"},
+        "extra": {
+            "additionalProperties": True,
+            "default": {},
+            "description": "Dictionary of extra information about the file. Can be used "
+            "to store provider-specific information.\n"
+            "To avoid serialization issues, values should be JSON "
+            "serializable.",
+            "type": "object",
+        },
+        "filename": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": "Optional filename of the file. Some LLM providers use this information.",
+        },
+        "mime_type": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": 'The MIME type of the file (e.g. "application/pdf").\n'
+            "Providing this value is recommended, as most LLM providers "
+            "require it.\n"
+            "If not provided, the MIME type is guessed from the base64 "
+            "string, which can be slow and not always reliable.",
+        },
+        "validation": {
+            "default": True,
+            "description": "If True (default), a validation process is performed:\n"
+            "- Check whether the base64 string is valid;\n"
+            "- Guess the MIME type if not provided.\n"
+            "Set to False to skip validation and speed up initialization.",
+            "type": "boolean",
+        },
+    },
+    "required": ["base64_data"],
+    "type": "object",
+}
+
 CHAT_ROLE_SCHEMA = {
     "description": "Enumeration representing the roles within a chat.",
     "enum": ["user", "system", "assistant", "tool"],
@@ -199,6 +257,7 @@ CHAT_MESSAGE_SCHEMA = {
                     {"$ref": "#/$defs/ToolCallResult"},
                     {"$ref": "#/$defs/ImageContent"},
                     {"$ref": "#/$defs/ReasoningContent"},
+                    {"$ref": "#/$defs/FileContent"},
                 ]
             },
         },
@@ -249,7 +308,12 @@ CHAT_MESSAGE_SCHEMA = {
             ToolCallResult,
             "A tool call result",
             {"$ref": "#/$defs/ToolCallResult", "description": "A tool call result"},
-            {"ToolCallResult": TOOL_CALL_RESULT_SCHEMA, "ToolCall": TOOL_CALL_SCHEMA},
+            {
+                "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
+                "ToolCall": TOOL_CALL_SCHEMA,
+                "TextContent": TEXT_CONTENT_SCHEMA,
+                "ImageContent": IMAGE_CONTENT_SCHEMA,
+            },
         ),
         (
             ChatMessage,
@@ -263,6 +327,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ChatRole": CHAT_ROLE_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
                 "ReasoningContent": REASONING_CONTENT_SCHEMA,
+                "FileContent": FILE_CONTENT_SCHEMA,
             },
         ),
         (
@@ -283,7 +348,15 @@ CHAT_MESSAGE_SCHEMA = {
                 "ChatRole": CHAT_ROLE_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
                 "ReasoningContent": REASONING_CONTENT_SCHEMA,
+                "FileContent": FILE_CONTENT_SCHEMA,
             },
+        ),
+        # PEP 604 union types (X | None syntax)
+        (
+            Document | None,
+            "An optional document",
+            {"anyOf": [{"$ref": "#/$defs/Document"}, {"type": "null"}], "description": "An optional document"},
+            {"Document": DOCUMENT_SCHEMA, "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA, "ByteStream": BYTE_STREAM_SCHEMA},
         ),
     ],
 )
@@ -300,3 +373,20 @@ def test_create_parameters_schema_haystack_dataclasses(python_type, description,
 
     property_schema = parameters_schema["properties"]["input_name"]
     assert property_schema == expected_schema
+
+
+def test_resolve_type_pep_604():
+    resolved = _resolve_type(str | int)
+    assert resolved == Union[str, int]
+
+    resolved = _resolve_type(str | None)
+    assert resolved == Union[str, None]
+
+    resolved = _resolve_type(str | int | float)
+    assert resolved == Union[str, int, float]
+
+    resolved = _resolve_type(list[str] | None)
+    assert resolved == Union[list[str], None]
+
+    resolved = _resolve_type(dict[str, int] | list[str])
+    assert resolved == Union[dict[str, int], list[str]]

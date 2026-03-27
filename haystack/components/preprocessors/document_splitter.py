@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Literal
 
 from more_itertools import windowed
 
@@ -51,20 +52,20 @@ class DocumentSplitter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
-        splitting_function: Optional[Callable[[str], list[str]]] = None,
+        splitting_function: Callable[[str], list[str]] | None = None,
         respect_sentence_boundary: bool = False,
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
         *,
         skip_empty_documents: bool = True,
-    ):
+    ) -> None:
         """
         Initialize DocumentSplitter.
 
@@ -115,7 +116,7 @@ class DocumentSplitter:
         self._use_sentence_splitter = split_by == "sentence" or (respect_sentence_boundary and split_by == "word")
         if self._use_sentence_splitter:
             nltk_imports.check()
-            self.sentence_splitter: Optional[SentenceSplitter] = None
+            self.sentence_splitter: SentenceSplitter | None = None
 
     def _init_checks(
         self,
@@ -123,7 +124,7 @@ class DocumentSplitter:
         split_by: str,
         split_length: int,
         split_overlap: int,
-        splitting_function: Optional[Callable],
+        splitting_function: Callable | None,
         respect_sentence_boundary: bool,
     ) -> None:
         """
@@ -156,7 +157,7 @@ class DocumentSplitter:
             )
             self.respect_sentence_boundary = False
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Warm up the DocumentSplitter by loading the sentence tokenizer.
         """
@@ -169,7 +170,7 @@ class DocumentSplitter:
             )
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Split documents into smaller parts.
 
@@ -187,9 +188,7 @@ class DocumentSplitter:
         :raises ValueError: if the content of a document is None.
         """
         if self._use_sentence_splitter and self.sentence_splitter is None:
-            raise RuntimeError(
-                "The component DocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")
@@ -241,9 +240,9 @@ class DocumentSplitter:
 
         return split_docs
 
-    def _split_by_character(self, doc) -> list[Document]:
+    def _split_by_character(self, doc: Document) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
-        units = doc.content.split(split_at)
+        units = doc.content.split(split_at)  # type: ignore[union-attr]
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
             units[i] += split_at
@@ -256,7 +255,7 @@ class DocumentSplitter:
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
 
-    def _split_by_function(self, doc) -> list[Document]:
+    def _split_by_function(self, doc: Document) -> list[Document]:
         # the check for None is done already in the run method
         splits = self.splitting_function(doc.content)  # type: ignore
         docs: list[Document] = []
@@ -319,7 +318,7 @@ class DocumentSplitter:
         """
         documents: list[Document] = []
 
-        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs)):
+        for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs, strict=True)):
             copied_meta = deepcopy(meta)
             copied_meta["page_number"] = splits_pages[i]
             copied_meta["split_id"] = i
@@ -345,7 +344,7 @@ class DocumentSplitter:
     @staticmethod
     def _add_split_overlap_information(
         current_doc: Document, current_doc_start_idx: int, previous_doc: Document, previous_doc_start_idx: int
-    ):
+    ) -> None:
         """
         Adds split overlap information to the current and previous Document's meta.
 

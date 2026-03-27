@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
+
+from typing import Any
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -42,7 +43,7 @@ class TopPSampler:
     ```
     """
 
-    def __init__(self, top_p: float = 1.0, score_field: Optional[str] = None, min_top_k: Optional[int] = None):
+    def __init__(self, top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None) -> None:
         """
         Creates an instance of TopPSampler.
 
@@ -62,7 +63,7 @@ class TopPSampler:
         self.min_top_k = min_top_k
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], top_p: Optional[float] = None):
+    def run(self, documents: list[Document], top_p: float | None = None) -> dict[str, Any]:
         """
         Filters documents using top-p sampling based on their scores.
 
@@ -88,8 +89,10 @@ class TopPSampler:
             logger.warning("No documents with scores found. Returning the original documents.")
             return {"documents": documents}
 
-        sorted_docs_with_scores = sorted(zip(documents_with_scores, scores), key=lambda x: x[1], reverse=True)
-        sorted_documents, sorted_scores = [list(t) for t in zip(*sorted_docs_with_scores)]
+        sorted_docs_with_scores = sorted(
+            zip(documents_with_scores, scores, strict=True), key=lambda x: x[1], reverse=True
+        )
+        sorted_documents, sorted_scores = [list(t) for t in zip(*sorted_docs_with_scores, strict=True)]
 
         tensor_scores = torch.tensor(sorted_scores, dtype=torch.float32)
         probs = torch.nn.functional.softmax(tensor_scores, dim=-1)
@@ -122,7 +125,7 @@ class TopPSampler:
         return {"documents": selected_docs}
 
     @staticmethod
-    def _get_doc_score(doc: Document, score_field: Optional[str] = None) -> Optional[float]:
+    def _get_doc_score(doc: Document, score_field: str | None = None) -> float | None:
         """
         Get the score of a document.
 

@@ -191,7 +191,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
     def test_run(self, test_files_path):
         embedder = SentenceTransformersDocumentImageEmbedder(model="model")
         embedder._embedding_backend = MagicMock()
-        embedder._embedding_backend.embed = lambda data, **kwargs: [
+        embedder._embedding_backend.embed = lambda data, **_: [
             [random.random() for _ in range(16)] for _ in range(len(data))
         ]
 
@@ -209,7 +209,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)
@@ -219,12 +219,6 @@ class TestSentenceTransformersDocumentImageEmbedder:
             assert "embedding_source" in new_doc.meta
             assert new_doc.meta["embedding_source"]["type"] == "image"
             assert "file_path_meta_field" in new_doc.meta["embedding_source"]
-
-    def test_run_no_warmup(self):
-        embedder = SentenceTransformersDocumentImageEmbedder(model="model")
-
-        with pytest.raises(RuntimeError, match="The embedding model has not been loaded."):
-            embedder.run(documents=[Document(content="test")])
 
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersDocumentImageEmbedder(model="model")
@@ -325,11 +319,8 @@ class TestSentenceTransformersDocumentImageEmbedder:
             "we prefer to avoid altering PYTORCH_MPS_HIGH_WATERMARK_RATIO"
         ),
     )
-    def test_live_run(self, test_files_path, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
+    def test_live_run(self, test_files_path, del_hf_env_vars):
         embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
-        embedder.warm_up()
 
         documents = [
             Document(
@@ -341,7 +332,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         result = embedder.run(documents=documents)
         assert len(result["documents"]) == len(documents)
-        for doc, new_doc in zip(documents, result["documents"]):
+        for doc, new_doc in zip(documents, result["documents"], strict=True):
             assert doc.embedding is None
             assert new_doc is not doc
             assert isinstance(new_doc, Document)

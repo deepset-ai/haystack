@@ -99,13 +99,19 @@ class TestLLMMessagesRouter:
         router.run([ChatMessage.from_user("Hello")])
 
     def test_run_no_warm_up_with_warmable_chat_generator(self):
+        """Warm up is run automatically if not done before."""
+
+        def mock_run(messages):
+            return {"replies": [ChatMessage.from_assistant("safe")]}
+
         chat_generator = Mock()
+        chat_generator.run = mock_run
         router = LLMMessagesRouter(
             chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
         )
-
-        with pytest.raises(RuntimeError):
-            router.run([ChatMessage.from_user("Hello")])
+        router.run([ChatMessage.from_user("Hello")])
+        assert chat_generator.warm_up.call_count == 1
+        assert router._is_warmed_up is True
 
     def test_run(self):
         router = LLMMessagesRouter(
@@ -134,7 +140,6 @@ class TestLLMMessagesRouter:
             output_patterns=["safe", "unsafe"],
             system_prompt=system_prompt,
         )
-        router.warm_up()
 
         messages = [ChatMessage.from_user("Hello")]
         router.run(messages)
@@ -199,7 +204,7 @@ class TestLLMMessagesRouter:
     def test_live_run(self):
         system_prompt = "Classify the messages into safe or unsafe. Respond with the label only, no other text."
         router = LLMMessagesRouter(
-            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
             system_prompt=system_prompt,
             output_names=["safe", "unsafe"],
             output_patterns=[r"(?i)safe", r"(?i)unsafe"],

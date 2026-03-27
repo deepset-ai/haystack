@@ -6,9 +6,10 @@ import asyncio
 import contextvars
 import inspect
 import json
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable, Optional, Union
+from typing import Any
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -19,10 +20,12 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingCh
 from haystack.tools import (
     ComponentTool,
     Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.tools.errors import ToolInvocationError
 from haystack.tracing.utils import _serializable_value
@@ -34,14 +37,14 @@ logger = logging.getLogger(__name__)
 class ToolInvokerError(Exception):
     """Base exception class for ToolInvoker errors."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
 
 
 class ToolNotFoundException(ToolInvokerError):
     """Exception raised when a tool is not found in the list of available tools."""
 
-    def __init__(self, tool_name: str, available_tools: list[str]):
+    def __init__(self, tool_name: str, available_tools: list[str]) -> None:
         message = f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools)}"
         super().__init__(message)
 
@@ -49,15 +52,29 @@ class ToolNotFoundException(ToolInvokerError):
 class StringConversionError(ToolInvokerError):
     """Exception raised when the conversion of a tool result to a string fails."""
 
-    def __init__(self, tool_name: str, conversion_function: str, error: Exception):
+    def __init__(self, tool_name: str, conversion_function: str, error: Exception) -> None:
         message = f"Failed to convert tool result from tool {tool_name} using '{conversion_function}'. Error: {error}"
+        super().__init__(message)
+
+
+class ResultConversionError(ToolInvokerError):
+    """Exception raised when the conversion of a tool output to a result fails."""
+
+    def __init__(self, tool_name: str, conversion_function: str, error: Exception) -> None:
+        message = f"Failed to convert tool output from tool {tool_name} using '{conversion_function}'. Error: {error}"
         super().__init__(message)
 
 
 class ToolOutputMergeError(ToolInvokerError):
     """Exception raised when merging tool outputs into state fails."""
 
-    pass
+    @classmethod
+    def from_exception(cls, tool_name: str, error: Exception) -> "ToolOutputMergeError":
+        """
+        Create a ToolOutputMergeError from an exception.
+        """
+        message = f"Failed to merge tool outputs from tool {tool_name} into State: {error}"
+        return cls(message)
 
 
 @component
@@ -165,19 +182,19 @@ class ToolInvoker:
 
     def __init__(
         self,
-        tools: Union[list[Tool], Toolset],
+        tools: ToolsType,
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
-    ):
+    ) -> None:
         """
         Initialize the ToolInvoker component.
 
         :param tools:
-            A list of tools that can be invoked or a Toolset instance that can resolve tools.
+            A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
         :param raise_on_failure:
             If True, the component will raise an exception in case of errors
             (tool not found, tool invocation errors, tool result conversion errors).
@@ -209,6 +226,7 @@ class ToolInvoker:
         self.convert_result_to_json_string = convert_result_to_json_string
 
         self._tools_with_names = self._validate_and_prepare_tools(tools)
+        self._is_warmed_up = False
 
     @staticmethod
     def _make_context_bound_invoke(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Callable[[], Any]:
@@ -234,21 +252,19 @@ class ToolInvoker:
         return _runner
 
     @staticmethod
-    def _validate_and_prepare_tools(tools: Union[list[Tool], Toolset]) -> dict[str, Tool]:
+    def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
         """
         Validates and prepares tools for use by the ToolInvoker.
 
-        :param tools: A list of tools or a Toolset instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+
         :returns: A dictionary mapping tool names to Tool instances.
         :raises ValueError: If no tools are provided or if duplicate tool names are found.
         """
         if not tools:
             raise ValueError("ToolInvoker requires at least one tool.")
 
-        if isinstance(tools, Toolset):
-            converted_tools = list(tools)
-        else:
-            converted_tools = tools
+        converted_tools = flatten_tools_or_toolsets(tools)
 
         _check_duplicate_tool_names(converted_tools)
         tool_names = [tool.name for tool in converted_tools]
@@ -256,21 +272,7 @@ class ToolInvoker:
         if duplicates:
             raise ValueError(f"Duplicate tool names found: {duplicates}")
 
-        return dict(zip(tool_names, converted_tools))
-
-    def _handle_error(self, error: Exception) -> str:
-        """
-        Handles errors by logging and either raising or returning a fallback error message.
-
-        :param error: The exception instance.
-        :returns: The fallback error message when `raise_on_failure` is False.
-        :raises: The provided error if `raise_on_failure` is True.
-        """
-        logger.error("{error_exception}", error_exception=error)
-        if self.raise_on_failure:
-            # We re-raise the original error maintaining the exception chain
-            raise error
-        return str(error)
+        return dict(zip(tool_names, converted_tools, strict=True))
 
     def _default_output_to_string_handler(self, result: Any) -> str:
         """
@@ -284,7 +286,7 @@ class ToolInvoker:
         # - If using convert_result_to_json_string we'd rather convert Haystack objects to JSON serializable dicts
         # - If using default str() we prefer converting Haystack objects to dicts rather than relying on the
         #   __repr__ method
-        serializable = _serializable_value(result)
+        serializable = _serializable_value(value=result, use_placeholders=False)
 
         if self.convert_result_to_json_string:
             try:
@@ -294,7 +296,7 @@ class ToolInvoker:
                 # If the result is not JSON serializable, we fall back to str
                 logger.warning(
                     "Tool result is not JSON serializable. Falling back to str conversion. "
-                    "Result: {result}\nError: {error}",
+                    "Result: {result}\nError: {err}",
                     result=result,
                     err=error,
                 )
@@ -302,6 +304,34 @@ class ToolInvoker:
             return str_result
 
         return str(serializable)
+
+    def _process_output(self, config: dict[str, Any], result: Any, tool_call: ToolCall) -> Any:
+        """
+        Processes a tool result based on the provided configuration.
+
+        :param config: Configuration dictionary that may contain "source", "handler", and "raw_result" keys.
+        :param result: The tool result to process.
+        :param tool_call: The ToolCall object for error reporting.
+        :returns: The processed tool result.
+        """
+        source_key = config.get("source")
+        # If a source key is provided, we extract the result from the source key
+        value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
+
+        handler = config.get("handler")
+        raw_result = config.get("raw_result", False)
+
+        if handler is None:
+            if raw_result:
+                return value
+            handler = self._default_output_to_string_handler
+
+        try:
+            return handler(value)
+        except Exception as e:
+            if raw_result:
+                raise ResultConversionError(tool_call.tool_name, handler.__name__, e) from e
+            raise StringConversionError(tool_call.tool_name, handler.__name__, e) from e
 
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
@@ -314,33 +344,36 @@ class ToolInvoker:
         :param tool_to_invoke:
             The Tool object that was invoked.
         :returns:
-            A ChatMessage object containing the tool result as a string.
+            A ChatMessage object containing the tool result.
         :raises
-            StringConversionError: If the conversion of the tool result to a string fails
-            and `raise_on_failure` is True.
+            StringConversionError: If the conversion to string of the tool output fails and `raise_on_failure` is True.
+            ResultConversionError: If the conversion to result of the tool output fails and `raise_on_failure` is True.
         """
         outputs_config = tool_to_invoke.outputs_to_string or {}
-        source_key = outputs_config.get("source")
-
-        # If no handler is provided, we use the default handler
-        output_to_string_handler = outputs_config.get("handler", self._default_output_to_string_handler)
-
-        # If a source key is provided, we extract the result from the source key
-        result_to_convert = result.get(source_key) if source_key is not None else result
-
-        error = False
         try:
-            tool_result_str = output_to_string_handler(result_to_convert)
-        except Exception as e:
-            try:
-                tool_result_str = self._handle_error(
-                    StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
-                )
-                error = True
-            except StringConversionError as conversion_error:
-                # If _handle_error re-raises, this properly preserves the chain
-                raise conversion_error from e
-        return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
+            # Root level single output configuration
+            if (
+                not outputs_config
+                or "source" in outputs_config
+                or "handler" in outputs_config
+                or "raw_result" in outputs_config
+            ):
+                tool_result = self._process_output(outputs_config, result, tool_call)
+                return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
+
+            # Multiple outputs configuration
+            tool_result_dict = {}
+            for output_key, config in outputs_config.items():
+                # For multiple outputs, we don't support raw_result and always convert to string
+                tool_result_dict[output_key] = self._process_output({**config, "raw_result": False}, result, tool_call)
+
+            tool_result_str = self._default_output_to_string_handler(tool_result_dict)
+            return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
+        except (StringConversionError, ResultConversionError) as e:
+            if self.raise_on_failure:
+                raise e
+            logger.exception("{error_exception}", error_exception=e)
+            return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
 
     @staticmethod
     def _get_func_params(tool: Tool) -> set:
@@ -369,7 +402,7 @@ class ToolInvoker:
 
         Tool arguments take precedence in the following order:
           - LLM overrides state if the same param is present in both
-          - local tool.inputs mappings (if any)
+          - local tool.inputs_from_state mappings (if any)
           - function signature name matching
         """
         final_args = dict(llm_args)  # start with LLM-provided
@@ -447,7 +480,7 @@ class ToolInvoker:
         *,
         messages_with_tool_calls: list[ChatMessage],
         state: State,
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         enable_streaming_passthrough: bool,
         tools_with_names: dict[str, Tool],
     ) -> tuple[list[ToolCall], list[dict[str, Any]], list[ChatMessage]]:
@@ -470,10 +503,11 @@ class ToolInvoker:
 
                 # Check if the tool is available, otherwise return an error message
                 if tool_name not in tools_with_names:
-                    error_message = self._handle_error(ToolNotFoundException(tool_name, list(tools_with_names.keys())))
-                    error_messages.append(
-                        ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                    )
+                    error = ToolNotFoundException(tool_name, list(tools_with_names.keys()))
+                    if self.raise_on_failure:
+                        raise error
+                    logger.error("{error_exception}", error_exception=error)
+                    error_messages.append(ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True))
                     continue
 
                 tool_to_invoke = tools_with_names[tool_name]
@@ -496,15 +530,28 @@ class ToolInvoker:
 
         return tool_calls, tool_call_params, error_messages
 
+    def warm_up(self) -> None:
+        """
+        Warm up the tool invoker.
+
+        This will warm up the tools registered in the tool invoker.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            # tools could have been updated by the warm_up, validate/prepare for invocation
+            self._tools_with_names = self._validate_and_prepare_tools(self.tools)
+            self._is_warmed_up = True
+
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
         self,
         messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -521,8 +568,8 @@ class ToolInvoker:
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
             If None, the value from the constructor will be used.
-        :param tools:
-            A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -536,11 +583,15 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         tools_with_names = self._tools_with_names
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
             logger.debug(
-                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+                "For this invocation, overriding constructor tools with: {tools}",
+                tools=", ".join(tools_with_names.keys()),
             )
 
         if state is None:
@@ -558,9 +609,11 @@ class ToolInvoker:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
 
-        tool_messages = []
+        if not messages_with_tool_calls:
+            return {"tool_messages": [], "state": state}
 
         # 1) Collect all tool calls and their parameters for parallel execution
+        tool_messages = []
         tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
             messages_with_tool_calls=messages_with_tool_calls,
             state=state,
@@ -570,56 +623,50 @@ class ToolInvoker:
         )
         tool_messages.extend(error_messages)
 
+        if not tool_call_params:
+            return {"tool_messages": tool_messages, "state": state}
+
         # 2) Execute valid tool calls in parallel
-        if tool_call_params:
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = []
-                for params in tool_call_params:
-                    callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
-                    future = executor.submit(callable_)
-                    futures.append(future)
-                # 3) Gather and process results: handle errors and merge outputs into state
-                for future, tool_call in zip(futures, tool_calls):
-                    result = future.result()
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = []
+            for params in tool_call_params:
+                callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
+                futures.append(executor.submit(callable_))
 
-                    if isinstance(result, ToolInvocationError):
-                        # a) This is an error, create error Tool message
-                        error_message = self._handle_error(result)
-                        error_chat_message = ChatMessage.from_tool(
-                            tool_result=error_message, origin=tool_call, error=True
-                        )
-                        tool_messages.append(error_chat_message)
-                    else:
-                        # b) In case of success, merge outputs into state
+            # 3) Gather and process results: handle errors and merge outputs into state
+            for future, tool_call in zip(futures, tool_calls, strict=True):
+                result = future.result()
+
+                if isinstance(result, ToolInvocationError):
+                    # a) This is an error, create error Tool message
+                    if self.raise_on_failure:
+                        raise result
+                    logger.error("{error_exception}", error_exception=result)
+                    tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
+                else:
+                    # b) In case of success, merge outputs into state
+                    try:
                         tool_to_invoke = tools_with_names[tool_call.tool_name]
-
-                        try:
-                            self._merge_tool_outputs(tool=tool_to_invoke, result=result, state=state)
-                        except Exception as e:
-                            try:
-                                error_message = self._handle_error(
-                                    ToolOutputMergeError(
-                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
-                                    )
-                                )
-                                tool_messages.append(
-                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                                )
-                                continue
-                            except ToolOutputMergeError as propagated_e:
-                                # Re-raise with proper error chain
-                                raise propagated_e from e
+                        self._merge_tool_outputs(tool=tool_to_invoke, result=result, state=state)
                         tool_messages.append(
                             self._prepare_tool_result_message(
                                 result=result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                             )
                         )
-
-                    # c) Handle streaming callback
-                    if streaming_callback is not None:
-                        streaming_callback(
-                            self._create_tool_result_streaming_chunk(tool_messages=tool_messages, tool_call=tool_call)
+                    except Exception as e:
+                        error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
+                        if self.raise_on_failure:
+                            raise error from e
+                        logger.exception("{error_exception}", error_exception=error)
+                        tool_messages.append(
+                            ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
                         )
+
+                # c) Handle streaming callback
+                if streaming_callback is not None:
+                    streaming_callback(
+                        self._create_tool_result_streaming_chunk(tool_messages=tool_messages, tool_call=tool_call)
+                    )
 
         # We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
@@ -631,25 +678,15 @@ class ToolInvoker:
 
         return {"tool_messages": tool_messages, "state": state}
 
-    @staticmethod
-    async def invoke_tool_safely(
-        executor: ThreadPoolExecutor, tool_to_invoke: Tool, final_args: dict[str, Any]
-    ) -> Union[ToolInvocationError, Any]:
-        """Safely invoke a tool with proper exception handling."""
-        loop = asyncio.get_running_loop()
-        callable_ = ToolInvoker._make_context_bound_invoke(tool_to_invoke, final_args)
-        result = await loop.run_in_executor(executor, callable_)
-        return result
-
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     async def run_async(
         self,
         messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.
@@ -667,8 +704,8 @@ class ToolInvoker:
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
             If None, the value from the constructor will be used.
-        :param tools:
-            A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -682,12 +719,15 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
 
         tools_with_names = self._tools_with_names
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
             logger.debug(
-                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+                "For this invocation, overriding constructor tools with: {tools}",
+                tools=", ".join(tools_with_names.keys()),
             )
 
         if state is None:
@@ -705,9 +745,11 @@ class ToolInvoker:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
-        tool_messages = []
+        if not messages_with_tool_calls:
+            return {"tool_messages": [], "state": state}
 
         # 1) Collect all tool calls and their parameters for parallel execution
+        tool_messages = []
         tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
             messages_with_tool_calls=messages_with_tool_calls,
             state=state,
@@ -717,58 +759,52 @@ class ToolInvoker:
         )
         tool_messages.extend(error_messages)
 
+        if not tool_call_params:
+            return {"tool_messages": tool_messages, "state": state}
+
         # 2) Execute valid tool calls in parallel
-        if tool_call_params:
-            tool_call_tasks = []
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                for params in tool_call_params:
-                    task = self.invoke_tool_safely(executor, **params)
-                    tool_call_tasks.append(task)
+        tool_call_tasks = []
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            for params in tool_call_params:
+                loop = asyncio.get_running_loop()
+                callable_ = ToolInvoker._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
+                tool_call_tasks.append(loop.run_in_executor(executor, callable_))
 
-                # 3) Gather and process results: handle errors and merge outputs into state
-                if tool_call_tasks:
-                    tool_results = await asyncio.gather(*tool_call_tasks)
-                    for tool_result, tool_call in zip(tool_results, tool_calls):
-                        if isinstance(tool_result, ToolInvocationError):
-                            # a) This is an error, create error Tool message
-                            error_message = self._handle_error(tool_result)
-                            error_chat_message = ChatMessage.from_tool(
-                                tool_result=error_message, origin=tool_call, error=True
+            # 3) Gather and process results: handle errors and merge outputs into state
+            tool_results = await asyncio.gather(*tool_call_tasks)
+            for tool_result, tool_call in zip(tool_results, tool_calls, strict=True):
+                # a) This is an error, create error Tool message
+                if isinstance(tool_result, ToolInvocationError):
+                    if self.raise_on_failure:
+                        raise tool_result
+                    logger.error("{error_exception}", error_exception=tool_result)
+                    tool_messages.append(
+                        ChatMessage.from_tool(tool_result=str(tool_result), origin=tool_call, error=True)
+                    )
+                else:
+                    # b) In case of success, merge outputs into state
+                    try:
+                        tool_to_invoke = tools_with_names[tool_call.tool_name]
+                        self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
+                        tool_messages.append(
+                            self._prepare_tool_result_message(
+                                result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                             )
-                            tool_messages.append(error_chat_message)
-                        else:
-                            # b) In case of success, merge outputs into state
-                            tool_to_invoke = tools_with_names[tool_call.tool_name]
-                            try:
-                                self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
-                            except Exception as e:
-                                try:
-                                    error_message = self._handle_error(
-                                        ToolOutputMergeError(
-                                            f"Failed to merge tool outputs from tool {tool_call.tool_name} "
-                                            f"into State: {e}"
-                                        )
-                                    )
-                                    tool_messages.append(
-                                        ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                                    )
-                                    continue
-                                except ToolOutputMergeError as propagated_e:
-                                    # Re-raise with proper error chain
-                                    raise propagated_e from e
-                            tool_messages.append(
-                                self._prepare_tool_result_message(
-                                    result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
-                                )
-                            )
+                        )
+                    except Exception as e:
+                        error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
+                        if self.raise_on_failure:
+                            raise error from e
+                        logger.exception("{error_exception}", error_exception=error)
+                        tool_messages.append(
+                            ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
+                        )
 
-                        # c) Handle streaming callback
-                        if streaming_callback is not None:
-                            await streaming_callback(
-                                self._create_tool_result_streaming_chunk(
-                                    tool_messages=tool_messages, tool_call=tool_call
-                                )
-                            )
+                # c) Handle streaming callback
+                if streaming_callback is not None:
+                    await streaming_callback(
+                        self._create_tool_result_streaming_chunk(tool_messages=tool_messages, tool_call=tool_call)
+                    )
 
         # 4) We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
@@ -799,6 +835,7 @@ class ToolInvoker:
             convert_result_to_json_string=self.convert_result_to_json_string,
             streaming_callback=streaming_callback,
             enable_streaming_callback_passthrough=self.enable_streaming_callback_passthrough,
+            max_workers=self.max_workers,
         )
 
     @classmethod

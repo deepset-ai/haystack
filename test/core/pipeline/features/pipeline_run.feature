@@ -58,6 +58,10 @@ Feature: Pipeline running
         | where a single component connects multiple sockets to the same receiver socket |
         | where a component in a cycle provides inputs for a component outside the cycle in one iteration and no input in another iteration |
         | that is blocked because not enough component inputs |
+        | that is a file conversion pipeline with three auto joiners |
+        | that has an auto joiner that takes in user inputs |
+        | that performs automatic conversion between list of ChatMessage and str |
+        | that performs automatic conversion wrapping ChatMessage for a Union receiver |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
@@ -69,3 +73,4 @@ Feature: Pipeline running
         | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |
         | that has a cycle that would get it stuck | PipelineComponentsBlockedError |
+        | that fails automatic conversion between list of ChatMessage and str | PipelineRuntimeError |

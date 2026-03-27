@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from statistics import mean
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
@@ -97,13 +97,13 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
-        examples: Optional[list[dict[str, Any]]] = None,
+        examples: list[dict[str, Any]] | None = None,
         progress_bar: bool = True,
         raise_on_failure: bool = True,
-        chat_generator: Optional[ChatGenerator] = None,
-    ):
+        chat_generator: ChatGenerator | None = None,
+    ) -> None:
         """
         Creates an instance of ContextRelevanceEvaluator.
 
@@ -146,7 +146,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         self.outputs = ["relevant_statements"]
         self.examples = examples or _DEFAULT_EXAMPLES
 
-        super(ContextRelevanceEvaluator, self).__init__(
+        super(ContextRelevanceEvaluator, self).__init__(  # noqa: UP008
             instructions=self.instructions,
             inputs=self.inputs,
             outputs=self.outputs,
@@ -157,7 +157,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
 
     @component.output_types(score=float, results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -170,7 +170,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `score`: Mean context relevance score over all the provided input questions.
                 - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
-        result = super(ContextRelevanceEvaluator, self).run(**inputs)
+        result = super(ContextRelevanceEvaluator, self).run(**inputs)  # noqa: UP008
 
         for idx, res in enumerate(result["results"]):
             if res is None:

@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -36,9 +36,9 @@ class InvalidMappingValueError(Exception):
 class _SuperComponent:
     def __init__(
         self,
-        pipeline: Union[Pipeline, AsyncPipeline],
-        input_mapping: Optional[dict[str, list[str]]] = None,
-        output_mapping: Optional[dict[str, str]] = None,
+        pipeline: Pipeline | AsyncPipeline,
+        input_mapping: dict[str, list[str]] | None = None,
+        output_mapping: dict[str, str] | None = None,
     ) -> None:
         """
         Creates a SuperComponent with optional input and output mappings.
@@ -46,15 +46,28 @@ class _SuperComponent:
         :param pipeline: The pipeline instance or async pipeline instance to be wrapped
         :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
             If not provided, a default input mapping will be created based on all pipeline inputs.
+            Example:
+            ```python
+            input_mapping={
+                "query": ["retriever.query", "prompt_builder.query"],
+            }
+            ```
         :param output_mapping: A dictionary mapping pipeline output socket paths to component output names.
             If not provided, a default output mapping will be created based on all pipeline outputs.
+            Example:
+            ```python
+            output_mapping={
+                "retriever.documents": "documents",
+                "generator.replies": "replies",
+            }
+            ```
         :raises InvalidMappingError: Raised if any mapping is invalid or type conflicts occur
         :raises ValueError: Raised if no pipeline is provided
         """
         if pipeline is None:
             raise ValueError("Pipeline must be provided to SuperComponent.")
 
-        self.pipeline: Union[Pipeline, AsyncPipeline] = pipeline
+        self.pipeline: Pipeline | AsyncPipeline = pipeline
         self._warmed_up = False
 
         # Determine input types based on pipeline and mapping
@@ -177,10 +190,14 @@ class _SuperComponent:
             for path in pipeline_input_paths:
                 comp_name, socket_name = self._split_component_path(path)
                 if comp_name not in pipeline_inputs:
-                    raise InvalidMappingValueError(f"Component '{comp_name}' not found in pipeline inputs.")
+                    raise InvalidMappingValueError(
+                        f"Component '{comp_name}' not found in pipeline inputs.\n"
+                        f"Available components: {list(pipeline_inputs.keys())}"
+                    )
                 if socket_name not in pipeline_inputs[comp_name]:
                     raise InvalidMappingValueError(
-                        f"Input socket '{socket_name}' not found in component '{comp_name}'."
+                        f"Input socket '{socket_name}' not found in component '{comp_name}'.\n"
+                        f"Available inputs for '{comp_name}': {list(pipeline_inputs[comp_name].keys())}"
                     )
 
     def _resolve_input_types_from_mapping(
@@ -470,7 +487,7 @@ class SuperComponent(_SuperComponent):
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
 
-    def show(self, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30) -> None:
+    def show(self, server_url: str = "https://mermaid.ink", params: dict | None = None, timeout: int = 30) -> None:
         """
         Display an image representing this SuperComponent's underlying pipeline in a Jupyter notebook.
 
@@ -505,7 +522,7 @@ class SuperComponent(_SuperComponent):
         self.pipeline.show(server_url=server_url, params=params, timeout=timeout)
 
     def draw(
-        self, path: Path, server_url: str = "https://mermaid.ink", params: Optional[dict] = None, timeout: int = 30
+        self, path: Path, server_url: str = "https://mermaid.ink", params: dict | None = None, timeout: int = 30
     ) -> None:
         """
         Save an image representing this SuperComponent's underlying pipeline to the specified file path.
@@ -561,7 +578,7 @@ def super_component(cls: type[T]) -> type[T]:
     original_init = cls.__init__
 
     # Create a new __init__ method that will initialize both the original class and SuperComponent
-    def init_wrapper(self, *args, **kwargs):
+    def init_wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
         # Call the original __init__ to set up pipeline and mappings
         original_init(self, *args, **kwargs)
 
@@ -581,7 +598,7 @@ def super_component(cls: type[T]) -> type[T]:
     init_wrapper = functools.wraps(original_init)(init_wrapper)
 
     # Function to copy namespace from the original class
-    def copy_class_namespace(namespace):
+    def copy_class_namespace(namespace: dict[str, Any]) -> None:
         """Copy all attributes from the original class except special ones."""
         for key, val in dict(cls.__dict__).items():
             # Skip special attributes that should be recreated

@@ -4,7 +4,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -34,7 +34,7 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: Optional[dict[str, Any]] = None, store_full_path: bool = False):
+    def __init__(self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False) -> None:
         """
         Create an HTMLToDocument component.
 
@@ -74,10 +74,10 @@ class HTMLToDocument:
     @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-        extraction_kwargs: Optional[dict[str, Any]] = None,
-    ):
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+        extraction_kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Converts a list of HTML files to Documents.
 
@@ -103,7 +103,7 @@ class HTMLToDocument:
         documents = []
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
-        for source, metadata in zip(sources, meta_list):
+        for source, metadata in zip(sources, meta_list, strict=True):
             try:
                 bytestream = get_bytestream_from_source(source=source)
             except Exception as e:
@@ -124,7 +124,7 @@ class HTMLToDocument:
 
             if not self.store_full_path and "file_path" in bytestream.meta:
                 file_path = bytestream.meta.get("file_path")
-                if file_path:  # Ensure the value is not None for pylint
+                if file_path:  # Ensure the value is not None for mypy
                     merged_metadata["file_path"] = os.path.basename(file_path)
 
             document = Document(content=text, meta=merged_metadata)

@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    ``PipelineRuntimeError`` raised by ``Agent`` now provide clearer ownership by explicitly surfacing the ``Agent`` as the failing pipeline component.
+
+    As a result:
+    - ``component_name`` now resolves to the name of the ``Agent`` in the pipeline, instead of the underlying ``chat_generator`` or ``tool_invoker``.
+    - ``component_type`` now resolves to ``haystack.components.agents.agent.Agent`` instead of the concrete generator class such as
+      ``haystack.components.generators.chat.openai.OpenAIChatGenerator``.
+    - The error message now includes an additional outer section for the ``Agent`` component.
+
+    Example of new error message::
+
+      The following component failed to run:
+      Component name: 'agent'
+      Component type: 'Agent'
+      Error: The following component failed to run:
+      Component name: 'chat_generator'
+      Component type: 'OpenAIChatGenerator'
+      Error: Error code: 404 - {'error': {'message': 'The model ``gpt-4.2-mini`` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}

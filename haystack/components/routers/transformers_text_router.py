@@ -2,20 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoConfig, Pipeline, pipeline
 
-    from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
-        deserialize_hf_model_kwargs,
-        resolve_hf_pipeline_kwargs,
-        serialize_hf_model_kwargs,
-    )
+    from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
 
 @component
@@ -69,14 +65,14 @@ class TransformersTextRouter:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         model: str,
-        labels: Optional[list[str]] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-    ):
+        labels: list[str] | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+    ) -> None:
         """
         Initializes the TransformersTextRouter component.
 
@@ -115,7 +111,7 @@ class TransformersTextRouter:
             self.labels = labels
         component.set_output_types(self, **dict.fromkeys(self.labels, str))
 
-        self.pipeline: Optional["Pipeline"] = None
+        self.pipeline: "Pipeline" | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -125,7 +121,7 @@ class TransformersTextRouter:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -154,7 +150,7 @@ class TransformersTextRouter:
             labels=self.labels,
             model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -173,7 +169,6 @@ class TransformersTextRouter:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         if data["init_parameters"].get("huggingface_pipeline_kwargs") is not None:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
@@ -188,17 +183,16 @@ class TransformersTextRouter:
 
         :raises TypeError:
             If the input is not a str.
-        :raises RuntimeError:
-            If the pipeline has not been loaded because warm_up() was not called before.
         """
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TextTransformersRouter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(text, str):
             raise TypeError("TransformersTextRouter expects a str as input.")
 
-        prediction = self.pipeline([text], return_all_scores=False, function_to_apply="none")
+        # mypy doesn't know this is set in warm_up
+        prediction = self.pipeline(  # type: ignore[misc]
+            [text], return_all_scores=False, function_to_apply="none"
+        )
         label = prediction[0]["label"]
         return {label: text}

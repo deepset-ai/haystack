@@ -3,16 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension
+from markupsafe import Markup
 
 from haystack import logging
 from haystack.dataclasses.chat_message import (
     ChatMessage,
     ChatMessageContentT,
     ChatRole,
+    FileContent,
     ImageContent,
     ReasoningContent,
     TextContent,
@@ -26,6 +29,24 @@ logger = logging.getLogger(__name__)
 
 START_TAG = "<haystack_content_part>"
 END_TAG = "</haystack_content_part>"
+
+ESCAPED_START_TAG = "&lt;haystack_content_part&gt;"
+ESCAPED_END_TAG = "&lt;/haystack_content_part&gt;"
+
+
+def _escape_sentinel_tags(value: object) -> str:
+    """
+    Jinja2 `finalize` callback that prevents sentinel tag injection.
+
+    Called automatically on every `{{ }}` expression result during template rendering.
+    Legitimate structured content from the `templatize_part` filter is wrapped in `Markup` and passes.
+    Any other value containing sentinel tags has those tags replaced with harmless HTML entities so that
+    `_parse_content_parts` will not treat them as structured content.
+    """
+    if isinstance(value, Markup):
+        return value
+
+    return str(value).replace(START_TAG, ESCAPED_START_TAG).replace(END_TAG, ESCAPED_END_TAG)
 
 
 class ChatMessageExtension(Extension):
@@ -66,7 +87,12 @@ class ChatMessageExtension(Extension):
 
     tags = {"message"}
 
-    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
+    def __init__(self, environment: Any) -> None:
+        super().__init__(environment)
+        environment.finalize = _escape_sentinel_tags
+        environment.filters["templatize_part"] = templatize_part
+
+    def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
         """
         Parse the message tag and its attributes in the Jinja2 template.
 
@@ -120,7 +146,7 @@ class ChatMessageExtension(Extension):
             body,
         ).set_lineno(lineno)
 
-    def _build_chat_message_json(self, role: str, name: Optional[str], meta: dict, caller: Callable[[], str]) -> str:
+    def _build_chat_message_json(self, role: str, name: str | None, meta: dict, caller: Callable[[], str]) -> str:
         """
         Build a ChatMessage object from template content and serialize it to a JSON string.
 
@@ -205,7 +231,7 @@ class ChatMessageExtension(Extension):
 
     @staticmethod
     def _validate_build_chat_message(
-        parts: list[ChatMessageContentT], role: str, meta: dict, name: Optional[str] = None
+        parts: list[ChatMessageContentT], role: str, meta: dict, name: str | None = None
     ) -> ChatMessage:
         """
         Validate the parts of a chat message and build a ChatMessage object.
@@ -221,9 +247,11 @@ class ChatMessageExtension(Extension):
         """
 
         if role == "user":
-            valid_parts = [part for part in parts if isinstance(part, (TextContent, str, ImageContent))]
+            valid_parts = [part for part in parts if isinstance(part, (TextContent, str, ImageContent, FileContent))]
             if len(parts) != len(valid_parts):
-                raise ValueError("User message must contain only TextContent, string or ImageContent parts.")
+                raise ValueError(
+                    "User message must contain only TextContent, string, ImageContent or FileContent parts."
+                )
             return ChatMessage.from_user(meta=meta, name=name, content_parts=valid_parts)
 
         if role == "system":
@@ -266,12 +294,12 @@ class ChatMessageExtension(Extension):
         raise ValueError(f"Unsupported role: {role}")
 
 
-def templatize_part(value: ChatMessageContentT) -> str:
+def templatize_part(value: ChatMessageContentT) -> Markup:
     """
     Jinja filter to convert an ChatMessageContentT object into JSON string wrapped in special XML content tags.
 
     :param value: The ChatMessageContentT object to convert
-    :return: A JSON string wrapped in special XML content tags
+    :return: A JSON string wrapped in special XML content tags marked as safe
     :raises ValueError: If the value is not an instance of ChatMessageContentT
     """
-    return f"{START_TAG}{json.dumps(_serialize_content_part(value))}{END_TAG}"
+    return Markup(f"{START_TAG}{json.dumps(_serialize_content_part(value))}{END_TAG}")

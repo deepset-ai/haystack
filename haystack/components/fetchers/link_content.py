@@ -4,9 +4,11 @@
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from fnmatch import fnmatch
-from typing import Callable, Optional, cast
+from typing import Any, cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -22,7 +24,6 @@ with LazyImport("Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_im
 
 logger = logging.getLogger(__name__)
 
-
 DEFAULT_USER_AGENT = f"haystack/LinkContentFetcher/{__version__}"
 
 REQUEST_HEADERS = {
@@ -31,6 +32,25 @@ REQUEST_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
     "referer": "https://www.google.com/",
 }
+
+
+def _merge_headers(*args: dict[str, str]) -> dict[str, str]:
+    """
+    Merge a list of dict using case-insensitively
+
+    :param args: a list of dict to merge
+    :returns: The merged dict
+    """
+    merged = {}
+    keymap = {}
+
+    for d in args:
+        for k, v in d.items():
+            kl = k.lower()
+            keymap[kl] = k
+            merged[kl] = v
+
+    return {keymap[kl]: v for kl, v in merged.items()}
 
 
 def _text_content_handler(response: httpx.Response) -> ByteStream:
@@ -92,16 +112,16 @@ class LinkContentFetcher:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         raise_on_failure: bool = True,
-        user_agents: Optional[list[str]] = None,
+        user_agents: list[str] | None = None,
         retry_attempts: int = 2,
         timeout: int = 3,
         http2: bool = False,
-        client_kwargs: Optional[dict] = None,
-        request_headers: Optional[dict[str, str]] = None,
-    ):
+        client_kwargs: dict | None = None,
+        request_headers: dict[str, str] | None = None,
+    ) -> None:
         """
         Initializes the component.
 
@@ -168,19 +188,25 @@ class LinkContentFetcher:
             # This method is invoked only after failed requests (exception raised)
             after=self._switch_user_agent,
         )
-        def get_response(url):
-            # Build headers with precedence:
-            # client defaults -> component defaults -> user-provided -> rotating UA
-            base = dict(self._client.headers)
-            headers = {**base, **REQUEST_HEADERS, **self.request_headers}
-            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]  # rotation wins
-            response = self._client.get(url, headers=headers)
+        def get_response(url: str) -> httpx.Response:
+            response = self._client.get(url, headers=self._get_headers())
             response.raise_for_status()
             return response
 
         self._get_response: Callable = get_response
 
-    def __del__(self):
+    def _get_headers(self) -> dict[str, str]:
+        """
+        Build headers with precedence
+
+        client defaults -> component defaults -> user-provided -> rotating UA
+        """
+        base = dict(self._client.headers)
+        return _merge_headers(
+            base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
+        )
+
+    def __del__(self) -> None:
         """
         Clean up resources when the component is deleted.
 
@@ -198,7 +224,7 @@ class LinkContentFetcher:
             pass
 
     @component.output_types(streams=list[ByteStream])
-    def run(self, urls: list[str]):
+    def run(self, urls: list[str]) -> dict[str, Any]:
         """
         Fetches content from a list of URLs and returns a list of extracted content streams.
 
@@ -223,7 +249,7 @@ class LinkContentFetcher:
         if len(urls) == 1:
             stream_metadata, stream = self._fetch(urls[0])
             stream.meta.update(stream_metadata)
-            stream.mime_type = stream.meta.get("content_type", None)
+            stream = replace(stream, mime_type=stream.meta.get("content_type", None))
             streams.append(stream)
         else:
             with ThreadPoolExecutor() as executor:
@@ -232,13 +258,13 @@ class LinkContentFetcher:
             for stream_metadata, stream in results:  # type: ignore
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
-                    stream.mime_type = stream.meta.get("content_type", None)
+                    stream = replace(stream, mime_type=stream.meta.get("content_type", None))
                     streams.append(stream)
 
         return {"streams": streams}
 
     @component.output_types(streams=list[ByteStream])
-    async def run_async(self, urls: list[str]):
+    async def run_async(self, urls: list[str]) -> dict[str, Any]:
         """
         Asynchronously fetches content from a list of URLs and returns a list of extracted content streams.
 
@@ -273,11 +299,11 @@ class LinkContentFetcher:
             # At this point, result is not an exception, so we need to cast it to the correct type for mypy
             if not isinstance(result, Exception):  # Runtime check
                 # Use cast to tell mypy that result is the tuple type returned by _fetch_async
-                result_tuple = cast(tuple[Optional[dict[str, str]], Optional[ByteStream]], result)
+                result_tuple = cast(tuple[dict[str, str] | None, ByteStream | None], result)
                 stream_metadata, stream = result_tuple
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
-                    stream.mime_type = stream.meta.get("content_type", None)
+                    stream = replace(stream, mime_type=stream.meta.get("content_type", None))
                     streams.append(stream)
 
         return {"streams": streams}
@@ -316,7 +342,7 @@ class LinkContentFetcher:
 
     async def _fetch_async(
         self, url: str, client: httpx.AsyncClient
-    ) -> tuple[Optional[dict[str, str]], Optional[ByteStream]]:
+    ) -> tuple[dict[str, str] | None, ByteStream | None]:
         """
         Asynchronously fetches content from a URL and returns it as a ByteStream.
 
@@ -325,8 +351,8 @@ class LinkContentFetcher:
         :returns: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
         """
         content_type: str = "text/html"
-        stream: Optional[ByteStream] = None
-        metadata: Optional[dict[str, str]] = None
+        stream: ByteStream | None = None
+        metadata: dict[str, str] | None = None
 
         try:
             response = await self._get_response_async(url, client)
@@ -346,7 +372,7 @@ class LinkContentFetcher:
 
         return metadata, stream
 
-    def _fetch_with_exception_suppression(self, url: str) -> tuple[Optional[dict[str, str]], Optional[ByteStream]]:
+    def _fetch_with_exception_suppression(self, url: str) -> tuple[dict[str, str] | None, ByteStream | None]:
         """
         Fetches content from a URL and returns it as a ByteStream.
 
@@ -378,10 +404,7 @@ class LinkContentFetcher:
 
         while attempt <= self.retry_attempts:
             try:
-                base = dict(client.headers)
-                headers = {**base, **REQUEST_HEADERS, **self.request_headers}
-                headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=self._get_headers())
                 response.raise_for_status()
                 return response
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
@@ -401,7 +424,7 @@ class LinkContentFetcher:
         # This should never happen, but just in case
         raise httpx.RequestError("Failed to get response after retries", request=None)
 
-    def _get_content_type(self, response: httpx.Response):
+    def _get_content_type(self, response: httpx.Response) -> str:
         """
         Get the content type of the response.
 
@@ -434,7 +457,7 @@ class LinkContentFetcher:
         # default handler
         return self.handlers["text/plain"]
 
-    def _switch_user_agent(self, retry_state: Optional[RetryCallState] = None) -> None:
+    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:  # noqa: ARG002
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
 

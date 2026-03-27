@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
+from typing import Any
 
 from haystack.lazy_imports import LazyImport
 from haystack.tracing import Span, Tracer
@@ -21,6 +22,7 @@ _COMPONENT_RUN_OPERATION_NAME = "haystack.component.run"
 
 class DatadogSpan(Span):
     def __init__(self, span: "ddSpan") -> None:
+        """Creates an instance of DatadogSpan."""
         self._span = span
 
     def set_tag(self, key: str, value: Any) -> None:
@@ -31,7 +33,9 @@ class DatadogSpan(Span):
         :param value: the value of the tag.
         """
         coerced_value = tracing_utils.coerce_tag_value(value)
-        self._span.set_tag(key, coerced_value)
+        # Although set_tag declares value: Optional[str], its implementation accepts other types.
+        # https://github.com/DataDog/dd-trace-py/blob/200b33c5221db1af975f6f7017738cd99a2da4a4/ddtrace/_trace/span.py
+        self._span.set_tag(key, coerced_value)  # type: ignore[arg-type]
 
     def raw_span(self) -> Any:
         """
@@ -43,29 +47,19 @@ class DatadogSpan(Span):
 
     def get_correlation_data_for_logs(self) -> dict[str, Any]:
         """Return a dictionary with correlation data for logs."""
-        raw_span = self.raw_span()
-        if not raw_span:
-            return {}
 
         # https://docs.datadoghq.com/tracing/other_telemetry/connect_logs_and_traces/python/#no-standard-library-logging
-        trace_id, span_id = (str((1 << 64) - 1 & raw_span.trace_id), raw_span.span_id)
-
-        return {
-            "dd.trace_id": trace_id,
-            "dd.span_id": span_id,
-            "dd.service": ddtrace.config.service or "",
-            "dd.env": ddtrace.config.env or "",
-            "dd.version": ddtrace.config.version or "",
-        }
+        return ddtrace.tracer.get_log_correlation_context()
 
 
 class DatadogTracer(Tracer):
     def __init__(self, tracer: "ddTracer") -> None:
+        """Creates an instance of DatadogTracer."""
         ddtrace_import.check()
         self._tracer = tracer
 
     @staticmethod
-    def _get_span_resource_name(operation_name: str, tags: Optional[dict[str, Any]]) -> Optional[str]:
+    def _get_span_resource_name(operation_name: str, tags: dict[str, Any] | None) -> str | None:
         """
         Get the resource name for the Datadog span.
         """
@@ -79,7 +73,10 @@ class DatadogTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self,
+        operation_name: str,
+        tags: dict[str, Any] | None = None,
+        parent_span: Span | None = None,  # noqa: ARG002
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         resource_name = self._get_span_resource_name(operation_name, tags)
@@ -91,7 +88,7 @@ class DatadogTracer(Tracer):
 
             yield custom_span
 
-    def current_span(self) -> Optional[Span]:
+    def current_span(self) -> Span | None:
         """Return the current active span"""
         current_span = self._tracer.current_span()
         if current_span is None:

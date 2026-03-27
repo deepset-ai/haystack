@@ -4,16 +4,21 @@
 
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Iterable, Optional, Union
+from typing import Any
 
 
 class SecretType(Enum):
+    """
+    Type of secret: token (API key) or environment variable.
+    """
+
     TOKEN = "token"
     ENV_VAR = "env_var"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -54,7 +59,7 @@ class Secret(ABC):
         return TokenSecret(_token=token)
 
     @staticmethod
-    def from_env_var(env_vars: Union[str, list[str]], *, strict: bool = True) -> "Secret":
+    def from_env_var(env_vars: str | list[str], *, strict: bool = True) -> "Secret":
         """
         Create an environment variable-based secret. Accepts one or more environment variables.
 
@@ -101,7 +106,7 @@ class Secret(ABC):
         return secret_map[secret_type]._from_dict(dict)  # type: ignore
 
     @abstractmethod
-    def resolve_value(self) -> Optional[Any]:
+    def resolve_value(self) -> Any | None:
         """
         Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
 
@@ -139,7 +144,7 @@ class TokenSecret(Secret):
     _token: str
     _type: SecretType = SecretType.TOKEN
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__init__()
         assert self._type == SecretType.TOKEN
 
@@ -157,7 +162,7 @@ class TokenSecret(Secret):
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
 
-    def resolve_value(self) -> Optional[Any]:
+    def resolve_value(self) -> Any | None:
         """Return the token."""
         return self._token
 
@@ -179,7 +184,7 @@ class EnvVarSecret(Secret):
     _strict: bool = True
     _type: SecretType = SecretType.ENV_VAR
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__init__()
         assert self._type == SecretType.ENV_VAR
 
@@ -193,7 +198,7 @@ class EnvVarSecret(Secret):
     def _from_dict(dictionary: dict[str, Any]) -> "Secret":
         return EnvVarSecret(tuple(dictionary["env_vars"]), _strict=dictionary["strict"])
 
-    def resolve_value(self) -> Optional[Any]:
+    def resolve_value(self) -> Any | None:
         """Resolve the secret to an atomic value. The semantics of the value is secret-dependent."""
         out = None
         for env_var in self._env_vars:

@@ -89,63 +89,10 @@ class TestSASEvaluator:
         with pytest.raises(ValueError):
             evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
 
-    def test_run_not_warmed_up(self):
-        evaluator = SASEvaluator()
-        ground_truths = [
-            "A construction budget of US $2.3 billion",
-            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
-            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
-        ]
-        predictions = [
-            "A construction budget of US $2.3 billion",
-            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
-            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
-        ]
-        with pytest.raises(RuntimeError):
-            evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
-
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_matching_predictions(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        evaluator = SASEvaluator()
-        ground_truths = [
-            "A construction budget of US $2.3 billion",
-            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
-            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
-        ]
-        predictions = [
-            "A construction budget of US $2.3 billion",
-            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
-            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
-        ]
-        evaluator.warm_up()
-        result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
-
-        assert len(result) == 2
-        assert result["score"] == pytest.approx(1.0)
-        assert result["individual_scores"] == pytest.approx([1.0, 1.0, 1.0])
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_single_prediction(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        evaluator = SASEvaluator()
-
-        ground_truths = ["US $2.3 billion"]
-        evaluator.warm_up()
-        result = evaluator.run(
-            ground_truth_answers=ground_truths, predicted_answers=["A construction budget of US $2.3 billion"]
-        )
-        assert len(result) == 2
-        assert result["score"] == pytest.approx(0.689089, abs=1e-5)
-        assert result["individual_scores"] == pytest.approx([0.689089], abs=1e-5)
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_mismatched_predictions(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        evaluator = SASEvaluator()
+    def test_run_with_bi_encoder_model(self, del_hf_env_vars):
+        evaluator = SASEvaluator("sentence-transformers-testing/stsb-bert-tiny-safetensors")
         ground_truths = [
             "US $2.3 billion",
             "Paris's cultural magnificence is symbolized by the Eiffel Tower",
@@ -156,17 +103,15 @@ class TestSASEvaluator:
             "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
-        evaluator.warm_up()
         result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
         assert len(result) == 2
-        assert result["score"] == pytest.approx(0.8227189)
-        assert result["individual_scores"] == pytest.approx([0.689089, 0.870389, 0.908679], abs=1e-5)
+        assert result["score"] == pytest.approx(0.912335)
+        assert result["individual_scores"] == pytest.approx([0.855047, 0.907907, 0.974050], abs=1e-5)
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_run_with_bi_encoder_model(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        evaluator = SASEvaluator(model="sentence-transformers/all-mpnet-base-v2")
+    def test_run_with_cross_encoder_model(self, del_hf_env_vars):
+        evaluator = SASEvaluator(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
         ground_truths = [
             "A construction budget of US $2.3 billion",
             "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
@@ -177,31 +122,7 @@ class TestSASEvaluator:
             "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
             "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
         ]
-        evaluator.warm_up()
         result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
         assert len(result) == 2
-        assert result["score"] == pytest.approx(1.0)
-        assert result["individual_scores"] == pytest.approx([1.0, 1.0, 1.0])
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_cross_encoder_model(self, monkeypatch):
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        evaluator = SASEvaluator(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
-        ground_truths = [
-            "A construction budget of US $2.3 billion",
-            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
-            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
-        ]
-        predictions = [
-            "A construction budget of US $2.3 billion",
-            "The Eiffel Tower, completed in 1889, symbolizes Paris's cultural magnificence.",
-            "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
-        ]
-        evaluator.warm_up()
-        result = evaluator.run(ground_truth_answers=ground_truths, predicted_answers=predictions)
-        assert len(result) == 2
-        assert result["score"] == pytest.approx(0.999967, abs=1e-5)
-        assert result["individual_scores"] == pytest.approx(
-            [0.9999765157699585, 0.999968409538269, 0.9999572038650513], abs=1e-5
-        )
+        assert result["score"] == pytest.approx(0.938108, abs=1e-5)
+        assert result["individual_scores"] == pytest.approx([0.930112, 0.9431504, 0.9410622], abs=1e-5)

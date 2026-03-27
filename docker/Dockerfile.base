@@ -7,29 +7,26 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    git
+    apt-get install -y --no-install-recommends git
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
 WORKDIR /opt/haystack
 
 # Use a virtualenv we can copy over the next build stage
-RUN python3 -m venv --system-site-packages /opt/venv
+# Note: we use venv and not uv to create the virtualenv to make sure that the created virtualenv is accessible by pip
+# and prevent breaking changes in the image. uv can still be used to speed up installation.
+RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade setuptools due to https://nvd.nist.gov/vuln/detail/CVE-2022-40897
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -U setuptools && \
-    pip install --no-cache-dir .
+RUN uv pip install --no-cache-dir -U setuptools && \
+    uv pip install --no-cache-dir .
 
 FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
-COPY --from=deepset/xpdf:latest /opt/pdftotext /usr/local/bin
-
-# pdftotext requires fontconfig runtime
-RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"

@@ -57,7 +57,7 @@ class DocumentNDCGEvaluator:
 
         individual_scores = []
 
-        for gt_docs, ret_docs in zip(ground_truth_documents, retrieved_documents):
+        for gt_docs, ret_docs in zip(ground_truth_documents, retrieved_documents, strict=True):
             dcg = self.calculate_dcg(gt_docs, ret_docs)
             idcg = self.calculate_idcg(gt_docs)
             ndcg = dcg / idcg if idcg > 0 else 0
@@ -68,7 +68,7 @@ class DocumentNDCGEvaluator:
         return {"score": score, "individual_scores": individual_scores}
 
     @staticmethod
-    def validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]]):
+    def validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]]) -> None:
         """
         Validate the input parameters.
 
