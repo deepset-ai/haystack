@@ -77,40 +77,6 @@ def custom_tool_parser(text: str) -> list[ToolCall] | None:
     return [ToolCall(tool_name="weather", arguments={"city": "Berlin"})]
 
 
-@pytest.fixture
-def async_generator(model_info_mock, mock_pipeline_with_tokenizer):
-    generator = HuggingFaceLocalChatGenerator(model="mocked-model")
-    generator.pipeline = mock_pipeline_with_tokenizer
-    yield generator
-    generator.shutdown()
-
-
-@pytest.fixture
-def tools_generator(model_info_mock, mock_pipeline_with_tokenizer, tools):
-    generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
-    mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}])
-    mock_pipeline.tokenizer = mock_pipeline_with_tokenizer.tokenizer
-    generator.pipeline = mock_pipeline
-    yield generator
-    generator.shutdown()
-
-
-@pytest.fixture
-def streaming_generator(model_info_mock, mock_pipeline_with_tokenizer):
-    def mock_pipeline_call(*args, **kwargs):
-        streamer = kwargs.get("streamer")
-        if streamer:
-            streamer.on_finalized_text("Berlin", stream_end=False)
-            streamer.on_finalized_text(" is cool", stream_end=True)
-        return [{"generated_text": "Berlin is cool"}]
-
-    mock_pipeline_with_tokenizer.side_effect = mock_pipeline_call
-    generator = HuggingFaceLocalChatGenerator(model="test-model")
-    generator.pipeline = mock_pipeline_with_tokenizer
-    yield generator
-    generator.shutdown()
-
-
 class TestHuggingFaceLocalChatGenerator:
     def test_initialize_with_valid_model_and_generation_parameters(self, model_info_mock):
         model = "HuggingFaceH4/zephyr-7b-alpha"
@@ -682,21 +648,31 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     """Async tests for HuggingFaceLocalChatGenerator"""
 
     @pytest.mark.asyncio
-    async def test_run_async(self, async_generator, chat_messages):
+    async def test_run_async(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         """Test basic async functionality"""
-        results = await async_generator.run_async(messages=chat_messages)
+        generator = HuggingFaceLocalChatGenerator(model="mocked-model")
+        generator.pipeline = mock_pipeline_with_tokenizer
+
+        results = await generator.run_async(messages=chat_messages)
 
         assert "replies" in results
         assert isinstance(results["replies"][0], ChatMessage)
         chat_message = results["replies"][0]
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
+        generator.shutdown()
 
     @pytest.mark.asyncio
-    async def test_run_async_with_tools(self, tools_generator):
+    async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test async functionality with tools"""
+        generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
+        # Create a new mock with return_value set in constructor to avoid thread-safety issues
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}])
+        # Copy the tokenizer from the fixture to the new mock
+        mock_pipeline.tokenizer = mock_pipeline_with_tokenizer.tokenizer
+        generator.pipeline = mock_pipeline
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-        results = await tools_generator.run_async(messages=messages)
+        results = await generator.run_async(messages=messages)
 
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -705,18 +681,23 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Berlin"}
+        generator.shutdown()
 
     @pytest.mark.asyncio
-    async def test_concurrent_async_requests(self, async_generator, chat_messages):
+    async def test_concurrent_async_requests(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         """Test handling of multiple concurrent async requests"""
+        generator = HuggingFaceLocalChatGenerator(model="mocked-model")
+        generator.pipeline = mock_pipeline_with_tokenizer
+
         # Create multiple concurrent requests
-        tasks = [async_generator.run_async(messages=chat_messages) for _ in range(5)]
+        tasks = [generator.run_async(messages=chat_messages) for _ in range(5)]
         results = await asyncio.gather(*tasks)
 
         for result in results:
             assert "replies" in result
             assert isinstance(result["replies"][0], ChatMessage)
             assert result["replies"][0].text == "Berlin is cool"
+        generator.shutdown()
 
     @pytest.mark.asyncio
     async def test_async_error_handling(self, model_info_mock, mock_pipeline_with_tokenizer):
@@ -786,16 +767,29 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert data["init_parameters"]["tools"] == expected_tools_data
 
     @pytest.mark.asyncio
-    async def test_run_async_with_streaming_callback(self, streaming_generator):
+    async def test_run_async_with_streaming_callback(self, model_info_mock, mock_pipeline_with_tokenizer):
         streaming_chunks = []
 
         async def streaming_callback(chunk: StreamingChunk) -> None:
             streaming_chunks.append(chunk)
 
-        streaming_generator.streaming_callback = streaming_callback
+        # Create a mock that simulates streaming behavior
+        def mock_pipeline_call(*args, **kwargs):
+            streamer = kwargs.get("streamer")
+            if streamer:
+                # Simulate streaming chunks
+                streamer.on_finalized_text("Berlin", stream_end=False)
+                streamer.on_finalized_text(" is cool", stream_end=True)
+            return [{"generated_text": "Berlin is cool"}]
+
+        # Setup the mock pipeline with streaming simulation
+        mock_pipeline_with_tokenizer.side_effect = mock_pipeline_call
+
+        generator = HuggingFaceLocalChatGenerator(model="test-model", streaming_callback=streaming_callback)
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         messages = [ChatMessage.from_user("Test message")]
-        response = await streaming_generator.run_async(messages)
+        response = await generator.run_async(messages)
 
         # Verify streaming chunks were collected
         assert len(streaming_chunks) == 2
@@ -808,6 +802,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
         assert response["replies"][0].text == "Berlin is cool"
+        generator.shutdown()
 
     @pytest.mark.integration
     @pytest.mark.slow

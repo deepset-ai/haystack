@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import os
 
 import pytest
@@ -9,13 +10,6 @@ from openai.types import CreateEmbeddingResponse, Embedding
 
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.utils.auth import Secret
-
-
-@pytest.fixture
-async def openai_text_embedder():
-    embedder = OpenAITextEmbedder(model="text-embedding-ada-002", prefix="prefix ", suffix=" suffix")
-    yield embedder
-    await embedder.async_client.close()
 
 
 class TestOpenAITextEmbedder:
@@ -210,8 +204,9 @@ class TestOpenAITextEmbedder:
     @pytest.mark.asyncio
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    async def test_run_async(self, openai_text_embedder):
-        result = await openai_text_embedder.run_async(text="The food was delicious")
+    async def test_run_async(self):
+        embedder = OpenAITextEmbedder(model="text-embedding-ada-002", prefix="prefix ", suffix=" suffix")
+        result = await embedder.run_async(text="The food was delicious")
 
         assert len(result["embedding"]) == 1536
         assert all(isinstance(x, float) for x in result["embedding"])
@@ -221,3 +216,7 @@ class TestOpenAITextEmbedder:
         )
 
         assert result["meta"]["usage"] == {"prompt_tokens": 6, "total_tokens": 6}, "Usage information does not match"
+
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await embedder.async_client.close()

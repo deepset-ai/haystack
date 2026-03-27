@@ -23,33 +23,6 @@ set_all_seeds(0)
 tracing.disable_tracing()
 
 
-# @pytest.fixture(autouse=True)
-# def _check_thread_leaks(request):
-#     """Detect thread leaks after each test, including fixture teardown.
-
-#     Implemented as a fixture rather than a pytest_runtest_call hook so that
-#     fixture teardowns (e.g. store.shutdown()) complete before the leak check.
-#     Conftest fixtures are set up before test-file fixtures, so they tear down
-#     after them — meaning this check runs after all other fixture teardowns.
-#     """
-#     try:
-#         from pyleak.combined import CombinedLeakDetector, PyLeakConfig
-#         from pyleak.utils import CallerContext
-#     except ImportError:
-#         yield
-#         return
-
-#     config = PyLeakConfig.from_marker_args({"threads": True})
-#     caller_context = CallerContext(
-#         filename=str(request.node.fspath) if request.node.fspath else "<unknown>",
-#         name=request.node.name,
-#         lineno=None,
-#     )
-
-#     with CombinedLeakDetector(config=config, is_async=False, caller_context=caller_context):
-#         yield
-
-
 @pytest.fixture()
 def in_memory_doc_store():
     store = InMemoryDocumentStore()

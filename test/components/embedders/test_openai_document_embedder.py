@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import os
 from unittest.mock import Mock, patch
 
@@ -11,15 +12,6 @@ from openai import APIError
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.utils.auth import Secret
-
-
-@pytest.fixture
-async def openai_document_embedder():
-    embedder = OpenAIDocumentEmbedder(
-        model="text-embedding-ada-002", meta_fields_to_embed=["topic"], embedding_separator=" | "
-    )
-    yield embedder
-    await embedder.async_client.close()
 
 
 class TestOpenAIDocumentEmbedder:
@@ -306,13 +298,16 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async(self, openai_document_embedder):
+    async def test_run_async(self):
+        embedder = OpenAIDocumentEmbedder(
+            model="text-embedding-ada-002", meta_fields_to_embed=["topic"], embedding_separator=" | "
+        )
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
 
-        result = await openai_document_embedder.run_async(documents=docs)
+        result = await embedder.run_async(documents=docs)
         documents_with_embeddings = result["documents"]
 
         assert isinstance(documents_with_embeddings, list)
@@ -330,3 +325,7 @@ class TestOpenAIDocumentEmbedder:
         )
 
         assert result["meta"]["usage"] == {"prompt_tokens": 15, "total_tokens": 15}, "Usage information does not match"
+
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await embedder.async_client.close()
