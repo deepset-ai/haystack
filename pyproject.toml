@@ -153,8 +153,6 @@ dependencies = [
   "pip",                     # mypy needs pip to install missing stub packages
   "ipython",
   "colorama==0.4.6",         # Pipeline checkpoints test
-  "anyio",                   # needed for asynchronous Path testing
-  "pyleak"
 ]
 
 [tool.hatch.envs.test.scripts]
