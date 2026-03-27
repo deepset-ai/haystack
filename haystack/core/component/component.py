@@ -230,7 +230,7 @@ class ComponentMeta(type):
 
     @staticmethod
     def _parse_and_set_input_sockets(component_cls: type, instance: Any) -> None:
-        def inner(method, sockets):
+        def inner(method: Callable[..., Any], sockets: Sockets) -> inspect.Signature:
             from inspect import Parameter
 
             run_signature = inspect.signature(method)
@@ -291,7 +291,7 @@ class ComponentMeta(type):
                     f"Parameters of 'run' and 'run_async' methods must be the same.\nDifferences found:\n{sig_diff}"
                 )
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> Any:
         """
         This method is called when clients instantiate a Component and runs before __new__ and __init__.
         """
@@ -417,8 +417,8 @@ class _Component:
         ComponentError: if the class provided has no `run()` method or otherwise doesn't respect the component contract.
     """
 
-    def __init__(self):
-        self.registry = {}
+    def __init__(self) -> None:
+        self.registry: dict[str, type] = {}
 
     def set_input_type(
         self,
@@ -446,7 +446,7 @@ class _Component:
             instance.__haystack_input__ = Sockets(instance, {}, InputSocket)  # type: ignore
         instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)  # type: ignore
 
-    def set_input_types(self, instance, **types):
+    def set_input_types(self, instance: Any, **types: type[Any]) -> None:
         """
         Method that specifies the input types when 'kwargs' is passed to the run method.
 
@@ -456,7 +456,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
@@ -473,7 +473,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_input_types(self, value_1=str, value_2=str)
                 ...
 
@@ -496,7 +496,7 @@ class _Component:
             instance, {name: InputSocket(name=name, type=type_) for name, type_ in types.items()}, InputSocket
         )
 
-    def set_output_types(self, instance, **types):
+    def set_output_types(self, instance: Any, **types: type[Any]) -> None:
         """
         Method that specifies the output types when the 'run' method is not decorated with 'component.output_types'.
 
@@ -506,7 +506,7 @@ class _Component:
         @component
         class MyComponent:
 
-            def __init__(self, value: int):
+            def __init__(self, value: int) -> None:
                 component.set_output_types(self, output_1=int, output_2=str)
                 ...
 
@@ -579,7 +579,7 @@ class _Component:
         if not hasattr(cls, "run"):
             raise ComponentError(f"{cls.__name__} must have a 'run()' method. See the docs for more information.")
 
-        def copy_class_namespace(namespace):
+        def copy_class_namespace(namespace: dict[str, Any]) -> None:
             """
             This is the callback that `typing.new_class` will use to populate the newly created class.
 

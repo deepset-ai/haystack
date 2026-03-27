@@ -195,4 +195,3 @@ their `meta` will be added to the output Documents.
 A dictionary with the following keys:
 - `documents`: A list of created Documents.
 - `raw_paddleocr_responses`: A list of raw PaddleOCR API responses.
-

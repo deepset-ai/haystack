@@ -206,4 +206,3 @@ If not provided, uses the value set during initialization.
 A dictionary containing:
 - `"dataframe"`: A Pandas DataFrame with the query results.
 - `"table"`: A Markdown-formatted string representation of the DataFrame.
-

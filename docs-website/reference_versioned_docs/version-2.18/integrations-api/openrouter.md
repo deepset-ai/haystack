@@ -126,4 +126,3 @@ Serialize this component to a dictionary.
 **Returns**:
 
 The serialized component as a dictionary.
-

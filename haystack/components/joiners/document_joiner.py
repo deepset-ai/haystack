@@ -25,7 +25,7 @@ class JoinMode(Enum):
     RECIPROCAL_RANK_FUSION = "reciprocal_rank_fusion"
     DISTRIBUTION_BASED_RANK_FUSION = "distribution_based_rank_fusion"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -90,7 +90,7 @@ class DocumentJoiner:
         weights: list[float] | None = None,
         top_k: int | None = None,
         sort_by_score: bool = True,
-    ):
+    ) -> None:
         """
         Creates a DocumentJoiner component.
 
@@ -127,7 +127,7 @@ class DocumentJoiner:
         self.sort_by_score = sort_by_score
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: Variadic[list[Document]], top_k: int | None = None):
+    def run(self, documents: Variadic[list[Document]], top_k: int | None = None) -> dict[str, Any]:
         """
         Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 

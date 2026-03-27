@@ -190,4 +190,3 @@ Create a metric type from a string.
 **Returns**:
 
 The metric.
-

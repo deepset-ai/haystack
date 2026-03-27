@@ -684,4 +684,3 @@ Process a GitHub repository path and return documents.
 **Returns**:
 
 Dictionary containing list of documents
-

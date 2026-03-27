@@ -52,7 +52,7 @@ __init__(
     page_layout: Literal["natural", "single_column"] = "natural",
     threshold_y: float | None = 0.05,
     store_full_path: bool = False,
-)
+) -> None
 ```
 
 Creates an AzureOCRDocumentConverter component.
@@ -85,7 +85,7 @@ Creates an AzureOCRDocumentConverter component.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
@@ -101,7 +101,7 @@ Convert a list of files to Documents using Azure's Document Intelligence service
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of created Documents
 - `raw_azure_response`: List of raw Azure responses used to create the Documents
 
@@ -164,7 +164,7 @@ __init__(
     conversion_mode: Literal["file", "row"] = "file",
     delimiter: str = ",",
     quotechar: str = '"'
-)
+) -> None
 ```
 
 Creates a CSVToDocument component.
@@ -189,7 +189,7 @@ run(
     *,
     content_column: str | None = None,
     meta: dict[str, Any] | list[dict[str, Any]] | None = None
-)
+) -> dict[str, Any]
 ```
 
 Converts CSV files to a Document (file mode) or to one Document per row (row mode).
@@ -209,7 +209,7 @@ Converts CSV files to a Document (file mode) or to one Document per row (row mod
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Created documents
 
 ## docx
@@ -290,7 +290,7 @@ __init__(
     table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
     link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
     store_full_path: bool = False,
-)
+) -> None
 ```
 
 Create a DOCXToDocument component.
@@ -340,7 +340,7 @@ Deserializes the component from a dictionary.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Converts DOCX files to Documents.
@@ -357,7 +357,7 @@ Converts DOCX files to Documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Created Documents
 
 ## file_to_file_content
@@ -436,7 +436,7 @@ print(documents[0].content)
 __init__(
     extraction_kwargs: dict[str, Any] | None = None,
     store_full_path: bool = False,
-)
+) -> None
 ```
 
 Create an HTMLToDocument component.
@@ -484,7 +484,7 @@ run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
     extraction_kwargs: dict[str, Any] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Converts a list of HTML files to Documents.
@@ -502,7 +502,7 @@ Converts a list of HTML files to Documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Created Documents
 
 ## image/document_to_image
@@ -561,7 +561,7 @@ __init__(
     root_path: str | None = None,
     detail: Literal["auto", "high", "low"] | None = None,
     size: tuple[int, int] | None = None
-)
+) -> None
 ```
 
 Initialize the DocumentToImageContent component.
@@ -638,7 +638,7 @@ print(documents)
 #### __init__
 
 ```python
-__init__(*, store_full_path: bool = False)
+__init__(*, store_full_path: bool = False) -> None
 ```
 
 Initialize the ImageFileToDocument component.
@@ -710,7 +710,7 @@ __init__(
     *,
     detail: Literal["auto", "high", "low"] | None = None,
     size: tuple[int, int] | None = None
-)
+) -> None
 ```
 
 Create the ImageFileToImageContent component.
@@ -791,7 +791,7 @@ __init__(
     detail: Literal["auto", "high", "low"] | None = None,
     size: tuple[int, int] | None = None,
     page_range: list[str | int] | None = None
-)
+) -> None
 ```
 
 Create the PDFToImageContent component.
@@ -929,7 +929,7 @@ __init__(
     content_key: str | None = None,
     extra_meta_fields: set[str] | Literal["*"] | None = None,
     store_full_path: bool = False,
-)
+) -> None
 ```
 
 Creates a JSONConverter component.
@@ -1002,7 +1002,7 @@ Deserializes the component from a dictionary.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Converts a list of JSON files to documents.
@@ -1018,7 +1018,7 @@ Converts a list of JSON files to documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of created documents.
 
 ## markdown
@@ -1047,7 +1047,7 @@ __init__(
     table_to_single_line: bool = False,
     progress_bar: bool = True,
     store_full_path: bool = False,
-)
+) -> None
 ```
 
 Create a MarkdownToDocument component.
@@ -1065,7 +1065,7 @@ Create a MarkdownToDocument component.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Converts a list of Markdown files to Documents.
@@ -1082,7 +1082,7 @@ Converts a list of Markdown files to Documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of created Documents
 
 ## msg
@@ -1208,16 +1208,20 @@ Usage example:
 
 ```python
 from haystack.components.converters import OpenAPIServiceToFunctions
+from haystack.dataclasses.byte_stream import ByteStream
 
 converter = OpenAPIServiceToFunctions()
-result = converter.run(sources=["path/to/openapi_definition.yaml"])
+spec = ByteStream.from_string(
+    '{"openapi":"3.0.0","info":{"title":"API","version":"1.0.0"},"paths":{"/search":{"get":{"operationId":"search","summary":"Search","parameters":[{"name":"q","in":"query","required":true,"schema":{"type":"string"}}]}}}}'
+)
+result = converter.run(sources=[spec])
 assert result["functions"]
 ```
 
 #### __init__
 
 ```python
-__init__()
+__init__() -> None
 ```
 
 Create an OpenAPIServiceToFunctions component.
@@ -1304,18 +1308,18 @@ The Component input will be `documents`.
 #### run
 
 ```python
-run(**kwargs)
+run(**kwargs: Any) -> dict[str, Any]
 ```
 
 Renders the Jinja template with the provided inputs.
 
 **Parameters:**
 
-- **kwargs** – Must contain all variables used in the `template` string.
+- **kwargs** (<code>Any</code>) – Must contain all variables used in the `template` string.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `output`: Rendered Jinja template.
 
 **Raises:**
@@ -1445,7 +1449,7 @@ see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-v
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Converts PDF files to Documents.
@@ -1462,7 +1466,7 @@ Converts PDF files to Documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Created Documents
 
 ## pptx
@@ -1489,7 +1493,7 @@ print(documents[0].content)
 __init__(
     store_full_path: bool = False,
     link_format: Literal["markdown", "plain", "none"] = "none",
-)
+) -> None
 ```
 
 Create a PPTXToDocument component.
@@ -1521,7 +1525,7 @@ Serializes the component to a dictionary.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, Any]
 ```
 
 Converts PPTX files to Documents.
@@ -1538,7 +1542,7 @@ Converts PPTX files to Documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Created Documents
 
 ## pypdf
@@ -1589,7 +1593,7 @@ __init__(
     layout_mode_strip_rotated: bool = True,
     layout_mode_font_height_weight: float = 1.0,
     store_full_path: bool = False
-)
+) -> None
 ```
 
 Create an PyPDFToDocument component.
@@ -1617,30 +1621,30 @@ Create an PyPDFToDocument component.
 #### to_dict
 
 ```python
-to_dict()
+to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
 
 **Returns:**
 
-- – Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
 #### from_dict
 
 ```python
-from_dict(data)
+from_dict(data: dict[str, Any]) -> PyPDFToDocument
 ```
 
 Deserializes the component from a dictionary.
 
 **Parameters:**
 
-- **data** – Dictionary with serialized data.
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with serialized data.
 
 **Returns:**
 
-- – Deserialized component.
+- <code>PyPDFToDocument</code> – Deserialized component.
 
 #### run
 
@@ -1648,7 +1652,7 @@ Deserializes the component from a dictionary.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, list[Document]]
 ```
 
 Converts PDF files to documents.
@@ -1664,7 +1668,7 @@ Converts PDF files to documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
 ## tika
@@ -1678,7 +1682,7 @@ Custom parser to extract pages from Tika XHTML content.
 #### handle_starttag
 
 ```python
-handle_starttag(tag: str, attrs: list[tuple])
+handle_starttag(tag: str, attrs: list[tuple[str, str | None]]) -> None
 ```
 
 Identify the start of a page div.
@@ -1686,7 +1690,7 @@ Identify the start of a page div.
 #### handle_endtag
 
 ```python
-handle_endtag(tag: str)
+handle_endtag(tag: str) -> None
 ```
 
 Identify the end of a page div.
@@ -1694,7 +1698,7 @@ Identify the end of a page div.
 #### handle_data
 
 ```python
-handle_data(data: str)
+handle_data(data: str) -> None
 ```
 
 Populate the page content.
@@ -1728,7 +1732,7 @@ print(documents[0].content)
 ```python
 __init__(
     tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False
-)
+) -> None
 ```
 
 Create a TikaDocumentConverter component.
@@ -1745,7 +1749,7 @@ Create a TikaDocumentConverter component.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, list[Document]]
 ```
 
 Converts files to Documents.
@@ -1762,7 +1766,7 @@ Converts files to Documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Created Documents
 
 ## txt
@@ -1790,7 +1794,7 @@ print(documents[0].content)
 #### __init__
 
 ```python
-__init__(encoding: str = 'utf-8', store_full_path: bool = False)
+__init__(encoding: str = 'utf-8', store_full_path: bool = False) -> None
 ```
 
 Creates a TextFileToDocument component.
@@ -1809,7 +1813,7 @@ Creates a TextFileToDocument component.
 run(
     sources: list[str | Path | ByteStream],
     meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-)
+) -> dict[str, list[Document]]
 ```
 
 Converts text files to documents.
@@ -1825,7 +1829,7 @@ Converts text files to documents.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of converted documents.
 
 ## xlsx
@@ -1866,7 +1870,7 @@ __init__(
     *,
     link_format: Literal["markdown", "plain", "none"] = "none",
     store_full_path: bool = False
-)
+) -> None
 ```
 
 Creates a XLSXToDocument component.

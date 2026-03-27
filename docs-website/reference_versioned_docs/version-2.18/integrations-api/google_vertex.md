@@ -998,7 +998,7 @@ Converts a batch of Document objects into a list of TextEmbeddingInput objects.
 **Arguments**:
 
 - `batch` _List[Document]_ - A list of Document objects to be converted.
-  
+
 
 **Returns**:
 
@@ -1041,7 +1041,7 @@ Generate embeddings for a batch of text strings.
 **Arguments**:
 
 - `batch` _List[str]_ - A list of text strings to be embedded.
-  
+
 
 **Returns**:
 
@@ -1219,4 +1219,3 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 Deserialized component.
-

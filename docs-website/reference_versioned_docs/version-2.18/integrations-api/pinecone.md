@@ -768,4 +768,3 @@ Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 **Returns**:
 
 Tuple of (list of unique values, total count of matching values).
-

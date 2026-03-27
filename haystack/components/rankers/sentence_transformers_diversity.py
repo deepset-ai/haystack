@@ -131,7 +131,7 @@ class SentenceTransformersDiversityRanker:
         tokenizer_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    ) -> None:
         """
         Initialize a SentenceTransformersDiversityRanker.
 
@@ -194,7 +194,7 @@ class SentenceTransformersDiversityRanker:
         self.config_kwargs = config_kwargs
         self.backend = backend
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -319,7 +319,7 @@ class SentenceTransformersDiversityRanker:
 
         return ranked_docs
 
-    def _embed_and_normalize(self, query, texts_to_embed):
+    def _embed_and_normalize(self, query: str, texts_to_embed: list[str]) -> tuple[Any, Any]:
         assert self.model is not None  # verified in run but mypy doesn't see it
 
         # Calculate embeddings
@@ -381,7 +381,7 @@ class SentenceTransformersDiversityRanker:
         return [documents[i] for i in selected]
 
     @staticmethod
-    def _check_lambda_threshold(lambda_threshold: float, strategy: DiversityRankingStrategy):
+    def _check_lambda_threshold(lambda_threshold: float, strategy: DiversityRankingStrategy) -> None:
         if (strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE) and not 0 <= lambda_threshold <= 1:
             raise ValueError(f"lambda_threshold must be between 0 and 1, but got {lambda_threshold}.")
 

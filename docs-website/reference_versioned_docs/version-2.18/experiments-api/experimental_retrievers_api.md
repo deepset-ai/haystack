@@ -121,4 +121,3 @@ will be returned.
 
 A dictionary with the following key:
 - `messages` - The retrieved chat messages combined with any provided current messages.
-

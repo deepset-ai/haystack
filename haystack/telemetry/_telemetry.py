@@ -7,6 +7,7 @@ import logging
 import os
 import uuid
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
 
@@ -42,7 +43,7 @@ class Telemetry:
     Check out the documentation for more details: [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the telemetry.
 
@@ -113,7 +114,7 @@ class Telemetry:
             logger.debug("Telemetry couldn't make a POST request to PostHog.", exc_info=e)
 
 
-def send_telemetry(func):
+def send_telemetry(func: Callable[..., Any]) -> Callable[..., None]:
     """
     Decorator that sends the output of the wrapped function to PostHog.
 
@@ -121,7 +122,7 @@ def send_telemetry(func):
     """
 
     # FIXME? Somehow, functools.wraps makes `telemetry` out of scope. Let's take care of it later.
-    def send_telemetry_wrapper(*args, **kwargs):
+    def send_telemetry_wrapper(*args: Any, **kwargs: Any) -> None:
         try:
             if telemetry:
                 output = func(*args, **kwargs)

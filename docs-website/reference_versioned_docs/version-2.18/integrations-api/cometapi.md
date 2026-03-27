@@ -34,4 +34,3 @@ API call.
 - `tools`: An optional list of tool definitions that the model can use.
 - `tools_strict`: If True, the model is forced to use one of the provided tools if a tool call is made.
 - `http_client_kwargs`: Optional keyword arguments to pass to the HTTP client.
-

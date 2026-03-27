@@ -30,6 +30,8 @@ Returns if the given callable is usable inside a component's `run_async` method.
 
 Bases: <code>Enum</code>
 
+Type of secret: token (API key) or environment variable.
+
 #### from_str
 
 ```python
@@ -372,7 +374,7 @@ A generic representation of a device.
 #### __init__
 
 ```python
-__init__(type: DeviceType, id: int | None = None)
+__init__(type: DeviceType, id: int | None = None) -> None
 ```
 
 Create a generic device.
@@ -834,7 +836,7 @@ This method handles the parsing of role (mandatory), name (optional), meta (opti
 ### templatize_part
 
 ```python
-templatize_part(value: ChatMessageContentT) -> str
+templatize_part(value: ChatMessageContentT) -> Markup
 ```
 
 Jinja filter to convert an ChatMessageContentT object into JSON string wrapped in special XML content tags.
@@ -845,7 +847,7 @@ Jinja filter to convert an ChatMessageContentT object into JSON string wrapped i
 
 **Returns:**
 
-- <code>str</code> – A JSON string wrapped in special XML content tags
+- <code>Markup</code> – A JSON string wrapped in special XML content tags marked as safe
 
 **Raises:**
 
@@ -862,7 +864,7 @@ A Jinja2 extension for formatting dates and times.
 #### __init__
 
 ```python
-__init__(environment: Environment)
+__init__(environment: Environment) -> None
 ```
 
 Initializes the JinjaTimeExtension object.

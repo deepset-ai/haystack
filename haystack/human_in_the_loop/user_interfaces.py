@@ -23,6 +23,7 @@ class RichConsoleUI(ConfirmationUI):
     """Rich console interface for user interaction."""
 
     def __init__(self, console: "Console | None" = None) -> None:
+        """Creates an instance of RichConsoleUI."""
         rich_import.check()
         self.console = console or Console()
 

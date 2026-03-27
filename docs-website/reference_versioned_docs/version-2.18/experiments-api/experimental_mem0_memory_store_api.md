@@ -215,4 +215,3 @@ def normalize_filters(filters: dict[str, Any]) -> dict[str, Any]
 ```
 
 Convert Haystack filters to Mem0 filters.
-

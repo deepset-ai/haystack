@@ -182,7 +182,7 @@ __init__(
     ascii_only: bool = False,
     strip_whitespaces: bool = False,
     replace_regexes: dict[str, str] | None = None,
-)
+) -> None
 ```
 
 Initialize DocumentCleaner.
@@ -213,7 +213,7 @@ Initialize DocumentCleaner.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Cleans up the documents.
@@ -224,7 +224,7 @@ Cleans up the documents.
 
 **Returns:**
 
-- – A dictionary with the following key:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of cleaned Documents.
 
 **Raises:**
@@ -388,7 +388,7 @@ __init__(
     extend_abbreviations: bool = True,
     *,
     skip_empty_documents: bool = True
-)
+) -> None
 ```
 
 Initialize DocumentSplitter.
@@ -422,7 +422,7 @@ Initialize DocumentSplitter.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the DocumentSplitter by loading the sentence tokenizer.
@@ -430,7 +430,7 @@ Warm up the DocumentSplitter by loading the sentence tokenizer.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Split documents into smaller parts.
@@ -444,7 +444,7 @@ and an overlap of `split_overlap`.
 
 **Returns:**
 
-- – A dictionary with the following key:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following key:
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
   - A metadata field `page_number` to track the original page number.
@@ -676,7 +676,7 @@ __init__(
     block_sizes: set[int],
     split_overlap: int = 0,
     split_by: Literal["word", "sentence", "page", "passage"] = "word",
-)
+) -> None
 ```
 
 Initialize HierarchicalDocumentSplitter.
@@ -690,7 +690,7 @@ Initialize HierarchicalDocumentSplitter.
 #### run
 
 ```python
-run(documents: list[Document])
+run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Builds a hierarchical document structure for each document in a list of documents.
@@ -701,7 +701,7 @@ Builds a hierarchical document structure for each document in a list of document
 
 **Returns:**
 
-- – List of HierarchicalDocument
+- <code>dict\[str, list\[Document\]\]</code> – List of HierarchicalDocument
 
 #### build_hierarchy_from_doc
 
@@ -775,7 +775,7 @@ __init__(
     split_overlap: int = 0,
     split_threshold: int = 0,
     skip_empty_documents: bool = True
-)
+) -> None
 ```
 
 Initialize the MarkdownHeaderSplitter.
@@ -798,7 +798,7 @@ Initialize the MarkdownHeaderSplitter.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the MarkdownHeaderSplitter.
@@ -879,7 +879,7 @@ __init__(
     split_unit: Literal["word", "char", "token"] = "word",
     separators: list[str] | None = None,
     sentence_splitter_params: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Initializes a RecursiveDocumentSplitter.
@@ -958,7 +958,7 @@ __init__(
     convert_to_lowercase: bool = False,
     remove_punctuation: bool = False,
     remove_numbers: bool = False,
-)
+) -> None
 ```
 
 Initializes the TextCleaner component.

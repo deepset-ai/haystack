@@ -152,4 +152,3 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 The deserialized component.
-

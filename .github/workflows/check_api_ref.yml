@@ -1,0 +1,93 @@
+name: Check API reference changes
+
+on:
+  pull_request:
+    paths:
+      - "haystack/**/*.py"
+      - "pydoc/*.yml"
+
+jobs:
+  test-api-reference-build:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Detect API reference changes
+        id: changed
+        shell: python
+        run: |
+          import os
+          import subprocess
+          from pathlib import Path
+
+          import sys
+          sys.path.insert(0, ".github/utils")
+          from docstrings_checksum import docstrings_checksum
+
+          def git(*args):
+              result = subprocess.run(["git", *args], capture_output=True, text=True)
+              return result.stdout.strip(), result.returncode
+
+          base_sha, _ = git("rev-parse", "HEAD^1")
+          diff_output, _ = git("diff", "--name-only", f"{base_sha}...HEAD")
+          changed_files = set(diff_output.splitlines())
+
+          needs_check = False
+
+          # If any pydoc config changed, always rebuild
+          if any(f.startswith("pydoc/") and f.endswith(".yml") for f in changed_files):
+              needs_check = True
+
+          # If Python files changed, compare docstring checksums
+          if not needs_check and any(f.startswith("haystack/") and f.endswith(".py") for f in changed_files):
+              runner_temp = os.environ["RUNNER_TEMP"]
+              base_worktree = os.path.join(runner_temp, "base")
+              _, rc = git("worktree", "add", base_worktree, base_sha)
+
+              pr_checksum = docstrings_checksum(Path(".").glob("haystack/**/*.py"))
+              base_checksum = ""
+              if rc == 0:
+                  base_checksum = docstrings_checksum(Path(base_worktree).glob("haystack/**/*.py"))
+
+              if pr_checksum != base_checksum:
+                  needs_check = True
+
+          print(f"API reference check needed: {needs_check}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"needs_check={str(needs_check).lower()}\n")
+
+      - name: Install Hatch
+        if: steps.changed.outputs.needs_check == 'true'
+        run: pip install hatch
+
+      - name: Generate API references
+        if: steps.changed.outputs.needs_check == 'true'
+        run: hatch run docs
+
+      - name: Set up Node.js
+        if: steps.changed.outputs.needs_check == 'true'
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+
+      - name: Run Docusaurus md/mdx checker
+        if: steps.changed.outputs.needs_check == 'true'
+        working-directory: tmp_api_reference
+        run: |
+          # docusaurus-mdx-checker is a package that is not frequently updated. Its dependency katex sometimes ships a
+          # broken ESM build, where a __VERSION__ placeholder is left unresolved, causing a ReferenceError at import time.
+          # Node 22+ prefers ESM when available. We force CJS (CommonJS) resolution to use the working katex build.
+          # This should be safe because docusaurus-mdx-checker and its dependencies provide CJS builds.
+          export NODE_OPTIONS="--conditions=require"
+          npx docusaurus-mdx-checker -v || {
+              echo ""
+              echo "For common MDX problems, see https://docusaurus.io/blog/preparing-your-site-for-docusaurus-v3#common-mdx-problems"
+              exit 1
+            }

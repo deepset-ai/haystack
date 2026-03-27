@@ -20,7 +20,7 @@ class EvaluationRunResult:
     Contains the inputs and the outputs of an evaluation pipeline and provides methods to inspect them.
     """
 
-    def __init__(self, run_name: str, inputs: dict[str, list[Any]], results: dict[str, dict[str, Any]]):
+    def __init__(self, run_name: str, inputs: dict[str, list[Any]], results: dict[str, dict[str, Any]]) -> None:
         """
         Initialize a new evaluation run result.
 

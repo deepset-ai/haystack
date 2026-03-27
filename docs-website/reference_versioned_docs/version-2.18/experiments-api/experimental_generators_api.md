@@ -149,4 +149,3 @@ scoring is enabled, each message will include additional metadata:
   - `hallucination_decision`: "ANSWER" if the model decided to answer, "REFUSE" if it abstained.
   - `hallucination_risk`: The EDFL hallucination risk bound.
   - `hallucination_rationale`: The rationale behind the hallucination decision.
-

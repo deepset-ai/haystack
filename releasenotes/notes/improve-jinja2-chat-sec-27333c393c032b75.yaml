@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Fixed an issue in ``ChatPromptBuilder`` where specially crafted template variables could be interpreted as
+    structured content (e.g., images, tool calls) instead of plain text.
+
+    Template variables are now automatically sanitized during rendering, ensuring they are always treated as plain text.

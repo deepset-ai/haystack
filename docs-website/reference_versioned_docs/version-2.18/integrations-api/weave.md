@@ -68,7 +68,7 @@ response = pipe.run(
 )
 print(response["llm"]["replies"][0])
 ```
-  
+
   You should then head to `https://wandb.ai/<user_name>/projects` and see the complete trace for your pipeline under
   the pipeline name you specified, when creating the `WeaveConnector`
 
@@ -245,4 +245,3 @@ B) For component runs (operation_name == "haystack.component.run"):
 This distinction is important because Weave's calls can't be updated once created, but the content
 tags are only set on the Span at a later stage. To get the inputs on call creation, we need to create
 the call after we yield the span.
-

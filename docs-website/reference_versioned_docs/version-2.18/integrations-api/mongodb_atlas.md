@@ -923,4 +923,3 @@ Asynchronously deletes all documents in the document store.
 - `recreate_collection`: If True, the collection will be dropped and recreated with the original
 configuration and indexes. If False, all documents will be deleted while preserving the collection.
 Recreating the collection is faster for very large collections.
-

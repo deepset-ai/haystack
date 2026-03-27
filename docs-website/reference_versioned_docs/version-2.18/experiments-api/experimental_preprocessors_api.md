@@ -73,4 +73,3 @@ Infers and rewrites the header levels in the content for documents that use unif
 **Returns**:
 
 dict: a dictionary with the key 'documents' containing the processed Document objects.
-

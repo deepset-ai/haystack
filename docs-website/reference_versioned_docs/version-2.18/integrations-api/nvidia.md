@@ -776,4 +776,3 @@ Create an truncate mode from a string.
 **Returns**:
 
 Truncate mode.
-

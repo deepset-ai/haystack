@@ -12,7 +12,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
-from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
+from haystack.utils.jinja2_chat_extension import ChatMessageExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ class ChatPromptBuilder:
         template: list[ChatMessage] | str | None = None,
         required_variables: list[str] | Literal["*"] | None = None,
         variables: list[str] | None = None,
-    ):
+    ) -> None:
         """
         Constructs a ChatPromptBuilder component.
 
@@ -164,7 +164,6 @@ class ChatPromptBuilder:
         self.template = template
 
         self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
-        self._env.filters["templatize_part"] = templatize_part
         if arrow_import.is_successful():
             self._env.add_extension(Jinja2TimeExtension)
 
@@ -213,7 +212,7 @@ class ChatPromptBuilder:
         self,
         template: list[ChatMessage] | str | None = None,
         template_variables: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, list[ChatMessage]]:
         """
         Renders the prompt template with the provided variables.
@@ -298,7 +297,7 @@ class ChatPromptBuilder:
 
         return messages
 
-    def _validate_variables(self, provided_variables: set[str]):
+    def _validate_variables(self, provided_variables: set[str]) -> None:
         """
         Checks if all the required template variables are provided.
 

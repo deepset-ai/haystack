@@ -147,4 +147,3 @@ potentially override the parameters passed in the `__init__` method.
 A dictionary with the following keys:
 - `replies`: A list of strings containing the generated responses
 - `meta`: A list of dictionaries containing the metadata for each response.
-

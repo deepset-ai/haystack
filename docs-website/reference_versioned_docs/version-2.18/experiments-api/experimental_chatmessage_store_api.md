@@ -178,4 +178,3 @@ def delete_all_messages() -> None
 ```
 
 Deletes all stored chat messages from all chat history ids.
-

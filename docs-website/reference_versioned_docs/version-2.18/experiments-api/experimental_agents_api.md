@@ -472,4 +472,3 @@ Deserializes the BreakpointConfirmationStrategy from a dictionary.
 **Returns**:
 
 Deserialized BreakpointConfirmationStrategy.
-

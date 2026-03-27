@@ -94,4 +94,3 @@ and the values represent the corresponding evaluation criteria.
 **Returns**:
 
 A dictionary containing the evaluation result.
-

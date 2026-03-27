@@ -195,4 +195,3 @@ component's default.
 **Raises**:
 
 - `RuntimeError`: If the component wasn't warmed up.
-

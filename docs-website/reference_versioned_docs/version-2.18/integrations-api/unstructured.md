@@ -133,4 +133,3 @@ Please note that if the paths contain directories, `meta` can only be a single d
 
 A dictionary with the following key:
 - `documents`: List of Haystack Documents.
-

@@ -148,6 +148,7 @@ export default {
           label: 'Agents',
           items: [
             'pipeline-components/agents-1/agent',
+            'pipeline-components/agents-1/human-in-the-loop',
           ],
         },
         {
@@ -234,7 +235,10 @@ export default {
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
             'pipeline-components/converters/jsonconverter',
+            'pipeline-components/converters/kreuzbergconverter',
+            'pipeline-components/converters/libreofficefileconverter',
             'pipeline-components/converters/markdowntodocument',
+            'pipeline-components/converters/markitdownconverter',
             'pipeline-components/converters/mistralocrdocumentconverter',
             'pipeline-components/converters/msgtodocument',
             'pipeline-components/converters/multifileconverter',
@@ -484,6 +488,7 @@ export default {
             'pipeline-components/rankers/fastembedranker',
             'pipeline-components/rankers/huggingfaceteiranker',
             'pipeline-components/rankers/jinaranker',
+            'pipeline-components/rankers/llmranker',
             'pipeline-components/rankers/lostinthemiddleranker',
             'pipeline-components/rankers/metafieldgroupingranker',
             'pipeline-components/rankers/metafieldranker',

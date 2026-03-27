@@ -43,7 +43,7 @@ class FileContent:
     extra: dict[str, Any] = field(default_factory=dict)
     validation: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.validation:
             return
 

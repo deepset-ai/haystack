@@ -626,4 +626,3 @@ Create a configuration from a dictionary.
 **Returns**:
 
 Quantization configuration.
-

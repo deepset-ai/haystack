@@ -51,7 +51,7 @@ class DocumentCleaner:
         ascii_only: bool = False,
         strip_whitespaces: bool = False,
         replace_regexes: dict[str, str] | None = None,
-    ):
+    ) -> None:
         """
         Initialize DocumentCleaner.
 
@@ -90,7 +90,7 @@ class DocumentCleaner:
         self.strip_whitespaces = strip_whitespaces
         self.replace_regexes = replace_regexes
 
-    def _validate_params(self, unicode_normalization: str | None):
+    def _validate_params(self, unicode_normalization: str | None) -> None:
         """
         Validate the parameters of the DocumentCleaner.
 
@@ -101,7 +101,7 @@ class DocumentCleaner:
             raise ValueError("unicode_normalization must be one of 'NFC', 'NFKC', 'NFD', 'NFKD'.")
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]):
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Cleans up the documents.
 
@@ -120,7 +120,7 @@ class DocumentCleaner:
             if doc.content is None:
                 logger.warning(
                     "DocumentCleaner only cleans text documents but document.content for document ID"
-                    " %{document_id} is None.",
+                    " {document_id} is None.",
                     document_id=doc.id,
                 )
                 cleaned_docs.append(doc)

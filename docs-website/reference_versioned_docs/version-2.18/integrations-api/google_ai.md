@@ -343,4 +343,3 @@ during component initialization.
 
 A dictionary containing the following key:
 - `replies`:  A list containing the generated responses as `ChatMessage` instances.
-

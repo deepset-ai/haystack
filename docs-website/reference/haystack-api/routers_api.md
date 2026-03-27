@@ -111,7 +111,7 @@ __init__(
     unsafe: bool = False,
     validate_output_type: bool = False,
     optional_variables: list[str] | None = None,
-)
+) -> None
 ```
 
 Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -210,7 +210,7 @@ Deserializes the component from a dictionary.
 #### run
 
 ```python
-run(**kwargs)
+run(**kwargs: Any) -> dict[str, Any]
 ```
 
 Executes the routing logic.
@@ -221,12 +221,12 @@ order they are listed. The method directs the flow of data to the output specifi
 
 **Parameters:**
 
-- **kwargs** – All variables used in the `condition` expressed in the routes. When the component is used in a
+- **kwargs** (<code>Any</code>) – All variables used in the `condition` expressed in the routes. When the component is used in a
   pipeline, these variables are passed from the previous component's output.
 
 **Returns:**
 
-- – A dictionary where the key is the `output_name` of the selected route and the value is the `output`
+- <code>dict\[str, Any\]</code> – A dictionary where the key is the `output_name` of the selected route and the value is the `output`
   of the selected route.
 
 **Raises:**
@@ -439,7 +439,7 @@ __init__(
     mime_types: list[str],
     additional_mimetypes: dict[str, str] | None = None,
     raise_on_failure: bool = False,
-)
+) -> None
 ```
 
 Initialize the FileTypeRouter component.
@@ -564,7 +564,7 @@ __init__(
     output_names: list[str],
     output_patterns: list[str],
     system_prompt: str | None = None,
-)
+) -> None
 ```
 
 Initialize the LLMMessagesRouter component.
@@ -587,7 +587,7 @@ Initialize the LLMMessagesRouter component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Warm up the underlying LLM.
@@ -743,7 +743,9 @@ Initializes the MetadataRouter component.
 #### run
 
 ```python
-run(documents: list[Document] | list[ByteStream])
+run(
+    documents: list[Document] | list[ByteStream],
+) -> dict[str, list[Document] | list[ByteStream]]
 ```
 
 Routes documents or byte streams to different connections based on their metadata fields.
@@ -756,7 +758,7 @@ If a document or byte stream does not match any of the rules, it's routed to a c
 
 **Returns:**
 
-- – A dictionary where the keys are the names of the output connections (including `"unmatched"`)
+- <code>dict\[str, list\[Document\] | list\[ByteStream\]\]</code> – A dictionary where the keys are the names of the output connections (including `"unmatched"`)
   and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
 
 #### to_dict
@@ -824,7 +826,7 @@ assert result["text_language_router"]["unmatched"] == "ένα ελληνικό �
 #### __init__
 
 ```python
-__init__(languages: list[str] | None = None)
+__init__(languages: list[str] | None = None) -> None
 ```
 
 Initialize the TextLanguageRouter component.
@@ -920,7 +922,7 @@ __init__(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
     ),
     huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Initializes the TransformersTextRouter component.
@@ -942,7 +944,7 @@ Initializes the TransformersTextRouter component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.
@@ -1078,7 +1080,7 @@ __init__(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
     ),
     huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-)
+) -> None
 ```
 
 Initializes the TransformersZeroShotTextRouter component.
@@ -1103,7 +1105,7 @@ Initializes the TransformersZeroShotTextRouter component.
 #### warm_up
 
 ```python
-warm_up()
+warm_up() -> None
 ```
 
 Initializes the component.

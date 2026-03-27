@@ -54,7 +54,7 @@ class LocalWhisperTranscriber:
         model: WhisperLocalModel = "large",
         device: ComponentDevice | None = None,
         whisper_params: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Creates an instance of the LocalWhisperTranscriber component.
 
@@ -105,7 +105,9 @@ class LocalWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None):
+    def run(
+        self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Transcribes a list of audio files into a list of documents.
 
@@ -131,7 +133,7 @@ class LocalWhisperTranscriber:
         documents = self.transcribe(sources, **whisper_params)
         return {"documents": documents}
 
-    def transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> list[Document]:
+    def transcribe(self, sources: list[str | Path | ByteStream], **kwargs: Any) -> list[Document]:
         """
         Transcribes the audio files into a list of Documents, one for each input file.
 
@@ -164,7 +166,7 @@ class LocalWhisperTranscriber:
             source.to_file(path)
         return path
 
-    def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> dict[Path, Any]:
+    def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs: Any) -> dict[Path, Any]:
         """
         Transcribes the given audio files. Returns the output of the model, a dictionary, for each input file.
 

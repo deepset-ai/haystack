@@ -154,4 +154,3 @@ def from_dict(cls, data: dict[str, Any]) -> "ChineseDocumentSplitter"
 ```
 
 Deserializes the component from a dictionary.
-

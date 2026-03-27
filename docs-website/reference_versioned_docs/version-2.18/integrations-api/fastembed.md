@@ -618,4 +618,3 @@ Returns a list of documents ranked by their similarity to the given query, using
 
 A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
-
