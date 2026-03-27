@@ -660,6 +660,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         chat_message = results["replies"][0]
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
+        generator.shutdown()
 
     @pytest.mark.asyncio
     async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
@@ -670,7 +671,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         # Copy the tokenizer from the fixture to the new mock
         mock_pipeline.tokenizer = mock_pipeline_with_tokenizer.tokenizer
         generator.pipeline = mock_pipeline
-
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         results = await generator.run_async(messages=messages)
 
@@ -681,6 +681,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Berlin"}
+        generator.shutdown()
 
     @pytest.mark.asyncio
     async def test_concurrent_async_requests(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
@@ -696,6 +697,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             assert "replies" in result
             assert isinstance(result["replies"][0], ChatMessage)
             assert result["replies"][0].text == "Berlin is cool"
+        generator.shutdown()
 
     @pytest.mark.asyncio
     async def test_async_error_handling(self, model_info_mock, mock_pipeline_with_tokenizer):
@@ -800,6 +802,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
         assert response["replies"][0].text == "Berlin is cool"
+        generator.shutdown()
 
     @pytest.mark.integration
     @pytest.mark.slow

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextlib
 import os
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -344,14 +345,17 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_live_run_async(self):
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
         assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await component.async_client.close()
 
     @pytest.mark.asyncio
     async def test_run_with_wrong_model_async(self):
@@ -383,8 +387,8 @@ class TestOpenAIChatGeneratorAsync:
 
         component = OpenAIChatGenerator(
             model="gpt-4.1-nano",
-            streaming_callback=callback,
             generation_kwargs={"stream_options": {"include_usage": True}},
+            streaming_callback=callback,
         )
         results = await component.run_async([ChatMessage.from_user("What's the capital of France?")])
 
@@ -407,6 +411,10 @@ class TestOpenAIChatGeneratorAsync:
         assert message.meta["usage"]["completion_tokens"] > 0
         assert message.meta["usage"]["total_tokens"] > 0
 
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await component.async_client.close()
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -414,8 +422,8 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_live_run_with_tools_async(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=tools)
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -429,6 +437,10 @@ class TestOpenAIChatGeneratorAsync:
         # Check that Paris is in the city argument (case-insensitive, allowing for variations like "Paris, France")
         assert "paris" in tool_call.arguments["city"].lower()
         assert message.meta["finish_reason"] == "tool_calls"
+
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await component.async_client.close()
 
     @pytest.mark.asyncio
     async def test_run_with_wrapped_stream_simulation_async(self, chat_messages, openai_mock_stream_async):
