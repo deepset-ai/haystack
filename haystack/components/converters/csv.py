@@ -30,6 +30,7 @@ class CSVToDocument:
 
     ```python
     from haystack.components.converters.csv import CSVToDocument
+    from datetime import datetime
     converter = CSVToDocument()
     results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
