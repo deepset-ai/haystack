@@ -358,7 +358,7 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
 ### QdrantHybridRetriever
 
 A component for retrieving documents from a QdrantDocumentStore using both dense and sparse vectors.
-and fusing the results using Reciprocal Rank Fusion.
+It fuses the results using Reciprocal Rank Fusion.
 
 Usage example:
 
