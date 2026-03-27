@@ -207,7 +207,6 @@ addopts = "--strict-markers"
 markers = [
   "unit: unit tests",
   "integration: integration tests",
-  "no_leaks: detect asyncio task leaks, thread leaks, and event loop blocking",
 
   # integration tests that are slow (e.g. model inference on CPU), unstable (e.g. call unstable external services)
   # or require special setup (e.g. installing system dependencies, running Docker containers)
