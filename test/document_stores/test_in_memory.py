@@ -29,6 +29,9 @@ from haystack.testing.document_store import (
 from haystack.testing.document_store_async import (
     CountDocumentsAsyncTest,
     DeleteDocumentsAsyncTest,
+    GetMetadataFieldMinMaxAsyncTest,
+    GetMetadataFieldsInfoAsyncTest,
+    GetMetadataFieldUniqueValuesAsyncTest,
     WriteDocumentsAsyncTest,
 )
 
@@ -47,6 +50,9 @@ class TestMemoryDocumentStore(
     GetMetadataFieldMinMaxTest,
     GetMetadataFieldUniqueValuesTest,
     GetMetadataFieldsInfoTest,
+    GetMetadataFieldsInfoAsyncTest,
+    GetMetadataFieldMinMaxAsyncTest,
+    GetMetadataFieldUniqueValuesAsyncTest,
 ):
     """
     Test InMemoryDocumentStore's specific features

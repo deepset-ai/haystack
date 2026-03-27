@@ -908,6 +908,44 @@ class InMemoryDocumentStore:
             lambda: self.count_unique_metadata_by_filter(filters=filters, metadata_fields=metadata_fields),
         )
 
+    async def get_metadata_fields_info_async(self) -> dict[str, dict[str, str]]:
+        """
+        Returns information about the metadata fields present in the stored documents.
+
+        Types are inferred from the stored values (keyword, int, float, boolean).
+
+        :returns: A dictionary mapping each metadata field name to a dict with a "type" key.
+        """
+        return await asyncio.get_running_loop().run_in_executor(self.executor, self.get_metadata_fields_info)
+
+    async def get_metadata_field_min_max_async(self, metadata_field: str) -> dict[str, Any]:
+        """
+        Returns the minimum and maximum values for the given metadata field across all documents.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :returns: A dictionary with "min" and "max" keys. Returns `{"min": None, "max": None}`
+            if the field is missing or has no values.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.get_metadata_field_min_max(metadata_field=metadata_field)
+        )
+
+    async def get_metadata_field_unique_values_async(
+        self, metadata_field: str, search_term: str | None = None
+    ) -> tuple[list[str], int]:
+        """
+        Returns unique values for a metadata field, optionally filtered by a search term in content.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :param search_term: If set, only documents whose content contains this term (case-insensitive)
+            are considered.
+        :returns: A tuple of (list of unique values, total count of unique values).
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.get_metadata_field_unique_values(metadata_field=metadata_field, search_term=search_term),
+        )
+
     async def delete_all_documents_async(self) -> None:
         """
         Deletes all documents in the document store.
