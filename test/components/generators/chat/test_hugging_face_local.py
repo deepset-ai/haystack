@@ -833,3 +833,25 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         total_streamed_content = "".join(chunk.content for chunk in streaming_chunks)
         assert len(total_streamed_content.strip()) > 0
         assert "Paris" in total_streamed_content
+
+    def test_init_image_text_to_text(self, model_info_mock):
+        llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen2-VL-2B-Instruct")
+
+        assert llm
+        assert isinstance(llm, HuggingFaceLocalChatGenerator)
+        assert "model" in llm.huggingface_pipeline_kwargs
+
+    def test_init_image_text_to_text_task(self, model_info_mock):
+        generator = HuggingFaceLocalChatGenerator(
+            model="Qwen/Qwen2-VL-2B-Instruct",
+            task="image-text-to-text",
+            device=ComponentDevice.from_str("cpu"),
+            token=None,
+        )
+
+        assert generator.huggingface_pipeline_kwargs == {
+            "model": "Qwen/Qwen2-VL-2B-Instruct",
+            "task": "image-text-to-text",
+            "token": None,
+            "device": "cpu",
+        }
