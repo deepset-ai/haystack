@@ -85,7 +85,6 @@ prompt_builder = ChatPromptBuilder(
 )
 llm = OpenAIChatGenerator(
     api_key=Secret.from_token("<your-api-key>"),
-    model="gpt-3.5-turbo",
 )
 
 pipe = Pipeline()
