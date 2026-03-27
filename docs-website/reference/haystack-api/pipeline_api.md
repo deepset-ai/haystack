@@ -420,6 +420,7 @@ Answer:
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
 prompt_builder = PromptBuilder(template=prompt_template)
+api_key = "your-openai-api-key"
 llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
 
 rag_pipeline = Pipeline()
