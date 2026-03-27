@@ -708,7 +708,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        # we don't use anyio because it leaks worker threads
+        # we don't use anyio, because its worker threads outlive the test and leak
         snapshot_files = list(Path(debug_path).glob("test_agent_chat_generator_*.json"))  # noqa: ASYNC230, ASYNC240
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
@@ -735,7 +735,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        # we don't use anyio because it leaks worker threads
+        # we don't use anyio, because its worker threads outlive the test and leak
         snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
 
         assert len(snapshot_files) > 0
@@ -778,7 +778,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        # we don't use anyio because it leaks worker threads
+        # we don't use anyio, because its worker threads outlive the test and leak
         snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
         assert len(snapshot_files) > 0
         first_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
@@ -792,7 +792,7 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        # we don't use anyio because it leaks worker threads
+        # we don't use anyio, because its worker threads outlive the test and leak
         snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -848,7 +848,7 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_callback_id"
 
         # Verify no file was saved to disk
-        # we don't use anyio because it leaks worker threads
+        # we don't use anyio, because its worker threads outlive the test and leak
         all_paths = list(Path(debug_path).glob("*.json"))  # noqa: ASYNC230, ASYNC240
         assert all_paths == []
 
@@ -884,7 +884,7 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_tool_callback_id"
 
         # Verify no file was saved to disk
-        # we don't use anyio because it leaks worker threads
+        # we don't use anyio, because its worker threads outlive the test and leak
         all_paths = list(Path(debug_path).glob("*.json"))  # noqa: ASYNC230, ASYNC240
         assert all_paths == []
 
