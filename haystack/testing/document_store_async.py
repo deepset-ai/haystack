@@ -405,7 +405,7 @@ class GetMetadataFieldsInfoAsyncTest:
         assert "status" in fields_info
         assert "priority" in fields_info
         assert "rating" in fields_info
-        for field_name, info in fields_info.items():  # noqa: B007, PERF102
+        for info in fields_info.values():
             assert isinstance(info, dict)
             assert "type" in info
 
