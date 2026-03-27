@@ -424,6 +424,65 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - **document_ids** (<code>list\[str\]</code>) – The document_ids to delete.
 
+#### update_by_filter_async
+
+```python
+update_by_filter_async(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to select documents for updating.
+  For filter syntax, see filter_documents.
+- **meta** (<code>dict\[str, Any\]</code>) – The metadata fields to update. These will be merged with existing metadata.
+
+**Returns:**
+
+- <code>int</code> – The number of documents updated.
+
+#### count_documents_by_filter_async
+
+```python
+count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply.
+  For a detailed specification of the filters, refer to the
+  [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+
+**Returns:**
+
+- <code>int</code> – The number of documents that match the filters.
+
+#### count_unique_metadata_by_filter_async
+
+```python
+count_unique_metadata_by_filter_async(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
+```
+
+Returns the number of unique values for each specified metadata field from documents matching the filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply.
+  For a detailed specification of the filters, refer to the
+  [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+- **metadata_fields** (<code>list\[str\]</code>) – List of field names to count unique values for.
+  Field names can include or omit the "meta." prefix.
+
+**Returns:**
+
+- <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name (without "meta." prefix)
+  to the count of its unique values among the filtered documents.
+
 #### delete_all_documents_async
 
 ```python
