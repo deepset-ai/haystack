@@ -59,7 +59,7 @@ from haystack_integrations.components.connectors.weave import WeaveConnector
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
-pipe.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+pipe.add_component("llm", OpenAIChatGenerator())
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
 connector = WeaveConnector(pipeline_name="test_pipeline")

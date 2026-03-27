@@ -102,5 +102,5 @@ query = "What is Haystack by deepset?"
 
 result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
 
-print(result["llm"]["replies"][0].content)
+print(result["llm"]["replies"][0].text)
 ```
