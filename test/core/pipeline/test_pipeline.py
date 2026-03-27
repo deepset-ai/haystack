@@ -420,8 +420,7 @@ class TestPipeline:
         p.connect("producer1.text", "receiver.texts")
         p.connect("producer2.text", "receiver.texts")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(result["receiver"]["result"]) == ["hello", "world"]
+        assert result["receiver"]["result"] == ["hello", "world"]
 
     def test_run_auto_variadic_str_and_list_str_to_list_str(self):
         """A str producer and a list[str] producer connected to a list[str] input are auto-joined at runtime."""
@@ -432,8 +431,7 @@ class TestPipeline:
         p.connect("str_producer.text", "receiver.texts")
         p.connect("list_producer.texts", "receiver.texts")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(result["receiver"]["result"]) == ["!", "hello", "world"]
+        assert result["receiver"]["result"] == ["world", "!", "hello"]
 
     def test_run_auto_variadic_chat_message_to_list_str(self):
         """Two ChatMessage producers connected to a list[str] input are converted and auto-joined at runtime."""
@@ -444,8 +442,7 @@ class TestPipeline:
         p.connect("producer1.message", "receiver.texts")
         p.connect("producer2.message", "receiver.texts")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(result["receiver"]["result"]) == ["hello", "world"]
+        assert result["receiver"]["result"] == ["hello", "world"]
 
     def test_run_auto_variadic_str_and_chat_message_to_list_str(self):
         """A str producer and a ChatMessage producer connected to a list[str] input are auto-joined at runtime."""
@@ -456,8 +453,7 @@ class TestPipeline:
         p.connect("str_producer.text", "receiver.texts")
         p.connect("chat_producer.message", "receiver.texts")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(result["receiver"]["result"]) == ["hello", "world"]
+        assert result["receiver"]["result"] == ["world", "hello"]
 
     def test_run_auto_variadic_chat_message_to_list_chat_message(self):
         """Two ChatMessage producers connected to a list[ChatMessage] input are auto-joined at runtime."""
@@ -468,8 +464,7 @@ class TestPipeline:
         p.connect("producer1.message", "receiver.messages")
         p.connect("producer2.message", "receiver.messages")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(m.text for m in result["receiver"]["result"]) == ["hello", "world"]
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world"]
 
     def test_run_auto_variadic_str_to_list_chat_message(self):
         """Two str producers connected to a list[ChatMessage] input are converted and auto-joined at runtime."""
@@ -480,8 +475,7 @@ class TestPipeline:
         p.connect("producer1.text", "receiver.messages")
         p.connect("producer2.text", "receiver.messages")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(m.text for m in result["receiver"]["result"]) == ["hello", "world"]
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world"]
 
     def test_run_auto_variadic_str_and_chat_message_to_list_chat_message(self):
         """A str and a ChatMessage producer connected to a list[ChatMessage] input are auto-joined at runtime."""
@@ -492,8 +486,7 @@ class TestPipeline:
         p.connect("str_producer.text", "receiver.messages")
         p.connect("chat_producer.message", "receiver.messages")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(m.text for m in result["receiver"]["result"]) == ["hello", "world"]
+        assert [m.text for m in result["receiver"]["result"]] == ["world", "hello"]
 
     def test_run_auto_variadic_chat_message_and_list_chat_message_to_list_chat_message(self):
         """A ChatMessage and a list[ChatMessage] producer connected to list[ChatMessage] are auto-joined at runtime."""
@@ -504,5 +497,4 @@ class TestPipeline:
         p.connect("chat_producer.message", "receiver.messages")
         p.connect("list_producer.messages", "receiver.messages")
         result = p.run({})
-        # We use sorted here because the order of the joined outputs is not guaranteed
-        assert sorted(m.text for m in result["receiver"]["result"]) == ["!", "hello", "world"]
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world", "!"]
