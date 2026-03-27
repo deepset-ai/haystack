@@ -424,6 +424,14 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 - **document_ids** (<code>list\[str\]</code>) – The document_ids to delete.
 
+#### delete_all_documents_async
+
+```python
+delete_all_documents_async() -> None
+```
+
+Deletes all documents in the document store.
+
 #### bm25_retrieval_async
 
 ```python
