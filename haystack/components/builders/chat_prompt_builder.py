@@ -12,7 +12,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
-from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
+from haystack.utils.jinja2_chat_extension import ChatMessageExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
@@ -96,8 +96,7 @@ class ChatPromptBuilder:
     # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
     # 708}})]}}
 
-    messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next
-    {{day_count}} days?")]
+    messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
 
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
                                         "template": messages}})
@@ -135,7 +134,7 @@ class ChatPromptBuilder:
     builder = ChatPromptBuilder(template=template)
     builder.run(user_name="John", images=images)
     ```
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
@@ -164,7 +163,6 @@ class ChatPromptBuilder:
         self.template = template
 
         self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
-        self._env.filters["templatize_part"] = templatize_part
         if arrow_import.is_successful():
             self._env.add_extension(Jinja2TimeExtension)
 
@@ -213,7 +211,7 @@ class ChatPromptBuilder:
         self,
         template: list[ChatMessage] | str | None = None,
         template_variables: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict[str, list[ChatMessage]]:
         """
         Renders the prompt template with the provided variables.

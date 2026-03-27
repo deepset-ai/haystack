@@ -1520,7 +1520,7 @@ class TestPipelineBase:
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
     @pytest.mark.integration
-    def test_find_super_components(self):
+    def test_find_super_components(self, in_memory_doc_store):
         """
         Test that the pipeline can find super components in it's pipeline.
         """
@@ -1528,7 +1528,6 @@ class TestPipelineBase:
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor
         from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         multi_file_converter = MultiFileConverter()
         doc_processor = DocumentPreprocessor()
@@ -1536,7 +1535,7 @@ class TestPipelineBase:
         pipeline = Pipeline()
         pipeline.add_component("converter", multi_file_converter)
         pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
@@ -1546,12 +1545,11 @@ class TestPipelineBase:
         assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
 
     @pytest.mark.integration
-    def test_merge_super_component_pipelines(self):
+    def test_merge_super_component_pipelines(self, in_memory_doc_store):
         from haystack import Pipeline
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor
         from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         multi_file_converter = MultiFileConverter()
         doc_processor = DocumentPreprocessor()
@@ -1559,7 +1557,7 @@ class TestPipelineBase:
         pipeline = Pipeline()
         pipeline.add_component("converter", multi_file_converter)
         pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 

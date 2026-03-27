@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: main
 
@@ -51,11 +51,11 @@ jobs:
           git tag "v${{ steps.versions.outputs.next_version_rc0 }}" -m "v${{ steps.versions.outputs.next_version_rc0 }}"
           git push --tags
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: "22"
 
@@ -72,7 +72,7 @@ jobs:
 
       - name: Create PR to bump unstable version and create unstable docs
         id: create-pr
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Bump unstable version and create unstable docs"

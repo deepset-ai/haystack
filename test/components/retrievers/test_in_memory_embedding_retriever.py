@@ -15,23 +15,23 @@ from haystack.testing.factory import document_store_class
 
 
 class TestMemoryEmbeddingRetriever:
-    def test_init_default(self):
-        retriever = InMemoryEmbeddingRetriever(InMemoryDocumentStore())
+    def test_init_default(self, in_memory_doc_store):
+        retriever = InMemoryEmbeddingRetriever(in_memory_doc_store)
         assert retriever.filters is None
         assert retriever.top_k == 10
         assert retriever.scale_score is False
 
-    def test_init_with_parameters(self):
+    def test_init_with_parameters(self, in_memory_doc_store):
         retriever = InMemoryEmbeddingRetriever(
-            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
+            in_memory_doc_store, filters={"name": "test.txt"}, top_k=5, scale_score=True
         )
         assert retriever.filters == {"name": "test.txt"}
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    def test_init_with_invalid_top_k_parameter(self):
+    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            InMemoryEmbeddingRetriever(InMemoryDocumentStore(), top_k=-2)
+            InMemoryEmbeddingRetriever(in_memory_doc_store, top_k=-2)
 
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))

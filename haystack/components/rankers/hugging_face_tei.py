@@ -54,8 +54,8 @@ class HuggingFaceTEIRanker:
 
     ranked_docs = result["documents"]
     print(ranked_docs)
-    >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
-    >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
+    # >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
+    # >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
     ```
     """
 

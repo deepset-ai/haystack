@@ -194,6 +194,50 @@ print(response)
 }
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5.4",
+    "gpt-5.4-pro",
+    "gpt-5.3-codex",
+    "gpt-5.2",
+    "gpt-5.2-codex",
+    "gpt-5.2-chat",
+    "gpt-5.1",
+    "gpt-5.1-chat",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-chat",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-4o-audio-preview",
+    "gpt-realtime-1.5",
+    "gpt-audio-1.5",
+    "o1",
+    "o1-mini",
+    "o3",
+    "o3-mini",
+    "o4-mini",
+    "codex-mini",
+    "gpt-4",
+    "gpt-35-turbo",
+    "gpt-oss-120b",
+    "computer-use-preview",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+for the full list.
+
 #### __init__
 
 ```python
@@ -220,7 +264,7 @@ __init__(
         AzureADTokenProvider | AsyncAzureADTokenProvider | None
     ) = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Initialize the Azure OpenAI Chat Generator component.
@@ -926,7 +970,10 @@ print(generator.run(messages))
 ```python
 __init__(
     model: str = "Qwen/Qwen3-0.6B",
-    task: Literal["text-generation", "text2text-generation"] | None = None,
+    task: (
+        Literal["text-generation", "text2text-generation", "image-text-to-text"]
+        | None
+    ) = None,
     device: ComponentDevice | None = None,
     token: Secret | None = Secret.from_env_var(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
@@ -953,10 +1000,11 @@ Initializes the HuggingFaceLocalChatGenerator component.
   The model must be a chat model supporting the ChatML messaging
   format.
   If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
-- **task** (<code>Literal['text-generation', 'text2text-generation'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
+- **task** (<code>Literal['text-generation', 'text2text-generation', 'image-text-to-text'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
 - `text-generation`: Supported by decoder models, like GPT.
 - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
   Previously supported by encoder–decoder models such as T5.
+- `image-text-to-text`: Supported by vision-language models.
   If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
   If not specified, the component calls the Hugging Face API to infer the task from the model name.
 - **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.

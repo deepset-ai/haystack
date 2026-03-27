@@ -43,12 +43,12 @@ class TestFilterRetriever:
         docs2.sort(key=lambda x: x.id)
         return docs1 == docs2
 
-    def test_init_default(self):
-        retriever = FilterRetriever(InMemoryDocumentStore())
+    def test_init_default(self, in_memory_doc_store):
+        retriever = FilterRetriever(in_memory_doc_store)
         assert retriever.filters is None
 
-    def test_init_with_parameters(self):
-        retriever = FilterRetriever(InMemoryDocumentStore(), filters={"lang": "en"})
+    def test_init_with_parameters(self, in_memory_doc_store):
+        retriever = FilterRetriever(in_memory_doc_store, filters={"lang": "en"})
         assert retriever.filters == {"lang": "en"}
 
     def test_to_dict(self):

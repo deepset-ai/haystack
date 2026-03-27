@@ -37,8 +37,10 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
-)
+) -> None
 ```
+
+Initialize the AstraEmbeddingRetriever.
 
 **Parameters:**
 
@@ -58,6 +60,33 @@ run(
 ```
 
 Retrieve documents from the AstraDocumentStore.
+
+**Parameters:**
+
+- **query_embedding** (<code>list\[float\]</code>) – floats representing the query embedding
+- **filters** (<code>dict\[str, Any\] | None</code>) – Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+  the `filter_policy` chosen at retriever initialization. See init method docstring for more
+  details.
+- **top_k** (<code>int | None</code>) – the maximum number of documents to retrieve.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – a dictionary with the following keys:
+- `documents`: A list of documents retrieved from the AstraDocumentStore.
+
+#### run_async
+
+```python
+run_async(
+    query_embedding: list[float],
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents from the AstraDocumentStore asynchronously.
+
+Runs the sync search in a thread pool to avoid blocking the event loop.
 
 **Parameters:**
 
@@ -131,10 +160,11 @@ __init__(
     duplicates_policy: DuplicatePolicy = DuplicatePolicy.NONE,
     similarity: str = "cosine",
     namespace: str | None = None,
-)
+) -> None
 ```
 
 The connection to Astra DB is established and managed through the JSON API.
+
 The required credentials (api endpoint and application token) can be generated
 through the UI by clicking and the connect tab, and then selecting JSON API and
 Generate Configuration.
@@ -157,6 +187,14 @@ Generate Configuration.
 **Raises:**
 
 - <code>ValueError</code> – if the API endpoint or token is not set.
+
+#### index
+
+```python
+index: AstraClient
+```
+
+Return the AstraClient index, initializing it if necessary.
 
 #### from_dict
 
@@ -397,8 +435,7 @@ count_unique_metadata_by_filter(
 ) -> dict[str, int]
 ```
 
-Applies a filter selecting documents and counts the unique values for each meta field of the matched
-documents.
+Applies a filter selecting documents and counts the unique values for each meta field of the matched documents.
 
 **Parameters:**
 

@@ -594,7 +594,7 @@ class HuggingFaceAPIChatGenerator:
         messages: list[dict[str, str]],
         generation_kwargs: dict[str, Any],
         streaming_callback: SyncStreamingCallbackT,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
             messages,
             stream=True,
@@ -665,7 +665,7 @@ class HuggingFaceAPIChatGenerator:
         messages: list[dict[str, str]],
         generation_kwargs: dict[str, Any],
         streaming_callback: AsyncStreamingCallbackT,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages,
             stream=True,

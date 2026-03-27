@@ -49,7 +49,7 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Create an ArcadeDBEmbeddingRetriever.
@@ -154,7 +154,7 @@ __init__(
     similarity_function: str = "cosine",
     recreate_type: bool = False,
     create_database: bool = True
-)
+) -> None
 ```
 
 Create an ArcadeDBDocumentStore instance.
@@ -300,3 +300,92 @@ Updates the metadata of all documents that match the provided filters.
 **Returns:**
 
 - <code>int</code> – The number of documents updated.
+
+#### count_documents_by_filter
+
+```python
+count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Counts the number of documents matching the provided filter
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to the documents
+
+**Returns:**
+
+- <code>int</code> – The number of documents that match the filter
+
+#### count_unique_metadata_by_filter
+
+```python
+count_unique_metadata_by_filter(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
+```
+
+Counts unique values for each metadata field in documents matching the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – The filters to apply to the document list.
+- **metadata_fields** (<code>list\[str\]</code>) – Metadata fields for which to count unique values.
+
+**Returns:**
+
+- <code>dict\[str, int\]</code> – A dictionary where keys are metadata field names and values are the
+  counts of unique values for that field.
+
+#### get_metadata_fields_info
+
+```python
+get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns the metadata fields and their corresponding types based on sampled documents.
+
+**Returns:**
+
+- <code>dict\[str, dict\[str, str\]\]</code> – A dictionary mapping field names to dictionaries with a `type` key.
+
+#### get_metadata_field_min_max
+
+```python
+get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+For a given metadata field, finds its min and max values.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – The metadata field to inspect.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with `min` and `max` keys and their corresponding values.
+
+#### get_metadata_field_unique_values
+
+```python
+get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[str], int]
+```
+
+Retrieves unique values for a field matching a search term or all possible values
+if no search term is given.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – The metadata field to inspect.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring search term.
+- **from\_** (<code>int</code>) – The starting index for pagination.
+- **size** (<code>int</code>) – The number of values to return.
+
+**Returns:**
+
+- <code>tuple\[list\[str\], int\]</code> – A tuple containing the paginated values and the total count.

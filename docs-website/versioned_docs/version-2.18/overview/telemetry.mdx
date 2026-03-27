@@ -1,0 +1,76 @@
+---
+title: "Telemetry"
+id: telemetry
+slug: "/telemetry"
+description: "Haystack relies on anonymous usage statistics to continuously improve. That's why some basic information, like the type of Document Store used, is shared automatically."
+---
+
+# Telemetry
+
+Haystack relies on anonymous usage statistics to continuously improve. That's why some basic information, like the type of Document Store used, is shared automatically.
+
+## What Information Is Shared?
+
+Telemetry in Haystack comprises anonymous usage statistics of base components, such as `DocumentStore`, `Retriever`, `Reader`, or any other pipeline component. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community. For the same reason, an event is also sent when one of the tutorials is executed.
+
+Each event contains an anonymous, randomly generated user ID (`uuid`)  and a collection of properties about your execution environment. They **never ** contain properties that can be used to identify you, such as:
+
+- IP addresses
+- Hostnames
+- File paths
+- Queries
+- Document contents
+
+By taking the above steps, we ensure that only anonymized data is transmitted to our telemetry server.
+
+Here is an exemplary event that is sent when tutorial 1 is executed by running `Tutorial1_Basic_QA_Pipeline.py`:
+
+```json
+{
+    "event": "tutorial 1 executed",
+    "distinct_id": "9baab867-3bc8-438c-9974-a192c9d53cd1",
+    "properties": {
+        "os_family": "Darwin",
+        "os_machine": "arm64",
+        "os_version": "21.3.0",
+        "haystack_version": "1.0.0",
+        "python_version": "3.9.6",
+        "torch_version": "1.9.0",
+        "transformers_version": "4.13.0",
+        "execution_env": "script",
+        "n_gpu": 0,
+    },
+}
+```
+
+Our telemetry code can be directly inspected on [GitHub](https://github.com/deepset-ai/haystack/blob/5d66d040cc303ab49225587cd61290f1987a5d1f/haystack/telemetry/_telemetry.py).
+
+## How Does Telemetry Help?
+
+Thanks to telemetry, we can understand the needs of the community: _"What pipeline nodes are most popular?", "Should we focus on supporting one specific Document Store?", "How many people use Haystack on Windows?"_ are some of the questions telemetry helps us answer. Metadata about the operating system and installed dependencies allows us to quickly identify and address issues caused by specific setups.
+
+In short, by sharing this information, you enable us to continuously improve Haystack for everyone.
+
+## How Can I Opt Out?
+
+You can disable telemetry with one of the following methods:
+
+### Through an Environment Variable
+
+You can disable telemetry by setting the environment variable `HAYSTACK_TELEMETRY_ENABLED` to `"False"` .
+
+### Using a Bash Shell
+
+If you are using a bash shell, add the following line to the file `~/.bashrc` to disable telemetry: `export HAYSTACK_TELEMETRY_ENABLED=False`.
+
+### Using zsh
+
+If you are using zsh as your shell, for example, on macOS, add  the following line to the file `~/.zshrc`: `export HAYSTACK_TELEMETRY_ENABLED=False`.
+
+### On Windows
+
+To disable telemetry on Windows, set a user-level environment variable by running this command in the standard command prompt: `setx HAYSTACK_TELEMETRY_ENABLED "False"`.
+
+Alternatively, run the following command in Windows PowerShell: `[Environment]::SetEnvironmentVariable("HAYSTACK_TELEMETRY_ENABLED","False","User")`.
+
+You might need to restart the operating system for the command to take effect.

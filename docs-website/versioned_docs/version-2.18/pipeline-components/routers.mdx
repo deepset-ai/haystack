@@ -1,0 +1,22 @@
+---
+title: "Routers"
+id: routers
+slug: "/routers"
+description: "Routers is a group of components that route queries or documents to other components that can handle them best."
+---
+
+# Routers
+
+Routers is a group of components that route queries or documents to other components that can handle them best.
+
+| Component                                                              | Description                                                                                                     |
+| :--------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| [ConditionalRouter](routers/conditionalrouter.mdx)                           | Routes data based on specified conditions.                                                                      |
+| [DocumentLengthRouter](routers/documentlengthrouter.mdx)                       | Routes documents to different output connections based on the length of their `content` field.                  |
+| [DocumentTypeRouter](routers/documenttyperouter.mdx)                           | Routes documents based on their MIME types to different outputs for further processing.                         |
+| [FileTypeRouter](routers/filetyperouter.mdx)                                   | Routes file paths or byte streams based on their type further down the pipeline.                                |
+| [LLMMessagesRouter](routers/llmmessagesrouter.mdx)                             | Routes Chat Messages to various output connections using a generative Language Model to perform classification. |
+| [MetadataRouter](routers/metadatarouter.mdx)                                   | Routes documents based on their metadata field values.                                                          |
+| [TextLanguageRouter](routers/textlanguagerouter.mdx)                           | Routes queries based on their language.                                                                         |
+| [TransformersTextRouter](routers/transformerstextrouter.mdx)                 | Routes text input to various output connections based on a model-defined categorization label.                  |
+| [TransformersZeroShotTextRouter](routers/transformerszeroshottextrouter.mdx) | Routes text input to various output connections based on user-defined categorization label.                     |
