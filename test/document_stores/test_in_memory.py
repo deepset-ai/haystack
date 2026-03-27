@@ -23,10 +23,18 @@ from haystack.testing.document_store import (
     GetMetadataFieldsInfoTest,
     GetMetadataFieldUniqueValuesTest,
 )
+from haystack.testing.document_store_async import (
+    CountDocumentsAsyncTest,
+    DeleteDocumentsAsyncTest,
+    WriteDocumentsAsyncTest,
+)
 
 
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
+    CountDocumentsAsyncTest,
+    WriteDocumentsAsyncTest,
+    DeleteDocumentsAsyncTest,
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
     FilterableDocsFixtureMixin,
@@ -481,13 +489,6 @@ class TestMemoryDocumentStore(
             await document_store.write_documents_async(docs)
 
     @pytest.mark.asyncio
-    async def test_count_documents(self, document_store: InMemoryDocumentStore):
-        await document_store.write_documents_async(
-            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
-        )
-        assert await document_store.count_documents_async() == 3
-
-    @pytest.mark.asyncio
     async def test_filter_documents(self, document_store: InMemoryDocumentStore):
         filterable_docs = [Document(content="1", meta={"number": -10}), Document(content="2", meta={"number": 100})]
         await document_store.write_documents_async(filterable_docs)
@@ -497,15 +498,6 @@ class TestMemoryDocumentStore(
         DocumentStoreBaseTests().assert_documents_are_equal(
             result, [d for d in filterable_docs if d.meta.get("number") == 100]
         )
-
-    @pytest.mark.asyncio
-    async def test_delete_documents(self, document_store: InMemoryDocumentStore):
-        doc = Document(content="test doc")
-        await document_store.write_documents_async([doc])
-        assert document_store.count_documents() == 1
-
-        await document_store.delete_documents_async([doc.id])
-        assert await document_store.count_documents_async() == 0
 
     @pytest.mark.asyncio
     async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore):
