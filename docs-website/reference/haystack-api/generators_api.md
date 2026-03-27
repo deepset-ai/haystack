@@ -970,7 +970,10 @@ print(generator.run(messages))
 ```python
 __init__(
     model: str = "Qwen/Qwen3-0.6B",
-    task: Literal["text-generation", "text2text-generation"] | None = None,
+    task: (
+        Literal["text-generation", "text2text-generation", "image-text-to-text"]
+        | None
+    ) = None,
     device: ComponentDevice | None = None,
     token: Secret | None = Secret.from_env_var(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
@@ -997,10 +1000,11 @@ Initializes the HuggingFaceLocalChatGenerator component.
   The model must be a chat model supporting the ChatML messaging
   format.
   If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
-- **task** (<code>Literal['text-generation', 'text2text-generation'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
+- **task** (<code>Literal['text-generation', 'text2text-generation', 'image-text-to-text'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
 - `text-generation`: Supported by decoder models, like GPT.
 - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
   Previously supported by encoder–decoder models such as T5.
+- `image-text-to-text`: Supported by vision-language models.
   If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
   If not specified, the component calls the Hugging Face API to infer the task from the model name.
 - **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
