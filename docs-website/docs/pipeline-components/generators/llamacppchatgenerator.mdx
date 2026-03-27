@@ -125,7 +125,7 @@ generator = LlamaCppChatGenerator(
 )
 messages = [ChatMessage.from_user("Who is the best American actor?")]
 result = generator.run(messages, generation_kwargs={"max_tokens": 128})
-generated_reply = result["replies"][0].content
+generated_reply = result["replies"][0].text
 print(generated_reply)
 ```
 
