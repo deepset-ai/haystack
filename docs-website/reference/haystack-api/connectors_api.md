@@ -121,11 +121,11 @@ Sends an HTTP request as described by this path.
 - **data** (<code>Any | None</code>) – The request body to send.
 - **parameters** (<code>dict\[str, Any\] | None</code>) – The parameters used to create the path.
 - **raw_response** (<code>bool</code>) – If true, return the raw response instead of validating
-  and exterpolating it.
+  and extrapolating it.
 - **security** (<code>dict\[str, str\] | None</code>) – The security scheme to use, and the values it needs to
   process successfully.
 - **session** (<code>Any | None</code>) – A persistent request session.
-- **verify** (<code>bool | str</code>) – If we should do an ssl verification on the request or not.
+- **verify** (<code>bool | str</code>) – If we should do an SSL verification on the request or not.
   In case str was provided, will use that as the CA.
 
 **Returns:**

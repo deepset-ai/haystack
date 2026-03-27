@@ -483,6 +483,57 @@ Returns the number of unique values for each specified metadata field from docum
 - <code>dict\[str, int\]</code> – A dictionary mapping each metadata field name (without "meta." prefix)
   to the count of its unique values among the filtered documents.
 
+#### get_metadata_fields_info_async
+
+```python
+get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Returns information about the metadata fields present in the stored documents.
+
+Types are inferred from the stored values (keyword, int, float, boolean).
+
+**Returns:**
+
+- <code>dict\[str, dict\[str, str\]\]</code> – A dictionary mapping each metadata field name to a dict with a "type" key.
+
+#### get_metadata_field_min_max_async
+
+```python
+get_metadata_field_min_max_async(metadata_field: str) -> dict[str, Any]
+```
+
+Returns the minimum and maximum values for the given metadata field across all documents.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – The metadata field name. Can include or omit the "meta." prefix.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with "min" and "max" keys. Returns `{"min": None, "max": None}`
+  if the field is missing or has no values.
+
+#### get_metadata_field_unique_values_async
+
+```python
+get_metadata_field_unique_values_async(
+    metadata_field: str, search_term: str | None = None
+) -> tuple[list[str], int]
+```
+
+Returns unique values for a metadata field, optionally filtered by a search term in content.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – The metadata field name. Can include or omit the "meta." prefix.
+- **search_term** (<code>str | None</code>) – If set, only documents whose content contains this term (case-insensitive)
+  are considered.
+
+**Returns:**
+
+- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+
 #### delete_all_documents_async
 
 ```python
