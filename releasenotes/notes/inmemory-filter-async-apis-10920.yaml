@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added async filter helpers to the ``InMemoryDocumentStore``: ``update_by_filter_async()``,
+    ``count_documents_by_filter_async()``, and ``count_unique_metadata_by_filter_async()``.

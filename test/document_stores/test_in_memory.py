@@ -14,7 +14,9 @@ from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import (
+    CountDocumentsByFilterAsyncTest,
     CountDocumentsByFilterTest,
+    CountUniqueMetadataByFilterAsyncTest,
     CountUniqueMetadataByFilterTest,
     DocumentStoreBaseExtendedTests,
     DocumentStoreBaseTests,
@@ -22,12 +24,16 @@ from haystack.testing.document_store import (
     GetMetadataFieldMinMaxTest,
     GetMetadataFieldsInfoTest,
     GetMetadataFieldUniqueValuesTest,
+    UpdateByFilterAsyncTest,
 )
 
 
 class TestMemoryDocumentStore(
     DocumentStoreBaseExtendedTests,
+    UpdateByFilterAsyncTest,
+    CountDocumentsByFilterAsyncTest,
     CountDocumentsByFilterTest,
+    CountUniqueMetadataByFilterAsyncTest,
     CountUniqueMetadataByFilterTest,
     FilterableDocsFixtureMixin,
     GetMetadataFieldMinMaxTest,
