@@ -74,6 +74,20 @@ def tools():
     return [weather_tool, message_extractor_tool]
 
 
+@pytest.fixture
+async def azure_generator():
+    component = AzureOpenAIChatGenerator(generation_kwargs={"n": 1})
+    yield component
+    await component.async_client.close()
+
+
+@pytest.fixture
+async def azure_tools_generator(tools):
+    component = AzureOpenAIChatGenerator(tools=tools)
+    yield component
+    await component.async_client.close()
+
+
 class TestAzureOpenAIChatGenerator:
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
@@ -567,10 +581,9 @@ class TestAzureOpenAIChatGeneratorAsync:
         ),
     )
     @pytest.mark.asyncio
-    async def test_live_run_async(self):
+    async def test_live_run_async(self, azure_generator):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIChatGenerator(generation_kwargs={"n": 1})
-        results = await component.run_async(chat_messages)
+        results = await azure_generator.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
@@ -587,10 +600,9 @@ class TestAzureOpenAIChatGeneratorAsync:
         ),
     )
     @pytest.mark.asyncio
-    async def test_live_run_with_tools_async(self, tools):
+    async def test_live_run_with_tools_async(self, azure_tools_generator):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = AzureOpenAIChatGenerator(tools=tools)
-        results = await component.run_async(chat_messages)
+        results = await azure_tools_generator.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
 

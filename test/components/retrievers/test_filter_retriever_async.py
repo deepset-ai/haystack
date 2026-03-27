@@ -47,7 +47,6 @@ class TestFilterRetrieverAsync:
     async def test_retriever_init_filter(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "en"})
         result = await retriever.run_async()
-        sample_document_store.shutdown()
 
         assert "documents" in result
         assert len(result["documents"]) == 3
@@ -57,7 +56,6 @@ class TestFilterRetrieverAsync:
     async def test_retriever_runtime_filter(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store)
         result = await retriever.run_async(filters={"field": "lang", "operator": "==", "value": "en"})
-        sample_document_store.shutdown()
 
         assert "documents" in result
         assert len(result["documents"]) == 3
@@ -67,7 +65,6 @@ class TestFilterRetrieverAsync:
     async def test_retriever_init_filter_run_filter_override(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "en"})
         result = await retriever.run_async(filters={"field": "lang", "operator": "==", "value": "de"})
-        sample_document_store.shutdown()
 
         assert "documents" in result
         assert len(result["documents"]) == 2
