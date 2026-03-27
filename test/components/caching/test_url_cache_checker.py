@@ -67,16 +67,15 @@ class TestCacheChecker:
         with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.DocumentStore"):
             CacheChecker.from_dict(data)
 
-    def test_run(self):
-        docstore = InMemoryDocumentStore()
+    def test_run(self, in_memory_doc_store):
         documents = [
             Document(content="doc1", meta={"url": "https://example.com/1"}),
             Document(content="doc2", meta={"url": "https://example.com/2"}),
             Document(content="doc3", meta={"url": "https://example.com/1"}),
             Document(content="doc4", meta={"url": "https://example.com/2"}),
         ]
-        docstore.write_documents(documents)
-        checker = CacheChecker(docstore, cache_field="url")
+        in_memory_doc_store.write_documents(documents)
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
         results = checker.run(items=["https://example.com/1", "https://example.com/5"])
         assert results == {"hits": [documents[0], documents[2]], "misses": ["https://example.com/5"]}
 
