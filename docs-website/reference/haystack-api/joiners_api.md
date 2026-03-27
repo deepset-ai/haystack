@@ -49,8 +49,8 @@ messages = [ChatMessage.from_system("You are a helpful, respectful and honest as
             ChatMessage.from_user(query)]
 
 pipe = Pipeline()
-pipe.add_component("llm_1", OpenAIChatGenerator()
-pipe.add_component("llm_2", OpenAIChatGenerator()
+pipe.add_component("llm_1", OpenAIChatGenerator())
+pipe.add_component("llm_2", OpenAIChatGenerator())
 pipe.add_component("aba", AnswerBuilder())
 pipe.add_component("abb", AnswerBuilder())
 pipe.add_component("joiner", AnswerJoiner())

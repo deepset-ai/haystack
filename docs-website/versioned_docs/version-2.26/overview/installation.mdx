@@ -11,7 +11,7 @@ See how to quickly install Haystack with pip, uv, or conda.
 
 ## Package Installation
 
-Use [pip](https://github.com/pypa/pip) to install only the Haystack code:
+Use [pip](https://github.com/pypa/pip) to install the [Haystack PyPI package](https://pypi.org/project/haystack-ai/):
 
 ```shell
 pip install haystack-ai
@@ -29,34 +29,11 @@ Or add it as a dependency to your project:
 uv add haystack-ai
 ```
 
-You can also use [conda](https://docs.conda.io/projects/conda/en/stable/):
+You can also use [conda](https://docs.conda.io/projects/conda/en/stable/) to install the [Haystack conda package](https://anaconda.org/conda-forge/haystack-ai):
 
 ```shell
-conda config --add channels conda-forge/label/haystack-ai_rc
-conda install haystack-ai
+conda install conda-forge::haystack-ai
 ```
-
-<br />
-
-<details>
-
-<summary>Were you already using Haystack 1.x?</summary>
-
-:::warning
-
-Installing `farm-haystack` and `haystack-ai` in the same Python environment (virtualenv, Colab, or system) causes problems.
-
-Installing both packages in the same environment can somehow work or fail in obscure ways. We suggest installing only one of these packages per Python environment. Make sure that you remove both packages if they are installed in the same environment, followed by installing only one of them:
-
-```bash
-pip uninstall -y farm-haystack haystack-ai
-pip install haystack-ai
-```
-
-If you have any questions, please reach out to us on the [GitHub Discussion](https://github.com/deepset-ai/haystack/discussions) or [Discord](https://discord.com/invite/VBpFzsgRVF).
-:::
-
-</details>
 
 ### Optional Dependencies
 

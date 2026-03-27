@@ -37,9 +37,13 @@ class OpenAPIServiceToFunctions:
     Usage example:
     ```python
     from haystack.components.converters import OpenAPIServiceToFunctions
+    from haystack.dataclasses.byte_stream import ByteStream
 
     converter = OpenAPIServiceToFunctions()
-    result = converter.run(sources=["path/to/openapi_definition.yaml"])
+    spec = ByteStream.from_string(
+        '{"openapi":"3.0.0","info":{"title":"API","version":"1.0.0"},"paths":{"/search":{"get":{"operationId":"search","summary":"Search","parameters":[{"name":"q","in":"query","required":true,"schema":{"type":"string"}}]}}}}'
+    )
+    result = converter.run(sources=[spec])
     assert result["functions"]
     ```
     """

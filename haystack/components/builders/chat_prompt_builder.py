@@ -96,8 +96,7 @@ class ChatPromptBuilder:
     # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
     # 708}})]}}
 
-    messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next
-    {{day_count}} days?")]
+    messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
 
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
                                         "template": messages}})
@@ -135,7 +134,7 @@ class ChatPromptBuilder:
     builder = ChatPromptBuilder(template=template)
     builder.run(user_name="John", images=images)
     ```
-    """
+    """  # noqa: E501
 
     def __init__(
         self,

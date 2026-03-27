@@ -29,13 +29,13 @@ This naming convention applies to the name of the git repository (`https://githu
 
 ### Structure
 
-More often than not, a Document Store can be fairly complex, and setting up a dedicated Git repository can be handy and future-proof. To ease this step, we prepared a [GitHub template](https://github.com/deepset-ai/document-store) that provides the structure you need to host a custom Document Store in a dedicated repository.
+More often than not, a Document Store can be fairly complex, and setting up a dedicated Git repository can be handy and future-proof. To ease this step, we prepared a [GitHub template](https://github.com/deepset-ai/custom-component) that provides the structure you need to host a custom Document Store in a dedicated repository. It includes the boilerplate for packaging, testing, and distributing your custom Document Store as a standalone Python package.
 
-See the instructions about [how to use the template](https://github.com/deepset-ai/document-store?tab=readme-ov-file#how-to-use-this-repo) to get you started.
+See the instructions in the [template repository](https://github.com/deepset-ai/custom-component) to get started.
 
 ### Packaging
 
-As with any other [Haystack integration](../integrations.mdx), a Document Store can be added to your Haystack applications by installing an additional Python package, for example, with `pip`. Once you have a Git repository hosting your Document Store and a `pyproject.toml` file to create an `example-haystack` package (using our [GitHub template](https://github.com/deepset-ai/document-store)), it will be possible to `pip install` it directly from sources, for example:
+As with any other [Haystack integration](../integrations.mdx), a Document Store can be added to your Haystack applications by installing an additional Python package, for example, with `pip`. Once you have a Git repository hosting your Document Store and a `pyproject.toml` file to create an `example-haystack` package (using our [GitHub template](https://github.com/deepset-ai/custom-component)), it will be possible to `pip install` it directly from sources, for example:
 
 ```shell
 pip install git+https://github.com/your-org/example-haystack.git
@@ -50,7 +50,7 @@ pip install example-haystack
 :::tip
 👍
 
-Our [GitHub template](https://github.com/deepset-ai/document-store) ships a GitHub workflow that will automatically publish the Document Store package on PyPI.
+Our [GitHub template](https://github.com/deepset-ai/custom-component) ships a GitHub workflow that will automatically publish the Document Store package on PyPI.
 :::
 
 ### Documentation
