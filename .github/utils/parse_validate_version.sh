@@ -63,6 +63,9 @@ MAJOR_MINOR="${MAJOR}.${MINOR}"
 RELEASE_BRANCH="v${MAJOR_MINOR}.x"
 TAG="v${VERSION}"
 
+IS_RC="false"
+[[ "${RC_NUM}" != "0" ]] && IS_RC="true"
+
 IS_FIRST_RC="false"
 if [[ "${PATCH}" == "0" && "${RC_NUM}" == "1" ]]; then
     IS_FIRST_RC="true"
@@ -163,5 +166,6 @@ OUTPUT_FILE="${GITHUB_OUTPUT:-/dev/stdout}"
     echo "version=${VERSION}"
     echo "major_minor=${MAJOR_MINOR}"
     echo "release_branch=${RELEASE_BRANCH}"
+    echo "is_rc=${IS_RC}"
     echo "is_first_rc=${IS_FIRST_RC}"
 } >> "${OUTPUT_FILE}"

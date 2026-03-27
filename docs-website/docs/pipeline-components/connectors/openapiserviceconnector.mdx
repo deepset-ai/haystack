@@ -14,8 +14,8 @@ description: "`OpenAPIServiceConnector` is a component that acts as an interface
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects where the last message is expected to carry parameter invocation payload.  <br /> <br />`service_openapi_spec`: OpenAPI specification of the service being invoked. It can be YAML/JSON, and all ref values must be resolved.  <br /> <br />`service_credentials`: Authentication credentials for the service. We currently support two OpenAPI spec v3 security schemes:  <br /> <br />1. http – for Basic, Bearer, and other HTTP authentication schemes;  <br />2. apiKey – for API keys and cookie authentication. |
-| **Output variables** | `service_response`: A dictionary that is a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects where each message corresponds to a function invocation.  <br />If a user specifies multiple function calling requests, there will be multiple responses. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects where the last message must be from the assistant and contain tool calls.  <br /> <br />`service_openapi_spec`: OpenAPI specification of the service being invoked. It can be YAML/JSON, and all ref values must be resolved.  <br /> <br />`service_credentials`: Authentication credentials for the service. We currently support two OpenAPI spec v3 security schemes:  <br /> <br />1. http – for Basic, Bearer, and other HTTP authentication schemes;  <br />2. apiKey – for API keys and cookie authentication. |
+| **Output variables** | `service_response`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects where each message corresponds to a tool call invocation.  <br />If a message contains multiple tool calls, there will be multiple responses. |
 | **API reference** | [Connectors](/reference/connectors-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/connectors/openapi_service.py |
 
@@ -37,13 +37,13 @@ pip install openapi3
 
 ### On its own
 
-This component is primarily meant to be used in pipelines, as [`OpenAPIServiceToFunctions`](../converters/openapiservicetofunctions.mdx), in tandem with the function calling model, resolves the actual function calling parameters that are injected as invocation parameters for `OpenAPIServiceConnector`.
+This component is primarily meant to be used in pipelines, as [`OpenAPIServiceToFunctions`](../converters/openapiservicetofunctions.mdx), in tandem with an LLM with tool calling capabilities, resolves the actual tool call parameters that are injected as invocation parameters for `OpenAPIServiceConnector`.
 
 ### In a pipeline
 
-Let's say we're linking the Serper search engine to a pipeline. Here, `OpenAPIServiceConnector` uses the abilities of `OpenAPIServiceToFunctions`. `OpenAPIServiceToFunctions` first fetches and changes the [Serper's OpenAPI specification](https://bit.ly/serper_dev_spec) into a format that OpenAI's function calling mechanism can understand. Then, `OpenAPIServiceConnector` activates the Serper service using this specification.
+Let's say we're linking the Serper search engine to a pipeline. Here, `OpenAPIServiceConnector` uses the abilities of `OpenAPIServiceToFunctions`. `OpenAPIServiceToFunctions` first fetches and changes the [Serper's OpenAPI specification](https://bit.ly/serper_dev_spec) into function definitions that an LLM with tool calling capabilities can understand. Then, `OpenAPIServiceConnector` activates the Serper service using this specification.
 
-More precisely, `OpenAPIServiceConnector` dynamically calls methods defined in the Serper OpenAPI specification. This involves reading chat messages or other inputs to extract function call parameters, handling authentication with the Serper service, and making the right API calls. The connector makes sure that the method call follows the Serper API requirements, such as correct formatting requests and handling responses.
+More precisely, `OpenAPIServiceConnector` dynamically calls methods defined in the Serper OpenAPI specification. This involves reading chat messages to extract tool call parameters, handling authentication with the Serper service, and making the right API calls. The connector makes sure that the method call follows the Serper API requirements, such as correct formatting requests and handling responses.
 
 Note that we used Serper just as an example here. This could be any OpenAPI-compliant service.
 
@@ -55,57 +55,86 @@ To run the following code snippet, note that you have to have your own Serper an
 import json
 import requests
 
-from typing import Dict, Any, List
+from typing import Any
+
 from haystack import Pipeline
-from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.connectors import OpenAPIServiceConnector
-from haystack.components.fetchers import LinkContentFetcher
-from haystack.dataclasses import ChatMessage, ByteStream
-from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+from haystack.dataclasses.byte_stream import ByteStream
 
-def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]:
+
+def prepare_fc_params(openai_functions_schema: dict[str, Any]) -> dict[str, Any]:
     return {
-        "tools": [{
-            "type": "function",
-            "function": openai_functions_schema
-        }],
+        "tools": [{"type": "function", "function": openai_functions_schema}],
         "tool_choice": {
             "type": "function",
-            "function": {"name": openai_functions_schema["name"]}
-        }
+            "function": {"name": openai_functions_schema["name"]},
+        },
     }
 
-system_prompt = requests.get("https://bit.ly/serper_dev_system_prompt").text
-serper_spec = requests.get("https://bit.ly/serper_dev_spec").text
+
+serperdev_spec = requests.get("https://bit.ly/serper_dev_spec").json()
+system_prompt = requests.get("https://bit.ly/serper_dev_system").text
+user_prompt = "Why was Sam Altman ousted from OpenAI?"
 
 pipe = Pipeline()
 pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
-pipe.add_component("functions_llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-3.5-turbo-0613"))
-pipe.add_component("openapi_container", OpenAPIServiceConnector())
-pipe.add_component("a1", OutputAdapter("{{functions[0] | prepare_fc}}", Dict[str, Any], {"prepare_fc": prepare_fc_params}))
-pipe.add_component("a2", OutputAdapter("{{specs[0]}}", Dict[str, Any]))
-pipe.add_component("a3", OutputAdapter("{{system_message + service_response}}", List[ChatMessage]))
-pipe.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-4-1106-preview", streaming_callback=print_streaming_chunk))
+pipe.add_component(
+    "prepare_fc_adapter",
+    OutputAdapter(
+        "{{functions[0] | prepare_fc}}",
+        dict[str, Any],
+        {"prepare_fc": prepare_fc_params},
+    ),
+)
+pipe.add_component("functions_llm", OpenAIChatGenerator())
+pipe.add_component("openapi_connector", OpenAPIServiceConnector())
+pipe.add_component(
+    "message_adapter",
+    OutputAdapter(
+        "{{system_message + service_response}}",
+        list[ChatMessage],
+        unsafe=True,
+    ),
+)
+pipe.add_component("llm", OpenAIChatGenerator())
 
-pipe.connect("spec_to_functions.functions", "a1.functions")
-pipe.connect("spec_to_functions.openapi_specs", "a2.specs")
-pipe.connect("a1", "functions_llm.generation_kwargs")
-pipe.connect("functions_llm.replies", "openapi_container.messages")
-pipe.connect("a2", "openapi_container.service_openapi_spec")
-pipe.connect("openapi_container.service_response", "a3.service_response")
-pipe.connect("a3", "llm.messages")
+pipe.connect("spec_to_functions.functions", "prepare_fc_adapter.functions")
+pipe.connect(
+    "spec_to_functions.openapi_specs",
+    "openapi_connector.service_openapi_spec",
+)
+pipe.connect("prepare_fc_adapter", "functions_llm.generation_kwargs")
+pipe.connect("functions_llm.replies", "openapi_connector.messages")
+pipe.connect("openapi_connector.service_response", "message_adapter.service_response")
+pipe.connect("message_adapter", "llm.messages")
 
-user_prompt = "Why was Sam Altman ousted from OpenAI?"
+result = pipe.run(
+    data={
+        "functions_llm": {
+            "messages": [
+                ChatMessage.from_system("Only do tool/function calling"),
+                ChatMessage.from_user(user_prompt),
+            ],
+        },
+        "openapi_connector": {
+            "service_credentials": serper_dev_key,
+        },
+        "spec_to_functions": {
+            "sources": [ByteStream.from_string(json.dumps(serperdev_spec))],
+        },
+        "message_adapter": {
+            "system_message": [ChatMessage.from_system(system_prompt)],
+        },
+    },
+)
 
-result = pipe.run(data={"functions_llm": {"messages":[ChatMessage.from_system("Only do function calling"), ChatMessage.from_user(user_prompt)]},
-                        "openapi_container": {"service_credentials": serper_dev_key},
-                        "spec_to_functions": {"sources": [ByteStream.from_string(serper_spec)]},
-                        "a3": {"system_message": [ChatMessage.from_system(system_prompt)]}})
+print(result["llm"]["replies"][0].text)
 
->Sam Altman was ousted from OpenAI on November 17, 2023, following
->a "deliberative review process" by the board of directors. The board concluded
->that he was not "consistently candid in his communications". However, he
->returned as CEO just days after his ouster.
+# Sam Altman was ousted from OpenAI on November 17, 2023, following
+# a "deliberative review process" by the board of directors. The board concluded
+# that he was not "consistently candid in his communications". However, he
+# returned as CEO just days after his ouster.
 ```
