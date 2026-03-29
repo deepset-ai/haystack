@@ -227,6 +227,7 @@ export default {
           },
           items: [
             'pipeline-components/converters/azureocrdocumentconverter',
+            'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
