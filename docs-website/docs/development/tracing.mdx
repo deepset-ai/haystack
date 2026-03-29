@@ -367,7 +367,6 @@ The example below implements a lightweight `DriftMonitorTracer` that tracks whic
 ```python
 import contextlib
 import re
-from collections import defaultdict
 from typing import Any, Iterator, Optional
 
 from haystack import tracing
@@ -375,9 +374,11 @@ from haystack.tracing import Span, Tracer
 
 
 class InMemorySpan(Span):
-    """Lightweight span that accumulates tag values for drift inspection."""
+    """Lightweight span that shares a run-level vocabulary set."""
 
-    def __init__(self) -> None:
+    def __init__(self, operation_name: str, run_vocab: set[str]) -> None:
+        self.operation_name = operation_name
+        self.run_vocab = run_vocab
         self._tags: dict[str, Any] = {}
 
     def set_tag(self, key: str, value: Any) -> None:
@@ -405,6 +406,7 @@ class DriftMonitorTracer(Tracer):
     def __init__(self, alert_threshold: float = 0.40) -> None:
         self._alert_threshold = alert_threshold
         self._baseline_vocab: Optional[set[str]] = None
+        self._latest_vocab: set[str] = set()
         self._run_count = 0
         self._current_span: Optional[InMemorySpan] = None
 
@@ -412,11 +414,20 @@ class DriftMonitorTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[dict[str, Any]] = None
+        self,
+        operation_name: str,
+        tags: Optional[dict[str, Any]] = None,
+        parent_span: Optional[Span] = None,
     ) -> Iterator[Span]:
-        span = InMemorySpan()
+        run_vocab = (
+            parent_span.run_vocab
+            if isinstance(parent_span, InMemorySpan)
+            else set()
+        )
+        span = InMemorySpan(operation_name=operation_name, run_vocab=run_vocab)
         if tags:
             span.set_tags(tags)
+
         old = self._current_span
         self._current_span = span
         try:
@@ -424,6 +435,8 @@ class DriftMonitorTracer(Tracer):
         finally:
             self._current_span = old
             self._on_span_finished(span)
+            if parent_span is None:
+                self._finalize_run(span.run_vocab)
 
     def current_span(self) -> Optional[Span]:
         return self._current_span
@@ -444,16 +457,20 @@ class DriftMonitorTracer(Tracer):
         for key, val in span.get_tags().items():
             if "input" in key or "output" in key or "content" in key:
                 text_parts.append(str(val))
-        if not text_parts:
+        if text_parts:
+            span.run_vocab.update(self._tokenize(" ".join(text_parts)))
+
+    def _finalize_run(self, run_vocab: set[str]) -> None:
+        if not run_vocab:
             return
 
-        vocab = self._tokenize(" ".join(text_parts))
-        if self._baseline_vocab is None:
-            self._baseline_vocab = vocab
         self._run_count += 1
+        if self._baseline_vocab is None:
+            self._baseline_vocab = set(run_vocab)
+        self._latest_vocab = set(run_vocab)
 
     def check_drift(self) -> dict[str, Any]:
-        """Return a drift report after the latest run.
+        """Return a drift report after the latest pipeline run.
 
         Returns a dict with keys:
         - ``gcs``: Ghost Consistency Score (1.0 = no drift, 0.0 = complete drift)
@@ -464,8 +481,7 @@ class DriftMonitorTracer(Tracer):
         if self._baseline_vocab is None or self._run_count < 2:
             return {"gcs": 1.0, "ghost_terms": [], "alert": False, "run": self._run_count}
 
-        current = self._current_vocab_snapshot()
-        ghost = self._baseline_vocab - current
+        ghost = self._baseline_vocab - self._latest_vocab
         gcs = 1.0 - len(ghost) / max(len(self._baseline_vocab), 1)
         return {
             "gcs": round(gcs, 3),
@@ -473,11 +489,6 @@ class DriftMonitorTracer(Tracer):
             "alert": gcs < self._alert_threshold,
             "run": self._run_count,
         }
-
-    def _current_vocab_snapshot(self) -> set[str]:
-        """Return the vocabulary seen in the most recent finished span."""
-        # For a richer implementation, keep a rolling per-run vocab here.
-        return self._baseline_vocab or set()
 ```
 
 ### Using the tracer
