@@ -697,7 +697,6 @@ if a score is present.
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
@@ -847,7 +846,6 @@ It uses a pre-trained cross-encoder model from Hugging Face to embed the query a
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.rankers import SentenceTransformersSimilarityRanker
@@ -1016,7 +1014,6 @@ additional features.
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.rankers import TransformersSimilarityRanker

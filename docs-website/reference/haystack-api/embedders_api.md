@@ -257,7 +257,6 @@ Use it with the following Hugging Face APIs:
 
 #### With free serverless inference API
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
 from haystack.utils import Secret
@@ -277,7 +276,6 @@ print(result["documents"][0].embedding)
 
 #### With paid inference endpoints
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
 from haystack.utils import Secret
@@ -297,7 +295,6 @@ print(result["documents"][0].embedding)
 
 #### With self-hosted text embeddings inference
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
 from haystack.dataclasses import Document
@@ -440,7 +437,6 @@ Use it with the following Hugging Face APIs:
 
 #### With free serverless inference API
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
@@ -456,7 +452,6 @@ print(text_embedder.run("I love pizza!"))
 
 #### With paid inference endpoints
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
@@ -471,7 +466,6 @@ print(text_embedder.run("I love pizza!"))
 
 #### With self-hosted text embeddings inference
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
@@ -594,7 +588,6 @@ The embedding of each Document is stored in the `embedding` field of the Documen
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
@@ -1035,7 +1028,6 @@ and send them to DocumentWriter to write into a Document Store.
 
 ### Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
@@ -1187,7 +1179,6 @@ and send them to DocumentWriter to write a into a Document Store.
 
 ### Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
@@ -1319,7 +1310,6 @@ You can use it to embed user query and send it to a sparse embedding retriever.
 
 Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 
@@ -1441,7 +1431,6 @@ You can use it to embed user query and send it to an embedding retriever.
 
 Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 

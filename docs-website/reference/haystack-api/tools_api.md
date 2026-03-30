@@ -441,7 +441,6 @@ Below is an example of creating a PipelineTool
 
 ## Usage Example:
 
-<!-- test-ignore -->
 ```python
 from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage

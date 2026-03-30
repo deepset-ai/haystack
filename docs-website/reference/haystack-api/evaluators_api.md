@@ -950,7 +950,6 @@ Bi-Encoder or a Cross-Encoder. The choice of the model is based on the `model` p
 
 Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack.components.evaluators.sas_evaluator import SASEvaluator
 

@@ -299,7 +299,6 @@ It supports different join modes:
 
 ### Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack import Pipeline, Document
 from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
