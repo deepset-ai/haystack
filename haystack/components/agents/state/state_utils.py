@@ -57,7 +57,7 @@ def _is_list_type(type_hint: Any) -> bool:
     return type_hint == list or (hasattr(type_hint, "__origin__") and get_origin(type_hint) == list)
 
 
-def merge_lists(current: Union[list[T], T, None], new: Union[list[T], T]) -> list[T]:
+def merge_lists(current: Union[list[T], T, None], new: Union[list[T], T, None]) -> list[T]:
     """
     Merges two values into a single list.
 
@@ -65,12 +65,15 @@ def merge_lists(current: Union[list[T], T, None], new: Union[list[T], T]) -> lis
     The function ensures that both inputs are treated as lists and concatenates them.
 
     If `current` is None, it is treated as an empty list.
+    If `new` is None, the current list is returned unchanged.
 
     :param current: The existing value(s), either a single item or a list.
-    :param new: The new value(s) to merge, either a single item or a list.
+    :param new: The new value(s) to merge, either a single item, a list, or None.
     :return: A list containing elements from both `current` and `new`.
     """
     current_list = [] if current is None else current if isinstance(current, list) else [current]
+    if new is None:
+        return current_list
     new_list = new if isinstance(new, list) else [new]
     return current_list + new_list
 
