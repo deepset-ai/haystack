@@ -36,7 +36,7 @@ In addition to the `query_sparse_embedding`, the `QdrantSparseEmbeddingRetriev
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
-If you want to use Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
+If you want to use a Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
 :::
 
 ### Installation
@@ -99,8 +99,8 @@ from haystack_integrations.components.retrievers.qdrant import (
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.fastembed import (
-    FastembedDocumentEmbedder,
-    FastembedTextEmbedder,
+    FastembedSparseDocumentEmbedder,
+    FastembedSparseTextEmbedder,
 )
 
 document_store = QdrantDocumentStore(
