@@ -189,6 +189,7 @@ The LLM is expected to return a JSON object containing ranked document indices.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.generators.chat import OpenAIChatGenerator
