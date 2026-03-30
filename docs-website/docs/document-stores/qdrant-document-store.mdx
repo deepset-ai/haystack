@@ -18,7 +18,7 @@ Use the Qdrant vector database with Haystack.
 
 </div>
 
-Qdrant is a powerful, high-performance, massive-scale vector database. The `QdrantDocumentStore` can be used with any Qdrant instance: in-memory, locally persisted, hosted, or on Qdrant Cloud.
+Qdrant is a powerful, high-performance, massive-scale vector database. The `QdrantDocumentStore` can be used with any Qdrant instance: in-memory, locally persisted, hosted, or on the official Qdrant Cloud.
 
 ### Installation
 
@@ -95,7 +95,7 @@ You can find more ways to initialize and use QdrantDocumentStore on our [integra
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
-If you want to use a document store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
+If you want to use a Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
 :::
 
 ## Additional References
