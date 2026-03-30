@@ -29,6 +29,7 @@ It can be used with a Text Embeddings Inference (TEI) API endpoint:
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.rankers import HuggingFaceTEIRanker

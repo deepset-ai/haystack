@@ -20,6 +20,7 @@ pass input arguments to this component.
 
 Example:
 
+<!-- test-ignore -->
 ```python
 from haystack.utils import Secret
 from haystack.components.connectors.openapi import OpenAPIConnector
