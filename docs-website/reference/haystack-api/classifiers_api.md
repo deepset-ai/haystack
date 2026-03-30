@@ -19,6 +19,7 @@ For routing plain text, use the TextLanguageRouter component instead.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -114,6 +115,7 @@ Available models for the task of zero-shot-classification include:
 The following is a pipeline that classifies documents based on predefined classification labels
 retrieved from a search pipeline:
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever

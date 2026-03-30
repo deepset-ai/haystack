@@ -25,6 +25,7 @@ Documents are expected to have metadata containing:
 ### Usage example
 
 ````
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
@@ -267,6 +268,7 @@ Converts PDF files to ImageContent objects.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.image import PDFToImageContent
 

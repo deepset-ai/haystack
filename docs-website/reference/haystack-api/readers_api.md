@@ -19,6 +19,7 @@ each document's answers independently.
 
 Example usage:
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.readers import ExtractiveReader

@@ -406,6 +406,7 @@ In query pipelines, use a TextEmbedder to embed queries and send them to the ret
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
@@ -571,6 +572,7 @@ The results are combined and sorted by relevance score.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore

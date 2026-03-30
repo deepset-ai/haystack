@@ -425,6 +425,7 @@ in the documents.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor

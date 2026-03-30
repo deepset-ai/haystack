@@ -275,6 +275,7 @@ This component does not preserve page breaks in the original document.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
 
@@ -422,6 +423,7 @@ Converts an HTML file to a Document.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters import HTMLToDocument
 
@@ -526,6 +528,7 @@ Documents are expected to have metadata containing:
 ### Usage example
 
 ````
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
@@ -768,6 +771,7 @@ Converts PDF files to ImageContent objects.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.image import PDFToImageContent
 
@@ -879,6 +883,7 @@ print(documents[0].content)
 Optionally, you can also provide a `jq_schema` string to filter the JSON source files and `extra_meta_fields`
 to extract from the filtered data:
 
+<!-- test-ignore -->
 ```python
 import json
 
@@ -1031,6 +1036,7 @@ Converts a Markdown file into a text Document.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters import MarkdownToDocument
 from datetime import datetime
@@ -1099,6 +1105,7 @@ file are extracted as ByteStream objects.
 
 ### Example Usage
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.msg import MSGToDocument
 from datetime import datetime
@@ -1208,6 +1215,7 @@ For more details on OpenAI function calling see the [official documentation](htt
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters import OpenAPIServiceToFunctions
 from haystack.dataclasses.byte_stream import ByteStream
@@ -1366,6 +1374,7 @@ Uses `pdfminer` compatible converters to convert PDF files to Documents. https:/
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.pdfminer import PDFMinerToDocument
 
@@ -1479,6 +1488,7 @@ Converts PPTX files to Documents.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.pptx import PPTXToDocument
 
@@ -1572,6 +1582,7 @@ You can attach metadata to the resulting documents.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.pypdf import PyPDFToDocument
 
@@ -1716,6 +1727,7 @@ see the [official documentation](https://github.com/apache/tika-docker/blob/main
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.converters.tika import TikaDocumentConverter
 

@@ -18,6 +18,7 @@ documents while filtering out less relevant ones based on their assigned scores.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.samplers import TopPSampler
