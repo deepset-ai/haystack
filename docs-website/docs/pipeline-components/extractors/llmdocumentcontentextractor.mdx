@@ -182,3 +182,53 @@ print(f"Failed documents: {len(result['content_extractor']['failed_documents'])}
 stored_docs = document_store.filter_documents()
 print(f"Documents in store: {len(stored_docs)}")
 ```
+
+## Extracting metadata from images
+
+In addition to text content, `LLMDocumentContentExtractor` can also extract structured metadata from images. When the LLM returns a JSON object with multiple keys, the value of `document_content` is written to the document's content and all other keys are merged into the document's metadata.
+
+To use this feature, configure your ChatGenerator to return JSON and write a prompt that instructs the LLM to return both content and metadata:
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+
+metadata_prompt = """
+Analyze this document image and return a JSON object with the following fields:
+- document_content: the full extracted text
+- title: document title if visible
+- date: document date if visible
+- language: detected language
+
+Return only valid JSON, no additional text.
+"""
+
+chat_generator = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    generation_kwargs={
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"},
+    },
+)
+
+extractor = LLMDocumentContentExtractor(
+    chat_generator=chat_generator,
+    prompt=metadata_prompt,
+    file_path_meta_field="file_path",
+)
+
+documents = [Document(content="", meta={"file_path": "invoice.pdf"})]
+result = extractor.run(documents=documents)
+
+## Extracted metadata is available in doc.meta
+for doc in result["documents"]:
+    print(f"Content: {doc.content[:100]}")
+    print(f"Title: {doc.meta.get('title')}")
+    print(f"Date: {doc.meta.get('date')}")
+```
+
+The response handling works as follows:
+- **Plain string**: written directly to `document.content`
+- **JSON with only `document_content` key**: value written to `document.content`
+- **JSON with multiple keys**: `document_content` written to content, all other keys merged into `document.meta`
