@@ -29,6 +29,7 @@ from haystack.testing.document_store import (
 from haystack.testing.document_store_async import (
     CountDocumentsAsyncTest,
     DeleteDocumentsAsyncTest,
+    FilterDocumentsAsyncTest,
     GetMetadataFieldMinMaxAsyncTest,
     GetMetadataFieldsInfoAsyncTest,
     GetMetadataFieldUniqueValuesAsyncTest,
@@ -46,6 +47,7 @@ class TestMemoryDocumentStore(
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterAsyncTest,
     CountUniqueMetadataByFilterTest,
+    FilterDocumentsAsyncTest,
     FilterableDocsFixtureMixin,
     GetMetadataFieldMinMaxTest,
     GetMetadataFieldUniqueValuesTest,
