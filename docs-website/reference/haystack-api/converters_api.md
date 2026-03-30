@@ -20,7 +20,6 @@ and a Document Intelligence or Cognitive Services resource. For help with settin
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 import os
 from datetime import datetime

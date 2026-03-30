@@ -142,7 +142,6 @@ For the supported audio formats, languages, and other parameters, see the
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 from haystack.components.audio import RemoteWhisperTranscriber
 

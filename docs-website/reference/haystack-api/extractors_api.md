@@ -29,7 +29,6 @@ Documents that fail extraction are returned in `failed_documents` with `content_
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -176,7 +175,6 @@ will be added to the `failed_documents` list. The failed documents will have the
 `metadata_extraction_response` in their metadata. These documents can be re-run with another extractor to
 extract metadata by using the `metadata_extraction_response` and `metadata_extraction_error` in the prompt.
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
