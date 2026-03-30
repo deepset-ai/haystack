@@ -27,6 +27,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.utils import Secret
@@ -168,6 +169,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -384,6 +386,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -1185,6 +1188,7 @@ without tool usage. It processes messages and returns a single response from the
 
 ### Usage examples
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -1345,6 +1349,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -1603,6 +1608,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -2144,6 +2150,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators import OpenAIGenerator
 client = OpenAIGenerator()
@@ -2283,6 +2290,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators import DALLEImageGenerator
 image_generator = DALLEImageGenerator()

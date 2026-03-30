@@ -34,6 +34,7 @@ This mode concatenates multiple lists of answers into a single list.
 
 In this example, AnswerJoiner merges answers from two different Generators:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.builders import AnswerBuilder
 from haystack.components.joiners import AnswerJoiner
@@ -157,6 +158,7 @@ to its output. This is useful for scenarios where multiple branches need to conv
 
 ### Example Usage:
 
+<!-- test-ignore -->
 ```python
 import json
 
@@ -415,6 +417,7 @@ The output order respects the pipeline's execution sequence, with earlier inputs
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator

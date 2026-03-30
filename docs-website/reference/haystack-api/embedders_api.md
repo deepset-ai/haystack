@@ -16,6 +16,7 @@ Calculates document embeddings using OpenAI models deployed on Azure.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
@@ -138,6 +139,7 @@ Embeds strings using OpenAI models deployed on Azure.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.embedders import AzureOpenAITextEmbedder
 
@@ -747,6 +749,7 @@ Computes document embeddings using OpenAI models.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.embedders import OpenAIDocumentEmbedder
@@ -892,6 +895,7 @@ You can use it to embed user query and send it to an embedding Retriever.
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.embedders import OpenAITextEmbedder
 

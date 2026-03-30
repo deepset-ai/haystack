@@ -21,6 +21,7 @@ with the following structure:
 
 ### Usage example
 
+<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.query import QueryExpander

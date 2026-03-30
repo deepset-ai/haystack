@@ -76,6 +76,7 @@ input questions contexts pairs.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.evaluators import ContextRelevanceEvaluator
 
@@ -612,6 +613,7 @@ statements that can be inferred from the provided contexts.
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.evaluators import FaithfulnessEvaluator
 
@@ -744,6 +746,7 @@ Each result is a dictionary with user-defined keys and values of either 0 for FA
 
 Usage example:
 
+<!-- test-ignore -->
 ```python
 from haystack.components.evaluators import LLMEvaluator
 evaluator = LLMEvaluator(
