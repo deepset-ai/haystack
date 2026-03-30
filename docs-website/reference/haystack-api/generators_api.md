@@ -723,7 +723,6 @@ print(result)
 
 #### With the serverless inference API (Inference Providers) and text+image input
 
-<!-- test-ignore -->
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage, ImageContent
