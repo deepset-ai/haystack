@@ -216,6 +216,8 @@ log_cli = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
+# trigger CI
+
 [tool.mypy]
 python_version = "3.10"
 check_untyped_defs = true

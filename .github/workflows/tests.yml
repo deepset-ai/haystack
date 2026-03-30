@@ -131,12 +131,11 @@ jobs:
       - name: Run
         run: hatch run test:unit
 
-      - uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        id: cache
-        if: matrix.os == 'macos-latest'
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
+      # - uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      #   id: cache
+      #   with:
+      #     path: ${{ steps.hatch.outputs.env }}
+      #     key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Coveralls
         # We upload only coverage for ubuntu as handling both os
@@ -205,6 +204,11 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Run
         run: hatch run test:integration-only-fast
@@ -231,11 +235,11 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
-        id: cache
-        with:
-          path: ${{ steps.hatch.outputs.env }}
-          key: ${{ runner.os }}-${{ github.sha }}
+      # - uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      #   id: cache
+      #   with:
+      #     path: ${{ steps.hatch.outputs.env }}
+      #     key: ${{ runner.os }}-${{ github.sha }}
 
 
       - name: Run
@@ -263,6 +267,11 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
       - name: Run
         run: hatch run test:integration-only-fast
 
