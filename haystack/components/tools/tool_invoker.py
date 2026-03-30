@@ -461,6 +461,10 @@ class ToolInvoker:
             source_key = config.get("source", None)
             output_value = result.get(source_key) if source_key else result
 
+            # Skip state update when the tool didn't produce this output key
+            if output_value is None:
+                continue
+
             # Merge other outputs into the state
             state.set(state_key, output_value, handler_override=config.get("handler"))
 
