@@ -10,7 +10,7 @@ import pytest
 from haystack.dataclasses import Document
 from haystack.document_stores.errors import DuplicateDocumentError
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
-from haystack.testing.document_store import AssertDocumentsEqualMixin
+from haystack.testing.document_store import AssertDocumentsEqualMixin, FilterableDocsFixtureMixin
 
 
 class AsyncDocumentStore(DocumentStore, Protocol):
@@ -550,3 +550,49 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         assert set(values) == {"A", "B", "C"}
         if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[1], int):
             assert result[1] == 3
+
+
+class FilterDocumentsAsyncTest(AssertDocumentsEqualMixin, FilterableDocsFixtureMixin):
+    """
+    Smoke tests for the async filter_documents_async() path.
+
+    These tests verify that the async plumbing works correctly with no filters,
+    a simple equality filter, and a compound AND filter. Full filter logic correctness
+    is covered by FilterDocumentsTest — the sync and async paths share the same
+    filter translation layer, so only the async dispatch needs smoke-testing here.
+    """
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_no_filters_async(document_store: AsyncDocumentStore):
+        """Verify the async path returns all documents when no filter is applied."""
+        docs = [Document(content="first doc"), Document(content="second doc"), Document(content="third doc")]
+        await document_store.write_documents_async(docs)
+        result = await document_store.filter_documents_async()
+        assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_filter_simple_async(self, document_store: AsyncDocumentStore, filterable_docs: list[Document]):
+        """One equality filter — confirms async plumbing works with a filter."""
+        await document_store.write_documents_async(filterable_docs)
+        result = await document_store.filter_documents_async(
+            filters={"field": "meta.number", "operator": "==", "value": 2}
+        )
+        self.assert_documents_are_equal(result, [d for d in filterable_docs if d.meta.get("number") == 2])
+
+    @pytest.mark.asyncio
+    async def test_filter_compound_async(self, document_store: AsyncDocumentStore, filterable_docs: list[Document]):
+        """One AND filter — verifies compound filters aren't broken by the async path."""
+        await document_store.write_documents_async(filterable_docs)
+        result = await document_store.filter_documents_async(
+            filters={
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.number", "operator": "==", "value": 2},
+                    {"field": "meta.name", "operator": "==", "value": "name_0"},
+                ],
+            }
+        )
+        self.assert_documents_are_equal(
+            result, [d for d in filterable_docs if d.meta.get("number") == 2 and d.meta.get("name") == "name_0"]
+        )
