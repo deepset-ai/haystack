@@ -486,8 +486,8 @@ This component is inspired by [5 Levels of Text Splitting](https://github.com/Fu
 
 ### Usage example
 
-<!-- test-ignore -->
 ```python
+<!-- test-ignore -->
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
