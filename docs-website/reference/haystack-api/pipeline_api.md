@@ -31,7 +31,6 @@ Executes the pipeline step by step asynchronously, yielding partial outputs when
 
 Usage:
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.builders import ChatPromptBuilder
@@ -139,7 +138,6 @@ execution of pipeline components.
 
 Usage:
 
-<!-- test-ignore -->
 ```python
 import asyncio
 
@@ -264,7 +262,6 @@ In case you need asynchronous methods, consider using `run_async` or `run_async_
 
 Usage:
 
-<!-- test-ignore -->
 ```python
 from haystack import Document
 from haystack.components.builders import ChatPromptBuilder
@@ -394,7 +391,6 @@ Runs the Pipeline with given input data.
 
 Usage:
 
-<!-- test-ignore -->
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret

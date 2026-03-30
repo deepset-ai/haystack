@@ -35,7 +35,6 @@ These error ChatMessages can be used by LLMs in Haystack 2.x recovery loops.
 
 Usage example:
 
-<!-- test-ignore -->
 ```python
 from haystack import Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator

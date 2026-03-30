@@ -26,7 +26,6 @@ This is an example agent that:
 1. Uses a calculator to compute tips based on its findings.
 1. Returns the final answer with its context.
 
-<!-- test-ignore -->
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -96,7 +95,6 @@ You can define a reusable `user_prompt` with Jinja2 template variables so the Ag
 with different inputs without manually constructing `ChatMessage` objects each time.
 This is especially useful when embedding the Agent in a pipeline or calling it in a loop.
 
-<!-- test-ignore -->
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator

@@ -35,7 +35,6 @@ Below is an example of creating a ComponentTool from an existing SerperDevWebSea
 
 ## Usage Example:
 
-<!-- test-ignore -->
 ```python
 from haystack import component, Pipeline
 from haystack.tools import ComponentTool
@@ -656,7 +655,6 @@ exposing all tools directly without any discovery mechanism.
 
 ### Usage Example
 
-<!-- test-ignore -->
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator

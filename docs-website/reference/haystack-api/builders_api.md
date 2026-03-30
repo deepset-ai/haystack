@@ -181,7 +181,6 @@ builder.run(target_language="spanish", snippet="I can't speak spanish.", templat
 
 #### Dynamic ChatMessage prompt template
 
-<!-- test-ignore -->
 ```python
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -370,7 +369,6 @@ builder.run(target_language="spanish", snippet="I can't speak spanish.")
 This is an example of a RAG pipeline where PromptBuilder renders a custom prompt template and fills it
 with the contents of the retrieved documents and a query. The rendered prompt is then sent to a Generator.
 
-<!-- test-ignore -->
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret
