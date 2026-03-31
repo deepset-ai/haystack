@@ -22,6 +22,7 @@ class SentenceTransformersSparseTextEmbedder:
     You can use it to embed user query and send it to a sparse embedding retriever.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 

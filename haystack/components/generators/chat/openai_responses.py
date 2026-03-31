@@ -61,7 +61,7 @@ class OpenAIResponsesChatGenerator:
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage

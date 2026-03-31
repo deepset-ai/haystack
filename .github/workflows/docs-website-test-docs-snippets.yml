@@ -25,8 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      # TODO: We'll properly set these after migration to core project
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SERPERDEV_API_KEY: ${{ secrets.SERPERDEV_API_KEY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

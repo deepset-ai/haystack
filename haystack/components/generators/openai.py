@@ -46,7 +46,7 @@ class OpenAIGenerator:
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators import OpenAIGenerator
     client = OpenAIGenerator()

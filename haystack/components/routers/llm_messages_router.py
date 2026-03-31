@@ -28,7 +28,7 @@ class LLMMessagesRouter:
     # initialize a Chat Generator with a generative model for moderation
     chat_generator = HuggingFaceAPIChatGenerator(
         api_type="serverless_inference_api",
-        api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
+        api_params={"model": "openai/gpt-oss-safeguard-20b", "provider": "groq"},
     )
 
     router = LLMMessagesRouter(chat_generator=chat_generator,

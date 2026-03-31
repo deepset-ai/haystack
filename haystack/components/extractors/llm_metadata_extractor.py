@@ -126,7 +126,7 @@ class LLMMetadataExtractor:
 
     extractor = LLMMetadataExtractor(
         prompt=NER_PROMPT,
-        chat_generator=generator,
+        chat_generator=OpenAIChatGenerator(),
         expected_keys=["entities"],
         raise_on_failure=False,
     )

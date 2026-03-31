@@ -30,6 +30,29 @@ def _package_name(dep: str) -> str:
     return candidate.strip()
 
 
+def _load_extra_deps(extra_file: Path) -> list[str]:
+    """Load additional dependencies from a companion requirements file."""
+    if not extra_file.exists():
+        return []
+    deps = []
+    for line in extra_file.read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if line:
+            deps.append(line)
+    return deps
+
+
+def _merge_deps(base: list[str], extra: list[str]) -> list[str]:
+    """Append extra deps that aren't already present (by package name)."""
+    seen = {_package_name(d) for d in base}
+    merged = list(base)
+    for dep in extra:
+        if _package_name(dep) not in seen:
+            seen.add(_package_name(dep))
+            merged.append(dep)
+    return merged
+
+
 def fetch_haystack_deps(version: str = "main") -> list[str]:
     """
     Fetch and parse Haystack's pyproject.toml to extract dependencies.
@@ -130,6 +153,13 @@ def main() -> None:
 
     print(f"Fetching Haystack dependencies for version: {args.version}")
     deps = fetch_haystack_deps(args.version)
+
+    extra_path = Path(__file__).parent / "extra_requirements.txt"
+    extra_deps = _load_extra_deps(extra_path)
+    if extra_deps:
+        deps = _merge_deps(deps, extra_deps)
+        if args.verbose:
+            print(f"Merged {len(extra_deps)} extra dependencies from {extra_path.name}")
 
     requirements_content = f"""# Auto-generated from Haystack pyproject.toml (version: {args.version})
 # For testing docs snippets

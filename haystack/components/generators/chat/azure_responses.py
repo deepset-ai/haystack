@@ -34,7 +34,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
