@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.components.agents.state import State
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -1061,6 +1061,30 @@ class TestToolInvokerUtilities:
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
+
+    def test_merge_tool_outputs_source_key_absent_does_not_corrupt_list_state(self):
+        """
+        Simulates a PipelineTool wrapping a pipeline with a conditional branch that may not execute, resulting in the
+        source key being absent from the tool result. The test verifies that in this case, the existing list in state
+        is not corrupted by appending None.
+        """
+        tool = Tool(
+            name="retrieval",
+            description="mock",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+            function=lambda query: {},
+            outputs_to_state={"documents": {"source": "documents_output"}},
+        )
+        invoker = ToolInvoker(tools=[tool])
+        existing_doc = Document(content="from first call")
+        state = State(schema={"documents": {"type": list[Document]}})
+        state.set("documents", [existing_doc])
+
+        # Tool result where the source key is absent (document extraction branch did not execute)
+        invoker._merge_tool_outputs(tool=tool, result={"result": "no web results found"}, state=state)
+
+        assert state.data["documents"] == [existing_doc]
+        assert None not in state.data["documents"]
 
     def test_merge_tool_outputs_with_output_mapping_and_handler(self):
         handler = lambda _, new: f"{new}"  # noqa: E731

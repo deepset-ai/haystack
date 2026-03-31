@@ -459,6 +459,13 @@ class ToolInvoker:
         for state_key, config in tool.outputs_to_state.items():
             # Get the source key from the output config, otherwise use the entire result
             source_key = config.get("source", None)
+
+            # If a source key is specified but absent from the result, skip this mapping to avoid passing a None value
+            # to state. This can be a common scenario with PipelineTool wrapping a pipeline that has conditional
+            # branches where not all outputs are always produced even if defined in outputs_to_state.
+            if source_key and source_key not in result:
+                continue
+
             output_value = result.get(source_key) if source_key else result
 
             # Merge other outputs into the state
