@@ -226,6 +226,7 @@ export default {
             id: 'pipeline-components/converters'
           },
           items: [
+            'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/documenttoimagecontent',
@@ -612,6 +613,7 @@ export default {
             'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
+            'pipeline-components/websearch/tavilywebsearch',
             'pipeline-components/websearch/external-integrations-websearch',
           ],
         },

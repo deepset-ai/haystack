@@ -1,0 +1,103 @@
+---
+title: "TavilyWebSearch"
+id: tavilywebsearch
+slug: "/tavilywebsearch"
+description: "Search engine using the Tavily AI-powered search API."
+---
+
+# TavilyWebSearch
+
+Search the web using the Tavily AI-powered search API, optimized for LLM applications.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `api_key`: The Tavily API key. Can be set with the `TAVILY_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing search result content and metadata. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [Tavily Search API](/reference/integrations-tavily) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/tavily/src/haystack_integrations/components/websearch/tavily/tavily_websearch.py |
+
+</div>
+
+## Overview
+
+When you give `TavilyWebSearch` a query, it uses the [Tavily](https://tavily.com) Search API to search the web and return relevant content as Haystack `Document` objects. It also returns a list of the source URLs.
+
+Tavily is an AI-powered search API built specifically for LLM applications. It returns clean, relevant snippets without the noise of traditional search engines, making it a great fit for RAG pipelines.
+
+`TavilyWebSearch` requires a Tavily API key to work. By default, it looks for a `TAVILY_API_KEY` environment variable. Alternatively, you can pass an `api_key` directly during initialization.
+
+## Usage
+
+### On its own
+
+Here is a quick example of how `TavilyWebSearch` searches the web based on a query and returns a list of Documents.
+
+```python
+from haystack_integrations.components.websearch.tavily import TavilyWebSearch
+from haystack.utils import Secret
+
+web_search = TavilyWebSearch(
+    api_key=Secret.from_env_var("TAVILY_API_KEY"),
+    top_k=5,
+)
+query = "What is Haystack by deepset?"
+
+response = web_search.run(query=query)
+
+for doc in response["documents"]:
+    print(doc.content)
+```
+
+### In a pipeline
+
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline that uses `TavilyWebSearch` to look up an answer on the web.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.websearch.tavily import TavilyWebSearch
+from haystack.dataclasses import ChatMessage
+
+web_search = TavilyWebSearch(
+    api_key=Secret.from_env_var("TAVILY_API_KEY"),
+    top_k=3,
+)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+
+print(result["llm"]["replies"][0].text)
+```

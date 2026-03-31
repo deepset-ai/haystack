@@ -164,3 +164,14 @@ def test_file_content_warn_on_inplace_mutation():
     fc = FileContent(base64_data="dGVzdA==", mime_type="text/plain", validation=False)
     with pytest.warns(Warning, match="dataclasses.replace"):
         fc.mime_type = "application/pdf"
+
+
+def test_file_content_to_trace_dict(base64_pdf_string):
+    file_content = FileContent(
+        base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf", extra={"key": "value"}
+    )
+    data = file_content._to_trace_dict()
+    assert data["base64_data"] == f"Base64 string ({len(base64_pdf_string)} characters)"
+    assert data["mime_type"] == "application/pdf"
+    assert data["filename"] == "test.pdf"
+    assert data["extra"] == {"key": "value"}
