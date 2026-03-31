@@ -66,8 +66,8 @@ jobs:
           echo "Generating requirements.txt for Haystack version: $VERSION"
           python docs-website/scripts/generate_requirements.py --version "$VERSION"
 
-      - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      #- name: Install FFmpeg
+      #  run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: |
@@ -81,6 +81,4 @@ jobs:
 
       - name: Run snippet tests (verbose)
         run: |
-          # TEMPORARY: Testing with single file to make CI green
-          # TODO: Expand to run all docs: --paths docs versioned_docs
           python docs-website/scripts/test_python_snippets.py --path tmp_api_reference
