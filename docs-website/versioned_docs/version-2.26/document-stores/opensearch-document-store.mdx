@@ -31,8 +31,14 @@ OpenSearch provides support for vector similarity comparisons and approximate ne
 If you have Docker set up, we recommend pulling the Docker image and running it.
 
 ```shell
-docker pull opensearchproject/opensearch:2.11.0
-docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" opensearchproject/opensearch:2.11.0
+docker pull opensearchproject/opensearch:3.5.0
+docker run \
+    -p 9200:9200 \
+    -p 9600:9600 \
+    -e "discovery.type=single-node" \
+    -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" \
+    -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=SecureHaystack*2026" \
+    opensearchproject/opensearch:3.5.0
 ```
 
 As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
@@ -57,7 +63,7 @@ document_store = OpenSearchDocumentStore(
     hosts="http://localhost:9200",
     use_ssl=True,
     verify_certs=False,
-    http_auth=("admin", "admin"),
+    http_auth=("admin", "SecureHaystack*2026"),
 )
 document_store.write_documents(
     [Document(content="This is first"), Document(content="This is second")],
