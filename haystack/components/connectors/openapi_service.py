@@ -171,7 +171,7 @@ class OpenAPIServiceConnector:
     variable in the code.
 
     Usage example:
-
+    <!-- test-ignore -->
     ```python
     import json
     import requests
