@@ -26,14 +26,17 @@ class PPTXToDocument:
     Converts PPTX files to Documents.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.converters.pptx import PPTXToDocument
+    from datetime import datetime
 
     converter = PPTXToDocument()
     results = converter.run(sources=["sample.pptx"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is the text from the PPTX file.'
+    # >> 'This is the text from the PPTX file.'
     ```
     """
 

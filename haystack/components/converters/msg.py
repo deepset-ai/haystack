@@ -29,7 +29,7 @@ class MSGToDocument:
     file are extracted as ByteStream objects.
 
     ### Example Usage
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.converters.msg import MSGToDocument
     from datetime import datetime

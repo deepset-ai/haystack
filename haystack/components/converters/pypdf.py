@@ -56,15 +56,17 @@ class PyPDFToDocument:
     You can attach metadata to the resulting documents.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.converters.pypdf import PyPDFToDocument
+    from datetime import datetime
 
     converter = PyPDFToDocument()
     results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is a text from the PDF file.'
+    # >> 'This is a text from the PDF file.'
     ```
     """
 

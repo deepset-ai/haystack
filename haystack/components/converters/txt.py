@@ -23,15 +23,16 @@ class TextFileToDocument:
     It can attach metadata to the resulting documents.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.converters.txt import TextFileToDocument
 
     converter = TextFileToDocument()
     results = converter.run(sources=["sample.txt"])
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is the content from the txt file.'
+    # >> 'This is the content from the txt file.'
     ```
     """
 

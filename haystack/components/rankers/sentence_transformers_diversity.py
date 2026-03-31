@@ -99,18 +99,21 @@ class SentenceTransformersDiversityRanker:
     if a score is present.
 
     ### Usage example
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
-    ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
+    ranker = SentenceTransformersDiversityRanker(
+        model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order"
+    )
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     ```
-    """  # noqa: E501
+    """
 
     def __init__(  # noqa: PLR0913
         self,

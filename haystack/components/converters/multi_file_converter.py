@@ -51,6 +51,7 @@ class MultiFileConverter:
     - XLSX
 
     Usage example:
+    <!-- test-ignore -->
     ```
     from haystack.super_components.converters import MultiFileConverter
 
