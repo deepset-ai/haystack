@@ -66,6 +66,9 @@ jobs:
           echo "Generating requirements.txt for Haystack version: $VERSION"
           python docs-website/scripts/generate_requirements.py --version "$VERSION"
 
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Install dependencies
         run: |
           if [ -f requirements.txt ]; then
