@@ -28,8 +28,9 @@ Extracts textual content and metadata (if applicable) from image-based documents
 
 The component works by:
 
-1. Converting each input document into an image using the `DocumentToImageContent` component,
-2. Using a predefined prompt to instruct the LLM on how to extract content and/or metadata,
+1. Converting each input document into an image using the `DocumentToImageContent` component.
+2. Using a predefined prompt to instruct the LLM on how to extract content and/or metadata.
+3. Processing the image through a vision-capable ChatGenerator to extract structured textual content.
 
 The prompt must not contain Jinja variables; it should only include instructions for the LLM. Image data and the prompt are passed together to the LLM as a Chat Message.
 
