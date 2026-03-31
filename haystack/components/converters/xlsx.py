@@ -31,13 +31,15 @@ class XLSXToDocument:
     created for each sheet. The content of the Document is the table which can be saved in CSV or Markdown format.
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.converters.xlsx import XLSXToDocument
     from datetime import datetime
 
     converter = XLSXToDocument()
-    results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(
+        sources=["test/test_files/xlsx/basic_tables_two_sheets.xlsx"], meta={"date_added": datetime.now().isoformat()}
+    )
     documents = results["documents"]
 
     print(documents[0].content)

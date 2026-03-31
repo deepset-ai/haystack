@@ -31,16 +31,17 @@ class PDFMinerToDocument:
     Uses `pdfminer` compatible converters to convert PDF files to Documents. https://pdfminersix.readthedocs.io/en/latest/
 
     Usage example:
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.converters.pdfminer import PDFMinerToDocument
     from datetime import datetime
 
     converter = PDFMinerToDocument()
-    results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
-    documents = results["documents"]
+    results = converter.run(
+        sources=["test/test_files/pdf/sample_pdf_1.pdf"], meta={"date_added": datetime.now().isoformat()}
+    )
 
-    print(documents[0].content)
+    print(results["documents"][0].content)
     # >> 'This is a text from the PDF file.'
     ```
     """

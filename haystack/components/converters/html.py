@@ -23,15 +23,15 @@ class HTMLToDocument:
     Converts an HTML file to a Document.
 
     Usage example:
-    <!-- test-ignore -->
     ```python
     from haystack.components.converters import HTMLToDocument
 
     converter = HTMLToDocument()
-    results = converter.run(sources=["path/to/sample.html"])
+    results = converter.run(sources=["test/test_files/html/paul_graham_superlinear.html"])
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is a text from the HTML file.'
+    # > 'This is a text from the HTML file.'
     ```
     """
 
