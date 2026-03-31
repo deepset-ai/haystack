@@ -1,0 +1,41 @@
+# Extra dependencies for docs snippet testing.
+# These are optional Haystack component dependencies not included in
+# pyproject.toml's core/test/e2e envs. Add entries here when a new snippet
+# fails due to a missing optional import.
+
+# --- Audio ---
+openai-whisper>=20231106        # WhisperLocalTranscriber
+
+# --- Classifiers / Routers ---
+langdetect                         # DocumentLanguageClassifier, TextLanguageRouter
+transformers[torch,sentencepiece]  # ZeroShotDocumentClassifier, TransformersSimilarityRanker, TransformersTextRouter
+
+# --- Connectors ---
+openapi3                        # OpenAPIServiceConnector
+
+# --- Converters ---
+python-docx                     # DOCXToDocument
+trafilatura                     # HTMLToDocument
+pillow                          # DocumentToImage, PDFToImageConverter
+pypdfium2                       # PDFToImageConverter
+jq                              # JQConverter
+markdown-it-py                  # MarkdownToDocument
+mdit_plain                      # MarkdownToDocument
+python-oxmsg                    # MSGToDocument
+jsonref                         # OpenAPIServiceToDocument
+openpyxl                        # XLSXToDocument
+pdfminer.six                    # PDFMinerToDocument
+python-pptx                     # PPTXToDocument
+pypdf                           # PyPDFToDocument
+tika                            # TikaDocumentConverter
+
+# --- Embedders ---
+huggingface_hub>=0.27.0         # HuggingFace*Embedder, HuggingFace*Generator
+sentence-transformers>=5.0.0    # SentenceTransformers*Embedder
+
+# --- Preprocessors ---
+nltk>=3.9.1                     # NLTKDocumentSplitter
+
+# --- Rankers / Samplers ---
+torch>=1.13                     # TransformersSimilarityRanker, SentenceTransformersDiversityRanker, TopPSampler
+accelerate                      # TransformersSimilarityRanker, ExtractiveReader
