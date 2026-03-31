@@ -20,6 +20,11 @@ on:
        - 'docs-website/scripts/generate_requirements.py'
        - '.github/workflows/docs-website-test-docs-snippets.yml'
 
+env:
+  HATCH_VERSION: "1.16.5"
+  PYTHON_VERSION: "3.11"
+
+
 jobs:
   test-docs-snippets:
     runs-on: ubuntu-latest
