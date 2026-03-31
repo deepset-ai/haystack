@@ -177,7 +177,7 @@ class Pipeline(PipelineBase):
             }
         )
 
-        print(results["llm"]["replies"][0])
+        print(results["llm"]["replies"][0].text)
         # Jean lives in Paris
         ```
 
