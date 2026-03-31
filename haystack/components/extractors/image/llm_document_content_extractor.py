@@ -92,7 +92,27 @@ class LLMDocumentContentExtractor:
     Return this metadata as additional key-value pairs in the same JSON object.
     \"\"\"
 
-    chat_generator = OpenAIChatGenerator()
+    chat_generator = OpenAIChatGenerator(
+            generation_kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "entity_extraction",
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "document_content": {"type": "string"},
+                                    "author": {"type": "string"},
+                                    "date": {"type": "string"},
+                                    "document_type": {"type": "string"},
+                                    "title": {"type": "string"},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                    }
+                }
+            )
 
     extractor = LLMDocumentContentExtractor(
         chat_generator=chat_generator,
