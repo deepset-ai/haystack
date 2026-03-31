@@ -39,6 +39,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Generate API reference for Docusaurus
+        run: hatch run docs
+
       - name: Install base dependencies
         run: |
           python -m pip install --upgrade pip
@@ -69,4 +72,4 @@ jobs:
         run: |
           # TEMPORARY: Testing with single file to make CI green
           # TODO: Expand to run all docs: --paths docs versioned_docs
-          python docs-website/scripts/test_python_snippets.py --path docs-website/reference/haystack-api/
+          python docs-website/scripts/test_python_snippets.py --path tmp_api_reference
