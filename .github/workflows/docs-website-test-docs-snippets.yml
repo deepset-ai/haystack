@@ -81,4 +81,5 @@ jobs:
 
       - name: Run snippet tests (verbose)
         run: |
+          ls  -l tmp_api_reference
           python docs-website/scripts/test_python_snippets.py --path tmp_api_reference
