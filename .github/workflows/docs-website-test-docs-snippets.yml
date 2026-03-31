@@ -38,6 +38,8 @@ jobs:
     timeout-minutes: 20
     env:
       AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_AD_TOKEN: ${{ secrets.AZURE_OPENAI_AD_TOKEN }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
       CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SERPERDEV_API_KEY: ${{ secrets.SERPERDEV_API_KEY }}
@@ -84,5 +86,6 @@ jobs:
           fi
 
       - name: Run snippet tests (verbose)
+        shell: bash
         run: |
           python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
