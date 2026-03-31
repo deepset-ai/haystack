@@ -128,7 +128,7 @@ class Pipeline(PipelineBase):
         from haystack import Pipeline, Document
         from haystack.components.builders.answer_builder import AnswerBuilder
         from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
-        from haystack.components.generators import OpenAIGenerator
+        from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
         from haystack.dataclasses import ChatMessage
         from haystack.document_stores.in_memory import InMemoryDocumentStore
