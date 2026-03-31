@@ -161,7 +161,7 @@ class Pipeline(PipelineBase):
             variables=["question", "documents"]
         )
 
-        llm = OpenAIGenerator()
+        llm = OpenAIChatGenerator()
         rag_pipeline = Pipeline()
         rag_pipeline.add_component("retriever", retriever)
         rag_pipeline.add_component("prompt_builder", prompt_builder)
