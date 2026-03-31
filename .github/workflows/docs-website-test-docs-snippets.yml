@@ -11,14 +11,14 @@ on:
         default: 'main'
         type: string
 
-  # TEMPORARILY DISABLED
-  # push:
-  #   paths:
-  #     - 'docs-website/docs/**'
-  #     - 'docs-website/versioned_docs/**'
-  #     - 'docs-website/scripts/test_python_snippets.py'
-  #     - 'docs-website/scripts/generate_requirements.py'
-  #     - '.github/workflows/docs-website-test-docs-snippets.yml'
+
+  push:
+    paths:
+       - 'docs-website/docs/**'
+       - 'docs-website/versioned_docs/**'
+       - 'docs-website/scripts/test_python_snippets.py'
+       - 'docs-website/scripts/generate_requirements.py'
+       - '.github/workflows/docs-website-test-docs-snippets.yml'
 
 jobs:
   test-docs-snippets:
