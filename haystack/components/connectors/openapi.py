@@ -46,7 +46,6 @@ class OpenAPIConnector:
     )
     ```
     Note:
-    - The `parameters` argument is required for this component.
     - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
 
     """
