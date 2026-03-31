@@ -121,8 +121,8 @@ class LLMDocumentContentExtractor:
     )
 
     documents = [
-        Document(content="", meta={"file_path": "image.jpg"}),
-        Document(content="", meta={"file_path": "document.pdf", "page_number": 1})
+        Document(content="", meta={"file_path": "/test/test_files/images/image_metadata.png"}),
+        Document(content="", meta={"file_path": "/test/test_files/images/apple.jpg", "page_number": 1})
     ]
     result = extractor.run(documents=documents)
     updated_documents = result["documents"]
