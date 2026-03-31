@@ -89,4 +89,4 @@ jobs:
         shell: bash
         run: |
           # python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
-          hatch run -e test python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
+          hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
