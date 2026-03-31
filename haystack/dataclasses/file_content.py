@@ -84,6 +84,19 @@ class FileContent:
         """
         return asdict(self)
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the FileContent to a dictionary representation for tracing.
+
+        The base64_data is replaced with a placeholder string to avoid sending large payloads to the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+        data = self.to_dict()
+        data["base64_data"] = f"Base64 string ({len(self.base64_data)} characters)"
+        return data
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileContent":
         """

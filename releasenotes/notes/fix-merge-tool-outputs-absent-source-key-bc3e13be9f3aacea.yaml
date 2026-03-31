@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fix ``ToolInvoker._merge_tool_outputs`` silently appending ``None`` to list-typed state when a
+    tool's ``outputs_to_state`` source key is absent from the tool result. This is a common scenario
+    with ``PipelineTool`` wrapping a pipeline that has conditional branches where not all outputs are
+    always produced even if defined in ``outputs_to_state``. The mapping is now skipped entirely when
+    the source key is not present in the result dict.
