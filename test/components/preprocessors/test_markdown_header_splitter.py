@@ -253,59 +253,71 @@ class TestHeaderSplitLevels:
         # sample_text has 5 chunks with content; "Header 1.1" and "Header 1.2" are empty headers prepended to their
         # first child and do not appear as their own split boundary
         assert len(docs) == 5
+        assert docs[0].content == "# Header 1\nContent under header 1.\n"
+        assert docs[1].content == "## Header 1.1\n### Subheader 1.1.1\nContent under sub-header 1.1.1\n"
+        assert docs[2].content == "## Header 1.2\n### Subheader 1.2.1\nContent under header 1.2.1.\n"
+        assert docs[3].content == "### Subheader 1.2.2\nContent under header 1.2.2.\n"
+        assert docs[4].content == "### Subheader 1.2.3\nContent under header 1.2.3."
+
         headers = [doc.meta["header"] for doc in docs]
-        assert "Header 1" in headers
-        assert "Subheader 1.1.1" in headers
-        assert "Subheader 1.2.1" in headers
-        assert "Subheader 1.2.2" in headers
-        assert "Subheader 1.2.3" in headers
+        assert headers == ["Header 1", "Subheader 1.1.1", "Subheader 1.2.1", "Subheader 1.2.2", "Subheader 1.2.3"]
 
     def test_h1_and_h2_only(self, sample_text):
         """Only h1/h2 headers create splits; h3+ content is absorbed into the preceding chunk."""
         splitter = MarkdownHeaderSplitter(header_split_levels=[1, 2])
         docs = splitter.run(documents=[Document(content=sample_text)])["documents"]
 
+        assert len(docs) == 3
+        assert docs[0].content == "# Header 1\nContent under header 1.\n"
+        assert docs[1].content == "## Header 1.1\n### Subheader 1.1.1\nContent under sub-header 1.1.1\n"
+        assert docs[2].content == (
+            "## Header 1.2\n"
+            "### Subheader 1.2.1\nContent under header 1.2.1.\n"
+            "### Subheader 1.2.2\nContent under header 1.2.2.\n"
+            "### Subheader 1.2.3\nContent under header 1.2.3."
+        )
+
         headers = [doc.meta["header"] for doc in docs]
+        assert headers == ["Header 1", "Header 1.1", "Header 1.2"]
         # h3 headers must not appear as split boundaries
         assert "Subheader 1.1.1" not in headers
         assert "Subheader 1.2.1" not in headers
-        assert "Header 1" in headers
-        assert "Header 1.1" in headers
-        assert "Header 1.2" in headers
-
-        # content under h3 headers should be absorbed into the parent h2 chunk
-        header_1_2_chunk = next(doc for doc in docs if doc.meta["header"] == "Header 1.2")
-        assert "Content under header 1.2.1." in header_1_2_chunk.content
-        assert "Content under header 1.2.2." in header_1_2_chunk.content
-        assert "Content under header 1.2.3." in header_1_2_chunk.content
 
     def test_single_level(self, sample_text):
-        """Splitting on only h1 yields one chunk containing all nested content."""
+        """Splitting on only h1 yields one chunk that is the full document."""
         splitter = MarkdownHeaderSplitter(header_split_levels=[1])
         docs = splitter.run(documents=[Document(content=sample_text)])["documents"]
 
         assert len(docs) == 1
         assert docs[0].meta["header"] == "Header 1"
-        assert "Content under header 1." in docs[0].content
-        assert "Content under header 1.2.3." in docs[0].content
+        # entire document is in one chunk — h1 is first, so content equals the full source text
+        assert docs[0].content == sample_text
 
     def test_deep_levels_only(self):
-        # TODO Add h1 and h2 headers above so we can show that their content is ignored
-        """Splitting on h3 only; h1/h2 headers do not create split boundaries."""
-        text = "### Deep Section A\nContent A.\n### Deep Section B\nContent B.\n"
+        """Splitting on h3 only; h1/h2 headers above the first h3 are not captured in any chunk."""
+        text = (
+            "# Top Level\n"
+            "Ignored top content.\n"
+            "## Mid Level\n"
+            "Ignored mid content.\n"
+            "### Deep Section A\n"
+            "Content A.\n"
+            "### Deep Section B\n"
+            "Content B.\n"
+        )
         splitter = MarkdownHeaderSplitter(header_split_levels=[3])
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
         assert len(docs) == 2
-        headers = [doc.meta["header"] for doc in docs]
-        assert "Deep Section A" in headers
-        assert "Deep Section B" in headers
+        assert docs[0].content == "### Deep Section A\nContent A.\n"
+        assert docs[1].content == "### Deep Section B\nContent B.\n"
 
-        # each h3 chunk contains only its own content
-        chunk_a = next(doc for doc in docs if doc.meta["header"] == "Deep Section A")
-        assert "Content A." in chunk_a.content
-        chunk_b = next(doc for doc in docs if doc.meta["header"] == "Deep Section B")
-        assert "Content B." in chunk_b.content
+        headers = [doc.meta["header"] for doc in docs]
+        assert "Top Level" not in headers
+        assert "Mid Level" not in headers
+        # text before the first h3 match is not absorbed — it is dropped entirely
+        assert "Ignored top content." not in docs[0].content
+        assert "Ignored mid content." not in docs[0].content
 
     def test_non_contiguous_levels(self):
         """Non-contiguous level selection (e.g. [1, 3]) splits on h1 and h3 but not h2."""
@@ -313,14 +325,13 @@ class TestHeaderSplitLevels:
         splitter = MarkdownHeaderSplitter(header_split_levels=[1, 3])
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-        headers = [doc.meta["header"] for doc in docs]
-        assert "H1 Title" in headers
-        assert "H2 Ignored" not in headers
-        assert "H3 Section" in headers
-
-        # h2 content sits between the h1 and h3 matches, so it is absorbed into the h1 chunk
-        h1_chunk = next(doc for doc in docs if doc.meta["header"] == "H1 Title")
-        assert "H2 content." in h1_chunk.content
+        assert len(docs) == 2
+        # h2 content sits between the h1 and h3 match boundaries, so it is absorbed into the h1 chunk
+        assert docs[0].content == "# H1 Title\n## H2 Ignored\nH2 content.\n"
+        assert docs[0].meta["header"] == "H1 Title"
+        assert docs[1].content == "### H3 Section\nH3 content.\n"
+        assert docs[1].meta["header"] == "H3 Section"
+        assert "H2 Ignored" not in [doc.meta["header"] for doc in docs]
 
     def test_validation_empty_list(self):
         with pytest.raises(ValueError, match="non-empty list"):
@@ -363,16 +374,23 @@ class TestCodeBlockExclusion:
         splitter = MarkdownHeaderSplitter()
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-        headers = [doc.meta["header"] for doc in docs]
-        assert "Real Header" in headers
-        assert "Real Subheader" in headers
-        assert "this is a Python comment, not a header" not in headers
-        assert "also not a header" not in headers
+        assert len(docs) == 2
+        assert docs[0].content == (
+            "# Real Header\n"
+            "Some content.\n"
+            "```python\n"
+            "# this is a Python comment, not a header\n"
+            "## also not a header\n"
+            "x = 1\n"
+            "```\n"
+            "More content.\n"
+        )
+        assert docs[0].meta["header"] == "Real Header"
+        assert docs[1].content == "## Real Subheader\nSubheader content.\n"
+        assert docs[1].meta["header"] == "Real Subheader"
 
-        # raw code block content must be preserved inside its enclosing chunk
-        real_header_chunk = next(doc for doc in docs if doc.meta["header"] == "Real Header")
-        assert "```python" in real_header_chunk.content
-        assert "# this is a Python comment, not a header" in real_header_chunk.content
+        assert "this is a Python comment, not a header" not in [doc.meta["header"] for doc in docs]
+        assert "also not a header" not in [doc.meta["header"] for doc in docs]
 
     def test_tilde_fence(self):
         """Hash lines inside triple-tilde fences are ignored."""
@@ -380,13 +398,12 @@ class TestCodeBlockExclusion:
         splitter = MarkdownHeaderSplitter()
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-        headers = [doc.meta["header"] for doc in docs]
-        assert "Real Header" in headers
-        assert "Real Subheader" in headers
-        assert "shell comment" not in headers
-
-        real_header_chunk = next(doc for doc in docs if doc.meta["header"] == "Real Header")
-        assert "# shell comment" in real_header_chunk.content
+        assert len(docs) == 2
+        assert docs[0].content == "# Real Header\n~~~bash\n# shell comment\necho hello\n~~~\n"
+        assert docs[0].meta["header"] == "Real Header"
+        assert docs[1].content == "## Real Subheader\nContent.\n"
+        assert docs[1].meta["header"] == "Real Subheader"
+        assert "shell comment" not in [doc.meta["header"] for doc in docs]
 
     def test_multiple_code_blocks(self):
         """Multiple fenced code blocks in one document are all excluded."""
@@ -406,11 +423,15 @@ class TestCodeBlockExclusion:
         splitter = MarkdownHeaderSplitter()
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-        headers = [doc.meta["header"] for doc in docs]
-        assert "Section One" in headers
-        assert "Section Two" in headers
-        assert "fake header A" not in headers
-        assert "fake header B" not in headers
+        assert len(docs) == 2
+        assert docs[0].content == (
+            "# Section One\nIntro text.\n```\n# fake header A\n```\nMiddle text.\n```python\n# fake header B\n```\n"
+        )
+        assert docs[0].meta["header"] == "Section One"
+        assert docs[1].content == "## Section Two\nMore content.\n"
+        assert docs[1].meta["header"] == "Section Two"
+        assert "fake header A" not in [doc.meta["header"] for doc in docs]
+        assert "fake header B" not in [doc.meta["header"] for doc in docs]
 
     def test_longer_fence_delimiters(self):
         """Fences with more than three backticks/tildes are also recognised."""
@@ -418,10 +439,12 @@ class TestCodeBlockExclusion:
         splitter = MarkdownHeaderSplitter()
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
-        headers = [doc.meta["header"] for doc in docs]
-        assert "Real Header" in headers
-        assert "Real Subheader" in headers
-        assert "not a header" not in headers
+        assert len(docs) == 2
+        assert docs[0].content == "# Real Header\n````python\n# not a header\n````\n"
+        assert docs[0].meta["header"] == "Real Header"
+        assert docs[1].content == "## Real Subheader\nContent.\n"
+        assert docs[1].meta["header"] == "Real Subheader"
+        assert "not a header" not in [doc.meta["header"] for doc in docs]
 
     def test_code_block_with_no_real_headers(self):
         """If the only hash lines are inside code blocks, the document is returned unchunked."""
@@ -430,6 +453,7 @@ class TestCodeBlockExclusion:
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
         assert len(docs) == 1
+        assert docs[0].content == text
         assert "header" not in docs[0].meta
 
 
