@@ -124,13 +124,12 @@ class MarkdownHeaderSplitter:
         """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
-        # Pre-compute fenced code block spans so that # lines inside code blocks (e.g. Python
-        # comments) are not mistaken for Markdown headers.
+        # Pre-compute fenced code block spans so that # lines inside code blocks (e.g. Python comments) are not
+        # mistaken for Markdown headers.
         code_spans = self._code_block_spans(text)
 
-        # find headers at the configured levels only, excluding any that fall inside a code block.
-        # Content between skipped headers is absorbed into the preceding chunk's span since
-        # end = next_match.start().
+        # find headers at the configured levels only, excluding any that fall inside a code block. Content between
+        # skipped headers is absorbed into the preceding chunk's span since end = next_match.start().
         matches = [
             m
             for m in re.finditer(self._header_pattern, text)
