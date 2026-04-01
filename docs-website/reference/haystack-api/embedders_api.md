@@ -16,12 +16,13 @@ Calculates document embeddings using OpenAI models deployed on Azure.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 
 doc = Document(content="I love pizza!")
-
 document_embedder = AzureOpenAIDocumentEmbedder()
 
 result = document_embedder.run([doc])
@@ -138,11 +139,12 @@ Embeds strings using OpenAI models deployed on Azure.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import AzureOpenAITextEmbedder
 
 text_to_embed = "I love pizza!"
-
 text_embedder = AzureOpenAITextEmbedder()
 
 print(text_embedder.run(text_to_embed))
@@ -255,6 +257,8 @@ Use it with the following Hugging Face APIs:
 
 #### With free serverless inference API
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
 from haystack.utils import Secret
@@ -274,6 +278,8 @@ print(result["documents"][0].embedding)
 
 #### With paid inference endpoints
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
 from haystack.utils import Secret
@@ -292,6 +298,8 @@ print(result["documents"][0].embedding)
 ```
 
 #### With self-hosted text embeddings inference
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -435,6 +443,8 @@ Use it with the following Hugging Face APIs:
 
 #### With free serverless inference API
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
@@ -450,6 +460,8 @@ print(text_embedder.run("I love pizza!"))
 
 #### With paid inference endpoints
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils import Secret
@@ -463,6 +475,8 @@ print(text_embedder.run("I love pizza!"))
 ```
 
 #### With self-hosted text embeddings inference
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
@@ -585,6 +599,8 @@ A component for computing Document embeddings based on images using Sentence Tra
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -740,15 +756,16 @@ Computes document embeddings using OpenAI models.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.embedders import OpenAIDocumentEmbedder
 
 doc = Document(content="I love pizza!")
-
 document_embedder = OpenAIDocumentEmbedder()
-
 result = document_embedder.run([doc])
+
 print(result['documents'][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
@@ -885,11 +902,12 @@ You can use it to embed user query and send it to an embedding Retriever.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import OpenAITextEmbedder
 
 text_to_embed = "I love pizza!"
-
 text_embedder = OpenAITextEmbedder()
 
 print(text_embedder.run(text_to_embed))
@@ -1023,6 +1041,8 @@ Use this component in indexing pipelines to embed input documents
 and send them to DocumentWriter to write into a Document Store.
 
 ### Usage example:
+
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -1175,6 +1195,8 @@ and send them to DocumentWriter to write a into a Document Store.
 
 ### Usage example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
@@ -1306,6 +1328,8 @@ You can use it to embed user query and send it to a sparse embedding retriever.
 
 Usage example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
 
@@ -1426,6 +1450,8 @@ Embeds strings using Sentence Transformers models.
 You can use it to embed user query and send it to an embedding retriever.
 
 Usage example:
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import SentenceTransformersTextEmbedder
