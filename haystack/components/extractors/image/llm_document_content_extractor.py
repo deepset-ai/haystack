@@ -77,6 +77,7 @@ class LLMDocumentContentExtractor:
     Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
 
     ### Usage example
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -91,32 +92,37 @@ class LLMDocumentContentExtractor:
     Return this metadata as additional key-value pairs in the same JSON object.
     \"\"\"
 
-    chat_generator = OpenAIChatGenerator()
+    chat_generator = OpenAIChatGenerator(
+            generation_kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "entity_extraction",
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "document_content": {"type": "string"},
+                                    "author": {"type": "string"},
+                                    "date": {"type": "string"},
+                                    "document_type": {"type": "string"},
+                                    "title": {"type": "string"},
+                                },
+                                "additionalProperties": False,
+                            },
+                        },
+                    }
+                }
+            )
+
     extractor = LLMDocumentContentExtractor(
         chat_generator=chat_generator,
-        generation_kwargs={
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "entity_extraction",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "document_content": {"type": "string"},
-                            "author": {"type": "string"},
-                            "date": {"type": "string"},
-                            "document_type": {"type": "string"},
-                            "title": {"type": "string"},
-                        },
-                        "additionalProperties": False,
-                    },
-                },
-            }
-        }
+        file_path_meta_field="file_path",
+        raise_on_failure=False
     )
+
     documents = [
-        Document(content="", meta={"file_path": "image.jpg"}),
-        Document(content="", meta={"file_path": "document.pdf", "page_number": 1})
+        Document(content="", meta={"file_path": "/test/test_files/images/image_metadata.png"}),
+        Document(content="", meta={"file_path": "/test/test_files/images/apple.jpg", "page_number": 1})
     ]
     result = extractor.run(documents=documents)
     updated_documents = result["documents"]

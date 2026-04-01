@@ -24,11 +24,12 @@ class SearchApiWebSearch:
     Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.websearch import SearchApiWebSearch
     from haystack.utils import Secret
 
-    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_token("test-api-key"))
+    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_env_var("SERPERDEV_API_KEY"))
     results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
 
     assert results["documents"]

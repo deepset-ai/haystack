@@ -24,7 +24,6 @@ class LLM(Agent):
     without tool usage. It processes messages and returns a single response from the language model.
 
     ### Usage examples
-
     ```python
     from haystack.components.generators.chat import LLM
     from haystack.components.generators.chat import OpenAIChatGenerator

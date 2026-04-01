@@ -68,7 +68,6 @@ class OpenAIChatGenerator:
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-
     ```python
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
