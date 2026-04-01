@@ -14,11 +14,13 @@ Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant docum
 
 Usage example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.websearch import SearchApiWebSearch
 from haystack.utils import Secret
 
-websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_token("test-api-key"))
+websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_env_var("SERPERDEV_API_KEY"))
 results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
 
 assert results["documents"]
@@ -136,11 +138,15 @@ See the [Serper Dev website](https://serper.dev/) for more details.
 
 Usage example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.websearch import SerperDevWebSearch
 from haystack.utils import Secret
 
-websearch = SerperDevWebSearch(top_k=10, api_key=Secret.from_token("test-api-key"))
+serper_dev_api = Secret.from_env_var("SERPERDEV_API_KEY")
+
+websearch = SerperDevWebSearch(top_k=10, api_key=serper_dev_api)
 results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
 
 assert results["documents"]
@@ -151,7 +157,7 @@ websearch_filtered = SerperDevWebSearch(
     top_k=10,
     allowed_domains=["example.com"],
     exclude_subdomains=True,  # Only results from example.com, not blog.example.com
-    api_key=Secret.from_token("test-api-key")
+    api_key=serper_dev_api
 )
 results_filtered = websearch_filtered.run(query="search query")
 ```

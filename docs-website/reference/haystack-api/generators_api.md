@@ -27,6 +27,8 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.utils import Secret
@@ -167,6 +169,8 @@ For details on OpenAI API parameters, see
 [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
@@ -384,6 +388,8 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -569,7 +575,7 @@ typically applies to all connection phases: connection setup, read, write, and p
 responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
 receiving the complete response.
 
-Failover is automatically triggered when a generator raises any exception, including:
+Fail over is automatically triggered when a generator raises any exception, including:
 
 - Timeout errors (if the generator implements and raises them)
 - Rate limit errors (429)
@@ -695,6 +701,8 @@ format for input and output. Use it to generate text with Hugging Face APIs:
 
 #### With the serverless inference API (Inference Providers) - free tier available
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -718,6 +726,8 @@ print(result)
 ```
 
 #### With the serverless inference API (Inference Providers) and text+image input
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -746,6 +756,8 @@ print(result)
 
 #### With paid inference endpoints
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -763,6 +775,8 @@ print(result)
 ```
 
 #### With self-hosted text generation inference
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -940,6 +954,8 @@ such as `Qwen/Qwen3-0.6B` or `meta-llama/Llama-2-7b-chat-hf`.
 LLMs running locally may need powerful hardware.
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
@@ -1860,6 +1876,8 @@ Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_comple
 
 #### With Hugging Face Inference Endpoints
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
 from haystack.utils import Secret
@@ -1873,6 +1891,8 @@ print(result)
 ```
 
 #### With self-hosted text generation inference
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -1889,6 +1909,8 @@ print(result)
 Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
 `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
 `chat_completion` endpoint.
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -1993,6 +2015,8 @@ Generates text using models from Hugging Face that run locally.
 LLMs running locally may need powerful hardware.
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceLocalGenerator
