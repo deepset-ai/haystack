@@ -50,7 +50,7 @@ class HuggingFaceAPIGenerator:
     ### Usage examples
 
     #### With Hugging Face Inference Endpoints
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
     from haystack.utils import Secret
@@ -64,6 +64,7 @@ class HuggingFaceAPIGenerator:
     ```
 
     #### With self-hosted text generation inference
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
 
@@ -80,6 +81,7 @@ class HuggingFaceAPIGenerator:
     `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
     `chat_completion` endpoint.
 
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
     from haystack.utils import Secret

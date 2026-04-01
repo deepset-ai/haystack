@@ -24,14 +24,21 @@ class OpenAPIConnector:
     pass input arguments to this component.
 
     Example:
+    <!-- test-ignore -->
     ```python
     from haystack.utils import Secret
     from haystack.components.connectors.openapi import OpenAPIConnector
 
+    serper_dev_token = Secret.from_env_var("SERPERDEV_API_KEY")
+
+    def my_custom_config_factory():
+        # Create and return a custom configuration for the OpenAPIClient
+        pass
+
     connector = OpenAPIConnector(
         openapi_spec="https://bit.ly/serperdev_openapi",
-        credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
-        service_kwargs={"config_factory": my_custom_config_factory}
+        credentials=serper_dev_token,
+        service_kwargs={"config_factory": my_custom_config_factory()}
     )
     response = connector.run(
         operation_id="search",
@@ -39,7 +46,6 @@ class OpenAPIConnector:
     )
     ```
     Note:
-    - The `parameters` argument is required for this component.
     - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
 
     """

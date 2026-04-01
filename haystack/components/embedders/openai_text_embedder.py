@@ -21,12 +21,11 @@ class OpenAITextEmbedder:
     You can use it to embed user query and send it to an embedding Retriever.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import OpenAITextEmbedder
 
     text_to_embed = "I love pizza!"
-
     text_embedder = OpenAITextEmbedder()
 
     print(text_embedder.run(text_to_embed))

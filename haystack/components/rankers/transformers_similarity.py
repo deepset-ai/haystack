@@ -35,7 +35,7 @@ class TransformersSimilarityRanker:
     additional features.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.rankers import TransformersSimilarityRanker

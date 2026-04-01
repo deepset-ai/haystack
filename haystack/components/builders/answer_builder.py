@@ -58,12 +58,12 @@ class AnswerBuilder:
         if not doc.meta["referenced"]:
             print(f"[{doc.meta['source_index']}] {doc.content}")
 
-    # Answer: The capital of France is Paris
-    # References:
-    # [2] Paris is the capital of France.
-    # Other sources:
-    # [1] Berlin is the capital of Germany.
-    # [3] Rome is the capital of Italy.
+    # >> Answer: The capital of France is Paris
+    # >> References:
+    # >> [2] Paris is the capital of France.
+    # >> Other sources:
+    # >> [1] Berlin is the capital of Germany.
+    # >> [3] Rome is the capital of Italy.
     ```
     """
 

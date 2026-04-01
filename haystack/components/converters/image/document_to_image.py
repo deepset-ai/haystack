@@ -34,32 +34,33 @@ class DocumentToImageContent:
     - For PDF files, a `page_number` key specifying which page to extract
 
     ### Usage example
-        ```python
-        from haystack import Document
-        from haystack.components.converters.image.document_to_image import DocumentToImageContent
+    <!-- test-ignore -->
+    ```python
+    from haystack import Document
+    from haystack.components.converters.image.document_to_image import DocumentToImageContent
 
-        converter = DocumentToImageContent(
-            file_path_meta_field="file_path",
-            root_path="/data/files",
-            detail="high",
-            size=(800, 600)
-        )
+    converter = DocumentToImageContent(
+        file_path_meta_field="file_path",
+        root_path="/data/files",
+        detail="high",
+        size=(800, 600)
+    )
 
-        documents = [
-            Document(content="Optional description of image.jpg", meta={"file_path": "image.jpg"}),
-            Document(content="Text content of page 1 of doc.pdf", meta={"file_path": "doc.pdf", "page_number": 1})
-        ]
+    documents = [
+        Document(content="Optional description of image.jpg", meta={"file_path": "image.jpg"}),
+        Document(content="Text content of page 1 of doc.pdf", meta={"file_path": "doc.pdf", "page_number": 1})
+    ]
 
-        result = converter.run(documents)
-        image_contents = result["image_contents"]
-        # [ImageContent(
-        #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'image.jpg'}
-        #  ),
-        #  ImageContent(
-        #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
-        #    meta={'page_number': 1, 'file_path': 'doc.pdf'}
-        #  )]
-        ```
+    result = converter.run(documents)
+    image_contents = result["image_contents"]
+    # [ImageContent(
+    #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'image.jpg'}
+    #  ),
+    #  ImageContent(
+    #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
+    #    meta={'page_number': 1, 'file_path': 'doc.pdf'}
+    #  )]
+    ```
     """
 
     def __init__(
