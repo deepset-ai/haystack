@@ -45,6 +45,10 @@ A unique feature of `MistralOCRDocumentConverter` is its support for structured 
 
 When annotation schemas are provided, the OCR model first extracts text and structure, then a Vision LLM analyzes the content and generates structured annotations according to your defined Pydantic schemas. Note that document annotation is limited to a maximum of 8 pages. For more details, see the [Mistral documentation on annotations](https://docs.mistral.ai/capabilities/document_ai/annotations/).
 
+:::note
+This component returns Markdown content. Avoid piping it through `DocumentCleaner()` with its default settings because `remove_extra_whitespaces=True` and `remove_empty_lines=True` can collapse line breaks and flatten headings, tables, and image tags. For page-aware chunking, connect the converter directly to `DocumentSplitter`, or disable those options if you need custom cleanup.
+:::
+
 ## Usage
 
 You need to install the `mistral-haystack` integration to use `MistralOCRDocumentConverter`:
@@ -159,7 +163,7 @@ Here's an example of an indexing pipeline that processes PDFs with OCR and write
 ```python
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.utils import Secret
 from haystack_integrations.components.converters.mistral import (
@@ -176,12 +180,10 @@ pipeline.add_component(
         model="mistral-ocr-2505",
     ),
 )
-pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 
-pipeline.connect("converter", "cleaner")
-pipeline.connect("cleaner", "splitter")
+pipeline.connect("converter", "splitter")
 pipeline.connect("splitter", "writer")
 
 file_paths = ["invoice.pdf", "receipt.jpg", "contract.pdf"]
