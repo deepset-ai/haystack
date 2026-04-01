@@ -28,7 +28,7 @@ metadata:
     app: haystack
 spec:
   containers:
-    - image: deepset/hayhooks:v0.6.0
+    - image: deepset/hayhooks:v1.16.0
       name: hayhooks
       imagePullPolicy: IfNotPresent
       resources:
@@ -94,7 +94,7 @@ spec:
 
 After applying this, `hayhooks` Pod will be accessible on `localhost:30080`.
 
-From here, you should be able to manage pipelines. Remember that it's possible to deploy multiple different pipelines on a single Hayhooks instance. Check the [Hayhooks docs](../hayhooks.mdx) for more details.
+From here, you should be able to manage pipelines. Remember that it's possible to deploy multiple different pipelines on a single Hayhooks instance. Check the [Hayhooks overview](../hayhooks.mdx) or the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/) for more details.
 
 ## Auto-Run Pipelines at Pod Start
 
@@ -128,7 +128,7 @@ metadata:
     app: haystack
 spec:
   containers:
-    - image: deepset/hayhooks:v0.6.0
+    - image: deepset/hayhooks:v1.16.0
       name: hayhooks
       imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "-c"]
@@ -164,7 +164,7 @@ spec:
 
 Note that:
 
-- We changed the Hayhooks container `command` to install `trafilaura` dependency before startup, since it's needed for our [chat_with_website](https://github.com/deepset-ai/hayhooks/tree/main/examples/pipeline_wrappers/chat_with_website) example pipeline. For a real production environment, we recommend creating a custom Hayhooks image as described [here](docker.mdx#customizing-the-haystack-docker-image).
+- We changed the Hayhooks container `command` to install the `trafilatura` dependency before startup, since it's needed for our [chat_with_website](https://github.com/deepset-ai/hayhooks/tree/main/examples/pipeline_wrappers/chat_with_website) example pipeline. For a real production environment, we recommend creating a custom Hayhooks image as described [here](docker.mdx#customizing-the-haystack-docker-image).
 - We make Hayhooks container read `OPENAI_API_KEY` from a Kubernetes Secret.
 
 Before applying this new configuration, create the `openai-secret`:
@@ -225,7 +225,7 @@ spec:
               memory: "128Mi"
               cpu: "250m"
       containers:
-        - image: deepset/hayhooks:v0.6.0
+        - image: deepset/hayhooks:v1.16.0
           name: hayhooks
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c"]
