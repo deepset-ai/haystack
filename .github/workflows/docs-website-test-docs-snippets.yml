@@ -64,29 +64,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests toml
 
-#      - name: Generate requirements.txt
-#        run: |
-#          # Use input version or default to main
-#          if [ "${{ github.event.inputs.haystack_version }}" != "" ]; then
-#            VERSION="${{ github.event.inputs.haystack_version }}"
-#          else
-#            VERSION="main"
-#          fi
-#          echo "Generating requirements.txt for Haystack version: $VERSION"
-#          python docs-website/scripts/generate_requirements.py --version "$VERSION"
+      - name: Generate requirements.txt
+        run: |
+          # Use input version or default to main
+          if [ "${{ github.event.inputs.haystack_version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.haystack_version }}"
+          else
+            VERSION="main"
+          fi
+          echo "Generating requirements.txt for Haystack version: $VERSION"
+          python docs-website/scripts/generate_requirements.py --version "$VERSION"
 
-#      - name: Install dependencies
-#        run: |
-#          if [ -f requirements.txt ]; then
-#            echo "Installing dependencies from requirements.txt"
-#            pip install -r requirements.txt
-#          else
-#            echo "Error: requirements.txt was not generated"
-#            exit 1
-#          fi
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then
+            echo "Installing dependencies from requirements.txt"
+            pip install -r requirements.txt
+          else
+            echo "Error: requirements.txt was not generated"
+            exit 1
+          fi
 
       - name: Run snippet tests (verbose)
         shell: bash
         run: |
-          # python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
-          hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
+          python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
+          # hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
