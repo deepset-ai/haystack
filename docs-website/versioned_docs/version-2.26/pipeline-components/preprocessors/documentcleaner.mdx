@@ -29,7 +29,11 @@ Use `DocumentCleaner` to make text documents more readable. It removes extra whi
 - `ascii_only` removes accents from characters and replaces them with their closest ASCII equivalents.
 - `remove_empty_lines` removes empty lines from the document.
 - `remove_extra_whitespaces` removes extra whitespaces from the document.
-- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](../converters/textfiletodocument.mdx) and [`AzureOCRDocumentConverter`](../converters/azureocrdocumentconverter.mdx).
+- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](../converters/textfiletodocument.mdx), [`AzureOCRDocumentConverter`](../converters/azureocrdocumentconverter.mdx), [`MistralOCRDocumentConverter`](../converters/mistralocrdocumentconverter.mdx), and [`PaddleOCRVLDocumentConverter`](../converters/paddleocrvldocumentconverter.mdx).
+
+:::note
+`remove_extra_whitespaces` and `remove_empty_lines` work best on plain-text content. If your converter returns Markdown, such as [`AzureDocumentIntelligenceConverter`](../converters/azuredocumentintelligenceconverter.mdx), [`MarkItDownConverter`](../converters/markitdownconverter.mdx), [`MistralOCRDocumentConverter`](../converters/mistralocrdocumentconverter.mdx), or [`PaddleOCRVLDocumentConverter`](../converters/paddleocrvldocumentconverter.mdx), disable those options to preserve headings, tables, lists, and image tags.
+:::
 
 In addition, you can specify a list of strings that should be removed from all documents as part of the cleaning with the parameter `remove_substring`. You can also specify a regular expression with the parameter `remove_regex` and any matches will be removed.
 
