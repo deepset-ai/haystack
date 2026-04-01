@@ -38,7 +38,7 @@ class AzureOCRDocumentConverter:
     [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     import os
     from datetime import datetime

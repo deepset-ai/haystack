@@ -42,6 +42,10 @@ Refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-se
 This component replaces the legacy [`AzureOCRDocumentConverter`](azureocrdocumentconverter.mdx), which uses the older `azure-ai-formrecognizer` package. The `AzureDocumentIntelligenceConverter` uses the newer `azure-ai-documentintelligence` SDK and produces Markdown output instead of plain text, making it better suited for LLM and RAG applications.
 :::
 
+:::note
+This component returns Markdown content. Avoid piping it through `DocumentCleaner()` with its default settings because `remove_extra_whitespaces=True` and `remove_empty_lines=True` can collapse line breaks and flatten headings, tables, and lists. Connect the converter directly to your next component, or disable those options if you need custom cleanup.
+:::
+
 ## Usage
 
 You need to install the `azure-doc-intelligence-haystack` integration to use the `AzureDocumentIntelligenceConverter`:
@@ -74,7 +78,7 @@ documents = result["documents"]
 ```python
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.utils import Secret
 from haystack_integrations.components.converters.azure_doc_intelligence import (
@@ -91,14 +95,12 @@ pipeline.add_component(
         api_key=Secret.from_env_var("AZURE_DI_API_KEY"),
     ),
 )
-pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component(
     "splitter",
     DocumentSplitter(split_by="sentence", split_length=5),
 )
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
-pipeline.connect("converter", "cleaner")
-pipeline.connect("cleaner", "splitter")
+pipeline.connect("converter", "splitter")
 pipeline.connect("splitter", "writer")
 
 file_names = ["my_file.pdf"]

@@ -37,10 +37,13 @@ class XLSXToDocument:
     from datetime import datetime
 
     converter = XLSXToDocument()
-    results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(
+        sources=["test/test_files/xlsx/basic_tables_two_sheets.xlsx"], meta={"date_added": datetime.now().isoformat()}
+    )
     documents = results["documents"]
+
     print(documents[0].content)
-    # ",A,B\\n1,col_a,col_b\\n2,1.5,test\\n"
+    # >> ",A,B\\n1,col_a,col_b\\n2,1.5,test\\n"
     ```
     """
 

@@ -415,7 +415,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "targets",
         nargs="*",
-        help=("Optional positional list of files or directories to scan. If omitted, --paths is used."),
+        help="Optional positional list of files or directories to scan. If omitted, --paths is used.",
     )
     parser.add_argument(
         "--paths",

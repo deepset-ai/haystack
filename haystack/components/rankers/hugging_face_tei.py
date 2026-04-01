@@ -36,6 +36,7 @@ class HuggingFaceTEIRanker:
     - [Hugging Face Inference Endpoints](https://huggingface.co/inference-endpoints)
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.rankers import HuggingFaceTEIRanker

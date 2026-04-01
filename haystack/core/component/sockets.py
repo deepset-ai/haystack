@@ -41,12 +41,12 @@ class Sockets:  # noqa: PLW1641
     sockets = {"question": InputSocket("question", Any), "documents": InputSocket("documents", Any)}
     inputs = Sockets(component=prompt_builder, sockets_dict=sockets, sockets_io_type=InputSocket)
     inputs
-    >>> Inputs:
-    >>>   - question: Any
-    >>>   - documents: Any
+    # >> Inputs:
+    # >>   - question: Any
+    # >>   - documents: Any
 
     inputs.question
-    >>> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, ...
+    # >> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, ...
     ```
     """
 
