@@ -28,7 +28,7 @@ __init__(
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
     custom_query: dict[str, Any] | None = None,
     raise_on_failure: bool = True
-)
+) -> None
 ```
 
 Creates the OpenSearchBM25Retriever component.
@@ -264,7 +264,7 @@ __init__(
     raise_on_failure: bool = True,
     efficient_filtering: bool = False,
     search_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Create the OpenSearchEmbeddingRetriever component.
@@ -642,7 +642,7 @@ __init__(
     tie_breaker: float = 0.7,
     jaccard_n: int = 3,
     raise_on_failure: bool = True
-)
+) -> None
 ```
 
 Create the OpenSearchMetadataRetriever component.
@@ -959,8 +959,9 @@ __init__(
 ) -> None
 ```
 
-Initialize the OpenSearchHybridRetriever, a super component to retrieve documents from OpenSearch using
-both embedding-based and keyword-based retrieval methods.
+Initialize the OpenSearchHybridRetriever using both embedding-based and keyword-based retrieval methods.
+
+This is a super component to retrieve documents from OpenSearch using both retrieval methods.
 
 We don't explicitly define all the init parameters of the components in the constructor, for each
 of the components, since that would be around 20+ parameters. Instead, we define the most important ones
@@ -999,17 +1000,47 @@ a dictionary with the component name as the key and the parameters as the value.
 - "bm25_retriever" -> OpenSearchBM25Retriever
 - "embedding_retriever" -> OpenSearchEmbeddingRetriever
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the underlying pipeline components.
+
+#### run
+
+```python
+run(
+    query: str,
+    filters_bm25: dict[str, Any] | None = None,
+    filters_embedding: dict[str, Any] | None = None,
+    top_k_bm25: int | None = None,
+    top_k_embedding: int | None = None,
+) -> dict[str, list[Document]]
+```
+
+Run the hybrid retrieval pipeline and return retrieved documents.
+
 #### to_dict
 
 ```python
-to_dict()
+to_dict() -> dict[str, Any]
 ```
 
 Serialize OpenSearchHybridRetriever to a dictionary.
 
 **Returns:**
 
-- – Dictionary with serialized data.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> OpenSearchHybridRetriever
+```
+
+Deserialize an OpenSearchHybridRetriever from a dictionary.
 
 ## haystack_integrations.components.retrievers.opensearch.sql_retriever
 
@@ -1030,7 +1061,7 @@ __init__(
     document_store: OpenSearchDocumentStore,
     raise_on_failure: bool = True,
     fetch_size: int | None = None
-)
+) -> None
 ```
 
 Creates the OpenSearchSQLRetriever component.
@@ -1175,7 +1206,14 @@ __init__(
     mappings: dict[str, Any] | None = None,
     settings: dict[str, Any] | None = DEFAULT_SETTINGS,
     create_index: bool = True,
-    http_auth: Any = (
+    http_auth: (
+        tuple[Secret, Secret]
+        | tuple[str, str]
+        | list[str]
+        | str
+        | AWSAuth
+        | None
+    ) = (
         Secret.from_env_var("OPENSEARCH_USERNAME", strict=False),
         Secret.from_env_var("OPENSEARCH_PASSWORD", strict=False),
     ),
@@ -1210,7 +1248,7 @@ For more information on connection parameters, see the [official OpenSearch docu
 - **settings** (<code>dict\[str, Any\] | None</code>) – The settings of the index to be created. Please see the [official OpenSearch docs](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#index-settings)
   for more information. Defaults to `{"index.knn": True}`.
 - **create_index** (<code>bool</code>) – Whether to create the index if it doesn't exist. Defaults to True
-- **http_auth** (<code>Any</code>) – http_auth param passed to the underlying connection class.
+- **http_auth** (<code>tuple\[Secret, Secret\] | tuple\[str, str\] | list\[str\] | str | AWSAuth | None</code>) – http_auth param passed to the underlying connection class.
   For basic authentication with default connection class `Urllib3HttpConnection` this can be
 - a tuple of (username, password)
 - a list of [username, password]
@@ -1598,8 +1636,7 @@ count_unique_metadata_by_filter(
 ) -> dict[str, int]
 ```
 
-Returns the number of unique values for each specified metadata field of the documents
-that match the provided filters.
+Returns the number of unique values for each specified metadata field of the documents that match the filters.
 
 **Parameters:**
 
@@ -1625,8 +1662,7 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the number of unique values for each specified metadata field of the documents
-that match the provided filters.
+Asynchronously returns the number of unique values for each specified metadata field matching the filters.
 
 **Parameters:**
 
@@ -1750,6 +1786,7 @@ get_metadata_field_unique_values(
 ```
 
 Returns unique values for a metadata field, optionally filtered by a search term in the content.
+
 Uses composite aggregations for proper pagination beyond 10k results.
 
 **Parameters:**
@@ -1778,6 +1815,7 @@ get_metadata_field_unique_values_async(
 ```
 
 Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
+
 Uses composite aggregations for proper pagination beyond 10k results.
 
 **Parameters:**
