@@ -80,19 +80,19 @@ class MarkdownHeaderSplitter:
 
         # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
         # Broken down:
-        #   ^                 — fence must start at the beginning of a line (MULTILINE)
+        #   ^                 - fence must start at the beginning of a line (MULTILINE)
         #   (?P<fence>`{3,}|~{3,})
-        #                     — named capture group "fence": three or more backticks OR three or
+        #                     - named capture group "fence": three or more backticks OR three or
         #                       more tildes. Capturing it allows the closing fence to be matched
         #                       with a backreference, so ```-opened blocks must close with ```
         #                       and ~~~-opened blocks must close with ~~~.
-        #   [^\n]*            — optional language identifier (e.g. "python") and any other text
+        #   [^\n]*            - optional language identifier (e.g. "python") and any other text
         #                       on the opening fence line, up to the newline
-        #   \n                — newline ending the opening fence line
-        #   .*?               — the code block body, matched lazily (DOTALL so . matches newlines)
-        #   ^(?P=fence)       — closing fence: must be identical to the opening fence (backreference),
+        #   \n                - newline ending the opening fence line
+        #   .*?               - the code block body, matched lazily (DOTALL so . matches newlines)
+        #   ^(?P=fence)       - closing fence: must be identical to the opening fence (backreference),
         #                       and must start at the beginning of a line
-        #   \s*$              — optional trailing whitespace after the closing fence
+        #   \s*$              - optional trailing whitespace after the closing fence
         self._code_block_pattern = re.compile(
             r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$", re.MULTILINE | re.DOTALL
         )
