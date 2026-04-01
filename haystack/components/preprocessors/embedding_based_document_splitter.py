@@ -310,7 +310,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         # Create Document objects for each group
         group_docs = [Document(content=group) for group in sentence_groups]
-        result = self.document_embedder.run(group_docs)
+        result = self.document_embedder.run(documents=group_docs)
         embedded_docs = result["documents"]
         return [doc.embedding for doc in embedded_docs]
 
@@ -320,7 +320,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         # Create Document objects for each group
         group_docs = [Document(content=group) for group in sentence_groups]
-        result = await self.document_embedder.run_async(group_docs)  # type: ignore[attr-defined]
+        result = await self.document_embedder.run_async(documents=group_docs)  # type: ignore[attr-defined]
         embedded_docs = result["documents"]
         return [doc.embedding for doc in embedded_docs]
 
