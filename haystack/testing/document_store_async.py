@@ -50,16 +50,16 @@ class DeleteAllAsyncTest:
     """
 
     @staticmethod
-    def _delete_all_supports_recreate(document_store: AsyncDocumentStore) -> tuple[bool, str | None]:
+    def _delete_all_supports_recreate(document_store: AsyncDocumentStore) -> str | None:
         """
-        Return (True, param_name) if delete_all_documents_async has recreate_index or recreate_collection.
+        Return the recreate parameter name if delete_all_documents_async supports it, else None.
         """
         sig = inspect.signature(document_store.delete_all_documents_async)  # type:ignore[attr-defined]
         if "recreate_index" in sig.parameters:
-            return True, "recreate_index"
+            return "recreate_index"
         if "recreate_collection" in sig.parameters:
-            return True, "recreate_collection"
-        return False, None
+            return "recreate_collection"
+        return None
 
     @staticmethod
     @pytest.mark.asyncio
@@ -122,8 +122,8 @@ class CountDocumentsAsyncTest:
 
         Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
         """
-        supports, param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
-        if not supports or param_name is None:
+        param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
+        if param_name is None:
             pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
 
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
@@ -145,8 +145,8 @@ class CountDocumentsAsyncTest:
 
         Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
         """
-        supports, param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
-        if not supports or param_name is None:
+        param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
+        if param_name is None:
             pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
 
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
