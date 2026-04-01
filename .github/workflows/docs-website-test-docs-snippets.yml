@@ -35,7 +35,7 @@ env:
 jobs:
   test-docs-snippets:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
       AZURE_OPENAI_AD_TOKEN: ${{ secrets.AZURE_OPENAI_AD_TOKEN }}
@@ -68,3 +68,13 @@ jobs:
         shell: bash
         run: |
           hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
+
+  notify-slack-on-failure:
+    if: failure() && github.ref_name == 'main'
+    needs:
+      - test-docs-snippets
+    runs-on: ubuntu-slim
+    steps:
+      - uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

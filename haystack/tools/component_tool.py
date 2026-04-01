@@ -58,7 +58,7 @@ class ComponentTool(Tool):
     Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
 
     ## Usage Example:
-
+    <!-- test-ignore -->
     ```python
     from haystack import component, Pipeline
     from haystack.tools import ComponentTool
