@@ -10,7 +10,7 @@ slug: "/integrations-qdrant"
 
 ### QdrantEmbeddingRetriever
 
-A component for retrieving documents from a QdrantDocumentStore using dense vectors.
+A component for retrieving documents from an QdrantDocumentStore using dense vectors.
 
 Usage example:
 
@@ -178,7 +178,7 @@ Asynchronously run the Embedding Retriever on the given input data.
 
 ### QdrantSparseEmbeddingRetriever
 
-A component for retrieving documents from a QdrantDocumentStore using sparse vectors.
+A component for retrieving documents from an QdrantDocumentStore using sparse vectors.
 
 Usage example:
 
@@ -357,7 +357,7 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
 
 ### QdrantHybridRetriever
 
-A component for retrieving documents from a QdrantDocumentStore using both dense and sparse vectors
+A component for retrieving documents from an QdrantDocumentStore using both dense and sparse vectors
 and fusing the results using Reciprocal Rank Fusion.
 
 Usage example:
@@ -644,7 +644,7 @@ Initializes a QdrantDocumentStore.
   Example: service/v1 will result in http://localhost:6333/service/v1/{qdrant-endpoint}
   for REST API.
 - **timeout** (<code>int | None</code>) – Timeout for REST and gRPC API requests.
-- **host** (<code>str | None</code>) – Host name of the Qdrant service. If `url` and `host` are `None`, set to `localhost`.
+- **host** (<code>str | None</code>) – Host name of Qdrant service. If ùrl`and`host`are`None`, set to `localhost\`.
 - **path** (<code>str | None</code>) – Persistence path for QdrantLocal.
 - **force_disable_check_same_thread** (<code>bool</code>) – For QdrantLocal, force disable check_same_thread.
   Only use this if you can guarantee that you can resolve the thread safety outside QdrantClient.
@@ -1250,7 +1250,7 @@ migrate_to_sparse_embeddings_support(
 
 Utility function to migrate an existing `QdrantDocumentStore` to a new one with support for sparse embeddings.
 
-With qdrant-haystack v3.3.0, support for sparse embeddings has been added to `QdrantDocumentStore`.
+With qdrant-hasytack v3.3.0, support for sparse embeddings has been added to `QdrantDocumentStore`.
 This feature is disabled by default and can be enabled by setting `use_sparse_embeddings=True` in the init
 parameters. To store sparse embeddings, Document stores/collections created with this feature disabled must be
 migrated to a new collection with the feature enabled.
