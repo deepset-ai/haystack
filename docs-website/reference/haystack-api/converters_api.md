@@ -441,7 +441,7 @@ results = converter.run(sources=["test/test_files/html/paul_graham_superlinear.h
 documents = results["documents"]
 
 print(documents[0].content)
-# > 'This is a text from the HTML file.'
+# >> 'This is a text from the HTML file.'
 ```
 
 #### __init__
