@@ -19,6 +19,33 @@ If you’re unfamiliar with vectors, think about them as a way to represent text
 
 Document Stores are special objects in Haystack that abstract all the different vector databases into a common interface that can be easily integrated into a pipeline, most commonly through a Retriever component. Normally, you will find specialized Document Store and Retriever objects for each vector database Haystack supports.
 
+### Haystack supported Document Stores
+
+| Integration | Class | Category | Engine Type | Open Source | Async Support | Retrievers |
+|---|---|---|---|---|---|---|
+| ArcadeDB | `ArcadeDBDocumentStore` | Multi-model Database | Multi-model database (graph, document, key-value) with HNSW vector search via HTTP/JSON API | Yes | No | Embedding |
+| Astra | `AstraDocumentStore` | Document / NoSQL Database | Cloud-native managed NoSQL (Apache Cassandra-based) with vector search via DataStax JSON API | No | No | Embedding |
+| Azure AI Search | `AzureAISearchDocumentStore` | Search Engine | Managed cloud search service (Microsoft Azure AI Search) with HNSW vector search | No | No | BM25, Embedding, Hybrid |
+| Chroma | `ChromaDocumentStore` | Vector Database | Purpose-built vector database | Yes | Yes | Embedding |
+| Elasticsearch | `ElasticsearchDocumentStore` | Search Engine | Distributed search & analytics engine with BM25 + vector (kNN) search | Partial (source-available) | Yes | BM25, Embedding, SQL |
+| FAISS | `FAISSDocumentStore` | Vector Index Library | In-memory vector similarity search library (Meta/Facebook) with JSON file for metadata | Yes | No | Embedding |
+| MongoDB Atlas | `MongoDBAtlasDocumentStore` | Document / NoSQL Database | Cloud document database with Atlas Vector Search and full-text search | No | Yes | Embedding, Full-text |
+| OpenSearch | `OpenSearchDocumentStore` | Search Engine | Distributed search engine (AWS fork of Elasticsearch) with BM25 + kNN vector search | Yes | Yes | BM25, Embedding, Hybrid, Metadata, SQL |
+| Pgvector | `PgvectorDocumentStore` | Relational Database | Relational database (PostgreSQL) with the `pgvector` extension for vector similarity search | Yes | Yes | Embedding, Keyword |
+| Pinecone | `PineconeDocumentStore` | Vector Database | Managed cloud vector database | No | Yes | Embedding |
+| Qdrant | `QdrantDocumentStore` | Vector Database | Purpose-built vector database with dense + sparse embedding support | Yes | Yes | Embedding, Sparse Embedding, Hybrid |
+| Valkey | `ValkeyDocumentStore` | In-memory Key-Value Store | In-memory key-value store (Redis fork) with HNSW vector search via `glide` client | Yes | Yes | Embedding |
+| Weaviate | `WeaviateDocumentStore` | Vector Database | Purpose-built vector database with hybrid search support | Yes | Yes | BM25, Embedding, Hybrid |
+
+
+
+
+
+
+
+
+
+
 ### Types of vector databases
 
 But why are vector databases so different, and which one should you use in your Haystack pipeline?
