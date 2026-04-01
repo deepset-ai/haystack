@@ -28,7 +28,7 @@ metadata:
     app: haystack
 spec:
   containers:
-    - image: deepset/hayhooks:v1.16.0
+    - image: deepset/hayhooks:v0.6.0
       name: hayhooks
       imagePullPolicy: IfNotPresent
       resources:
@@ -94,7 +94,7 @@ spec:
 
 After applying this, `hayhooks` Pod will be accessible on `localhost:30080`.
 
-From here, you should be able to manage pipelines. Remember that it's possible to deploy multiple different pipelines on a single Hayhooks instance. Check the [Hayhooks overview](../hayhooks.mdx) or the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/) for more details.
+From here, you should be able to manage pipelines. Remember that it's possible to deploy multiple different pipelines on a single Hayhooks instance. Check the [Hayhooks docs](../hayhooks.mdx) for more details.
 
 ## Auto-Run Pipelines at Pod Start
 
@@ -128,7 +128,7 @@ metadata:
     app: haystack
 spec:
   containers:
-    - image: deepset/hayhooks:v1.16.0
+    - image: deepset/hayhooks:v0.6.0
       name: hayhooks
       imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "-c"]
@@ -225,7 +225,7 @@ spec:
               memory: "128Mi"
               cpu: "250m"
       containers:
-        - image: deepset/hayhooks:v1.16.0
+        - image: deepset/hayhooks:v0.6.0
           name: hayhooks
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c"]

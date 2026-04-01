@@ -61,12 +61,12 @@ A Haystack application running in Docker can go pretty far: with an internet con
 
 Still, you might want to orchestrate additional services for your Haystack container locally, for example, to reduce costs or increase performance. When your application runtime depends on more than one Docker container, [Docker Compose](https://docs.docker.com/compose/) is a great tool to keep everything together.
 
-As an example, let’s say your application wraps two pipelines: one to _index_ documents into a Qdrant instance and the other to _query_ those documents at a later time. This setup would require two Docker containers: one to run the pipelines as REST APIs using [Hayhooks](../hayhooks.mdx) and a second to run a Qdrant instance. For more information on configuring Hayhooks using Docker Compose, see the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/getting-started/quick-start-docker/).
+As an example, let’s say your application wraps two pipelines: one to _index_ documents into a Qdrant instance and the other to _query_ those documents at a later time. This setup would require two Docker containers: one to run the pipelines as REST APIs using [Hayhooks](../hayhooks.mdx) and a second to run a Qdrant instance.
 
 For building the Hayhooks image, we can easily customize the base image of one of the latest versions of Hayhooks, adding required dependencies required by [`QdrantDocumentStore`](../../document-stores/qdrant-document-store.mdx). The Dockerfile would look like this:
 
 ```dockerfile Dockerfile
-FROM deepset/hayhooks:v1.16.0
+FROM deepset/hayhooks:v0.6.0
 
 RUN pip install qdrant-haystack sentence-transformers
 
@@ -114,4 +114,4 @@ configs:
       log_level: INFO
 ```
 
-For a functional example of a Docker Compose deployment, check out the [“RAG indexing and querying with Elasticsearch”](https://github.com/deepset-ai/hayhooks/tree/main/examples/rag_indexing_query) example from GitHub.
+For a functional example of a Docker Compose deployment, check out the [“Qdrant Indexing”](https://github.com/deepset-ai/haystack-demos/tree/main/qdrant_indexing) demo from GitHub.
