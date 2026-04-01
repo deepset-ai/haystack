@@ -770,6 +770,7 @@ __init__(
     *,
     page_break_character: str = "\x0c",
     keep_headers: bool = True,
+    header_split_levels: list[int] | None = None,
     secondary_split: Literal["word", "passage", "period", "line"] | None = None,
     split_length: int = 200,
     split_overlap: int = 0,
@@ -785,6 +786,9 @@ Initialize the MarkdownHeaderSplitter.
 - **page_break_character** (<code>str</code>) – Character used to identify page breaks. Defaults to form feed ("").
 - **keep_headers** (<code>bool</code>) – If True, headers are kept in the content. If False, headers are moved to metadata.
   Defaults to True.
+- **header_split_levels** (<code>list\[int\] | None</code>) – List of header levels (1–6) to split on. For example, `[1, 2]` splits only
+  on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
+  all levels `[1, 2, 3, 4, 5, 6]`.
 - **secondary_split** (<code>Literal['word', 'passage', 'period', 'line'] | None</code>) – Optional secondary split condition after header splitting.
   Options are None, "word", "passage", "period", "line". Defaults to None.
 - **split_length** (<code>int</code>) – The maximum number of units in each split when using secondary splitting. Defaults to 200.

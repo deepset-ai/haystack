@@ -27,6 +27,10 @@ A component that converts files to Documents using Microsoft's MarkItDown librar
 
 The converter accepts file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of Documents. You can attach metadata to the Documents through the `meta` input parameter.
 
+:::note
+This component returns Markdown content. Avoid piping it through `DocumentCleaner()` with its default settings because `remove_extra_whitespaces=True` and `remove_empty_lines=True` can collapse line breaks and flatten headings, tables, lists, and image tags. Connect the converter directly to your next component, or disable those options if you need custom cleanup.
+:::
+
 ## Usage
 
 Install the MarkItDown integration:
@@ -49,7 +53,7 @@ documents = result["documents"]
 
 ```python
 from haystack import Pipeline
-from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.converters.markitdown import MarkItDownConverter
@@ -58,14 +62,12 @@ document_store = InMemoryDocumentStore()
 
 pipeline = Pipeline()
 pipeline.add_component("converter", MarkItDownConverter())
-pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component(
     "splitter",
     DocumentSplitter(split_by="sentence", split_length=5),
 )
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
-pipeline.connect("converter", "cleaner")
-pipeline.connect("cleaner", "splitter")
+pipeline.connect("converter", "splitter")
 pipeline.connect("splitter", "writer")
 
 pipeline.run({"converter": {"sources": ["document.pdf", "report.docx"]}})
