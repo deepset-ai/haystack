@@ -41,11 +41,11 @@ print(response)
 ```
 
 ```
->> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
->> the interaction between computers and human language. It involves enabling computers to understand, interpret,
->> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
->> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
->> 'completion_tokens': 49, 'total_tokens': 65}}]}
+# >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
+# >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
+# >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
+# >> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+# >> 'completion_tokens': 49, 'total_tokens': 65}}]}
 ```
 
 #### __init__
