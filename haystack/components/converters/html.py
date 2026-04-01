@@ -31,7 +31,7 @@ class HTMLToDocument:
     documents = results["documents"]
 
     print(documents[0].content)
-    # > 'This is a text from the HTML file.'
+    # >> 'This is a text from the HTML file.'
     ```
     """
 
