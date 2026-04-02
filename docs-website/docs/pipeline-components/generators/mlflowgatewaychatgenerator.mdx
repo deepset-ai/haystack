@@ -1,0 +1,166 @@
+---
+title: "MLflow AI Gateway"
+id: mlflowgatewaychatgenerator
+slug: "/mlflowgatewaychatgenerator"
+description: "Use OpenAIChatGenerator with the MLflow AI Gateway for multi-provider LLM routing."
+---
+
+# MLflow AI Gateway
+
+[MLflow AI Gateway](https://mlflow.org/docs/latest/llms/gateway/index.html) is a database-backed LLM proxy built into the MLflow tracking server (MLflow ≥ 3.0). It exposes an **OpenAI-compatible REST API** that routes requests to dozens of LLM providers — OpenAI, Anthropic, Gemini, Mistral, Bedrock, Ollama, and more.
+
+You can connect Haystack pipelines to MLflow AI Gateway using the built-in `OpenAIChatGenerator` with a custom `api_base_url`. No extra packages are required.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_base_url`: Your MLflow Gateway URL, e.g. `http://localhost:5000/gateway/openai/v1` |
+| **Mandatory run variables** | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Component** | [OpenAIChatGenerator](./openaichatgenerator.mdx) with custom `api_base_url` |
+| **MLflow docs** | https://mlflow.org/docs/latest/llms/gateway/index.html |
+
+</div>
+
+## Overview
+
+MLflow AI Gateway routes all LLM calls through a central proxy so that:
+
+- **Provider API keys** are stored encrypted on the server — your application never handles them
+- **Fallback & retry** — automatic failover to backup models on failure
+- **Traffic splitting** — route percentages of traffic to different models for A/B testing
+- **Budget tracking** — per-endpoint or per-user token budgets
+- **Usage tracing** — every call logged as an MLflow trace automatically
+
+The gateway is configured entirely through the MLflow UI — no YAML files or code changes in your Haystack pipeline are needed to switch providers.
+
+## Prerequisites
+
+**1. Start an MLflow server:**
+
+```bash
+pip install mlflow
+mlflow server --host 127.0.0.1 --port 5000
+```
+
+**2. Create a gateway endpoint** in the MLflow UI at `http://localhost:5000`:
+
+Navigate to **AI Gateway → Create Endpoint**, give it a name (e.g. `my-chat-endpoint`), select a provider and model, and enter your provider API key (stored encrypted on the server).
+
+Or create one via the REST API:
+
+```bash
+# Step 1: Store your provider API key as a gateway secret
+curl -s -X POST http://localhost:5000/api/2.0/mlflow/gateway/secrets \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "secret_name": "openai-key",
+    "secret_value": {"api_key": "sk-..."},
+    "provider": "openai"
+  }'
+
+# Step 2: Create the endpoint (use the secret_id returned above)
+curl -s -X POST http://localhost:5000/api/2.0/mlflow/gateway/endpoints/create \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "my-chat-endpoint",
+    "model_configs": [{"provider": "openai", "model_name": "gpt-4o-mini", "secret_id": "<secret_id>"}]
+  }'
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+generator = OpenAIChatGenerator(
+    model="my-chat-endpoint",       # MLflow Gateway endpoint name
+    api_key=Secret.from_token("unused"),  # provider keys live on the server
+    api_base_url="http://localhost:5000/gateway/openai/v1",
+)
+
+messages = [ChatMessage.from_user("What is MLflow AI Gateway?")]
+result = generator.run(messages)
+print(result["replies"][0].text)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component(
+    "llm",
+    OpenAIChatGenerator(
+        model="my-chat-endpoint",
+        api_key=Secret.from_token("unused"),
+        api_base_url="http://localhost:5000/gateway/openai/v1",
+    ),
+)
+pipe.connect("prompt_builder", "llm")
+
+messages = [ChatMessage.from_user("Summarize: {{ text }}")]
+result = pipe.run({
+    "prompt_builder": {
+        "template": messages,
+        "template_variables": {"text": "MLflow is an open-source platform for ML lifecycle management."},
+    }
+})
+print(result["llm"]["replies"][0].text)
+```
+
+### Streaming
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+generator = OpenAIChatGenerator(
+    model="my-chat-endpoint",
+    api_key=Secret.from_token("unused"),
+    api_base_url="http://localhost:5000/gateway/openai/v1",
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
+
+messages = [ChatMessage.from_user("Write a haiku about LLM gateways.")]
+generator.run(messages)
+```
+
+## Python client (alternative)
+
+You can also interact with the gateway directly using the `mlflow.deployments` Python client:
+
+```python
+from mlflow.deployments import get_deploy_client
+
+client = get_deploy_client("http://localhost:5000")
+
+response = client.predict(
+    endpoint="my-chat-endpoint",
+    inputs={
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "What is MLflow AI Gateway?"},
+        ]
+    },
+)
+print(response["choices"][0]["message"]["content"])
+```
+
+## Related
+
+- [OpenAIChatGenerator](./openaichatgenerator.mdx)
+- [MLflow tracing with Haystack](../../development/tracing.mdx)

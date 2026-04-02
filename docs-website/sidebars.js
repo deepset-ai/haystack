@@ -409,6 +409,7 @@ export default {
             'pipeline-components/generators/llamastackchatgenerator',
             'pipeline-components/generators/metallamachatgenerator',
             'pipeline-components/generators/mistralchatgenerator',
+            'pipeline-components/generators/mlflowgatewaychatgenerator',
             'pipeline-components/generators/nvidiachatgenerator',
             'pipeline-components/generators/nvidiagenerator',
             'pipeline-components/generators/ollamachatgenerator',
