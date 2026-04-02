@@ -319,6 +319,8 @@ Initializes the LLMMetadataExtractor.
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an error on failure during the execution of the Generator or
   validation of the JSON output.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use in the thread pool executor.
+  This parameter is used limit the maximum number of requests that should be allowed to run concurrently
+  when using the `run_async` method.
 
 #### warm_up
 
@@ -371,6 +373,43 @@ will split the documents into pages and extract metadata from the specified rang
 extracted from the entire document if `page_range` is not provided.
 
 The original documents will be returned updated with the extracted metadata.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – List of documents to extract metadata from.
+- **page_range** (<code>list\[str | int\] | None</code>) – A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
+  metadata from the first and third pages of each document. It also accepts printable range
+  strings, e.g.: ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,
+  11, 12.
+  If None, metadata will be extracted from the entire document for each document in the
+  documents list.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the keys:
+- "documents": A list of documents that were successfully updated with the extracted metadata.
+- "failed_documents": A list of documents that failed to extract metadata. These documents will have
+  "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
+  re-run with the extractor to extract metadata.
+
+#### run_async
+
+```python
+run_async(
+    documents: list[Document], page_range: list[str | int] | None = None
+) -> dict[str, Any]
+```
+
+Asynchronously extract metadata from documents using a Large Language Model.
+
+If `page_range` is provided, the metadata will be extracted from the specified range of pages. This component
+will split the documents into pages and extract metadata from the specified range of pages. The metadata will be
+extracted from the entire document if `page_range` is not provided.
+
+The original documents will be returned updated with the extracted metadata.
+
+This is the asynchronous version of the `run` method. It has the same parameters
+and return values but can be used with `await` in an async code.
 
 **Parameters:**
 
