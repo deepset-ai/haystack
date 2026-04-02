@@ -1,0 +1,66 @@
+# Haystack RAG Pipeline in OSOP Format
+osop_version: "1.0"
+id: haystack-rag-pipeline
+name: Haystack RAG Pipeline
+description: A retrieval-augmented generation pipeline using Haystack components, defined in portable OSOP format.
+tags: [haystack, rag, pipeline, nlp]
+
+nodes:
+  - id: query-input
+    type: human
+    name: User Query
+    description: User submits a natural language question.
+
+  - id: query-embedder
+    type: agent
+    name: Query Embedder
+    description: Convert the user query into a vector embedding.
+    runtime:
+      provider: openai
+      model: text-embedding-3-small
+
+  - id: retriever
+    type: db
+    name: Document Retriever
+    description: Search the document store for relevant passages using vector similarity.
+    runtime:
+      config:
+        top_k: 5
+        store: qdrant
+
+  - id: prompt-builder
+    type: system
+    name: Prompt Builder
+    description: Combine retrieved documents with the query into a structured prompt.
+
+  - id: generator
+    type: agent
+    name: Answer Generator
+    description: Generate a grounded answer using retrieved context.
+    runtime:
+      provider: openai
+      model: gpt-4
+      config:
+        temperature: 0.3
+
+  - id: answer-output
+    type: api
+    name: Response
+    description: Return the generated answer with source citations.
+
+edges:
+  - from: query-input
+    to: query-embedder
+    mode: sequential
+  - from: query-embedder
+    to: retriever
+    mode: sequential
+  - from: retriever
+    to: prompt-builder
+    mode: sequential
+  - from: prompt-builder
+    to: generator
+    mode: sequential
+  - from: generator
+    to: answer-output
+    mode: sequential
