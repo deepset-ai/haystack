@@ -55,8 +55,7 @@ class JsonSchemaValidator:
 
 
     p = Pipeline()
-    p.add_component("llm", OpenAIChatGenerator(model="gpt-4-1106-preview",
-                                               generation_kwargs={"response_format": {"type": "json_object"}}))
+    p.add_component("llm", OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}}))
     p.add_component("schema_validator", JsonSchemaValidator())
     p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())
@@ -81,8 +80,8 @@ class JsonSchemaValidator:
     print(result)
     # >> {'schema_validator': {'validated': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
     # _content=[TextContent(text="\\n{\\n  "name": "John",\\n  "age": 30\\n}")],
-    # _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0,
-    # 'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37}})]}}
+    # _name=None, _meta={'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 17, 'prompt_tokens': 20,
+    # 'total_tokens': 37}})]}}
     ```
     """
 

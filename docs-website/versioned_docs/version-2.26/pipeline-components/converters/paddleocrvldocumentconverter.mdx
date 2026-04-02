@@ -32,6 +32,41 @@ The component takes `api_url` as a required parameter. To obtain the API URL, vi
 
 By default, the component uses the `AISTUDIO_ACCESS_TOKEN` environment variable for authentication. You can also pass an `access_token` at initialization. The AI Studio access token can be obtained from [this page](https://aistudio.baidu.com/account/accessToken).
 
+`raw_paddleocr_responses` can be useful while tuning layout thresholds, prompt settings, or Markdown post-processing options because it gives you access to the original API output alongside the converted Haystack documents.
+
+:::note
+This component returns Markdown content. Avoid piping it through `DocumentCleaner()` with its default settings because `remove_extra_whitespaces=True` and `remove_empty_lines=True` can collapse line breaks and flatten headings, tables, and image tags. For page-aware chunking, connect the converter directly to `DocumentSplitter`, or disable those options if you need custom cleanup.
+:::
+
+## When to use it
+
+`PaddleOCRVLDocumentConverter` is a strong fit when you need more than plain OCR text:
+
+- **Scanned PDFs and camera-captured documents** where page orientation and warped text can reduce extraction quality.
+- **Layout-sensitive documents** such as invoices, reports, forms, and multi-column PDFs where preserving structure matters for downstream chunking and retrieval.
+- **Tables, formulas, charts, or seals** where you want more targeted extraction behavior than plain text OCR.
+- **RAG ingestion pipelines** where Markdown output is useful because headings, lists, tables, and page breaks can be preserved for later splitting.
+
+## Useful configuration areas
+
+The full parameter list is available in the [API reference](/reference/integrations-paddleocr). In practice, the most useful options tend to fall into these groups:
+
+- **Input handling and image cleanup**: `file_type`, `use_doc_orientation_classify`, and `use_doc_unwarping` help when you mix PDFs and images or work with skewed scans and mobile photos.
+- **Layout-aware extraction**: `use_layout_detection`, `layout_threshold`, `layout_nms`, `layout_unclip_ratio`, `layout_merge_bboxes_mode`, `layout_shape_mode`, and `merge_layout_blocks` help you tune how regions are detected and merged before Markdown is generated.
+- **Content focus**: `prompt_label`, `use_ocr_for_image_block`, `use_chart_recognition`, and `use_seal_recognition` let you bias extraction toward a particular type of content, such as plain OCR, formulas, tables, charts, or seals.
+- **Markdown output shaping**: `format_block_content`, `markdown_ignore_labels`, `prettify_markdown`, `show_formula_number`, `restructure_pages`, `merge_tables`, and `relevel_titles` help you control how much cleanup and restructuring happens before the result becomes a Haystack document.
+- **VLM generation controls**: `repetition_penalty`, `temperature`, `top_p`, `min_pixels`, `max_pixels`, `max_new_tokens`, `vlm_extra_args`, and `additional_params` are useful when you need to trade off output quality, determinism, and cost.
+- **Debugging and inspection**: `visualize=True` and the returned `raw_paddleocr_responses` are helpful when you are tuning extraction quality for a new document type.
+
+## Typical scenarios
+
+These settings are especially useful in a few common workflows:
+
+- **Scanned contracts or receipts from phones**: start with `use_doc_orientation_classify=True` and `use_doc_unwarping=True`.
+- **Table-heavy financial or operations PDFs**: consider `use_layout_detection=True`, `merge_tables=True`, and `restructure_pages=True`.
+- **Formula-heavy documents**: use `prompt_label="formula"` together with `show_formula_number=True` if formula numbering matters in the final Markdown.
+- **Mixed business documents with figures or seals**: enable `use_chart_recognition=True`, `use_seal_recognition=True`, or `use_ocr_for_image_block=True` depending on the content you want to preserve.
+
 ## Usage
 
 You need to install the `paddleocr-haystack` integration to use `PaddleOCRVLDocumentConverter`:
@@ -60,6 +95,32 @@ result = converter.run(sources=[Path("my_document.pdf")])
 documents = result["documents"]
 ```
 
+Advanced configuration for structure-heavy PDFs:
+
+```python
+from pathlib import Path
+from haystack.utils import Secret
+from haystack_integrations.components.converters.paddleocr import (
+    PaddleOCRVLDocumentConverter,
+)
+
+converter = PaddleOCRVLDocumentConverter(
+    api_url="<your-api-url>",
+    access_token=Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
+    use_doc_orientation_classify=True,
+    use_doc_unwarping=True,
+    use_layout_detection=True,
+    use_ocr_for_image_block=True,
+    merge_tables=True,
+    restructure_pages=True,
+    prettify_markdown=True,
+)
+
+result = converter.run(sources=[Path("quarterly_report.pdf")])
+documents = result["documents"]
+raw_responses = result["raw_paddleocr_responses"]
+```
+
 ### In a pipeline
 
 Here's an example of an indexing pipeline that processes PDFs with OCR and writes them to a Document Store:
@@ -67,7 +128,7 @@ Here's an example of an indexing pipeline that processes PDFs with OCR and write
 ```python
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.utils import Secret
 from haystack_integrations.components.converters.paddleocr import (
@@ -84,12 +145,10 @@ pipeline.add_component(
         access_token=Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
     ),
 )
-pipeline.add_component("cleaner", DocumentCleaner())
 pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 
-pipeline.connect("converter", "cleaner")
-pipeline.connect("cleaner", "splitter")
+pipeline.connect("converter", "splitter")
 pipeline.connect("splitter", "writer")
 
 file_paths = ["invoice.pdf", "receipt.jpg", "contract.pdf"]

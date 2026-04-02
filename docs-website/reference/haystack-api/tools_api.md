@@ -35,6 +35,8 @@ Below is an example of creating a ComponentTool from an existing SerperDevWebSea
 
 ## Usage Example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack import component, Pipeline
 from haystack.tools import ComponentTool
@@ -212,20 +214,20 @@ def get_weather(
 tool = create_tool_from_function(get_weather)
 
 print(tool)
-# >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-# >>> parameters={
-# >>> 'type': 'object',
-# >>> 'properties': {
-# >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-# >>>     'unit': {
-# >>>         'type': 'string',
-# >>>         'enum': ['Celsius', 'Fahrenheit'],
-# >>>         'description': 'the unit for the temperature',
-# >>>         'default': 'Celsius',
-# >>>     },
-# >>>     }
-# >>> },
-# >>> function=<function get_weather at 0x7f7b3a8a9b80>)
+# >> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+# >> parameters={
+# >> 'type': 'object',
+# >> 'properties': {
+# >>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+# >>     'unit': {
+# >>         'type': 'string',
+# >>         'enum': ['Celsius', 'Fahrenheit'],
+# >>         'description': 'the unit for the temperature',
+# >>         'default': 'Celsius',
+# >>     },
+# >>     }
+# >> },
+# >> function=<function get_weather at 0x7f7b3a8a9b80>)
 ```
 
 **Parameters:**
@@ -339,20 +341,20 @@ def get_weather(
     return f"Weather report for {city}: 20 {unit}, sunny"
 
 print(get_weather)
-# >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-# >>> parameters={
-# >>> 'type': 'object',
-# >>> 'properties': {
-# >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-# >>>     'unit': {
-# >>>         'type': 'string',
-# >>>         'enum': ['Celsius', 'Fahrenheit'],
-# >>>         'description': 'the unit for the temperature',
-# >>>         'default': 'Celsius',
-# >>>     },
-# >>>     }
-# >>> },
-# >>> function=<function get_weather at 0x7f7b3a8a9b80>)
+# >> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+# >> parameters={
+# >> 'type': 'object',
+# >> 'properties': {
+# >>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+# >>     'unit': {
+# >>         'type': 'string',
+# >>         'enum': ['Celsius', 'Fahrenheit'],
+# >>         'description': 'the unit for the temperature',
+# >>         'default': 'Celsius',
+# >>     },
+# >>     }
+# >> },
+# >> function=<function get_weather at 0x7f7b3a8a9b80>)
 ```
 
 **Parameters:**

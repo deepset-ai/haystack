@@ -29,6 +29,8 @@ It can be used with a Text Embeddings Inference (TEI) API endpoint:
 
 Usage example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.rankers import HuggingFaceTEIRanker
@@ -580,18 +582,17 @@ ranker = MetaFieldGroupingRanker(group_by="group",subgroup_by="subgroup", sort_d
 result = ranker.run(documents=docs)
 print(result["documents"])
 
-# [
-#     Document(id=d665bbc83e52c08c3d8275bccf4f22bf2bfee21c6e77d78794627637355b8ebc,
-#             content: 'Java is a popular programming language', meta: {'group': '42', 'split_id': 3, 'subgroup': 'subB'}),
-#     Document(id=a20b326f07382b3cbf2ce156092f7c93e8788df5d48f2986957dce2adb5fe3c2,
-#             content: 'Python is a popular programming language', meta: {'group': '42', 'split_id': 4, 'subgroup': 'subB'}),
-#     Document(id=ce12919795d22f6ca214d0f161cf870993889dcb146f3bb1b3e1ffdc95be960f,
-#             content: 'Javascript is a popular programming language', meta: {'group': '42', 'split_id': 7, 'subgroup': 'subB'}),
-#     Document(id=d9fc857046c904e5cf790b3969b971b1bbdb1b3037d50a20728fdbf82991aa94,
-#             content: 'A chromosome is a package of DNA', meta: {'group': '314', 'split_id': 2, 'subgroup': 'subC'}),
-#     Document(id=6d3b7bdc13d09aa01216471eb5fb0bfdc53c5f2f3e98ad125ff6b85d3106c9a3,
-#             content: 'An octopus has three hearts', meta: {'group': '11', 'split_id': 2, 'subgroup': 'subD'})
-# ]
+# >> 
+# >>  Document(id=d665bbc83e52c08c3d8275bccf4f22bf2bfee21c6e77d78794627637355b8ebc,
+# >>          content: 'Java is a popular programming language', meta: {'group': '42', 'split_id': 3, 'subgroup': 'subB'}),
+# >>  Document(id=a20b326f07382b3cbf2ce156092f7c93e8788df5d48f2986957dce2adb5fe3c2,
+# >>          content: 'Python is a popular programming language', meta: {'group': '42', 'split_id': 4, 'subgroup': 'subB'}),
+# >>  Document(id=ce12919795d22f6ca214d0f161cf870993889dcb146f3bb1b3e1ffdc95be960f,
+# >>          content: 'Javascript is a popular programming language', meta: {'group': '42', 'split_id': 7, 'subgroup': 'subB'}),
+# >>  Document(id=d9fc857046c904e5cf790b3969b971b1bbdb1b3037d50a20728fdbf82991aa94,
+# >>          content: 'A chromosome is a package of DNA', meta: {'group': '314', 'split_id': 2, 'subgroup': 'subC'}),
+# >>  Document(id=6d3b7bdc13d09aa01216471eb5fb0bfdc53c5f2f3e98ad125ff6b85d3106c9a3,
+# >>          content: 'An octopus has three hearts', meta: {'group': '11', 'split_id': 2, 'subgroup': 'subD'})
 ```
 
 #### __init__
@@ -608,7 +609,7 @@ Creates an instance of MetaFieldGroupingRanker.
 
 **Parameters:**
 
-- **group_by** (<code>str</code>) – The metadata key to aggregate the documents by.
+- **group_by** (<code>[str</code>) – The metadata key to aggregate the documents by.
 - **subgroup_by** (<code>str | None</code>) – The metadata key to aggregate the documents within a group that was created by the
   `group_by` key.
 - **sort_docs_by** (<code>str | None</code>) – Determines which metadata key is used to sort the documents. If not provided, the
@@ -696,11 +697,15 @@ if a score is present.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.rankers import SentenceTransformersDiversityRanker
 
-ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
+ranker = SentenceTransformersDiversityRanker(
+    model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order"
+)
 
 docs = [Document(content="Paris"), Document(content="Berlin")]
 query = "What is the capital of germany?"
@@ -1012,6 +1017,8 @@ Consider using SentenceTransformersSimilarityRanker instead, which provides the 
 additional features.
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack import Document

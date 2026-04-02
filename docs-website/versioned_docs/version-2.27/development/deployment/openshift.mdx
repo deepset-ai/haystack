@@ -18,7 +18,7 @@ OpenShift by Red Hat is a platform that helps create and manage applications bui
 The fastest way to deploy a Haystack pipeline is to deploy an OpenShift application that runs Hayhooks. Before starting, make sure to have the following prerequisites:
 
 - Access to an OpenShift project. Follow RedHat's [instructions](https://developers.redhat.com/developer-sandbox) to create one and start experimenting immediately.
-- Hayhooks are installed. Run `pip install hayhooks` and make sure it works by running `hayhooks --version`. Read more about Hayhooks in our [docs](../hayhooks.mdx).
+- Hayhooks is installed. Run `pip install hayhooks` and make sure it works by running `hayhooks --version`. Read more about Hayhooks in our [overview](../hayhooks.mdx) or the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/).
 - You can optionally install the OpenShift command-line utility `oc`. Follow the [installation instructions](https://docs.openshift.com/container-platform/4.15/cli_reference/openshift_cli/getting-started-cli.html) for your platform and make sure it works by running `oc—h`.
 
 ## Creating a Hayhooks Application
@@ -35,7 +35,7 @@ In this guide, we’ll be using the `oc` command line, but you can achieve the s
 3. Assuming you already have a project (it’s the case for the developer sandbox), create an application running the Hayhooks Docker image available on Docker Hub:  
    Note how you can pass environment variables that your application will use at runtime. In this case, we disable Haystack’s internal telemetry and set an OpenAI key that will be used by the pipelines we’ll eventually deploy in Hayhooks.
    ```
-   oc new-app deepset/hayhooks:main -e HAYSTACK_TELEMETRY_ENABLED=false -e OPENAI_API_KEY=$OPENAI_API_KEY
+   oc new-app deepset/hayhooks:v1.16.0 -e HAYSTACK_TELEMETRY_ENABLED=false -e OPENAI_API_KEY=$OPENAI_API_KEY
    ```
 
 4. To make sure you make the most out of OpenShift's ability to manage the lifecycle of the application, you can set a [liveness probe](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/):  
@@ -64,10 +64,10 @@ In this guide, we’ll be using the `oc` command line, but you can achieve the s
 
 7. `http://hayhooks-XXX.openshiftapps.com` will be the public URL serving your Hayhooks instance. At this point, you can query Hayhooks status by running:  
    ```
-   hayhooks --server http://hayhooks-XXX.openshiftapps.com status
+   HAYHOOKS_HOST=hayhooks-XXX.openshiftapps.com HAYHOOKS_PORT=80 hayhooks status
    ```
 
 8. Lastly, deploy your pipeline as usual:  
    ```
-   hayhooks --server http://hayhooks-XXX.openshiftapps.com deploy your_pipeline.yaml
+   HAYHOOKS_HOST=hayhooks-XXX.openshiftapps.com HAYHOOKS_PORT=80 hayhooks pipeline deploy-files -n my_pipeline /path/to/my_pipeline_dir
    ```

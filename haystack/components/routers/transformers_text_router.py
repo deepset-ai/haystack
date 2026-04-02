@@ -22,7 +22,7 @@ class TransformersTextRouter:
     The labels are specific to each model and can be found it its description on Hugging Face.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.core.pipeline import Pipeline
     from haystack.components.routers import TransformersTextRouter

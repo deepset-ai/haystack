@@ -522,6 +522,8 @@ This component can be used with general-purpose LLMs and with specialized LLMs f
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.components.routers.llm_messages_router import LLMMessagesRouter
@@ -530,7 +532,7 @@ from haystack.dataclasses import ChatMessage
 # initialize a Chat Generator with a generative model for moderation
 chat_generator = HuggingFaceAPIChatGenerator(
     api_type="serverless_inference_api",
-    api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
+    api_params={"model": "openai/gpt-oss-safeguard-20b", "provider": "groq"},
 )
 
 router = LLMMessagesRouter(chat_generator=chat_generator,
@@ -867,6 +869,8 @@ The labels are specific to each model and can be found it its description on Hug
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.core.pipeline import Pipeline
 from haystack.components.routers import TransformersTextRouter
@@ -1003,6 +1007,8 @@ Routes the text strings to different connections based on a category label.
 Specify the set of labels for categorization when initializing the component.
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack import Document

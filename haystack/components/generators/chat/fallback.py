@@ -38,7 +38,7 @@ class FallbackChatGenerator:
     responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
     receiving the complete response.
 
-    Failover is automatically triggered when a generator raises any exception, including:
+    Fail over is automatically triggered when a generator raises any exception, including:
     - Timeout errors (if the generator implements and raises them)
     - Rate limit errors (429)
     - Authentication errors (401)

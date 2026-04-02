@@ -29,7 +29,7 @@ class HuggingFaceLocalGenerator:
     LLMs running locally may need powerful hardware.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 

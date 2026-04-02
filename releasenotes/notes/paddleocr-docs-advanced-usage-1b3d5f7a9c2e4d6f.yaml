@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Expand the ``PaddleOCRVLDocumentConverter`` documentation with more detailed guidance on advanced parameters, common usage scenarios, and a more realistic configuration example for layout-heavy documents.

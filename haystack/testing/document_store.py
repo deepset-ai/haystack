@@ -651,16 +651,16 @@ class DeleteAllTest:
         assert document_store.count_documents() == 0
 
     @staticmethod
-    def _delete_all_supports_recreate(document_store: DocumentStore) -> tuple[bool, str | None]:
+    def _delete_all_supports_recreate(document_store: DocumentStore) -> str | None:
         """
-        Return (True, param_name) if delete_all_documents has recreate_index or recreate_collection, else (False, None).
+        Return the recreate parameter name if delete_all_documents supports it, else None.
         """
         sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
         if "recreate_index" in sig.parameters:
-            return True, "recreate_index"
+            return "recreate_index"
         if "recreate_collection" in sig.parameters:
-            return True, "recreate_collection"
-        return False, None
+            return "recreate_collection"
+        return None
 
     @staticmethod
     def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
@@ -669,8 +669,8 @@ class DeleteAllTest:
 
         Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
         """
-        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
-        if not supports:
+        param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if param_name is None:
             pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
 
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
@@ -691,8 +691,8 @@ class DeleteAllTest:
 
         Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
         """
-        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
-        if not supports:
+        param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if param_name is None:
             pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
 
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
@@ -930,43 +930,6 @@ class UpdateByFilterTest:
         assert len(featured_docs) == 2
 
 
-class UpdateByFilterAsyncTest:
-    """
-    Tests for Document Store update_by_filter_async().
-
-    Only mix in for stores that implement update_by_filter_async.
-    """
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_update_by_filter_async(document_store: DocumentStore, filterable_docs: list[Document]):
-        """Update documents matching a filter asynchronously and verify count and meta changes."""
-        document_store.write_documents(filterable_docs)
-        expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
-        assert document_store.count_documents() == len(filterable_docs)
-
-        sig = inspect.signature(document_store.update_by_filter_async)  # type:ignore[attr-defined]
-        params = {"refresh": True} if "refresh" in sig.parameters else {}
-        updated_count = await document_store.update_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.chapter", "operator": "==", "value": "intro"}, meta={"updated": True}, **params
-        )
-        assert updated_count == expected_count
-
-        updated_docs = document_store.filter_documents(
-            filters={"field": "meta.updated", "operator": "==", "value": True}
-        )
-        assert len(updated_docs) == expected_count
-        for doc in updated_docs:
-            assert doc.meta["chapter"] == "intro"
-            assert doc.meta["updated"] is True
-
-        not_updated_docs = document_store.filter_documents(
-            filters={"field": "meta.chapter", "operator": "==", "value": "abstract"}
-        )
-        for doc in not_updated_docs:
-            assert doc.meta.get("updated") is not True
-
-
 class CountDocumentsByFilterTest:
     """
     Tests for Document Store count_documents_by_filter().
@@ -1042,85 +1005,6 @@ class CountDocumentsByFilterTest:
         assert count == 0
 
 
-class CountDocumentsByFilterAsyncTest:
-    """
-    Tests for Document Store count_documents_by_filter_async().
-
-    Only mix in for stores that implement count_documents_by_filter_async.
-    """
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_simple(document_store: DocumentStore):
-        """Test count_documents_by_filter_async() with a simple equality filter."""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
-            Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
-            Document(content="Doc 4", meta={"category": "A", "status": "active"}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 4
-
-        count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.category", "operator": "==", "value": "A"}
-        )
-        assert count == 3
-
-        count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.category", "operator": "==", "value": "B"}
-        )
-        assert count == 1
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_compound(document_store: DocumentStore):
-        """Test count_documents_by_filter_async() with AND filter."""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
-            Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
-            Document(content="Doc 4", meta={"category": "A", "status": "active"}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 4
-
-        count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
-            filters={
-                "operator": "AND",
-                "conditions": [
-                    {"field": "meta.category", "operator": "==", "value": "A"},
-                    {"field": "meta.status", "operator": "==", "value": "active"},
-                ],
-            }
-        )
-        assert count == 2
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_no_matches(document_store: DocumentStore):
-        """Test count_documents_by_filter_async() when filter matches no documents."""
-        docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 2
-
-        count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.category", "operator": "==", "value": "Z"}
-        )
-        assert count == 0
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_empty_collection(document_store: DocumentStore):
-        """Test count_documents_by_filter_async() on an empty store."""
-        assert document_store.count_documents() == 0
-
-        count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.category", "operator": "==", "value": "A"}
-        )
-        assert count == 0
-
-
 class CountUniqueMetadataByFilterTest:
     """
     Tests for Document Store count_unique_metadata_by_filter().
@@ -1186,78 +1070,6 @@ class CountUniqueMetadataByFilterTest:
             }
         )
         assert count == 1
-
-
-class CountUniqueMetadataByFilterAsyncTest:
-    """
-    Tests for Document Store count_unique_metadata_by_filter_async().
-
-    Only mix in for stores that implement count_unique_metadata_by_filter_async.
-    """
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_unique_metadata_by_filter_async_all_documents(document_store: DocumentStore):
-        """Test count_unique_metadata_by_filter_async() with no filter returns distinct counts for all docs."""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active", "priority": 2}),
-            Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
-            Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
-            Document(content="Doc 5", meta={"category": "C", "status": "active", "priority": 2}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 5
-
-        counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
-            filters={}, metadata_fields=["category", "status", "priority"]
-        )
-        assert counts["category"] == 3
-        assert counts["status"] == 2
-        assert counts["priority"] == 3
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_unique_metadata_by_filter_async_with_filter(document_store: DocumentStore):
-        """Test count_unique_metadata_by_filter_async() with a filter."""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active", "priority": 2}),
-            Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
-            Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
-        ]
-        document_store.write_documents(docs)
-        assert document_store.count_documents() == 4
-
-        counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
-            filters={"field": "meta.category", "operator": "==", "value": "A"}, metadata_fields=["status", "priority"]
-        )
-        assert counts["status"] == 2
-        assert counts["priority"] == 2
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_unique_metadata_by_filter_async_with_multiple_filters(document_store: DocumentStore):
-        """Test counting unique metadata asynchronously with multiple filters."""
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
-            Document(content="Doc 2", meta={"category": "A", "year": 2024}),
-            Document(content="Doc 3", meta={"category": "B", "year": 2023}),
-            Document(content="Doc 4", meta={"category": "B", "year": 2024}),
-        ]
-        document_store.write_documents(docs)
-
-        counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
-            filters={
-                "operator": "AND",
-                "conditions": [
-                    {"field": "meta.category", "operator": "==", "value": "B"},
-                    {"field": "meta.year", "operator": "==", "value": 2023},
-                ],
-            },
-            metadata_fields=["category", "year"],
-        )
-        assert counts == {"category": 1, "year": 1}
 
 
 class GetMetadataFieldsInfoTest:

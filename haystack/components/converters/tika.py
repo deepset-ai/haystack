@@ -60,8 +60,10 @@ class TikaDocumentConverter:
     see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.converters.tika import TikaDocumentConverter
+    from datetime import datetime
 
     converter = TikaDocumentConverter()
     results = converter.run(
@@ -69,8 +71,9 @@ class TikaDocumentConverter:
         meta={"date_added": datetime.now().isoformat()}
     )
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is a text from the docx file.'
+    # >> 'This is a text from the docx file.'
     ```
     """
 
