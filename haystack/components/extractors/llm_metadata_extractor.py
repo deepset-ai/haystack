@@ -158,7 +158,6 @@ class LLMMetadataExtractor:
         page_range: list[str | int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
-        concurrency_limit: int = 4,
     ) -> None:
         """
         Initializes the LLMMetadataExtractor.
@@ -176,7 +175,8 @@ class LLMMetadataExtractor:
         :param raise_on_failure: Whether to raise an error on failure during the execution of the Generator or
             validation of the JSON output.
         :param max_workers: The maximum number of workers to use in the thread pool executor.
-        :param concurrency_limit: The maximum number of requests that should be allowed to run concurrently.
+            This parameter is used limit the maximum number of requests that should be allowed to run concurrently
+            when using the `run_async` method.
         """
         self.prompt = prompt
         ast = SandboxedEnvironment().parse(prompt)
@@ -192,7 +192,6 @@ class LLMMetadataExtractor:
         self.splitter = DocumentSplitter(split_by="page", split_length=1)
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
-        self.concurrency_limit = concurrency_limit
         self._chat_generator = chat_generator
         self._is_warmed_up = False
 
@@ -419,6 +418,13 @@ class LLMMetadataExtractor:
             "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
             re-run with the extractor to extract metadata.
         """
+        if not hasattr(self._chat_generator, "run_async"):
+            logger.warning(
+                "{chat_generator_type} does not implement method 'run_async'. Falling back to 'run'.",
+                chat_generator_type=type(self._chat_generator).__name__,
+            )
+            return self.run(documents, page_range)
+
         if len(documents) == 0:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
@@ -434,7 +440,7 @@ class LLMMetadataExtractor:
         all_prompts = self._prepare_prompts(documents=documents, expanded_range=expanded_range)
 
         # Run the LLM on each prompt
-        sem = Semaphore(max(1, self.concurrency_limit))
+        sem = Semaphore(max(1, self.max_workers))
         async with sem:
             results = await gather(*[self._run_async(prompt) for prompt in all_prompts])
 
