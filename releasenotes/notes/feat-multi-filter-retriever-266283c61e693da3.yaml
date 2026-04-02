@@ -1,0 +1,20 @@
+---
+features:
+  - |
+    Add support for ``MultiFilterRetriever``, a new retriever component that executes multiple filter
+    queries against a document store **in parallel** and returns a single, de-duplicated list of
+    documents sorted by relevance score.
+
+    .. code-block:: python
+
+        filter_retriever = FilterRetriever(document_store=document_store)
+        multi_filter_retriever = MultiFilterRetriever(retriever=filter_retriever)
+
+        filters = [
+            {"field": "meta.lang", "operator": "==", "value": "en"},
+            {"field": "meta.lang", "operator": "==", "value": "de"},
+        ]
+
+        result = multi_filter_retriever.run(filters=filters)
+        for doc in result["documents"]:
+            print(doc.content)
