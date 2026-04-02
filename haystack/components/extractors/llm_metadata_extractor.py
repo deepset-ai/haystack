@@ -303,7 +303,7 @@ class LLMMetadataExtractor:
             return {"error": "Document has no content, skipping LLM call."}
 
         try:
-            result = self._chat_generator.run_async(messages=[prompt])  # type: ignore[attr-defined]
+            result = await self._chat_generator.run_async(messages=[prompt])  # type: ignore[attr-defined]
         except Exception as e:
             if self.raise_on_failure:
                 raise e
