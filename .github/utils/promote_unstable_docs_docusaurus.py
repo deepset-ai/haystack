@@ -104,11 +104,14 @@ if __name__ == "__main__":
             vercel_config = json.load(f)
     except FileNotFoundError:
         vercel_config = {}
-    version_redirect_re = re.compile(r"^/(docs|reference)/\d+\.\d+/")
-    manual_redirects = [
-        r for r in vercel_config.get("redirects", []) if not version_redirect_re.match(r.get("source", ""))
-    ]
-    vercel_config["redirects"] = manual_redirects + redirects
+    existing_redirects = vercel_config.get("redirects", [])
+    existing_sources = {r.get("source") for r in existing_redirects}
+    
+    for r in redirects:
+        if r["source"] not in existing_sources:
+            existing_redirects.append(r)
+    
+    vercel_config["redirects"] = existing_redirects
     with open("docs-website/vercel.json", "w") as f:
         json.dump(vercel_config, f, indent=2)
         f.write("\n")
