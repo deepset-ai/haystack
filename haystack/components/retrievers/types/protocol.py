@@ -54,3 +54,22 @@ class EmbeddingRetriever(Protocol):
                 `documents`: List of retrieved documents sorted by relevance score.
         """
         ...
+
+
+class FilterRetriever(Protocol):
+    """
+    This protocol defines the minimal interface for retrievers that filter documents.
+    """
+
+    def run(self, filters: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        """
+        Retrieve documents matching the provided filters.
+
+        Implementing classes may accept additional optional parameters in their run method.
+
+        :param filters: A dictionary of filters to apply when retrieving documents.
+        :returns:
+            A dictionary containing:
+                `documents`: List of retrieved documents.
+        """
+        ...
