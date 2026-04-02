@@ -5,7 +5,10 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from haystack.components.agents.state import State
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
@@ -99,6 +102,7 @@ class Tool:
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
+    condition: Callable[["State"], bool] | None = None
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         # Check that the function is not a coroutine (async function)
@@ -286,6 +290,9 @@ class Tool:
         if self.outputs_to_string is not None:
             data["outputs_to_string"] = _serialize_outputs_to_string(self.outputs_to_string)
 
+        if self.condition is not None:
+            data["condition"] = serialize_callable(self.condition)
+
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
@@ -305,6 +312,9 @@ class Tool:
 
         if init_parameters.get("outputs_to_string") is not None:
             init_parameters["outputs_to_string"] = _deserialize_outputs_to_string(init_parameters["outputs_to_string"])
+
+        if init_parameters.get("condition") is not None:
+            init_parameters["condition"] = deserialize_callable(init_parameters["condition"])
 
         return cls(**init_parameters)
 

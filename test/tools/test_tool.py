@@ -161,6 +161,7 @@ class TestTool:
                 "outputs_to_string": {"handler": "test_tool.format_string"},
                 "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+                "condition": None,
             },
         }
 

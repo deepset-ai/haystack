@@ -281,7 +281,19 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
-        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
+        all_tools_flat = flatten_tools_or_toolsets(tools)
+        self._condition_tools: list[Tool] = [t for t in all_tools_flat if t.condition is not None]
+        # Flat list used for ToolInvoker initialization
+        self._llm_tools: list[Tool] = [t for t in all_tools_flat if t.condition is None]
+        # Structured list (preserving Toolsets) used for _select_tools, with condition tools removed
+        _condition_names = {t.name for t in self._condition_tools}
+        self._llm_tools_structured: ToolsType = (
+            [t for t in (tools or []) if not (isinstance(t, Tool) and t.name in _condition_names)]
+            if _condition_names
+            else (tools or [])
+        )
+
+        valid_exits = ["text"] + [tool.name for tool in self._llm_tools]
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):
@@ -337,9 +349,9 @@ class Agent:
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
-        if self.tools:
+        if self._llm_tools:
             resolved_tool_invoker_kwargs = {
-                "tools": self.tools,
+                "tools": self._llm_tools,
                 "raise_on_failure": self.raise_on_tool_invocation_failure,
                 **(tool_invoker_kwargs or {}),
             }
@@ -635,7 +647,7 @@ class Agent:
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
         if tools is None:
-            return self.tools
+            return self._llm_tools_structured
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
@@ -832,6 +844,7 @@ class Agent:
                     # Set to False so the next iteration will call the chat generator
                     exe_context.skip_chat_generator = False
                 else:
+                    self._invoke_condition_tools(exe_context.state)
                     try:
                         result = Pipeline._run_component(
                             component_name="chat_generator",
@@ -1066,6 +1079,7 @@ class Agent:
                     # Set to False so the next iteration will call the chat generator
                     exe_context.skip_chat_generator = False
                 else:
+                    self._invoke_condition_tools(exe_context.state)
                     try:
                         result = await AsyncPipeline._run_component_async(
                             component_name="chat_generator",
@@ -1206,6 +1220,21 @@ class Agent:
         if msgs := result.get("messages"):
             result["last_message"] = msgs[-1]
         return result
+
+    def _invoke_condition_tools(self, state: State) -> None:
+        """
+        Check and invoke any tools whose condition is satisfied by the current state.
+
+        Called before each LLM invocation. Tools are invoked directly — bypassing the LLM and ToolInvoker —
+        so no tool-call or tool-result messages are added to the chat history.
+
+        :param state: The current agent state.
+        """
+        for tool in self._condition_tools:
+            if tool.condition(state):
+                final_args = ToolInvoker._inject_state_args(tool, {}, state)
+                result = tool.invoke(**final_args)
+                ToolInvoker._merge_tool_outputs(tool, result, state)
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """

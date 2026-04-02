@@ -242,6 +242,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                     {
@@ -324,6 +325,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "condition": None,
                                 },
                             }
                         ]
@@ -393,6 +395,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                     {
@@ -412,6 +415,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                 ],
@@ -540,6 +544,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                     {
@@ -559,6 +564,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                 ],
@@ -1099,11 +1105,11 @@ class TestAgentTracing:
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
@@ -1161,11 +1167,11 @@ class TestAgentTracing:
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
             100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
