@@ -179,8 +179,10 @@ class GroundednessChecker:
                 "is_trusted": False,
             }
 
-        # Build context from documents
-        context = "\n\n".join(doc.content for doc in documents if doc.content)
+        # Build context from documents using positional batching to mitigate
+        # Lost-in-the-Middle degradation (Liu et al., 2023). Places the most
+        # relevant documents at the start and end of the context window.
+        context = self._build_positional_context(documents)
         if not context.strip():
             return {
                 "verified_replies": [msg.text or "" for msg in replies],
@@ -267,10 +269,51 @@ class GroundednessChecker:
             logger.warning("GroundednessChecker: claim extraction failed: %s", e)
             return []
 
+    def _build_positional_context(self, documents: list[Document], max_chars: int = 8000) -> str:
+        """
+        Build a context string with positional batching to mitigate Lost-in-the-Middle degradation.
+
+        Sorts documents by relevance score, selects documents up to ``max_chars``, and reorders
+        them so the most relevant documents sit at the start and end of the context string —
+        exploiting the LLM's primacy and recency bias.
+
+        :param documents:
+            List of Documents from a Retriever.
+        :param max_chars:
+            Maximum character budget for the context string.
+        :returns:
+            A context string with positionally optimized document ordering.
+        """
+        if not documents:
+            return ""
+
+        # Sort by relevance score (stable sort preserves retriever order when scores are equal)
+        ranked_docs = sorted(documents, key=lambda d: getattr(d, "score", 0.0) or 0.0, reverse=True)
+
+        # Select documents until we hit the char limit
+        selected_docs: list[Document] = []
+        current_len = 0
+        for doc in ranked_docs:
+            content = doc.content or ""
+            doc_len = len(content)
+            # Always include at least one document
+            if current_len + doc_len > max_chars and selected_docs:
+                break
+            selected_docs.append(doc)
+            current_len += doc_len + 2  # +2 for "\n\n" separator
+
+        # Positional reordering: [Most Relevant] -> [Least Relevant...] -> [Second Most Relevant]
+        if len(selected_docs) >= 3:
+            ordered_docs = [selected_docs[0]] + selected_docs[2:] + [selected_docs[1]]
+        else:
+            ordered_docs = selected_docs
+
+        return "\n\n".join(d.content for d in ordered_docs if d.content)
+
     def _verify_claims(self, claims: list[str], context: str) -> list[dict[str, Any]]:
         """Use the LLM to verify claims against context."""
         prompt = _VERIFY_PROMPT.format(
-            context=context[:8000],
+            context=context,
             claims=json.dumps(claims),
         )
         messages = [
