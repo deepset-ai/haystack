@@ -1,5 +1,4 @@
-# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
-#
+# SPDX-FileCopyrightText: 2022-present deepset GmbH
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
@@ -28,86 +27,87 @@ def sample_document_store(sample_documents: list[Document]) -> InMemoryDocumentS
     return document_store
 
 
+@pytest.fixture
+def sample_filters() -> list[dict[str, Any]]:
+    return [
+        {"field": "meta.lang", "operator": "==", "value": "en"},
+        {"field": "meta.lang", "operator": "==", "value": "de"},
+    ]
+
+
 class TestMultiFilterRetriever:
-    def test_init_with_default_parameters(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
-        filter_retriever = FilterRetriever(document_store=in_memory_doc_store)
-        multi_retriever = MultiFilterRetriever(retriever=filter_retriever)
+    def test_init_default(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        retriever = FilterRetriever(document_store=in_memory_doc_store)
+        multi = MultiFilterRetriever(retriever=retriever)
 
-        assert multi_retriever.retriever == filter_retriever
-        assert multi_retriever.max_workers == 3
+        assert multi.retriever == retriever
+        assert multi.max_workers == 3
 
-    def test_init_with_custom_parameters(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
-        filter_retriever = FilterRetriever(document_store=in_memory_doc_store)
-        multi_retriever = MultiFilterRetriever(retriever=filter_retriever, max_workers=2)
+    def test_init_with_parameters(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        retriever = FilterRetriever(document_store=in_memory_doc_store)
+        multi = MultiFilterRetriever(retriever=retriever, max_workers=2)
 
-        assert multi_retriever.retriever == filter_retriever
-        assert multi_retriever.max_workers == 2
+        assert multi.max_workers == 2
 
-    def test_run_with_empty_filters(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
-        multi_retriever = MultiFilterRetriever(retriever=FilterRetriever(document_store=in_memory_doc_store))
-        result = multi_retriever.run(filters=[])
+    def test_run_empty_filters(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        multi = MultiFilterRetriever(retriever=FilterRetriever(document_store=in_memory_doc_store))
+
+        result = multi.run(filters=[])
 
         assert result == {"documents": []}
 
-    @pytest.mark.parametrize(
-        ("filters", "expected_languages"),
-        [
-            (
-                [
-                    {"field": "meta.lang", "operator": "==", "value": "en"},
-                    {"field": "meta.lang", "operator": "==", "value": "de"},
-                ],
-                {"en", "de"},
-            )
-        ],
-    )
-    def test_run_with_multiple_filters(
-        self, sample_document_store: InMemoryDocumentStore, filters: list[dict[str, Any]], expected_languages: set[str]
+    def test_run_multiple_filters(
+        self, sample_document_store: InMemoryDocumentStore, sample_filters: list[dict[str, Any]]
     ) -> None:
-        filter_retriever = FilterRetriever(document_store=sample_document_store)
-        multi_retriever = MultiFilterRetriever(retriever=filter_retriever)
+        multi = MultiFilterRetriever(retriever=FilterRetriever(document_store=sample_document_store))
 
-        result = multi_retriever.run(filters=filters)
+        result = multi.run(filters=sample_filters)
 
         assert "documents" in result
-        assert {doc.meta["lang"] for doc in result["documents"]} == expected_languages
+        assert len(result["documents"]) == 2
+        assert {doc.meta["lang"] for doc in result["documents"]} == {"en", "de"}
 
-    def test_deduplication_with_overlapping_results(self) -> None:
-        doc1 = Document(content="Solar energy is renewable", id="doc1", score=0.9)
-        doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
-        doc3 = Document(content="Solar energy is renewable", id="doc1", score=0.7)
+    def test_run_single_filter(self, sample_document_store: InMemoryDocumentStore) -> None:
+        multi = MultiFilterRetriever(retriever=FilterRetriever(document_store=sample_document_store))
 
-        call_count = 0
+        result = multi.run(filters=[{"field": "meta.lang", "operator": "==", "value": "en"}])
+
+        assert "documents" in result
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].meta["lang"] == "en"
+
+    def test_deduplication(self) -> None:
+        doc1 = Document(content="A", id="doc1", score=0.9)
+        doc2 = Document(content="B", id="doc2", score=0.8)
+        doc3 = Document(content="A", id="doc1", score=0.7)
 
         @component
         class MockRetriever:
             @component.output_types(documents=list[Document])
             def run(self, filters: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, list[Document]]:
-                nonlocal call_count
-                call_count += 1
-                if call_count == 1:
-                    return {"documents": [doc1, doc2]}
-                return {"documents": [doc3, doc2]}
+                return {"documents": [doc1, doc2, doc3]}
 
-        multi_retriever = MultiFilterRetriever(retriever=MockRetriever(), max_workers=1)
+        multi = MultiFilterRetriever(retriever=MockRetriever(), max_workers=1)
 
-        result = multi_retriever.run(
-            filters=[
-                {"field": "meta.lang", "operator": "==", "value": "en"},
-                {"field": "meta.lang", "operator": "==", "value": "de"},
-            ]
-        )
+        result = multi.run(filters=[{}, {}])
 
-        assert "documents" in result
         assert len(result["documents"]) == 2
-        assert [doc.content for doc in result["documents"]].count("Solar energy is renewable") == 1
-        assert [doc.content for doc in result["documents"]].count("Wind energy is clean") == 1
+        assert {doc.id for doc in result["documents"]} == {"doc1", "doc2"}
 
-    def test_from_dict_roundtrip(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
-        filter_retriever = FilterRetriever(document_store=in_memory_doc_store)
-        multi_retriever = MultiFilterRetriever(retriever=filter_retriever, max_workers=2)
+    def test_to_dict(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        retriever = FilterRetriever(document_store=in_memory_doc_store)
+        multi = MultiFilterRetriever(retriever=retriever, max_workers=2)
 
-        serialized = multi_retriever.to_dict()
+        data = multi.to_dict()
+
+        assert data["type"] == "haystack.components.retrievers.multi_filter_retriever.MultiFilterRetriever"
+        assert data["init_parameters"]["max_workers"] == 2
+
+    def test_from_dict(self, in_memory_doc_store: InMemoryDocumentStore) -> None:
+        retriever = FilterRetriever(document_store=in_memory_doc_store)
+        multi = MultiFilterRetriever(retriever=retriever, max_workers=2)
+
+        serialized = multi.to_dict()
         deserialized = MultiFilterRetriever.from_dict(serialized)
 
         assert isinstance(deserialized, MultiFilterRetriever)
