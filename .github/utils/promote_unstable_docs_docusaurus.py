@@ -99,18 +99,17 @@ if __name__ == "__main__":
     for v in inactive_versions:
         redirects.append({"source": f"/docs/{v}/:slug*", "destination": "/docs/:slug*", "permanent": True})
         redirects.append({"source": f"/reference/{v}/:slug*", "destination": "/reference/:slug*", "permanent": True})
-    try:
-        with open("docs-website/vercel.json") as f:
-            vercel_config = json.load(f)
-    except FileNotFoundError:
-        vercel_config = {}
+
+    with open("docs-website/vercel.json") as f:
+        vercel_config = json.load(f)
+
     existing_redirects = vercel_config.get("redirects", [])
     existing_sources = {r.get("source") for r in existing_redirects}
-    
+
     for r in redirects:
         if r["source"] not in existing_sources:
             existing_redirects.append(r)
-    
+
     vercel_config["redirects"] = existing_redirects
     with open("docs-website/vercel.json", "w") as f:
         json.dump(vercel_config, f, indent=2)
