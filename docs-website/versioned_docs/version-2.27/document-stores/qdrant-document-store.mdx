@@ -18,7 +18,7 @@ Use the Qdrant vector database with Haystack.
 
 </div>
 
-Qdrant is a powerful high-performance, massive-scale vector database. The `QdrantDocumentStore` can be used with any Qdrant instance, in-memory, locally persisted, hosted, and the official Qdrant Cloud.
+Qdrant is a powerful, high-performance, massive-scale vector database. The `QdrantDocumentStore` can be used with any Qdrant instance: in-memory, locally persisted, hosted, or on Qdrant Cloud.
 
 ### Installation
 
@@ -56,7 +56,7 @@ print(document_store.count_documents())
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
 :::
 
-You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login) directly. Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
+You can also connect to [Qdrant Cloud](https://cloud.qdrant.io/login) directly. Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
 
 ```python
 from haystack.dataclasses.document import Document
@@ -95,7 +95,7 @@ You can find more ways to initialize and use QdrantDocumentStore on our [integra
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
-If you want to use Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
+If you want to use a document store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
 :::
 
 ## Additional References

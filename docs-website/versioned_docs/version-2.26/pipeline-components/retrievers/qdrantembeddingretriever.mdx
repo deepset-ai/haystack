@@ -30,7 +30,7 @@ When using the `QdrantEmbeddingRetriever` in your NLP system, make sure it has t
 
 In addition to the `query_embedding`, the `QdrantEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
 
-Some relevant parameters that impact the embedding retrieval must be defined when the corresponding `QdrantDocumentStore` is initialized: these include the embedding dimension (`embedding_dim`), the `similarity` function to use when comparing embeddings and the HNWS configuration (`hnsw_config`).
+Some relevant parameters that impact embedding retrieval must be defined when the corresponding `QdrantDocumentStore` is initialized: these include the embedding dimension (`embedding_dim`), the `similarity` function to use when comparing embeddings, and the HNSW configuration (`hnsw_config`).
 
 ### Installation
 
