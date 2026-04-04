@@ -6,7 +6,7 @@ features:
     We calculate the p50, p90, p99, avg, and total runtime in ms both pipeline and per component level. Also, we display slowest component, faster/slowest pipeline execution time, number of runs, and other metadata.
 
     Sample usage:
-    ```python
+    .. code:: python
     from haystack.core.pipeline.benchmark import BenchmarkConfig, PipelineBenchmark
     from haystack.pipelines import Pipeline
 
@@ -18,4 +18,3 @@ features:
     benchmark_result = benchmark.run()
 
     print(benchmark_result.report())
-    ```
