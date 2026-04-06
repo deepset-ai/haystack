@@ -879,17 +879,27 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_tool_results = []
         for result in tool_call_results:
             if result.origin.id is not None:
-                # Handle multimodal tool results (list of TextContent/ImageContent)
-                if isinstance(result.result, list):
-                    output_content = [convert_part(part) for part in result.result]
-                elif isinstance(result.result, str):
-                    output_content = [{"type": "input_text", "text": result.result}]
+                # The OpenAI Responses API expects `output` to be a string.
+                # See: https://platform.openai.com/docs/api-reference/responses/create
+                if isinstance(result.result, str):
+                    output_str = result.result
+                elif isinstance(result.result, list):
+                    # Multimodal tool results: extract text parts and join them.
+                    # Non-text parts are serialized as JSON.
+                    text_parts = []
+                    for part in result.result:
+                        converted = convert_part(part)
+                        if isinstance(converted, dict) and converted.get("type") == "input_text":
+                            text_parts.append(converted["text"])
+                        else:
+                            text_parts.append(json.dumps(converted))
+                    output_str = "\n".join(text_parts)
                 else:
-                    raise ValueError(f"Unsupported tool result: {result.result}")
+                    output_str = str(result.result)
                 tool_result = {
                     "type": "function_call_output",
                     "call_id": result.origin.extra.get("call_id") if result.origin.extra else "",
-                    "output": output_content,
+                    "output": output_str,
                 }
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)

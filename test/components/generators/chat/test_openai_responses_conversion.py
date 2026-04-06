@@ -1390,7 +1390,7 @@ class TestResponseToChatMessage:
         assert _convert_chat_message_to_responses_api_format(tool_call_result) == [
             {
                 "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
-                "output": [{"type": "input_text", "text": "result"}],
+                "output": "result",
                 "type": "function_call_output",
             }
         ]
@@ -1408,16 +1408,55 @@ class TestResponseToChatMessage:
             error=False,
         )
 
-        assert _convert_chat_message_to_responses_api_format(message) == [
-            {
-                "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
-                "output": [
-                    {"type": "input_text", "text": "first result"},
-                    {"type": "input_image", "image_url": f"data:image/png;base64,{base64_image_string}"},
-                ],
-                "type": "function_call_output",
-            }
-        ]
+        result = _convert_chat_message_to_responses_api_format(message)
+        assert len(result) == 1
+        assert result[0]["type"] == "function_call_output"
+        assert result[0]["call_id"] == "call_a82vwFAIzku9SmBuQuecQSRq"
+        # The output is a string: text parts joined, non-text parts serialized as JSON
+        output = result[0]["output"]
+        assert isinstance(output, str)
+        assert "first result" in output
+
+    def test_convert_tool_message_output_is_always_string(self):
+        """Verify that function_call_output.output is always a string, as required by the OpenAI Responses API."""
+        # String result
+        tool_call_result = ChatMessage(
+            _role=ChatRole.TOOL,
+            _content=[
+                ToolCallResult(
+                    result='{"temperature": 22, "unit": "celsius"}',
+                    origin=ToolCall(
+                        id="fc_001",
+                        tool_name="weather",
+                        arguments={"location": "Berlin"},
+                        extra={"call_id": "call_001"},
+                    ),
+                    error=False,
+                )
+            ],
+        )
+        result = _convert_chat_message_to_responses_api_format(tool_call_result)
+        assert len(result) == 1
+        assert result[0]["type"] == "function_call_output"
+        assert isinstance(result[0]["output"], str)
+        assert result[0]["output"] == '{"temperature": 22, "unit": "celsius"}'
+
+    def test_convert_tool_message_list_result_outputs_string(self):
+        """Verify that list-type tool results are coerced to a string."""
+        tool_result = [TextContent(text="result line 1"), TextContent(text="result line 2")]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result,
+            origin=ToolCall(
+                tool_name="search", arguments={}, id="fc_002", extra={"call_id": "call_002"}
+            ),
+            error=False,
+        )
+        result = _convert_chat_message_to_responses_api_format(message)
+        assert len(result) == 1
+        output = result[0]["output"]
+        assert isinstance(output, str)
+        assert "result line 1" in output
+        assert "result line 2" in output
 
     def test_convert_invalid(self):
         message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
