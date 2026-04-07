@@ -143,7 +143,7 @@ if a score is present.
 
 **Raises:**
 
-- <code>requests.exceptions.RequestException</code> – - If the API request fails.
+- <code>RuntimeError</code> – - If the API request fails.
 - <code>RuntimeError</code> – - If the API returns an error response.
 - <code>TypeError</code> – - If the API response is not in the expected list format.
 
