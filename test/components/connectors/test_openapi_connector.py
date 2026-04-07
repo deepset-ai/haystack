@@ -230,7 +230,6 @@ class TestOpenAPIConnectorIntegration:
         )
         assert isinstance(response, dict)
         assert "response" in response
-        print(response)
 
         weather_data = response["response"]
         assert isinstance(weather_data, dict)
