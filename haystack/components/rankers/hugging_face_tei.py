@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Any
 from urllib.parse import urljoin
 
+import httpx
+
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.utils import Secret
 from haystack.utils.misc import _deduplicate_documents
@@ -133,7 +135,7 @@ class HuggingFaceTEIRanker:
         :returns: A dictionary with the following keys:
             - `documents`: A list of reranked documents.
 
-        :raises requests.exceptions.RequestException:
+        :raises RuntimeError:
             - If the API request fails.
 
         :raises RuntimeError:
@@ -186,7 +188,7 @@ class HuggingFaceTEIRanker:
         :returns: A dictionary with the following keys:
             - `documents`: A list of reranked documents.
 
-        :raises requests.exceptions.RequestException:
+        :raises RuntimeError:
             - If the API request fails.
 
         :raises RuntimeError:
@@ -211,15 +213,18 @@ class HuggingFaceTEIRanker:
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
         # Call the external service with retry
-        response = request_with_retry(
-            method="POST",
-            url=urljoin(self.url, "/rerank"),
-            json=payload,
-            timeout=self.timeout,
-            headers=headers,
-            attempts=self.max_retries,
-            status_codes_to_retry=self.retry_status_codes,
-        )
+        try:
+            response = request_with_retry(
+                method="POST",
+                url=urljoin(self.url, "/rerank"),
+                json=payload,
+                timeout=self.timeout,
+                headers=headers,
+                attempts=self.max_retries,
+                status_codes_to_retry=self.retry_status_codes,
+            )
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(f"HuggingFaceTEIRanker API call failed. Error: {e}, Response: {e.response.text}") from e
 
         result: dict[str, str] | list[dict[str, Any]] = response.json()
 
@@ -270,15 +275,18 @@ class HuggingFaceTEIRanker:
             headers["Authorization"] = f"Bearer {self.token.resolve_value()}"
 
         # Call the external service with retry
-        response = await async_request_with_retry(
-            method="POST",
-            url=urljoin(self.url, "/rerank"),
-            json=payload,
-            timeout=self.timeout,
-            headers=headers,
-            attempts=self.max_retries,
-            status_codes_to_retry=self.retry_status_codes,
-        )
+        try:
+            response = await async_request_with_retry(
+                method="POST",
+                url=urljoin(self.url, "/rerank"),
+                json=payload,
+                timeout=self.timeout,
+                headers=headers,
+                attempts=self.max_retries,
+                status_codes_to_retry=self.retry_status_codes,
+            )
+        except httpx.HTTPStatusError as e:
+            raise RuntimeError(f"HuggingFaceTEIRanker API call failed. Error: {e}, Response: {e.response.text}") from e
 
         result: dict[str, str] | list[dict[str, Any]] = response.json()
 
