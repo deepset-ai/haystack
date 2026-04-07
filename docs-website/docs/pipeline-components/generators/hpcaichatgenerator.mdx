@@ -1,0 +1,141 @@
+---
+title: "HPCAIChatGenerator"
+id: hpcaichatgenerator
+slug: "/hpcaichatgenerator"
+description: "HPCAIChatGenerator enables chat completion using HPC-AI's OpenAI-compatible API."
+---
+
+# HPCAIChatGenerator
+
+`HPCAIChatGenerator` enables chat completion using HPC-AI's OpenAI-compatible API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: The HPC-AI API key. Can be set with `HPC_AI_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count and finish reason |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/hpc_ai |
+
+</div>
+
+## Overview
+
+`HPCAIChatGenerator` reuses Haystack's OpenAI chat generation logic and points it at HPC-AI's compatible base URL: `https://api.hpc-ai.com/inference/v1`.
+
+This integration officially supports these models:
+
+- `minimax/minimax-m2.5` (default)
+- `moonshotai/kimi-k2.5`
+
+You can provide credentials with:
+
+- The `HPC_AI_API_KEY` environment variable (recommended)
+- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API
+
+If you need to override the endpoint, set `HPC_AI_BASE_URL` or pass `api_base_url` explicitly.
+
+### Structured Output
+
+`HPCAIChatGenerator` supports structured output generation for compatible models through `generation_kwargs["response_format"]`. You can pass either a Pydantic model or a JSON schema, just like with Haystack's OpenAI-compatible generators.
+
+### Tool Support
+
+`HPCAIChatGenerator` supports function calling through the `tools` parameter. You can pass a list of Tool objects, a Toolset, or a mix of both.
+
+### Streaming
+
+`HPCAIChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) tokens through the `streaming_callback` init parameter.
+
+## Usage
+
+Install the `hpc-ai-haystack` package:
+
+```shell
+pip install hpc-ai-haystack
+```
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hpc_ai import HPCAIChatGenerator
+
+client = HPCAIChatGenerator()
+response = client.run([ChatMessage.from_user("What are agentic pipelines? Be brief.")])
+
+print(response["replies"][0].text)
+```
+
+With structured output:
+
+```python
+from pydantic import BaseModel
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hpc_ai import HPCAIChatGenerator
+
+
+class CityInfo(BaseModel):
+    city_name: str
+    country: str
+
+
+client = HPCAIChatGenerator(
+    model="moonshotai/kimi-k2.5",
+    generation_kwargs={"response_format": CityInfo},
+)
+
+response = client.run([
+    ChatMessage.from_user("Return the capital city and country for Germany.")
+])
+
+print(response["replies"][0].text)
+```
+
+With streaming:
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hpc_ai import HPCAIChatGenerator
+
+client = HPCAIChatGenerator(
+    model="moonshotai/kimi-k2.5",
+    streaming_callback=print_streaming_chunk,
+)
+
+client.run([ChatMessage.from_user("Summarize RAG in two lines.")])
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hpc_ai import HPCAIChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = HPCAIChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Always respond concisely."),
+    ChatMessage.from_user("Tell me about {{topic}}"),
+]
+
+pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"topic": "Haystack"},
+            "template": messages,
+        }
+    }
+)
+```

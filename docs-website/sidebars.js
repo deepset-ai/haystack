@@ -400,6 +400,7 @@ export default {
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
             'pipeline-components/generators/googlegenaichatgenerator',
+            'pipeline-components/generators/hpcaichatgenerator',
             'pipeline-components/generators/huggingfaceapichatgenerator',
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
