@@ -196,35 +196,33 @@ class TestOpenAPIConnectorIntegration:
 
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=5)
-    def test_open_meteo_integration(self):
-        open_meteo_spec = {
+    def test_frankfurter_integration(self):
+        frankfurter_spec = {
             "openapi": "3.0.0",
-            "info": {"title": "Open-Meteo Weather API", "version": "1.0.0"},
-            "servers": [{"url": "https://api.open-meteo.com"}],
+            "info": {"title": "Frankfurter Exchange Rates API", "version": "1.0.0"},
+            "servers": [{"url": "https://api.frankfurter.dev"}],
             "paths": {
-                "/v1/forecast": {
+                "/v1/latest": {
                     "get": {
-                        "operationId": "get_forecast",
+                        "operationId": "get_latest_rates",
                         "parameters": [
-                            {"name": "latitude", "in": "query", "required": True, "schema": {"type": "number"}},
-                            {"name": "longitude", "in": "query", "required": True, "schema": {"type": "number"}},
-                            {"name": "current", "in": "query", "required": False, "schema": {"type": "string"}},
+                            {"name": "base", "in": "query", "required": False, "schema": {"type": "string"}},
+                            {"name": "symbols", "in": "query", "required": False, "schema": {"type": "string"}},
                         ],
-                        "responses": {"200": {"description": "Weather forecast"}},
+                        "responses": {"200": {"description": "Latest exchange rates"}},
                     }
                 }
             },
         }
-        component = OpenAPIConnector(openapi_spec=json.dumps(open_meteo_spec))
-        response = component.run(
-            operation_id="get_forecast", arguments={"latitude": 52.52, "longitude": 13.41, "current": "temperature_2m"}
-        )
+        component = OpenAPIConnector(openapi_spec=json.dumps(frankfurter_spec))
+        response = component.run(operation_id="get_latest_rates", arguments={"base": "USD", "symbols": "EUR"})
         assert isinstance(response, dict)
         assert "response" in response
+        print(response)
 
-        weather_data = response["response"]
-        assert isinstance(weather_data, dict)
-        assert weather_data["latitude"] == pytest.approx(52.52, abs=0.1)
-        assert weather_data["longitude"] == pytest.approx(13.41, abs=0.1)
-        assert "current" in weather_data
-        assert "temperature_2m" in weather_data["current"]
+        rates_data = response["response"]
+        assert isinstance(rates_data, dict)
+        assert rates_data["base"] == "USD"
+        assert "rates" in rates_data
+        assert "EUR" in rates_data["rates"]
+        assert isinstance(rates_data["rates"]["EUR"], (int, float))
