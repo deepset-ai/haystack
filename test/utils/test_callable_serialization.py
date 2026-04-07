@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import httpx
 import pytest
-import requests
 
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.core.errors import DeserializationError, SerializationError
@@ -39,8 +39,8 @@ def test_callable_serialization_non_local():
     assert result == "haystack.components.generators.utils.print_streaming_chunk"
 
     # check serialization of another library's callable
-    result = serialize_callable(requests.api.get)
-    assert result == "requests.api.get"
+    result = serialize_callable(httpx.get)
+    assert result == "httpx.get"
 
 
 def test_fully_qualified_import_deserialization():
@@ -79,9 +79,9 @@ def test_callable_deserialization():
 
 
 def test_callable_deserialization_non_local():
-    result = serialize_callable(requests.api.get)
+    result = serialize_callable(httpx.get)
     fn = deserialize_callable(result)
-    assert fn is requests.api.get
+    assert fn is httpx.get
 
 
 def test_classmethod_serialization_deserialization():
