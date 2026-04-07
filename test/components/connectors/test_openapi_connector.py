@@ -196,33 +196,46 @@ class TestOpenAPIConnectorIntegration:
 
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=5)
-    def test_frankfurter_integration(self):
-        frankfurter_spec = {
+    def test_open_meteo_integration(self):
+        open_meteo_spec = {
             "openapi": "3.0.0",
-            "info": {"title": "Frankfurter Exchange Rates API", "version": "1.0.0"},
-            "servers": [{"url": "https://api.frankfurter.dev"}],
+            "info": {"title": "Open-Meteo Historical Weather API", "version": "1.0.0"},
+            "servers": [{"url": "https://archive-api.open-meteo.com"}],
             "paths": {
-                "/v1/latest": {
+                "/v1/archive": {
                     "get": {
-                        "operationId": "get_latest_rates",
+                        "operationId": "get_archive",
                         "parameters": [
-                            {"name": "base", "in": "query", "required": False, "schema": {"type": "string"}},
-                            {"name": "symbols", "in": "query", "required": False, "schema": {"type": "string"}},
+                            {"name": "latitude", "in": "query", "required": True, "schema": {"type": "number"}},
+                            {"name": "longitude", "in": "query", "required": True, "schema": {"type": "number"}},
+                            {"name": "start_date", "in": "query", "required": True, "schema": {"type": "string"}},
+                            {"name": "end_date", "in": "query", "required": True, "schema": {"type": "string"}},
+                            {"name": "daily", "in": "query", "required": False, "schema": {"type": "string"}},
                         ],
-                        "responses": {"200": {"description": "Latest exchange rates"}},
+                        "responses": {"200": {"description": "Historical weather data"}},
                     }
                 }
             },
         }
-        component = OpenAPIConnector(openapi_spec=json.dumps(frankfurter_spec))
-        response = component.run(operation_id="get_latest_rates", arguments={"base": "USD", "symbols": "EUR"})
+        component = OpenAPIConnector(openapi_spec=json.dumps(open_meteo_spec))
+        response = component.run(
+            operation_id="get_archive",
+            arguments={
+                "latitude": 52.52,
+                "longitude": 13.41,
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-07",
+                "daily": "temperature_2m_max",
+            },
+        )
         assert isinstance(response, dict)
         assert "response" in response
         print(response)
 
-        rates_data = response["response"]
-        assert isinstance(rates_data, dict)
-        assert rates_data["base"] == "USD"
-        assert "rates" in rates_data
-        assert "EUR" in rates_data["rates"]
-        assert isinstance(rates_data["rates"]["EUR"], (int, float))
+        weather_data = response["response"]
+        assert isinstance(weather_data, dict)
+        assert weather_data["latitude"] == pytest.approx(52.52, abs=0.1)
+        assert weather_data["longitude"] == pytest.approx(13.41, abs=0.1)
+        assert "daily" in weather_data
+        assert "temperature_2m_max" in weather_data["daily"]
+        assert len(weather_data["daily"]["temperature_2m_max"]) == 7
