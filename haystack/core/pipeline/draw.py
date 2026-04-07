@@ -9,8 +9,8 @@ import random
 import zlib
 from typing import Any
 
+import httpx
 import networkx
-import requests
 
 from haystack import logging
 from haystack.core.errors import PipelineDrawingError
@@ -234,7 +234,7 @@ def _to_mermaid_image(
 
     logger.debug("Rendering graph at {url}", url=url)
     try:
-        resp = requests.get(url, timeout=timeout)
+        resp = httpx.get(url, timeout=timeout)
         if resp.status_code >= 400:
             logger.warning(
                 "Failed to draw the pipeline: {server_url} returned status {status_code}",
