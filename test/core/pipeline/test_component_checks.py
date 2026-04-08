@@ -23,6 +23,7 @@ from haystack.core.pipeline.component_checks import (
     has_lazy_variadic_socket_received_all_inputs,
     has_socket_received_all_inputs,
     has_user_input,
+    is_any_connected_socket_blocked_by_routing,
     is_any_greedy_socket_ready,
 )
 
@@ -673,3 +674,104 @@ class TestGreedySocketReadiness:
         """User input can also trigger readiness for a greedy variadic socket."""
         inputs = {"greedy_var": [{"sender": None, "value": 42}]}
         assert is_any_greedy_socket_ready(complex_component, inputs) is True
+
+
+@pytest.fixture
+def optional_socket_component():
+    """
+    Component with one optional (non-mandatory) connected socket and one socket
+    that receives a trigger.  Mirrors the Agent in PIP-219: system_prompt
+    arrives unconditionally, while messages is optional but connected from a
+    predecessor that may produce _NO_OUTPUT_PRODUCED.
+    """
+    return {
+        "instance": "mock_instance",
+        "visits": 0,
+        "input_sockets": {
+            "trigger_input": InputSocket("trigger_input", str, senders=["always_runs"]),
+            "optional_connected": InputSocket(
+                "optional_connected", list, default_value=None, senders=["conditional_sender"]
+            ),
+        },
+        "output_sockets": {},
+    }
+
+
+class TestIsAnyConnectedSocketBlockedByRouting:
+    def test_not_blocked_when_sender_has_not_run(self, optional_socket_component):
+        """If the sender hasn't executed yet we cannot say routing cut it off."""
+        inputs = {
+            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            # conditional_sender has not sent anything yet
+        }
+        assert is_any_connected_socket_blocked_by_routing(optional_socket_component, inputs) is False
+
+    def test_blocked_when_all_senders_produced_no_output(self, optional_socket_component):
+        """All senders ran and all produced _NO_OUTPUT_PRODUCED → path is cut off."""
+        inputs = {
+            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            "optional_connected": [{"sender": "conditional_sender", "value": _NO_OUTPUT_PRODUCED}],
+        }
+        assert is_any_connected_socket_blocked_by_routing(optional_socket_component, inputs) is True
+
+    def test_not_blocked_when_sender_produced_real_value(self, optional_socket_component):
+        """Sender ran and produced a real value → not cut off."""
+        inputs = {
+            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            "optional_connected": [{"sender": "conditional_sender", "value": ["msg1"]}],
+        }
+        assert is_any_connected_socket_blocked_by_routing(optional_socket_component, inputs) is False
+
+    def test_not_blocked_with_user_provided_value(self, optional_socket_component):
+        """
+        User-provided values (sender=None) count as real values, so an explicit
+        pipeline.run(optional_connected=[...]) should never trigger the block.
+        """
+        inputs = {
+            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            "optional_connected": [
+                {"sender": "conditional_sender", "value": _NO_OUTPUT_PRODUCED},
+                {"sender": None, "value": ["user_msg"]},
+            ],
+        }
+        assert is_any_connected_socket_blocked_by_routing(optional_socket_component, inputs) is False
+
+    def test_not_blocked_for_variadic_socket(self, variadic_component):
+        """Variadic sockets are excluded — they can legitimately have mixed outputs."""
+        inputs = {
+            "variadic_input": [{"sender": "previous_component", "value": _NO_OUTPUT_PRODUCED}],
+            "normal_input": [{"sender": "another_component", "value": "hello"}],
+        }
+        assert is_any_connected_socket_blocked_by_routing(variadic_component, inputs) is False
+
+    def test_not_blocked_for_socket_with_no_senders(self):
+        """Sockets not connected to any predecessor are never considered blocked."""
+        component = {
+            "instance": "mock",
+            "visits": 0,
+            "input_sockets": {
+                "standalone": InputSocket("standalone", int, default_value=0),
+            },
+        }
+        assert is_any_connected_socket_blocked_by_routing(component, {}) is False
+
+    def test_can_component_run_blocked_by_routing(self, optional_socket_component):
+        """
+        can_component_run returns False when routing has cut off a connected socket,
+        even though the socket is optional and a trigger was received.
+
+        This is the core regression guard for PIP-219 / PR #10793.
+        """
+        inputs = {
+            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            "optional_connected": [{"sender": "conditional_sender", "value": _NO_OUTPUT_PRODUCED}],
+        }
+        assert can_component_run(optional_socket_component, inputs) is False
+
+    def test_can_component_run_not_blocked_when_sender_provides_value(self, optional_socket_component):
+        """Happy-path: sender provides a real value, component is allowed to run."""
+        inputs = {
+            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            "optional_connected": [{"sender": "conditional_sender", "value": ["msg"]}],
+        }
+        assert can_component_run(optional_socket_component, inputs) is True

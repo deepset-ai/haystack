@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    Fixed a regression (introduced in 2.26.0 by PR #10793) where a component
+    downstream of a ConditionalRouter could run even when the router had taken
+    a different path and produced no output for that component's input socket.
+
+    The root cause was that the pipeline scheduler only blocked a component when
+    a *mandatory* (no-default) input socket was unfilled.  Making
+    ``Agent.messages`` optional (``list[ChatMessage] | None = None``) therefore
+    allowed the Agent to be scheduled even when the message path had been cut
+    off by routing, leading to calls like ``AmazonBedrockChatGenerator`` failing
+    with "A conversation must start with a user message."
+
+    The fix adds ``is_any_connected_socket_blocked_by_routing()`` to the
+    scheduler (``component_checks.py``).  After all senders of a non-variadic
+    connected socket have executed, if none of them produced an actual value,
+    the downstream component is marked BLOCKED regardless of whether the socket
+    has a default value.  User-provided values (``pipeline.run(messages=[…])``)
+    are still respected and never trigger the block.

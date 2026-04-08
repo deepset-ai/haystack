@@ -498,3 +498,114 @@ class TestPipeline:
         p.connect("list_producer.messages", "receiver.messages")
         result = p.run({})
         assert [m.text for m in result["receiver"]["result"]] == ["hello", "world", "!"]
+
+
+class TestRoutingBlocksDownstream:
+    """
+    Regression tests for PIP-219 / PR #10793.
+
+    When a ConditionalRouter (or any component) produces _NO_OUTPUT_PRODUCED for
+    a particular output, downstream components whose *only* source for that input
+    socket was that component should be BLOCKED — even if the socket is optional.
+
+    The root cause: making Agent.messages optional removed the scheduler's ability
+    to detect that the message path had been cut off by routing.  The fix lives in
+    is_any_connected_socket_blocked_by_routing() inside component_checks.py.
+    """
+
+    def test_optional_connected_socket_blocks_component_when_sender_produces_no_output(self):
+        """
+        A component with an optional but connected input socket must be BLOCKED
+        when its sender produces _NO_OUTPUT_PRODUCED, even though another socket
+        (trigger_input) did receive a value.
+
+        Topology
+        --------
+        always_fires  ──► downstream.trigger_input   (always provides a value)
+        conditional   ──► downstream.optional_input  (returns {} → _NO_OUTPUT_PRODUCED)
+        """
+
+        @component
+        class AlwaysFires:
+            @component.output_types(value=str)
+            def run(self) -> dict:
+                return {"value": "triggered"}
+
+        @component
+        class ConditionalSender:
+            """Simulates a component that is routed away from and produces no output."""
+
+            @component.output_types(data=list[ChatMessage])
+            def run(self, text: str | None = None) -> dict:
+                if text is None:
+                    return {}
+                return {"data": [ChatMessage.from_user(text)]}
+
+        @component
+        class Downstream:
+            called: bool = False
+
+            @component.output_types(result=str)
+            def run(self, trigger_input: str, optional_input: list[ChatMessage] | None = None) -> dict:
+                Downstream.called = True
+                return {"result": "should not reach here"}
+
+        Downstream.called = False
+
+        p = Pipeline()
+        p.add_component("always_fires", AlwaysFires())
+        p.add_component("conditional", ConditionalSender())
+        p.add_component("downstream", Downstream())
+        p.connect("always_fires.value", "downstream.trigger_input")
+        p.connect("conditional.data", "downstream.optional_input")
+
+        # conditional receives no input → returns {} → downstream.optional_input is cut off.
+        p.run({})
+
+        assert not Downstream.called, "Downstream should have been BLOCKED by routing, not executed"
+
+    def test_agent_not_called_when_message_path_is_cut_off(self):
+        """
+        Minimal reproducer for PIP-219: an Agent with optional messages connected
+        to a component that produces no output must NOT be executed.
+
+        agent_prompt  ──► agent.system_prompt  (always fires)
+        msg_producer  ──► agent.messages       (returns {} → no messages)
+
+        In broken versions (2.26.0–2.27.0) the scheduler treated messages as
+        non-mandatory and ran the Agent anyway, causing the LLM to receive only
+        a system message and raise "A conversation must start with a user message."
+        """
+
+        @component
+        class FailingLLM:
+            """Raises if called — the Agent must never reach it."""
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages: list[ChatMessage]) -> dict:
+                raise AssertionError(
+                    f"LLM must not be called; got {len(messages)} message(s): "
+                    f"{[m.role.value for m in messages]}"
+                )
+
+        @component
+        class MessageProducer:
+            @component.output_types(messages=list[ChatMessage])
+            def run(self, text: str | None = None) -> dict:
+                if text is None:
+                    return {}
+                return {"messages": [ChatMessage.from_user(text)]}
+
+        from haystack.components.builders import PromptBuilder
+
+        p = Pipeline()
+        p.add_component("agent_prompt", PromptBuilder(template="You are a helpful assistant."))
+        p.add_component("msg_producer", MessageProducer())
+        p.add_component("agent", Agent(chat_generator=FailingLLM()))
+
+        p.connect("agent_prompt.prompt", "agent.system_prompt")
+        p.connect("msg_producer.messages", "agent.messages")
+
+        # msg_producer receives no input → returns {} → agent.messages is cut off.
+        # The Agent must be BLOCKED (not executed), so FailingLLM is never called.
+        p.run({})

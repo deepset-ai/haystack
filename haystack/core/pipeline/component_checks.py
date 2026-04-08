@@ -9,20 +9,63 @@ from haystack.core.component.types import InputSocket, _empty
 _NO_OUTPUT_PRODUCED = _empty
 
 
+def is_any_connected_socket_blocked_by_routing(component: dict, inputs: dict) -> bool:
+    """
+    Returns True if any non-variadic connected socket has had all its senders
+    execute but none of them produced an actual value.
+
+    This happens when a ConditionalRouter (or any component that returns ``{}``
+    for a particular output) permanently cuts off the data path into an input
+    socket. Even when that socket is optional (has a default value), allowing
+    the component to run would be wrong: it would use the default instead of
+    the intended value, leading to errors such as an Agent being called with an
+    empty messages list when the router took a different path.
+
+    Variadic sockets are excluded because they can legitimately receive
+    ``_NO_OUTPUT_PRODUCED`` from some senders while still getting real values
+    from others.
+
+    :param component: Component metadata including input sockets.
+    :param inputs: Current inputs state for the component.
+    :returns: True if at least one socket's path was cut off by routing.
+    """
+    for socket_name, socket in component["input_sockets"].items():
+        if socket.is_variadic:
+            continue
+        if not socket.senders:
+            continue
+
+        socket_inputs = inputs.get(socket_name, [])
+
+        # Wait until all senders have executed before concluding the path is cut off.
+        if not all_socket_predecessors_executed(socket, socket_inputs):
+            continue
+
+        # All senders ran — check whether any produced a real value.
+        # any_socket_input_received also counts user-provided values (sender=None),
+        # so an explicit pipeline.run(messages=[...]) is never treated as blocked.
+        if not any_socket_input_received(socket_inputs):
+            return True
+
+    return False
+
+
 def can_component_run(component: dict, inputs: dict) -> bool:
     """
     Checks if the component can run, given the current state of its inputs.
 
-    A component needs to pass two gates so that it is ready to run:
+    A component needs to pass three gates so that it is ready to run:
     1. It has received all mandatory inputs.
     2. It has received a trigger.
+    3. No connected non-variadic socket has been permanently cut off by routing.
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
     received_all_mandatory_inputs = are_all_sockets_ready(component, inputs, only_check_mandatory=True)
     received_trigger = has_any_trigger(component, inputs)
+    not_blocked_by_routing = not is_any_connected_socket_blocked_by_routing(component, inputs)
 
-    return received_all_mandatory_inputs and received_trigger
+    return received_all_mandatory_inputs and received_trigger and not_blocked_by_routing
 
 
 def has_any_trigger(component: dict, inputs: dict) -> bool:
