@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    Document the input ordering behavior of auto-promoted lazy variadic sockets in
+    ``Pipeline.connect()`` and ``PipelineBase._make_socket_auto_variadic()``. When
+    multiple senders are connected to the same list-typed receiver socket, the items
+    in the resulting list are ordered alphabetically by sender component name (because
+    ``Pipeline.run()`` schedules components in alphabetical order for deterministic
+    execution), not by the order in which ``connect()`` was called. The docstrings now
+    point users to a dedicated joiner component when they need explicit ordering.
