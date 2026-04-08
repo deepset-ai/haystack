@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Added `PlasmateFetcher`, a lightweight alternative to `LinkContentFetcher`
+    that uses the [Plasmate](https://github.com/plasmate-labs/plasmate) Rust
+    browser engine instead of raw HTTP + HTML. Plasmate returns pre-processed
+    content (plain text, markdown, SOM, or extracted links) that is typically
+    10-100x smaller than raw HTML, directly reducing token consumption in
+    downstream LLM components. The component is a drop-in replacement for
+    `LinkContentFetcher` on static and server-rendered pages and supports both
+    `run()` and `run_async()`. Install with `pip install plasmate`.
