@@ -33,11 +33,14 @@ const config = {
   onDuplicateRoutes: 'throw',
 
   future: {
-    experimental_faster: true,
+    faster: true,
     v4: true,
   },
 
   markdown: {
+    mdx1Compat: {
+      comments: true,
+    },
     hooks: {
       onBrokenMarkdownLinks: 'throw',
     },
