@@ -701,7 +701,7 @@ class TestIsAnyConnectedSocketBlockedByRouting:
     def test_not_blocked_when_sender_has_not_run(self, optional_socket_component):
         """If the sender hasn't executed yet we cannot say routing cut it off."""
         inputs = {
-            "trigger_input": [{"sender": "always_runs", "value": "go"}],
+            "trigger_input": [{"sender": "always_runs", "value": "go"}]
             # conditional_sender has not sent anything yet
         }
         assert is_any_connected_socket_blocked_by_routing(optional_socket_component, inputs) is False
@@ -749,9 +749,7 @@ class TestIsAnyConnectedSocketBlockedByRouting:
         component = {
             "instance": "mock",
             "visits": 0,
-            "input_sockets": {
-                "standalone": InputSocket("standalone", int, default_value=0),
-            },
+            "input_sockets": {"standalone": InputSocket("standalone", int, default_value=0)},
         }
         assert is_any_connected_socket_blocked_by_routing(component, {}) is False
 

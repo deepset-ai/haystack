@@ -11,8 +11,10 @@ _NO_OUTPUT_PRODUCED = _empty
 
 def is_any_connected_socket_blocked_by_routing(component: dict, inputs: dict) -> bool:
     """
-    Returns True if any non-variadic connected socket has had all its senders
-    execute but none of them produced an actual value.
+    Returns True if any non-variadic connected socket's path has been cut off by routing.
+
+    A socket is cut off when all its senders have executed but none produced an actual value
+    (i.e. all sent ``_NO_OUTPUT_PRODUCED``).
 
     This happens when a ConditionalRouter (or any component that returns ``{}``
     for a particular output) permanently cuts off the data path into an input

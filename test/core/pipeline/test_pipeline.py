@@ -584,8 +584,7 @@ class TestRoutingBlocksDownstream:
             @component.output_types(replies=list[ChatMessage])
             def run(self, messages: list[ChatMessage]) -> dict:
                 raise AssertionError(
-                    f"LLM must not be called; got {len(messages)} message(s): "
-                    f"{[m.role.value for m in messages]}"
+                    f"LLM must not be called; got {len(messages)} message(s): {[m.role.value for m in messages]}"
                 )
 
         @component
