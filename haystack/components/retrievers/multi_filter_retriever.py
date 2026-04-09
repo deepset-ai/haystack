@@ -60,16 +60,6 @@ class MultiFilterRetriever:
         """
         self.retriever = retriever
         self.max_workers = max_workers
-        self._is_warmed_up = False
-
-    def warm_up(self) -> None:
-        """
-        Warm up the retriever if it has a warm_up method.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
 
     @component.output_types(documents=list[Document])
     def run(
@@ -86,9 +76,6 @@ class MultiFilterRetriever:
         """
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
-
-        if not self._is_warmed_up:
-            self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             filters_results = executor.map(lambda filt: self._run_on_thread(filt, retriever_kwargs), filters)
