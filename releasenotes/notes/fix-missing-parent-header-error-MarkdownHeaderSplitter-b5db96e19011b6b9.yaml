@@ -1,5 +1,5 @@
 ---
-issues:
+fixes:
   - |
     When using the **MarkdownHeaderSplitter**, in the split chunks, the child header always loses
     its direct parent header in the metadata. One can execute the code below:
@@ -55,8 +55,6 @@ issues:
       Header: header 1.2.1, parent headers: ['header 1']
       Header: header 1.2.2, parent headers: ['header 1', 'header 1.2']
 
-fixes:
-  - |
     The error happens when a parent header has its own content chunk before the first
     child. In that path the code clears active_parents, so the first child loses its
     ancestor while later siblings inherit it correctly.
