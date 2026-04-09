@@ -9,7 +9,8 @@ import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -376,11 +377,13 @@ class ToolInvoker:
             return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
 
     @staticmethod
-    def _get_func_params(tool: Tool) -> set:
+    def _get_func_params(tool: Tool) -> dict[str, Any]:
         """
-        Returns the function parameters of the tool's invoke method.
+        Returns the function parameters with types of the tool's invoke method.
 
         This method inspects the tool's function signature to determine which parameters the tool accepts.
+
+        :param tool: The tool for which to get the function parameters and their types.
         """
         # ComponentTool wraps the function with a function that accepts kwargs, so we need to look at input sockets
         # to find out which parameters the tool accepts.
@@ -389,9 +392,13 @@ class ToolInvoker:
             assert hasattr(tool._component, "__haystack_input__") and isinstance(
                 tool._component.__haystack_input__, Sockets
             )
-            func_params = set(tool._component.__haystack_input__._sockets_dict.keys())
+            func_params = {
+                name: socket.type for name, socket in tool._component.__haystack_input__._sockets_dict.items()
+            }
         else:
-            func_params = set(inspect.signature(tool.function).parameters.keys())
+            func_params = {
+                name: param.annotation for name, param in inspect.signature(tool.function).parameters.items()
+            }
 
         return func_params
 
@@ -406,7 +413,7 @@ class ToolInvoker:
           - function signature name matching
         """
         final_args = dict(llm_args)  # start with LLM-provided
-        func_params = ToolInvoker._get_func_params(tool)
+        func_params = ToolInvoker._get_func_params(tool).keys()
 
         # Determine the source of parameter mappings (explicit tool inputs or direct function parameters)
         # Typically, a "Tool" might have .inputs_from_state = {"state_key": "tool_param_name"}
@@ -419,6 +426,17 @@ class ToolInvoker:
         for state_key, param_name in param_mappings.items():
             if param_name not in final_args and state.has(state_key):
                 final_args[param_name] = state.get(state_key)
+
+        # Inject the live State object for any parameter annotated as State or Optional[State]
+        for param_name, param_type in ToolInvoker._get_func_params(tool).items():
+            origin = get_origin(param_type)
+            inner_type = param_type
+            if origin is Union or origin is UnionType:
+                non_none = [a for a in get_args(param_type) if a is not NoneType]
+                if len(non_none) == 1:
+                    inner_type = non_none[0]
+            if inner_type is State:
+                final_args[param_name] = state
 
         return final_args
 
@@ -528,7 +546,7 @@ class ToolInvoker:
                     enable_streaming_passthrough
                     and streaming_callback is not None
                     and "streaming_callback" not in final_args
-                    and "streaming_callback" in self._get_func_params(tool_to_invoke)
+                    and "streaming_callback" in self._get_func_params(tool_to_invoke).keys()
                 ):
                     final_args["streaming_callback"] = streaming_callback
 

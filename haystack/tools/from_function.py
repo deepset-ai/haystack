@@ -4,9 +4,12 @@
 
 import inspect
 from collections.abc import Callable
-from typing import Any
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin
 
 from pydantic import create_model
+
+from haystack.components.agents.state.state import State
 
 from .errors import SchemaGenerationError
 from .parameters_schema_utils import _contains_callable_type
@@ -137,6 +140,17 @@ def create_tool_from_function(
     for param_name, param in signature.parameters.items():
         # Skip adding parameter names that will be passed to the tool from State
         if inputs_from_state and param_name in inputs_from_state.values():
+            continue
+
+        # Skip State-typed parameters (including Optional[State]) - ToolInvoker injects them at runtime
+        annotation = param.annotation
+        inner = annotation
+        origin = get_origin(annotation)
+        if origin is Union or origin is UnionType:
+            non_none = [a for a in get_args(annotation) if a is not NoneType]
+            if len(non_none) == 1:
+                inner = non_none[0]
+        if inner is State:
             continue
 
         if param.annotation is param.empty:

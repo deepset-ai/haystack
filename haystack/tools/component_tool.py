@@ -9,6 +9,7 @@ from typing import Any, Union, get_args, get_origin
 from pydantic import Field, TypeAdapter, create_model
 
 from haystack import logging
+from haystack.components.agents.state.state import State
 from haystack.core.component import Component
 from haystack.core.serialization import (
     component_from_dict,
@@ -326,6 +327,10 @@ class ComponentTool(Tool):
 
             # Skip Callable types since Pydantic cannot generate JSON schemas for them
             if _contains_callable_type(input_type):
+                continue
+
+            # Skip State-typed parameters - ToolInvoker injects them at runtime
+            if self._unwrap_optional(input_type) is State:
                 continue
 
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
