@@ -1,8 +1,8 @@
 ---
 fixes:
   - |
-    When using the **MarkdownHeaderSplitter**, in the split chunks, the child header always loses
-    its direct parent header in the metadata. One can execute the code below:
+    When using the **MarkdownHeaderSplitter**, in the split chunks, the child header previously lost
+    its direct parent header in the metadata. Previously if one executed the code below:
 
     .. code:: python
       from haystack.components.preprocessors import MarkdownHeaderSplitter
