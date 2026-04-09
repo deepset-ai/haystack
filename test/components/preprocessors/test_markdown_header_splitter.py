@@ -91,7 +91,7 @@ def test_basic_split(sample_text):
     assert reconstructed_doc == sample_text
 
 
-def test_keep_headers_with_secondary_split_preserves_parent_headers_for_first_child():
+def test_keep_headers_preserves_parent_headers_for_first_child():
     text = (
         "# Header 1\n"
         "Intro text\n\n"
