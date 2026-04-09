@@ -94,17 +94,13 @@ def test_basic_split(sample_text):
 def test_keep_headers_with_secondary_split_preserves_parent_headers_for_first_child():
     text = (
         "# Header 1\n"
-        "Intro text\n"
-        "\n"
+        "Intro text\n\n"
         "## Header 1.1\n"
-        "Text 1\n"
-        "\n"
+        "Text 1\n\n"
         "## Header 1.2\n"
-        "Text 2\n"
-        "\n"
+        "Text 2\n\n"
         "### Header 1.2.1\n"
-        "Text 3\n"
-        "\n"
+        "Text 3\n\n"
         "### Header 1.2.2\n"
         "Text 4\n"
     )
