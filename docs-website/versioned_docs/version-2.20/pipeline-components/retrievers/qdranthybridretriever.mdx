@@ -28,7 +28,7 @@ The `QdrantHybridRetriever` is a Retriever based both on dense and sparse embedd
 
 It compares the query and document’s dense and sparse embeddings and fetches the documents most relevant to the query from the `QdrantDocumentStore`, fusing the scores with Reciprocal Rank Fusion.
 
-:::tip Hybrid Retrieval Pipeline
+:::tip[Hybrid Retrieval Pipeline]
 
 If you want additional customization for merging or fusing results, consider creating a hybrid retrieval pipeline with [`DocumentJoiner`](../joiners/documentjoiner.mdx).
 
