@@ -108,7 +108,7 @@ def test_keep_headers_with_secondary_split_preserves_parent_headers_for_first_ch
         "### Header 1.2.2\n"
         "Text 4\n"
     )
-    splitter = MarkdownHeaderSplitter(keep_headers=True, secondary_split="word")
+    splitter = MarkdownHeaderSplitter(keep_headers=True)
     split_docs = splitter.run(documents=[Document(content=text)])["documents"]
 
     assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in split_docs] == [
