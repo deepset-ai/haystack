@@ -1392,6 +1392,20 @@ class TestRegisterPromptVariables:
         make_agent(required_variables=["name"])
         assert "The parameter required_variables is provided but neither" in caplog.text
 
+    def test_register_prompt_variables_messages_required(self, make_agent):
+        agent = make_agent(required_variables=["messages"])
+        messages_socket = agent.__haystack_input__._sockets_dict["messages"]
+        assert messages_socket.is_mandatory
+
+    def test_register_prompt_variables_messages_optional_by_default(self, make_agent):
+        agent = make_agent()
+        messages_socket = agent.__haystack_input__._sockets_dict["messages"]
+        assert not messages_socket.is_mandatory
+
+    def test_register_prompt_variables_no_warning_when_only_messages_required(self, make_agent, caplog):
+        make_agent(required_variables=["messages"])
+        assert "The parameter required_variables is provided but neither" not in caplog.text
+
     def test_register_prompt_variables_set_all_variables_as_required(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables="*")
         assert agent._user_chat_prompt_builder.required_variables == "*"

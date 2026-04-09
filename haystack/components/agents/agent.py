@@ -256,6 +256,7 @@ class Agent:
             List variables that must be provided as input to user_prompt or system_prompt.
             If a variable listed as required is not provided, an exception is raised.
             If set to `"*"`, all variables found in the prompts are required. Optional.
+            You can also include `"messages"` to make the `messages` run-time input required.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -363,8 +364,12 @@ class Agent:
         """
         required_variables = self.required_variables
 
+        # Check whether required_variables targets any prompt template variables (i.e. not just "messages")
+        has_prompt_required_vars = required_variables == "*" or (
+            isinstance(required_variables, list) and any(v != "messages" for v in required_variables)
+        )
         if (
-            required_variables is not None
+            has_prompt_required_vars
             and self._system_chat_prompt_builder is None
             and self._user_chat_prompt_builder is None
         ):
@@ -405,6 +410,17 @@ class Agent:
                 component.set_input_type(self, name=var_name, type=Any)
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
+
+    def __post_init__(self) -> None:
+        """
+        Called by ComponentMeta after input/output sockets are parsed from the run method signature.
+
+        Used to retroactively make the ``messages`` input required when ``"messages"`` is listed
+        in ``required_variables``, which cannot be done inside ``__init__`` because the socket
+        hasn't been parsed yet at that point.
+        """
+        if isinstance(self.required_variables, list) and "messages" in self.required_variables:
+            component.set_input_type(self, name="messages", type=list[ChatMessage])
 
     def warm_up(self) -> None:
         """

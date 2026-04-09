@@ -261,7 +261,8 @@ class ComponentMeta(type):
                 existing_socket = sockets.get(param_name)
                 if existing_socket is not None and existing_socket != new_socket:
                     raise ComponentError(
-                        "set_input_types()/set_input_type() cannot override the parameters of the 'run' method"
+                        "set_input_types()/set_input_type() cannot override the parameters of the 'run' method.\n"
+                        f"Conflict found for parameter '{param_name}': {existing_socket} vs {new_socket}"
                     )
 
                 sockets[param_name] = new_socket
@@ -321,6 +322,11 @@ class ComponentMeta(type):
 
         ComponentMeta._parse_and_set_input_sockets(cls, instance)
         ComponentMeta._parse_and_set_output_sockets(instance)
+
+        # Call __post_init__ if defined, allowing components to adjust sockets after
+        # the run method signature has been parsed (e.g. to make an existing socket required).
+        if callable(getattr(instance, "__post_init__", None)):
+            instance.__post_init__()
 
         # Since a Component can't be used in multiple Pipelines at the same time
         # we need to know if it's already owned by a Pipeline when adding it to one.
