@@ -9,8 +9,7 @@ import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -29,6 +28,7 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.tools.errors import ToolInvocationError
+from haystack.tools.parameters_schema_utils import _unwrap_optional
 from haystack.tracing.utils import _serializable_value
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
@@ -429,13 +429,7 @@ class ToolInvoker:
 
         # Inject the live State object for any parameter annotated as State or Optional[State]
         for param_name, param_type in ToolInvoker._get_func_params(tool).items():
-            origin = get_origin(param_type)
-            inner_type = param_type
-            if origin is Union or origin is UnionType:
-                non_none = [a for a in get_args(param_type) if a is not NoneType]
-                if len(non_none) == 1:
-                    inner_type = non_none[0]
-            if inner_type is State:
+            if _unwrap_optional(param_type) is State:
                 final_args[param_name] = state
 
         return final_args
