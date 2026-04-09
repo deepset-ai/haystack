@@ -91,6 +91,35 @@ def test_basic_split(sample_text):
     assert reconstructed_doc == sample_text
 
 
+def test_keep_headers_with_secondary_split_preserves_parent_headers_for_first_child():
+    text = (
+        "# Header 1\n"
+        "Intro text\n"
+        "\n"
+        "## Header 1.1\n"
+        "Text 1\n"
+        "\n"
+        "## Header 1.2\n"
+        "Text 2\n"
+        "\n"
+        "### Header 1.2.1\n"
+        "Text 3\n"
+        "\n"
+        "### Header 1.2.2\n"
+        "Text 4\n"
+    )
+    splitter = MarkdownHeaderSplitter(keep_headers=True, secondary_split="word")
+    split_docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+    assert [(doc.meta["header"], doc.meta["parent_headers"]) for doc in split_docs] == [
+        ("Header 1", []),
+        ("Header 1.1", ["Header 1"]),
+        ("Header 1.2", ["Header 1"]),
+        ("Header 1.2.1", ["Header 1", "Header 1.2"]),
+        ("Header 1.2.2", ["Header 1", "Header 1.2"]),
+    ]
+
+
 def test_split_without_headers(sample_text):
     splitter = MarkdownHeaderSplitter(keep_headers=False)
     docs = [Document(content=sample_text)]
