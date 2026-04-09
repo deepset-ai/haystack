@@ -3,7 +3,7 @@ features:
   - |
     Add support for ``MultiFilterRetriever``, a new retriever component that executes multiple filter
     queries against a document store **in parallel** and returns a single, de-duplicated list of
-    documents sorted by relevance score.
+    documents.
 
     .. code-block:: python
 

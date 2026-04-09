@@ -6,8 +6,10 @@ from typing import Any
 import pytest
 
 from haystack import Document, component
-from haystack.components.retrievers import FilterRetriever, MultiFilterRetriever
+from haystack.components.retrievers.filter_retriever import FilterRetriever
+from haystack.components.retrievers.multi_filter_retriever import MultiFilterRetriever
 from haystack.components.writers import DocumentWriter
+from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 
@@ -98,7 +100,7 @@ class TestMultiFilterRetriever:
         retriever = FilterRetriever(document_store=in_memory_doc_store)
         multi = MultiFilterRetriever(retriever=retriever, max_workers=2)
 
-        data = multi.to_dict()
+        data = component_to_dict(multi, "multi_filter")
 
         assert data["type"] == "haystack.components.retrievers.multi_filter_retriever.MultiFilterRetriever"
         assert data["init_parameters"]["max_workers"] == 2
@@ -107,8 +109,8 @@ class TestMultiFilterRetriever:
         retriever = FilterRetriever(document_store=in_memory_doc_store)
         multi = MultiFilterRetriever(retriever=retriever, max_workers=2)
 
-        serialized = multi.to_dict()
-        deserialized = MultiFilterRetriever.from_dict(serialized)
+        serialized = component_to_dict(multi, "multi_filter")
+        deserialized = component_from_dict(MultiFilterRetriever, serialized, "multi_filter")
 
         assert isinstance(deserialized, MultiFilterRetriever)
         assert deserialized.max_workers == 2

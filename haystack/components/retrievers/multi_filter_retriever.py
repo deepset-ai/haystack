@@ -5,9 +5,8 @@
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.components.retrievers.types import FilterRetriever
-from haystack.core.serialization import component_to_dict
+from haystack import Document, component
+from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -17,7 +16,7 @@ class MultiFilterRetriever:
     A component that retrieves documents using multiple filters in parallel.
 
     This component takes a list of filter dictionaries and uses a filter-capable retriever to retrieve matching
-    documents for each filter set in parallel. The results are combined, de-duplicated, and sorted by score.
+    documents for each filter set in parallel.
 
     ### Usage example
 
@@ -62,9 +61,7 @@ class MultiFilterRetriever:
         self.max_workers = max_workers
 
     @component.output_types(documents=list[Document])
-    def run(
-        self, filters: list[dict[str, Any]], retriever_kwargs: dict[str, Any] | None = None
-    ) -> dict[str, list[Document]]:
+    def run(self, filters: list[dict[str, Any]]) -> dict[str, list[Document]]:
         """
         Retrieve documents using multiple filters in parallel.
 
@@ -72,25 +69,22 @@ class MultiFilterRetriever:
         :param retriever_kwargs: Optional dictionary of arguments to pass to the retriever's run method.
         :returns:
             A dictionary containing:
-                - `documents`: List of retrieved documents sorted by relevance score.
+                - `documents`: List of retrieved documents.
         """
         docs: list[Document] = []
-        retriever_kwargs = retriever_kwargs or {}
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            filters_results = executor.map(lambda filt: self._run_on_thread(filt, retriever_kwargs), filters)
+            filters_results = executor.map(self._run_on_thread, filters)
             for result in filters_results:
                 if not result:
                     continue
                 docs.extend(result)
 
         docs = _deduplicate_documents(docs)
-        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+
         return {"documents": docs}
 
-    def _run_on_thread(
-        self, filters: dict[str, Any], retriever_kwargs: dict[str, Any] | None = None
-    ) -> list[Document] | None:
+    def _run_on_thread(self, filters: dict[str, Any]) -> list[Document] | None:
         """
         Process a single filter set on a separate thread.
 
@@ -99,29 +93,7 @@ class MultiFilterRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        result = self.retriever.run(filters=filters, **(retriever_kwargs or {}))
+        result = self.retriever.run(filters=filters)
         if result and "documents" in result:
             return result["documents"]
         return None
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Serializes the component to a dictionary.
-
-        :returns:
-            A dictionary representing the serialized component.
-        """
-        return default_to_dict(
-            self, retriever=component_to_dict(obj=self.retriever, name="retriever"), max_workers=self.max_workers
-        )
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MultiFilterRetriever":
-        """
-        Deserializes the component from a dictionary.
-
-        :param data: The dictionary to deserialize from.
-        :returns:
-            The deserialized component.
-        """
-        return default_from_dict(cls, data)
