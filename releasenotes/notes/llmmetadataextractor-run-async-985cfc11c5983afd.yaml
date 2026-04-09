@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add ``run_async`` method to ``LLMMetadataExtractor``. ``ChatGenerator`` requests now run concurrently using the existing ``max_workers`` init parameter.

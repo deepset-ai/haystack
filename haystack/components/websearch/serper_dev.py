@@ -159,6 +159,11 @@ class SerperDevWebSearch:
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
 
+        except httpx.HTTPStatusError as e:
+            raise SerperDevError(
+                f"An error occurred while querying {self.__class__.__name__}. Error: {e}, Response: {e.response.text}"
+            ) from e
+
         except httpx.HTTPError as e:
             raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
 
@@ -193,6 +198,11 @@ class SerperDevWebSearch:
             response.raise_for_status()  # Will raise an HTTPError for bad responses
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+
+        except httpx.HTTPStatusError as e:
+            raise SerperDevError(
+                f"An error occurred while querying {self.__class__.__name__}. Error: {e}, Response: {e.response.text}"
+            ) from e
 
         except httpx.HTTPError as e:
             raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e

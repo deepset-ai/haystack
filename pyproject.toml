@@ -54,7 +54,7 @@ dependencies = [
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
-  "requests",
+  "httpx",
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
