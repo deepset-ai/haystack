@@ -111,6 +111,4 @@ class _SentenceTransformersEmbeddingBackend:
         )
 
     def embed(self, data: list[str] | list["Image"], **kwargs: Any) -> list[list[float]]:
-        # Sentence Transformers encode can work with Images, but the type hint does not reflect that
-        # https://sbert.net/examples/sentence_transformer/applications/image-search
-        return self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]
+        return self.model.encode(data, **kwargs).tolist()
