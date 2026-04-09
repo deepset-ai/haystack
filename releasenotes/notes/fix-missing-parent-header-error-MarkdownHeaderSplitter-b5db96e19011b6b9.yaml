@@ -55,10 +55,7 @@ fixes:
       Header: header 1.2.1, parent headers: ['header 1']
       Header: header 1.2.2, parent headers: ['header 1', 'header 1.2']
 
-    The error happens when a parent header has its own content chunk before the first
-    child. In that path the code clears active_parents, so the first child loses its
-    ancestor while later siblings inherit it correctly.
+    The error happened when a parent header had its own content chunk before the first
+    child header.
 
-    The fix is to derive parent_headers from the current header_stack instead of
-    carrying a separate mutable “active parents” list that gets out of sync after contentful
-    headers.
+    This has been fixed so even when a parent header has its own content chunk before the first child header all content is preserved.
