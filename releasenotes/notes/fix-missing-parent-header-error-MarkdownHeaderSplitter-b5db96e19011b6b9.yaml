@@ -46,7 +46,7 @@ fixes:
       Header: header 1.2.1, parent headers: ['header 1', 'header 1.2']
       Header: header 1.2.2, parent headers: ['header 1', 'header 1.2']
 
-    But the actual output is:
+    But instead we actually got:
 
     .. code:: text
       Header: header 1, parent headers: []
