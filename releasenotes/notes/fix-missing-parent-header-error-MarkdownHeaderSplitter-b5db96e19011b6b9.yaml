@@ -36,7 +36,7 @@ fixes:
       for doc in result:
           print(f"Header: {doc.meta['header']}, parent headers: {doc.meta['parent_headers']}")
 
-    This output is expected:
+    We would have expected this output:
 
     .. code:: text
 
