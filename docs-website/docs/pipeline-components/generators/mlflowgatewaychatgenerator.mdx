@@ -139,25 +139,35 @@ messages = [ChatMessage.from_user("Write a haiku about LLM gateways.")]
 generator.run(messages)
 ```
 
-## Python client (alternative)
+## Querying the gateway directly (alternative)
 
-You can also interact with the gateway directly using the `mlflow.deployments` Python client:
+You can also call gateway endpoints without Haystack — using the OpenAI SDK or plain HTTP:
 
 ```python
-from mlflow.deployments import get_deploy_client
+# Using the OpenAI SDK
+from openai import OpenAI
 
-client = get_deploy_client("http://localhost:5000")
-
-response = client.predict(
-    endpoint="my-chat-endpoint",
-    inputs={
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "What is MLflow AI Gateway?"},
-        ]
-    },
+client = OpenAI(
+    base_url="http://localhost:5000/gateway/openai/v1",
+    api_key="unused",
 )
-print(response["choices"][0]["message"]["content"])
+
+response = client.chat.completions.create(
+    model="my-chat-endpoint",
+    messages=[{"role": "user", "content": "What is MLflow AI Gateway?"}],
+)
+print(response.choices[0].message.content)
+```
+
+```python
+# Using plain HTTP (MLflow Invocations API)
+import requests
+
+response = requests.post(
+    "http://localhost:5000/gateway/my-chat-endpoint/mlflow/invocations",
+    json={"messages": [{"role": "user", "content": "What is MLflow AI Gateway?"}]},
+)
+print(response.json()["choices"][0]["message"]["content"])
 ```
 
 ## Related
