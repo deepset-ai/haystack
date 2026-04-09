@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 
 import pytest
 
+from haystack.components.agents.state import State
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema, create_tool_from_function, tool
 from haystack.tools.tool import Tool
@@ -112,6 +113,43 @@ def test_from_function_with_callable_params_skipped():
     param_names = list(tool.parameters.get("properties", {}).keys())
     assert "callback" not in param_names
     assert "query" in param_names
+
+
+def test_from_function_state_param_excluded_from_schema():
+    def function_with_state(city: str, state: State) -> str:
+        """Get weather for a city, with access to agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_state)
+
+    assert tool.name == "function_with_state"
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+    assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+
+
+def test_tool_decorator_state_param_excluded_from_schema():
+    @tool
+    def function_with_state(city: str, state: State) -> str:
+        """Get weather for a city, with access to agent state."""
+        return f"Weather in {city}: sunny"
+
+    param_names = list(function_with_state.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+
+
+def test_from_function_optional_state_param_excluded_from_schema():
+    def function_with_optional_state(city: str, state: State | None = None) -> str:
+        """Get weather for a city, optionally using agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_optional_state)
+
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
 
 
 def test_tool_decorator():
