@@ -1,7 +1,4 @@
 ---
-features:
-  - |
-    Added **lark** to pyproject.toml.
 issues:
   - |
     When using the **MarkdownHeaderSplitter**, in the split chunks, the child header always loses
