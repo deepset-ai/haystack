@@ -8,8 +8,10 @@ from typing import Any
 
 from pydantic import create_model
 
+from haystack.components.agents.state.state import State
+
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type
+from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
 from .tool import Tool
 
 
@@ -137,6 +139,10 @@ def create_tool_from_function(
     for param_name, param in signature.parameters.items():
         # Skip adding parameter names that will be passed to the tool from State
         if inputs_from_state and param_name in inputs_from_state.values():
+            continue
+
+        # Skip State-typed parameters (including Optional[State]) - ToolInvoker injects them at runtime
+        if _unwrap_optional(param.annotation) is State:
             continue
 
         if param.annotation is param.empty:
