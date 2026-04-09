@@ -114,6 +114,9 @@ def test_keep_headers_with_secondary_split_preserves_parent_headers_for_first_ch
         ("Header 1.2.1", ["Header 1", "Header 1.2"]),
         ("Header 1.2.2", ["Header 1", "Header 1.2"]),
     ]
+    # reconstruct original text
+    reconstructed_text = "".join(doc.content for doc in split_docs)
+    assert reconstructed_text == text
 
 
 def test_split_without_headers(sample_text):
