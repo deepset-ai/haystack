@@ -51,7 +51,7 @@ document_store.write_documents(
 print(document_store.count_documents())
 ```
 
-:::warning Collections Created Outside Haystack
+:::warning[Collections Created Outside Haystack]
 
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
 :::
