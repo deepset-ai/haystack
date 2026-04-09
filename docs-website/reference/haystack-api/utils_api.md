@@ -938,7 +938,7 @@ request_with_retry(
     attempts: int = 3,
     status_codes_to_retry: list[int] | None = None,
     **kwargs: Any
-) -> requests.Response
+) -> httpx.Response
 ```
 
 Executes an HTTP request with a configurable exponential backoff retry on failures.
@@ -962,26 +962,11 @@ res = request_with_retry(method="GET", url="https://example.com", status_codes_t
 # Sending an HTTP request with custom timeout in seconds
 res = request_with_retry(method="GET", url="https://example.com", timeout=5)
 
-# Sending an HTTP request with custom authorization handling
-class CustomAuth(requests.auth.AuthBase):
-    def __call__(self, r):
-        r.headers["authorization"] = "Basic <my_token_here>"
-        return r
-
-res = request_with_retry(method="GET", url="https://example.com", auth=CustomAuth())
-
-# All of the above combined
-res = request_with_retry(
-    method="GET",
-    url="https://example.com",
-    auth=CustomAuth(),
-    attempts=10,
-    status_codes_to_retry=[408, 503],
-    timeout=5
-)
+# Sending an HTTP request with custom headers
+res = request_with_retry(method="GET", url="https://example.com", headers={"Authorization": "Bearer <token>"})
 
 # Sending a POST request
-res = request_with_retry(method="POST", url="https://example.com", data={"key": "value"}, attempts=10)
+res = request_with_retry(method="POST", url="https://example.com", json={"key": "value"}, attempts=10)
 
 # Retry all 5xx status codes
 res = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=list(range(500, 600)))
@@ -992,11 +977,11 @@ res = request_with_retry(method="GET", url="https://example.com", status_codes_t
 - **attempts** (<code>int</code>) – Maximum number of attempts to retry the request.
 - **status_codes_to_retry** (<code>list\[int\] | None</code>) – List of HTTP status codes that will trigger a retry.
   When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
-- **kwargs** (<code>Any</code>) – Optional arguments that `request` accepts.
+- **kwargs** (<code>Any</code>) – Optional arguments that `httpx.Client.request` accepts.
 
 **Returns:**
 
-- <code>Response</code> – The `Response` object.
+- <code>Response</code> – The `httpx.Response` object.
 
 ### async_request_with_retry
 

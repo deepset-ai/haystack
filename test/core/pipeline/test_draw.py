@@ -4,8 +4,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
-import requests
 
 from haystack.core.errors import PipelineDrawingError
 from haystack.core.pipeline import Pipeline
@@ -26,31 +26,31 @@ def test_to_mermaid_image():
     assert image_data
 
 
-@patch("haystack.core.pipeline.draw.requests")
-def test_to_mermaid_image_does_not_edit_graph(mock_requests):
+@patch("haystack.core.pipeline.draw.httpx")
+def test_to_mermaid_image_does_not_edit_graph(mock_httpx):
     pipe = Pipeline()
     pipe.add_component("comp1", AddFixedValue(add=3))
     pipe.add_component("comp2", Double())
     pipe.connect("comp1.result", "comp2.value")
     pipe.connect("comp2.value", "comp1.value")
 
-    mock_requests.get.return_value = MagicMock(status_code=200)
+    mock_httpx.get.return_value = MagicMock(status_code=200)
     expected_pipe = pipe.to_dict()
     _to_mermaid_image(pipe.graph)
     assert expected_pipe == pipe.to_dict()
 
 
-@patch("haystack.core.pipeline.draw.requests")
-def test_to_mermaid_image_applies_timeout(mock_requests):
+@patch("haystack.core.pipeline.draw.httpx")
+def test_to_mermaid_image_applies_timeout(mock_httpx):
     pipe = Pipeline()
     pipe.add_component("comp1", Double())
     pipe.add_component("comp2", Double())
     pipe.connect("comp1", "comp2")
 
-    mock_requests.get.return_value = MagicMock(status_code=200)
+    mock_httpx.get.return_value = MagicMock(status_code=200)
     _to_mermaid_image(pipe.graph, timeout=1)
 
-    assert mock_requests.get.call_args[1]["timeout"] == 1
+    assert mock_httpx.get.call_args[1]["timeout"] == 1
 
 
 def test_to_mermaid_image_failing_request(tmp_path):
@@ -60,10 +60,10 @@ def test_to_mermaid_image_failing_request(tmp_path):
     pipe.connect("comp1", "comp2")
     pipe.connect("comp2", "comp1")
 
-    with patch("haystack.core.pipeline.draw.requests.get") as mock_get:
+    with patch("haystack.core.pipeline.draw.httpx.get") as mock_get:
 
         def raise_for_status(self):
-            raise requests.HTTPError()
+            raise httpx.HTTPError("error")
 
         mock_response = MagicMock()
         mock_response.status_code = 429
@@ -167,7 +167,7 @@ def test_to_mermaid_image_scale_without_dimensions():
         _to_mermaid_image(pipe.graph, params={"format": "img", "scale": 2})
 
 
-@patch("haystack.core.pipeline.draw.requests.get")
+@patch("haystack.core.pipeline.draw.httpx.get")
 def test_to_mermaid_image_server_error(mock_get):
     # Test server failure
     pipe = Pipeline()
@@ -176,7 +176,7 @@ def test_to_mermaid_image_server_error(mock_get):
     pipe.connect("comp1", "comp2")
 
     def raise_for_status(self):
-        raise requests.HTTPError()
+        raise httpx.HTTPError("error")
 
     mock_response = MagicMock()
     mock_response.status_code = 500

@@ -677,7 +677,7 @@ __init__(
     tools: ToolsType | None = None,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Initialize a GoogleGenAIChatGenerator instance.
