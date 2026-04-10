@@ -33,16 +33,15 @@ def add(a: Annotated[float, "First number"], b: Annotated[float, "Second number"
     return a + b
 
 
-# A dedicated generator for the compaction summarizer (can be the same model or a
-# cheaper/faster one — here we reuse the same model for simplicity).
+# A dedicated generator for the compaction summarizer (can be the same model or a cheaper/faster one — here we reuse
+# the same model for simplicity).
 summarizer_generator = OpenAIChatGenerator(model="gpt-4o-mini")
 
-# The compaction tool fires automatically before each LLM call once the
-# non-system message count exceeds max_messages. It summarizes the oldest
-# half of the history and keeps the most recent messages verbatim.
+# The compaction tool fires automatically before each LLM call once the non-system message count exceeds max_messages.
+# It summarizes the oldest half of the history and keeps the most recent messages verbatim.
 compaction = SummarizationCompactionTool(
     chat_generator=summarizer_generator,
-    max_messages=6,  # low threshold so it triggers quickly in this demo
+    max_messages=3,  # low threshold so it triggers quickly in this demo
 )
 
 agent = Agent(
@@ -55,21 +54,24 @@ agent = Agent(
 # This simulates a session that has already been running for a while and will
 # push the message count past the compaction threshold on the next agent call.
 messages = [
-    ChatMessage.from_user("What is 3 + 4?"),
-    ChatMessage.from_assistant("3 + 4 = 7"),
-    ChatMessage.from_user("And 10 + 5?"),
-    ChatMessage.from_assistant("10 + 5 = 15"),
-    ChatMessage.from_user("What's 8 + 8?"),
-    ChatMessage.from_assistant("8 + 8 = 16"),
-    ChatMessage.from_user("Can you add 20 and 30?"),
-    ChatMessage.from_assistant("20 + 30 = 50"),
-    ChatMessage.from_user("Now add 99 and 1."),
+    ChatMessage.from_user("What is quantum mechanics?"),
+    ChatMessage.from_assistant(
+        "Quantum mechanics is a fundamental theory in physics that describes the behavior of matter and energy at "
+        "the smallest scales."
+    ),
+    ChatMessage.from_user("Can you explain it in simple terms?"),
+    ChatMessage.from_assistant(
+        "Sure! Quantum mechanics is like a set of rules that govern how tiny particles, like electrons and photons,"
+        " behave. It tells us that these particles can exist in multiple states at once (superposition) and can be "
+        "connected in ways that seem to defy classical physics (entanglement). It's a fascinating and complex field "
+        "that has led to many technological advancements, like semiconductors and quantum computing."
+    ),
+    ChatMessage.from_user("Thanks! Now, can you do some math for me? What's 3 + 4?"),
 ]
 
 print(f"History length before agent call: {len(messages)} messages")
-print("Compaction threshold: 6 non-system messages — compaction will fire.\n")
 
 result = agent.run(messages=messages)
 
-print(f"History length after agent call:  {len(result['messages'])} messages")
+print(f"History length after agent call: {len(result['messages'])} messages")
 print(f"\nAgent reply: {result['last_message'].text}")
