@@ -10,8 +10,9 @@ slug: "/integrations-ollama"
 
 ### OllamaDocumentEmbedder
 
-Computes the embeddings of a list of Documents and stores the obtained vectors in the embedding field of each
-Document. It uses embedding models compatible with the Ollama Library.
+Computes the embeddings of a list of Documents and stores the obtained vectors in each Document's embedding field.
+
+It uses embedding models compatible with the Ollama Library.
 
 Usage example:
 
@@ -41,8 +42,10 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     batch_size: int = 32,
-)
+) -> None
 ```
+
+Create a new OllamaDocumentEmbedder instance.
 
 **Parameters:**
 
@@ -116,8 +119,9 @@ Asynchronously run an Ollama Model to compute embeddings of the provided documen
 
 ### OllamaTextEmbedder
 
-Computes the embeddings of a list of Documents and stores the obtained vectors in the embedding field of
-each Document. It uses embedding models compatible with the Ollama Library.
+Computes the embeddings of a list of Documents and stores the obtained vectors in each Document's embedding field.
+
+It uses embedding models compatible with the Ollama Library.
 
 Usage example:
 
@@ -138,8 +142,10 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     timeout: int = 120,
     keep_alive: float | str | None = None,
-)
+) -> None
 ```
+
+Create a new OllamaTextEmbedder instance.
 
 **Parameters:**
 
@@ -236,8 +242,10 @@ __init__(
     tools: ToolsType | None = None,
     response_format: None | Literal["json"] | JsonSchemaValue | None = None,
     think: bool | Literal["low", "medium", "high"] = False,
-)
+) -> None
 ```
+
+Create a new OllamaChatGenerator instance.
 
 **Parameters:**
 
@@ -395,8 +403,10 @@ __init__(
     timeout: int = 120,
     keep_alive: float | str | None = None,
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
-)
+) -> None
 ```
+
+Create a new OllamaGenerator instance.
 
 **Parameters:**
 
