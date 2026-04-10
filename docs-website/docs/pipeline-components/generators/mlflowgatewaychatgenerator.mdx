@@ -49,6 +49,8 @@ mlflow server --host 127.0.0.1 --port 5000
 
 Navigate to **AI Gateway → Create Endpoint**, give it a name (e.g. `my-chat-endpoint`), select a provider and model, and enter your provider API key (stored encrypted on the server). See the [MLflow AI Gateway documentation](https://mlflow.org/docs/latest/genai/governance/ai-gateway/endpoints/) for details on endpoint configuration.
 
+![MLflow AI Gateway — Create Endpoint UI](/img/mlflow-gateway-create-endpoint.png)
+
 ## Usage
 
 ### On its own
@@ -148,6 +150,24 @@ response = requests.post(
 )
 print(response.json()["choices"][0]["message"]["content"])
 ```
+
+## Gateway Features
+
+These features are configured in the MLflow UI — no changes to your Haystack pipeline code are needed.
+
+- **Fallback & retry** — automatic failover to backup models on failure
+- **Traffic splitting** — route percentages of requests to different models for A/B testing
+- **Budget tracking** — per-endpoint or per-user token budgets
+
+![MLflow AI Gateway — Budget Tracking](/img/mlflow-gateway-budget-tracking.png)
+
+- **Usage tracing** — every call logged as an MLflow trace with inputs, outputs, latency, and token counts
+
+![MLflow AI Gateway — Usage Dashboard](/img/mlflow-gateway-usage-dashboard.png)
+
+![MLflow AI Gateway — Trace List](/img/mlflow-gateway-usage-traces.png)
+
+![MLflow AI Gateway — Trace Detail](/img/mlflow-gateway-usage-trace-detail.png)
 
 ## Related
 
