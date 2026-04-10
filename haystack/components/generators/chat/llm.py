@@ -72,6 +72,10 @@ class LLM(Agent):
             streaming_callback=streaming_callback,
         )
 
+        # Remove agent-internal state fields from the LLM's public output interface
+        for key in ("tool_call_counts", "step"):
+            self.__haystack_output__._sockets_dict.pop(key, None)
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the LLM component to a dictionary.
@@ -131,7 +135,7 @@ class LLM(Agent):
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
         """
-        return super(LLM, self).run(  # noqa: UP008
+        result = super(LLM, self).run(  # noqa: UP008
             messages=messages,
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
@@ -139,6 +143,9 @@ class LLM(Agent):
             user_prompt=user_prompt,
             **kwargs,
         )
+        result.pop("tool_call_counts", None)
+        result.pop("step", None)
+        return result
 
     async def run_async(
         self,
@@ -168,7 +175,7 @@ class LLM(Agent):
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
         """
-        return await super(LLM, self).run_async(  # noqa: UP008
+        result = await super(LLM, self).run_async(  # noqa: UP008
             messages=messages,
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
@@ -176,3 +183,6 @@ class LLM(Agent):
             user_prompt=user_prompt,
             **kwargs,
         )
+        result.pop("tool_call_counts", None)
+        result.pop("step", None)
+        return result
