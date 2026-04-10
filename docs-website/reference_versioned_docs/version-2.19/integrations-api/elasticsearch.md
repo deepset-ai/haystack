@@ -10,8 +10,9 @@ slug: "/integrations-elasticsearch"
 
 ### ElasticsearchBM25Retriever
 
-ElasticsearchBM25Retriever retrieves documents from the ElasticsearchDocumentStore using BM25 algorithm to find the
-most similar documents to a user's query.
+Retrieves documents from ElasticsearchDocumentStore using the BM25 algorithm.
+
+Finds the most similar documents to a user's query.
 
 This retriever is only compatible with ElasticsearchDocumentStore.
 
@@ -50,7 +51,7 @@ __init__(
     top_k: int = 10,
     scale_score: bool = False,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Initialize ElasticsearchBM25Retriever with an instance ElasticsearchDocumentStore.
@@ -190,7 +191,7 @@ __init__(
     top_k: int = 10,
     num_candidates: int | None = None,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Create the ElasticsearchEmbeddingRetriever component.
@@ -325,7 +326,7 @@ __init__(
     document_store: ElasticsearchDocumentStore,
     raise_on_failure: bool = True,
     fetch_size: int | None = None
-)
+) -> None
 ```
 
 Creates the ElasticsearchSQLRetriever component.
@@ -427,8 +428,7 @@ Example:
 
 ### ElasticsearchDocumentStore
 
-An ElasticsearchDocumentStore instance that works with Elastic Cloud or your own
-Elasticsearch cluster.
+An ElasticsearchDocumentStore instance that works with Elastic Cloud or your own Elasticsearch cluster.
 
 Usage example (Elastic Cloud):
 
@@ -474,7 +474,7 @@ __init__(
         "cosine", "dot_product", "l2_norm", "max_inner_product"
     ] = "cosine",
     **kwargs: Any
-)
+) -> None
 ```
 
 Creates a new ElasticsearchDocumentStore instance.
@@ -887,8 +887,7 @@ count_unique_metadata_by_filter(
 ) -> dict[str, int]
 ```
 
-Returns the number of unique values for each specified metadata field of the documents
-that match the provided filters.
+Returns the number of unique values for each specified metadata field that match the provided filters.
 
 **Parameters:**
 
@@ -914,8 +913,7 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the number of unique values for each specified metadata field of the documents
-that match the provided filters.
+Asynchronously returns unique value counts for each specified metadata field matching the provided filters.
 
 **Parameters:**
 
@@ -1039,6 +1037,7 @@ get_metadata_field_unique_values(
 ```
 
 Returns unique values for a metadata field, optionally filtered by a search term in the content.
+
 Uses composite aggregations for proper pagination beyond 10k results.
 
 See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
@@ -1069,6 +1068,7 @@ get_metadata_field_unique_values_async(
 ```
 
 Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
+
 Uses composite aggregations for proper pagination beyond 10k results.
 
 See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
