@@ -7,9 +7,9 @@ description: "Use OpenAIChatGenerator with the MLflow AI Gateway for multi-provi
 
 # MLflow AI Gateway
 
-[MLflow AI Gateway](https://mlflow.org/docs/latest/llms/gateway/index.html) is a database-backed LLM proxy built into the MLflow tracking server (MLflow ≥ 3.0). It exposes an **OpenAI-compatible REST API** that routes requests to dozens of LLM providers — OpenAI, Anthropic, Gemini, Mistral, Bedrock, Ollama, and more.
+[MLflow AI Gateway](https://mlflow.org/docs/latest/genai/governance/ai-gateway/) is a database-backed LLM proxy built into the MLflow tracking server (MLflow ≥ 3.0). It exposes an **OpenAI-compatible REST API** that routes requests to dozens of LLM providers — OpenAI, Anthropic, Gemini, Mistral, Bedrock, Ollama, and more.
 
-You can connect Haystack pipelines to MLflow AI Gateway using the built-in `OpenAIChatGenerator` with a custom `api_base_url`. No extra packages are required.
+You can connect Haystack pipelines to MLflow AI Gateway using the built-in `OpenAIChatGenerator` with a custom `api_base_url`.
 
 <div className="key-value-table">
 
@@ -20,7 +20,7 @@ You can connect Haystack pipelines to MLflow AI Gateway using the built-in `Open
 | **Mandatory run variables** | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects |
 | **Output variables** | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects |
 | **Component** | [OpenAIChatGenerator](./openaichatgenerator.mdx) with custom `api_base_url` |
-| **MLflow docs** | https://mlflow.org/docs/latest/llms/gateway/index.html |
+| **MLflow docs** | https://mlflow.org/docs/latest/genai/governance/ai-gateway/ |
 
 </div>
 
@@ -34,41 +34,20 @@ MLflow AI Gateway routes all LLM calls through a central proxy so that:
 - **Budget tracking** — per-endpoint or per-user token budgets
 - **Usage tracing** — every call logged as an MLflow trace automatically
 
-The gateway is configured entirely through the MLflow UI — no YAML files or code changes in your Haystack pipeline are needed to switch providers.
+The gateway is configured entirely through the MLflow UI — no code changes in your Haystack pipeline are needed to switch providers.
 
 ## Prerequisites
 
-**1. Start an MLflow server:**
+**1. Install MLflow and start the server:**
 
 ```bash
-pip install mlflow
+pip install mlflow[genai]
 mlflow server --host 127.0.0.1 --port 5000
 ```
 
 **2. Create a gateway endpoint** in the MLflow UI at `http://localhost:5000`:
 
-Navigate to **AI Gateway → Create Endpoint**, give it a name (e.g. `my-chat-endpoint`), select a provider and model, and enter your provider API key (stored encrypted on the server).
-
-Or create one via the REST API:
-
-```bash
-# Step 1: Store your provider API key as a gateway secret
-curl -s -X POST http://localhost:5000/api/2.0/mlflow/gateway/secrets \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "secret_name": "openai-key",
-    "secret_value": {"api_key": "sk-..."},
-    "provider": "openai"
-  }'
-
-# Step 2: Create the endpoint (use the secret_id returned above)
-curl -s -X POST http://localhost:5000/api/2.0/mlflow/gateway/endpoints/create \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "my-chat-endpoint",
-    "model_configs": [{"provider": "openai", "model_name": "gpt-4o-mini", "secret_id": "<secret_id>"}]
-  }'
-```
+Navigate to **AI Gateway → Create Endpoint**, give it a name (e.g. `my-chat-endpoint`), select a provider and model, and enter your provider API key (stored encrypted on the server). See the [MLflow AI Gateway documentation](https://mlflow.org/docs/latest/genai/governance/ai-gateway/endpoints/) for details on endpoint configuration.
 
 ## Usage
 

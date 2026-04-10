@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add documentation page for using ``OpenAIChatGenerator`` with MLflow AI Gateway
+    as an LLM proxy. The page covers standalone usage, pipeline integration, and streaming,
+    with examples pointing to the gateway's OpenAI-compatible endpoint.
