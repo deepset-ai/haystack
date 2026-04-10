@@ -136,6 +136,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "condition": None,
                             },
                         }
                     ],
@@ -159,7 +160,15 @@ class TestAgentBreakpoints:
                             "messages": {
                                 "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
                                 "handler": "haystack.components.agents.state.state_utils.merge_lists",
-                            }
+                            },
+                            "tool_call_counts": {
+                                "type": "dict",
+                                "handler": "haystack.components.agents.state.state_utils.replace_values",
+                            },
+                            "step": {
+                                "type": "int",
+                                "handler": "haystack.components.agents.state.state_utils.replace_values",
+                            },
                         },
                         "data": {
                             "serialization_schema": {
@@ -168,7 +177,8 @@ class TestAgentBreakpoints:
                                     "messages": {
                                         "type": "array",
                                         "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
-                                    }
+                                    },
+                                    "step": {"type": "integer"},
                                 },
                             },
                             "serialized_data": {
@@ -179,7 +189,8 @@ class TestAgentBreakpoints:
                                         "name": None,
                                         "content": [{"text": "What's the weather in Berlin?"}],
                                     }
-                                ]
+                                ],
+                                "step": 0,
                             },
                         },
                     },
@@ -198,6 +209,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "condition": None,
                             },
                         }
                     ],
@@ -209,7 +221,12 @@ class TestAgentBreakpoints:
                 "messages": {
                     "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
                     "handler": "haystack.components.agents.state.state_utils.merge_lists",
-                }
+                },
+                "tool_call_counts": {
+                    "type": "dict",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "step": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
             },
             "data": {
                 "serialization_schema": {
@@ -218,7 +235,8 @@ class TestAgentBreakpoints:
                         "messages": {
                             "type": "array",
                             "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
-                        }
+                        },
+                        "step": {"type": "integer"},
                     },
                 },
                 "serialized_data": {
@@ -229,7 +247,8 @@ class TestAgentBreakpoints:
                             "name": None,
                             "content": [{"text": "What's the weather in Berlin?"}],
                         }
-                    ]
+                    ],
+                    "step": 0,
                 },
             },
         }
@@ -270,6 +289,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "condition": None,
                             },
                         }
                     ],
@@ -313,7 +333,15 @@ class TestAgentBreakpoints:
                             "messages": {
                                 "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
                                 "handler": "haystack.components.agents.state.state_utils.merge_lists",
-                            }
+                            },
+                            "tool_call_counts": {
+                                "type": "dict",
+                                "handler": "haystack.components.agents.state.state_utils.replace_values",
+                            },
+                            "step": {
+                                "type": "int",
+                                "handler": "haystack.components.agents.state.state_utils.replace_values",
+                            },
                         },
                         "data": {
                             "serialization_schema": {
@@ -322,7 +350,8 @@ class TestAgentBreakpoints:
                                     "messages": {
                                         "type": "array",
                                         "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
-                                    }
+                                    },
+                                    "step": {"type": "integer"},
                                 },
                             },
                             "serialized_data": {
@@ -349,7 +378,8 @@ class TestAgentBreakpoints:
                                             },
                                         ],
                                     },
-                                ]
+                                ],
+                                "step": 0,
                             },
                         },
                     },
@@ -368,6 +398,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "condition": None,
                             },
                         }
                     ],
@@ -379,7 +410,12 @@ class TestAgentBreakpoints:
                 "messages": {
                     "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
                     "handler": "haystack.components.agents.state.state_utils.merge_lists",
-                }
+                },
+                "tool_call_counts": {
+                    "type": "dict",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+                "step": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
             },
             "data": {
                 "serialization_schema": {
@@ -388,7 +424,8 @@ class TestAgentBreakpoints:
                         "messages": {
                             "type": "array",
                             "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
-                        }
+                        },
+                        "step": {"type": "integer"},
                     },
                 },
                 "serialized_data": {
@@ -415,7 +452,8 @@ class TestAgentBreakpoints:
                                 },
                             ],
                         },
-                    ]
+                    ],
+                    "step": 0,
                 },
             },
         }

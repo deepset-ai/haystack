@@ -4,7 +4,7 @@
 
 import inspect
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from haystack import Pipeline, component, logging, tracing
@@ -98,6 +98,7 @@ class _ExecutionContext:
     skip_chat_generator: bool = False
     confirmation_strategy_context: dict[str, Any] | None = None
     tool_execution_decisions: list[ToolExecutionDecision] | None = None
+    pending_condition_tools: dict[str, int] = field(default_factory=dict)
 
 
 @component
@@ -283,17 +284,8 @@ class Agent:
 
         all_tools_flat = flatten_tools_or_toolsets(tools)
         self._condition_tools: list[Tool] = [t for t in all_tools_flat if t.condition is not None]
-        # Flat list used for ToolInvoker initialization
-        self._llm_tools: list[Tool] = [t for t in all_tools_flat if t.condition is None]
-        # Structured list (preserving Toolsets) used for _select_tools, with condition tools removed
-        _condition_names = {t.name for t in self._condition_tools}
-        self._llm_tools_structured: ToolsType = (
-            [t for t in (tools or []) if not (isinstance(t, Tool) and t.name in _condition_names)]
-            if _condition_names
-            else (tools or [])
-        )
 
-        valid_exits = ["text"] + [tool.name for tool in self._llm_tools]
+        valid_exits = ["text"] + [tool.name for tool in all_tools_flat]
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):
@@ -313,6 +305,10 @@ class Agent:
         resolved_state_schema = dict(self._state_schema)
         if resolved_state_schema.get("messages") is None:
             resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
+        if resolved_state_schema.get("tool_call_counts") is None:
+            resolved_state_schema["tool_call_counts"] = {"type": dict, "handler": replace_values}
+        if resolved_state_schema.get("step") is None:
+            resolved_state_schema["step"] = {"type": int, "handler": replace_values}
         self.state_schema = resolved_state_schema
 
         self.chat_generator = chat_generator
@@ -349,9 +345,9 @@ class Agent:
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
-        if self._llm_tools:
+        if self.tools:
             resolved_tool_invoker_kwargs = {
-                "tools": self._llm_tools,
+                "tools": self.tools,
                 "raise_on_failure": self.raise_on_tool_invocation_failure,
                 **(tool_invoker_kwargs or {}),
             }
@@ -647,7 +643,7 @@ class Agent:
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
         if tools is None:
-            return self._llm_tools_structured
+            return self.tools
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
@@ -838,13 +834,14 @@ class Agent:
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
+                exe_context.state.set("step", exe_context.counter)
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
                     llm_messages = exe_context.state.get("messages", [])[-1:]
                     # Set to False so the next iteration will call the chat generator
                     exe_context.skip_chat_generator = False
                 else:
-                    self._invoke_condition_tools(exe_context.state)
+                    self._process_condition_tools(exe_context.state, exe_context)
                     try:
                         result = Pipeline._run_component(
                             component_name="chat_generator",
@@ -963,6 +960,14 @@ class Agent:
 
                 tool_messages = tool_invoker_result["tool_messages"]
                 exe_context.state = tool_invoker_result["state"]
+
+                # Update tool_call_counts and clear pending re-prompts for successfully called tools
+                for msg in tool_messages:
+                    if msg.tool_call_result and not msg.tool_call_result.error:
+                        called_name = msg.tool_call_result.origin.tool_name
+                        self._increment_tool_call_count(exe_context.state, called_name)
+                        exe_context.pending_condition_tools.pop(called_name, None)
+
                 exe_context.state.set("messages", tool_messages)
 
                 # Check if any LLM message's tool call name matches an exit condition
@@ -1073,13 +1078,14 @@ class Agent:
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
+                exe_context.state.set("step", exe_context.counter)
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
                     llm_messages = exe_context.state.get("messages", [])[-1:]
                     # Set to False so the next iteration will call the chat generator
                     exe_context.skip_chat_generator = False
                 else:
-                    self._invoke_condition_tools(exe_context.state)
+                    self._process_condition_tools(exe_context.state, exe_context)
                     try:
                         result = await AsyncPipeline._run_component_async(
                             component_name="chat_generator",
@@ -1198,6 +1204,14 @@ class Agent:
 
                 tool_messages = tool_invoker_result["tool_messages"]
                 exe_context.state = tool_invoker_result["state"]
+
+                # Update tool_call_counts and clear pending re-prompts for successfully called tools
+                for msg in tool_messages:
+                    if msg.tool_call_result and not msg.tool_call_result.error:
+                        called_name = msg.tool_call_result.origin.tool_name
+                        self._increment_tool_call_count(exe_context.state, called_name)
+                        exe_context.pending_condition_tools.pop(called_name, None)
+
                 exe_context.state.set("messages", tool_messages)
 
                 # Check if any LLM message's tool call name matches an exit condition
@@ -1221,20 +1235,52 @@ class Agent:
             result["last_message"] = msgs[-1]
         return result
 
-    def _invoke_condition_tools(self, state: State) -> None:
+    def _process_condition_tools(self, state: State, exe_context: _ExecutionContext) -> None:
         """
-        Check and invoke any tools whose condition is satisfied by the current state.
+        Check and process any tools whose condition is satisfied by the current state.
 
-        Called before each LLM invocation. Tools are invoked directly — bypassing the LLM and ToolInvoker —
-        so no tool-call or tool-result messages are added to the chat history.
+        Called before each LLM invocation. Depending on the tool's parameter schema:
+        - Empty parameters: auto-invoke directly (e.g. compaction tools with all args from state).
+        - Non-empty parameters: inject a system message re-prompting the LLM to call the tool,
+          since the LLM needs to supply arguments. Re-prompts up to 3 times per condition trigger.
 
         :param state: The current agent state.
+        :param exe_context: The current execution context (tracks re-prompt attempts).
         """
         for tool in self._condition_tools:
-            if tool.condition(state):
-                final_args = ToolInvoker._inject_state_args(tool, {}, state)
-                result = tool.invoke(**final_args)
-                ToolInvoker._merge_tool_outputs(tool, result, state)
+            attempts = exe_context.pending_condition_tools.get(tool.name, 0)
+
+            # New condition trigger
+            if attempts == 0 and tool.condition(state):
+                if not tool.parameters.get("properties"):
+                    # Auto-invoke: no LLM-facing params (e.g. compaction)
+                    final_args = ToolInvoker._inject_state_args(tool, {}, state)
+                    result = tool.invoke(**final_args)
+                    ToolInvoker._merge_tool_outputs(tool, result, state)
+                    self._increment_tool_call_count(state, tool.name)
+                    continue
+                # Re-prompt: LLM must supply args
+                exe_context.pending_condition_tools[tool.name] = 1
+                state.set(
+                    "messages",
+                    [ChatMessage.from_system(f"You must call the '{tool.name}' tool now. {tool.description}")],
+                )
+                continue
+
+            # Ongoing re-prompt (tool not yet called, under retry limit)
+            if 0 < attempts < 3:
+                exe_context.pending_condition_tools[tool.name] = attempts + 1
+                state.set(
+                    "messages",
+                    [ChatMessage.from_system(f"You must call the '{tool.name}' tool now. {tool.description}")],
+                )
+
+    @staticmethod
+    def _increment_tool_call_count(state: State, tool_name: str) -> None:
+        """Increment the call count for a tool in the state."""
+        counts = state.get("tool_call_counts") or {}
+        counts[tool_name] = counts.get(tool_name, 0) + 1
+        state.set("tool_call_counts", counts)
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """
