@@ -19,7 +19,7 @@ In this section we detail the available templates and how they can be used.
 
 Generates a pipeline to read a web page and ask questions about its content.
 
-<div className="key-value-table">
+<div>
 
 |  |  |
 | --- | --- |
@@ -47,7 +47,7 @@ pipeline.run(
 
 Generates a simple pipeline to ask a generic query using an `OpenAIGenerator`.
 
-<div className="key-value-table">
+<div>
 
 |  |  |
 | --- | --- |
@@ -70,7 +70,7 @@ pipeline.run({"prompt_builder": {"question": "Where is Rome?"}})
 
 Generates a pipeline that imports documents from one or more text files, creates the embeddings for each of them, and finally stores them in an [`InMemoryDocumentStore`](../../document-stores/inmemorydocumentstore.mdx).
 
-<div className="key-value-table">
+<div>
 
 |  |  |
 | --- | --- |
@@ -93,7 +93,7 @@ result = pipeline.run({"converter": {"sources": ["some_file.txt"]}})
 
 Generates a RAG pipeline using data that was previously indexed (you can use the Indexing template).
 
-<div className="key-value-table">
+<div>
 
 |  |  |
 | --- | --- |
