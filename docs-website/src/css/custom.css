@@ -146,11 +146,6 @@ button, .button {
   border-radius: 8px;
 }
 
-
-.pagination-nav {
-  display: none;
-}
-
 /* Top Navbar active state styling - using dc-docs approach with haystack-docs colors */
 .navbar__item.navbar__link--active,
 .navbar__item.navbar__link--active:hover {
