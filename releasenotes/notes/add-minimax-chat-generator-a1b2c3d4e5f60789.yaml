@@ -1,0 +1,10 @@
+---
+prelude: >
+  Added MiniMax chat generator support.
+features:
+  - |
+    Added ``MiniMaxChatGenerator`` component that integrates MiniMax LLMs
+    (``MiniMax-M2.7`` and ``MiniMax-M2.7-highspeed``) via MiniMax's
+    OpenAI-compatible API. Configure with the ``MINIMAX_API_KEY`` environment
+    variable. Supports streaming, tool calling, and all standard Haystack
+    pipeline features.

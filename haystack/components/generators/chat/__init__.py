@@ -16,6 +16,7 @@ _import_structure = {
     "hugging_face_api": ["HuggingFaceAPIChatGenerator"],
     "fallback": ["FallbackChatGenerator"],
     "llm": ["LLM"],
+    "minimax": ["MiniMaxChatGenerator"],
 }
 
 if TYPE_CHECKING:
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from .hugging_face_api import HuggingFaceAPIChatGenerator as HuggingFaceAPIChatGenerator
     from .hugging_face_local import HuggingFaceLocalChatGenerator as HuggingFaceLocalChatGenerator
     from .llm import LLM as LLM
+    from .minimax import MiniMaxChatGenerator as MiniMaxChatGenerator
     from .openai import OpenAIChatGenerator as OpenAIChatGenerator
     from .openai_responses import OpenAIResponsesChatGenerator as OpenAIResponsesChatGenerator
 
