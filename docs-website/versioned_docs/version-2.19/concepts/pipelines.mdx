@@ -6,6 +6,7 @@ description: "To build modern search pipelines with LLMs, you need two things: p
 ---
 
 import ClickableImage from "@site/src/components/ClickableImage";
+import YoutubeEmbed from "@site/src/components/YoutubeEmbed";
 
 # Pipelines
 
@@ -55,6 +56,8 @@ To simplify your code, we have introduced [SuperComponents](components/supercomp
 While the data (the initial query) flows through the entire pipeline, individual values are only passed from one component to another when they are connected. Therefore, not all components have access to all the data. This approach offers the benefits of speed and ease of debugging.
 
 To connect components and integrations in a pipeline, you must know the names of their inputs and outputs. The output of one component must be accepted as input by the following component. When you connect components in a pipeline with `Pipeline.connect()`, it validates if the input and output types match.
+
+<YoutubeEmbed videoId="SxAwyeCkguc" title="Introduction to Haystack Pipelines" />
 
 ## Steps to Create a Pipeline Explained
 
