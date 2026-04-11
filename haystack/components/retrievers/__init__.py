@@ -9,6 +9,7 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "auto_merging_retriever": ["AutoMergingRetriever"],
+    "ferpa_metadata_retriever": ["FERPAMetadataRetriever"],
     "filter_retriever": ["FilterRetriever"],
     "in_memory": ["InMemoryBM25Retriever", "InMemoryEmbeddingRetriever"],
     "multi_query_embedding_retriever": ["MultiQueryEmbeddingRetriever"],
@@ -18,6 +19,7 @@ _import_structure = {
 
 if TYPE_CHECKING:
     from .auto_merging_retriever import AutoMergingRetriever as AutoMergingRetriever
+    from .ferpa_metadata_retriever import FERPAMetadataRetriever as FERPAMetadataRetriever
     from .filter_retriever import FilterRetriever as FilterRetriever
     from .in_memory import InMemoryBM25Retriever as InMemoryBM25Retriever
     from .in_memory import InMemoryEmbeddingRetriever as InMemoryEmbeddingRetriever
