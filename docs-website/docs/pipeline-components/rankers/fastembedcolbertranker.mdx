@@ -35,20 +35,6 @@ By default, this component uses the `colbert-ir/colbertv2.0` model. For details 
 ColBERT scores are **unnormalized sums** (not probabilities). Their magnitude depends on query length and document length, typically ranging from ~3 to ~30. They are meaningful for ranking within a single query but should not be compared across different queries.
 :::
 
-:::note Pipeline wiring
-The `query` input of `FastembedColbertRanker` cannot be connected from an upstream component. It must be passed directly in `pipeline.run()`:
-
-```python
-pipeline.run(
-    {
-        "text_embedder": {"text": question},
-        "ranker": {"query": question},
-        "prompt_builder": {"question": question},
-    },
-)
-```
-:::
-
 ### Compatible Models
 
 You can find the compatible ColBERT models in the [FastEmbed documentation](https://qdrant.github.io/fastembed/examples/Supported_Models/).
