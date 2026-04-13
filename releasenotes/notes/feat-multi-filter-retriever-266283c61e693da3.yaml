@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Add support for ``MultiFilterRetriever``, a new retriever component that executes multiple filter
+    queries against a document store **in parallel** and returns a single, de-duplicated list of
+    documents.
+
+    .. code-block:: python
+
+        multi_filter_retriever = MultiFilterRetriever(document_store=document_store)
+
+        filters = [
+            {"field": "meta.lang", "operator": "==", "value": "en"},
+            {"field": "meta.lang", "operator": "==", "value": "de"},
+        ]
+
+        result = multi_filter_retriever.run(filters=filters)
+        for doc in result["documents"]:
+            print(doc.content)
