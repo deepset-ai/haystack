@@ -7,8 +7,7 @@ features:
 
     .. code-block:: python
 
-        filter_retriever = FilterRetriever(document_store=document_store)
-        multi_filter_retriever = MultiFilterRetriever(retriever=filter_retriever)
+        multi_filter_retriever = MultiFilterRetriever(document_store=document_store)
 
         filters = [
             {"field": "meta.lang", "operator": "==", "value": "en"},
