@@ -54,7 +54,7 @@ jobs:
             echo "Not a stable version"
           fi
       - name: Build base images
-        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
