@@ -223,6 +223,11 @@ $ cd haystack
 $ hatch version
 2.3.0-rc0
 ```
+Next, you need to install the pre-commit package with:
+
+```bash
+pip install pre-commit
+```
 
 Last, install the pre-commit hooks with:
 
