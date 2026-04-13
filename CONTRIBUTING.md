@@ -201,7 +201,7 @@ $ hatch --version
 Hatch, version 1.14.1
 ```
 
-You can create a new virtual environment for Haystack with `hatch` by running:
+You create a new virtual environment for Haystack with `hatch` by running:
 
 ```console
 $ hatch shell
@@ -220,6 +220,10 @@ If everything worked, you should be able to do something like this (the output m
 
 ```console
 $ cd haystack
+
+$ hatch shell
+You are about to enter a new shell, exit as you usually would e.g. by typing `exit` or pressing `ctrl+d`...
+
 $ hatch version
 2.3.0-rc0
 ```
@@ -228,6 +232,12 @@ Last, install the pre-commit hooks with:
 
 ```bash
 pre-commit install
+```
+
+Note: It is important to run `pre-commit install` inside the virtual environment created with `hatch shell`. If you don't, you'll get an error message like this:
+
+```bash
+pre-commit: command not found
 ```
 
 This utility will run some tasks right before all `git commit` operations. From now on, your `git commit` output for
