@@ -7,6 +7,7 @@ from typing import Any
 
 from haystack import Document, component
 from haystack.components.retrievers.filter_retriever import FilterRetriever
+from haystack.document_stores.types import DocumentStore
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -15,14 +16,14 @@ class MultiFilterRetriever:
     """
     A component that retrieves documents using multiple filters in parallel.
 
-    This component takes a list of filter dictionaries and uses a filter-capable retriever to retrieve matching
-    documents for each filter set in parallel.
+    This component takes a list of filter dictionaries and retrieves matching documents for each filter set
+    in parallel.
 
     ### Usage example
 
     ```python
     from haystack import Document
-    from haystack.components.retrievers import FilterRetriever, MultiFilterRetriever
+    from haystack.components.retrievers import MultiFilterRetriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.components.writers import DocumentWriter
     from haystack.document_stores.types import DuplicatePolicy
@@ -36,8 +37,7 @@ class MultiFilterRetriever:
     writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
     writer.run(documents=documents)
 
-    filter_retriever = FilterRetriever(document_store=document_store)
-    multi_filter_retriever = MultiFilterRetriever(retriever=filter_retriever)
+    multi_filter_retriever = MultiFilterRetriever(document_store=document_store)
 
     filters = [
         {"field": "meta.lang", "operator": "==", "value": "en"},
@@ -50,15 +50,16 @@ class MultiFilterRetriever:
     ```
     """
 
-    def __init__(self, *, retriever: FilterRetriever, max_workers: int = 3) -> None:
+    def __init__(self, document_store: DocumentStore, max_workers: int = 3) -> None:
         """
         Initialize MultiFilterRetriever.
 
-        :param retriever: The filter-capable retriever to use for document retrieval.
+        :param document_store: The document store to retrieve documents from.
         :param max_workers: Maximum number of worker threads for parallel processing.
         """
-        self.retriever = retriever
+        self.document_store = document_store
         self.max_workers = max_workers
+        self._retriever = FilterRetriever(document_store=document_store)
 
     @component.output_types(documents=list[Document])
     def run(self, filters: list[dict[str, Any]]) -> dict[str, list[Document]]:
@@ -66,7 +67,6 @@ class MultiFilterRetriever:
         Retrieve documents using multiple filters in parallel.
 
         :param filters: List of filter dictionaries to process.
-        :param retriever_kwargs: Optional dictionary of arguments to pass to the retriever's run method.
         :returns:
             A dictionary containing:
                 - `documents`: List of retrieved documents.
@@ -85,15 +85,7 @@ class MultiFilterRetriever:
         return {"documents": docs}
 
     def _run_on_thread(self, filters: dict[str, Any]) -> list[Document] | None:
-        """
-        Process a single filter set on a separate thread.
-
-        :param filters: The filter dictionary to process.
-        :param retriever_kwargs: Optional dictionary of arguments to pass to the retriever's run method.
-        :returns:
-            List of retrieved documents or None if no results.
-        """
-        result = self.retriever.run(filters=filters)
+        result = self._retriever.run(filters=filters)
         if result and "documents" in result:
             return result["documents"]
         return None
