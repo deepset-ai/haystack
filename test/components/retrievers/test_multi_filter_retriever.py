@@ -55,7 +55,8 @@ class TestMultiFilterRetriever:
         assert len(result["documents"]) == 2
         assert {doc.meta["lang"] for doc in result["documents"]} == {"en", "de"}
 
-    def test_deduplication(self, document_store) -> None:
+    def test_deduplication(self) -> None:
+        document_store = InMemoryDocumentStore()
         doc = Document(content="Haystack is awesome", id="doc", meta={"lang": "en", "type": "tech"})
         DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP).run(documents=[doc])
 
