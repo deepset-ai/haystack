@@ -487,6 +487,7 @@ export default {
             'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/cohereranker',
             'pipeline-components/rankers/fastembedranker',
+            'pipeline-components/rankers/fastembedcolbertranker',
             'pipeline-components/rankers/huggingfaceteiranker',
             'pipeline-components/rankers/jinaranker',
             'pipeline-components/rankers/llmranker',
