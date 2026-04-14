@@ -102,6 +102,30 @@ Process the query/URL using the Jina AI reader service.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
   - `documents`: A list of `Document` objects.
 
+#### run_async
+
+```python
+run_async(
+    query: str, headers: dict[str, str] | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously process the query/URL using the Jina AI reader service.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query string or URL to process.
+- **headers** (<code>dict\[str, str\] | None</code>) – Optional headers to include in the request for customization. Refer to the
+  [Jina Reader documentation](https://jina.ai/reader/) for more information.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+  - `documents`: A list of `Document` objects.
+
 ## haystack_integrations.components.embedders.jina.document_embedder
 
 ### JinaDocumentEmbedder
@@ -209,6 +233,31 @@ run(documents: list[Document]) -> dict[str, Any]
 ```
 
 Compute the embeddings for a list of Documents.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with following keys:
+- `documents`: List of Documents, each with an `embedding` field containing the computed embedding.
+- `meta`: A dictionary with metadata including the model name and usage statistics.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of Documents.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, Any]
+```
+
+Asynchronously compute the embeddings for a list of Documents.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
 
 **Parameters:**
 
@@ -341,6 +390,26 @@ Embed a list of image documents.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Asynchronously embed a list of image documents.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: Documents with embeddings.
+
 ## haystack_integrations.components.embedders.jina.text_embedder
 
 ### JinaTextEmbedder
@@ -453,6 +522,31 @@ Embed a string.
 
 - <code>TypeError</code> – If the input is not a string.
 
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, Any]
+```
+
+Asynchronously embed a string.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The string to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with following keys:
+- `embedding`: The embedding of the input string.
+- `meta`: A dictionary with metadata including the model name and usage statistics.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a string.
+
 ## haystack_integrations.components.rankers.jina.ranker
 
 ### JinaRanker
@@ -541,6 +635,38 @@ run(
 ```
 
 Returns a list of Documents ranked by their similarity to the given query.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Query string.
+- **documents** (<code>list\[Document\]</code>) – List of Documents.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents you want the Ranker to return.
+- **score_threshold** (<code>float | None</code>) – If provided only returns documents with a score above this threshold.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given query in descending order of similarity.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
+#### run_async
+
+```python
+run_async(
+    query: str,
+    documents: list[Document],
+    top_k: int | None = None,
+    score_threshold: float | None = None,
+) -> dict[str, list[Document]]
+```
+
+Asynchronously returns a list of Documents ranked by their similarity to the given query.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
 
 **Parameters:**
 
