@@ -99,7 +99,7 @@ class SentenceTransformersDiversityRanker:
     if a score is present.
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
