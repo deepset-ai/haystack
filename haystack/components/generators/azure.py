@@ -33,19 +33,19 @@ class AzureOpenAIGenerator(OpenAIGenerator):
 
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
     from haystack.utils import Secret
-    client = AzureOpenAIGenerator(
-        azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-        api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this a model name, e.g.  gpt-4.1-mini>")
-    response = client.run("What's Natural Language Processing? Be brief.")
-    print(response)
-    ```
 
-    ```
+    client = AzureOpenAIGenerator(
+        azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT").resolve_value(),
+        api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
+        azure_deployment="gpt-4.1-mini")
+
+    response = client.run("What's Natural Language Processing? Be brief.")
+
+    print(response)
     # >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     # >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     # >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
