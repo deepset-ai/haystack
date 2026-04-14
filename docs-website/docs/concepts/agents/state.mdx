@@ -438,6 +438,91 @@ print(f"Processed {final_count} documents")
 print(final_docs)
 ```
 
+### Injecting State Directly into Tools
+
+As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can declare a parameter annotated as `State` to receive the live `State` object at invocation time.
+This lets the tool read from and write to any number of state keys without declaring mappings upfront.
+
+For function-based tools, add a `State` parameter to the function and use the `@tool` decorator:
+
+```python
+from typing import Annotated
+
+from haystack.components.agents import Agent, State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, Document
+from haystack.tools import tool
+
+
+@tool
+def retrieve_and_store(
+    query: Annotated[str, "The search query"],
+    state: State,
+) -> str:
+    """Retrieve documents and store them directly in state."""
+    documents = [Document(content=f"Result for '{query}'")]
+    state.set("documents", documents)
+    user_name = state.get("user_name", "unknown")
+    return f"Retrieved {len(documents)} document(s) for {user_name}"
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5-nano"),
+    tools=[retrieve_and_store],
+    state_schema={"documents": {"type": list[Document]}, "user_name": {"type": str}},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Find documents about Python")],
+    user_name="Alice",
+)
+```
+
+For component-based tools, declare a `State` input socket on the component's `run` method and
+wrap it with `ComponentTool`:
+
+```python
+from haystack import component
+from haystack.components.agents import Agent, State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, Document
+from haystack.tools import ComponentTool
+
+
+@component
+class DocumentRetriever:
+    """Retrieve documents and store them in state."""
+
+    @component.output_types(reply=str)
+    def run(self, query: str, state: State) -> dict:
+        """
+        Retrieve documents based on query and store them in state."
+
+        :param query: The search query
+        """
+        documents = [Document(content=f"Result for '{query}'")]
+        state.set("documents", documents)
+        return {"reply": f"Retrieved {len(documents)} document(s)"}
+
+
+retriever_tool = ComponentTool(
+    component=DocumentRetriever(),
+    name="retrieve",
+    description="Retrieve documents and store them in state",
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5-nano"),
+    tools=[retriever_tool],
+    state_schema={"documents": {"type": list[Document]}},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Find documents about Python")])
+```
+
+`ToolInvoker` automatically injects the runtime `State` object and excludes the `State` parameter from the LLM-facing schema, so the model is never asked to supply it.
+Both `State` and `State | None` annotations are supported.
+
 ## Complete Example
 
 This example shows a multi-tool agent workflow where tools share data through State:

@@ -163,24 +163,19 @@ Link to it: `[Install](./page.mdx#install-guide)` or `[Install](/docs/overview/q
 Use Docusaurus admonitions sparingly for supporting information:
 
 ```mdx
-:::note
-General notes or important information to highlight.
+:::note[General notes or important information to highlight.]
 :::
 
-:::tip
-Short tip that helps the reader succeed.
+:::tip[Short tip that helps the reader succeed.]
 :::
 
-:::info
-Useful but non-blocking background information.
+:::info[Useful but non-blocking background information.]
 :::
 
-:::warning
-Risky settings or potential pitfalls.
+:::warning[Risky settings or potential pitfalls.]
 :::
 
-:::danger
-Data loss or security-impacting issues.
+:::danger[Data loss or security-impacting issues.]
 :::
 ```
 

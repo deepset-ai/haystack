@@ -1011,8 +1011,8 @@ Prepares the body for the Llama2 model
 
 Completes chats using LLMs hosted on Amazon Bedrock available via the Bedrock Converse API.
 
-For example, to use the Anthropic Claude 3 Sonnet model, initialize this component with the
-'anthropic.claude-3-5-sonnet-20240620-v1:0' model name.
+For example, to use the Anthropic Claude 4.6 Sonnet model, initialize this component with the
+'global.anthropic.claude-sonnet-4-6' model name.
 
 **Usage example**
 
@@ -1025,7 +1025,7 @@ messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest 
             ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-client = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+client = AmazonBedrockChatGenerator(model="global.anthropic.claude-sonnet-4-6",
                                     streaming_callback=print_streaming_chunk)
 client.run(messages, generation_kwargs={"max_tokens": 512})
 ```
@@ -1036,7 +1036,7 @@ client.run(messages, generation_kwargs={"max_tokens": 512})
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
 
-generator = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
+generator = AmazonBedrockChatGenerator(model="global.anthropic.claude-sonnet-4-6")
 
 image_content = ImageContent.from_file_path(file_path="apple.jpg")
 
@@ -1079,7 +1079,7 @@ weather_tool = Tool(
 
 # Initialize generator with tool
 client = AmazonBedrockChatGenerator(
-    model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    model="global.anthropic.claude-sonnet-4-6",
     tools=[weather_tool]
 )
 
@@ -1176,24 +1176,65 @@ and `aws_region_name`.
 
 - **model** (<code>str</code>) – The model to use for text generation. The model must be available in Amazon Bedrock and must
   be specified in the format outlined in the [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids-arns.html).
+
 - **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+
 - **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+
 - **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+
 - **aws_region_name** (<code>Secret | None</code>) – AWS region name. Make sure the region you set supports Amazon Bedrock.
+
 - **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments sent to the model. These parameters are specific to a model.
-  You can find the model specific arguments in the AWS Bedrock API
-  [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
+
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+
+- `maxTokens`: Maximum number of tokens to generate.
+
+- `stopSequences`: List of stop sequences to stop generation.
+
+- `temperature`: Sampling temperature.
+
+- `topP`: Nucleus sampling parameter.
+
+- `response_format`: Request structured JSON output validated against a schema. Provide a dict with:
+
+  - `schema` (required): a JSON Schema dict describing the expected output structure.
+  - `name` (optional): a name for the schema, defaults to `"response_schema"`.
+  - `description` (optional): a description of the schema.
+
+  Example::
+
+  ```
+    generation_kwargs={
+        "response_format": {
+            "name": "person",
+            "schema": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                "required": ["name", "age"],
+                "additionalProperties": False,
+            },
+        }
+    }
+  ```
+
+  When set, the parsed JSON object is stored in `reply.meta["structured_output"]`.
+  You can find the model specific arguments in the AWS Bedrock API[documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
+
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function called when a new token is received from the stream.
   By default, the model is not set up for streaming. To enable streaming, set this parameter to a callback
   function that handles the streaming chunks. The callback function receives a
   [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk) object and switches
   the streaming mode on.
+
 - **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.
+
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
+
 - **guardrail_config** (<code>dict\[str, str\] | None</code>) – Optional configuration for a guardrail that has been created in Amazon Bedrock.
   This must be provided as a dictionary matching either
   [GuardrailConfiguration](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_GuardrailConfiguration.html).
@@ -1206,6 +1247,7 @@ and `aws_region_name`.
   See the
   [Guardrails Streaming documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-streaming.html)
   for more information.
+
 - **tools_cachepoint_config** (<code>dict\[str, str\] | None</code>) – Optional configuration to use prompt caching for tools.
   The dictionary must match the
   [CachePointBlock schema](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_CachePointBlock.html).
@@ -1269,6 +1311,7 @@ Supports both standard and streaming responses depending on whether a streaming 
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
 - `topP`: Nucleus sampling parameter.
+- `response_format`: Request structured JSON output validated against a schema.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
 
@@ -1304,6 +1347,7 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
 - `topP`: Nucleus sampling parameter.
+- `response_format`: Request structured JSON output validated against a schema.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
 
