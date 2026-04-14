@@ -33,7 +33,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
 
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
     from haystack.utils import Secret

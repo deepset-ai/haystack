@@ -263,7 +263,7 @@ class HuggingFaceAPIChatGenerator:
     ### Usage examples
 
     #### With the serverless inference API (Inference Providers) - free tier available
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -271,19 +271,25 @@ class HuggingFaceAPIChatGenerator:
     from haystack.utils.hf import HFGenerationAPIType
 
     messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
-                ChatMessage.from_user("What's Natural Language Processing?")]
+                ChatMessage.from_user("What's Natural Language Processing? Please be succinct")]
 
     # the api_type can be expressed using the HFGenerationAPIType enum or as a string
     api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
     api_type = "serverless_inference_api" # this is equivalent to the above
 
-    generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                            api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
-                                                        "provider": "together"},
-                                            token=Secret.from_token("<your-api-key>"))
+    generator = HuggingFaceAPIChatGenerator(
+        api_type=api_type,
+        api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
+        token=Secret.from_env_var("HF_API_TOKEN")
+    )
 
     result = generator.run(messages)
     print(result)
+    # >> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+    # >> _content=[TextContent(text='Natural Language Processing (NLP) is a field of AI that focuses on the interaction
+    # >> between humans and computers using natural language. It enables machines to understand, interpret, and
+    # >> generate human language.')], _name=None, _meta={'model': 'Qwen/Qwen2.5-7B-Instruct', 'finish_reason':
+    # >> 'tool_calls', 'index': 0, 'usage': {'prompt_tokens': 33, 'completion_tokens': 39}})]}
     ```
 
     #### With the serverless inference API (Inference Providers) and text+image input
@@ -295,7 +301,7 @@ class HuggingFaceAPIChatGenerator:
     from haystack.utils.hf import HFGenerationAPIType
 
     # Create an image from file path, URL, or base64
-    image = ImageContent.from_file_path("path/to/your/image.jpg")
+    image = ImageContent.from_file_path("test/test_files/images/apple.jpg")
 
     # Create a multimodal message with both text and image
     messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
@@ -303,10 +309,10 @@ class HuggingFaceAPIChatGenerator:
     generator = HuggingFaceAPIChatGenerator(
         api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
         api_params={
-            "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
+            "model": "Qwen/Qwen3-Coder-480B-A35B-Instruct",  # Vision Language Model
             "provider": "hyperbolic"
         },
-        token=Secret.from_token("<your-api-key>")
+        token=Secret.from_env_var("HF_API_TOKEN")
     )
 
     result = generator.run(messages)
