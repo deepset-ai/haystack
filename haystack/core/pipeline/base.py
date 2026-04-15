@@ -446,12 +446,11 @@ class PipelineBase:  # noqa: PLW1641
         If connecting to a component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
-        When multiple senders are connected to the same list-typed receiver socket, the socket is
-        automatically promoted to a lazy-variadic socket so it can accept all of them. The items
-        in the resulting list are ordered by sender component name (alphabetically), not by the
-        order in which ``connect()`` was called. If your downstream component depends on a specific
-        input order, use a dedicated joiner component (for example ``DocumentJoiner``) that lets
-        you control ordering explicitly.
+        If multiple senders are connected to the same list-typed receiver socket, the socket is
+        promoted to a lazy variadic socket so it can accept all incoming values. With ``Pipeline``,
+        the resulting list is ordered alphabetically by sender component name, not by the order in
+        which ``connect()`` was called. With ``AsyncPipeline``, no ordering is guaranteed, since
+        components in different branches may run in parallel.
 
         :param sender:
             The component that delivers the value. This can be either just a component name or can be
@@ -964,13 +963,13 @@ class PipelineBase:  # noqa: PLW1641
         the receiver socket's declared list type directly.
 
         .. note::
-            When multiple senders are connected to the same auto-variadic socket, the items
-            in the resulting list are ordered by sender component name (alphabetically), not by
-            the order in which the connections were declared via ``connect()``. This is because
-            ``Pipeline.run()`` schedules components in alphabetical order so that execution is
-            deterministic and independent of pipeline insertion order. If your downstream
-            component is sensitive to the input order, consider using a dedicated joiner
-            component that lets you control ordering explicitly.
+            When multiple senders are connected to the same auto-variadic socket, ordering
+            depends on the pipeline class. ``Pipeline.run()`` schedules components
+            alphabetically by name, so the resulting list is ordered alphabetically by sender
+            name rather than by the order of ``connect()`` calls. ``AsyncPipeline`` does not
+            guarantee any ordering, since components in different branches may run in parallel.
+            If your downstream component is sensitive to input order, consider using a
+            dedicated joiner component that lets you control ordering explicitly.
 
         :param component_name:
             Name of the component owning the receiver socket, used in error messages.
