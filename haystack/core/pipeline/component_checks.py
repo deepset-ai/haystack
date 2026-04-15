@@ -19,6 +19,10 @@ def can_component_run(component: dict, inputs: dict) -> bool:
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
     """
+    instance = component["instance"]
+    if hasattr(instance, "can_run") and callable(instance.can_run):
+        return instance.can_run(**inputs)
+
     received_all_mandatory_inputs = are_all_sockets_ready(component, inputs, only_check_mandatory=True)
     received_trigger = has_any_trigger(component, inputs)
 

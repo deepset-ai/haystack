@@ -481,6 +481,23 @@ class Agent:
 
         return default_from_dict(cls, data)
 
+    def can_run(
+        self,
+        user_prompt: str | None = None,
+        system_prompt: str | None = None,
+        messages: list[ChatMessage] | None = None,
+        **kwargs: Any,  # noqa: ARG002
+    ) -> bool:
+        """
+        Check if the agent can run with the given inputs.
+
+            :param inputs: Inputs for the agent.
+            :returns: True if the agent can run, False otherwise.
+        """
+        user_prompt = user_prompt or self.user_prompt
+        system_prompt = system_prompt or self.system_prompt
+        return messages is not None or user_prompt is not None or system_prompt is not None
+
     def _create_agent_span(self) -> Any:
         """
         Create a span for the agent run.
