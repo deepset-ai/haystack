@@ -42,7 +42,7 @@ with open("/content/test.yml", "w") as file:
 
 You can convert a YAML pipeline back into Python. Use the `loads()` method to convert a string representation of a pipeline (`str`, `bytes` or `bytearray`)  or the `load()` method to convert a pipeline represented in a file-like object into a corresponding Python object.
 
-Both loading methods support callbacks that let you modify components during the deserialization process.
+Both loading methods support callbacks that let you modify components during the deserialization process. Therefore, loading a serialized pipeline or component assumes that the serialized definition originates from a trusted source and has been reviewed by the user.
 
 Here is an example script:
 
