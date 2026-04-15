@@ -53,7 +53,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@b47fd721da662d48c5680e154ad16a73ed74d2e0 # v1.0.93
+        uses: anthropics/claude-code-action@5fb899572b81d2bb648d4d187173a2f423a9677c # v1.0.96
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_PR_REVIEWS }}
           additional_permissions: |
