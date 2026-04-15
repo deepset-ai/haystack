@@ -832,13 +832,13 @@ class TestHuggingFaceAPIChatGenerator:
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (Qwen/Qwen3-VL-8B-Instruct) is not gated and kept in a warm state.
+        The model used here (Qwen/Qwen3-VL-30B-A3B-Instruct) is not gated and kept in a warm state.
         """
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen3-VL-8B-Instruct", "provider": "together"},
+            api_params={"model": "Qwen/Qwen3-VL-30B-A3B-Instruct", "provider": "fireworks-ai"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -879,7 +879,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen3-VL-8B-Instruct", "provider": "together"},
+            api_params={"model": "Qwen/Qwen3-VL-30B-A3B-Instruct", "provider": "fireworks-ai"},
             generation_kwargs={"max_tokens": 20},
         )
 
