@@ -28,7 +28,8 @@ It can be used with a Text Embeddings Inference (TEI) API endpoint:
 - [Hugging Face Inference Endpoints](https://huggingface.co/inference-endpoints)
 
 Usage example:
-{/\* test-ignore \*/}
+
+<!-- test-ignore -->
 
 ```python
 from haystack import Document

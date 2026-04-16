@@ -19,7 +19,8 @@ arguments to it from a Haystack pipeline run method or by other components in a 
 pass input arguments to this component.
 
 Example:
-{/\* test-ignore \*/}
+
+<!-- test-ignore -->
 
 ```python
 from haystack.utils import Secret
@@ -165,7 +166,8 @@ Can be through the `SERPERDEV_API_KEY` environment variable or by directly assig
 variable in the code.
 
 Usage example:
-{/\* test-ignore \*/}
+
+<!-- test-ignore -->
 
 ```python
 import json
