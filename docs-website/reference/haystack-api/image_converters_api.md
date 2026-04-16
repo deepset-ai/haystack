@@ -24,7 +24,7 @@ Documents are expected to have metadata containing:
 
 ### Usage example
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack import Document

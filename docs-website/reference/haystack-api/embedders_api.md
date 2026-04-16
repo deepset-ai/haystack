@@ -16,7 +16,7 @@ Calculates document embeddings using OpenAI models deployed on Azure.
 
 ### Usage example
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -139,7 +139,7 @@ Embeds strings using OpenAI models deployed on Azure.
 
 ### Usage example
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import AzureOpenAITextEmbedder
@@ -257,7 +257,7 @@ Use it with the following Hugging Face APIs:
 
 #### With free serverless inference API
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -278,7 +278,7 @@ print(result["documents"][0].embedding)
 
 #### With paid inference endpoints
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -299,7 +299,7 @@ print(result["documents"][0].embedding)
 
 #### With self-hosted text embeddings inference
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -443,7 +443,7 @@ Use it with the following Hugging Face APIs:
 
 #### With free serverless inference API
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
@@ -460,7 +460,7 @@ print(text_embedder.run("I love pizza!"))
 
 #### With paid inference endpoints
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
@@ -476,7 +476,7 @@ print(text_embedder.run("I love pizza!"))
 
 #### With self-hosted text embeddings inference
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
@@ -600,7 +600,7 @@ The embedding of each Document is stored in the `embedding` field of the Documen
 
 ### Usage example
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -756,7 +756,7 @@ Computes document embeddings using OpenAI models.
 
 ### Usage example
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -902,7 +902,7 @@ You can use it to embed user query and send it to an embedding Retriever.
 
 ### Usage example
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import OpenAITextEmbedder
@@ -1042,7 +1042,7 @@ and send them to DocumentWriter to write into a Document Store.
 
 ### Usage example:
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -1195,7 +1195,7 @@ and send them to DocumentWriter to write a into a Document Store.
 
 ### Usage example:
 
-{/\* test-ignore \*/}
+<!-- test-ignore -->
 
 ```python
 from haystack import Document
@@ -1327,7 +1327,8 @@ Embeds strings using sparse embedding models from Sentence Transformers.
 You can use it to embed user query and send it to a sparse embedding retriever.
 
 Usage example:
-{/\* test-ignore \*/}
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
@@ -1449,7 +1450,8 @@ Embeds strings using Sentence Transformers models.
 You can use it to embed user query and send it to an embedding retriever.
 
 Usage example:
-{/\* test-ignore \*/}
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.embedders import SentenceTransformersTextEmbedder

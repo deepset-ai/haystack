@@ -42,7 +42,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import AzureOpenAIChatGenerator
     from haystack.dataclasses import ChatMessage

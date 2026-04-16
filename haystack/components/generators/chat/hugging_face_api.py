@@ -293,7 +293,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With the serverless inference API (Inference Providers) and text+image input
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage, ImageContent
@@ -320,7 +320,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With paid inference endpoints
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -338,7 +338,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With self-hosted text generation inference
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
