@@ -389,6 +389,16 @@ For transparent PNGs that need better visibility in dark mode, add a background 
 </div>
 ```
 
+**Youtube Embed**
+
+For embedding YouTube videos, use the `YouTubeEmbed` component:
+
+```mdx
+import YouTubeEmbed from "@site/src/components/YouTubeEmbed";
+
+<YouTubeEmbed videoId="dQw4w9WgXcQ" title="Example Video" />
+```
+
 ## Pull Request Process
 
 ### Pull Request Checklist
