@@ -481,31 +481,26 @@ class Agent:
 
         return default_from_dict(cls, data)
 
-    def can_run(
-        self,
-        user_prompt: str | None = None,
-        system_prompt: str | None = None,
-        messages: list[ChatMessage] | None = None,
-        snapshot: AgentSnapshot | None = None,
-        **kwargs: Any,  # noqa: ARG002
-    ) -> bool:
+    def can_run(self, inputs: dict[str, Any]) -> bool:
         """
         Check if the agent can run with the given inputs.
 
             :param inputs: Inputs for the agent.
             :returns: True if the agent can run, False otherwise.
         """
+        # If there's a snapshot, we can always run (we can resume from the snapshot state without needing any of the
+        # other inputs)
+        if "snapshot" in inputs:
+            return True
 
-        return (
-            self.is_socket_connected("messages")
-            and messages is not None
-            or self.is_socket_connected("user_prompt")
-            and user_prompt is not None
-            or self.is_socket_connected("system_prompt")
-            and system_prompt is not None
-            or self.is_socket_connected("snapshot")
-            and snapshot is not None
-        )
+        # messages, user_prompt, or system_prompt are the main inputs that can trigger the agent to run.
+        # If any of them is connected as input it must be provided at runtime, otherwise the agent won't be triggered.
+        for main_input in ["messages", "user_prompt", "system_prompt"]:
+            if self.is_socket_connected(main_input) and inputs.get(main_input) is None:
+                return False
+
+        # Either none of the main inputs are connected, or all connected inputs have a value at runtime
+        return True
 
     def is_socket_connected(self, socket_name: str) -> bool:
         """

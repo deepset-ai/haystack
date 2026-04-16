@@ -21,7 +21,7 @@ def can_component_run(component: dict, inputs: dict) -> bool:
     """
     instance = component["instance"]
     if hasattr(instance, "can_run") and callable(instance.can_run):
-        return instance.can_run(**inputs)
+        return instance.can_run(inputs)
 
     received_all_mandatory_inputs = are_all_sockets_ready(component, inputs, only_check_mandatory=True)
     received_trigger = has_any_trigger(component, inputs)
