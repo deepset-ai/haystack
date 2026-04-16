@@ -40,12 +40,16 @@ class LocalWhisperTranscriber:
     [GitHub repository](https://github.com/openai/whisper).
 
     ### Usage example
-    {/* test-ignore */}
+
     ```python
     from haystack.components.audio import LocalWhisperTranscriber
 
     whisper = LocalWhisperTranscriber(model="small")
     transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
+    print(transcription)
+    print(transcription)
+    # >> {'documents': [Document(id=dae7051417caaf19304a4ef2ec845e981abe1efd4c8e6ee7ffb25867f165c411,
+    # >> content: ' Answer.', meta: {'audio_file': PosixPath('test/test_files/audio/answer.wav'), 'language': 'en'})]}
     ```
     """
 
