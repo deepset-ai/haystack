@@ -489,8 +489,8 @@ class Agent:
         needing any of the other inputs. Otherwise, if any of the main inputs (messages, user_prompt, system_prompt)
         are connected as input, they must be provided at runtime.
 
-        For the special case where none of the main inputs are provided and no prompts are set via initialization,
-        we return True, to raise an exception later in the run method.
+        For the special case where none of the main inputs are connected, nor provided, and no prompts are set via
+        initialization, we return True, to raise an exception later in the run method.
 
         :param inputs: Inputs for the agent.
         :returns: True if the agent can run, False otherwise.
