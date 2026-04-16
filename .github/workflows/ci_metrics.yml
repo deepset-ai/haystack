@@ -16,7 +16,7 @@ jobs:
   send:
     runs-on: ubuntu-slim
     steps:
-      - uses: int128/datadog-actions-metrics@46d3f0ae7393a3763b7f135f8721d89d924f3aed # v1.158.0
+      - uses: int128/datadog-actions-metrics@d2f2fefbd0145c2d401da6f00f01d41ce6ab6230 # v1.159.0
         with:
           datadog-api-key: ${{ secrets.DATADOG_API_KEY }}
           datadog-site: "datadoghq.eu"

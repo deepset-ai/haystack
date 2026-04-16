@@ -991,3 +991,31 @@ Use the Cohere Reranker to re-rank the list of documents based on the query.
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not > 0.
+
+#### run_async
+
+```python
+run_async(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously re-rank the list of documents based on the query.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Query string.
+- **documents** (<code>list\[Document\]</code>) – List of Documents.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents you want the Ranker to return.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given query in descending order of similarity.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.

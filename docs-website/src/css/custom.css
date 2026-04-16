@@ -893,12 +893,10 @@ html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .nav
 .key-value-table td {
   padding: 0.6rem 0.75rem;
   vertical-align: top;
-  border-bottom: 1px solid #444;
 }
 
 .key-value-table td:first-child {
   font-weight: 600;
-  white-space: nowrap;
   width: 1%;
   min-width: 180px;
   padding-right: 1rem;
@@ -910,17 +908,8 @@ html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .nav
   word-break: break-word;
 }
 
-.key-value-table td code,
-.key-value-table td .badge {
-  white-space: nowrap;
-}
-
 .key-value-table td a {
   word-break: break-word;
-}
-
-.key-value-table tr:last-child td {
-  border-bottom: none;
 }
 
 @media (max-width: 600px) {

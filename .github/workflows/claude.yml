@@ -1,0 +1,60 @@
+name: Claude Code
+# Only deepset-ai org members (MEMBER, OWNER, COLLABORATOR) can trigger @claude
+# The 'issues' trigger is intentionally omitted for this public repo to prevent
+# external users from triggering the action.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    if: |
+      (
+        github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        (
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'COLLABORATOR'
+        )
+      ) || (
+        github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        (
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'COLLABORATOR'
+        )
+      ) || (
+        github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        (
+          github.event.review.author_association == 'MEMBER' ||
+          github.event.review.author_association == 'OWNER' ||
+          github.event.review.author_association == 'COLLABORATOR'
+        )
+      )
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@5fb899572b81d2bb648d4d187173a2f423a9677c # v1.0.96
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_PR_REVIEWS }}
+          additional_permissions: |
+            actions: read

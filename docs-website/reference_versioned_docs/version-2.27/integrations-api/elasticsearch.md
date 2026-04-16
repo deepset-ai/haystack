@@ -473,6 +473,7 @@ __init__(
     embedding_similarity_function: Literal[
         "cosine", "dot_product", "l2_norm", "max_inner_product"
     ] = "cosine",
+    sparse_vector_field: str | None = None,
     **kwargs: Any
 ) -> None
 ```
@@ -507,6 +508,9 @@ of `id:secret`. Secret instances can also be loaded from a token using the `Secr
   To choose the most appropriate function, look for information about your embedding model.
   To understand how document scores are computed, see the Elasticsearch
   [documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/dense-vector.html#dense-vector-params)
+- **sparse_vector_field** (<code>str | None</code>) – If set, the name of the Elasticsearch field where sparse embeddings
+  will be stored using the `sparse_vector` field type. When not set, any `sparse_embedding`
+  data on Documents is silently dropped during writes.
 - \*\***kwargs** (<code>Any</code>) – Optional arguments that `Elasticsearch` takes.
 
 #### client
