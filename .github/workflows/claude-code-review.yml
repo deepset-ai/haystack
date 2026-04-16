@@ -1,0 +1,45 @@
+name: Claude Code Review
+# For deepset-ai org members: runs automatically on every PR
+# For external contributors: runs when a maintainer adds the 'claude-review' label
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+  pull_request_target:
+    types: [labeled]
+
+jobs:
+  claude-review:
+    if: |
+      (
+        github.event_name == 'pull_request' &&
+        !github.event.pull_request.head.repo.fork &&
+        (
+          github.event.pull_request.author_association == 'MEMBER' ||
+          github.event.pull_request.author_association == 'OWNER' ||
+          github.event.pull_request.author_association == 'COLLABORATOR'
+        )
+      ) || (
+        github.event_name == 'pull_request_target' &&
+        github.event.label.name == 'claude-review'
+      )
+    runs-on: ubuntu-slim
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@5fb899572b81d2bb648d4d187173a2f423a9677c # v1.0.96
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_PR_REVIEWS }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'

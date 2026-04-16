@@ -95,7 +95,7 @@ class HuggingFaceLocalChatGenerator:
     LLMs running locally may need powerful hardware.
 
     ### Usage example
-    <!-- test-ignore -->
+    {/* test-ignore */}
     ```python
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage

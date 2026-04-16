@@ -131,7 +131,7 @@ jobs:
       - name: Run
         run: hatch run test:unit
 
-      - uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache
         if: matrix.os == 'macos-latest'
         with:
@@ -231,7 +231,7 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }}
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}

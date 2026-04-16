@@ -375,13 +375,32 @@ def _create_agent_snapshot(
     :param agent_breakpoint: AgentBreakpoint object containing breakpoints
     :return: An AgentSnapshot containing the agent's state and component visits.
     """
+    try:
+        serialized_chat_generator = _serialize_value_with_schema(
+            _deepcopy_with_exceptions(component_inputs["chat_generator"])
+        )
+    except Exception as error:
+        logger.warning(
+            "Failed to serialize the agent's chat_generator inputs. "
+            "The inputs in the snapshot will be replaced with an empty dictionary. Error: {e}",
+            e=error,
+        )
+        serialized_chat_generator = {}
+
+    try:
+        serialized_tool_invoker = _serialize_value_with_schema(
+            _deepcopy_with_exceptions(component_inputs["tool_invoker"])
+        )
+    except Exception as error:
+        logger.warning(
+            "Failed to serialize the agent's tool_invoker inputs. "
+            "The inputs in the snapshot will be replaced with an empty dictionary. Error: {e}",
+            e=error,
+        )
+        serialized_tool_invoker = {}
+
     return AgentSnapshot(
-        component_inputs={
-            "chat_generator": _serialize_value_with_schema(
-                _deepcopy_with_exceptions(component_inputs["chat_generator"])
-            ),
-            "tool_invoker": _serialize_value_with_schema(_deepcopy_with_exceptions(component_inputs["tool_invoker"])),
-        },
+        component_inputs={"chat_generator": serialized_chat_generator, "tool_invoker": serialized_tool_invoker},
         component_visits=component_visits,
         break_point=agent_breakpoint,
         timestamp=datetime.now(),

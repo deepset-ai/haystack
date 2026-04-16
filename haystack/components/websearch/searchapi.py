@@ -24,7 +24,7 @@ class SearchApiWebSearch:
     Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
     Usage example:
-    <!-- test-ignore -->
+    {/* test-ignore */}
     ```python
     from haystack.components.websearch import SearchApiWebSearch
     from haystack.utils import Secret
