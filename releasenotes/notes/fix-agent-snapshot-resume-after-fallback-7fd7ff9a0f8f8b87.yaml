@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Preserve resumable agent snapshots when some ``chat_generator`` or ``tool_invoker`` inputs are
+    non-serializable. Haystack now omits only the failing runtime-only fields (for example
+    non-serializable callbacks) instead of replacing the whole payload with an empty dictionary.
