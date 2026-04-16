@@ -55,6 +55,6 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@5fb899572b81d2bb648d4d187173a2f423a9677c # v1.0.96
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_PR_REVIEWS }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_PR_REVIEWS_PUBLIC_REPOS }}
           additional_permissions: |
             actions: read
