@@ -20,7 +20,7 @@ and a Document Intelligence or Cognitive Services resource. For help with settin
 
 ### Usage example
 
-{/\* test-ignore \*/}
+{/* test-ignore */}
 
 ```python
 import os
@@ -379,7 +379,7 @@ Converts files to FileContent objects to be included in ChatMessage objects.
 
 ### Usage example
 
-{/\* test-ignore \*/}
+{/* test-ignore */}
 
 ```python
 from haystack.components.converters import FileToFileContent
@@ -537,7 +537,7 @@ Documents are expected to have metadata containing:
 
 ### Usage example
 
-{/\* test-ignore \*/}
+{/* test-ignore */}
 
 ```python
 from haystack import Document
@@ -1740,7 +1740,8 @@ For more options on running Tika,
 see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
 Usage example:
-{/\* test-ignore \*/}
+
+{/* test-ignore */}
 
 ```python
 from haystack.components.converters.tika import TikaDocumentConverter

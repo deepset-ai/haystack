@@ -466,7 +466,8 @@ that contains an NER component. Annotations are stored as metadata
 in the documents.
 
 Usage example:
-{/\* test-ignore \*/}
+
+{/* test-ignore */}
 
 ```python
 from haystack import Document
