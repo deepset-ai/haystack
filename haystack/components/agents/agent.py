@@ -490,7 +490,7 @@ class Agent:
         """
         # If there's a snapshot, we can always run (we can resume from the snapshot state without needing any of the
         # other inputs)
-        if "snapshot" in inputs:
+        if inputs.get("snapshot") is not None:
             return True
 
         # messages, user_prompt, or system_prompt are the main inputs that can trigger the agent to run.
