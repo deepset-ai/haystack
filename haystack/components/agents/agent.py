@@ -485,8 +485,12 @@ class Agent:
         """
         Check if the agent can run with the given inputs.
 
-            :param inputs: Inputs for the agent.
-            :returns: True if the agent can run, False otherwise.
+        If there's a snapshot input, the agent can always run because it can resume from the snapshot state without
+        needing any of the other inputs. Otherwise, if any of the main inputs (messages, user_prompt, system_prompt)
+        are connected as input, they must be provided at runtime.
+
+        :param inputs: Inputs for the agent.
+        :returns: True if the agent can run, False otherwise.
         """
         # If there's a snapshot, we can always run (we can resume from the snapshot state without needing any of the
         # other inputs)
