@@ -14,7 +14,7 @@ Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant docum
 
 Usage example:
 
-<!-- test-ignore -->
+{/* test-ignore */}
 
 ```python
 from haystack.components.websearch import SearchApiWebSearch
@@ -138,7 +138,7 @@ See the [Serper Dev website](https://serper.dev/) for more details.
 
 Usage example:
 
-<!-- test-ignore -->
+{/* test-ignore */}
 
 ```python
 from haystack.components.websearch import SerperDevWebSearch

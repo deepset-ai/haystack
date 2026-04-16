@@ -9,11 +9,11 @@ Background tester for Python code snippets embedded in Docusaurus Markdown/MDX f
 Features:
 - Recursively scans specified directories for .md and .mdx files
 - Extracts triple-backtick fenced blocks labeled with "python" or "py"
-- Skips blocks preceded by an immediate "<!-- test-ignore -->" marker
+- Skips blocks preceded by an immediate "{/* test-ignore */}" marker
 - Supports markers above a block:
-  - "<!-- test-run -->" to force running even if heuristically considered a concept
-  - "<!-- test-concept -->" to force skipping as illustrative
-  - "<!-- test-require-files: path1 path2 -->" to require files to exist (skip if missing)
+  - "{/* test-run */}" to force running even if heuristically considered a concept
+  - "{/* test-concept */}" to force skipping as illustrative
+  - "{/* test-require-files: path1 path2 */}" to require files to exist (skip if missing)
 - Optionally skips blocks containing unsafe patterns
 - Executes each snippet in isolation via a temporary file using a Python subprocess
 - Times out long-running snippets
@@ -31,13 +31,13 @@ Usage:
   python scripts/test_python_snippets.py docs/overview/intro.mdx docs/concepts/components.mdx
 
   # Force-run a snippet without imports via marker above the block
-  <!-- test-run -->
+  {/* test-run */}
   ```python
   print("hello world")
   ```
 
   # Mark an illustrative snippet to skip
-  <!-- test-concept -->
+  {/* test-concept */}
   ```python
   @dataclass
   class Foo:
@@ -45,7 +45,7 @@ Usage:
   ```
 
   # Require fixtures; snippet will be skipped if files are missing
-  <!-- test-require-files: assets/dog.jpg data/example.json -->
+  {/* test-require-files: assets/dog.jpg data/example.json */}
   ```python
   from haystack.dataclasses import ByteStream
   image = ByteStream.from_file_path("assets/dog.jpg")
@@ -68,10 +68,10 @@ from pathlib import Path
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
 FENCE_END_RE = re.compile(r"^\s*```\s*$")
-TEST_IGNORE_MARK = "<!-- test-ignore -->"
-TEST_CONCEPT_MARK = "<!-- test-concept -->"
-TEST_RUN_MARK = "<!-- test-run -->"
-TEST_REQUIRE_FILES_PREFIX = "<!-- test-require-files:"
+TEST_IGNORE_MARK = "{/* test-ignore */}"
+TEST_CONCEPT_MARK = "{/* test-concept */}"
+TEST_RUN_MARK = "{/* test-run */}"
+TEST_REQUIRE_FILES_PREFIX = "{/* test-require-files:"
 
 
 UNSAFE_PATTERNS = [
@@ -168,7 +168,7 @@ def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
             if prev == "":
                 j -= 1
                 continue
-            if prev.startswith("<!--") and prev.endswith("-->"):
+            if prev.startswith("{/*") and prev.endswith("*/}"):
                 markers.append(prev)
                 j -= 1
                 continue
@@ -186,7 +186,7 @@ def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
         if TEST_RUN_MARK in markers:
             pending_forced_run = True
         for marker in markers:
-            if marker.startswith(TEST_REQUIRE_FILES_PREFIX) and marker.endswith("-->"):
+            if marker.startswith(TEST_REQUIRE_FILES_PREFIX) and marker.endswith("*/}"):
                 content = marker[len(TEST_REQUIRE_FILES_PREFIX) : -3].strip()
                 if content:
                     pending_requires_files.extend(content.split())
