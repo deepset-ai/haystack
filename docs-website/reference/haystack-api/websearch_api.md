@@ -13,8 +13,7 @@ slug: "/websearch-api"
 Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
 Usage example:
-
-{/* test-ignore */}
+{/\* test-ignore \*/}
 
 ```python
 from haystack.components.websearch import SearchApiWebSearch
@@ -137,8 +136,7 @@ Uses [Serper](https://serper.dev/) to search the web for relevant documents.
 See the [Serper Dev website](https://serper.dev/) for more details.
 
 Usage example:
-
-{/* test-ignore */}
+{/\* test-ignore \*/}
 
 ```python
 from haystack.components.websearch import SerperDevWebSearch
