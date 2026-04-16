@@ -486,6 +486,7 @@ class Agent:
         user_prompt: str | None = None,
         system_prompt: str | None = None,
         messages: list[ChatMessage] | None = None,
+        snapshot: AgentSnapshot | None = None,
         **kwargs: Any,  # noqa: ARG002
     ) -> bool:
         """
@@ -494,9 +495,26 @@ class Agent:
             :param inputs: Inputs for the agent.
             :returns: True if the agent can run, False otherwise.
         """
-        user_prompt = user_prompt or self.user_prompt
-        system_prompt = system_prompt or self.system_prompt
-        return messages is not None or user_prompt is not None or system_prompt is not None
+
+        return (
+            self.is_socket_connected("messages")
+            and messages is not None
+            or self.is_socket_connected("user_prompt")
+            and user_prompt is not None
+            or self.is_socket_connected("system_prompt")
+            and system_prompt is not None
+            or self.is_socket_connected("snapshot")
+            and snapshot is not None
+        )
+
+    def is_socket_connected(self, socket_name: str) -> bool:
+        """
+        Check if a socket is connected to any sender.
+
+        :param socket_name: The name of the socket to check.
+        :returns: True if the socket is connected to at least one sender, False otherwise.
+        """
+        return bool(self.__haystack_input__[socket_name].senders)
 
     def _create_agent_span(self) -> Any:
         """
