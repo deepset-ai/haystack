@@ -27,7 +27,7 @@ class SerperDevWebSearch:
     See the [Serper Dev website](https://serper.dev/) for more details.
 
     Usage example:
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack.components.websearch import SerperDevWebSearch
     from haystack.utils import Secret

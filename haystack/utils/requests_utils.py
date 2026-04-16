@@ -18,7 +18,7 @@ def request_with_retry(
     Executes an HTTP request with a configurable exponential backoff retry on failures.
 
     Usage example:
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack.utils import request_with_retry
 

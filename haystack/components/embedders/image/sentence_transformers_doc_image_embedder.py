@@ -32,7 +32,7 @@ class SentenceTransformersDocumentImageEmbedder:
     The embedding of each Document is stored in the `embedding` field of the Document.
 
     ### Usage example
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder

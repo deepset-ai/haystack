@@ -27,7 +27,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import AzureOpenAIGenerator
@@ -170,7 +170,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
@@ -388,7 +388,7 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
@@ -701,7 +701,7 @@ format for input and output. Use it to generate text with Hugging Face APIs:
 
 #### With the serverless inference API (Inference Providers) - free tier available
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -727,7 +727,7 @@ print(result)
 
 #### With the serverless inference API (Inference Providers) and text+image input
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -756,7 +756,7 @@ print(result)
 
 #### With paid inference endpoints
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -776,7 +776,7 @@ print(result)
 
 #### With self-hosted text generation inference
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -955,7 +955,7 @@ LLMs running locally may need powerful hardware.
 
 ### Usage example
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
@@ -1876,7 +1876,7 @@ Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_comple
 
 #### With Hugging Face Inference Endpoints
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -1892,7 +1892,7 @@ print(result)
 
 #### With self-hosted text generation inference
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -1910,7 +1910,7 @@ Be aware that this example might not work as the Hugging Face Inference API no l
 `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
 `chat_completion` endpoint.
 
-{/* test-ignore */}
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator

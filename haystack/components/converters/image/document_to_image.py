@@ -34,7 +34,7 @@ class DocumentToImageContent:
     - For PDF files, a `page_number` key specifying which page to extract
 
     ### Usage example
-    {/* test-ignore */}
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.converters.image.document_to_image import DocumentToImageContent
