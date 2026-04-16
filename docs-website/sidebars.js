@@ -533,7 +533,6 @@ export default {
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
             'pipeline-components/retrievers/faissembeddingretriever',
             'pipeline-components/retrievers/filterretriever',
-            'pipeline-components/retrievers/multifilterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
