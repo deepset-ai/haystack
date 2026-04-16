@@ -489,6 +489,9 @@ class Agent:
         needing any of the other inputs. Otherwise, if any of the main inputs (messages, user_prompt, system_prompt)
         are connected as input, they must be provided at runtime.
 
+        For the special case where none of the main inputs are provided and no prompts are set via initialization,
+        we return True, to raise an exception later in the run method.
+
         :param inputs: Inputs for the agent.
         :returns: True if the agent can run, False otherwise.
         """
@@ -499,7 +502,8 @@ class Agent:
 
         # messages, user_prompt, or system_prompt are the main inputs that can trigger the agent to run.
         # If any of them is connected as input it must be provided at runtime, otherwise the agent won't be triggered.
-        for main_input in ["messages", "user_prompt", "system_prompt"]:
+        main_inputs = ["messages", "user_prompt", "system_prompt"]
+        for main_input in main_inputs:
             if self.is_socket_connected(main_input) and inputs.get(main_input) is None:
                 return False
 
