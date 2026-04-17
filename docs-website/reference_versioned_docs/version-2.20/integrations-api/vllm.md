@@ -118,7 +118,7 @@ Create the OpenAI clients.
 #### run
 
 ```python
-run(documents: list[Document]) -> dict[str, Any]
+run(documents: list[Document]) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embed a list of Documents.
@@ -129,14 +129,16 @@ Embed a list of Documents.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary with:
+- <code>dict\[str, list\[Document\] | dict\[str, Any\]\]</code> – A dictionary with:
 - `documents`: The input documents with their `embedding` field populated.
 - `meta`: Information about the usage of the model.
 
 #### run_async
 
 ```python
-run_async(documents: list[Document]) -> dict[str, Any]
+run_async(
+    documents: list[Document],
+) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Asynchronously embed a list of Documents.
@@ -147,7 +149,7 @@ Asynchronously embed a list of Documents.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary with:
+- <code>dict\[str, list\[Document\] | dict\[str, Any\]\]</code> – A dictionary with:
 - `documents`: The input documents with their `embedding` field populated.
 - `meta`: Information about the usage of the model.
 
@@ -245,7 +247,7 @@ Create the OpenAI clients.
 #### run
 
 ```python
-run(text: str) -> dict[str, Any]
+run(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Embed a single string.
@@ -256,14 +258,14 @@ Embed a single string.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary with:
+- <code>dict\[str, list\[float\] | dict\[str, Any\]\]</code> – A dictionary with:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
 #### run_async
 
 ```python
-run_async(text: str) -> dict[str, Any]
+run_async(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Asynchronously embed a single string.
@@ -274,7 +276,7 @@ Asynchronously embed a single string.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary with:
+- <code>dict\[str, list\[float\] | dict\[str, Any\]\]</code> – A dictionary with:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
 
@@ -532,3 +534,164 @@ Run the VLLM chat generator on the given input data asynchronously.
 
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
+
+## haystack_integrations.components.rankers.vllm.ranker
+
+### VLLMRanker
+
+Ranks Documents based on their similarity to a query using models served with [vLLM](https://docs.vllm.ai/).
+
+It expects a vLLM server to be running and accessible at the `api_base_url` parameter and uses the
+`/rerank` endpoint exposed by vLLM.
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with a reranker model:
+
+```bash
+vllm serve BAAI/bge-reranker-base
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.vllm import VLLMRanker
+
+ranker = VLLMRanker(model="BAAI/bge-reranker-base")
+docs = [
+    Document(content="The capital of Brazil is Brasilia."),
+    Document(content="The capital of France is Paris."),
+]
+result = ranker.run(query="What is the capital of France?", documents=docs)
+print(result["documents"][0].content)
+```
+
+### Usage example with vLLM-specific parameters
+
+Pass vLLM-specific parameters via the `extra_parameters` dictionary. They are merged into the
+request body sent to the `/rerank` endpoint.
+
+```python
+ranker = VLLMRanker(
+    model="BAAI/bge-reranker-base",
+    extra_parameters={"truncate_prompt_tokens": 256},
+)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    model: str,
+    api_key: Secret | None = Secret.from_env_var("VLLM_API_KEY", strict=False),
+    api_base_url: str = "http://localhost:8000/v1",
+    top_k: int | None = None,
+    score_threshold: float | None = None,
+    meta_fields_to_embed: list[str] | None = None,
+    meta_data_separator: str = "\n",
+    http_client_kwargs: dict[str, Any] | None = None,
+    extra_parameters: dict[str, Any] | None = None
+) -> None
+```
+
+Creates an instance of VLLMRanker.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The name of the reranker model served by vLLM. Check
+  [vLLM documentation](https://docs.vllm.ai/en/stable/models/pooling_models/scoring/#supported-models) for
+  information on supported models.
+- **api_key** (<code>Secret | None</code>) – The vLLM API key. Defaults to the `VLLM_API_KEY` environment variable.
+  Only required if the vLLM server was started with `--api-key`.
+- **api_base_url** (<code>str</code>) – The base URL of the vLLM server.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents to return. If `None`, all documents are returned.
+- **score_threshold** (<code>float | None</code>) – If set, documents with a relevance score below this value are dropped.
+  Applied after `top_k`, so the output may contain fewer than `top_k` documents.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be concatenated with the document
+  content before reranking.
+- **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the document content.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client` or
+  `httpx.AsyncClient`. For more information, see the
+  [HTTPX documentation](https://www.python-httpx.org/api/#client).
+- **extra_parameters** (<code>dict\[str, Any\] | None</code>) – Additional parameters merged into the request body sent to the vLLM
+  `/rerank` endpoint. Use this to pass parameters not part of the standard rerank API, such as
+  `truncate_prompt_tokens`. See the
+  [vLLM docs](https://docs.vllm.ai/en/stable/models/pooling_models/scoring/#rerank-api) for more information.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the httpx clients.
+
+#### run
+
+```python
+run(
+    query: str,
+    documents: list[Document],
+    top_k: int | None = None,
+    score_threshold: float | None = None,
+) -> dict[str, list[Document] | dict[str, Any]]
+```
+
+Returns a list of Documents ranked by their similarity to the given query.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Query string.
+- **documents** (<code>list\[Document\]</code>) – List of Documents to rank.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents to return. Overrides the value set at initialization.
+- **score_threshold** (<code>float | None</code>) – Minimum relevance score required for a document to be returned. Overrides
+  the value set at initialization.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\] | dict\[str, Any\]\]</code> – A dictionary with:
+- `documents`: Documents sorted from most to least relevant.
+- `meta`: Information about the model and usage.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
+#### run_async
+
+```python
+run_async(
+    query: str,
+    documents: list[Document],
+    top_k: int | None = None,
+    score_threshold: float | None = None,
+) -> dict[str, list[Document] | dict[str, Any]]
+```
+
+Asynchronously returns a list of Documents ranked by their similarity to the given query.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Query string.
+- **documents** (<code>list\[Document\]</code>) – List of Documents to rank.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents to return. Overrides the value set at initialization.
+- **score_threshold** (<code>float | None</code>) – Minimum relevance score required for a document to be returned. Overrides
+  the value set at initialization.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\] | dict\[str, Any\]\]</code> – A dictionary with:
+- `documents`: Documents sorted from most to least relevant.
+- `meta`: Information about the model and usage.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
