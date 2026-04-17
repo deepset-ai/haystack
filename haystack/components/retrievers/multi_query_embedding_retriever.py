@@ -123,6 +123,30 @@ class MultiQueryEmbeddingRetriever:
         # de-duplicate and sort
         docs = _deduplicate_documents(docs)
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+
+        # --- Optional retrieval confidence metadata (non-breaking) ---
+        scores = [doc.score for doc in docs if doc.score is not None and isinstance(doc.score, (int, float))]
+
+        if scores:
+            top_score = max(scores)
+            avg_score = sum(scores) / len(scores)
+            confidence_threshold = retriever_kwargs.get("confidence_threshold", 0.7)  # Configurable
+            
+            confidence_metadata = {
+                "top_score": round(float(top_score), 4),
+                "avg_score": round(float(avg_score), 4),
+                "threshold": confidence_threshold,
+                "confidence_level": "low" if top_score < confidence_threshold else "high",
+                "scored_docs_count": len(scores),
+                "total_docs_count": len(docs),
+            }
+            
+            # Attach metadata to each document
+            for doc in docs:
+                if doc.meta is None:
+                    doc.meta = {}
+                doc.meta["retrieval_confidence"] = confidence_metadata
+
         return {"documents": docs}
 
     def _run_on_thread(self, query: str, retriever_kwargs: dict[str, Any] | None = None) -> list[Document] | None:
