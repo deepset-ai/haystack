@@ -249,6 +249,7 @@ class TestSerDe:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     }
                 ]
@@ -278,6 +279,7 @@ class TestSerDe:
                             "function": "builtins.print",
                             "name": "name",
                             "parameters": {"x": {"type": "string"}},
+                            "condition": None,
                         },
                     }
                 ],

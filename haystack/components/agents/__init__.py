@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-_import_structure = {"agent": ["Agent"], "state": ["State"]}
+_import_structure = {"agent": ["Agent"], "compaction": ["SummarizationCompactionTool"], "state": ["State"]}
 
 if TYPE_CHECKING:
     from .agent import Agent as Agent
+    from .compaction import SummarizationCompactionTool as SummarizationCompactionTool
     from .state import State as State
 
 else:

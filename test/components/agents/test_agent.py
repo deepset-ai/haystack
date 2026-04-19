@@ -17,7 +17,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents.agent import Agent
-from haystack.components.agents.state import merge_lists
+from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -190,6 +190,8 @@ class TestAgent:
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
         assert agent.__haystack_output__._sockets_dict == {
             "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
+            "tool_call_counts": OutputSocket(name="tool_call_counts", type=dict, receivers=[]),
+            "step": OutputSocket(name="step", type=int, receivers=[]),
             "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
         }
 
@@ -242,6 +244,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                     {
@@ -324,6 +327,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "condition": None,
                                 },
                             }
                         ]
@@ -393,6 +397,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                     {
@@ -412,6 +417,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                 ],
@@ -436,6 +442,8 @@ class TestAgent:
         assert agent.state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
+            "tool_call_counts": {"type": dict, "handler": replace_values},
+            "step": {"type": int, "handler": replace_values},
         }
         assert agent.tool_invoker_kwargs == {"max_workers": 5, "enable_streaming_callback_passthrough": True}
         assert agent._tool_invoker.max_workers == 5
@@ -540,6 +548,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                     {
@@ -559,6 +568,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "condition": None,
                         },
                     },
                 ],
@@ -572,7 +582,11 @@ class TestAgent:
             },
         }
         agent = Agent.from_dict(data)
-        assert agent.state_schema == {"messages": {"type": list[ChatMessage], "handler": merge_lists}}
+        assert agent.state_schema == {
+            "messages": {"type": list[ChatMessage], "handler": merge_lists},
+            "tool_call_counts": {"type": dict, "handler": replace_values},
+            "step": {"type": int, "handler": replace_values},
+        }
 
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -611,6 +625,8 @@ class TestAgent:
         assert deserialized_agent.state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
+            "tool_call_counts": {"type": dict, "handler": replace_values},
+            "step": {"type": int, "handler": replace_values},
         }
 
     def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
@@ -1099,15 +1115,15 @@ class TestAgentTracing:
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]',  # noqa: E501
             '["text"]',
-            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
+            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "tool_call_counts": {"type": "dict", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "step": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step": 0}',  # noqa: E501
             1,
         ]
         for idx, record in enumerate(tags_records):
@@ -1161,15 +1177,15 @@ class TestAgentTracing:
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
             100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "condition": null}}]',  # noqa: E501
             '["text"]',
-            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
+            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "tool_call_counts": {"type": "dict", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "step": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}], "step": 0}',  # noqa: E501
             1,
         ]
         for idx, record in enumerate(tags_records):
@@ -1794,3 +1810,328 @@ class TestAgentWaitsForBlockedPredecessor:
             }
         )
         assert "agent" in result
+
+
+class TestProcessConditionTools:
+    """Tests for _process_condition_tools, _increment_tool_call_count, tool_call_counts, and step tracking."""
+
+    def test_auto_invoke_condition_tool_with_empty_params(self, monkeypatch):
+        """Condition tool with no LLM-facing params is auto-invoked silently."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        invocation_log = []
+
+        def side_effect(messages: list[ChatMessage]) -> dict:
+            invocation_log.append(messages)
+            return {"messages": [ChatMessage.from_user("[Summary]")] + messages[-2:]}
+
+        condition_tool = Tool(
+            name="compactor",
+            description="Compacts messages.",
+            parameters={"type": "object", "properties": {}},
+            function=side_effect,
+            inputs_from_state={"messages": "messages"},
+            outputs_to_state={"messages": {"source": "messages", "handler": replace_values}},
+            condition=lambda state: len(state.get("messages") or []) > 4,
+        )
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[condition_tool])
+
+        # Mock generator to return text (exit immediately)
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Done")]})
+
+        # Provide enough messages to trigger the condition
+        messages = [
+            ChatMessage.from_user("a"),
+            ChatMessage.from_assistant("b"),
+            ChatMessage.from_user("c"),
+            ChatMessage.from_assistant("d"),
+            ChatMessage.from_user("e"),
+        ]
+        result = agent.run(messages=messages)
+
+        # The condition tool was auto-invoked
+        assert len(invocation_log) == 1
+        # tool_call_counts tracks the auto-invocation
+        assert result.get("tool_call_counts") == {"compactor": 1}
+
+    def test_reprompt_condition_tool_with_params(self, monkeypatch):
+        """Condition tool with LLM-facing params injects a system message instead of auto-invoking."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        condition_tool = Tool(
+            name="memory_read",
+            description="Read user memories.",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+            function=lambda query: {"memories": [f"memory for: {query}"]},
+            condition=lambda state: state.get("step") == 0,
+        )
+
+        call_count = 0
+
+        def mock_generator_run(messages, tools=None, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call: LLM sees the re-prompt and calls the tool
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="memory_read", arguments={"query": "user preferences"})]
+                        )
+                    ]
+                }
+            # Second call: LLM responds with text
+            return {"replies": [ChatMessage.from_assistant("Here are your preferences.")]}
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[condition_tool])
+        agent.chat_generator.run = MagicMock(side_effect=mock_generator_run)
+
+        result = agent.run(messages=[ChatMessage.from_user("What do I like?")])
+
+        # The re-prompt system message was injected
+        first_call_messages = agent.chat_generator.run.call_args_list[0]
+        msgs = first_call_messages[1].get("messages") or first_call_messages[0][0]
+        system_prompts = [m for m in msgs if m.is_from(ChatRole.SYSTEM)]
+        assert any("You must call the 'memory_read' tool now" in m.text for m in system_prompts)
+
+        # tool_call_counts tracks the LLM-invoked tool
+        assert result.get("tool_call_counts") == {"memory_read": 1}
+
+    def test_reprompt_retries_up_to_3_times(self, monkeypatch):
+        """If the LLM ignores the re-prompt, it retries up to 3 times then gives up."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        condition_tool = Tool(
+            name="validator",
+            description="Validates the output.",
+            parameters={"type": "object", "properties": {"data": {"type": "string"}}, "required": ["data"]},
+            function=lambda data: {"valid": True},
+            condition=lambda state: state.get("step") == 0,
+        )
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[condition_tool], max_agent_steps=10)
+
+        # LLM always ignores the re-prompt and responds with text
+        agent.chat_generator.run = MagicMock(
+            return_value={"replies": [ChatMessage.from_assistant("I'm ignoring the instruction.")]}
+        )
+
+        agent.run(messages=[ChatMessage.from_user("Do something")])
+
+        # The mocked LLM always returns text so the agent eventually exits after 3 retries.
+        assert agent.chat_generator.run.call_count >= 1
+        first_call_msgs = agent.chat_generator.run.call_args_list[0][1].get("messages", [])
+        assert any(m.is_from(ChatRole.SYSTEM) and "validator" in m.text for m in first_call_msgs)
+
+    def test_reprompt_clears_after_tool_called(self, monkeypatch):
+        """Once the LLM calls a re-prompted tool, pending_condition_tools is cleared."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        condition_tool = Tool(
+            name="validator",
+            description="Validates the output.",
+            parameters={"type": "object", "properties": {"data": {"type": "string"}}, "required": ["data"]},
+            function=lambda data: {"valid": True},
+            condition=lambda state: state.get("step") == 0,
+        )
+
+        call_count = 0
+
+        def mock_run(messages, tools=None, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="validator", arguments={"data": "test"})]
+                        )
+                    ]
+                }
+            return {"replies": [ChatMessage.from_assistant("All done.")]}
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[condition_tool])
+        agent.chat_generator.run = MagicMock(side_effect=mock_run)
+
+        result = agent.run(messages=[ChatMessage.from_user("Validate")])
+
+        assert result["tool_call_counts"] == {"validator": 1}
+        assert result["last_message"].text == "All done."
+
+    def test_step_tracking_in_state(self, monkeypatch):
+        """The step field in state is set at the start of each iteration."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[])
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hi")]})
+
+        result = agent.run(messages=[ChatMessage.from_user("Hello")])
+
+        # After a single iteration (step 0), step should be 0
+        assert result["step"] == 0
+
+    def test_tool_call_counts_tracks_successful_calls(self, weather_tool, monkeypatch):
+        """tool_call_counts only counts successful (non-error) tool invocations."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        call_count = 0
+
+        def mock_run(messages, tools=None, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                        )
+                    ]
+                }
+            return {"replies": [ChatMessage.from_assistant("The weather is sunny.")]}
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[weather_tool])
+        agent.chat_generator.run = MagicMock(side_effect=mock_run)
+
+        result = agent.run(messages=[ChatMessage.from_user("Weather in Berlin?")])
+
+        assert result["tool_call_counts"] == {"weather_tool": 2}
+        assert result["step"] == 2  # 3 iterations (0, 1, 2), last one exits with text
+
+    def test_tool_call_counts_empty_when_no_tools_called(self, monkeypatch):
+        """tool_call_counts is not set when no tools are called."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[])
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+
+        result = agent.run(messages=[ChatMessage.from_user("Hi")])
+
+        # tool_call_counts was never set (no tools called), so it's absent from state data
+        assert result.get("tool_call_counts") is None
+
+    def test_condition_tool_visible_to_llm(self, monkeypatch):
+        """Condition tools are included in the tools list sent to the LLM."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        condition_tool = Tool(
+            name="my_condition_tool",
+            description="A condition tool.",
+            parameters={"type": "object", "properties": {}},
+            function=dict,
+            condition=lambda state: False,  # never fires
+        )
+        regular_tool = Tool(
+            name="regular_tool",
+            description="A regular tool.",
+            parameters={"type": "object", "properties": {"x": {"type": "string"}}},
+            function=lambda x: x,
+        )
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[regular_tool, condition_tool])
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Done")]})
+
+        agent.run(messages=[ChatMessage.from_user("Hello")])
+
+        # Both tools should be passed to the chat generator
+        call_kwargs = agent.chat_generator.run.call_args[1]
+        tool_names = [t.name for t in call_kwargs["tools"]]
+        assert "my_condition_tool" in tool_names
+        assert "regular_tool" in tool_names
+
+    def test_condition_tool_as_exit_condition(self, monkeypatch):
+        """A condition tool can be used as an exit condition since it's visible to the LLM."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        condition_tool = Tool(
+            name="finish",
+            description="Call to finish.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: {"done": True},
+            condition=lambda state: (state.get("tool_call_counts") or {}).get("validate", 0) > 0,
+        )
+
+        # Should not raise — condition tool name is valid for exit_conditions
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[condition_tool], exit_conditions=["finish"])
+        assert "finish" in agent.exit_conditions
+
+
+class TestProcessConditionToolsAsync:
+    @pytest.mark.asyncio
+    async def test_auto_invoke_condition_tool_async(self, monkeypatch):
+        """Condition tool with no LLM-facing params is auto-invoked in async run too."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        invocation_log = []
+
+        def side_effect(messages: list[ChatMessage]) -> dict:
+            invocation_log.append(True)
+            return {"messages": [ChatMessage.from_user("[Summary]")] + messages[-2:]}
+
+        condition_tool = Tool(
+            name="compactor",
+            description="Compacts messages.",
+            parameters={"type": "object", "properties": {}},
+            function=side_effect,
+            inputs_from_state={"messages": "messages"},
+            outputs_to_state={"messages": {"source": "messages", "handler": replace_values}},
+            condition=lambda state: len(state.get("messages") or []) > 4,
+        )
+
+        generator = MockChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[condition_tool])
+
+        messages = [
+            ChatMessage.from_user("a"),
+            ChatMessage.from_assistant("b"),
+            ChatMessage.from_user("c"),
+            ChatMessage.from_assistant("d"),
+            ChatMessage.from_user("e"),
+        ]
+        result = await agent.run_async(messages=messages)
+
+        assert len(invocation_log) == 1
+        assert result.get("tool_call_counts") == {"compactor": 1}
+
+    @pytest.mark.asyncio
+    async def test_step_tracking_async(self, monkeypatch):
+        """Step tracking works in async run."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        generator = MockChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[])
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("Hello")])
+
+        assert result["step"] == 0
+
+
+class TestIncrementToolCallCount:
+    def test_increment_from_empty(self):
+        state = State(schema={"tool_call_counts": {"type": dict, "handler": replace_values}})
+        Agent._increment_tool_call_count(state, "my_tool")
+        assert state.get("tool_call_counts") == {"my_tool": 1}
+
+    def test_increment_existing(self):
+        state = State(
+            schema={"tool_call_counts": {"type": dict, "handler": replace_values}},
+            data={"tool_call_counts": {"my_tool": 2}},
+        )
+        Agent._increment_tool_call_count(state, "my_tool")
+        assert state.get("tool_call_counts") == {"my_tool": 3}
+
+    def test_increment_multiple_tools(self):
+        state = State(
+            schema={"tool_call_counts": {"type": dict, "handler": replace_values}},
+            data={"tool_call_counts": {"tool_a": 1}},
+        )
+        Agent._increment_tool_call_count(state, "tool_b")
+        counts = state.get("tool_call_counts")
+        assert counts == {"tool_a": 1, "tool_b": 1}
