@@ -447,9 +447,9 @@ class PipelineBase:  # noqa: PLW1641
         'component_name.connections_name'.
 
         If multiple senders are connected to the same list-typed receiver socket, the socket is
-        promoted to a lazy variadic socket so it can accept all incoming values. With ``Pipeline``,
+        promoted to a lazy variadic socket so it can accept all incoming values. With `Pipeline`,
         the resulting list is ordered alphabetically by sender component name, not by the order in
-        which ``connect()`` was called. With ``AsyncPipeline``, no ordering is guaranteed, since
+        which `connect()` was called. With `AsyncPipeline`, no ordering is guaranteed, since
         components in different branches may run in parallel.
 
         :param sender:
@@ -961,15 +961,6 @@ class PipelineBase:  # noqa: PLW1641
 
         When auto-variadicity is applied, `wrap_input_in_list` is also set to False so that sender output types match
         the receiver socket's declared list type directly.
-
-        .. note::
-            When multiple senders are connected to the same auto-variadic socket, ordering
-            depends on the pipeline class. ``Pipeline.run()`` schedules components
-            alphabetically by name, so the resulting list is ordered alphabetically by sender
-            name rather than by the order of ``connect()`` calls. ``AsyncPipeline`` does not
-            guarantee any ordering, since components in different branches may run in parallel.
-            If your downstream component is sensitive to input order, consider using a
-            dedicated joiner component that lets you control ordering explicitly.
 
         :param component_name:
             Name of the component owning the receiver socket, used in error messages.
