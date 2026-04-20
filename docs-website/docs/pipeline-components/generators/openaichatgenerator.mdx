@@ -229,6 +229,44 @@ pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "
 >> 'cached_tokens': 0}}})]}}
 ```
 
+### In YAML
+
+This is the YAML representation of the pipeline shown above. It dynamically constructs a prompt and generates an answer using a chat model.
+
+```yaml
+components:
+  llm:
+    init_parameters:
+      api_base_url: null
+      api_key:
+        env_vars:
+        - OPENAI_API_KEY
+        strict: true
+        type: env_var
+      generation_kwargs: {}
+      http_client_kwargs: null
+      max_retries: null
+      model: gpt-4o-mini
+      organization: null
+      streaming_callback: null
+      timeout: null
+      tools: null
+      tools_strict: false
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+  prompt_builder:
+    init_parameters:
+      required_variables: null
+      template: null
+      variables: null
+    type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder
+connection_type_validation: true
+connections:
+- receiver: llm.messages
+  sender: prompt_builder.prompt
+max_runs_per_component: 100
+metadata: {}
+```
+
 ## Additional References
 
 :notebook: Tutorial: [Building a Chat Application with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
