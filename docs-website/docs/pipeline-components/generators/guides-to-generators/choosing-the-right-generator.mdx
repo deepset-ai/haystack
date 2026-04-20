@@ -36,6 +36,7 @@ When you enable streaming, the generator calls your `streaming_callback` for eve
 - **Tool calls**: The model is building a tool/function call. Read `chunk.tool_calls`.
 - **Tool result**: A tool finished and returned output. Read `chunk.tool_call_result`.
 - **Text tokens**: Normal assistant text. Read `chunk.content`.
+- **Reasoning tokens**: Extended thinking output (for models that support it). Read `chunk.reasoning`.
 
 Only one of these fields appears per chunk. Use `chunk.start` and `chunk.finish_reason` to detect boundaries. Use `chunk.index` and `chunk.component_info` for tracing.
 
@@ -46,7 +47,7 @@ For providers that support multiple candidates, set `n=1` to stream.
 Check out the parameter details in our [API Reference for StreamingChunk](/reference/data-classes-api#streamingchunk).
 :::
 
-The simplest way is to use the built-in `print_streaming_chunk` function. It handles tool calls, tool results, and text tokens.
+The simplest way is to use the built-in `print_streaming_chunk` function. It handles all chunk types and prints formatted output to stdout:
 
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
@@ -57,33 +58,43 @@ generator = SomeGenerator(streaming_callback=print_streaming_chunk)
 
 ### Custom Callback
 
-If you need custom rendering, you can create your own callback.
-
-Handle the three chunk types in this order: tool calls, tool result, and text.
+If you need custom rendering (for example, SSE or WebSocket transport), write your own callback. Handle the four chunk types in order:
 
 ```python
 from haystack.dataclasses import StreamingChunk
 
 
-def my_stream(chunk: StreamingChunk):
-    if chunk.start:
-        on_start()  # e.g., open an SSE stream
-
-    # 1) Tool calls: name and JSON args arrive as deltas
+def my_streaming_callback(chunk: StreamingChunk) -> None:
+    # Tool calls: name and JSON arguments arrive as streaming deltas
     if chunk.tool_calls:
-        for t in chunk.tool_calls:
-            on_tool_call_delta(index=t.index, name=t.tool_name, args_delta=t.arguments)
+        for tool_call in chunk.tool_calls:
+            if chunk.start:
+                print(
+                    f"\n[TOOL CALL]\nTool: {tool_call.tool_name}\nArguments: ",
+                    end="",
+                    flush=True,
+                )
+            if tool_call.arguments:
+                print(tool_call.arguments, end="", flush=True)
 
-    # 2) Tool result: final output from the tool
-    if chunk.tool_call_result is not None:
-        on_tool_result(chunk.tool_call_result)
+    # Tool result: fully formed output from the tool, emitted by ToolInvoker
+    if chunk.tool_call_result:
+        print(f"\n[TOOL RESULT]\n{chunk.tool_call_result.result}", end="", flush=True)
 
-    # 3) Text tokens
+    # Text tokens: normal assistant response, arrives word by word
     if chunk.content:
-        on_text_delta(chunk.content)
+        if chunk.start:
+            print("\n[ASSISTANT]\n", end="", flush=True)
+        print(chunk.content, end="", flush=True)
 
-    if chunk.finish_reason:
-        on_finish(chunk.finish_reason)
+    # Reasoning tokens: extended thinking output (for models that support it)
+    if chunk.reasoning:
+        if chunk.start:
+            print("\n[REASONING]\n", end="", flush=True)
+        print(chunk.reasoning.reasoning_text, end="", flush=True)
+
+    if chunk.finish_reason is not None:
+        print("\n\n", end="", flush=True)
 ```
 
 ### Agents and Tools
