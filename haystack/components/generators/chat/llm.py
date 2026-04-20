@@ -132,7 +132,7 @@ class LLM(Agent):
             - "last_message": The last message exchanged during the LLM's run.
         """
         return super(LLM, self).run(  # noqa: UP008
-            messages=messages,
+            messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
             system_prompt=system_prompt,
@@ -169,7 +169,7 @@ class LLM(Agent):
             - "last_message": The last message exchanged during the LLM's run.
         """
         return await super(LLM, self).run_async(  # noqa: UP008
-            messages=messages,
+            messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
             system_prompt=system_prompt,
