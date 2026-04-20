@@ -38,7 +38,14 @@ vLLM supports a range of embedding models. Check the [vLLM pooling models docs](
 
 ### vLLM-specific parameters
 
-You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens`, `truncation_side`, `additional_data`, or `use_activation`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens` or `truncation_side`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+
+```python
+embedder = VLLMTextEmbedder(
+    model="google/embeddinggemma-300m",
+    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
+)
+```
 
 ### Matryoshka embeddings
 
@@ -85,19 +92,6 @@ text_embedder = VLLMTextEmbedder(model="google/embeddinggemma-300m")
 print(text_embedder.run("I love pizza!"))
 
 ## {'embedding': [-0.0215301513671875, 0.01499176025390625, ...], 'meta': {...}}
-```
-
-### With vLLM-specific parameters
-
-Pass vLLM-specific parameters through the `extra_parameters` dictionary:
-
-```python
-from haystack_integrations.components.embedders.vllm import VLLMTextEmbedder
-
-text_embedder = VLLMTextEmbedder(
-    model="google/embeddinggemma-300m",
-    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
-)
 ```
 
 ### In a pipeline
