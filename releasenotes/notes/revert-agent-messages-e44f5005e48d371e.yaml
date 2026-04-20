@@ -2,7 +2,7 @@
 upgrade:
   - |
     ``Agent.run()`` and ``Agent.run_async()`` now require ``messages`` as an explicit argument (no longer
-    optional). If you were relying on the default ``None`` value, pass an empty list instead:
+    optional). If you were relying on the default ``None`` value in Haystack version 2.26 or 2.27, pass an empty list instead:
 
     .. code:: python
 
