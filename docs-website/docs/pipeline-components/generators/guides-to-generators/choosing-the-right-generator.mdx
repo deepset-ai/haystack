@@ -53,7 +53,7 @@ The simplest way is to use the built-in `print_streaming_chunk` function. It han
 from haystack.components.generators.utils import print_streaming_chunk
 
 generator = SomeGenerator(streaming_callback=print_streaming_chunk)
-## For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
+# For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
 ```
 
 ### Custom Callback
