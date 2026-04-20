@@ -55,7 +55,7 @@ If the model was trained with Matryoshka Representation Learning, you can reduce
 
 `VLLMDocumentEmbedder` encodes documents in batches. Use `batch_size` (default `32`) to control how many documents are sent in a single request to the vLLM server, and `progress_bar` to toggle the progress indicator.
 
-By default, if an embedding request fails, an exception is raised. Set `raise_on_failure=False` to log the error and continue processing the remaining documents instead.
+By default (`raise_on_failure=False`), failed embedding requests are logged and processing continues with the remaining documents. Set `raise_on_failure=True` to raise an exception instead.
 
 ### Instructions
 
