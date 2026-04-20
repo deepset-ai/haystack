@@ -247,7 +247,7 @@ class InMemoryDocumentStore:
             The list of documents to score, should be produced by
             the filter_documents method; may be an empty list.
         :returns:
-            A list of tuples, each containing a Document and its BM25L score.
+            A list of tuples, each containing a Document and its BM25Okapi score.
         """
         k = self.bm25_parameters.get("k1", 1.5)
         b = self.bm25_parameters.get("b", 0.75)
@@ -274,7 +274,7 @@ class InMemoryDocumentStore:
             return {tok: idf.get(tok, 0.0) for tok in tokens}
 
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
-            """Per-token BM25L computation."""
+            """Per-token BM25Okapi computation."""
             freq_term = freq.get(token, 0.0)
             freq_norm = freq_term + k * (1 - b + b * doc_len / self._avg_doc_len)
             return freq_term * (1.0 + k) / freq_norm
@@ -376,7 +376,7 @@ class InMemoryDocumentStore:
 
     def save_to_disk(self, path: str) -> None:
         """
-        Write the database and its' data to disk as a JSON file.
+        Write the database and its data to disk as a JSON file.
 
         :param path: The path to the JSON file.
         """
@@ -388,7 +388,7 @@ class InMemoryDocumentStore:
     @classmethod
     def load_from_disk(cls, path: str) -> "InMemoryDocumentStore":
         """
-        Load the database and its' data from disk as a JSON file.
+        Load the database and its data from disk as a JSON file.
 
         :param path: The path to the JSON file.
         :returns: The loaded InMemoryDocumentStore.
@@ -411,7 +411,7 @@ class InMemoryDocumentStore:
 
     def count_documents(self) -> int:
         """
-        Returns the number of how many documents are present in the DocumentStore.
+        Returns the number of documents present in the DocumentStore.
         """
         return len(self.storage.keys())
 
@@ -419,10 +419,8 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
-        documentation.
-
-        :param filters: The filters to apply to the document list.
+        :param filters: The filters to apply. For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
         :returns: A list of Documents that match the given filters.
         """
         if filters:
@@ -485,7 +483,7 @@ class InMemoryDocumentStore:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
 
-        :param document_ids: The object_ids to delete.
+        :param document_ids: The document_ids to delete.
         """
         for doc_id in document_ids:
             if doc_id not in self.storage.keys():
@@ -550,6 +548,108 @@ class InMemoryDocumentStore:
         doc_ids = [doc.id for doc in matching]
         self.delete_documents(doc_ids)
         return len(doc_ids)
+
+    def count_documents_by_filter(self, filters: dict[str, Any]) -> int:
+        """
+        Returns the number of documents that match the provided filters.
+
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+        :returns: The number of documents that match the filters.
+        """
+        if filters:
+            InMemoryDocumentStore._validate_filters(filters)
+            return sum(1 for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc))
+        return len(self.storage)
+
+    def count_unique_metadata_by_filter(self, filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]:
+        """
+        Returns the number of unique values for each specified metadata field from documents matching the filters.
+
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+        :param metadata_fields: List of field names to count unique values for.
+            Field names can include or omit the "meta." prefix.
+        :returns: A dictionary mapping each metadata field name (without "meta." prefix)
+            to the count of its unique values among the filtered documents.
+        """
+        if filters:
+            InMemoryDocumentStore._validate_filters(filters)
+            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        else:
+            docs = list(self.storage.values())
+
+        result: dict[str, int] = {}
+        for field in metadata_fields:
+            key = field.removeprefix("meta.") if field.startswith("meta.") else field
+            values = {doc.meta.get(key) for doc in docs if key in doc.meta and doc.meta[key] is not None}
+            result[key] = len(values)
+        return result
+
+    def get_metadata_fields_info(self) -> dict[str, dict[str, str]]:
+        """
+        Returns information about the metadata fields present in the stored documents.
+
+        Types are inferred from the stored values (keyword, int, float, boolean).
+
+        :returns: A dictionary mapping each metadata field name to a dict with a "type" key.
+        """
+        type_map: dict[str, str] = {}
+        for doc in self.storage.values():
+            for key, value in doc.meta.items():
+                if value is None:
+                    continue
+                if isinstance(value, bool):
+                    type_map[key] = "boolean"
+                elif isinstance(value, int):
+                    type_map[key] = "int"
+                elif isinstance(value, float):
+                    type_map[key] = "float"
+                else:
+                    type_map[key] = "keyword"
+        return {k: {"type": v} for k, v in type_map.items()}
+
+    def get_metadata_field_min_max(self, metadata_field: str) -> dict[str, Any]:
+        """
+        Returns the minimum and maximum values for the given metadata field across all documents.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :returns: A dictionary with "min" and "max" keys. Returns `{"min": None, "max": None}`
+            if the field is missing or has no values.
+        """
+        key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
+        values = [
+            doc.meta[key]
+            for doc in self.storage.values()
+            if key in doc.meta and doc.meta[key] is not None and isinstance(doc.meta[key], (int, float, str))
+        ]
+        if not values:
+            return {"min": None, "max": None}
+        try:
+            return {"min": min(values), "max": max(values)}
+        except TypeError:
+            return {"min": None, "max": None}
+
+    def get_metadata_field_unique_values(
+        self, metadata_field: str, search_term: str | None = None
+    ) -> tuple[list[str], int]:
+        """
+        Returns unique values for a metadata field, optionally filtered by a search term in content.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :param search_term: If set, only documents whose content contains this term (case-insensitive)
+            are considered.
+        :returns: A tuple of (list of unique values, total count of unique values).
+        """
+        key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
+        if search_term:
+            docs = [doc for doc in self.storage.values() if doc.content and search_term.lower() in doc.content.lower()]
+        else:
+            docs = list(self.storage.values())
+        values = sorted({str(doc.meta[key]) for doc in docs if key in doc.meta and doc.meta[key] is not None}, key=str)
+        return values, len(values)
 
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
@@ -725,7 +825,7 @@ class InMemoryDocumentStore:
 
     async def count_documents_async(self) -> int:
         """
-        Returns the number of how many documents are present in the DocumentStore.
+        Returns the number of documents present in the DocumentStore.
         """
         return len(self.storage.keys())
 
@@ -733,10 +833,8 @@ class InMemoryDocumentStore:
         """
         Returns the documents that match the filters provided.
 
-        For a detailed specification of the filters, refer to the DocumentStore.filter_documents() protocol
-        documentation.
-
-        :param filters: The filters to apply to the document list.
+        :param filters: The filters to apply. For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
         :returns: A list of Documents that match the given filters.
         """
         return await asyncio.get_running_loop().run_in_executor(
@@ -759,11 +857,100 @@ class InMemoryDocumentStore:
         """
         Deletes all documents with matching document_ids from the DocumentStore.
 
-        :param document_ids: The object_ids to delete.
+        :param document_ids: The document_ids to delete.
         """
         await asyncio.get_running_loop().run_in_executor(
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
         )
+
+    async def update_by_filter_async(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
+        """
+        Updates the metadata of all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for updating.
+            For filter syntax, see filter_documents.
+        :param meta: The metadata fields to update. These will be merged with existing metadata.
+        :returns: The number of documents updated.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.update_by_filter(filters=filters, meta=meta)
+        )
+
+    async def count_documents_by_filter_async(self, filters: dict[str, Any]) -> int:
+        """
+        Returns the number of documents that match the provided filters.
+
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+        :returns: The number of documents that match the filters.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.count_documents_by_filter(filters=filters)
+        )
+
+    async def count_unique_metadata_by_filter_async(
+        self, filters: dict[str, Any], metadata_fields: list[str]
+    ) -> dict[str, int]:
+        """
+        Returns the number of unique values for each specified metadata field from documents matching the filters.
+
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+        :param metadata_fields: List of field names to count unique values for.
+            Field names can include or omit the "meta." prefix.
+        :returns: A dictionary mapping each metadata field name (without "meta." prefix)
+            to the count of its unique values among the filtered documents.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.count_unique_metadata_by_filter(filters=filters, metadata_fields=metadata_fields),
+        )
+
+    async def get_metadata_fields_info_async(self) -> dict[str, dict[str, str]]:
+        """
+        Returns information about the metadata fields present in the stored documents.
+
+        Types are inferred from the stored values (keyword, int, float, boolean).
+
+        :returns: A dictionary mapping each metadata field name to a dict with a "type" key.
+        """
+        return await asyncio.get_running_loop().run_in_executor(self.executor, self.get_metadata_fields_info)
+
+    async def get_metadata_field_min_max_async(self, metadata_field: str) -> dict[str, Any]:
+        """
+        Returns the minimum and maximum values for the given metadata field across all documents.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :returns: A dictionary with "min" and "max" keys. Returns `{"min": None, "max": None}`
+            if the field is missing or has no values.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.get_metadata_field_min_max(metadata_field=metadata_field)
+        )
+
+    async def get_metadata_field_unique_values_async(
+        self, metadata_field: str, search_term: str | None = None
+    ) -> tuple[list[str], int]:
+        """
+        Returns unique values for a metadata field, optionally filtered by a search term in content.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :param search_term: If set, only documents whose content contains this term (case-insensitive)
+            are considered.
+        :returns: A tuple of (list of unique values, total count of unique values).
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.get_metadata_field_unique_values(metadata_field=metadata_field, search_term=search_term),
+        )
+
+    async def delete_all_documents_async(self) -> None:
+        """
+        Deletes all documents in the document store.
+        """
+        await asyncio.get_running_loop().run_in_executor(self.executor, self.delete_all_documents)
 
     async def bm25_retrieval_async(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False

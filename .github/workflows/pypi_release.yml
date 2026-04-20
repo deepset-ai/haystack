@@ -13,10 +13,13 @@ env:
 jobs:
   release-on-pypi:
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
@@ -25,7 +28,4 @@ jobs:
         run: hatch build
 
       - name: Publish on PyPi
-        env:
-          HATCH_INDEX_USER: __token__
-          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
-        run: hatch publish -y
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

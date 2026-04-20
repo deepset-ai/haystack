@@ -35,7 +35,7 @@ __init__(
     mode: JinaReaderMode | str,
     api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
     json_response: bool = True,
-)
+) -> None
 ```
 
 Initialize a JinaReader instance.
@@ -102,11 +102,36 @@ Process the query/URL using the Jina AI reader service.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
   - `documents`: A list of `Document` objects.
 
+#### run_async
+
+```python
+run_async(
+    query: str, headers: dict[str, str] | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously process the query/URL using the Jina AI reader service.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query string or URL to process.
+- **headers** (<code>dict\[str, str\] | None</code>) – Optional headers to include in the request for customization. Refer to the
+  [Jina Reader documentation](https://jina.ai/reader/) for more information.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+  - `documents`: A list of `Document` objects.
+
 ## haystack_integrations.components.embedders.jina.document_embedder
 
 ### JinaDocumentEmbedder
 
 A component for computing Document embeddings using Jina AI models.
+
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 Usage example:
@@ -142,7 +167,9 @@ __init__(
     task: str | None = None,
     dimensions: int | None = None,
     late_chunking: bool | None = None,
-)
+    *,
+    base_url: str = JINA_API_URL
+) -> None
 ```
 
 Create a JinaDocumentEmbedder component.
@@ -167,6 +194,7 @@ Create a JinaDocumentEmbedder component.
 - **late_chunking** (<code>bool | None</code>) – A boolean to enable or disable late chunking.
   Apply the late chunking technique to leverage the model's long-context capabilities for
   generating contextual chunk embeddings.
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 
 The support of `task` and `late_chunking` parameters is only available for jina-embeddings-v3.
 
@@ -205,6 +233,31 @@ run(documents: list[Document]) -> dict[str, Any]
 ```
 
 Compute the embeddings for a list of Documents.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with following keys:
+- `documents`: List of Documents, each with an `embedding` field containing the computed embedding.
+- `meta`: A dictionary with metadata including the model name and usage statistics.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of Documents.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, Any]
+```
+
+Asynchronously compute the embeddings for a list of Documents.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
 
 **Parameters:**
 
@@ -260,12 +313,13 @@ __init__(
     *,
     api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
     model: str = "jina-clip-v2",
+    base_url: str = JINA_API_URL,
     file_path_meta_field: str = "file_path",
     root_path: str | None = None,
     embedding_dimension: int | None = None,
     image_size: tuple[int, int] | None = None,
     batch_size: int = 5
-)
+) -> None
 ```
 
 Create a JinaDocumentImageEmbedder component.
@@ -280,6 +334,7 @@ Create a JinaDocumentImageEmbedder component.
 - "jina-clip-v2" (default)
 - "jina-embeddings-v4"
   Check the list of available models on [Jina documentation](https://jina.ai/embeddings/).
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
   document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
@@ -335,6 +390,26 @@ Embed a list of image documents.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Asynchronously embed a list of image documents.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: Documents with embeddings.
+
 ## haystack_integrations.components.embedders.jina.text_embedder
 
 ### JinaTextEmbedder
@@ -370,7 +445,9 @@ __init__(
     task: str | None = None,
     dimensions: int | None = None,
     late_chunking: bool | None = None,
-)
+    *,
+    base_url: str = JINA_API_URL
+) -> None
 ```
 
 Create a JinaTextEmbedder component.
@@ -391,6 +468,7 @@ Create a JinaTextEmbedder component.
 - **late_chunking** (<code>bool | None</code>) – A boolean to enable or disable late chunking.
   Apply the late chunking technique to leverage the model's long-context capabilities for
   generating contextual chunk embeddings.
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 
 The support of `task` and `late_chunking` parameters is only available for jina-embeddings-v3.
 
@@ -444,6 +522,31 @@ Embed a string.
 
 - <code>TypeError</code> – If the input is not a string.
 
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, Any]
+```
+
+Asynchronously embed a string.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The string to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with following keys:
+- `embedding`: The embedding of the input string.
+- `meta`: A dictionary with metadata including the model name and usage statistics.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a string.
+
 ## haystack_integrations.components.rankers.jina.ranker
 
 ### JinaRanker
@@ -472,7 +575,9 @@ __init__(
     api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
     top_k: int | None = None,
     score_threshold: float | None = None,
-)
+    *,
+    base_url: str = JINA_API_URL
+) -> None
 ```
 
 Creates an instance of JinaRanker.
@@ -484,6 +589,7 @@ Creates an instance of JinaRanker.
 - **model** (<code>str</code>) – The name of the Jina model to use. Check the list of available models on `https://jina.ai/reranker/`
 - **top_k** (<code>int | None</code>) – The maximum number of Documents to return per query. If `None`, all documents are returned
 - **score_threshold** (<code>float | None</code>) – If provided only returns documents with a score above this threshold.
+- **base_url** (<code>str</code>) – The base URL of the Jina API.
 
 **Raises:**
 
@@ -525,7 +631,7 @@ run(
     documents: list[Document],
     top_k: int | None = None,
     score_threshold: float | None = None,
-)
+) -> dict[str, list[Document]]
 ```
 
 Returns a list of Documents ranked by their similarity to the given query.
@@ -539,7 +645,39 @@ Returns a list of Documents ranked by their similarity to the given query.
 
 **Returns:**
 
-- – A dictionary with the following keys:
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given query in descending order of similarity.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
+#### run_async
+
+```python
+run_async(
+    query: str,
+    documents: list[Document],
+    top_k: int | None = None,
+    score_threshold: float | None = None,
+) -> dict[str, list[Document]]
+```
+
+Asynchronously returns a list of Documents ranked by their similarity to the given query.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Query string.
+- **documents** (<code>list\[Document\]</code>) – List of Documents.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents you want the Ranker to return.
+- **score_threshold** (<code>float | None</code>) – If provided only returns documents with a score above this threshold.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
 
 **Raises:**

@@ -54,7 +54,7 @@ pip install langfuse-haystack
 
 <br />
 
-:::note Usage Notice
+:::note[Usage Notice]
 
 To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. In the example below, we first set the environmental variables and then import the relevant Haystack components.
 
@@ -74,7 +74,7 @@ os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
 
-from haystack.components.builders import DynamicChatPromptBuilder
+from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
@@ -84,8 +84,8 @@ from haystack_integrations.components.connectors.langfuse import LangfuseConnect
 if __name__ == "__main__":
     pipe = Pipeline()
     pipe.add_component("tracer", LangfuseConnector("Chat example"))
-    pipe.add_component("prompt_builder", DynamicChatPromptBuilder())
-    pipe.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+    pipe.add_component("prompt_builder", ChatPromptBuilder())
+    pipe.add_component("llm", OpenAIChatGenerator())
 
     pipe.connect("prompt_builder.prompt", "llm.messages")
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         data={
             "prompt_builder": {
                 "template_variables": {"location": "Berlin"},
-                "prompt_source": messages,
+                "template": messages,
             },
         },
     )

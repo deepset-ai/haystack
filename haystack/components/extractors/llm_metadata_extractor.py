@@ -4,6 +4,8 @@
 
 import copy
 import json
+from asyncio import Semaphore, gather
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import Any
@@ -126,25 +128,25 @@ class LLMMetadataExtractor:
 
     extractor = LLMMetadataExtractor(
         prompt=NER_PROMPT,
-        chat_generator=generator,
+        chat_generator=chat_generator,
         expected_keys=["entities"],
         raise_on_failure=False,
     )
 
     extractor.run(documents=docs)
-    >> {'documents': [
-        Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-        meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
-              {'entity': 'Haystack', 'entity_type': 'product'}]}),
-        Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
-        meta: {'entities': [
-                {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
-                {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
-                ]})
-           ]
-        'failed_documents': []
-       }
-    >>
+    # >> {'documents': [
+    #     Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+    #     meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
+    #           {'entity': 'Haystack', 'entity_type': 'product'}]}),
+    #     Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
+    #     meta: {'entities': [
+    #             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
+    #             {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
+    #             ]})
+    #        ]
+    #     'failed_documents': []
+    #    }
+    # >>
     ```
     """  # noqa: E501
 
@@ -173,6 +175,8 @@ class LLMMetadataExtractor:
         :param raise_on_failure: Whether to raise an error on failure during the execution of the Generator or
             validation of the JSON output.
         :param max_workers: The maximum number of workers to use in the thread pool executor.
+            This parameter is used limit the maximum number of requests that should be allowed to run concurrently
+            when using the `run_async` method.
         """
         self.prompt = prompt
         ast = SandboxedEnvironment().parse(prompt)
@@ -293,6 +297,52 @@ class LLMMetadataExtractor:
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 
+    async def _run_async(self, prompt: ChatMessage | None) -> dict[str, Any]:
+        # If prompt is None, return an error dictionary
+        if prompt is None:
+            return {"error": "Document has no content, skipping LLM call."}
+
+        try:
+            result = await self._chat_generator.run_async(messages=[prompt])  # type: ignore[attr-defined]
+        except Exception as e:
+            if self.raise_on_failure:
+                raise e
+            logger.exception(
+                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
+                class_name=self._chat_generator.__class__.__name__,
+                error=e,
+            )
+            result = {"error": "LLM failed with exception: " + str(e)}
+        return result
+
+    def _process_results(
+        self, documents: list[Document], results: Iterable[dict[str, Any]]
+    ) -> tuple[list[Document], list[Document]]:
+        successful_documents = []
+        failed_documents = []
+        for document, result in zip(documents, results, strict=True):
+            new_meta = {**document.meta}
+            if "error" in result:
+                new_meta["metadata_extraction_error"] = result["error"]
+                new_meta["metadata_extraction_response"] = None
+                failed_documents.append(replace(document, meta=new_meta))
+                continue
+
+            parsed_metadata = self._extract_metadata(result["replies"][0].text)
+            if "error" in parsed_metadata:
+                new_meta["metadata_extraction_error"] = parsed_metadata["error"]
+                new_meta["metadata_extraction_response"] = result["replies"][0]
+                failed_documents.append(replace(document, meta=new_meta))
+                continue
+
+            for key in parsed_metadata:
+                new_meta[key] = parsed_metadata[key]
+                # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs
+                new_meta.pop("metadata_extraction_error", None)
+                new_meta.pop("metadata_extraction_response", None)
+            successful_documents.append(replace(document, meta=new_meta))
+        return successful_documents, failed_documents
+
     @component.output_types(documents=list[Document], failed_documents=list[Document])
     def run(self, documents: list[Document], page_range: list[str | int] | None = None) -> dict[str, Any]:
         """
@@ -336,28 +386,64 @@ class LLMMetadataExtractor:
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = executor.map(self._run_on_thread, all_prompts)
 
-        successful_documents = []
-        failed_documents = []
-        for document, result in zip(documents, results, strict=True):
-            new_meta = {**document.meta}
-            if "error" in result:
-                new_meta["metadata_extraction_error"] = result["error"]
-                new_meta["metadata_extraction_response"] = None
-                failed_documents.append(replace(document, meta=new_meta))
-                continue
+        successful_documents, failed_documents = self._process_results(documents, results)
 
-            parsed_metadata = self._extract_metadata(result["replies"][0].text)
-            if "error" in parsed_metadata:
-                new_meta["metadata_extraction_error"] = parsed_metadata["error"]
-                new_meta["metadata_extraction_response"] = result["replies"][0]
-                failed_documents.append(replace(document, meta=new_meta))
-                continue
+        return {"documents": successful_documents, "failed_documents": failed_documents}
 
-            for key in parsed_metadata:
-                new_meta[key] = parsed_metadata[key]
-                # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs
-                new_meta.pop("metadata_extraction_error", None)
-                new_meta.pop("metadata_extraction_response", None)
-            successful_documents.append(replace(document, meta=new_meta))
+    @component.output_types(documents=list[Document], failed_documents=list[Document])
+    async def run_async(self, documents: list[Document], page_range: list[str | int] | None = None) -> dict[str, Any]:
+        """
+        Asynchronously extract metadata from documents using a Large Language Model.
+
+        If `page_range` is provided, the metadata will be extracted from the specified range of pages. This component
+        will split the documents into pages and extract metadata from the specified range of pages. The metadata will be
+        extracted from the entire document if `page_range` is not provided.
+
+        The original documents will be returned  updated with the extracted metadata.
+
+        This is the asynchronous version of the `run` method. It has the same parameters
+        and return values but can be used with `await` in an async code.
+
+        :param documents: List of documents to extract metadata from.
+        :param page_range: A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
+                           metadata from the first and third pages of each document. It also accepts printable range
+                           strings, e.g.: ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,
+                           11, 12.
+                           If None, metadata will be extracted from the entire document for each document in the
+                           documents list.
+        :returns:
+            A dictionary with the keys:
+            - "documents": A list of documents that were successfully updated with the extracted metadata.
+            - "failed_documents": A list of documents that failed to extract metadata. These documents will have
+            "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
+            re-run with the extractor to extract metadata.
+        """
+        if not hasattr(self._chat_generator, "run_async"):
+            logger.warning(
+                "{chat_generator_type} does not implement method 'run_async'. Falling back to 'run'.",
+                chat_generator_type=type(self._chat_generator).__name__,
+            )
+            return self.run(documents, page_range)
+
+        if len(documents) == 0:
+            logger.warning("No documents provided. Skipping metadata extraction.")
+            return {"documents": [], "failed_documents": []}
+
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        expanded_range = self.expanded_range
+        if page_range:
+            expanded_range = expand_page_range(page_range)
+
+        # Create ChatMessage prompts for each document
+        all_prompts = self._prepare_prompts(documents=documents, expanded_range=expanded_range)
+
+        # Run the LLM on each prompt
+        sem = Semaphore(max(1, self.max_workers))
+        async with sem:
+            results = await gather(*[self._run_async(prompt) for prompt in all_prompts])
+
+        successful_documents, failed_documents = self._process_results(documents, results)
 
         return {"documents": successful_documents, "failed_documents": failed_documents}

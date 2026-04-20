@@ -24,16 +24,15 @@ class OpenAIDocumentEmbedder:
     Computes document embeddings using OpenAI models.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.embedders import OpenAIDocumentEmbedder
 
     doc = Document(content="I love pizza!")
-
     document_embedder = OpenAIDocumentEmbedder()
-
     result = document_embedder.run([doc])
+
     print(result['documents'][0].embedding)
 
     # [0.017020374536514282, -0.023255806416273117, ...]

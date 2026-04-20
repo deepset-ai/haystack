@@ -142,16 +142,46 @@ Download a file from S3.
 #### from_env
 
 ```python
-from_env(*, session: Session, config: Config) -> S3Storage
+from_env(
+    *,
+    session: Session,
+    config: Config,
+    s3_bucket_name_env: str = "S3_DOWNLOADER_BUCKET"
+) -> S3Storage
 ```
 
 Create a S3Storage object from environment variables.
+
+The following environment variables are read:
+
+- `S3_DOWNLOADER_BUCKET` (or the value of `s3_bucket_name_env`): The name of the S3 bucket
+  to download files from. Required — raises `ValueError` if not set.
+- `S3_DOWNLOADER_PREFIX`: Optional prefix to apply to all S3 keys (e.g. `"folder/subfolder/"`).
+- `AWS_ENDPOINT_URL`: Optional custom endpoint URL, useful for S3-compatible services
+  such as MinIO or LocalStack.
+
+**Parameters:**
+
+- **session** (<code>Session</code>) – The boto3 `Session` to use when creating the S3 client.
+- **config** (<code>Config</code>) – The botocore `Config` to apply to the S3 client.
+- **s3_bucket_name_env** (<code>str</code>) – The name of the environment variable of the S3 bucket to download files from.
+  By default, the value is `"S3_DOWNLOADER_BUCKET"`.
+
+**Returns:**
+
+- <code>S3Storage</code> – A fully initialized `S3Storage` instance.
+
+**Raises:**
+
+- <code>ValueError</code> – If the environment variable specified by `s3_bucket_name_env` is not set
+  or is empty.
 
 ## haystack_integrations.components.downloaders.s3.s3_downloader
 
 ### S3Downloader
 
 A component for downloading files from AWS S3 Buckets to local filesystem.
+
 Supports filtering by file extensions.
 
 #### __init__
@@ -180,7 +210,8 @@ __init__(
     file_name_meta_key: str = "file_name",
     max_workers: int = 32,
     max_cache_size: int = 100,
-    s3_key_generation_function: Callable[[Document], str] | None = None
+    s3_key_generation_function: Callable[[Document], str] | None = None,
+    s3_bucket_name_env: str = "S3_DOWNLOADER_BUCKET"
 ) -> None
 ```
 
@@ -199,7 +230,9 @@ and `aws_region_name`.
 - **aws_session_token** (<code>Secret | None</code>) – AWS session token.
 - **aws_region_name** (<code>Secret | None</code>) – AWS region name.
 - **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **file_root_path** (<code>str | None</code>) – The path where the file will be downloaded.
   Can be set through this parameter or the `FILE_ROOT_PATH` environment variable.
   If none of them is set, a `ValueError` is raised.
@@ -216,6 +249,8 @@ and `aws_region_name`.
   The function must accept a `Document` object and return a string.
   If the environment variable `S3_DOWNLOADER_PREFIX` is set, its value will be automatically
   prefixed to the generated S3 key.
+- **s3_bucket_name_env** (<code>str</code>) – The name of the environment variable of the S3 bucket to download files from.
+  By default, the value is `"S3_DOWNLOADER_BUCKET"`.
 
 **Raises:**
 
@@ -283,6 +318,7 @@ Deserializes the component from a dictionary.
 ### AmazonBedrockDocumentEmbedder
 
 A component for computing Document embeddings using Amazon Bedrock.
+
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 Usage example:
@@ -338,8 +374,9 @@ __init__(
 ) -> None
 ```
 
-Initializes the AmazonBedrockDocumentEmbedder with the provided parameters. The parameters are passed to the
-Amazon Bedrock client.
+Initializes the AmazonBedrockDocumentEmbedder with the provided parameters.
+
+The parameters are passed to the Amazon Bedrock client.
 
 Note that the AWS credentials are not required if the AWS environment is configured correctly. These are loaded
 automatically from the environment or the AWS configuration file and do not need to be provided explicitly via
@@ -367,7 +404,9 @@ and `aws_region_name`.
   to keep the logs clean.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document text.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
   Cohere models.
 
@@ -515,7 +554,9 @@ Creates a AmazonBedrockDocumentImageEmbedder component.
   maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
   when working with models that have resolution constraints or when transmitting images to remote services.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference.
   For example, `embeddingConfig` for Amazon Titan models and
   `embedding_types` for Cohere models.
@@ -621,8 +662,9 @@ __init__(
 ) -> None
 ```
 
-Initializes the AmazonBedrockTextEmbedder with the provided parameters. The parameters are passed to the
-Amazon Bedrock client.
+Initializes the AmazonBedrockTextEmbedder with the provided parameters.
+
+The parameters are passed to the Amazon Bedrock client.
 
 Note that the AWS credentials are not required if the AWS environment is configured correctly. These are loaded
 automatically from the environment or the AWS configuration file and do not need to be provided explicitly via
@@ -644,7 +686,9 @@ and `aws_region_name`.
 - **aws_session_token** (<code>Secret | None</code>) – AWS session token.
 - **aws_region_name** (<code>Secret | None</code>) – AWS region name.
 - **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
   Cohere models.
 
@@ -728,6 +772,7 @@ prepare_body(prompt: str, **inference_kwargs: Any) -> dict[str, Any]
 ```
 
 Prepares the body for the Amazon Bedrock request.
+
 Each subclass should implement this method to prepare the request body for the specific model.
 
 **Parameters:**
@@ -966,8 +1011,8 @@ Prepares the body for the Llama2 model
 
 Completes chats using LLMs hosted on Amazon Bedrock available via the Bedrock Converse API.
 
-For example, to use the Anthropic Claude 3 Sonnet model, initialize this component with the
-'anthropic.claude-3-5-sonnet-20240620-v1:0' model name.
+For example, to use the Anthropic Claude 4.6 Sonnet model, initialize this component with the
+'global.anthropic.claude-sonnet-4-6' model name.
 
 **Usage example**
 
@@ -980,7 +1025,7 @@ messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest 
             ChatMessage.from_user("What's Natural Language Processing?")]
 
 
-client = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+client = AmazonBedrockChatGenerator(model="global.anthropic.claude-sonnet-4-6",
                                     streaming_callback=print_streaming_chunk)
 client.run(messages, generation_kwargs={"max_tokens": 512})
 ```
@@ -991,7 +1036,7 @@ client.run(messages, generation_kwargs={"max_tokens": 512})
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
 
-generator = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
+generator = AmazonBedrockChatGenerator(model="global.anthropic.claude-sonnet-4-6")
 
 image_content = ImageContent.from_file_path(file_path="apple.jpg")
 
@@ -1034,7 +1079,7 @@ weather_tool = Tool(
 
 # Initialize generator with tool
 client = AmazonBedrockChatGenerator(
-    model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    model="global.anthropic.claude-sonnet-4-6",
     tools=[weather_tool]
 )
 
@@ -1117,8 +1162,9 @@ __init__(
 ) -> None
 ```
 
-Initializes the `AmazonBedrockChatGenerator` with the provided parameters. The parameters are passed to the
-Amazon Bedrock client.
+Initializes the `AmazonBedrockChatGenerator` with the provided parameters.
+
+The parameters are passed to the Amazon Bedrock client.
 
 Note that the AWS credentials are not required if the AWS environment is configured correctly. These are loaded
 automatically from the environment or the AWS configuration file and do not need to be provided explicitly via
@@ -1130,22 +1176,65 @@ and `aws_region_name`.
 
 - **model** (<code>str</code>) – The model to use for text generation. The model must be available in Amazon Bedrock and must
   be specified in the format outlined in the [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids-arns.html).
+
 - **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+
 - **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+
 - **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+
 - **aws_region_name** (<code>Secret | None</code>) – AWS region name. Make sure the region you set supports Amazon Bedrock.
+
 - **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments sent to the model. These parameters are specific to a model.
-  You can find the model specific arguments in the AWS Bedrock API
-  [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
+
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+
+- `maxTokens`: Maximum number of tokens to generate.
+
+- `stopSequences`: List of stop sequences to stop generation.
+
+- `temperature`: Sampling temperature.
+
+- `topP`: Nucleus sampling parameter.
+
+- `response_format`: Request structured JSON output validated against a schema. Provide a dict with:
+
+  - `schema` (required): a JSON Schema dict describing the expected output structure.
+  - `name` (optional): a name for the schema, defaults to `"response_schema"`.
+  - `description` (optional): a description of the schema.
+
+  Example::
+
+  ```
+    generation_kwargs={
+        "response_format": {
+            "name": "person",
+            "schema": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                "required": ["name", "age"],
+                "additionalProperties": False,
+            },
+        }
+    }
+  ```
+
+  When set, the parsed JSON object is stored in `reply.meta["structured_output"]`.
+  You can find the model specific arguments in the AWS Bedrock API[documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
+
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function called when a new token is received from the stream.
   By default, the model is not set up for streaming. To enable streaming, set this parameter to a callback
   function that handles the streaming chunks. The callback function receives a
   [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk) object and switches
   the streaming mode on.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
+
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
+
 - **guardrail_config** (<code>dict\[str, str\] | None</code>) – Optional configuration for a guardrail that has been created in Amazon Bedrock.
   This must be provided as a dictionary matching either
   [GuardrailConfiguration](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_GuardrailConfiguration.html).
@@ -1158,6 +1247,7 @@ and `aws_region_name`.
   See the
   [Guardrails Streaming documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-streaming.html)
   for more information.
+
 - **tools_cachepoint_config** (<code>dict\[str, str\] | None</code>) – Optional configuration to use prompt caching for tools.
   The dictionary must match the
   [CachePointBlock schema](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_CachePointBlock.html).
@@ -1221,6 +1311,7 @@ Supports both standard and streaming responses depending on whether a streaming 
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
 - `topP`: Nucleus sampling parameter.
+- `response_format`: Request structured JSON output validated against a schema.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
 
@@ -1256,6 +1347,7 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
 - `topP`: Nucleus sampling parameter.
+- `response_format`: Request structured JSON output validated against a schema.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   Each tool should have a unique name.
 
@@ -1344,7 +1436,9 @@ Create a new `AmazonBedrockGenerator` instance.
 - **truncate** (<code>bool | None</code>) – Deprecated. This parameter no longer has any effect.
 - **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
   The callback function accepts StreamingChunk as an argument.
-- **boto3_config** (<code>dict\[str, Any\] | None</code>) – The configuration for the boto3 client.
+- **boto3_config** (<code>dict\[str, Any\] | None</code>) – Dictionary of configuration options for the underlying Boto3 client.
+  Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
+  and other low-level settings like timeouts and connection management.
 - **model_family** (<code>MODEL_FAMILIES | None</code>) – The model family to use. If not provided, the model adapter is selected based on the model
   name.
 - **kwargs** (<code>Any</code>) – Additional keyword arguments to be passed to the model.
@@ -1484,6 +1578,52 @@ If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_a
 and `aws_region_name` as environment variables or pass them as
 [Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments. Make sure the region you set
 supports Amazon Bedrock.
+
+#### __init__
+
+```python
+__init__(
+    model: str = "cohere.rerank-v3-5:0",
+    top_k: int = 10,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        ["AWS_ACCESS_KEY_ID"], strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        ["AWS_SECRET_ACCESS_KEY"], strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        ["AWS_SESSION_TOKEN"], strict=False
+    ),
+    aws_region_name: Secret | None = Secret.from_env_var(
+        ["AWS_DEFAULT_REGION"], strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        ["AWS_PROFILE"], strict=False
+    ),
+    max_chunks_per_doc: int | None = None,
+    meta_fields_to_embed: list[str] | None = None,
+    meta_data_separator: str = "\n",
+) -> None
+```
+
+Creates an instance of the 'AmazonBedrockRanker'.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – Amazon Bedrock model name for Cohere Rerank. Default is "cohere.rerank-v3-5:0".
+- **top_k** (<code>int</code>) – The maximum number of documents to return.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | None</code>) – AWS region name.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **max_chunks_per_doc** (<code>int | None</code>) – If your document exceeds 512 tokens, this determines the maximum number of
+  chunks a document can be split into. If `None`, the default of 10 is used.
+  Note: This parameter is not currently used in the implementation but is included for future compatibility.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be concatenated
+  with the document content for reranking.
+- **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
+  to the Document content.
 
 #### to_dict
 

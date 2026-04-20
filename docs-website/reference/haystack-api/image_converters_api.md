@@ -24,7 +24,8 @@ Documents are expected to have metadata containing:
 
 ### Usage example
 
-````
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
@@ -51,7 +52,6 @@ image_contents = result["image_contents"]
 #    meta={'page_number': 1, 'file_path': 'doc.pdf'}
 #  )]
 ```
-````
 
 #### __init__
 

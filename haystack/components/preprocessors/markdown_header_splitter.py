@@ -28,6 +28,7 @@ class MarkdownHeaderSplitter:
         *,
         page_break_character: str = "\f",
         keep_headers: bool = True,
+        header_split_levels: list[int] | None = None,
         secondary_split: Literal["word", "passage", "period", "line"] | None = None,
         split_length: int = 200,
         split_overlap: int = 0,
@@ -40,6 +41,9 @@ class MarkdownHeaderSplitter:
         :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\f").
         :param keep_headers: If True, headers are kept in the content. If False, headers are moved to metadata.
             Defaults to True.
+        :param header_split_levels: List of header levels (1–6) to split on. For example, `[1, 2]` splits only
+            on `#` and `##` headers, merging content under deeper headers into the preceding chunk. Defaults to
+            all levels `[1, 2, 3, 4, 5, 6]`.
         :param secondary_split: Optional secondary split condition after header splitting.
             Options are None, "word", "passage", "period", "line". Defaults to None.
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
@@ -50,6 +54,19 @@ class MarkdownHeaderSplitter:
             Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
             from non-textual documents.
         """
+        if header_split_levels is None:
+            header_split_levels = [1, 2, 3, 4, 5, 6]
+
+        if not isinstance(header_split_levels, list) or len(header_split_levels) == 0:
+            raise ValueError("header_split_levels must be a non-empty list.")
+        invalid = [lvl for lvl in header_split_levels if not isinstance(lvl, int) or lvl < 1 or lvl > 6]
+        if invalid:
+            raise ValueError(
+                f"header_split_levels contains invalid values: {invalid}. All levels must be integers between 1 and 6."
+            )
+        if len(header_split_levels) != len(set(header_split_levels)):
+            raise ValueError("header_split_levels must not contain duplicate values.")
+
         self.page_break_character = page_break_character
         self.secondary_split = secondary_split
         self.split_length = split_length
@@ -57,7 +74,29 @@ class MarkdownHeaderSplitter:
         self.split_threshold = split_threshold
         self.skip_empty_documents = skip_empty_documents
         self.keep_headers = keep_headers
+        self.header_split_levels = header_split_levels
+        self._header_split_levels_set = set(header_split_levels)
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
+
+        # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
+        # Broken down:
+        #   ^                 - fence must start at the beginning of a line (MULTILINE)
+        #   (?P<fence>`{3,}|~{3,})
+        #                     - named capture group "fence": three or more backticks OR three or
+        #                       more tildes. Capturing it allows the closing fence to be matched
+        #                       with a backreference, so ```-opened blocks must close with ```
+        #                       and ~~~-opened blocks must close with ~~~.
+        #   [^\n]*            - optional language identifier (e.g. "python") and any other text
+        #                       on the opening fence line, up to the newline
+        #   \n                - newline ending the opening fence line
+        #   .*?               - the code block body, matched lazily (DOTALL so . matches newlines)
+        #   ^(?P=fence)       - closing fence: must be identical to the opening fence (backreference),
+        #                       and must start at the beginning of a line
+        #   \s*$              - optional trailing whitespace after the closing fence
+        self._code_block_pattern = re.compile(
+            r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$", re.MULTILINE | re.DOTALL
+        )
+
         self._is_warmed_up = False
 
         # initialize secondary_splitter only if needed
@@ -77,12 +116,26 @@ class MarkdownHeaderSplitter:
             self.secondary_splitter.warm_up()
             self._is_warmed_up = True
 
+    def _code_block_spans(self, text: str) -> list[tuple[int, int]]:
+        """Return the (start, end) character spans of all fenced code blocks in text."""
+        return [(m.start(), m.end()) for m in self._code_block_pattern.finditer(text)]
+
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
-        # find headers
-        matches = list(re.finditer(self._header_pattern, text))
+        # Pre-compute fenced code block spans so that # lines inside code blocks (e.g. Python comments) are not
+        # mistaken for Markdown headers.
+        code_spans = self._code_block_spans(text)
+
+        # find headers at the configured levels only, excluding any that fall inside a code block. Content between
+        # skipped headers is absorbed into the preceding chunk's span since end = next_match.start().
+        matches = [
+            m
+            for m in re.finditer(self._header_pattern, text)
+            if len(m.group(1)) in self._header_split_levels_set
+            and not any(start <= m.start() < end for start, end in code_spans)
+        ]
 
         # return unsplit if no headers found
         if not matches:
@@ -94,7 +147,6 @@ class MarkdownHeaderSplitter:
         # process headers and build chunks
         chunks: list[dict] = []
         header_stack: list[str | None] = [None] * 6
-        active_parents: list[str] = []  # track active parent headers
         pending_headers: list[str] = []  # store empty headers to prepend to next content
         has_content = False  # flag to track if any header has content
 
@@ -116,16 +168,15 @@ class MarkdownHeaderSplitter:
 
             # skip splits w/o content
             if not content.strip():  # this strip is needed to avoid counting whitespace as content
-                # add as parent for subsequent headers
-                active_parents = [h for h in header_stack[: level - 1] if h is not None]
-                active_parents.append(header_text)
                 if self.keep_headers:
                     header_line = f"{header_prefix} {header_text}"
                     pending_headers.append(header_line)
                 continue
 
             has_content = True  # at least one header has content
-            parent_headers = list(active_parents)
+            # Build parent metadata from the current header stack so the first child of a
+            # contentful section still inherits its full ancestor chain.
+            parent_headers = [h for h in header_stack[: level - 1] if h is not None]
 
             logger.debug(
                 "Creating chunk for header '{header_text}' at level {level}", header_text=header_text, level=level
@@ -144,9 +195,6 @@ class MarkdownHeaderSplitter:
                 pending_headers = []  # reset pending headers
             else:
                 chunks.append({"content": content, "meta": {"header": header_text, "parent_headers": parent_headers}})
-
-            # reset active parents
-            active_parents = [h for h in header_stack[: level - 1] if h is not None]
 
         # return doc unchunked if no headers have content
         if not has_content:

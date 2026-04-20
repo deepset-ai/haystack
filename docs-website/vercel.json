@@ -1,0 +1,44 @@
+{
+  "redirects": [
+    {
+      "source": "/docs/2.21/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.21/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.20/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.20/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.19/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.19/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.18/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.18/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    }
+  ]
+}

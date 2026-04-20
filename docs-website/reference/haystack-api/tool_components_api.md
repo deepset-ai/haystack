@@ -92,24 +92,24 @@ print(result)
 ```
 
 ```
->>  {
->>      'tool_messages': [
->>          ChatMessage(
->>              _role=<ChatRole.TOOL: 'tool'>,
->>              _content=[
->>                  ToolCallResult(
->>                      result='"The weather in Berlin is 20 degrees."',
->>                      origin=ToolCall(
->>                          tool_name='weather_tool',
->>                          arguments={'city': 'Berlin'},
->>                          id=None
->>                      )
->>                  )
->>              ],
->>              _meta={}
->>          )
->>      ]
->>  }
+# >> {
+# >>     'tool_messages': [
+# >>         ChatMessage(
+# >>             _role=<ChatRole.TOOL: 'tool'>,
+# >>             _content=[
+# >>                 ToolCallResult(
+# >>                     result='"The weather in Berlin is 20 degrees."',
+# >>                     origin=ToolCall(
+# >>                         tool_name='weather_tool',
+# >>                         arguments={'city': 'Berlin'},
+# >>                         id=None
+# >>                     )
+# >>                 )
+# >>             ],
+# >>             _meta={}
+# >>         )
+# >>     ]
+# >> }
 ```
 
 Usage example with a Toolset:

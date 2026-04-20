@@ -96,7 +96,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         """
         if type(self) != type(other):
             return False
-        return self.to_dict() == other.to_dict()  # type: ignore[attr-defined]
+        return self.to_dict() == other.to_dict()
 
     def __post_init__(self) -> None:
         """

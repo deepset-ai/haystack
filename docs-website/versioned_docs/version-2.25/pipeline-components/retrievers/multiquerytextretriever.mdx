@@ -38,7 +38,7 @@ This Retriever is particularly effective when combined with [`QueryExpander`](..
 
 Use `MultiQueryTextRetriever` when your documents use different words than your users' queries, or when you want to use query expansion with keyword-based search (BM25). Running multiple queries takes more time, but you can speed it up by increasing `max_workers` to run queries in parallel.
 
-:::tip When to use `MultiQueryEmbeddingRetriever` instead
+:::tip[When to use `MultiQueryEmbeddingRetriever` instead]
 
 If you need semantic search where meaning matters more than exact keyword matches, use [`MultiQueryEmbeddingRetriever`](multiqueryembeddingretriever.mdx) instead. It works with embedding-based Retrievers and requires a Text Embedder.
 :::

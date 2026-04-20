@@ -48,12 +48,13 @@ dependencies = [
   "openai>=1.99.2",
   "pydantic",
   "Jinja2",
+  "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
-  "requests",
+  "httpx",
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
@@ -152,7 +153,6 @@ dependencies = [
   "pip",                     # mypy needs pip to install missing stub packages
   "ipython",
   "colorama==0.4.6",         # Pipeline checkpoints test
-  "anyio",                   # needed for asynchronous Path testing
 ]
 
 [tool.hatch.envs.test.scripts]
@@ -163,13 +163,13 @@ integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test
 all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/}"
 
 [tool.hatch.envs.e2e]
 template = "test"
 extra-dependencies = [
   # NamedEntityExtractor
-  "spacy>=3.8,<3.9; python_version < '3.14'",
+  "spacy>=3.8.13,<3.9",
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
 ]
 

@@ -393,12 +393,13 @@ Usage:
 
 ```python
 from haystack import Pipeline, Document
-from haystack.utils import Secret
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.utils import Secret
 
 # Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
@@ -407,6 +408,8 @@ document_store.write_documents([
     Document(content="My name is Mark and I live in Berlin."),
     Document(content="My name is Giorgio and I live in Rome.")
 ])
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
 
 prompt_template = """
 Given these documents, answer the question.
@@ -418,10 +421,14 @@ Question: {{question}}
 Answer:
 """
 
-retriever = InMemoryBM25Retriever(document_store=document_store)
-prompt_builder = PromptBuilder(template=prompt_template)
-llm = OpenAIGenerator(api_key=Secret.from_token(api_key))
+template = [ChatMessage.from_user(prompt_template)]
+prompt_builder = ChatPromptBuilder(
+    template=template,
+    required_variables=["question", "documents"],
+    variables=["question", "documents"]
+)
 
+llm = OpenAIChatGenerator()
 rag_pipeline = Pipeline()
 rag_pipeline.add_component("retriever", retriever)
 rag_pipeline.add_component("prompt_builder", prompt_builder)
@@ -429,7 +436,6 @@ rag_pipeline.add_component("llm", llm)
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
 
-# Ask a question
 question = "Who lives in Paris?"
 results = rag_pipeline.run(
     {
@@ -438,7 +444,7 @@ results = rag_pipeline.run(
     }
 )
 
-print(results["llm"]["replies"])
+print(results["llm"]["replies"][0].text)
 # Jean lives in Paris
 ```
 

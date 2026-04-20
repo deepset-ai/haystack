@@ -36,7 +36,7 @@ class HuggingFaceAPIDocumentEmbedder:
     ### Usage examples
 
     #### With free serverless inference API
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
     from haystack.utils import Secret
@@ -55,7 +55,7 @@ class HuggingFaceAPIDocumentEmbedder:
     ```
 
     #### With paid inference endpoints
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
     from haystack.utils import Secret
@@ -74,7 +74,7 @@ class HuggingFaceAPIDocumentEmbedder:
     ```
 
     #### With self-hosted text embeddings inference
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
     from haystack.dataclasses import Document

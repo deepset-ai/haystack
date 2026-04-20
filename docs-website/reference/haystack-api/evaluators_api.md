@@ -635,7 +635,7 @@ print(result["score"])
 # 0.5
 print(result["results"])
 # [{'statements': ['Python is a high-level general-purpose programming language.',
-'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
 ```
 
 #### __init__
@@ -962,7 +962,7 @@ predictions = [
     "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
 ]
 result = evaluator.run(
-    ground_truths_answers=ground_truths, predicted_answers=predictions
+    ground_truth_answers=ground_truths, predicted_answers=predictions
 )
 
 print(result["score"])

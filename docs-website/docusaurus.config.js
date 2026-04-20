@@ -5,6 +5,16 @@
 // @ts-check
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import versions from './versions.json' with { type: 'json' };
+
+// Only build the current version (docs/) plus the 5 most recent stable versions (e.g. 2.x) and the unstable
+// versioned docs (e.g. 2.x-unstable; only present during the release process).
+const MAX_STABLE_VERSIONS = 5;
+const activeVersions = [
+  'current',
+  ...versions.filter(v => v.endsWith('-unstable')),
+  ...versions.filter(v => !v.endsWith('-unstable')).slice(0, MAX_STABLE_VERSIONS),
+];
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -23,11 +33,14 @@ const config = {
   onDuplicateRoutes: 'throw',
 
   future: {
-    experimental_faster: true,
+    faster: true,
     v4: true,
   },
 
   markdown: {
+    mdx1Compat: {
+      comments: true,
+    },
     hooks: {
       onBrokenMarkdownLinks: 'throw',
     },
@@ -38,12 +51,25 @@ const config = {
     locales: ['en'],
   },
 
+  headTags: [
+    {
+      tagName: "script",
+      attributes: {},
+      innerHTML: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-WCKQG9T');`,
+    }
+  ],
+
   presets: [
     [
       'classic',
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
+          onlyIncludeVersions: activeVersions,
           sidebarPath: './sidebars.js',
            // Exclude internal templates from the docs build
            exclude: ['**/_templates/**'],
@@ -53,12 +79,12 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.27-unstable',
+              label: '2.28-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.26',
+          lastVersion: '2.27',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -68,6 +94,18 @@ const config = {
   ],
 
   plugins: [
+    function gtmNoscriptPlugin() {
+      return {
+        name: "gtm-noscript",
+        injectHtmlTags() {
+          return {
+            preBodyHtmlTags: [
+              `<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WCKQG9T" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>`,
+            ],
+          };
+        },
+      };
+    },
     [
       '@docusaurus/plugin-ideal-image',
       {
@@ -82,6 +120,7 @@ const config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'reference',
+        onlyIncludeVersions: activeVersions,
         path: 'reference',
         routeBasePath: 'reference',
         sidebarPath: './reference-sidebars.js',
@@ -93,12 +132,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.27-unstable',
+            label: '2.28-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.26',
+        lastVersion: '2.27',
       },
     ],
     [
@@ -197,7 +236,7 @@ const config = {
                 label: '1.x archived documentation',
               },
               {
-                href: '/docs/faq#where-is-the-documentation-for-haystack-217-and-older',
+                href: '/docs/faq#where-can-i-find-documentation-for-older-haystack-versions',
                 label: '2.x archived documentation',
               },
             ],

@@ -27,6 +27,8 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.utils import Secret
@@ -39,11 +41,11 @@ print(response)
 ```
 
 ```
->> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
->> the interaction between computers and human language. It involves enabling computers to understand, interpret,
->> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
->> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
->> 'completion_tokens': 49, 'total_tokens': 65}}]}
+# >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
+# >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
+# >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
+# >> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+# >> 'completion_tokens': 49, 'total_tokens': 65}}]}
 ```
 
 #### __init__
@@ -168,6 +170,8 @@ For details on OpenAI API parameters, see
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -193,6 +197,50 @@ print(response)
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
 }
 ```
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "gpt-5.4",
+    "gpt-5.4-pro",
+    "gpt-5.3-codex",
+    "gpt-5.2",
+    "gpt-5.2-codex",
+    "gpt-5.2-chat",
+    "gpt-5.1",
+    "gpt-5.1-chat",
+    "gpt-5.1-codex",
+    "gpt-5.1-codex-mini",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-5-chat",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "gpt-4o-audio-preview",
+    "gpt-realtime-1.5",
+    "gpt-audio-1.5",
+    "o1",
+    "o1-mini",
+    "o3",
+    "o3-mini",
+    "o4-mini",
+    "codex-mini",
+    "gpt-4",
+    "gpt-35-turbo",
+    "gpt-oss-120b",
+    "computer-use-preview",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+for the full list.
 
 #### __init__
 
@@ -339,6 +387,8 @@ For details on OpenAI API parameters, see
 [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses).
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
@@ -525,7 +575,7 @@ typically applies to all connection phases: connection setup, read, write, and p
 responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
 receiving the complete response.
 
-Failover is automatically triggered when a generator raises any exception, including:
+Fail over is automatically triggered when a generator raises any exception, including:
 
 - Timeout errors (if the generator implements and raises them)
 - Rate limit errors (429)
@@ -651,6 +701,8 @@ format for input and output. Use it to generate text with Hugging Face APIs:
 
 #### With the serverless inference API (Inference Providers) - free tier available
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -674,6 +726,8 @@ print(result)
 ```
 
 #### With the serverless inference API (Inference Providers) and text+image input
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -702,7 +756,9 @@ print(result)
 
 #### With paid inference endpoints
 
-````python
+<!-- test-ignore -->
+
+```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
@@ -716,8 +772,11 @@ generator = HuggingFaceAPIChatGenerator(api_type="inference_endpoints",
 
 result = generator.run(messages)
 print(result)
+```
 
 #### With self-hosted text generation inference
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -731,7 +790,7 @@ generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
 
 result = generator.run(messages)
 print(result)
-````
+```
 
 #### __init__
 
@@ -896,6 +955,8 @@ LLMs running locally may need powerful hardware.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -926,7 +987,10 @@ print(generator.run(messages))
 ```python
 __init__(
     model: str = "Qwen/Qwen3-0.6B",
-    task: Literal["text-generation", "text2text-generation"] | None = None,
+    task: (
+        Literal["text-generation", "text2text-generation", "image-text-to-text"]
+        | None
+    ) = None,
     device: ComponentDevice | None = None,
     token: Secret | None = Secret.from_env_var(
         ["HF_API_TOKEN", "HF_TOKEN"], strict=False
@@ -953,10 +1017,11 @@ Initializes the HuggingFaceLocalChatGenerator component.
   The model must be a chat model supporting the ChatML messaging
   format.
   If the model is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
-- **task** (<code>Literal['text-generation', 'text2text-generation'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
+- **task** (<code>Literal['text-generation', 'text2text-generation', 'image-text-to-text'] | None</code>) – The task for the Hugging Face pipeline. Possible options:
 - `text-generation`: Supported by decoder models, like GPT.
 - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
   Previously supported by encoder–decoder models such as T5.
+- `image-text-to-text`: Supported by vision-language models.
   If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
   If not specified, the component calls the Hugging Face API to infer the task from the model name.
 - **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
@@ -1811,6 +1876,8 @@ Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_comple
 
 #### With Hugging Face Inference Endpoints
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
 from haystack.utils import Secret
@@ -1824,6 +1891,8 @@ print(result)
 ```
 
 #### With self-hosted text generation inference
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -1840,6 +1909,8 @@ print(result)
 Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
 `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
 `chat_completion` endpoint.
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.generators import HuggingFaceAPIGenerator
@@ -1955,7 +2026,7 @@ generator = HuggingFaceLocalGenerator(
 )
 
 print(generator.run("Who is the best American actor?"))
-# {'replies': ['John Cusack']}
+# >> {'replies': ['John Cusack']}
 ```
 
 #### __init__
@@ -2092,11 +2163,11 @@ client = OpenAIGenerator()
 response = client.run("What's Natural Language Processing? Be brief.")
 print(response)
 
->> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
->> the interaction between computers and human language. It involves enabling computers to understand, interpret,
->> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
->> 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
->> 'completion_tokens': 49, 'total_tokens': 65}}]}
+# >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
+# >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
+# >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
+# >> 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+# >> 'completion_tokens': 49, 'total_tokens': 65}}]}
 ```
 
 #### __init__

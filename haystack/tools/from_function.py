@@ -8,8 +8,10 @@ from typing import Any
 
 from pydantic import create_model
 
+from haystack.components.agents.state.state import State
+
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type
+from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
 from .tool import Tool
 
 
@@ -42,20 +44,20 @@ def create_tool_from_function(
     tool = create_tool_from_function(get_weather)
 
     print(tool)
-    >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-    >>> parameters={
-    >>> 'type': 'object',
-    >>> 'properties': {
-    >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-    >>>     'unit': {
-    >>>         'type': 'string',
-    >>>         'enum': ['Celsius', 'Fahrenheit'],
-    >>>         'description': 'the unit for the temperature',
-    >>>         'default': 'Celsius',
-    >>>     },
-    >>>     }
-    >>> },
-    >>> function=<function get_weather at 0x7f7b3a8a9b80>)
+    # >> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+    # >> parameters={
+    # >> 'type': 'object',
+    # >> 'properties': {
+    # >>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+    # >>     'unit': {
+    # >>         'type': 'string',
+    # >>         'enum': ['Celsius', 'Fahrenheit'],
+    # >>         'description': 'the unit for the temperature',
+    # >>         'default': 'Celsius',
+    # >>     },
+    # >>     }
+    # >> },
+    # >> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
 
     :param function:
@@ -139,6 +141,10 @@ def create_tool_from_function(
         if inputs_from_state and param_name in inputs_from_state.values():
             continue
 
+        # Skip State-typed parameters (including Optional[State]) - ToolInvoker injects them at runtime
+        if _unwrap_optional(param.annotation) is State:
+            continue
+
         if param.annotation is param.empty:
             raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
 
@@ -214,20 +220,20 @@ def tool(
         return f"Weather report for {city}: 20 {unit}, sunny"
 
     print(get_weather)
-    >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-    >>> parameters={
-    >>> 'type': 'object',
-    >>> 'properties': {
-    >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-    >>>     'unit': {
-    >>>         'type': 'string',
-    >>>         'enum': ['Celsius', 'Fahrenheit'],
-    >>>         'description': 'the unit for the temperature',
-    >>>         'default': 'Celsius',
-    >>>     },
-    >>>     }
-    >>> },
-    >>> function=<function get_weather at 0x7f7b3a8a9b80>)
+    # >> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+    # >> parameters={
+    # >> 'type': 'object',
+    # >> 'properties': {
+    # >>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+    # >>     'unit': {
+    # >>         'type': 'string',
+    # >>         'enum': ['Celsius', 'Fahrenheit'],
+    # >>         'description': 'the unit for the temperature',
+    # >>         'default': 'Celsius',
+    # >>     },
+    # >>     }
+    # >> },
+    # >> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
 
     :param function: The function to decorate (when used without parameters)

@@ -43,32 +43,37 @@ Extract metadata about the image like source of the image, date of creation, etc
 Return this metadata as additional key-value pairs in the same JSON object.
 """
 
-chat_generator = OpenAIChatGenerator()
+chat_generator = OpenAIChatGenerator(
+        generation_kwargs={
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "entity_extraction",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "document_content": {"type": "string"},
+                                "author": {"type": "string"},
+                                "date": {"type": "string"},
+                                "document_type": {"type": "string"},
+                                "title": {"type": "string"},
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                }
+            }
+        )
+
 extractor = LLMDocumentContentExtractor(
     chat_generator=chat_generator,
-    generation_kwargs={
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "entity_extraction",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "document_content": {"type": "string"},
-                        "author": {"type": "string"},
-                        "date": {"type": "string"},
-                        "document_type": {"type": "string"},
-                        "title": {"type": "string"},
-                    },
-                    "additionalProperties": False,
-                },
-            },
-        }
-    }
+    file_path_meta_field="file_path",
+    raise_on_failure=False
 )
+
 documents = [
-    Document(content="", meta={"file_path": "image.jpg"}),
-    Document(content="", meta={"file_path": "document.pdf", "page_number": 1})
+    Document(content="", meta={"file_path": "test/test_files/images/image_metadata.png"}),
+    Document(content="", meta={"file_path": "test/test_files/images/apple.jpg", "page_number": 1})
 ]
 result = extractor.run(documents=documents)
 updated_documents = result["documents"]
@@ -261,25 +266,25 @@ chat_generator = OpenAIChatGenerator(
 
 extractor = LLMMetadataExtractor(
     prompt=NER_PROMPT,
-    chat_generator=generator,
+    chat_generator=chat_generator,
     expected_keys=["entities"],
     raise_on_failure=False,
 )
 
 extractor.run(documents=docs)
->> {'documents': [
-    Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-    meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
-          {'entity': 'Haystack', 'entity_type': 'product'}]}),
-    Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
-    meta: {'entities': [
-            {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
-            {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
-            ]})
-       ]
-    'failed_documents': []
-   }
->>
+# >> {'documents': [
+#     Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+#     meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
+#           {'entity': 'Haystack', 'entity_type': 'product'}]}),
+#     Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
+#     meta: {'entities': [
+#             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
+#             {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
+#             ]})
+#        ]
+#     'failed_documents': []
+#    }
+# >>
 ```
 
 #### __init__
@@ -312,6 +317,8 @@ Initializes the LLMMetadataExtractor.
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an error on failure during the execution of the Generator or
   validation of the JSON output.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use in the thread pool executor.
+  This parameter is used limit the maximum number of requests that should be allowed to run concurrently
+  when using the `run_async` method.
 
 #### warm_up
 
@@ -383,6 +390,43 @@ The original documents will be returned updated with the extracted metadata.
   "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
   re-run with the extractor to extract metadata.
 
+#### run_async
+
+```python
+run_async(
+    documents: list[Document], page_range: list[str | int] | None = None
+) -> dict[str, Any]
+```
+
+Asynchronously extract metadata from documents using a Large Language Model.
+
+If `page_range` is provided, the metadata will be extracted from the specified range of pages. This component
+will split the documents into pages and extract metadata from the specified range of pages. The metadata will be
+extracted from the entire document if `page_range` is not provided.
+
+The original documents will be returned updated with the extracted metadata.
+
+This is the asynchronous version of the `run` method. It has the same parameters
+and return values but can be used with `await` in an async code.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – List of documents to extract metadata from.
+- **page_range** (<code>list\[str | int\] | None</code>) – A range of pages to extract metadata from. For example, page_range=['1', '3'] will extract
+  metadata from the first and third pages of each document. It also accepts printable range
+  strings, e.g.: ['1-3', '5', '8', '10-12'] will extract metadata from pages 1, 2, 3, 5, 8, 10,
+  11, 12.
+  If None, metadata will be extracted from the entire document for each document in the
+  documents list.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the keys:
+- "documents": A list of documents that were successfully updated with the extracted metadata.
+- "failed_documents": A list of documents that failed to extract metadata. These documents will have
+  "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
+  re-run with the extractor to extract metadata.
+
 ## named_entity_extractor
 
 ### NamedEntityExtractorBackend
@@ -422,6 +466,8 @@ that contains an NER component. Annotations are stored as metadata
 in the documents.
 
 Usage example:
+
+<!-- test-ignore -->
 
 ```python
 from haystack import Document

@@ -47,7 +47,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     )
 
 
-PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
+PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation", "image-text-to-text"]
 
 DEFAULT_TOOL_PATTERN = (
     r"(?:<tool_call>)?"
@@ -95,7 +95,7 @@ class HuggingFaceLocalChatGenerator:
     LLMs running locally may need powerful hardware.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -125,7 +125,7 @@ class HuggingFaceLocalChatGenerator:
     def __init__(
         self,
         model: str = "Qwen/Qwen3-0.6B",
-        task: Literal["text-generation", "text2text-generation"] | None = None,
+        task: Literal["text-generation", "text2text-generation", "image-text-to-text"] | None = None,
         device: ComponentDevice | None = None,
         token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         chat_template: str | None = None,
@@ -151,6 +151,7 @@ class HuggingFaceLocalChatGenerator:
             - `text-generation`: Supported by decoder models, like GPT.
             - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
               Previously supported by encoder–decoder models such as T5.
+            - `image-text-to-text`: Supported by vision-language models.
             If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
             If not specified, the component calls the Hugging Face API to infer the task from the model name.
         :param device: The device for loading the model. If `None`, automatically selects the default device.

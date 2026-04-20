@@ -16,9 +16,6 @@ from haystack.utils.dataclasses import _warn_on_inplace_mutation
 logger = logging.getLogger(__name__)
 
 
-LEGACY_INIT_PARAMETERS = {"role", "content", "meta", "name"}
-
-
 class ChatRole(str, Enum):
     """
     Enumeration representing the roles within a chat.
@@ -281,42 +278,6 @@ class ChatMessage:
     _content: Sequence[ChatMessageContentT]
     _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
-
-    def __new__(cls, *args: Any, **kwargs: Any) -> "ChatMessage":  # noqa: ARG004
-        """
-        This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
-
-        :raises TypeError: If any legacy init parameters (`role`, `content`, `meta`, `name`) are passed.
-        """
-
-        general_msg = (
-            "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
-            "ChatMessage. For more information about the new API and how to migrate, see the documentation:"
-            " https://docs.haystack.deepset.ai/docs/chatmessage"
-        )
-
-        if any(param in kwargs for param in LEGACY_INIT_PARAMETERS):
-            raise TypeError(
-                "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
-                f"{general_msg}"
-            )
-
-        return super(ChatMessage, cls).__new__(cls)  # noqa: UP008
-
-    def __getattribute__(self, name: str) -> Any:
-        """
-        This method is reimplemented to make the `content` attribute removal more visible.
-        """
-
-        if name == "content":
-            msg = (
-                "The `content` attribute of `ChatMessage` has been removed. "
-                "Use the `text` property to access the textual value. "
-                "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/chatmessage"
-            )
-            raise AttributeError(msg)
-        return object.__getattribute__(self, name)
 
     def __len__(self) -> int:
         return len(self._content)
@@ -598,9 +559,9 @@ class ChatMessage:
         for part in self._content:
             serialized_part = _serialize_content_part(part)
             if isinstance(part, ImageContent):
-                serialized_part["image"]["base64_image"] = f"Base64 string ({len(part.base64_image)} characters)"
+                serialized_part["image"] = part._to_trace_dict()
             elif isinstance(part, FileContent):
-                serialized_part["file"]["base64_data"] = f"Base64 string ({len(part.base64_data)} characters)"
+                serialized_part["file"] = part._to_trace_dict()
             serialized["content"].append(serialized_part)
 
         return serialized

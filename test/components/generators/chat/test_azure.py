@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import json
 import os
 from typing import Any
@@ -75,6 +76,13 @@ def tools():
 
 
 class TestAzureOpenAIChatGenerator:
+    def test_supported_models(self) -> None:
+        """SUPPORTED_MODELS is a non-empty list of strings."""
+        models = AzureOpenAIChatGenerator.SUPPORTED_MODELS
+        assert isinstance(models, list)
+        assert len(models) > 0
+        assert all(isinstance(m, str) for m in models)
+
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -561,14 +569,17 @@ class TestAzureOpenAIChatGeneratorAsync:
     )
     @pytest.mark.asyncio
     async def test_live_run_async(self):
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = AzureOpenAIChatGenerator(generation_kwargs={"n": 1})
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
         assert "gpt-4.1-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await component.async_client.close()
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -581,8 +592,8 @@ class TestAzureOpenAIChatGeneratorAsync:
     )
     @pytest.mark.asyncio
     async def test_live_run_with_tools_async(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         component = AzureOpenAIChatGenerator(tools=tools)
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -595,5 +606,9 @@ class TestAzureOpenAIChatGeneratorAsync:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await component.async_client.close()
 
     # additional tests intentionally omitted as they are covered by test_openai.py

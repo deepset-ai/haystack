@@ -195,28 +195,38 @@ class TestOpenAPIConnectorIntegration:
         assert "response" in response
 
     @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_open_meteo_integration(self):
         open_meteo_spec = {
             "openapi": "3.0.0",
-            "info": {"title": "Open-Meteo Weather API", "version": "1.0.0"},
-            "servers": [{"url": "https://api.open-meteo.com"}],
+            "info": {"title": "Open-Meteo Historical Weather API", "version": "1.0.0"},
+            "servers": [{"url": "https://archive-api.open-meteo.com"}],
             "paths": {
-                "/v1/forecast": {
+                "/v1/archive": {
                     "get": {
-                        "operationId": "get_forecast",
+                        "operationId": "get_archive",
                         "parameters": [
                             {"name": "latitude", "in": "query", "required": True, "schema": {"type": "number"}},
                             {"name": "longitude", "in": "query", "required": True, "schema": {"type": "number"}},
-                            {"name": "current", "in": "query", "required": False, "schema": {"type": "string"}},
+                            {"name": "start_date", "in": "query", "required": True, "schema": {"type": "string"}},
+                            {"name": "end_date", "in": "query", "required": True, "schema": {"type": "string"}},
+                            {"name": "daily", "in": "query", "required": False, "schema": {"type": "string"}},
                         ],
-                        "responses": {"200": {"description": "Weather forecast"}},
+                        "responses": {"200": {"description": "Historical weather data"}},
                     }
                 }
             },
         }
         component = OpenAPIConnector(openapi_spec=json.dumps(open_meteo_spec))
         response = component.run(
-            operation_id="get_forecast", arguments={"latitude": 52.52, "longitude": 13.41, "current": "temperature_2m"}
+            operation_id="get_archive",
+            arguments={
+                "latitude": 52.52,
+                "longitude": 13.41,
+                "start_date": "2024-01-01",
+                "end_date": "2024-01-07",
+                "daily": "temperature_2m_max",
+            },
         )
         assert isinstance(response, dict)
         assert "response" in response
@@ -225,5 +235,6 @@ class TestOpenAPIConnectorIntegration:
         assert isinstance(weather_data, dict)
         assert weather_data["latitude"] == pytest.approx(52.52, abs=0.1)
         assert weather_data["longitude"] == pytest.approx(13.41, abs=0.1)
-        assert "current" in weather_data
-        assert "temperature_2m" in weather_data["current"]
+        assert "daily" in weather_data
+        assert "temperature_2m_max" in weather_data["daily"]
+        assert len(weather_data["daily"]["temperature_2m_max"]) == 7

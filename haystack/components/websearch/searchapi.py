@@ -24,11 +24,12 @@ class SearchApiWebSearch:
     Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.websearch import SearchApiWebSearch
     from haystack.utils import Secret
 
-    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_token("test-api-key"))
+    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_env_var("SERPERDEV_API_KEY"))
     results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
 
     assert results["documents"]
@@ -113,6 +114,11 @@ class SearchApiWebSearch:
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
 
+        except httpx.HTTPStatusError as e:
+            raise SearchApiError(
+                f"An error occurred while querying {self.__class__.__name__}. Error: {e}, Response: {e.response.text}"
+            ) from e
+
         except httpx.HTTPError as e:
             raise SearchApiError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
 
@@ -147,6 +153,11 @@ class SearchApiWebSearch:
                 response.raise_for_status()  # Will raise an HTTPError for bad responses
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+
+        except httpx.HTTPStatusError as e:
+            raise SearchApiError(
+                f"An error occurred while querying {self.__class__.__name__}. Error: {e}, Response: {e.response.text}"
+            ) from e
 
         except httpx.HTTPError as e:
             raise SearchApiError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e

@@ -31,7 +31,8 @@ def sample_docs():
 def sample_document_store(sample_docs):
     doc_store = InMemoryDocumentStore()
     doc_store.write_documents(sample_docs["all_docs"])
-    return doc_store
+    yield doc_store
+    doc_store.shutdown()
 
 
 class TestFilterRetrieverAsync:

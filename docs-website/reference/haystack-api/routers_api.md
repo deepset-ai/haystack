@@ -516,12 +516,12 @@ Categorize files or byte streams according to their MIME types.
 
 ### LLMMessagesRouter
 
-````
 Routes Chat Messages to different connections using a generative Language Model to perform classification.
 
 This component can be used with general-purpose LLMs and with specialized LLMs for moderation like Llama Guard.
 
 ### Usage example
+
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.components.routers.llm_messages_router import LLMMessagesRouter
@@ -530,7 +530,7 @@ from haystack.dataclasses import ChatMessage
 # initialize a Chat Generator with a generative model for moderation
 chat_generator = HuggingFaceAPIChatGenerator(
     api_type="serverless_inference_api",
-    api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
+    api_params={"model": "openai/gpt-oss-safeguard-20b", "provider": "groq"},
 )
 
 router = LLMMessagesRouter(chat_generator=chat_generator,
@@ -541,20 +541,17 @@ router = LLMMessagesRouter(chat_generator=chat_generator,
 print(router.run([ChatMessage.from_user("How to rob a bank?")]))
 
 # {
-#     'chat_generator_text': 'unsafe
-````
-
-S2',
-\# 'unsafe': \[
-\# ChatMessage(
-\# \_role=\<ChatRole.USER: 'user'>,
-\# \_content=[TextContent(text='How to rob a bank?')],
-\# \_name=None,
-\# \_meta={}
-\# )
-\# \]
-\# }
-\`\`\`
+#     'chat_generator_text': 'unsafe\nS2',
+#     'unsafe': [
+#         ChatMessage(
+#             _role=<ChatRole.USER: 'user'>,
+#             _content=[TextContent(text='How to rob a bank?')],
+#             _name=None,
+#             _meta={}
+#         )
+#     ]
+# }
+```
 
 #### __init__
 
@@ -869,6 +866,8 @@ Routes the text strings to different connections based on a category label.
 The labels are specific to each model and can be found it its description on Hugging Face.
 
 ### Usage example
+
+<!-- test-ignore -->
 
 ```python
 from haystack.core.pipeline import Pipeline

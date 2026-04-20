@@ -28,6 +28,7 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.tools.errors import ToolInvocationError
+from haystack.tools.parameters_schema_utils import _unwrap_optional
 from haystack.tracing.utils import _serializable_value
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
@@ -123,24 +124,24 @@ class ToolInvoker:
     ```
 
     ```
-    >>  {
-    >>      'tool_messages': [
-    >>          ChatMessage(
-    >>              _role=<ChatRole.TOOL: 'tool'>,
-    >>              _content=[
-    >>                  ToolCallResult(
-    >>                      result='"The weather in Berlin is 20 degrees."',
-    >>                      origin=ToolCall(
-    >>                          tool_name='weather_tool',
-    >>                          arguments={'city': 'Berlin'},
-    >>                          id=None
-    >>                      )
-    >>                  )
-    >>              ],
-    >>              _meta={}
-    >>          )
-    >>      ]
-    >>  }
+    # >> {
+    # >>     'tool_messages': [
+    # >>         ChatMessage(
+    # >>             _role=<ChatRole.TOOL: 'tool'>,
+    # >>             _content=[
+    # >>                 ToolCallResult(
+    # >>                     result='"The weather in Berlin is 20 degrees."',
+    # >>                     origin=ToolCall(
+    # >>                         tool_name='weather_tool',
+    # >>                         arguments={'city': 'Berlin'},
+    # >>                         id=None
+    # >>                     )
+    # >>                 )
+    # >>             ],
+    # >>             _meta={}
+    # >>         )
+    # >>     ]
+    # >> }
     ```
 
     Usage example with a Toolset:
@@ -296,7 +297,7 @@ class ToolInvoker:
                 # If the result is not JSON serializable, we fall back to str
                 logger.warning(
                     "Tool result is not JSON serializable. Falling back to str conversion. "
-                    "Result: {result}\nError: {error}",
+                    "Result: {result}\nError: {err}",
                     result=result,
                     err=error,
                 )
@@ -376,11 +377,13 @@ class ToolInvoker:
             return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
 
     @staticmethod
-    def _get_func_params(tool: Tool) -> set:
+    def _get_func_params(tool: Tool) -> dict[str, Any]:
         """
-        Returns the function parameters of the tool's invoke method.
+        Returns the function parameters with types of the tool's invoke method.
 
         This method inspects the tool's function signature to determine which parameters the tool accepts.
+
+        :param tool: The tool for which to get the function parameters and their types.
         """
         # ComponentTool wraps the function with a function that accepts kwargs, so we need to look at input sockets
         # to find out which parameters the tool accepts.
@@ -389,9 +392,13 @@ class ToolInvoker:
             assert hasattr(tool._component, "__haystack_input__") and isinstance(
                 tool._component.__haystack_input__, Sockets
             )
-            func_params = set(tool._component.__haystack_input__._sockets_dict.keys())
+            func_params = {
+                name: socket.type for name, socket in tool._component.__haystack_input__._sockets_dict.items()
+            }
         else:
-            func_params = set(inspect.signature(tool.function).parameters.keys())
+            func_params = {
+                name: param.annotation for name, param in inspect.signature(tool.function).parameters.items()
+            }
 
         return func_params
 
@@ -406,7 +413,7 @@ class ToolInvoker:
           - function signature name matching
         """
         final_args = dict(llm_args)  # start with LLM-provided
-        func_params = ToolInvoker._get_func_params(tool)
+        func_params = ToolInvoker._get_func_params(tool).keys()
 
         # Determine the source of parameter mappings (explicit tool inputs or direct function parameters)
         # Typically, a "Tool" might have .inputs_from_state = {"state_key": "tool_param_name"}
@@ -419,6 +426,11 @@ class ToolInvoker:
         for state_key, param_name in param_mappings.items():
             if param_name not in final_args and state.has(state_key):
                 final_args[param_name] = state.get(state_key)
+
+        # Inject the live State object for any parameter annotated as State or Optional[State]
+        for param_name, param_type in ToolInvoker._get_func_params(tool).items():
+            if _unwrap_optional(param_type) is State:
+                final_args[param_name] = state
 
         return final_args
 
@@ -459,6 +471,13 @@ class ToolInvoker:
         for state_key, config in tool.outputs_to_state.items():
             # Get the source key from the output config, otherwise use the entire result
             source_key = config.get("source", None)
+
+            # If a source key is specified but absent from the result, skip this mapping to avoid passing a None value
+            # to state. This can be a common scenario with PipelineTool wrapping a pipeline that has conditional
+            # branches where not all outputs are always produced even if defined in outputs_to_state.
+            if source_key and source_key not in result:
+                continue
+
             output_value = result.get(source_key) if source_key else result
 
             # Merge other outputs into the state
@@ -521,7 +540,7 @@ class ToolInvoker:
                     enable_streaming_passthrough
                     and streaming_callback is not None
                     and "streaming_callback" not in final_args
-                    and "streaming_callback" in self._get_func_params(tool_to_invoke)
+                    and "streaming_callback" in self._get_func_params(tool_to_invoke).keys()
                 ):
                     final_args["streaming_callback"] = streaming_callback
 

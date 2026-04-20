@@ -62,6 +62,48 @@ class FakeRouter:
         return {"route2": "output from route 2"}
 
 
+@component
+class StringProducer:
+    @component.output_types(text=str)
+    def run(self) -> dict[str, str]:
+        return {"text": "Hello"}
+
+
+@component
+class ChatMessageProducer:
+    @component.output_types(message=ChatMessage)
+    def run(self) -> dict[str, ChatMessage]:
+        return {"message": ChatMessage.from_user("Hello")}
+
+
+@component
+class ListStrProducer:
+    @component.output_types(texts=list[str])
+    def run(self) -> dict[str, list[str]]:
+        return {"texts": ["Hello", "Hi"]}
+
+
+@component
+class ListChatMessageProducer:
+    @component.output_types(messages=list[ChatMessage])
+    def run(self) -> dict[str, list[ChatMessage]]:
+        return {"messages": [ChatMessage.from_user("Hello")]}
+
+
+@component
+class ListStrAcceptor:
+    @component.output_types(result=list[str])
+    def run(self, texts: list[str]) -> dict[str, list[str]]:
+        return {"result": texts}
+
+
+@component
+class ListChatMessageAcceptor:
+    @component.output_types(result=list[ChatMessage])
+    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+        return {"result": messages}
+
+
 @pytest.fixture
 def regular_output_socket():
     """Output socket for a regular (non-variadic) connection with receivers"""
@@ -1520,7 +1562,7 @@ class TestPipelineBase:
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
     @pytest.mark.integration
-    def test_find_super_components(self):
+    def test_find_super_components(self, in_memory_doc_store):
         """
         Test that the pipeline can find super components in it's pipeline.
         """
@@ -1528,7 +1570,6 @@ class TestPipelineBase:
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor
         from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         multi_file_converter = MultiFileConverter()
         doc_processor = DocumentPreprocessor()
@@ -1536,7 +1577,7 @@ class TestPipelineBase:
         pipeline = Pipeline()
         pipeline.add_component("converter", multi_file_converter)
         pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
@@ -1546,12 +1587,11 @@ class TestPipelineBase:
         assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
 
     @pytest.mark.integration
-    def test_merge_super_component_pipelines(self):
+    def test_merge_super_component_pipelines(self, in_memory_doc_store):
         from haystack import Pipeline
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor
         from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         multi_file_converter = MultiFileConverter()
         doc_processor = DocumentPreprocessor()
@@ -1559,7 +1599,7 @@ class TestPipelineBase:
         pipeline = Pipeline()
         pipeline.add_component("converter", multi_file_converter)
         pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
@@ -1989,6 +2029,174 @@ class TestPipelineConnect:
         inp_socket.wrap_input_in_list = False
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
+
+    def test_connect_auto_variadic_with_conversion_str_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("producer1", StringProducer())
+        pipeline.add_component("producer2", StringProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.text", "receiver.texts")
+        pipeline.connect("producer2.text", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert pipeline.graph["producer1"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+        assert pipeline.graph["producer2"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+
+    def test_connect_auto_variadic_with_conversion_str_and_list_str_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("producer1", StringProducer())
+        pipeline.add_component("producer2", ListStrProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.text", "receiver.texts")
+        pipeline.connect("producer2.texts", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert pipeline.graph["producer1"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+        assert pipeline.graph["producer2"]["receiver"]["texts/texts"]["conversion_strategy"] is None
+
+    def test_connect_auto_variadic_chat_message_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("producer1", ChatMessageProducer())
+        pipeline.add_component("producer2", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.message", "receiver.texts")
+        pipeline.connect("producer2.message", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["producer1"]["receiver"]["message/texts"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        )
+        assert (
+            pipeline.graph["producer2"]["receiver"]["message/texts"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        )
+
+    def test_connect_auto_variadic_str_and_chat_message_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("str_producer", StringProducer())
+        pipeline.add_component("chat_producer", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("str_producer.text", "receiver.texts")
+        pipeline.connect("chat_producer.message", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["str_producer", "chat_producer"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["str_producer", "chat_producer"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["str_producer"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+        )
+        assert (
+            pipeline.graph["chat_producer"]["receiver"]["message/texts"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        )
+
+    def test_connect_auto_variadic_chat_message_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("producer1", ChatMessageProducer())
+        pipeline.add_component("producer2", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.message", "receiver.messages")
+        pipeline.connect("producer2.message", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["producer1"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+        assert (
+            pipeline.graph["producer2"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+
+    def test_connect_auto_variadic_str_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("producer1", StringProducer())
+        pipeline.add_component("producer2", StringProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.text", "receiver.messages")
+        pipeline.connect("producer2.text", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["producer1"]["receiver"]["text/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
+        )
+        assert (
+            pipeline.graph["producer2"]["receiver"]["text/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
+        )
+
+    def test_connect_auto_variadic_str_and_chat_message_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("str_producer", StringProducer())
+        pipeline.add_component("chat_producer", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("str_producer.text", "receiver.messages")
+        pipeline.connect("chat_producer.message", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["str_producer", "chat_producer"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["str_producer", "chat_producer"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["str_producer"]["receiver"]["text/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
+        )
+        assert (
+            pipeline.graph["chat_producer"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+
+    def test_connect_auto_variadic_chat_message_and_list_chat_message_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("chat_producer", ChatMessageProducer())
+        pipeline.add_component("list_producer", ListChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("chat_producer.message", "receiver.messages")
+        pipeline.connect("list_producer.messages", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["chat_producer", "list_producer"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["chat_producer", "list_producer"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["chat_producer"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+        assert pipeline.graph["list_producer"]["receiver"]["messages/messages"]["conversion_strategy"] is None
 
     def test_connect_with_conversion_chat_message_to_str(self):
         @component

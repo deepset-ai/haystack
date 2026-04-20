@@ -12,6 +12,9 @@ env:
 jobs:
   nightly-release:
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
     # Always build from main for consistency (scheduled and manual runs)
     steps:
       - name: Checkout main
@@ -39,7 +42,4 @@ jobs:
         run: hatch build
 
       - name: Publish to PyPI
-        env:
-          HATCH_INDEX_USER: __token__
-          HATCH_INDEX_AUTH: ${{ secrets.HAYSTACK_AI_PYPI_TOKEN }}
-        run: hatch publish -y
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

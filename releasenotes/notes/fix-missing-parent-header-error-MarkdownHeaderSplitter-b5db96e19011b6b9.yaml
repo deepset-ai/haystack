@@ -1,0 +1,61 @@
+---
+fixes:
+  - |
+    When using the **MarkdownHeaderSplitter**, in the split chunks, the child header previously lost
+    its direct parent header in the metadata. Previously if one executed the code below:
+
+    .. code:: python
+      from haystack.components.preprocessors import MarkdownHeaderSplitter
+      from haystack import Document
+
+      text = """
+      # header 1
+      intro text
+
+      ## header 1.1
+      text 1
+
+      ## header 1.2
+      text 2
+
+      ### header 1.2.1
+      text 3
+
+      ### header 1.2.2
+      text 4
+      """
+
+      document = Document(content=text)
+
+      splitter = MarkdownHeaderSplitter(
+              keep_headers=True,
+              secondary_split="word"
+      )
+      result = splitter.run(documents=[document])["documents"]
+
+      for doc in result:
+          print(f"Header: {doc.meta['header']}, parent headers: {doc.meta['parent_headers']}")
+
+    We would have expected this output:
+
+    .. code:: text
+
+      Header: header 1, parent headers: []
+      Header: header 1.1, parent headers: ['header 1']
+      Header: header 1.2, parent headers: ['header 1']
+      Header: header 1.2.1, parent headers: ['header 1', 'header 1.2']
+      Header: header 1.2.2, parent headers: ['header 1', 'header 1.2']
+
+    But instead we actually got:
+
+    .. code:: text
+      Header: header 1, parent headers: []
+      Header: header 1.1, parent headers: []
+      Header: header 1.2, parent headers: ['header 1']
+      Header: header 1.2.1, parent headers: ['header 1']
+      Header: header 1.2.2, parent headers: ['header 1', 'header 1.2']
+
+    The error happened when a parent header had its own content chunk before the first
+    child header.
+
+    This has been fixed so even when a parent header has its own content chunk before the first child header all content is preserved.

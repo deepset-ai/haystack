@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any
+from typing import Any, ClassVar
 
 from openai.lib._pydantic import to_strict_json_schema
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
@@ -42,7 +42,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import AzureOpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -69,6 +69,44 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     }
     ```
     """
+
+    SUPPORTED_MODELS: ClassVar[list[str]] = [
+        "gpt-5.4",
+        "gpt-5.4-pro",
+        "gpt-5.3-codex",
+        "gpt-5.2",
+        "gpt-5.2-codex",
+        "gpt-5.2-chat",
+        "gpt-5.1",
+        "gpt-5.1-chat",
+        "gpt-5.1-codex",
+        "gpt-5.1-codex-mini",
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5-chat",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4o-audio-preview",
+        "gpt-realtime-1.5",
+        "gpt-audio-1.5",
+        "o1",
+        "o1-mini",
+        "o3",
+        "o3-mini",
+        "o4-mini",
+        "codex-mini",
+        "gpt-4",
+        "gpt-35-turbo",
+        "gpt-oss-120b",
+        "computer-use-preview",
+    ]
+    """A non-exhaustive list of chat models supported by this component.
+    See https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+    for the full list."""
 
     # ruff: noqa: PLR0913
     def __init__(

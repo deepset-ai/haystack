@@ -148,6 +148,7 @@ export default {
           label: 'Agents',
           items: [
             'pipeline-components/agents-1/agent',
+            'pipeline-components/agents-1/human-in-the-loop',
           ],
         },
         {
@@ -225,6 +226,7 @@ export default {
             id: 'pipeline-components/converters'
           },
           items: [
+            'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/documenttoimagecontent',
@@ -234,7 +236,10 @@ export default {
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
             'pipeline-components/converters/jsonconverter',
+            'pipeline-components/converters/kreuzbergconverter',
+            'pipeline-components/converters/libreofficefileconverter',
             'pipeline-components/converters/markdowntodocument',
+            'pipeline-components/converters/markitdownconverter',
             'pipeline-components/converters/mistralocrdocumentconverter',
             'pipeline-components/converters/msgtodocument',
             'pipeline-components/converters/multifileconverter',
@@ -482,6 +487,7 @@ export default {
             'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/cohereranker',
             'pipeline-components/rankers/fastembedranker',
+            'pipeline-components/rankers/fastembedlateinteractionranker',
             'pipeline-components/rankers/huggingfaceteiranker',
             'pipeline-components/rankers/jinaranker',
             'pipeline-components/rankers/llmranker',
@@ -608,6 +614,7 @@ export default {
             'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
+            'pipeline-components/websearch/tavilywebsearch',
             'pipeline-components/websearch/external-integrations-websearch',
           ],
         },

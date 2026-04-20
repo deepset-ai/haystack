@@ -20,6 +20,8 @@ and a Document Intelligence or Cognitive Services resource. For help with settin
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 import os
 from datetime import datetime
@@ -147,11 +149,16 @@ It can attach metadata to the resulting documents.
 
 ```python
 from haystack.components.converters.csv import CSVToDocument
+from datetime import datetime
+
 converter = CSVToDocument()
-results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["test/test_files/csv/sample_1.csv"], meta={"date_added": datetime.now().isoformat()}
+)
 documents = results["documents"]
+
 print(documents[0].content)
-# 'col1,col2\nrow1,row1\nrow2,row2\n'
+# >>  'col1,col2\nrow1,row1\nrow2,row2\n'
 ```
 
 #### __init__
@@ -275,12 +282,16 @@ Usage example:
 
 ```python
 from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
+from datetime import datetime
 
 converter = DOCXToDocument(table_format=DOCXTableFormat.CSV, link_format=DOCXLinkFormat.MARKDOWN)
-results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["test/test_files/docx/sample_docx.docx"], meta={"date_added": datetime.now().isoformat()}
+)
 documents = results["documents"]
+
 print(documents[0].content)
-# 'This is a text from the DOCX file.'
+# >> 'This is a text from the DOCX file.'
 ```
 
 #### __init__
@@ -368,6 +379,8 @@ Converts files to FileContent objects to be included in ChatMessage objects.
 
 ### Usage example
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.converters import FileToFileContent
 
@@ -424,10 +437,11 @@ Usage example:
 from haystack.components.converters import HTMLToDocument
 
 converter = HTMLToDocument()
-results = converter.run(sources=["path/to/sample.html"])
+results = converter.run(sources=["test/test_files/html/paul_graham_superlinear.html"])
 documents = results["documents"]
+
 print(documents[0].content)
-# 'This is a text from the HTML file.'
+# >> 'This is a text from the HTML file.'
 ```
 
 #### __init__
@@ -523,7 +537,8 @@ Documents are expected to have metadata containing:
 
 ### Usage example
 
-````
+<!-- test-ignore -->
+
 ```python
 from haystack import Document
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
@@ -550,7 +565,6 @@ image_contents = result["image_contents"]
 #    meta={'page_number': 1, 'file_path': 'doc.pdf'}
 #  )]
 ```
-````
 
 #### __init__
 
@@ -1034,7 +1048,9 @@ from haystack.components.converters import MarkdownToDocument
 from datetime import datetime
 
 converter = MarkdownToDocument()
-results = converter.run(sources=["path/to/sample.md"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["test/test_files/markdown/sample.md"], meta={"date_added": datetime.now().isoformat()}
+)
 documents = results["documents"]
 print(documents[0].content)
 # 'This is a text from the markdown file.'
@@ -1102,7 +1118,7 @@ from haystack.components.converters.msg import MSGToDocument
 from datetime import datetime
 
 converter = MSGToDocument()
-results = converter.run(sources=["sample.msg"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(sources=["test/test_files/msg/sample.msg"], meta={"date_added": datetime.now().isoformat()})
 documents = results["documents"]
 attachments = results["attachments"]
 print(documents[0].content)
@@ -1172,7 +1188,7 @@ Usage example:
 from haystack.super_components.converters import MultiFileConverter
 
 converter = MultiFileConverter()
-converter.run(sources=["test.txt", "test.pdf"], meta={})
+converter.run(sources=["test/test_files/txt/doc_1.txt", "test/test_files/pdf/sample_pdf_1.pdf"], meta={})
 ```
 
 #### __init__
@@ -1208,9 +1224,13 @@ Usage example:
 
 ```python
 from haystack.components.converters import OpenAPIServiceToFunctions
+from haystack.dataclasses.byte_stream import ByteStream
 
 converter = OpenAPIServiceToFunctions()
-result = converter.run(sources=["path/to/openapi_definition.yaml"])
+spec = ByteStream.from_string(
+    '{"openapi":"3.0.0","info":{"title":"API","version":"1.0.0"},"paths":{"/search":{"get":{"operationId":"search","summary":"Search","parameters":[{"name":"q","in":"query","required":true,"schema":{"type":"string"}}]}}}}'
+)
+result = converter.run(sources=[spec])
 assert result["functions"]
 ```
 
@@ -1264,7 +1284,7 @@ from haystack import Document
 from haystack.components.converters import OutputAdapter
 
 adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
-documents = [Document(content="Test content"]
+documents = [Document(content="Test content")]
 result = adapter.run(documents=documents)
 
 assert result["output"] == "Test content"
@@ -1362,12 +1382,15 @@ Usage example:
 
 ```python
 from haystack.components.converters.pdfminer import PDFMinerToDocument
+from datetime import datetime
 
 converter = PDFMinerToDocument()
-results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
-documents = results["documents"]
-print(documents[0].content)
-# 'This is a text from the PDF file.'
+results = converter.run(
+    sources=["test/test_files/pdf/sample_pdf_1.pdf"], meta={"date_added": datetime.now().isoformat()}
+)
+
+print(results["documents"][0].content)
+# >> 'This is a text from the PDF file.'
 ```
 
 #### __init__
@@ -1475,12 +1498,16 @@ Usage example:
 
 ```python
 from haystack.components.converters.pptx import PPTXToDocument
+from datetime import datetime
 
 converter = PPTXToDocument()
-results = converter.run(sources=["sample.pptx"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["test/test_files/pptx/sample_pptx.pptx"], meta={"date_added": datetime.now().isoformat()}
+)
 documents = results["documents"]
+
 print(documents[0].content)
-# 'This is the text from the PPTX file.'
+# >> 'This is the text from the PPTX file.'
 ```
 
 #### __init__
@@ -1568,12 +1595,16 @@ You can attach metadata to the resulting documents.
 
 ```python
 from haystack.components.converters.pypdf import PyPDFToDocument
+from datetime import datetime
 
 converter = PyPDFToDocument()
-results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["test/test_files/pdf/sample_pdf_1.pdf"], meta={"date_added": datetime.now().isoformat()}
+)
 documents = results["documents"]
+
 print(documents[0].content)
-# 'This is a text from the PDF file.'
+# >> 'This is a text from the PDF file.'
 ```
 
 #### __init__
@@ -1710,8 +1741,11 @@ see the [official documentation](https://github.com/apache/tika-docker/blob/main
 
 Usage example:
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.converters.tika import TikaDocumentConverter
+from datetime import datetime
 
 converter = TikaDocumentConverter()
 results = converter.run(
@@ -1719,8 +1753,9 @@ results = converter.run(
     meta={"date_added": datetime.now().isoformat()}
 )
 documents = results["documents"]
+
 print(documents[0].content)
-# 'This is a text from the docx file.'
+# >> 'This is a text from the docx file.'
 ```
 
 #### __init__
@@ -1781,10 +1816,11 @@ It can attach metadata to the resulting documents.
 from haystack.components.converters.txt import TextFileToDocument
 
 converter = TextFileToDocument()
-results = converter.run(sources=["sample.txt"])
+results = converter.run(sources=["test/test_files/txt/doc_1.txt"])
 documents = results["documents"]
+
 print(documents[0].content)
-# 'This is the content from the txt file.'
+# >> 'This is the content from the txt file.'
 ```
 
 #### __init__
@@ -1832,7 +1868,6 @@ Converts text files to documents.
 
 ### XLSXToDocument
 
-````
 Converts XLSX (Excel) files into Documents.
 
 Supports reading data from specific sheets or all sheets in the Excel file. If all sheets are read, a Document is
@@ -1842,18 +1877,17 @@ created for each sheet. The content of the Document is the table which can be sa
 
 ```python
 from haystack.components.converters.xlsx import XLSXToDocument
+from datetime import datetime
 
 converter = XLSXToDocument()
-results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
+results = converter.run(
+    sources=["test/test_files/xlsx/basic_tables_two_sheets.xlsx"], meta={"date_added": datetime.now().isoformat()}
+)
 documents = results["documents"]
-print(documents[0].content)
-# ",A,B
-````
 
-1,col_a,col_b
-2,1.5,test
-"
-\`\`\`
+print(documents[0].content)
+# >> ",A,B\n1,col_a,col_b\n2,1.5,test\n"
+```
 
 #### __init__
 

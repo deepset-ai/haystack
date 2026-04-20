@@ -29,7 +29,11 @@ Use `DocumentCleaner` to make text documents more readable. It removes extra whi
 - `ascii_only` removes accents from characters and replaces them with their closest ASCII equivalents.
 - `remove_empty_lines` removes empty lines from the document.
 - `remove_extra_whitespaces` removes extra whitespaces from the document.
-- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](../converters/textfiletodocument.mdx) and [`AzureOCRDocumentConverter`](../converters/azureocrdocumentconverter.mdx).
+- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](../converters/textfiletodocument.mdx), [`AzureOCRDocumentConverter`](../converters/azureocrdocumentconverter.mdx), [`MistralOCRDocumentConverter`](../converters/mistralocrdocumentconverter.mdx), and [`PaddleOCRVLDocumentConverter`](../converters/paddleocrvldocumentconverter.mdx).
+
+:::note
+`remove_extra_whitespaces` and `remove_empty_lines` work best on plain-text content. If your converter returns Markdown, such as [`AzureDocumentIntelligenceConverter`](../converters/azuredocumentintelligenceconverter.mdx), [`MarkItDownConverter`](../converters/markitdownconverter.mdx), [`MistralOCRDocumentConverter`](../converters/mistralocrdocumentconverter.mdx), or [`PaddleOCRVLDocumentConverter`](../converters/paddleocrvldocumentconverter.mdx), disable those options to preserve headings, tables, lists, and image tags.
+:::
 
 In addition, you can specify a list of strings that should be removed from all documents as part of the cleaning with the parameter `remove_substring`. You can also specify a regular expression with the parameter `remove_regex` and any matches will be removed.
 
@@ -86,4 +90,62 @@ p.connect("cleaner.documents", "splitter.documents")
 p.connect("splitter.documents", "writer.documents")
 
 p.run({"text_file_converter": {"sources": your_files}})
+```
+
+### In YAML
+```yaml
+components:
+  cleaner:
+    init_parameters:
+      ascii_only: false
+      keep_id: false
+      remove_empty_lines: true
+      remove_extra_whitespaces: true
+      remove_regex: null
+      remove_repeated_substrings: false
+      remove_substrings: null
+      replace_regexes: null
+      strip_whitespaces: false
+      unicode_normalization: null
+    type: haystack.components.preprocessors.document_cleaner.DocumentCleaner
+  splitter:
+    init_parameters:
+      extend_abbreviations: true
+      language: en
+      respect_sentence_boundary: false
+      skip_empty_documents: true
+      split_by: sentence
+      split_length: 1
+      split_overlap: 0
+      split_threshold: 0
+      use_split_rules: true
+    type: haystack.components.preprocessors.document_splitter.DocumentSplitter
+  text_file_converter:
+    init_parameters:
+      encoding: utf-8
+      store_full_path: false
+    type: haystack.components.converters.txt.TextFileToDocument
+  writer:
+    init_parameters:
+      document_store:
+        init_parameters:
+          bm25_algorithm: BM25L
+          bm25_parameters: {}
+          bm25_tokenization_regex: (?u)\\b\\w+\\b
+          embedding_similarity_function: dot_product
+          index: 64e4f9ab-87fb-47fd-b390-dabcfda61447
+          return_embedding: true
+        type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+      policy: NONE
+    type: haystack.components.writers.document_writer.DocumentWriter
+connection_type_validation: true
+connections:
+- receiver: cleaner.documents
+  sender: text_file_converter.documents
+- receiver: splitter.documents
+  sender: cleaner.documents
+- receiver: writer.documents
+  sender: splitter.documents
+max_runs_per_component: 100
+metadata: {}
 ```

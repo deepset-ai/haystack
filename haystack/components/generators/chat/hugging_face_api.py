@@ -180,7 +180,7 @@ def _map_hf_finish_reason_to_haystack(
     - "eos_token": the model generated its end of sequence token
     - "stop_sequence": the model generated a text included in `stop_sequences`
 
-    Additionally detects tool calls from delta.tool_calls or delta.tool_call_id.
+    Additionally, detects tool calls from delta.tool_calls or delta.tool_call_id.
 
     :param choice: The HuggingFace ChatCompletionStreamOutputChoice object.
     :returns: The corresponding Haystack FinishReason or None.
@@ -263,7 +263,7 @@ class HuggingFaceAPIChatGenerator:
     ### Usage examples
 
     #### With the serverless inference API (Inference Providers) - free tier available
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -287,7 +287,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With the serverless inference API (Inference Providers) and text+image input
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage, ImageContent
@@ -314,7 +314,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With paid inference endpoints
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -329,9 +329,10 @@ class HuggingFaceAPIChatGenerator:
 
     result = generator.run(messages)
     print(result)
+    ```
 
     #### With self-hosted text generation inference
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage

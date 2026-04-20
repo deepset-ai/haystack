@@ -53,12 +53,12 @@ for doc in result.documents:
     if not doc.meta["referenced"]:
         print(f"[{doc.meta['source_index']}] {doc.content}")
 
-# Answer: The capital of France is Paris
-# References:
-# [2] Paris is the capital of France.
-# Other sources:
-# [1] Berlin is the capital of Germany.
-# [3] Rome is the capital of Italy.
+# >> Answer: The capital of France is Paris
+# >> References:
+# >> [2] Paris is the capital of France.
+# >> Other sources:
+# >> [1] Berlin is the capital of Germany.
+# >> [3] Rome is the capital of Italy.
 ```
 
 #### __init__
@@ -211,8 +211,7 @@ print(res)
 # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
 # 708}})]}}
 
-messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next
-{{day_count}} days?")]
+messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
 
 res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
                                     "template": messages}})

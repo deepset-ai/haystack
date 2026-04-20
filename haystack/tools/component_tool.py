@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
-from types import NoneType, UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
 from haystack import logging
+from haystack.components.agents.state.state import State
 from haystack.core.component import Component
 from haystack.core.serialization import (
     component_from_dict,
@@ -23,6 +23,7 @@ from haystack.tools.parameters_schema_utils import (
     _contains_callable_type,
     _get_component_param_descriptions,
     _resolve_type,
+    _unwrap_optional,
 )
 from haystack.tools.tool import (
     _deserialize_outputs_to_state,
@@ -58,7 +59,7 @@ class ComponentTool(Tool):
     Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
 
     ## Usage Example:
-
+    <!-- test-ignore -->
     ```python
     from haystack import component, Pipeline
     from haystack.tools import ComponentTool
@@ -328,6 +329,10 @@ class ComponentTool(Tool):
             if _contains_callable_type(input_type):
                 continue
 
+            # Skip State-typed parameters - ToolInvoker injects them at runtime
+            if _unwrap_optional(input_type) is State:
+                continue
+
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
             # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
@@ -352,19 +357,6 @@ class ComponentTool(Tool):
 
         return parameters_schema
 
-    def _unwrap_optional(self, _type: type) -> type:
-        """
-        Unwrap Optional types to get the underlying type and whether it was originally optional.
-
-        :returns:
-            The underlying type if `t` is `Optional[X]`, otherwise returns `t` unchanged.
-        """
-        if get_origin(_type) is Union or get_origin(_type) is UnionType:
-            non_none = [a for a in get_args(_type) if a is not NoneType]
-            if len(non_none) == 1:
-                return non_none[0]
-        return _type
-
     def _convert_param(self, param_value: Any, param_type: type) -> Any:
         """
         Converts a single parameter value to the expected type.
@@ -376,7 +368,7 @@ class ComponentTool(Tool):
             The converted parameter value.
         """
         # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
-        unwrapped_param_type = self._unwrap_optional(param_type)
+        unwrapped_param_type = _unwrap_optional(param_type)
 
         # We support calling from_dict on target types that have it, even if they are wrapped in a list.
         # This allows us to support lists of dataclasses as well as single dataclass inputs.

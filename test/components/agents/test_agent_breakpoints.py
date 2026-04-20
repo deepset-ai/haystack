@@ -7,7 +7,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-import anyio
 import pytest
 
 from haystack import component
@@ -709,7 +708,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_chat_generator_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_chat_generator_*.json"))  # noqa: ASYNC230, ASYNC240
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -735,7 +735,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
 
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
@@ -777,7 +778,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
         assert len(snapshot_files) > 0
         first_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -790,7 +792,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
         # Resume again
@@ -845,7 +848,8 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_callback_id"
 
         # Verify no file was saved to disk
-        all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        all_paths = list(Path(debug_path).glob("*.json"))  # noqa: ASYNC230, ASYNC240
         assert all_paths == []
 
     @pytest.mark.asyncio
@@ -880,7 +884,8 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_tool_callback_id"
 
         # Verify no file was saved to disk
-        all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        all_paths = list(Path(debug_path).glob("*.json"))  # noqa: ASYNC230, ASYNC240
         assert all_paths == []
 
     @pytest.mark.asyncio

@@ -22,7 +22,6 @@ class DALLEImageGenerator:
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create).
 
     ### Usage example
-
     ```python
     from haystack.components.generators import DALLEImageGenerator
     image_generator = DALLEImageGenerator()
