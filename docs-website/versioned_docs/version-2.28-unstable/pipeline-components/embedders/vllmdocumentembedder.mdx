@@ -59,14 +59,14 @@ By default, if an embedding request fails, an exception is raised. Set `raise_on
 
 ### Instructions
 
-Some embedding models require prepending the document text with an instruction to work better for retrieval. For example, if you use [google/embeddinggemma-300m](https://huggingface.co/google/embeddinggemma-300m), you should prefix your document with the following instruction: "title: none | text: ".
+Some embedding models require prepending the document text with an instruction to work better for retrieval. For example, if you use [intfloat/e5-large-v2](https://huggingface.co/intfloat/e5-large-v2), you should prefix your document with the following instruction: "passage:".
 
 This is how it works with `VLLMDocumentEmbedder`:
 
 ```python
-instruction = "title: none | text: "
+instruction = "passage:"
 embedder = VLLMDocumentEmbedder(
-    model="google/embeddinggemma-300m",
+    model="intfloat/e5-large-v2",
     prefix=instruction,
 )
 ```
@@ -79,11 +79,11 @@ Documents often come with a set of metadata. If they are distinctive and semanti
 from haystack import Document
 from haystack_integrations.components.embedders.vllm import VLLMDocumentEmbedder
 
-doc = Document(content="some text", meta={"topic": "relevant topic", "page_number": 18})
+doc = Document(content="some text", meta={"title": "relevant title", "page_number": 18})
 
 embedder = VLLMDocumentEmbedder(
     model="google/embeddinggemma-300m",
-    meta_fields_to_embed=["topic"],
+    meta_fields_to_embed=["title"],
 )
 
 docs_with_embeddings = embedder.run(documents=[doc])["documents"]
@@ -115,10 +115,7 @@ from haystack_integrations.components.embedders.vllm import VLLMDocumentEmbedder
 
 doc = Document(content="I love pizza!")
 
-document_embedder = VLLMDocumentEmbedder(
-    model="google/embeddinggemma-300m",
-    prefix="title: none | text: ",
-)
+document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
 
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
@@ -147,10 +144,7 @@ documents = [
     Document(content="Germany has many big cities"),
 ]
 
-document_embedder = VLLMDocumentEmbedder(
-    model="google/embeddinggemma-300m",
-    prefix="title: none | text: ",
-)
+document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
 writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE)
 
 indexing_pipeline = Pipeline()
@@ -163,10 +157,7 @@ indexing_pipeline.run({"document_embedder": {"documents": documents}})
 query_pipeline = Pipeline()
 query_pipeline.add_component(
     "text_embedder",
-    VLLMTextEmbedder(
-        model="google/embeddinggemma-300m",
-        prefix="task: search result | query: ",
-    ),
+    VLLMTextEmbedder(model="google/embeddinggemma-300m"),
 )
 query_pipeline.add_component(
     "retriever",

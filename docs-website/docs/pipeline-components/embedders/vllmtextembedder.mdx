@@ -46,14 +46,14 @@ If the model was trained with Matryoshka Representation Learning, you can reduce
 
 ### Instructions
 
-Some embedding models require prepending the text with an instruction to work better for retrieval. For example, if you use [google/embeddinggemma-300m](https://huggingface.co/google/embeddinggemma-300m), you should prefix your query with the following instruction: "task: search result | query: ".
+Some embedding models require prepending the text with an instruction to work better for retrieval. For example, if you use [BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list), you should prefix your query with the following instruction: "Represent this sentence for searching relevant passages:".
 
 This is how it works with `VLLMTextEmbedder`:
 
 ```python
-instruction = "task: search result | query: "
+instruction = "Represent this sentence for searching relevant passages:"
 embedder = VLLMTextEmbedder(
-    model="google/embeddinggemma-300m",
+    model="BAAI/bge-large-en-v1.5",
     prefix=instruction,
 )
 ```
@@ -119,20 +119,14 @@ documents = [
     Document(content="Germany has many big cities"),
 ]
 
-document_embedder = VLLMDocumentEmbedder(
-    model="google/embeddinggemma-300m",
-    prefix="title: none | text: ",
-)
+document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
 documents_with_embeddings = document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_embeddings)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component(
     "text_embedder",
-    VLLMTextEmbedder(
-        model="google/embeddinggemma-300m",
-        prefix="task: search result | query: ",
-    ),
+    VLLMTextEmbedder(model="google/embeddinggemma-300m"),
 )
 query_pipeline.add_component(
     "retriever",
