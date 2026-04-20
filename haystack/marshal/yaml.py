@@ -19,8 +19,22 @@ class YamlDumper(yaml.SafeDumper):
         """Represent a Python tuple."""
         return self.represent_sequence("tag:yaml.org,2002:python/tuple", data)
 
+    def represent_str(self, data: str) -> yaml.ScalarNode:
+        """Represent a string, using single-quoted style for strings containing backslashes.
+
+        This ensures that backslash sequences (e.g. ``\\b``, ``\\w``) in regex
+        patterns and file paths are preserved literally during YAML round-tripping.
+        Without this, a plain scalar like ``remove_regex: \\b\\w+\\b`` may be
+        misinterpreted on some YAML / Python versions, causing
+        ``ReaderError`` or ``SyntaxWarning`` on load (#11093).
+        """
+        if "\\" in data:
+            return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
+        return self.represent_scalar("tag:yaml.org,2002:str", data)
+
 
 YamlDumper.add_representer(tuple, YamlDumper.represent_tuple)
+YamlDumper.add_representer(str, YamlDumper.represent_str)
 YamlLoader.add_constructor("tag:yaml.org,2002:python/tuple", YamlLoader.construct_python_tuple)
 
 
