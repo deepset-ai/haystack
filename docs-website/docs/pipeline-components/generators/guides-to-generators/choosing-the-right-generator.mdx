@@ -58,43 +58,48 @@ generator = SomeGenerator(streaming_callback=print_streaming_chunk)
 
 ### Custom Callback
 
-If you need custom rendering (for example, SSE or WebSocket transport), write your own callback. Handle the four chunk types in order:
+If you need custom rendering, write your own callback. Handle the four chunk types in order:
 
 ```python
 from haystack.dataclasses import StreamingChunk
 
 
 def my_streaming_callback(chunk: StreamingChunk) -> None:
-    # Tool calls: name and JSON arguments arrive as streaming deltas
+    if chunk.start and chunk.index and chunk.index > 0:
+        print("\n\n", flush=True, end="")
+
+    # Tool Call streaming
     if chunk.tool_calls:
         for tool_call in chunk.tool_calls:
             if chunk.start:
+                if chunk.index and tool_call.index > chunk.index:
+                    print("\n\n", flush=True, end="")
                 print(
-                    f"\n[TOOL CALL]\nTool: {tool_call.tool_name}\nArguments: ",
-                    end="",
+                    f">>> Tool Call: {tool_call.tool_name}\n>>> Arguments: ",
                     flush=True,
+                    end="",
                 )
             if tool_call.arguments:
-                print(tool_call.arguments, end="", flush=True)
+                print(tool_call.arguments, flush=True, end="")
 
-    # Tool result: fully formed output from the tool, emitted by ToolInvoker
+    # Tool Result streaming
     if chunk.tool_call_result:
-        print(f"\n[TOOL RESULT]\n{chunk.tool_call_result.result}", end="", flush=True)
+        print(f">>> Tool Result\n{chunk.tool_call_result.result}", flush=True, end="")
 
-    # Text tokens: normal assistant response, arrives word by word
+    # Text streaming
     if chunk.content:
         if chunk.start:
-            print("\n[ASSISTANT]\n", end="", flush=True)
-        print(chunk.content, end="", flush=True)
+            print(">>> Assistant\n", flush=True, end="")
+        print(chunk.content, flush=True, end="")
 
-    # Reasoning tokens: extended thinking output (for models that support it)
+    # Reasoning streaming
     if chunk.reasoning:
         if chunk.start:
-            print("\n[REASONING]\n", end="", flush=True)
-        print(chunk.reasoning.reasoning_text, end="", flush=True)
+            print(">>> Reasoning\n", flush=True, end="")
+        print(chunk.reasoning.reasoning_text, flush=True, end="")
 
     if chunk.finish_reason is not None:
-        print("\n\n", end="", flush=True)
+        print("\n\n", flush=True, end="")
 ```
 
 ### Agents and Tools
