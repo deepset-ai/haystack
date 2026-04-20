@@ -312,6 +312,8 @@ export default {
             'pipeline-components/embedders/stackittextembedder',
             'pipeline-components/embedders/vertexaidocumentembedder',
             'pipeline-components/embedders/vertexaitextembedder',
+            'pipeline-components/embedders/vllmdocumentembedder',
+            'pipeline-components/embedders/vllmtextembedder',
             'pipeline-components/embedders/watsonxdocumentembedder',
             'pipeline-components/embedders/watsonxtextembedder',
             'pipeline-components/embedders/external-integrations-embedders',
