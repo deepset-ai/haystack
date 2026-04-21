@@ -400,7 +400,10 @@ def _serialize_agent_component_inputs(component_name: str, component_inputs: dic
 
     :param component_name: Name of the agent sub-component (e.g. ``chat_generator`` or ``tool_invoker``).
     :param component_inputs: Runtime inputs for that sub-component.
-    :returns: A serialized payload, or ``{}`` if no fields can be serialized at all.
+    :returns: A serialized payload that is always a structurally valid ``{"serialization_schema", "serialized_data"}``
+        pair. When every field fails to serialize, an empty-but-valid object payload is returned so that
+        ``_deserialize_value_with_schema`` can still load it (e.g. when resuming from a ``ToolBreakpoint`` where the
+        sub-component's inputs are not strictly required).
     """
     try:
         return _serialize_value_with_schema(_deepcopy_with_exceptions(component_inputs))
@@ -430,9 +433,6 @@ def _serialize_agent_component_inputs(component_name: str, component_inputs: dic
 
         serialized_properties[field_name] = serialized_value["serialization_schema"]
         serialized_data[field_name] = serialized_value["serialized_data"]
-
-    if not serialized_properties:
-        return {}
 
     return {
         "serialization_schema": {"type": "object", "properties": serialized_properties},
