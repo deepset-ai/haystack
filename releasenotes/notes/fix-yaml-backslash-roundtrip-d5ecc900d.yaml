@@ -1,8 +1,8 @@
 ---
 fixes:
   - |
-    Fixed YAML serialization of strings containing backslashes (e.g. regex patterns like `\b\w+\b`,
-    Windows paths like `C:\Users\file`). Such strings are now emitted as single-quoted YAML scalars,
+    Fixed YAML serialization of strings containing backslashes (e.g. regex patterns like ``\b\w+\b``,
+    Windows paths like ``C:\Users\file``). Such strings are now emitted as single-quoted YAML scalars,
     preventing misinterpretation of backslash sequences as YAML escape characters on load.
-    This fixes `ReaderError: unacceptable character #x0008` and `SyntaxWarning` issues
+    This fixes ``ReaderError: unacceptable character #x0008`` and ``SyntaxWarning`` issues
     when round-tripping pipelines that contain regex parameters. Fixes #11093.

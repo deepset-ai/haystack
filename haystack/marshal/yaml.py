@@ -29,7 +29,9 @@ class YamlDumper(yaml.SafeDumper):
         ``ReaderError`` or ``SyntaxWarning`` on load (#11093).
         """
         if "\\" in data:
-            return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
+            return self.represent_scalar(
+                "tag:yaml.org,2002:str", data, style="'"
+            )
         return self.represent_scalar("tag:yaml.org,2002:str", data)
 
 
