@@ -30,9 +30,7 @@
             "type": "doc",
             "id": "concepts/agents"
           },
-          "items": [
-            "concepts/agents/state"
-          ]
+          "items": ["concepts/agents/state"]
         },
         {
           "type": "category",
@@ -71,9 +69,7 @@
             "type": "doc",
             "id": "concepts/data-classes"
           },
-          "items": [
-            "concepts/data-classes/chatmessage"
-          ]
+          "items": ["concepts/data-classes/chatmessage"]
         },
         {
           "type": "category",
@@ -176,9 +172,7 @@
         {
           "type": "category",
           "label": "Caching",
-          "items": [
-            "pipeline-components/caching/cachechecker"
-          ]
+          "items": ["pipeline-components/caching/cachechecker"]
         },
         {
           "type": "category",
@@ -256,9 +250,7 @@
         {
           "type": "category",
           "label": "Downloaders",
-          "items": [
-            "pipeline-components/downloaders/s3downloader"
-          ]
+          "items": ["pipeline-components/downloaders/s3downloader"]
         },
         {
           "type": "category",
@@ -470,9 +462,7 @@
         {
           "type": "category",
           "label": "Query",
-          "items": [
-            "pipeline-components/query/queryexpander"
-          ]
+          "items": ["pipeline-components/query/queryexpander"]
         },
         {
           "type": "category",
@@ -498,6 +488,7 @@
             "pipeline-components/rankers/sentencetransformersdiversityranker",
             "pipeline-components/rankers/sentencetransformerssimilarityranker",
             "pipeline-components/rankers/transformerssimilarityranker",
+            "pipeline-components/rankers/vllmranker",
             "pipeline-components/rankers/external-integrations-rankers"
           ]
         },
@@ -508,9 +499,7 @@
             "type": "doc",
             "id": "pipeline-components/readers"
           },
-          "items": [
-            "pipeline-components/readers/extractivereader"
-          ]
+          "items": ["pipeline-components/readers/extractivereader"]
         },
         {
           "type": "category",
@@ -577,30 +566,22 @@
         {
           "type": "category",
           "label": "Samplers",
-          "items": [
-            "pipeline-components/samplers/toppsampler"
-          ]
+          "items": ["pipeline-components/samplers/toppsampler"]
         },
         {
           "type": "category",
           "label": "Tools",
-          "items": [
-            "pipeline-components/tools/toolinvoker"
-          ]
+          "items": ["pipeline-components/tools/toolinvoker"]
         },
         {
           "type": "category",
           "label": "Translators",
-          "items": [
-            "pipeline-components/translators/laradocumenttranslator"
-          ]
+          "items": ["pipeline-components/translators/laradocumenttranslator"]
         },
         {
           "type": "category",
           "label": "Validators",
-          "items": [
-            "pipeline-components/validators/jsonschemavalidator"
-          ]
+          "items": ["pipeline-components/validators/jsonschemavalidator"]
         },
         {
           "type": "category",
@@ -620,9 +601,7 @@
         {
           "type": "category",
           "label": "Writers",
-          "items": [
-            "pipeline-components/writers/documentwriter"
-          ]
+          "items": ["pipeline-components/writers/documentwriter"]
         }
       ]
     },
