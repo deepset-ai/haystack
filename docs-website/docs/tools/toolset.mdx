@@ -69,6 +69,98 @@ subtract_tool = Tool(
 math_toolset = Toolset([add_tool, subtract_tool])
 ```
 
+### In YAML
+
+This YAML example shows how to define a `Toolset` with multiple tools inside a pipeline definition and reuse that same `Toolset` when configuring a chat generator.
+
+```yaml
+components:
+  math_toolset:
+    type: haystack.tools.toolset.Toolset
+    data:
+      tools:
+      - type: haystack.tools.tool.Tool
+        data:
+          name: add
+          description: Add two numbers
+          parameters:
+            type: object
+            properties:
+              a:
+                type: integer
+              b:
+                type: integer
+            required:
+            - a
+            - b
+          function: your_module.add_numbers
+          outputs_to_string: null
+          inputs_from_state: null
+          outputs_to_state: null
+      - type: haystack.tools.tool.Tool
+        data:
+          name: subtract
+          description: Subtract b from a
+          parameters:
+            type: object
+            properties:
+              a:
+                type: integer
+              b:
+                type: integer
+            required:
+            - a
+            - b
+          function: your_module.subtract_numbers
+          outputs_to_string: null
+          inputs_from_state: null
+          outputs_to_state: null
+  llm:
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+    init_parameters:
+      model: gpt-4o-mini
+      tools:
+        type: haystack.tools.toolset.Toolset
+        data:
+          tools:
+          - type: haystack.tools.tool.Tool
+            data:
+              name: add
+              description: Add two numbers
+              parameters:
+                type: object
+                properties:
+                  a:
+                    type: integer
+                  b:
+                    type: integer
+                required:
+                - a
+                - b
+              function: your_module.add_numbers
+              outputs_to_string: null
+              inputs_from_state: null
+              outputs_to_state: null
+          - type: haystack.tools.tool.Tool
+            data:
+              name: subtract
+              description: Subtract b from a
+              parameters:
+                type: object
+                properties:
+                  a:
+                    type: integer
+                  b:
+                    type: integer
+                required:
+                - a
+                - b
+              function: your_module.subtract_numbers
+              outputs_to_string: null
+              inputs_from_state: null
+              outputs_to_state: null
+```
+
 ### Adding New Tools to Toolset
 
 ```python
@@ -201,4 +293,57 @@ Output:
 
 ```
 4 + 2 equals 6.
+```
+
+The same serialized `Toolset` can also be passed to an `Agent` in YAML through its `tools` init parameter:
+
+```yaml
+components:
+  agent:
+    type: haystack.components.agents.agent.Agent
+    init_parameters:
+      chat_generator:
+        type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+        init_parameters:
+          model: gpt-4o-mini
+      tools:
+        type: haystack.tools.toolset.Toolset
+        data:
+          tools:
+          - type: haystack.tools.tool.Tool
+            data:
+              name: add
+              description: Add two numbers
+              parameters:
+                type: object
+                properties:
+                  a:
+                    type: integer
+                  b:
+                    type: integer
+                required:
+                - a
+                - b
+              function: your_module.add_numbers
+              outputs_to_string: null
+              inputs_from_state: null
+              outputs_to_state: null
+          - type: haystack.tools.tool.Tool
+            data:
+              name: subtract
+              description: Subtract b from a
+              parameters:
+                type: object
+                properties:
+                  a:
+                    type: integer
+                  b:
+                    type: integer
+                required:
+                - a
+                - b
+              function: your_module.subtract_numbers
+              outputs_to_string: null
+              inputs_from_state: null
+              outputs_to_state: null
 ```
