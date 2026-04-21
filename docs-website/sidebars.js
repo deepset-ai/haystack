@@ -469,6 +469,7 @@ export default {
             'pipeline-components/preprocessors/hierarchicaldocumentsplitter',
             'pipeline-components/preprocessors/recursivesplitter',
             'pipeline-components/preprocessors/textcleaner',
+            'pipeline-components/preprocessors/presidio',
           ],
         },
         {

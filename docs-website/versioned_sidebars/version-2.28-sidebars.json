@@ -456,7 +456,8 @@
             "pipeline-components/preprocessors/embeddingbaseddocumentsplitter",
             "pipeline-components/preprocessors/hierarchicaldocumentsplitter",
             "pipeline-components/preprocessors/recursivesplitter",
-            "pipeline-components/preprocessors/textcleaner"
+            "pipeline-components/preprocessors/textcleaner",
+            "pipeline-components/preprocessors/presidio"
           ]
         },
         {
