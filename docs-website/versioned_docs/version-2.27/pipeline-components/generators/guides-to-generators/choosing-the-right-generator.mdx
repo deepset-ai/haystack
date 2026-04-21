@@ -36,6 +36,7 @@ When you enable streaming, the generator calls your `streaming_callback` for eve
 - **Tool calls**: The model is building a tool/function call. Read `chunk.tool_calls`.
 - **Tool result**: A tool finished and returned output. Read `chunk.tool_call_result`.
 - **Text tokens**: Normal assistant text. Read `chunk.content`.
+- **Reasoning tokens**: Extended thinking output (for models that support it). Read `chunk.reasoning`.
 
 Only one of these fields appears per chunk. Use `chunk.start` and `chunk.finish_reason` to detect boundaries. Use `chunk.index` and `chunk.component_info` for tracing.
 
@@ -46,44 +47,59 @@ For providers that support multiple candidates, set `n=1` to stream.
 Check out the parameter details in our [API Reference for StreamingChunk](/reference/data-classes-api#streamingchunk).
 :::
 
-The simplest way is to use the built-in `print_streaming_chunk` function. It handles tool calls, tool results, and text tokens.
+The simplest way is to use the built-in `print_streaming_chunk` function. It handles all chunk types and prints formatted output to stdout:
 
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 
 generator = SomeGenerator(streaming_callback=print_streaming_chunk)
-## For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
+# For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
 ```
 
 ### Custom Callback
 
-If you need custom rendering, you can create your own callback.
-
-Handle the three chunk types in this order: tool calls, tool result, and text.
+If you need custom rendering, write your own callback. Handle the four chunk types in order:
 
 ```python
 from haystack.dataclasses import StreamingChunk
 
 
-def my_stream(chunk: StreamingChunk):
-    if chunk.start:
-        on_start()  # e.g., open an SSE stream
+def my_streaming_callback(chunk: StreamingChunk) -> None:
+    if chunk.start and chunk.index and chunk.index > 0:
+        print("\n\n", flush=True, end="")
 
-    # 1) Tool calls: name and JSON args arrive as deltas
+    # Tool Call streaming
     if chunk.tool_calls:
-        for t in chunk.tool_calls:
-            on_tool_call_delta(index=t.index, name=t.tool_name, args_delta=t.arguments)
+        for tool_call in chunk.tool_calls:
+            if chunk.start:
+                if chunk.index and tool_call.index > chunk.index:
+                    print("\n\n", flush=True, end="")
+                print(
+                    f">>> Tool Call: {tool_call.tool_name}\n>>> Arguments: ",
+                    flush=True,
+                    end="",
+                )
+            if tool_call.arguments:
+                print(tool_call.arguments, flush=True, end="")
 
-    # 2) Tool result: final output from the tool
-    if chunk.tool_call_result is not None:
-        on_tool_result(chunk.tool_call_result)
+    # Tool Result streaming
+    if chunk.tool_call_result:
+        print(f">>> Tool Result\n{chunk.tool_call_result.result}", flush=True, end="")
 
-    # 3) Text tokens
+    # Text streaming
     if chunk.content:
-        on_text_delta(chunk.content)
+        if chunk.start:
+            print(">>> Assistant\n", flush=True, end="")
+        print(chunk.content, flush=True, end="")
 
-    if chunk.finish_reason:
-        on_finish(chunk.finish_reason)
+    # Reasoning streaming
+    if chunk.reasoning:
+        if chunk.start:
+            print(">>> Reasoning\n", flush=True, end="")
+        print(chunk.reasoning.reasoning_text, flush=True, end="")
+
+    if chunk.finish_reason is not None:
+        print("\n\n", flush=True, end="")
 ```
 
 ### Agents and Tools
