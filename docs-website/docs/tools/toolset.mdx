@@ -180,6 +180,219 @@ Output:
 2 + 2 equals 4.
 ```
 
+### In YAML
+
+This is the YAML representation of a `Toolset` with multiple `ComponentTool`s. You can pass the serialized
+`Toolset` as the `tools` init parameter to a Chat Generator, `ToolInvoker`, or an `Agent`.
+
+```yaml
+components:
+  llm:
+    init_parameters:
+      api_base_url: null
+      api_key:
+        env_vars:
+        - OPENAI_API_KEY
+        strict: true
+        type: env_var
+      generation_kwargs: {}
+      http_client_kwargs: null
+      max_retries: null
+      model: gpt-4o-mini
+      organization: null
+      streaming_callback: null
+      timeout: null
+      tools:
+        data:
+          tools:
+          - data:
+              component:
+                init_parameters:
+                  allowed_domains: null
+                  api_key:
+                    env_vars:
+                    - SERPERDEV_API_KEY
+                    strict: true
+                    type: env_var
+                  exclude_subdomains: false
+                  search_params: {}
+                  top_k: 3
+                type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+              description: Search the web for current information on any topic
+              inputs_from_state: null
+              name: web_search
+              outputs_to_state: null
+              outputs_to_string: null
+              parameters: null
+            type: haystack.tools.component_tool.ComponentTool
+          - data:
+              component:
+                init_parameters:
+                  client_kwargs:
+                    follow_redirects: true
+                    timeout: 3
+                  http2: false
+                  raise_on_failure: true
+                  request_headers: {}
+                  retry_attempts: 2
+                  timeout: 3
+                  user_agents:
+                  - haystack/LinkContentFetcher/2.x
+                type: haystack.components.fetchers.link_content.LinkContentFetcher
+              description: Fetch the contents of URLs returned by search
+              inputs_from_state: null
+              name: fetch_page
+              outputs_to_state: null
+              outputs_to_string: null
+              parameters: null
+            type: haystack.tools.component_tool.ComponentTool
+        type: haystack.tools.toolset.Toolset
+      tools_strict: false
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+  tool_invoker:
+    init_parameters:
+      raise_on_failure: true
+      tools:
+        data:
+          tools:
+          - data:
+              component:
+                init_parameters:
+                  allowed_domains: null
+                  api_key:
+                    env_vars:
+                    - SERPERDEV_API_KEY
+                    strict: true
+                    type: env_var
+                  exclude_subdomains: false
+                  search_params: {}
+                  top_k: 3
+                type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+              description: Search the web for current information on any topic
+              inputs_from_state: null
+              name: web_search
+              outputs_to_state: null
+              outputs_to_string: null
+              parameters: null
+            type: haystack.tools.component_tool.ComponentTool
+          - data:
+              component:
+                init_parameters:
+                  client_kwargs:
+                    follow_redirects: true
+                    timeout: 3
+                  http2: false
+                  raise_on_failure: true
+                  request_headers: {}
+                  retry_attempts: 2
+                  timeout: 3
+                  user_agents:
+                  - haystack/LinkContentFetcher/2.x
+                type: haystack.components.fetchers.link_content.LinkContentFetcher
+              description: Fetch the contents of URLs returned by search
+              inputs_from_state: null
+              name: fetch_page
+              outputs_to_state: null
+              outputs_to_string: null
+              parameters: null
+            type: haystack.tools.component_tool.ComponentTool
+        type: haystack.tools.toolset.Toolset
+    type: haystack.components.tools.tool_invoker.ToolInvoker
+connection_type_validation: true
+connections:
+- receiver: tool_invoker.messages
+  sender: llm.replies
+max_runs_per_component: 100
+metadata: {}
+```
+
+You can use the same serialized `Toolset` inside an `Agent` definition:
+
+```yaml
+components:
+  agent:
+    init_parameters:
+      chat_generator:
+        init_parameters:
+          api_base_url: null
+          api_key:
+            env_vars:
+            - OPENAI_API_KEY
+            strict: true
+            type: env_var
+          generation_kwargs: {}
+          http_client_kwargs: null
+          max_retries: null
+          model: gpt-4o-mini
+          organization: null
+          streaming_callback: null
+          timeout: null
+          tools: null
+          tools_strict: false
+        type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+      confirmation_strategies: null
+      exit_conditions:
+      - text
+      max_agent_steps: 5
+      raise_on_tool_invocation_failure: false
+      required_variables: null
+      state_schema: {}
+      streaming_callback: null
+      system_prompt: You are a helpful assistant.
+      tool_invoker_kwargs: null
+      tools:
+        data:
+          tools:
+          - data:
+              component:
+                init_parameters:
+                  allowed_domains: null
+                  api_key:
+                    env_vars:
+                    - SERPERDEV_API_KEY
+                    strict: true
+                    type: env_var
+                  exclude_subdomains: false
+                  search_params: {}
+                  top_k: 3
+                type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+              description: Search the web for current information on any topic
+              inputs_from_state: null
+              name: web_search
+              outputs_to_state: null
+              outputs_to_string: null
+              parameters: null
+            type: haystack.tools.component_tool.ComponentTool
+          - data:
+              component:
+                init_parameters:
+                  client_kwargs:
+                    follow_redirects: true
+                    timeout: 3
+                  http2: false
+                  raise_on_failure: true
+                  request_headers: {}
+                  retry_attempts: 2
+                  timeout: 3
+                  user_agents:
+                  - haystack/LinkContentFetcher/2.x
+                type: haystack.components.fetchers.link_content.LinkContentFetcher
+              description: Fetch the contents of URLs returned by search
+              inputs_from_state: null
+              name: fetch_page
+              outputs_to_state: null
+              outputs_to_string: null
+              parameters: null
+            type: haystack.tools.component_tool.ComponentTool
+        type: haystack.tools.toolset.Toolset
+      user_prompt: null
+    type: haystack.components.agents.agent.Agent
+connection_type_validation: true
+connections: []
+max_runs_per_component: 100
+metadata: {}
+```
+
 ### With the Agent
 
 ```python
