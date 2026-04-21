@@ -430,6 +430,7 @@ export default {
             'pipeline-components/generators/vertexaiimagegenerator',
             'pipeline-components/generators/vertexaiimageqa',
             'pipeline-components/generators/vertexaitextgenerator',
+            'pipeline-components/generators/vllmchatgenerator',
             'pipeline-components/generators/watsonxchatgenerator',
             'pipeline-components/generators/watsonxgenerator',
             'pipeline-components/generators/external-integrations-generators',
