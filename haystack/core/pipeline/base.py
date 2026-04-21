@@ -446,6 +446,12 @@ class PipelineBase:  # noqa: PLW1641
         If connecting to a component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
 
+        If multiple senders are connected to the same list-typed receiver socket, the socket is
+        promoted to a lazy variadic socket so it can accept all incoming values. With `Pipeline`,
+        the resulting list is ordered alphabetically by sender component name, not by the order in
+        which `connect()` was called. With `AsyncPipeline`, no ordering is guaranteed, since
+        components in different branches may run in parallel.
+
         :param sender:
             The component that delivers the value. This can be either just a component name or can be
             in the format `component_name.connection_name` if the component has multiple outputs.
