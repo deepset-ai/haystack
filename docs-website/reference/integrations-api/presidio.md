@@ -6,6 +6,87 @@ slug: "/integrations-presidio"
 ---
 
 
+## haystack_integrations.components.extractors.presidio.presidio_entity_extractor
+
+### PresidioEntityExtractor
+
+Detects PII entities in Haystack Documents using Microsoft Presidio Analyzer.
+
+See [Presidio Analyzer](https://microsoft.github.io/presidio/) for details.
+
+Accepts a list of Documents and returns new Documents with detected PII entities stored
+in each Document's metadata under the key `"entities"`. Each entry in the list contains
+the entity type, start/end character offsets, and the confidence score.
+
+Original Documents are not mutated. Documents without text content are passed through unchanged.
+
+The analyzer engine is loaded on the first call to `run()`,
+or by calling `warm_up()` explicitly beforehand.
+
+### Usage example
+
+```python
+from haystack import Document
+from haystack_integrations.components.extractors.presidio import PresidioEntityExtractor
+
+extractor = PresidioEntityExtractor()
+result = extractor.run(documents=[Document(content="Contact Alice at alice@example.com")])
+print(result["documents"][0].meta["entities"])
+# [{"entity_type": "PERSON", "start": 8, "end": 13, "score": 0.85},
+#  {"entity_type": "EMAIL_ADDRESS", "start": 17, "end": 34, "score": 1.0}]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    language: str = "en",
+    entities: list[str] | None = None,
+    score_threshold: float = 0.35
+) -> None
+```
+
+Initializes the PresidioEntityExtractor.
+
+**Parameters:**
+
+- **language** (<code>str</code>) – Language code for PII detection. Defaults to `"en"`.
+  See [Presidio supported languages](https://microsoft.github.io/presidio/analyzer/languages/).
+- **entities** (<code>list\[str\] | None</code>) – List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`).
+  If `None`, all supported entity types are detected.
+  See [Presidio supported entities](https://microsoft.github.io/presidio/supported_entities/).
+- **score_threshold** (<code>float</code>) – Minimum confidence score (0-1) for a detected entity to be included. Defaults to `0.35`.
+  See [Presidio analyzer documentation](https://microsoft.github.io/presidio/analyzer/).
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the Presidio analyzer engine.
+
+This method loads the underlying NLP models. In a Haystack Pipeline,
+this is called automatically before the first run.
+
+#### run
+
+```python
+run(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Detects PII entities in the provided Documents.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – List of Documents to analyze for PII entities.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with key `documents` containing Documents with detected entities
+  stored in metadata under the key `"entities"`.
+
 ## haystack_integrations.components.preprocessors.presidio.presidio_document_cleaner
 
 ### PresidioDocumentCleaner
@@ -82,87 +163,6 @@ Anonymizes PII in the provided Documents.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with key `documents` containing the cleaned Documents.
-
-## haystack_integrations.components.preprocessors.presidio.presidio_entity_extractor
-
-### PresidioEntityExtractor
-
-Detects PII entities in Haystack Documents using Microsoft Presidio Analyzer.
-
-See [Presidio Analyzer](https://microsoft.github.io/presidio/) for details.
-
-Accepts a list of Documents and returns new Documents with detected PII entities stored
-in each Document's metadata under the key `"entities"`. Each entry in the list contains
-the entity type, start/end character offsets, and the confidence score.
-
-Original Documents are not mutated. Documents without text content are passed through unchanged.
-
-The analyzer engine is loaded on the first call to `run()`,
-or by calling `warm_up()` explicitly beforehand.
-
-### Usage example
-
-```python
-from haystack import Document
-from haystack_integrations.components.preprocessors.presidio import PresidioEntityExtractor
-
-extractor = PresidioEntityExtractor()
-result = extractor.run(documents=[Document(content="Contact Alice at alice@example.com")])
-print(result["documents"][0].meta["entities"])
-# [{"entity_type": "PERSON", "start": 8, "end": 13, "score": 0.85},
-#  {"entity_type": "EMAIL_ADDRESS", "start": 17, "end": 34, "score": 1.0}]
-```
-
-#### __init__
-
-```python
-__init__(
-    *,
-    language: str = "en",
-    entities: list[str] | None = None,
-    score_threshold: float = 0.35
-) -> None
-```
-
-Initializes the PresidioEntityExtractor.
-
-**Parameters:**
-
-- **language** (<code>str</code>) – Language code for PII detection. Defaults to `"en"`.
-  See [Presidio supported languages](https://microsoft.github.io/presidio/analyzer/languages/).
-- **entities** (<code>list\[str\] | None</code>) – List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`).
-  If `None`, all supported entity types are detected.
-  See [Presidio supported entities](https://microsoft.github.io/presidio/supported_entities/).
-- **score_threshold** (<code>float</code>) – Minimum confidence score (0-1) for a detected entity to be included. Defaults to `0.35`.
-  See [Presidio analyzer documentation](https://microsoft.github.io/presidio/analyzer/).
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the Presidio analyzer engine.
-
-This method loads the underlying NLP models. In a Haystack Pipeline,
-this is called automatically before the first run.
-
-#### run
-
-```python
-run(documents: list[Document]) -> dict[str, list[Document]]
-```
-
-Detects PII entities in the provided Documents.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – List of Documents to analyze for PII entities.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with key `documents` containing Documents with detected entities
-  stored in metadata under the key `"entities"`.
 
 ## haystack_integrations.components.preprocessors.presidio.presidio_text_cleaner
 
