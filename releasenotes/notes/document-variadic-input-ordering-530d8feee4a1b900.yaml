@@ -2,7 +2,7 @@
 enhancements:
   - |
     Document the input ordering behavior of auto-promoted lazy variadic sockets in
-    ``Pipeline.connect()`` and ``PipelineBase._make_socket_auto_variadic()``. When
+    ``Pipeline.connect()``. When
     multiple senders are connected to the same list-typed receiver socket, ordering
     depends on the pipeline class. With ``Pipeline``, items are ordered alphabetically
     by sender component name (because ``Pipeline.run()`` schedules components in
