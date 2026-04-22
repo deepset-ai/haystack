@@ -1,0 +1,85 @@
+---
+title: "PresidioTextCleaner"
+id: presidiotextcleaner
+slug: "/presidiotextcleaner"
+description: "Use `PresidioTextCleaner` to replace PII in plain strings, powered by Microsoft Presidio."
+---
+
+# PresidioTextCleaner
+
+`PresidioTextCleaner` replaces personally identifiable information (PII) in plain strings. It takes a `list[str]` as input and returns a `list[str]`, making it easy to sanitize user queries before they are sent to an LLM.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, before a Generator or Chat Generator |
+| **Mandatory run variables**            | `texts`: A list of strings |
+| **Output variables**                   | `texts`: A list of strings with PII replaced |
+| **API reference**                      | [Presidio](/reference/integrations-presidio) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/presidio |
+
+</div>
+
+## Installation
+
+```bash
+pip install presidio-haystack
+python -m spacy download en_core_web_lg
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+cleaner = PresidioTextCleaner()
+result = cleaner.run(texts=["My name is John Doe, my SSN is 123-45-6789"])
+print(result["texts"][0])
+# My name is <PERSON>, my SSN is <US_SSN>
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+template = [ChatMessage.from_user("Answer this question: {{query}}")]
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("cleaner", PresidioTextCleaner())
+query_pipeline.add_component("prompt_builder", ChatPromptBuilder(template=template))
+query_pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+query_pipeline.connect("cleaner.texts[0]", "prompt_builder.query")
+query_pipeline.connect("prompt_builder", "llm")
+
+query_pipeline.run({
+    "cleaner": {"texts": ["My name is John Smith. What is the capital of France?"]}
+})
+```
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `language` | `"en"` | Language code for PII detection. See [supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
+| `entities` | `None` | List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. |
+| `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be included. |
+
+```python
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+cleaner = PresidioTextCleaner(
+    language="de",
+    entities=["PERSON", "EMAIL_ADDRESS"],
+    score_threshold=0.7,
+)
+```
+
+See [Presidio supported entities](https://microsoft.github.io/presidio/supported_entities/) for the full list of detectable PII types.

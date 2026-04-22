@@ -352,6 +352,7 @@ export default {
             'pipeline-components/extractors/llmdocumentcontentextractor',
             'pipeline-components/extractors/llmmetadataextractor',
             'pipeline-components/extractors/namedentityextractor',
+            'pipeline-components/extractors/presidioentityextractor',
             'pipeline-components/extractors/regextextextractor',
           ],
         },
@@ -469,7 +470,8 @@ export default {
             'pipeline-components/preprocessors/hierarchicaldocumentsplitter',
             'pipeline-components/preprocessors/recursivesplitter',
             'pipeline-components/preprocessors/textcleaner',
-            'pipeline-components/preprocessors/presidio',
+            'pipeline-components/preprocessors/presidiodocumentcleaner',
+            'pipeline-components/preprocessors/presidiotextcleaner',
           ],
         },
         {
