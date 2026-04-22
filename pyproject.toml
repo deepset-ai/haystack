@@ -363,5 +363,13 @@ ignore = [
 "test/tools/test_parameters_schema_utils.py" = ["UP007"]
 "test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP035", "UP045"]
 
+[tool.uv]
+# Exclude package versions published within the last 24 hours to protect against supply chain
+# attacks via compromised dependencies. uv resolves this relative to the current clock at
+# install/lock time, so no manual date updates are needed.
+# First-party packages are exempted so freshly published releases are always resolvable.
+exclude-newer = "24 hours"
+exclude-newer-package = { haystack-experimental = "0 days", haystack-pydoc-tools = "0 days" }
+
 [tool.coverage.run]
 omit = ["haystack/testing/*"]
