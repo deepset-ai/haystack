@@ -25,15 +25,7 @@ description: "Use `PresidioEntityExtractor` to detect PII in Documents and store
 
 [Microsoft Presidio](https://microsoft.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioEntityExtractor` uses Presidio's Analyzer Engine to scan document text and identify entities such as names, email addresses, phone numbers, and more.
 
-Unlike the cleaner components, the extractor does **not** modify the document text. Instead, it adds the detected entities as structured metadata, letting you inspect or act on PII findings without altering the original content. This is useful when you want to audit what PII is present before deciding how to handle it.
-
-## Installation
-
-```bash
-pip install presidio-haystack
-# Download the spaCy NLP model for English. For other languages, replace with the appropriate spaCy model.
-python -m spacy download en_core_web_lg
-```
+The extractor does **not** modify the document text. Instead, it adds the detected entities as structured metadata, letting you inspect or act on PII findings without altering the original content. This is useful when you want to audit what PII is present before deciding how to handle it.
 
 ## Configuration
 
@@ -46,6 +38,12 @@ python -m spacy download en_core_web_lg
 ## Usage
 
 Install the `presidio-haystack` package to use the `PresidioEntityExtractor`.
+
+```bash
+pip install presidio-haystack
+# Download the spaCy NLP model for English. For other languages, replace with the appropriate spaCy model.
+python -m spacy download en_core_web_lg
+```
 
 ### On its own
 
