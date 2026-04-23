@@ -63,13 +63,18 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"needs_check={str(needs_check).lower()}\n")
 
-      - name: Install Hatch
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         if: steps.changed.outputs.needs_check == 'true'
-        run: pip install hatch
+        with:
+          python-version: "3.13"
+
+      - name: Sync dev dependencies
+        if: steps.changed.outputs.needs_check == 'true'
+        run: uv sync --group dev
 
       - name: Generate API references
         if: steps.changed.outputs.needs_check == 'true'
-        run: hatch run docs
+        run: uv run haystack-pydoc pydoc tmp_api_reference
 
       - name: Set up Node.js
         if: steps.changed.outputs.needs_check == 'true'

@@ -363,7 +363,95 @@ ignore = [
 "test/tools/test_parameters_schema_utils.py" = ["UP007"]
 "test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP035", "UP045"]
 
+[dependency-groups]
+dev = [
+  "pre-commit",
+  "ruff>=0.15.0",  # RUF104 (unmatched-suppression-comment) added in 0.15.0
+  "toml",
+  "reno",
+  # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
+  # We pin it here to avoid taking too much time.
+  # https://opendev.org/openstack/reno/src/branch/master/requirements.txt#L7
+  "dulwich>=0.21.0,<1.0.0",
+  "haystack-pydoc-tools",
+]
+test = [
+  "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+  "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
+
+  "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
+                                                      # EvaluationRunResult, XLSXToDocument, and pipeline tests
+
+  "transformers[torch, sentencepiece]>=4.57",         # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
+  "sentence-transformers>=5.0.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
+  "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
+  "openai-whisper>=20231106",                         # LocalWhisperTranscriber
+  "arrow>=1.3.0",                                     # Jinja2TimeExtension
+  "pillow",                                           # ImageContent
+  "pypdfium2",                                        # PDFToImageContent
+
+  # Converters
+  "pypdf",                            # PyPDFToDocument
+  "pdfminer.six",                     # PDFMinerToDocument
+  "markdown-it-py",                   # MarkdownToDocument
+  "mdit_plain",                       # MarkdownToDocument
+  "tika",                             # TikaDocumentConverter
+  "azure-ai-formrecognizer>=3.2.0b2", # AzureOCRDocumentConverter
+  "trafilatura",                      # HTMLToDocument
+  "python-pptx",                      # PPTXToDocument
+  "python-docx",                      # DocxToDocument
+  "jq",                               # JSONConverter
+  "openpyxl",                         # XLSXToDocument
+  "tabulate",                         # XLSXToDocument
+  "python-oxmsg",                     # MSGToDocument
+
+  "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
+  "tiktoken", # RecursiveDocumentSplitter
+
+  # Human in the Loop
+  "rich",                 # Console rendering for HITL
+
+  # OpenAPI
+  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
+  "openapi3",
+  "openapi-llm>=0.4.1",   # OpenAPIConnector
+
+  # Tracing
+  "opentelemetry-sdk",
+  "ddtrace",
+
+  # Structured logging
+  "structlog",
+
+  # needed in link content fetcher tests
+  "httpx[http2]",
+
+  # Azure Utils
+  "azure-identity",
+
+  # Test
+  "pytest",
+  "pytest-bdd",
+  "pytest-cov",
+  "pytest-asyncio",
+  "pytest-rerunfailures",
+  "coverage",
+  "mypy",
+  "pip",                     # mypy needs pip to install missing stub packages
+  "ipython",
+  "colorama==0.4.6",         # Pipeline checkpoints test
+]
+e2e = [
+  {include-group = "test"},
+  # NamedEntityExtractor
+  "spacy>=3.8.13,<3.9",
+  "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
+]
+
 [tool.uv]
+# Relative duration strings in exclude-newer require uv >= 0.9.17.
+required-version = ">=0.9.17"
 # Exclude package versions published within the last 24 hours to protect against supply chain
 # attacks via compromised dependencies. uv resolves this relative to the current clock at
 # install/lock time, so no manual date updates are needed.

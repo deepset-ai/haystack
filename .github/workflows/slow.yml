@@ -14,7 +14,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.16.5"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
 
@@ -131,15 +130,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+      - name: Sync test dependencies
+        run: uv sync --group test
 
       - name: Run Tika
         if: matrix.os == 'ubuntu-latest'
@@ -151,7 +147,7 @@ jobs:
         run: ${{ matrix.install_cmd }}
 
       - name: Run tests
-        run: hatch run test:integration-only-slow
+        run: uv run pytest --maxfail=5 -m "integration and slow" test
 
       - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'
