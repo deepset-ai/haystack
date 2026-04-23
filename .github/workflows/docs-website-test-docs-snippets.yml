@@ -12,7 +12,6 @@ on:
         type: string
 
 env:
-  HATCH_VERSION: "1.16.5"
   PYTHON_VERSION: "3.11"
 
 jobs:
@@ -32,26 +31,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          python-version: '3.11'
+          python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+      - name: Sync dev and test dependencies
+        run: uv sync --group dev --group test
 
       - name: Generate API reference for Docusaurus
-        run: hatch run docs
-
-      - name: Install base dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests toml
+        run: uv run haystack-pydoc pydoc tmp_api_reference
 
       - name: Run snippet tests (verbose)
-        shell: bash
-        run: |
-          hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
+        run: uv run --with requests python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
 
   notify-slack-on-failure:
     if: failure() && github.ref_name == 'main'

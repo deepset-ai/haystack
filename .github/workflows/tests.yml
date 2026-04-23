@@ -34,7 +34,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
-  HATCH_VERSION: "1.16.5"
 
 jobs:
   check-if-changed:
@@ -73,15 +72,15 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+      - name: Sync dev dependencies
+        run: uv sync --group dev
 
       - name: Ruff - check format and linting
-        run: hatch run fmt-check
+        run: uv run ruff check && uv run ruff format --check
 
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
@@ -92,15 +91,15 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+      - name: Sync project
+        run: uv sync
 
       - name: Check imports
-        run: hatch run python .github/utils/check_imports.py
+        run: uv run python .github/utils/check_imports.py
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -117,25 +116,21 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+      - name: Sync test dependencies
+        run: uv sync --group test
 
       - name: Run
-        run: hatch run test:unit
+        run: uv run pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integration" test
 
       - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache
         if: matrix.os == 'macos-latest'
         with:
-          path: ${{ steps.hatch.outputs.env }}
+          path: .venv
           key: ${{ runner.os }}-${{ github.sha }}
 
       - name: Coveralls
@@ -168,23 +163,21 @@ jobs:
             test/**
             .github/**
             scripts/**
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         if: steps.files.outputs.any_changed == 'true'
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        id: hatch
+      - name: Sync test dependencies
         if: steps.files.outputs.any_changed == 'true'
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+        run: uv sync --group test
 
       - name: Mypy
         if: steps.files.outputs.any_changed == 'true'
         run: |
           mkdir .mypy_cache
-          hatch run test:types
+          uv run mypy --install-types --non-interactive --cache-dir=.mypy_cache/ haystack test/core/ test/marshal/ test/testing/ test/tracing/
 
   integration-tests-linux:
     name: Integration / ubuntu-latest
@@ -194,20 +187,15 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
+      - name: Sync test dependencies
+        run: uv sync --group test
 
       - name: Run
-        run: hatch run test:integration-only-fast
+        run: uv run pytest --maxfail=5 -m "integration and not slow" test
 
   integration-tests-macos:
     name: Integration / macos-latest
@@ -220,26 +208,21 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache
         with:
-          path: ${{ steps.hatch.outputs.env }}
+          path: .venv
           key: ${{ runner.os }}-${{ github.sha }}
 
+      - name: Sync test dependencies
+        run: uv sync --group test
 
       - name: Run
-        run: hatch run test:integration-only-fast
+        run: uv run pytest --maxfail=5 -m "integration and not slow" test
 
   integration-tests-windows:
     name: Integration / windows-latest
@@ -252,19 +235,15 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Install Hatch
-        id: hatch
-        shell: bash
-        run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
-          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+      - name: Sync test dependencies
+        run: uv sync --group test
 
       - name: Run
-        run: hatch run test:integration-only-fast
+        run: uv run pytest --maxfail=5 -m "integration and not slow" test
 
   notify-slack-on-failure:
     if: failure() && github.ref_name == 'main'
