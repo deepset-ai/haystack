@@ -182,7 +182,7 @@ class CountDocumentsByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
             Document(content="Doc 4", meta={"category": "A", "status": "active"}),
         ]
-        document_store.write_documents_async(docs)
+        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 4
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
@@ -205,7 +205,7 @@ class CountDocumentsByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
             Document(content="Doc 4", meta={"category": "A", "status": "active"}),
         ]
-        document_store.write_documents_async(docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 4
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
@@ -224,7 +224,7 @@ class CountDocumentsByFilterAsyncTest:
     async def test_count_documents_by_filter_async_no_matches(document_store: DocumentStore):
         """Test count_documents_by_filter_async() when filter matches no documents."""
         docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
-        document_store.write_documents_async(docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 2
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
@@ -262,7 +262,7 @@ class CountUniqueMetadataByFilterAsyncTest:
             Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
             Document(content="Doc 5", meta={"category": "C", "status": "active", "priority": 2}),
         ]
-        document_store.write_documents_async(docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 5
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
@@ -282,7 +282,7 @@ class CountUniqueMetadataByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
             Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
         ]
-        document_store.write_documents_async(docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
         assert document_store.count_documents() == 4
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
@@ -301,7 +301,7 @@ class CountUniqueMetadataByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "B", "year": 2023}),
             Document(content="Doc 4", meta={"category": "B", "year": 2024}),
         ]
-        document_store.write_documents_async(docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={
@@ -428,7 +428,7 @@ class UpdateByFilterAsyncTest:
     @pytest.mark.asyncio
     async def test_update_by_filter_async(document_store: DocumentStore, filterable_docs: list[Document]):
         """Update documents matching a filter asynchronously and verify count and meta changes."""
-        document_store.write_documents_async(filterable_docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(filterable_docs)  # type:ignore[attr-defined]
         expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
         assert document_store.count_documents() == len(filterable_docs)
 
