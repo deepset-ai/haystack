@@ -21,6 +21,20 @@ description: "Use `PresidioTextCleaner` to replace PII in plain strings, powered
 
 </div>
 
+## Overview
+
+[Microsoft Presidio](https://microsoft.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioTextCleaner` uses Presidio's Analyzer and Anonymizer engines to scan plain text strings and replace detected entities with type placeholders such as `<PERSON>` or `<US_SSN>`.
+
+This is useful when you want to sanitize user queries before sending them to an LLM, ensuring that no personally identifiable information is passed to the model.
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `language` | `"en"` | Language code for PII detection. See [supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
+| `entities` | `None` | List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://microsoft.github.io/presidio/supported_entities/). |
+| `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be included. |
+
 ## Usage
 
 Install the `presidio-haystack` package to use the `PresidioTextCleaner`.
@@ -65,13 +79,9 @@ query_pipeline.run({
 })
 ```
 
-## Configuration
+### Using Custom Parameters
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `language` | `"en"` | Language code for PII detection. See [supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
-| `entities` | `None` | List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. |
-| `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be included. |
+To customize PII detection, pass parameters when initializing the cleaner:
 
 ```python
 from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
@@ -82,5 +92,3 @@ cleaner = PresidioTextCleaner(
     score_threshold=0.7,
 )
 ```
-
-See [Presidio supported entities](https://microsoft.github.io/presidio/supported_entities/) for the full list of detectable PII types.
