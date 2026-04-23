@@ -1517,17 +1517,10 @@ class TestPrompts:
         assert result["messages"][0].text == "You are an Haystack expert."
         assert result["messages"][1].text == "Hi"
 
-    def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
-        with pytest.raises(
-            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
-        ):
-            agent.run()
-
     def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(question="Will it snow?", irrelevant_kwarg="unused")
+        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
         assert "messages" in result
 
     def test_user_prompt_with_template_variables(self, make_agent):
@@ -1538,7 +1531,7 @@ class TestPrompts:
                 + " on {{date}}?"
             )
         )
-        result = agent.run(name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
+        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
 
@@ -1549,7 +1542,7 @@ class TestPrompts:
 
     def test_runtime_user_prompt_overrides_init_prompt(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Default prompt for {{city}}."))
-        result = agent.run(user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
+        result = agent.run(messages=[], user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Runtime prompt for Berlin."
 
@@ -1580,7 +1573,7 @@ class TestPrompts:
         assert agent._system_chat_prompt_builder is not None
         assert agent._user_chat_prompt_builder is not None
 
-        result = agent.run(project="Haystack", topic="pipelines")
+        result = agent.run(messages=[], project="Haystack", topic="pipelines")
         messages = result["messages"]
         assert messages[0].is_from(ChatRole.SYSTEM)
         assert messages[0].text == "You help users of Haystack."
@@ -1629,7 +1622,7 @@ class TestAgentUserPromptInPipeline:
     def test_rag_pipeline_user_prompt_init_only(self, make_rag_pipeline):
         pipeline = make_rag_pipeline()
         query = "Where is the Colosseum?"
-        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query}})
+        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query, "messages": []}})
         assert "agent" in result
         agent_output = result["agent"]
         assert "messages" in agent_output
@@ -1662,6 +1655,7 @@ class TestAgentUserPromptInPipeline:
                         "Answer: {{query}}"
                     ),
                     "query": query,
+                    "messages": [],
                 },
             }
         )

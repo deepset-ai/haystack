@@ -12,12 +12,7 @@ jobs:
     if: |
       (
         github.event_name == 'pull_request' &&
-        !github.event.pull_request.head.repo.fork &&
-        (
-          github.event.pull_request.author_association == 'MEMBER' ||
-          github.event.pull_request.author_association == 'OWNER' ||
-          github.event.pull_request.author_association == 'COLLABORATOR'
-        )
+        !github.event.pull_request.head.repo.fork
       ) || (
         github.event_name == 'pull_request_target' &&
         github.event.label.name == 'claude-review'
@@ -37,7 +32,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3 # v1.0.99
+        uses: anthropics/claude-code-action@5d5c10a4f389689f992ea10bb14dcb6fcc83146d # v1.0.102
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_PR_REVIEWS_PUBLIC_REPOS }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
