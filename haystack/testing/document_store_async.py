@@ -174,7 +174,7 @@ class CountDocumentsByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_simple(document_store: DocumentStore):
+    async def test_count_documents_by_filter_async_simple(document_store: AsyncDocumentStore):
         """Test count_documents_by_filter_async() with a simple equality filter."""
         docs = [
             Document(content="Doc 1", meta={"category": "A", "status": "active"}),
@@ -182,8 +182,8 @@ class CountDocumentsByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
             Document(content="Doc 4", meta={"category": "A", "status": "active"}),
         ]
-        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
-        assert document_store.count_documents() == 4
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 4
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
             filters={"field": "meta.category", "operator": "==", "value": "A"}
@@ -197,7 +197,7 @@ class CountDocumentsByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_compound(document_store: DocumentStore):
+    async def test_count_documents_by_filter_async_compound(document_store: AsyncDocumentStore):
         """Test count_documents_by_filter_async() with AND filter."""
         docs = [
             Document(content="Doc 1", meta={"category": "A", "status": "active"}),
@@ -205,8 +205,8 @@ class CountDocumentsByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "A", "status": "inactive"}),
             Document(content="Doc 4", meta={"category": "A", "status": "active"}),
         ]
-        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
-        assert document_store.count_documents() == 4
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 4
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
             filters={
@@ -221,11 +221,11 @@ class CountDocumentsByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_no_matches(document_store: DocumentStore):
+    async def test_count_documents_by_filter_async_no_matches(document_store: AsyncDocumentStore):
         """Test count_documents_by_filter_async() when filter matches no documents."""
         docs = [Document(content="Doc 1", meta={"category": "A"}), Document(content="Doc 2", meta={"category": "B"})]
-        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
-        assert document_store.count_documents() == 2
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 2
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
             filters={"field": "meta.category", "operator": "==", "value": "Z"}
@@ -234,9 +234,9 @@ class CountDocumentsByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_documents_by_filter_async_empty_collection(document_store: DocumentStore):
+    async def test_count_documents_by_filter_async_empty_collection(document_store: AsyncDocumentStore):
         """Test count_documents_by_filter_async() on an empty store."""
-        assert document_store.count_documents() == 0
+        assert await document_store.count_documents_async() == 0
 
         count = await document_store.count_documents_by_filter_async(  # type:ignore[attr-defined]
             filters={"field": "meta.category", "operator": "==", "value": "A"}
@@ -253,7 +253,7 @@ class CountUniqueMetadataByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_unique_metadata_by_filter_async_all_documents(document_store: DocumentStore):
+    async def test_count_unique_metadata_by_filter_async_all_documents(document_store: AsyncDocumentStore):
         """Test count_unique_metadata_by_filter_async() with no filter returns distinct counts for all docs."""
         docs = [
             Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
@@ -262,8 +262,8 @@ class CountUniqueMetadataByFilterAsyncTest:
             Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
             Document(content="Doc 5", meta={"category": "C", "status": "active", "priority": 2}),
         ]
-        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
-        assert document_store.count_documents() == 5
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 5
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={}, metadata_fields=["category", "status", "priority"]
@@ -274,7 +274,7 @@ class CountUniqueMetadataByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_unique_metadata_by_filter_async_with_filter(document_store: DocumentStore):
+    async def test_count_unique_metadata_by_filter_async_with_filter(document_store: AsyncDocumentStore):
         """Test count_unique_metadata_by_filter_async() with a filter."""
         docs = [
             Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1}),
@@ -282,8 +282,8 @@ class CountUniqueMetadataByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "A", "status": "inactive", "priority": 1}),
             Document(content="Doc 4", meta={"category": "A", "status": "active", "priority": 3}),
         ]
-        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
-        assert document_store.count_documents() == 4
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 4
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={"field": "meta.category", "operator": "==", "value": "A"}, metadata_fields=["status", "priority"]
@@ -293,7 +293,7 @@ class CountUniqueMetadataByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_count_unique_metadata_by_filter_async_with_multiple_filters(document_store: DocumentStore):
+    async def test_count_unique_metadata_by_filter_async_with_multiple_filters(document_store: AsyncDocumentStore):
         """Test counting unique metadata asynchronously with multiple filters."""
         docs = [
             Document(content="Doc 1", meta={"category": "A", "year": 2023}),
@@ -301,7 +301,7 @@ class CountUniqueMetadataByFilterAsyncTest:
             Document(content="Doc 3", meta={"category": "B", "year": 2023}),
             Document(content="Doc 4", meta={"category": "B", "year": 2024}),
         ]
-        await document_store.write_documents_async(docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(docs)
 
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={
@@ -409,6 +409,8 @@ class DeleteByFilterAsyncTest:
         assert deleted_count == 2
         assert await document_store.count_documents_async() == 0
 
+    @staticmethod
+    @pytest.mark.asyncio
     async def test_count_not_empty_async(document_store: AsyncDocumentStore):
         """Test count is greater than zero if the document store contains documents."""
         await document_store.write_documents_async(
@@ -426,11 +428,11 @@ class UpdateByFilterAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_update_by_filter_async(document_store: DocumentStore, filterable_docs: list[Document]):
+    async def test_update_by_filter_async(document_store: AsyncDocumentStore, filterable_docs: list[Document]):
         """Update documents matching a filter asynchronously and verify count and meta changes."""
-        await document_store.write_documents_async(filterable_docs)  # type:ignore[attr-defined]
+        await document_store.write_documents_async(filterable_docs)
         expected_count = len([d for d in filterable_docs if d.meta.get("chapter") == "intro"])
-        assert document_store.count_documents() == len(filterable_docs)
+        assert await document_store.count_documents_async() == len(filterable_docs)
 
         sig = inspect.signature(document_store.update_by_filter_async)  # type:ignore[attr-defined]
         params = {"refresh": True} if "refresh" in sig.parameters else {}
@@ -439,7 +441,7 @@ class UpdateByFilterAsyncTest:
         )
         assert updated_count == expected_count
 
-        updated_docs = document_store.filter_documents(
+        updated_docs = await document_store.filter_documents_async(
             filters={"field": "meta.updated", "operator": "==", "value": True}
         )
         assert len(updated_docs) == expected_count
@@ -447,7 +449,7 @@ class UpdateByFilterAsyncTest:
             assert doc.meta["chapter"] == "intro"
             assert doc.meta["updated"] is True
 
-        not_updated_docs = document_store.filter_documents(
+        not_updated_docs = await document_store.filter_documents_async(
             filters={"field": "meta.chapter", "operator": "==", "value": "abstract"}
         )
         for doc in not_updated_docs:
