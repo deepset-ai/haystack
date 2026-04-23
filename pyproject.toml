@@ -365,3 +365,4 @@ ignore = [
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]
+relative_files = true
