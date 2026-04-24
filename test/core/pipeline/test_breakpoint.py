@@ -242,6 +242,48 @@ class TestCreatePipelineSnapshot:
         assert any("Failed to serialize the inputs of the current pipeline state" in msg for msg in caplog.messages)
         assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
 
+    def test_create_pipeline_snapshot_non_serializable_inputs_snapshot_is_resumable(self, caplog):
+        """
+        Guards against the same non-resumable snapshot regression fixed at the agent level: when
+        top-level pipeline inputs/outputs contain non-serializable values, the snapshot fields
+        must still round-trip through ``_deserialize_value_with_schema`` instead of failing with
+        ``DeserializationError: ... Got: {}``. Serializable sibling components must stay intact.
+        """
+
+        class NonSerializable:
+            def to_dict(self):
+                raise TypeError("Cannot serialize")
+
+        with caplog.at_level(logging.WARNING):
+            snapshot = _create_pipeline_snapshot(
+                inputs={
+                    "comp1": {"input_value": [{"sender": None, "value": NonSerializable()}]},
+                    "comp2": {"input_value": [{"sender": None, "value": "keep me"}]},
+                },
+                component_inputs={},
+                break_point=Breakpoint(component_name="comp3"),
+                component_visits={"comp1": 1, "comp2": 1, "comp3": 0},
+                original_input_data={"comp1": {"input_value": NonSerializable()}},
+                ordered_component_names=["comp1", "comp2", "comp3"],
+                include_outputs_from=set(),
+                pipeline_outputs={"comp1": {"result": NonSerializable()}},
+            )
+
+        # No DeserializationError on any of the three pipeline-level payloads.
+        deserialized_inputs = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
+        deserialized_original_input_data = _deserialize_value_with_schema(snapshot.original_input_data)
+        deserialized_outputs = _deserialize_value_with_schema(snapshot.pipeline_state.pipeline_outputs)
+
+        # The non-serializable comp1 field is omitted while the serializable siblings are preserved.
+        assert "comp1" not in deserialized_inputs
+        assert deserialized_inputs["comp2"] == {"input_value": "keep me"}
+        assert deserialized_inputs["comp3"] == {}
+        # original_input_data and pipeline_outputs degrade to empty-but-valid payloads.
+        assert deserialized_original_input_data == {}
+        assert deserialized_outputs == {}
+        assert any("Failed to serialize the inputs of the current pipeline state" in msg for msg in caplog.messages)
+        assert any("Failed to serialize outputs of the current pipeline state" in msg for msg in caplog.messages)
+
 
 class TestCreateAgentSnapshot:
     def test_create_agent_snapshot_non_serializable_chat_generator(self, caplog):

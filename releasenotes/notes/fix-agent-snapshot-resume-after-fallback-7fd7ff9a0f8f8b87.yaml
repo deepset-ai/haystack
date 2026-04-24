@@ -1,11 +1,13 @@
 ---
 fixes:
   - |
-    Preserve resumable agent snapshots when some ``chat_generator`` or ``tool_invoker`` inputs are
-    non-serializable. Haystack now omits only the failing runtime-only fields (for example
-    non-serializable callbacks) instead of replacing the whole payload with an empty dictionary.
-    When every field of a sub-component input fails to serialize, the snapshot still stores a
-    structurally valid empty payload (``{"serialization_schema": {"type": "object", "properties": {}},
-    "serialized_data": {}}``) so that resuming the snapshot does not raise ``DeserializationError`` –
-    for example when resuming from a ``ToolBreakpoint`` where the sub-component's inputs are not
-    strictly required.
+    Preserve resumable snapshots when some inputs or outputs are non-serializable. Haystack now
+    omits only the failing top-level fields (for example non-serializable callbacks or runtime
+    objects) instead of replacing the whole payload with an empty dictionary. This applies both
+    to agent sub-component inputs (``chat_generator`` and ``tool_invoker``) and to pipeline-level
+    ``inputs``, ``original_input_data``, and ``pipeline_outputs`` captured by
+    ``_create_pipeline_snapshot``. When every field fails to serialize, the snapshot still stores
+    a structurally valid empty payload (``{"serialization_schema": {"type": "object", "properties":
+    {}}, "serialized_data": {}}``) so that resuming the snapshot does not raise
+    ``DeserializationError`` — for example when resuming from a ``ToolBreakpoint`` where the
+    sub-component's inputs are not strictly required.

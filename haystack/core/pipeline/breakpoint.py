@@ -291,37 +291,15 @@ def _create_pipeline_snapshot(
     transformed_original_input_data = _transform_json_structure(original_input_data)
     transformed_inputs = _transform_json_structure({**inputs, component_name: component_inputs})
 
-    try:
-        serialized_inputs = _serialize_value_with_schema(transformed_inputs)
-    except Exception as error:
-        logger.warning(
-            "Failed to serialize the inputs of the current pipeline state. "
-            "The inputs in the snapshot will be replaced with an empty dictionary. Error: {e}",
-            e=error,
-        )
-        serialized_inputs = {}
-
-    try:
-        serialized_original_input_data = _serialize_value_with_schema(transformed_original_input_data)
-    except Exception as error:
-        logger.warning(
-            "Failed to serialize original input data for `pipeline.run`. "
-            "This likely occurred due to non-serializable object types. "
-            "The snapshot will store an empty dictionary instead. Error: {e}",
-            e=error,
-        )
-        serialized_original_input_data = {}
-
-    try:
-        serialized_pipeline_outputs = _serialize_value_with_schema(pipeline_outputs)
-    except Exception as error:
-        logger.warning(
-            "Failed to serialize outputs of the current pipeline state. "
-            "This likely occurred due to non-serializable object types. "
-            "The snapshot will store an empty dictionary instead. Error: {e}",
-            e=error,
-        )
-        serialized_pipeline_outputs = {}
+    serialized_inputs = _serialize_with_field_fallback(
+        transformed_inputs, description="the inputs of the current pipeline state"
+    )
+    serialized_original_input_data = _serialize_with_field_fallback(
+        transformed_original_input_data, description="original input data for `pipeline.run`"
+    )
+    serialized_pipeline_outputs = _serialize_with_field_fallback(
+        pipeline_outputs, description="outputs of the current pipeline state"
+    )
 
     return PipelineSnapshot(
         pipeline_state=PipelineState(
@@ -390,54 +368,72 @@ def _create_agent_snapshot(
     )
 
 
-def _serialize_agent_component_inputs(component_name: str, component_inputs: dict[str, Any]) -> dict[str, Any]:
+def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[str, Any]:
     """
-    Serialize agent component inputs while preserving resumable fields whenever possible.
+    Serialize a payload and, on failure, retry field-by-field to preserve resumable fields.
 
-    If serializing the whole input mapping fails (for example due to a non-serializable callback),
-    we retry field-by-field and omit only the failing fields. This keeps snapshots resumable when
-    required fields like ``messages`` or ``state`` are still serializable.
+    If the whole payload serializes, the result is returned as-is. Otherwise, and if the payload is a
+    mapping, each top-level field is serialized individually and only the failing fields are omitted.
+    When the payload is not a mapping, or when every field fails to serialize, the helper returns a
+    structurally valid empty-object payload so that the downstream ``_deserialize_value_with_schema``
+    can still load it back instead of raising ``DeserializationError`` on a bare ``{}``.
 
-    :param component_name: Name of the agent sub-component (e.g. ``chat_generator`` or ``tool_invoker``).
-    :param component_inputs: Runtime inputs for that sub-component.
-    :returns: A serialized payload that is always a structurally valid ``{"serialization_schema", "serialized_data"}``
-        pair. When every field fails to serialize, an empty-but-valid object payload is returned so that
-        ``_deserialize_value_with_schema`` can still load it (e.g. when resuming from a ``ToolBreakpoint`` where the
-        sub-component's inputs are not strictly required).
+    :param payload: The value to serialize.
+    :param description: Short human-readable label used in warning messages, for example
+        ``"the agent's chat_generator inputs"`` or ``"the inputs of the current pipeline state"``.
+    :returns: A dict of the form ``{"serialization_schema": ..., "serialized_data": ...}``.
     """
     try:
-        return _serialize_value_with_schema(_deepcopy_with_exceptions(component_inputs))
+        return _serialize_value_with_schema(_deepcopy_with_exceptions(payload))
     except Exception as error:
         logger.warning(
-            "Failed to serialize the agent's {component_name} inputs. "
+            "Failed to serialize {description}. "
             "Haystack will omit only the non-serializable fields when possible. Error: {e}",
-            component_name=component_name,
+            description=description,
             e=error,
         )
 
     serialized_properties: dict[str, Any] = {}
     serialized_data: dict[str, Any] = {}
 
-    for field_name, value in component_inputs.items():
-        try:
-            serialized_value = _serialize_value_with_schema(_deepcopy_with_exceptions(value))
-        except Exception as field_error:
-            logger.warning(
-                "Failed to serialize the agent's {component_name}.{field_name} input. "
-                "The field will be omitted from the snapshot. Error: {e}",
-                component_name=component_name,
-                field_name=field_name,
-                e=field_error,
-            )
-            continue
+    if isinstance(payload, dict):
+        for field_name, value in payload.items():
+            try:
+                serialized_value = _serialize_value_with_schema(_deepcopy_with_exceptions(value))
+            except Exception as field_error:
+                logger.warning(
+                    "Failed to serialize the '{field_name}' field of {description}. "
+                    "The field will be omitted from the snapshot. Error: {e}",
+                    field_name=field_name,
+                    description=description,
+                    e=field_error,
+                )
+                continue
 
-        serialized_properties[field_name] = serialized_value["serialization_schema"]
-        serialized_data[field_name] = serialized_value["serialized_data"]
+            serialized_properties[field_name] = serialized_value["serialization_schema"]
+            serialized_data[field_name] = serialized_value["serialized_data"]
 
     return {
         "serialization_schema": {"type": "object", "properties": serialized_properties},
         "serialized_data": serialized_data,
     }
+
+
+def _serialize_agent_component_inputs(component_name: str, component_inputs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Serialize agent component inputs while preserving resumable fields whenever possible.
+
+    Thin wrapper around :func:`_serialize_with_field_fallback` that supplies an agent-specific label
+    for the warning messages.
+
+    :param component_name: Name of the agent sub-component (e.g. ``chat_generator`` or ``tool_invoker``).
+    :param component_inputs: Runtime inputs for that sub-component.
+    :returns: A serialized payload that is always a structurally valid ``{"serialization_schema",
+        "serialized_data"}`` pair. When every field fails to serialize, an empty-but-valid object
+        payload is returned so that ``_deserialize_value_with_schema`` can still load it (for example
+        when resuming from a ``ToolBreakpoint`` where the sub-component's inputs are not strictly required).
+    """
+    return _serialize_with_field_fallback(component_inputs, description=f"the agent's {component_name} inputs")
 
 
 def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: "ToolsType") -> None:
