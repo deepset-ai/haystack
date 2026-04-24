@@ -18,6 +18,7 @@ description: "Use `PresidioEntityExtractor` to detect PII in Documents and store
 | **Output variables**                   | `documents`: A list of Document objects with PII metadata added |
 | **API reference**                      | [Presidio](/reference/integrations-presidio) |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/presidio |
+| **Package name** | `presidio-haystack` |
 
 </div>
 
@@ -52,9 +53,9 @@ from haystack import Document
 from haystack_integrations.components.extractors.presidio import PresidioEntityExtractor
 
 extractor = PresidioEntityExtractor()
-result = extractor.run(documents=[
-    Document(content="Contact Alice at alice@example.com")
-])
+result = extractor.run(
+    documents=[Document(content="Contact Alice at alice@example.com")],
+)
 print(result["documents"][0].meta["entities"])
 # [{"entity_type": "PERSON", "start": 8, "end": 13, "score": 0.85},
 #  {"entity_type": "EMAIL_ADDRESS", "start": 17, "end": 34, "score": 1.0}]

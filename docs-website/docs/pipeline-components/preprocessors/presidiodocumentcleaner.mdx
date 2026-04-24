@@ -18,6 +18,7 @@ description: "Use `PresidioDocumentCleaner` to replace PII in Document text with
 | **Output variables**                   | `documents`: A list of Document objects with PII replaced |
 | **API reference**                      | [Presidio](/reference/integrations-presidio) |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/presidio |
+| **Package name** | `presidio-haystack` |
 
 </div>
 
@@ -49,12 +50,16 @@ python -m spacy download en_core_web_lg
 
 ```python
 from haystack import Document
-from haystack_integrations.components.preprocessors.presidio import PresidioDocumentCleaner
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
 
 cleaner = PresidioDocumentCleaner()
-result = cleaner.run(documents=[
-    Document(content="Contact Alice Smith at alice@example.com or 212-555-1234.")
-])
+result = cleaner.run(
+    documents=[
+        Document(content="Contact Alice Smith at alice@example.com or 212-555-1234."),
+    ],
+)
 print(result["documents"][0].content)
 # Contact <PERSON> at <EMAIL_ADDRESS> or <PHONE_NUMBER>.
 ```
@@ -65,7 +70,9 @@ print(result["documents"][0].content)
 from haystack import Document, Pipeline
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack_integrations.components.preprocessors.presidio import PresidioDocumentCleaner
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
 
 document_store = InMemoryDocumentStore()
 
@@ -74,14 +81,16 @@ indexing_pipeline.add_component("cleaner", PresidioDocumentCleaner())
 indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 indexing_pipeline.connect("cleaner", "writer")
 
-indexing_pipeline.run({
-    "cleaner": {
-        "documents": [
-            Document(content="Alice Smith's email is alice@example.com"),
-            Document(content="Call Bob at 212-555-9876"),
-        ]
-    }
-})
+indexing_pipeline.run(
+    {
+        "cleaner": {
+            "documents": [
+                Document(content="Alice Smith's email is alice@example.com"),
+                Document(content="Call Bob at 212-555-9876"),
+            ],
+        },
+    },
+)
 ```
 
 ### Using Custom Parameters
@@ -89,7 +98,9 @@ indexing_pipeline.run({
 To customize PII detection, pass parameters when initializing the cleaner:
 
 ```python
-from haystack_integrations.components.preprocessors.presidio import PresidioDocumentCleaner
+from haystack_integrations.components.preprocessors.presidio import (
+    PresidioDocumentCleaner,
+)
 
 cleaner = PresidioDocumentCleaner(
     language="de",

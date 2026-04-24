@@ -18,6 +18,7 @@ description: "Use `PresidioTextCleaner` to replace PII in plain strings, powered
 | **Output variables**                   | `texts`: A list of strings with PII replaced |
 | **API reference**                      | [Presidio](/reference/integrations-presidio) |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/presidio |
+| **Package name** | `presidio-haystack` |
 
 </div>
 
@@ -74,9 +75,9 @@ query_pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
 query_pipeline.connect("cleaner.texts[0]", "prompt_builder.query")
 query_pipeline.connect("prompt_builder", "llm")
 
-query_pipeline.run({
-    "cleaner": {"texts": ["My name is John Smith. What is the capital of France?"]}
-})
+query_pipeline.run(
+    {"cleaner": {"texts": ["My name is John Smith. What is the capital of France?"]}},
+)
 ```
 
 ### Using Custom Parameters

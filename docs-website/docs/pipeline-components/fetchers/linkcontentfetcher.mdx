@@ -18,6 +18,7 @@ With LinkContentFetcher, you can use the contents of several URLs as the data fo
 | **Output variables**                   | `streams`: A list of [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects                     |
 | **API reference**                      | [Fetchers](/reference/fetchers-api)                                                                    |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/fetchers/link_content.py |
+| **Package name** | `haystack-ai` |
 
 </div>
 
@@ -69,7 +70,13 @@ def is_unsafe_url(url: str) -> bool:
     except ValueError:
         # Hostname (not a raw IP). Apply your own domain allowlist policy here. Filter out "LOCALHOST" etc.
         return False
-    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or any(ip in net for net in PRIVATE_RANGES)
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or any(ip in net for net in PRIVATE_RANGES)
+    )
 ```
 
 
