@@ -33,7 +33,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
         local_files_only: bool = False,
         truncate_dim: int | None = None,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> "_SentenceTransformersEmbeddingBackend":
@@ -46,7 +46,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
             "local_files_only": local_files_only,
             "truncate_dim": truncate_dim,
             "model_kwargs": model_kwargs,
-            "tokenizer_kwargs": tokenizer_kwargs,
+            "processor_kwargs": processor_kwargs,
             "config_kwargs": config_kwargs,
             "backend": backend,
         }
@@ -65,7 +65,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
             local_files_only=local_files_only,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
             backend=backend,
         )
@@ -90,7 +90,7 @@ class _SentenceTransformersEmbeddingBackend:
         local_files_only: bool = False,
         truncate_dim: int | None = None,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
@@ -105,7 +105,7 @@ class _SentenceTransformersEmbeddingBackend:
             local_files_only=local_files_only,
             truncate_dim=truncate_dim,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
             backend=backend,
         )

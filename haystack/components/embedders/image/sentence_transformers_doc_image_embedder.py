@@ -71,7 +71,7 @@ class SentenceTransformersDocumentImageEmbedder:
         trust_remote_code: bool = False,
         local_files_only: bool = False,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         encode_kwargs: dict[str, Any] | None = None,
@@ -113,8 +113,8 @@ class SentenceTransformersDocumentImageEmbedder:
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
-        :param tokenizer_kwargs:
-            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+        :param processor_kwargs:
+            Additional keyword arguments for `AutoProcessor.from_pretrained` when loading the processor.
             Refer to specific model documentation for available kwargs.
         :param config_kwargs:
             Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
@@ -145,7 +145,7 @@ class SentenceTransformersDocumentImageEmbedder:
         self.trust_remote_code = trust_remote_code
         self.local_files_only = local_files_only
         self.model_kwargs = model_kwargs
-        self.tokenizer_kwargs = tokenizer_kwargs
+        self.processor_kwargs = processor_kwargs
         self.config_kwargs = config_kwargs
         self.encode_kwargs = encode_kwargs
         self.precision = precision
@@ -172,7 +172,7 @@ class SentenceTransformersDocumentImageEmbedder:
             trust_remote_code=self.trust_remote_code,
             local_files_only=self.local_files_only,
             model_kwargs=self.model_kwargs,
-            tokenizer_kwargs=self.tokenizer_kwargs,
+            processor_kwargs=self.processor_kwargs,
             config_kwargs=self.config_kwargs,
             precision=self.precision,
             encode_kwargs=self.encode_kwargs,
@@ -195,6 +195,8 @@ class SentenceTransformersDocumentImageEmbedder:
         init_params = data["init_parameters"]
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
+        if "tokenizer_kwargs" in init_params and "processor_kwargs" not in init_params:
+            init_params["processor_kwargs"] = init_params.pop("tokenizer_kwargs")
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:
@@ -209,12 +211,12 @@ class SentenceTransformersDocumentImageEmbedder:
                 trust_remote_code=self.trust_remote_code,
                 local_files_only=self.local_files_only,
                 model_kwargs=self.model_kwargs,
-                tokenizer_kwargs=self.tokenizer_kwargs,
+                processor_kwargs=self.processor_kwargs,
                 config_kwargs=self.config_kwargs,
                 backend=self.backend,
             )
-            if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
-                self._embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
+            if self.processor_kwargs and self.processor_kwargs.get("model_max_length"):
+                self._embedding_backend.model.max_seq_length = self.processor_kwargs["model_max_length"]
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:

@@ -65,7 +65,7 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "revision": None,
                 "local_files_only": False,
                 "model_kwargs": None,
-                "tokenizer_kwargs": None,
+                "processor_kwargs": None,
                 "config_kwargs": None,
                 "backend": "torch",
             },
@@ -81,7 +81,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             trust_remote_code=True,
             local_files_only=True,
             model_kwargs={"torch_dtype": torch.float32},
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": False},
         )
         data = component.to_dict()
@@ -97,7 +97,7 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "revision": None,
                 "local_files_only": True,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
-                "tokenizer_kwargs": {"model_max_length": 512},
+                "processor_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": False},
                 "backend": "torch",
             },
@@ -121,7 +121,7 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "revision": "v1.0",
                 "local_files_only": False,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
-                "tokenizer_kwargs": {"model_max_length": 512},
+                "processor_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": False},
             },
         }
@@ -135,7 +135,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.revision == "v1.0"
         assert component.local_files_only is False
         assert component.model_kwargs == {"torch_dtype": torch.float32}
-        assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.processor_kwargs == {"model_max_length": 512}
         assert component.config_kwargs == {"use_memory_efficient_attention": False}
 
     def test_from_dict_no_default_parameters(self):
@@ -181,7 +181,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             model="model",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
@@ -194,7 +194,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             revision=None,
             local_files_only=False,
             model_kwargs=None,
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs=None,
             backend="torch",
         )
@@ -260,7 +260,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             revision=None,
             local_files_only=False,
             model_kwargs={"file_name": "onnx/model.onnx"},
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="onnx",
         )
@@ -289,7 +289,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             revision=None,
             local_files_only=False,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="openvino",
         )
@@ -315,7 +315,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             revision=None,
             local_files_only=False,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="torch",
         )

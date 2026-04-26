@@ -1,0 +1,17 @@
+breaks:
+  - |
+    Renamed ``tokenizer_kwargs`` to ``processor_kwargs`` across all Sentence Transformers components to align with ``sentence-transformers>=5.0.0``.
+    This affects:
+    - ``SentenceTransformersTextEmbedder``
+    - ``SentenceTransformersDocumentEmbedder``
+    - ``SentenceTransformersSparseTextEmbedder``
+    - ``SentenceTransformersSparseDocumentEmbedder``
+    - ``SentenceTransformersDocumentImageEmbedder``
+    - ``SentenceTransformersSimilarityRanker``
+    - ``SentenceTransformersDiversityRanker``
+    - ``TransformersSimilarityRanker``
+    Backward compatibility is maintained for serialized pipelines; pipelines saved with ``tokenizer_kwargs`` will be automatically mapped to ``processor_kwargs`` upon loading.
+upgrade:
+  - |
+    The ``max_length`` property on underlying cross-encoder models has been renamed to ``max_seq_length``, consistent with the changes in ``sentence-transformers`` v5.0.0.
+    Authentication parameter ``use_auth_token`` has been renamed to ``token`` across all relevant components to align with Hugging Face and Sentence Transformers standards.

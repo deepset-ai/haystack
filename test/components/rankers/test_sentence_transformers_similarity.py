@@ -36,7 +36,7 @@ class TestSentenceTransformersSimilarityRanker:
             token=None,
             trust_remote_code=True,
             model_kwargs=None,
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="torch",
         )
@@ -57,7 +57,7 @@ class TestSentenceTransformersSimilarityRanker:
             token=None,
             trust_remote_code=False,
             model_kwargs=None,
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="onnx",
         )
@@ -78,7 +78,7 @@ class TestSentenceTransformersSimilarityRanker:
             token=None,
             trust_remote_code=False,
             model_kwargs=None,
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="openvino",
         )
@@ -103,7 +103,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "score_threshold": None,
                 "trust_remote_code": False,
                 "model_kwargs": None,
-                "tokenizer_kwargs": None,
+                "processor_kwargs": None,
                 "config_kwargs": None,
                 "backend": "torch",
                 "batch_size": 16,
@@ -124,7 +124,7 @@ class TestSentenceTransformersSimilarityRanker:
             score_threshold=0.01,
             trust_remote_code=True,
             model_kwargs={"torch_dtype": torch.float16},
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             batch_size=32,
         )
         data = component.to_dict()
@@ -145,7 +145,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "score_threshold": 0.01,
                 "trust_remote_code": True,
                 "model_kwargs": {"torch_dtype": "torch.float16"},
-                "tokenizer_kwargs": {"model_max_length": 512},
+                "processor_kwargs": {"model_max_length": 512},
                 "config_kwargs": None,
                 "backend": "torch",
                 "batch_size": 32,
@@ -184,7 +184,7 @@ class TestSentenceTransformersSimilarityRanker:
                     "bnb_4bit_quant_type": "nf4",
                     "bnb_4bit_compute_dtype": "torch.bfloat16",
                 },
-                "tokenizer_kwargs": None,
+                "processor_kwargs": None,
                 "config_kwargs": None,
                 "backend": "torch",
                 "batch_size": 16,
@@ -207,7 +207,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "score_threshold": 0.01,
                 "trust_remote_code": False,
                 "model_kwargs": {"torch_dtype": "torch.float16"},
-                "tokenizer_kwargs": None,
+                "processor_kwargs": None,
                 "config_kwargs": None,
                 "backend": "torch",
                 "batch_size": 32,
@@ -227,7 +227,7 @@ class TestSentenceTransformersSimilarityRanker:
         assert component.score_threshold == 0.01
         assert component.trust_remote_code is False
         assert component.model_kwargs == {"torch_dtype": torch.float16}
-        assert component.tokenizer_kwargs is None
+        assert component.processor_kwargs is None
         assert component.config_kwargs is None
         assert component.batch_size == 32
 
@@ -250,7 +250,7 @@ class TestSentenceTransformersSimilarityRanker:
         assert component.score_threshold is None
         assert component.trust_remote_code is False
         assert component.model_kwargs is None
-        assert component.tokenizer_kwargs is None
+        assert component.processor_kwargs is None
         assert component.config_kwargs is None
         assert component.backend == "torch"
         assert component.batch_size == 16

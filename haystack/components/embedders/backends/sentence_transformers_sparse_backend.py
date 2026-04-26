@@ -30,7 +30,7 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
         revision: str | None = None,
         local_files_only: bool = False,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> "_SentenceTransformersSparseEncoderEmbeddingBackend":
@@ -42,7 +42,7 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
             "revision": revision,
             "local_files_only": local_files_only,
             "model_kwargs": model_kwargs,
-            "tokenizer_kwargs": tokenizer_kwargs,
+            "processor_kwargs": processor_kwargs,
             "config_kwargs": config_kwargs,
             "backend": backend,
         }
@@ -60,7 +60,7 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
             revision=revision,
             local_files_only=local_files_only,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
             backend=backend,
         )
@@ -84,7 +84,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         revision: str | None = None,
         local_files_only: bool = False,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
@@ -98,7 +98,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
             revision=revision,
             local_files_only=local_files_only,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
+            processor_kwargs=processor_kwargs,
             config_kwargs=config_kwargs,
             backend=backend,
         )

@@ -61,7 +61,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
         assert embedder.precision == "int8"
         assert embedder.backend == "torch"
         assert embedder.model_kwargs is None
-        assert embedder.tokenizer_kwargs is None
+        assert embedder.processor_kwargs is None
         assert embedder.config_kwargs is None
         assert embedder.encode_kwargs is None
         assert embedder._embedding_backend is None
@@ -85,7 +85,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
                 "trust_remote_code": False,
                 "local_files_only": False,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
-                "tokenizer_kwargs": None,
+                "processor_kwargs": None,
                 "encode_kwargs": None,
                 "config_kwargs": None,
                 "precision": "float32",
@@ -106,7 +106,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
             "trust_remote_code": True,
             "local_files_only": True,
             "model_kwargs": {"torch_dtype": "torch.float32"},
-            "tokenizer_kwargs": {"model_max_length": 512},
+            "processor_kwargs": {"model_max_length": 512},
             "config_kwargs": {"use_memory_efficient_attention": True},
             "precision": "int8",
         }
@@ -124,7 +124,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
         assert component.trust_remote_code
         assert component.local_files_only
         assert component.model_kwargs == {"torch_dtype": torch.float32}
-        assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.processor_kwargs == {"model_max_length": 512}
         assert component.config_kwargs == {"use_memory_efficient_attention": True}
         assert component.precision == "int8"
 
@@ -162,7 +162,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
             model="model",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
         )
         mocked_factory.get_embedding_backend.assert_not_called()
@@ -175,7 +175,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
             trust_remote_code=False,
             local_files_only=False,
             model_kwargs=None,
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
             backend="torch",
         )
@@ -256,7 +256,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
             trust_remote_code=False,
             local_files_only=False,
             model_kwargs={"file_name": "onnx/model.onnx"},
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="onnx",
         )
@@ -281,7 +281,7 @@ class TestSentenceTransformersDocumentImageEmbedder:
             trust_remote_code=False,
             local_files_only=False,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="openvino",
         )

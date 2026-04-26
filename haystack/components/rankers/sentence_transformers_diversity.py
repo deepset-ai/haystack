@@ -131,7 +131,7 @@ class SentenceTransformersDiversityRanker:
         strategy: str | DiversityRankingStrategy = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
@@ -163,8 +163,8 @@ class SentenceTransformersDiversityRanker:
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
-        :param tokenizer_kwargs:
-            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+        :param processor_kwargs:
+            Additional keyword arguments for `AutoProcessor.from_pretrained` when loading the processor.
             Refer to specific model documentation for available kwargs.
         :param config_kwargs:
             Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
@@ -193,7 +193,7 @@ class SentenceTransformersDiversityRanker:
         self.lambda_threshold = lambda_threshold
         self._check_lambda_threshold(self.lambda_threshold, self.strategy)
         self.model_kwargs = model_kwargs
-        self.tokenizer_kwargs = tokenizer_kwargs
+        self.processor_kwargs = processor_kwargs
         self.config_kwargs = config_kwargs
         self.backend = backend
 
@@ -207,10 +207,12 @@ class SentenceTransformersDiversityRanker:
                 device=self.device.to_torch_str(),
                 token=self.token.resolve_value() if self.token else None,
                 model_kwargs=self.model_kwargs,
-                tokenizer_kwargs=self.tokenizer_kwargs,
+                processor_kwargs=self.processor_kwargs,
                 config_kwargs=self.config_kwargs,
                 backend=self.backend,
             )
+            if self.processor_kwargs and "model_max_length" in self.processor_kwargs:
+                self.model.max_seq_length = self.processor_kwargs["model_max_length"]
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -235,7 +237,7 @@ class SentenceTransformersDiversityRanker:
             strategy=str(self.strategy),
             lambda_threshold=self.lambda_threshold,
             model_kwargs=self.model_kwargs,
-            tokenizer_kwargs=self.tokenizer_kwargs,
+            processor_kwargs=self.processor_kwargs,
             config_kwargs=self.config_kwargs,
             backend=self.backend,
         )
@@ -256,6 +258,8 @@ class SentenceTransformersDiversityRanker:
         init_params = data["init_parameters"]
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
+        if "tokenizer_kwargs" in init_params and "processor_kwargs" not in init_params:
+            init_params["processor_kwargs"] = init_params.pop("tokenizer_kwargs")
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: list[Document]) -> list[str]:

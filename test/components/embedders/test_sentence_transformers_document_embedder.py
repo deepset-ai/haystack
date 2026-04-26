@@ -87,7 +87,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": None,
-                "tokenizer_kwargs": None,
+                "processor_kwargs": None,
                 "encode_kwargs": None,
                 "config_kwargs": None,
                 "precision": "float32",
@@ -111,7 +111,7 @@ class TestSentenceTransformersDocumentEmbedder:
             local_files_only=True,
             truncate_dim=256,
             model_kwargs={"torch_dtype": torch.float32},
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
             precision="int8",
             encode_kwargs={"task": "clustering"},
@@ -136,7 +136,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "meta_fields_to_embed": ["meta_field"],
                 "truncate_dim": 256,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
-                "tokenizer_kwargs": {"model_max_length": 512},
+                "processor_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": True},
                 "precision": "int8",
                 "encode_kwargs": {"task": "clustering"},
@@ -161,7 +161,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "local_files_only": True,
             "truncate_dim": 256,
             "model_kwargs": {"torch_dtype": "torch.float32"},
-            "tokenizer_kwargs": {"model_max_length": 512},
+            "processor_kwargs": {"model_max_length": 512},
             "config_kwargs": {"use_memory_efficient_attention": True},
             "precision": "int8",
         }
@@ -186,7 +186,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim == 256
         assert component.model_kwargs == {"torch_dtype": torch.float32}
-        assert component.tokenizer_kwargs == {"model_max_length": 512}
+        assert component.processor_kwargs == {"model_max_length": 512}
         assert component.config_kwargs == {"use_memory_efficient_attention": True}
         assert component.precision == "int8"
 
@@ -260,7 +260,7 @@ class TestSentenceTransformersDocumentEmbedder:
             model="model",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
         )
         mocked_factory.get_embedding_backend.assert_not_called()
@@ -275,7 +275,7 @@ class TestSentenceTransformersDocumentEmbedder:
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=None,
-            tokenizer_kwargs={"model_max_length": 512},
+            processor_kwargs={"model_max_length": 512},
             config_kwargs={"use_memory_efficient_attention": True},
             backend="torch",
         )
@@ -411,7 +411,7 @@ class TestSentenceTransformersDocumentEmbedder:
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "onnx/model.onnx"},
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="onnx",
         )
@@ -440,7 +440,7 @@ class TestSentenceTransformersDocumentEmbedder:
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="openvino",
         )
@@ -467,7 +467,7 @@ class TestSentenceTransformersDocumentEmbedder:
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=model_kwargs,
-            tokenizer_kwargs=None,
+            processor_kwargs=None,
             config_kwargs=None,
             backend="torch",
         )

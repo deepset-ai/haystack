@@ -56,7 +56,7 @@ class SentenceTransformersSimilarityRanker:
         score_threshold: float | None = None,
         trust_remote_code: bool = False,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         batch_size: int = 16,
@@ -99,8 +99,8 @@ class SentenceTransformersSimilarityRanker:
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
-        :param tokenizer_kwargs:
-            Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+        :param processor_kwargs:
+            Additional keyword arguments for `AutoProcessor.from_pretrained` when loading the processor.
             Refer to specific model documentation for available kwargs.
         :param config_kwargs:
             Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
@@ -121,7 +121,7 @@ class SentenceTransformersSimilarityRanker:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         self.model = str(model)
-        self._cross_encoder = None
+        self._cross_encoder: CrossEncoder | None = None
         self.query_prefix = query_prefix
         self.query_suffix = query_suffix
         self.document_prefix = document_prefix
@@ -135,7 +135,7 @@ class SentenceTransformersSimilarityRanker:
         self.score_threshold = score_threshold
         self.trust_remote_code = trust_remote_code
         self.model_kwargs = model_kwargs
-        self.tokenizer_kwargs = tokenizer_kwargs
+        self.processor_kwargs = processor_kwargs
         self.config_kwargs = config_kwargs
         self.backend = backend
         self.batch_size = batch_size
@@ -151,16 +151,19 @@ class SentenceTransformersSimilarityRanker:
         Initializes the component.
         """
         if self._cross_encoder is None:
-            self._cross_encoder = CrossEncoder(
+            cross_encoder = CrossEncoder(
                 model_name_or_path=self.model,
                 device=self.device.to_torch_str(),
                 token=self.token.resolve_value() if self.token else None,
                 trust_remote_code=self.trust_remote_code,
                 model_kwargs=self.model_kwargs,
-                tokenizer_kwargs=self.tokenizer_kwargs,
+                processor_kwargs=self.processor_kwargs,
                 config_kwargs=self.config_kwargs,
                 backend=self.backend,
             )
+            if self.processor_kwargs and "model_max_length" in self.processor_kwargs:
+                cross_encoder.max_seq_length = self.processor_kwargs["model_max_length"]
+            self._cross_encoder = cross_encoder
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -185,7 +188,7 @@ class SentenceTransformersSimilarityRanker:
             score_threshold=self.score_threshold,
             trust_remote_code=self.trust_remote_code,
             model_kwargs=self.model_kwargs,
-            tokenizer_kwargs=self.tokenizer_kwargs,
+            processor_kwargs=self.processor_kwargs,
             config_kwargs=self.config_kwargs,
             backend=self.backend,
             batch_size=self.batch_size,
@@ -207,6 +210,8 @@ class SentenceTransformersSimilarityRanker:
         init_params = data["init_parameters"]
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
+        if "tokenizer_kwargs" in init_params and "processor_kwargs" not in init_params:
+            init_params["processor_kwargs"] = init_params.pop("tokenizer_kwargs")
 
         return default_from_dict(cls, data)
 
@@ -275,7 +280,8 @@ class SentenceTransformersSimilarityRanker:
         activation_fn = Sigmoid() if scale_score else Identity()
 
         # mypy doesn't know this is set in warm_up
-        ranking_result = self._cross_encoder.rank(  # type: ignore[attr-defined]
+        assert self._cross_encoder is not None
+        ranking_result = self._cross_encoder.rank(
             query=prepared_query,
             documents=prepared_documents,
             batch_size=self.batch_size,

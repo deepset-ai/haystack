@@ -63,7 +63,7 @@ class TransformersSimilarityRanker:
         calibration_factor: float | None = 1.0,
         score_threshold: float | None = None,
         model_kwargs: dict[str, Any] | None = None,
-        tokenizer_kwargs: dict[str, Any] | None = None,
+        processor_kwargs: dict[str, Any] | None = None,
         batch_size: int = 16,
     ) -> None:
         """
@@ -98,7 +98,7 @@ class TransformersSimilarityRanker:
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
-        :param tokenizer_kwargs:
+        :param processor_kwargs:
             Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
             Refer to specific model documentation for available kwargs.
         :param batch_size:
@@ -135,7 +135,7 @@ class TransformersSimilarityRanker:
 
         model_kwargs = resolve_hf_device_map(device=device, model_kwargs=model_kwargs)
         self.model_kwargs = model_kwargs
-        self.tokenizer_kwargs = tokenizer_kwargs or {}
+        self.processor_kwargs = processor_kwargs or {}
         self.batch_size = batch_size
 
         # Parameter validation
@@ -164,7 +164,7 @@ class TransformersSimilarityRanker:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name_or_path,
                 token=self.token.resolve_value() if self.token else None,
-                **self.tokenizer_kwargs,
+                **self.processor_kwargs,
             )
             assert self.model is not None  # mypy doesn't know this is set in the line above
             # hf_device_map appears to only be set now when mixed devices are actually used.
@@ -195,7 +195,7 @@ class TransformersSimilarityRanker:
             calibration_factor=self.calibration_factor,
             score_threshold=self.score_threshold,
             model_kwargs=self.model_kwargs,
-            tokenizer_kwargs=self.tokenizer_kwargs,
+            processor_kwargs=self.processor_kwargs,
             batch_size=self.batch_size,
         )
 
@@ -215,7 +215,8 @@ class TransformersSimilarityRanker:
         init_params = data["init_parameters"]
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
-
+        if "tokenizer_kwargs" in init_params and "processor_kwargs" not in init_params:
+            init_params["processor_kwargs"] = init_params.pop("tokenizer_kwargs")
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
