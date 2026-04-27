@@ -686,49 +686,10 @@ class Agent:
         )
 
         with self._create_agent_span() as span:
-            # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
-
             while exe_context.counter < self.max_agent_steps:
-                with tracing.tracer.trace(
-                    "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=span
-                ) as step_span:
-                    chat_generator_inputs = {
-                        "messages": exe_context.state.data["messages"],
-                        **exe_context.chat_generator_inputs,
-                    }
-                    step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
-                    result = self.chat_generator.run(**chat_generator_inputs)
-                    llm_messages = result["replies"]
-                    step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
-                    exe_context.state.set("messages", llm_messages)
-
-                    if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
-                        exe_context.counter += 1
-                        break
-
-                    # Apply confirmation strategies and update State and messages sent to ToolInvoker
-                    modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
-                        confirmation_strategies=self._confirmation_strategies,
-                        messages_with_tool_calls=llm_messages,
-                        execution_context=exe_context,
-                    )
-                    exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
-
-                    tool_invoker_result = self._tool_invoker.run(
-                        messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
-                    )
-                    tool_messages = tool_invoker_result["tool_messages"]
-                    step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
-                    exe_context.state = tool_invoker_result["state"]
-                    exe_context.state.set("messages", tool_messages)
-
-                    if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                        exe_context.counter += 1
-                        break
-
-                    exe_context.counter += 1
-
+                if not self._run_step(exe_context, span):
+                    break
             if exe_context.counter >= self.max_agent_steps:
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
@@ -798,49 +759,10 @@ class Agent:
         )
 
         with self._create_agent_span() as span:
-            # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
-
             while exe_context.counter < self.max_agent_steps:
-                with tracing.tracer.trace(
-                    "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=span
-                ) as step_span:
-                    chat_generator_inputs = {
-                        "messages": exe_context.state.data["messages"],
-                        **exe_context.chat_generator_inputs,
-                    }
-                    step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
-                    result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[union-attr]
-                    llm_messages = result["replies"]
-                    step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
-                    exe_context.state.set("messages", llm_messages)
-
-                    if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
-                        exe_context.counter += 1
-                        break
-
-                    # Apply confirmation strategies and update State and messages sent to ToolInvoker
-                    modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
-                        confirmation_strategies=self._confirmation_strategies,
-                        messages_with_tool_calls=llm_messages,
-                        execution_context=exe_context,
-                    )
-                    exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
-
-                    tool_invoker_result = await self._tool_invoker.run_async(  # type: ignore[union-attr]
-                        messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
-                    )
-                    tool_messages = tool_invoker_result["tool_messages"]
-                    step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
-                    exe_context.state = tool_invoker_result["state"]
-                    exe_context.state.set("messages", tool_messages)
-
-                    if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                        exe_context.counter += 1
-                        break
-
-                    exe_context.counter += 1
-
+                if not await self._run_step_async(exe_context, span):
+                    break
             if exe_context.counter >= self.max_agent_steps:
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
@@ -853,6 +775,88 @@ class Agent:
         if msgs := result.get("messages"):
             result["last_message"] = msgs[-1]
         return result
+
+    def _run_step(self, exe_context: _ExecutionContext, agent_span: Any) -> bool:
+        """Execute one agent step. Returns True to continue the loop, False to stop."""
+        with tracing.tracer.trace(
+            "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
+        ) as step_span:
+            chat_generator_inputs = {
+                "messages": exe_context.state.data["messages"],
+                **exe_context.chat_generator_inputs,
+            }
+            step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
+            result = self.chat_generator.run(**chat_generator_inputs)
+            llm_messages = result["replies"]
+            step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
+            exe_context.state.set("messages", llm_messages)
+
+            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                exe_context.counter += 1
+                return False
+
+            modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
+                confirmation_strategies=self._confirmation_strategies,
+                messages_with_tool_calls=llm_messages,
+                execution_context=exe_context,
+            )
+            exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
+
+            tool_invoker_result = self._tool_invoker.run(
+                messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
+            )
+            tool_messages = tool_invoker_result["tool_messages"]
+            step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
+            exe_context.state = tool_invoker_result["state"]
+            exe_context.state.set("messages", tool_messages)
+
+            if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                exe_context.counter += 1
+                return False
+
+            exe_context.counter += 1
+            return True
+
+    async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: Any) -> bool:
+        """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
+        with tracing.tracer.trace(
+            "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
+        ) as step_span:
+            chat_generator_inputs = {
+                "messages": exe_context.state.data["messages"],
+                **exe_context.chat_generator_inputs,
+            }
+            step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
+            result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[union-attr]
+            llm_messages = result["replies"]
+            step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
+            exe_context.state.set("messages", llm_messages)
+
+            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                exe_context.counter += 1
+                return False
+
+            modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
+                confirmation_strategies=self._confirmation_strategies,
+                messages_with_tool_calls=llm_messages,
+                execution_context=exe_context,
+            )
+            exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
+
+            tool_invoker_result = await self._tool_invoker.run_async(  # type: ignore[union-attr]
+                messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
+            )
+            tool_messages = tool_invoker_result["tool_messages"]
+            step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
+            exe_context.state = tool_invoker_result["state"]
+            exe_context.state.set("messages", tool_messages)
+
+            if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                exe_context.counter += 1
+                return False
+
+            exe_context.counter += 1
+            return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """
