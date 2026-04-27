@@ -628,11 +628,6 @@ class Agent:
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
         )
 
-    def _runtime_checks(self) -> None:
-        """Warm up the agent if not already warmed up."""
-        if not self._is_warmed_up:
-            self.warm_up()
-
     def run(  # noqa: PLR0915
         self,
         messages: list[ChatMessage],
@@ -671,7 +666,8 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
-        self._runtime_checks()
+        if not self._is_warmed_up:
+            self.warm_up()
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -744,7 +740,8 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
-        self._runtime_checks()
+        if not self._is_warmed_up:
+            self.warm_up()
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
