@@ -19,10 +19,10 @@ The first distinction we are talking about is between Generators and ChatGenerat
 - **Generators** are components that expect a prompt (a string) and return the generated text in “replies”.
 - **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
 
-The choice between Generators and ChatGenerators depends on your use case and the underlying model. If you anticipate a multi-turn interaction with the Language Model in a chat scenario, opting for a ChatGenerator is generally better.
+:::warning
+ChatGenerators are way more powerful than Generators: they for example support Function Calling and Multimodal inputs.
 
-:::tip
-To learn more about this comparison, check out our [Generators vs Chat Generators](generators-vs-chat-generators.mdx) guide.
+We recommend using ChatGenerators. Generators might be removed in a future major version of Haystack.
 :::
 
 ## Streaming Support
@@ -111,7 +111,7 @@ Agents and `ToolInvoker` forward your `streaming_callback`. They also emit a fin
 Using proprietary models is a quick way to start with Generative Language Models. The typical approach involves calling these hosted models using an API Key. You are paying based on the number of tokens, both sent and generated.
 You don’t need significant resources on your local machine, as the computation is executed on the provider’s infrastructure. When using these models, your data exits your machine and is transmitted to the model provider.
 
-Haystack supports the models offered by a variety of providers: OpenAI, Azure, Google VertexAI and Makersuite, Cohere, and Mistral, with more being added constantly.
+Haystack supports the models offered by a variety of providers: OpenAI, Azure, Google, Cohere, and Mistral, with more being added constantly.
 
 We also support [Amazon Bedrock](../amazonbedrockgenerator.mdx): it provides access to proprietary models from Amazon Titan family, AI21 Labs, Anthropic, Cohere, and several open source models, such as Llama from Meta.
 
@@ -136,20 +136,20 @@ With this type, you leverage an instance of the model shared with other users, w
 
 Here are the components that support shared hosted models in Haystack:
 
-- Hugging Face API Generators, when querying the [free Hugging Face Inference API](https://huggingface.co/inference-api). The free Inference API provides access to some popular models for quick experimentation, although it comes with rate limitations and is not intended for production use.
-- Various cloud providers offer interfaces compatible with OpenAI Generators. These include Anyscale, Deep Infra, Fireworks, Lemonfox.ai, OctoAI, Together AI, and many others.
-  Here is an example using OctoAI and [`OpenAIChatGenerator`](../openaichatgenerator.mdx):
+- Hugging Face API Generators, when using [Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers/index). Hugging Face Inference Providers give access to hundreds of LLMs, powered by different providers, through a unified interface.
+- Some providers are supported by Haystack with a dedicated integration: [AIMLAPI](../aimllapichatgenerator.mdx), [Comet API](../cometapichatgenerator.mdx), [NVIDIA](../nvidiachatgenerator.mdx), [OpenRouter](../openrouterchatgenerator.mdx), [STACKIT](../stackitchatgenerator.mdx), [Together AI](../togetheraichatgenerator.mdx), [WatsonX](../watsonxchatgenerators).
+- Various cloud providers offer interfaces compatible with OpenAI Generators. These include DeepInfra, Fireworks and many others.
+  Here is an example using DeepInfra and [`OpenAIChatGenerator`](../openaichatgenerator.mdx):
 
 ```python
-
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
 
 generator = OpenAIChatGenerator(
     api_key=Secret.from_env_var("ENVVAR_WITH_API_KEY"),
-    api_base_url="https://text.octoai.run/v1",
-    model="mixtral-8x7b-instruct-fp16",
+    api_base_url="https://api.deepinfra.com/v1",
+    model="Qwen/Qwen3.6-35B-A3B",
 )
 
 generator.run(messages=[ChatMessage.from_user("What is the best French cheese?")])
@@ -187,13 +187,14 @@ It is suitable in production scenarios where data privacy concerns drive the dec
 
 ### Local Experimentation
 
-- GPU: [`HuggingFaceLocalGenerator`](../huggingfacelocalgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
-- CPU (+ GPU if available): [`LlamaCppGenerator`](../llamacppgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
-- CPU (+ GPU if available): [`OllamaGenerator`](../ollamagenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
+- GPU: [`HuggingFaceLocalChatGenerator`](../huggingfacelocalchatgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
+- CPU (+ GPU if available): [`LlamaCppChatGenerator`](../llamacppchatgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
+- CPU (+ GPU if available): [`OllamaChatGenerator`](../ollamachatgenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
 
 ### Serving LLMs in Production
 
 The following solutions are suitable if you want to run Language Models in production and have GPU resources available. They use innovative techniques for fast inference and efficient handling of numerous concurrent requests.
 
-- vLLM is a high-throughput and memory-efficient inference and serving engine for LLMs. Haystack supports vLLM through the OpenAI Generators.
-- Hugging Face API Generators, when used to query a TGI instance deployed on-premise. Hugging Face Text Generation Inference is a toolkit for efficiently deploying and serving LLMs.
+- vLLM is a high-throughput and memory-efficient inference and serving engine for LLMs. Haystack supports vLLM through [vLLMChatGenerator](../vllmchatgenerator).
+- SGLang is a similar high-performance LLM serving framework. Haystack supports it through the OpenAI Generators.
+- Hugging Face API Generators, when used to query a TGI instance deployed on-premise. Hugging Face Text Generation Inference is a toolkit for efficiently deploying and serving LLMs. **This project is now in maintenance mode**.
