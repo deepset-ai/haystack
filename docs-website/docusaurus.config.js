@@ -201,6 +201,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/dynamicpromptbuilder',
             to: '/docs/promptbuilder',
           },
+          {
+            from: '/docs/generators-vs-chat-generators',
+            to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
+          },
         ],
       },
     ],

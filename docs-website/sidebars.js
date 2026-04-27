@@ -383,7 +383,6 @@ export default {
               items: [
                 'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
                 'pipeline-components/generators/guides-to-generators/function-calling',
-                'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
               ],
             },
             'pipeline-components/generators/amazonbedrockchatgenerator',
