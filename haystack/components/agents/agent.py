@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
-from haystack import Pipeline, component, logging, tracing
+from haystack import component, logging, tracing
 from haystack.components.agents.state.state import (
     State,
     _schema_from_dict,
@@ -19,7 +19,6 @@ from haystack.components.agents.state.state_utils import merge_lists
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.human_in_the_loop.strategies import (
@@ -56,7 +55,6 @@ class _ExecutionContext:
     Context for executing the agent.
 
     :param state: The current state of the agent, including messages and any additional data.
-    :param component_visits: A dictionary tracking how many times each component has been visited.
     :param chat_generator_inputs: Runtime inputs to be passed to the chat generator.
     :param tool_invoker_inputs: Runtime inputs to be passed to the tool invoker.
     :param counter: A counter to track the number of steps taken in the agent's run.
@@ -68,7 +66,6 @@ class _ExecutionContext:
     """
 
     state: State
-    component_visits: dict
     chat_generator_inputs: dict
     tool_invoker_inputs: dict
     counter: int = 0
@@ -588,7 +585,6 @@ class Agent:
 
         return _ExecutionContext(
             state=state,
-            component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
             chat_generator_inputs=generator_inputs,
             tool_invoker_inputs=tool_invoker_inputs,
             confirmation_strategy_context=confirmation_strategy_context,
@@ -694,56 +690,44 @@ class Agent:
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
-                result = Pipeline._run_component(
-                    component_name="chat_generator",
-                    component={"instance": self.chat_generator},
-                    inputs={"messages": exe_context.state.data["messages"], **exe_context.chat_generator_inputs},
-                    component_visits=exe_context.component_visits,
-                    parent_span=span,
-                )
+                with tracing.tracer.trace(
+                    "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=span
+                ) as step_span:
+                    chat_generator_inputs = {
+                        "messages": exe_context.state.data["messages"],
+                        **exe_context.chat_generator_inputs,
+                    }
+                    step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
+                    result = self.chat_generator.run(**chat_generator_inputs)
+                    llm_messages = result["replies"]
+                    step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
+                    exe_context.state.set("messages", llm_messages)
 
-                llm_messages = result["replies"]
-                exe_context.state.set("messages", llm_messages)
+                    if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                        exe_context.counter += 1
+                        break
 
-                # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
-                if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                    # Apply confirmation strategies and update State and messages sent to ToolInvoker
+                    modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
+                        confirmation_strategies=self._confirmation_strategies,
+                        messages_with_tool_calls=llm_messages,
+                        execution_context=exe_context,
+                    )
+                    exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
+
+                    tool_invoker_result = self._tool_invoker.run(
+                        messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
+                    )
+                    tool_messages = tool_invoker_result["tool_messages"]
+                    step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
+                    exe_context.state = tool_invoker_result["state"]
+                    exe_context.state.set("messages", tool_messages)
+
+                    if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                        exe_context.counter += 1
+                        break
+
                     exe_context.counter += 1
-                    break
-
-                # Apply confirmation strategies and update State and messages sent to ToolInvoker
-                # Run confirmation strategies to get updated tool call messages and modified chat history
-                modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
-                    confirmation_strategies=self._confirmation_strategies,
-                    messages_with_tool_calls=llm_messages,
-                    execution_context=exe_context,
-                )
-                # Replace the chat history in state with the modified one
-                exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
-
-                # We only send the messages from the LLM to the tool invoker
-                tool_invoker_result = Pipeline._run_component(
-                    component_name="tool_invoker",
-                    component={"instance": self._tool_invoker},
-                    inputs={
-                        "messages": modified_tool_call_messages,
-                        "state": exe_context.state,
-                        **exe_context.tool_invoker_inputs,
-                    },
-                    component_visits=exe_context.component_visits,
-                    parent_span=span,
-                )
-
-                tool_messages = tool_invoker_result["tool_messages"]
-                exe_context.state = tool_invoker_result["state"]
-                exe_context.state.set("messages", tool_messages)
-
-                # Check if any LLM message's tool call name matches an exit condition
-                if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    exe_context.counter += 1
-                    break
-
-                # Increment the step counter
-                exe_context.counter += 1
 
             if exe_context.counter >= self.max_agent_steps:
                 logger.warning(
@@ -818,59 +802,44 @@ class Agent:
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
-                result = await AsyncPipeline._run_component_async(
-                    component_name="chat_generator",
-                    component={"instance": self.chat_generator},
-                    component_inputs={
+                with tracing.tracer.trace(
+                    "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=span
+                ) as step_span:
+                    chat_generator_inputs = {
                         "messages": exe_context.state.data["messages"],
                         **exe_context.chat_generator_inputs,
-                    },
-                    component_visits=exe_context.component_visits,
-                    parent_span=span,
-                )
+                    }
+                    step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
+                    result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[union-attr]
+                    llm_messages = result["replies"]
+                    step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
+                    exe_context.state.set("messages", llm_messages)
 
-                llm_messages = result["replies"]
-                exe_context.state.set("messages", llm_messages)
+                    if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                        exe_context.counter += 1
+                        break
 
-                # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
-                if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                    # Apply confirmation strategies and update State and messages sent to ToolInvoker
+                    modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
+                        confirmation_strategies=self._confirmation_strategies,
+                        messages_with_tool_calls=llm_messages,
+                        execution_context=exe_context,
+                    )
+                    exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
+
+                    tool_invoker_result = await self._tool_invoker.run_async(  # type: ignore[union-attr]
+                        messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
+                    )
+                    tool_messages = tool_invoker_result["tool_messages"]
+                    step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
+                    exe_context.state = tool_invoker_result["state"]
+                    exe_context.state.set("messages", tool_messages)
+
+                    if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
+                        exe_context.counter += 1
+                        break
+
                     exe_context.counter += 1
-                    break
-
-                # Apply confirmation strategies and update State and messages sent to ToolInvoker
-                # Run confirmation strategies to get updated tool call messages and modified chat history
-                modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
-                    confirmation_strategies=self._confirmation_strategies,
-                    messages_with_tool_calls=llm_messages,
-                    execution_context=exe_context,
-                )
-                # Replace the chat history in state with the modified one
-                exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
-
-                # We only send the messages from the LLM to the tool invoker
-                tool_invoker_result = await AsyncPipeline._run_component_async(
-                    component_name="tool_invoker",
-                    component={"instance": self._tool_invoker},
-                    component_inputs={
-                        "messages": modified_tool_call_messages,
-                        "state": exe_context.state,
-                        **exe_context.tool_invoker_inputs,
-                    },
-                    component_visits=exe_context.component_visits,
-                    parent_span=span,
-                )
-
-                tool_messages = tool_invoker_result["tool_messages"]
-                exe_context.state = tool_invoker_result["state"]
-                exe_context.state.set("messages", tool_messages)
-
-                # Check if any LLM message's tool call name matches an exit condition
-                if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    exe_context.counter += 1
-                    break
-
-                # Increment the step counter
-                exe_context.counter += 1
 
             if exe_context.counter >= self.max_agent_steps:
                 logger.warning(
