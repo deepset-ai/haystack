@@ -1,20 +1,20 @@
 ---
-title: "ChonkieSemanticDocumentSplitter"
-id: chonkiesemanticdocumentsplitter
-slug: "/chonkiesemanticdocumentsplitter"
-description: "Use `ChonkieSemanticDocumentSplitter` to split documents at semantic topic boundaries using embedding similarity, powered by the Chonkie library."
+title: "ChonkieSentenceDocumentSplitter"
+id: chonkiesentencedocumentsplitter
+slug: "/chonkiesentencedocumentsplitter"
+description: "Use `ChonkieSentenceDocumentSplitter` to split documents into sentence-aware chunks using the Chonkie library."
 ---
 
-# ChonkieSemanticDocumentSplitter
+# ChonkieSentenceDocumentSplitter
 
-`ChonkieSemanticDocumentSplitter` splits documents at semantically meaningful boundaries using [Chonkie](https://docs.chonkie.ai/)'s `SemanticChunker`.
-Rather than splitting by a fixed token count, it uses an embedding model to detect topic shifts and keeps related sentences together.
+`ChonkieSentenceDocumentSplitter` splits documents into chunks that respect sentence boundaries using [Chonkie](https://docs.chonkie.ai/)'s `SentenceChunker`.
+Unlike pure token splitting, it avoids cutting mid-sentence, producing more coherent chunks.
 
 <div className="key-value-table">
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx), before [Embedders](../embedders.mdx) |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) and [`DocumentCleaner`](documentcleaner.mdx), before [Embedders](../embedders.mdx) |
 | **Mandatory run variables**            | `documents`: A list of documents |
 | **Output variables**                   | `documents`: A list of documents |
 | **API reference**                      | [Chonkie](/reference/integrations-chonkie) |
@@ -24,10 +24,8 @@ Rather than splitting by a fixed token count, it uses an embedding model to dete
 
 ## Overview
 
-`ChonkieSemanticDocumentSplitter` wraps Chonkie's `SemanticChunker` to produce context-aware chunks by grouping sentences with similar semantic content.
-It computes embeddings for sentences and uses cosine similarity to find natural topic boundaries.
-
-The embedding model is loaded lazily — `warm_up()` is called automatically the first time `run()` is invoked, whether inside a pipeline or standalone.
+`ChonkieSentenceDocumentSplitter` wraps Chonkie's `SentenceChunker` to split each input document into chunks whose boundaries align with sentence endings.
+The chunker groups sentences together until the chunk size limit is reached.
 
 Each output document includes the original document's metadata plus:
 - `source_id`: ID of the original document
@@ -46,18 +44,14 @@ pip install chonkie-haystack
 
 | Parameter | Default | Description |
 | --- | --- | --- |
-| `embedding_model` | `"minishlab/potion-base-32M"` | The embedding model used to compute sentence similarity. See [Chonkie docs](https://docs.chonkie.ai/) for supported models. |
-| `threshold` | `0.8` | Cosine similarity threshold below which a sentence boundary becomes a split point. |
-| `chunk_size` | `2048` | Maximum number of tokens per chunk (based on the embedding model's tokenizer). |
-| `similarity_window` | `3` | Number of surrounding sentences to include when computing similarity. |
+| `tokenizer` | `"character"` | Tokenizer to use. Common options: `"character"`, `"gpt2"`, `"cl100k_base"`. See [Chonkie docs](https://docs.chonkie.ai/) for all options. |
+| `chunk_size` | `2048` | Maximum number of tokens per chunk. |
+| `chunk_overlap` | `0` | Number of overlapping tokens between consecutive chunks. |
 | `min_sentences_per_chunk` | `1` | Minimum number of sentences that must be included in each chunk. |
-| `min_characters_per_sentence` | `24` | Minimum number of characters for a sentence to be considered valid. |
+| `min_characters_per_sentence` | `12` | Minimum number of characters for a sentence to be considered valid. |
+| `approximate` | `False` | Whether to use approximate chunking for faster processing. |
 | `delim` | `None` | Custom sentence delimiters. If `None`, Chonkie's default delimiters are used. |
 | `include_delim` | `"prev"` | Whether to attach the delimiter to the previous (`"prev"`) or next (`"next"`) chunk. |
-| `skip_window` | `0` | Number of sentences to skip when computing similarity scores. |
-| `filter_window` | `5` | Window size for the Savitzky-Golay smoothing filter applied to similarity scores. |
-| `filter_polyorder` | `3` | Polynomial order for the Savitzky-Golay filter. |
-| `filter_tolerance` | `0.2` | Tolerance used when filtering similarity scores. |
 | `skip_empty_documents` | `True` | Whether to skip documents with empty content. |
 | `page_break_character` | `"\f"` | Character used to detect page breaks when tracking page numbers. |
 
@@ -68,17 +62,17 @@ pip install chonkie-haystack
 ```python
 from haystack import Document
 from haystack_integrations.components.preprocessors.chonkie import (
-    ChonkieSemanticDocumentSplitter,
+    ChonkieSentenceDocumentSplitter,
 )
 
-chunker = ChonkieSemanticDocumentSplitter(chunk_size=512, threshold=0.5)
-
+chunker = ChonkieSentenceDocumentSplitter(
+    tokenizer="gpt2",
+    chunk_size=512,
+    chunk_overlap=0,
+)
 documents = [
     Document(
-        content="Haystack is an open-source framework for LLM applications. "
-        "It makes building RAG pipelines easy. "
-        "The Eiffel Tower is located in Paris. "
-        "Paris is the capital of France.",
+        content="Haystack is an open-source framework. It helps you build LLM applications.",
     ),
 ]
 result = chunker.run(documents=documents)
@@ -96,7 +90,7 @@ from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.preprocessors.chonkie import (
-    ChonkieSemanticDocumentSplitter,
+    ChonkieSentenceDocumentSplitter,
 )
 
 document_store = InMemoryDocumentStore()
@@ -106,7 +100,7 @@ p.add_component("converter", TextFileToDocument())
 p.add_component("cleaner", DocumentCleaner())
 p.add_component(
     "splitter",
-    ChonkieSemanticDocumentSplitter(chunk_size=512, threshold=0.5),
+    ChonkieSentenceDocumentSplitter(tokenizer="gpt2", chunk_size=512),
 )
 p.add_component("writer", DocumentWriter(document_store=document_store))
 

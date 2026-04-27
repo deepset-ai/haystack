@@ -12,6 +12,10 @@ Use the PreProcessors to prepare your data normalize white spaces, remove header
 | PreProcessor | Description |
 | --- | --- |
 | [ChineseDocumentSplitter](preprocessors/chinesedocumentsplitter.mdx) | Divides Chinese text documents into smaller chunks using advanced Chinese language processing capabilities, using HanLP for accurate Chinese word segmentation and sentence tokenization. |
+| [ChonkieRecursiveDocumentSplitter](preprocessors/chonkierecursivedocumentsplitter.mdx) | Splits documents recursively using a hierarchy of rules via Chonkie's `RecursiveChunker`, applying progressively finer splits until all chunks satisfy the size constraints. |
+| [ChonkieSemanticDocumentSplitter](preprocessors/chonkiesemanticdocumentsplitter.mdx) | Splits documents at semantic topic boundaries using embedding similarity via Chonkie's `SemanticChunker`, keeping related sentences together. |
+| [ChonkieSentenceDocumentSplitter](preprocessors/chonkiesentencedocumentsplitter.mdx) | Splits documents into chunks that respect sentence boundaries via Chonkie's `SentenceChunker`, avoiding mid-sentence cuts. |
+| [ChonkieTokenDocumentSplitter](preprocessors/chonkietokendocumentsplitter.mdx) | Splits documents into fixed-size token-based chunks via Chonkie's `TokenChunker`, supporting multiple tokenizers. |
 | [CSVDocumentCleaner](preprocessors/csvdocumentcleaner.mdx) | Cleans CSV documents by removing empty rows and columns while preserving specific ignored rows and columns. |
 | [CSVDocumentSplitter](preprocessors/csvdocumentsplitter.mdx) | Divides CSV documents into smaller sub-tables based on empty rows and columns. |
 | [DocumentCleaner](preprocessors/documentcleaner.mdx) | Removes extra whitespaces, empty lines, specified substrings, regexes, page headers, and footers from documents. |
