@@ -461,6 +461,10 @@ export default {
           },
           items: [
             'pipeline-components/preprocessors/chinesedocumentsplitter',
+            'pipeline-components/preprocessors/chonkierecursivedocumentsplitter',
+            'pipeline-components/preprocessors/chonkiesemanticdocumentsplitter',
+            'pipeline-components/preprocessors/chonkiesentencedocumentsplitter',
+            'pipeline-components/preprocessors/chonkietokendocumentsplitter',
             'pipeline-components/preprocessors/csvdocumentcleaner',
             'pipeline-components/preprocessors/csvdocumentsplitter',
             'pipeline-components/preprocessors/documentcleaner',
