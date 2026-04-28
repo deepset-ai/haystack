@@ -23,7 +23,10 @@ def _experimental(cls: type[T]) -> type[T]:
         class MyComponent:
             ...
     """
-    original_init: Any = cls.__init__
+    # getattr/setattr are intentional here: direct attribute access (cls.__init__, cls.__init__ = ...)
+    # triggers mypy [misc] and [attr-defined] errors because T is an unbound TypeVar.
+    # noqa comments suppress ruff B009/B010 which would auto-revert these back to direct access.
+    original_init: Any = getattr(cls, "__init__")  # noqa: B009
 
     @functools.wraps(original_init)
     def new_init(self: Any, *args: Any, **kwargs: Any) -> None:
@@ -35,8 +38,8 @@ def _experimental(cls: type[T]) -> type[T]:
         )
         original_init(self, *args, **kwargs)
 
-    cls.__init__ = new_init
-    cls.__experimental__ = True
+    setattr(cls, "__init__", new_init)  # noqa: B010
+    setattr(cls, "__experimental__", True)  # noqa: B010
     return cls
 
 
