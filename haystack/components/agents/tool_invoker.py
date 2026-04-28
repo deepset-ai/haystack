@@ -152,23 +152,21 @@ def _merge_tool_outputs(tool: Tool, result: Any, state: State) -> None:
         state.set(state_key, output_value, handler_override=config.get("handler"))
 
 
-def _result_to_string(result: Any, *, json_mode: bool) -> str:
-    """Convert a tool result to a string, using JSON or str depending on `json_mode`."""
+def _result_to_string(result: Any) -> str:
+    """Convert a tool result to a JSON string."""
     serializable = _serializable_value(value=result, use_placeholders=False)
-    if json_mode:
-        try:
-            return json.dumps(serializable, ensure_ascii=False)
-        except Exception as error:
-            logger.warning(
-                "Tool result is not JSON serializable. Falling back to str conversion. Result: {result}\nError: {err}",
-                result=result,
-                err=error,
-            )
-            return str(result)
-    return str(serializable)
+    try:
+        return json.dumps(serializable, ensure_ascii=False)
+    except Exception as error:
+        logger.warning(
+            "Tool result is not JSON serializable. Falling back to str conversion. Result: {result}\nError: {err}",
+            result=result,
+            err=error,
+        )
+        return str(result)
 
 
-def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCall, *, json_mode: bool) -> Any:
+def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCall) -> Any:
     """
     Extract and convert a single tool output according to `config`.
 
@@ -184,7 +182,7 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
     if handler is None:
         if raw_result:
             return value
-        return _result_to_string(value, json_mode=json_mode)
+        return _result_to_string(value)
 
     try:
         return handler(value)
@@ -194,25 +192,21 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
         raise StringConversionError(tool_call.tool_name, handler.__name__, e) from e
 
 
-def _build_tool_result_message(
-    result: Any, tool_call: ToolCall, tool: Tool, *, json_mode: bool, raise_on_failure: bool
-) -> ChatMessage:
+def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool, *, raise_on_failure: bool) -> ChatMessage:
     """Convert a raw tool result into a ChatMessage, applying `outputs_to_string` config if present."""
     outputs_config = tool.outputs_to_string or {}
     try:
         # Single-output config (or no config): keys are at the root level
         if not outputs_config or any(k in outputs_config for k in ("source", "handler", "raw_result")):
-            tool_result = _process_tool_output(outputs_config, result, tool_call, json_mode=json_mode)
+            tool_result = _process_tool_output(outputs_config, result, tool_call)
             return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
-        # Multi-output config: each key maps to its own sub-config
+        # Multi-output config: each key maps to its own sub-config — collect raw values then stringify once
         tool_result_dict = {
-            output_key: _process_tool_output({**cfg, "raw_result": False}, result, tool_call, json_mode=json_mode)
+            output_key: _process_tool_output({**cfg, "raw_result": True}, result, tool_call)
             for output_key, cfg in outputs_config.items()
         }
-        return ChatMessage.from_tool(
-            tool_result=_result_to_string(tool_result_dict, json_mode=json_mode), origin=tool_call
-        )
+        return ChatMessage.from_tool(tool_result=_result_to_string(tool_result_dict), origin=tool_call)
     except (StringConversionError, ResultConversionError) as e:
         if raise_on_failure:
             raise
@@ -318,13 +312,11 @@ class ToolInvoker:
         self,
         tools: ToolsType,
         raise_on_failure: bool = True,
-        convert_result_to_json_string: bool = False,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
     ) -> None:
         self.tools = tools
         self.raise_on_failure = raise_on_failure
-        self.convert_result_to_json_string = convert_result_to_json_string
         self.enable_streaming_callback_passthrough = enable_streaming_callback_passthrough
         self.max_workers = max_workers
         self._tools_with_names = _validate_and_prepare_tools(tools)
@@ -381,13 +373,7 @@ class ToolInvoker:
                         tool = tools_with_names[tool_call.tool_name]
                         _merge_tool_outputs(tool, result, state)
                         tool_messages.append(
-                            _build_tool_result_message(
-                                result,
-                                tool_call,
-                                tool,
-                                json_mode=self.convert_result_to_json_string,
-                                raise_on_failure=self.raise_on_failure,
-                            )
+                            _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
                         )
                     except Exception as e:
                         error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
@@ -465,13 +451,7 @@ class ToolInvoker:
                         tool = tools_with_names[tool_call.tool_name]
                         _merge_tool_outputs(tool, result, state)
                         tool_messages.append(
-                            _build_tool_result_message(
-                                result,
-                                tool_call,
-                                tool,
-                                json_mode=self.convert_result_to_json_string,
-                                raise_on_failure=self.raise_on_failure,
-                            )
+                            _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
                         )
                     except Exception as e:
                         error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)

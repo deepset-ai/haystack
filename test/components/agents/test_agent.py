@@ -784,7 +784,7 @@ class TestAgent:
         assert result["messages"][-2].tool_call.tool_name == "weather_tool"
         assert (
             result["messages"][-1].tool_call_result.result
-            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         )
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)

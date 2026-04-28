@@ -123,12 +123,12 @@ def tool_set():
 
 @pytest.fixture
 def invoker(weather_tool):
-    return ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
+    return ToolInvoker(tools=[weather_tool], raise_on_failure=True)
 
 
 @pytest.fixture
 def faulty_invoker(faulty_tool):
-    return ToolInvoker(tools=[faulty_tool], raise_on_failure=True, convert_result_to_json_string=False)
+    return ToolInvoker(tools=[faulty_tool], raise_on_failure=True)
 
 
 class TestToolInvokerCore:
@@ -138,7 +138,6 @@ class TestToolInvokerCore:
         assert invoker.tools == [weather_tool]
         assert invoker._tools_with_names == {"weather_tool": weather_tool}
         assert invoker.raise_on_failure
-        assert not invoker.convert_result_to_json_string
 
     def test_validate_and_prepare_tools(self, weather_tool, faulty_tool):
         result = _validate_and_prepare_tools([weather_tool, faulty_tool])
@@ -257,7 +256,7 @@ class TestToolInvokerRun:
         async def streaming_callback(chunk: StreamingChunk) -> None:
             streaming_chunks.append(chunk)
 
-        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
+        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
 
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -359,7 +358,7 @@ class TestToolInvokerRun:
 
         assert isinstance(tool_call_result, ToolCallResult)
         assert not tool_call_result.error
-        assert tool_call_result.result == "Hello, world!"
+        assert tool_call_result.result == '"Hello, world!"'
 
     def test_run_with_tools_override(self, weather_tool, faulty_tool):
         """Tests that tools passed to run override the tools passed in init"""
@@ -372,7 +371,7 @@ class TestToolInvokerRun:
 
         tool_call_result = tool_messages[0].tool_call_result
         assert not tool_call_result.error
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
 
     @pytest.mark.asyncio
@@ -386,7 +385,7 @@ class TestToolInvokerRun:
         tool_messages, _ = await invoker.run_async(messages=[message], state=State(schema={}), tools=[weather_tool])
         tool_call_result = tool_messages[0].tool_call_result
         assert not tool_call_result.error
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
 
     def test_parallel_tool_calling_with_state_updates(self):
@@ -626,7 +625,7 @@ class TestToolInvokerErrorHandling:
             invoker.run(messages=[tool_call_message], state=State(schema={}))
 
     def test_tool_not_found_does_not_raise_exception(self, weather_tool):
-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False, convert_result_to_json_string=False)
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
 
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -645,7 +644,7 @@ class TestToolInvokerErrorHandling:
             faulty_invoker.run(messages=[tool_call_message], state=State(schema={}))
 
     def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool):
-        faulty_invoker = ToolInvoker(tools=[faulty_tool], raise_on_failure=False, convert_result_to_json_string=False)
+        faulty_invoker = ToolInvoker(tools=[faulty_tool], raise_on_failure=False)
 
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -666,10 +665,8 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
-        chat_message = _build_tool_result_message(
-            tool_result, tool_call, weather_tool, json_mode=False, raise_on_failure=True
-        )
-        assert chat_message.tool_call_results[0].result == "{'weather': 'sunny', 'temp': '25'}"
+        chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
+        assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": 25}'
 
     def test_string_conversion_error(self):
         weather_tool = Tool(
@@ -683,7 +680,7 @@ class TestToolInvokerErrorHandling:
 
         tool_result = datetime.datetime.now()
         with pytest.raises(StringConversionError):
-            _build_tool_result_message(tool_result, tool_call, weather_tool, json_mode=False, raise_on_failure=True)
+            _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
 
     def test_string_conversion_error_does_not_raise_exception(self):
         weather_tool = Tool(
@@ -696,9 +693,7 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = datetime.datetime.now()
-        tool_message = _build_tool_result_message(
-            tool_result, tool_call, weather_tool, json_mode=False, raise_on_failure=False
-        )
+        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
 
         assert tool_message.tool_call_results[0].error
         assert "Failed to convert" in tool_message.tool_call_results[0].result
@@ -718,7 +713,7 @@ class TestToolInvokerErrorHandling:
 
         tool_result = "something"
         with pytest.raises(ResultConversionError):
-            _build_tool_result_message(tool_result, tool_call, weather_tool, json_mode=False, raise_on_failure=True)
+            _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
 
     def test_result_conversion_error_does_not_raise_exception(self):
         def handler(result):
@@ -734,9 +729,7 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = "something"
-        tool_message = _build_tool_result_message(
-            tool_result, tool_call, weather_tool, json_mode=False, raise_on_failure=False
-        )
+        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
         assert tool_message.tool_call_results[0].error
         assert "Failed to convert" in tool_message.tool_call_results[0].result
 
@@ -812,26 +805,17 @@ class TestToolInvokerErrorHandling:
 
 
 class TestToolInvokerUtilities:
-    def test_result_to_string_basic_types(self):
-        assert _result_to_string("hello", json_mode=False) == "hello"
-        assert _result_to_string(42, json_mode=False) == "42"
-        assert _result_to_string(3.14, json_mode=False) == "3.14"
-        assert _result_to_string(True, json_mode=False) == "True"
-        assert _result_to_string(None, json_mode=False) == "None"
+    def test_result_to_string(self):
+        assert _result_to_string("hello") == '"hello"'
+        assert _result_to_string(42) == "42"
+        assert _result_to_string(3.14) == "3.14"
+        assert _result_to_string(True) == "true"
+        assert _result_to_string(None) == "null"
 
-        assert _result_to_string([1, 2, 3], json_mode=False) == "[1, 2, 3]"
-        assert _result_to_string({"key": "value"}, json_mode=False) == "{'key': 'value'}"
+        assert _result_to_string([1, 2, 3]) == "[1, 2, 3]"
+        assert _result_to_string({"key": "value"}) == '{"key": "value"}'
 
-    def test_result_to_string_json_mode(self):
-        assert _result_to_string("hello", json_mode=True) == '"hello"'
-        assert _result_to_string(42, json_mode=True) == "42"
-        assert _result_to_string(True, json_mode=True) == "true"
-        assert _result_to_string(None, json_mode=True) == "null"
-
-        assert _result_to_string([1, 2, 3], json_mode=True) == "[1, 2, 3]"
-        assert _result_to_string({"key": "value"}, json_mode=True) == '{"key": "value"}'
-
-        assert _result_to_string("Hello 🌍", json_mode=True) == '"Hello 🌍"'
+        assert _result_to_string("Hello 🌍") == '"Hello 🌍"'
 
     def test_result_to_string_with_serializable_objects(self):
         class MockObject:
@@ -842,7 +826,7 @@ class TestToolInvokerUtilities:
                 return {"value": self.value}
 
         mock_obj = MockObject("test_value")
-        result = _result_to_string(mock_obj, json_mode=False)
+        result = _result_to_string(mock_obj)
 
         assert "test_value" in result
         assert "value" in result
@@ -936,7 +920,6 @@ class TestToolInvokerUtilities:
             config={"raw_result": True},
             result=[image_content],
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
-            json_mode=False,
         )
         assert result == [image_content]
 
@@ -947,7 +930,6 @@ class TestToolInvokerUtilities:
             config={"source": "images", "raw_result": True},
             result={"images": [image_content]},
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
-            json_mode=False,
         )
         assert result == [image_content]
 
@@ -959,7 +941,6 @@ class TestToolInvokerUtilities:
             config={"handler": handler, "raw_result": True},
             result={"base64_image_string": base64_image_string, "mime_type": "image/png"},
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
-            json_mode=False,
         )
         assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
 
@@ -974,7 +955,6 @@ class TestToolInvokerUtilities:
                 "other_key": "other_value",
             },
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
-            json_mode=False,
         )
         assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
 
