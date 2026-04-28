@@ -19,27 +19,9 @@ from haystack.components.agents.state.state_utils import merge_lists
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
-from haystack.core.pipeline.breakpoint import (
-    SnapshotCallback,
-    _create_pipeline_snapshot_from_chat_generator,
-    _create_pipeline_snapshot_from_tool_invoker,
-    _save_pipeline_snapshot,
-    _should_trigger_tool_invoker_breakpoint,
-    _validate_tool_breakpoint_is_valid,
-)
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
-from haystack.dataclasses import (
-    AgentBreakpoint,
-    AgentSnapshot,
-    ChatMessage,
-    ChatRole,
-    StreamingCallbackT,
-    ToolBreakpoint,
-    select_streaming_callback,
-)
-from haystack.human_in_the_loop import ToolExecutionDecision
+from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.human_in_the_loop.strategies import (
     _process_confirmation_strategies,
     _process_confirmation_strategies_async,
@@ -53,7 +35,6 @@ from haystack.tools import (
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
-from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -79,15 +60,11 @@ class _ExecutionContext:
     :param chat_generator_inputs: Runtime inputs to be passed to the chat generator.
     :param tool_invoker_inputs: Runtime inputs to be passed to the tool invoker.
     :param counter: A counter to track the number of steps taken in the agent's run.
-    :param skip_chat_generator: A flag to indicate whether to skip the chat generator in the next iteration.
-        This is useful when resuming from a ToolBreakpoint where the ToolInvoker needs to be called first.
     :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
         to confirmation strategies. In web/server environments, this enables passing per-request
         objects (e.g., WebSocket connections, async queues, or pub/sub clients) that strategies can use for
         non-blocking user interaction. This is passed directly to strategies via the `confirmation_strategy_context`
         parameter in their `run()` and `run_async()` methods.
-    :param tool_execution_decisions: Optional list of ToolExecutionDecision objects to use instead of prompting
-        the user. This is useful when restarting from a snapshot where tool execution decisions were already made.
     """
 
     state: State
@@ -95,9 +72,7 @@ class _ExecutionContext:
     chat_generator_inputs: dict
     tool_invoker_inputs: dict
     counter: int = 0
-    skip_chat_generator: bool = False
     confirmation_strategy_context: dict[str, Any] | None = None
-    tool_execution_decisions: list[ToolExecutionDecision] | None = None
 
 
 @component
@@ -657,86 +632,10 @@ class Agent:
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
         )
 
-    def _initialize_from_snapshot(
-        self,
-        snapshot: AgentSnapshot,
-        streaming_callback: StreamingCallbackT | None,
-        requires_async: bool,
-        *,
-        generation_kwargs: dict[str, Any] | None = None,
-        tools: ToolsType | list[str] | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
-    ) -> _ExecutionContext:
-        """
-        Initialize execution context from an AgentSnapshot.
-
-        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
-        :param streaming_callback: Optional callback for streaming responses.
-        :param requires_async: Whether the agent run requires asynchronous execution.
-        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
-            override the parameters passed during component initialization.
-        :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-            When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies.
-        """
-        component_visits = snapshot.component_visits
-        current_inputs = {
-            "chat_generator": _deserialize_value_with_schema(snapshot.component_inputs["chat_generator"]),
-            "tool_invoker": _deserialize_value_with_schema(snapshot.component_inputs["tool_invoker"]),
-        }
-
-        state_data = current_inputs["tool_invoker"]["state"].data
-        state = State(schema=self.state_schema, data=state_data)
-
-        skip_chat_generator = isinstance(snapshot.break_point.break_point, ToolBreakpoint)
-        streaming_callback = current_inputs["chat_generator"].get("streaming_callback", streaming_callback)
-        streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
-        )
-
-        selected_tools = self._select_tools(tools)
-        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {}
-        if self._chat_generator_supports_tools:
-            generator_inputs["tools"] = selected_tools
-        if streaming_callback is not None:
-            tool_invoker_inputs["streaming_callback"] = streaming_callback
-            generator_inputs["streaming_callback"] = streaming_callback
-        if generation_kwargs is not None:
-            generator_inputs["generation_kwargs"] = generation_kwargs
-
-        # We add enable_streaming_callback_passthrough to the tool invoker inputs
-        if self._tool_invoker:
-            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
-                self._tool_invoker.enable_streaming_callback_passthrough
-            )
-
-        return _ExecutionContext(
-            state=state,
-            component_visits=component_visits,
-            chat_generator_inputs=generator_inputs,
-            tool_invoker_inputs=tool_invoker_inputs,
-            counter=snapshot.break_point.break_point.visit_count,
-            skip_chat_generator=skip_chat_generator,
-            confirmation_strategy_context=confirmation_strategy_context,
-        )
-
-    def _runtime_checks(self, break_point: AgentBreakpoint | None, tools: ToolsType) -> None:
-        """
-        Perform runtime checks before running the agent.
-
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        :param tools: Tools selected for this run. This can differ from initialization-time tools when runtime tools
-            are provided to `run`/`run_async`.
-        :raises ValueError: If the break_point is invalid.
-        """
+    def _runtime_checks(self) -> None:
+        """Warm up the agent if not already warmed up."""
         if not self._is_warmed_up:
             self.warm_up()
-
-        if break_point and isinstance(break_point.break_point, ToolBreakpoint):
-            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=tools)
 
     def run(  # noqa: PLR0915
         self,
@@ -744,12 +643,9 @@ class Agent:
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
-        break_point: AgentBreakpoint | None = None,
-        snapshot: AgentSnapshot | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
-        snapshot_callback: SnapshotCallback | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -761,18 +657,11 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-            the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
             appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
-            The callback receives a `PipelineSnapshot` object and can return an optional string.
-            If provided, the callback is used instead of the default file-saving behavior.
         :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
             to confirmation strategies. Useful in web/server environments to provide per-request
             objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
@@ -784,109 +673,42 @@ class Agent:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
             - Any additional keys defined in the `state_schema`.
-        :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        agent_inputs = {
-            "messages": messages,
-            "streaming_callback": streaming_callback,
-            "break_point": break_point,
-            "snapshot": snapshot,
-            **kwargs,
-        }
-        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
+        agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
+        self._runtime_checks()
 
-        if snapshot:
-            exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot,
-                streaming_callback=streaming_callback,
-                requires_async=False,
-                generation_kwargs=generation_kwargs,
-                tools=tools,
-                confirmation_strategy_context=confirmation_strategy_context,
-            )
-        else:
-            exe_context = self._initialize_fresh_execution(
-                messages=messages,
-                streaming_callback=streaming_callback,
-                requires_async=False,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                generation_kwargs=generation_kwargs,
-                tools=tools,
-                confirmation_strategy_context=confirmation_strategy_context,
-                **kwargs,
-            )
+        exe_context = self._initialize_fresh_execution(
+            messages=messages,
+            streaming_callback=streaming_callback,
+            requires_async=False,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            generation_kwargs=generation_kwargs,
+            tools=tools,
+            confirmation_strategy_context=confirmation_strategy_context,
+            **kwargs,
+        )
 
         with self._create_agent_span() as span:
             # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
-                # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
-                if exe_context.skip_chat_generator:
-                    llm_messages = exe_context.state.get("messages", [])[-1:]
-                    # Set to False so the next iteration will call the chat generator
-                    exe_context.skip_chat_generator = False
-                else:
-                    try:
-                        result = Pipeline._run_component(
-                            component_name="chat_generator",
-                            component={"instance": self.chat_generator},
-                            inputs={
-                                "messages": exe_context.state.data["messages"],
-                                **exe_context.chat_generator_inputs,
-                            },
-                            component_visits=exe_context.component_visits,
-                            parent_span=span,
-                            break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
-                        )
-                    except PipelineRuntimeError as e:
-                        agent_name = getattr(self, "__component_name__", None)
-                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=agent_name, execution_context=exe_context, break_point=None
-                        )
-                        new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                        new_error.pipeline_snapshot = pipe_snapshot
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        # Checked by __component_name__ not being set.
-                        if agent_name is None:
-                            new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                            )
-                        raise new_error from e
-                    except BreakpointException as e:
-                        agent_name = break_point.agent_name if break_point else None
-                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=agent_name, execution_context=exe_context, break_point=break_point
-                        )
-                        e._break_point = e.pipeline_snapshot.break_point
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        # Checked by __component_name__ not being set.
-                        if getattr(self, "__component_name__", None) is None:
-                            full_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                            )
-                            e.pipeline_snapshot_file_path = full_file_path
-                        raise e
+                result = Pipeline._run_component(
+                    component_name="chat_generator",
+                    component={"instance": self.chat_generator},
+                    inputs={"messages": exe_context.state.data["messages"], **exe_context.chat_generator_inputs},
+                    component_visits=exe_context.component_visits,
+                    parent_span=span,
+                )
 
-                    llm_messages = result["replies"]
-                    exe_context.state.set("messages", llm_messages)
+                llm_messages = result["replies"]
+                exe_context.state.set("messages", llm_messages)
 
                 # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                     exe_context.counter += 1
                     break
-
-                # We only pass down the breakpoint if the tool name matches the tool call in the LLM messages
-                break_point_to_pass = None
-                if (
-                    break_point
-                    and isinstance(break_point.break_point, ToolBreakpoint)
-                    and _should_trigger_tool_invoker_breakpoint(
-                        break_point=break_point.break_point, llm_messages=llm_messages
-                    )
-                ):
-                    break_point_to_pass = break_point.break_point
 
                 # Apply confirmation strategies and update State and messages sent to ToolInvoker
                 # Run confirmation strategies to get updated tool call messages and modified chat history
@@ -898,51 +720,18 @@ class Agent:
                 # Replace the chat history in state with the modified one
                 exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-                # Run ToolInvoker
-                try:
-                    # We only send the messages from the LLM to the tool invoker
-                    tool_invoker_result = Pipeline._run_component(
-                        component_name="tool_invoker",
-                        component={"instance": self._tool_invoker},
-                        inputs={
-                            "messages": modified_tool_call_messages,
-                            "state": exe_context.state,
-                            **exe_context.tool_invoker_inputs,
-                        },
-                        component_visits=exe_context.component_visits,
-                        parent_span=span,
-                        break_point=break_point_to_pass,
-                    )
-                except PipelineRuntimeError as e:
-                    agent_name = getattr(self, "__component_name__", None)
-                    tool_name = getattr(e.__cause__, "tool_name", None)
-                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
-                    )
-                    new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                    new_error.pipeline_snapshot = pipe_snapshot
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if agent_name is None:
-                        new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise new_error from e
-                except BreakpointException as e:
-                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
-                        agent_name=break_point.agent_name if break_point else None,
-                        execution_context=exe_context,
-                        break_point=break_point,
-                    )
-                    e._break_point = e.pipeline_snapshot.break_point
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if getattr(self, "__component_name__", None) is None:
-                        e.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise e
+                # We only send the messages from the LLM to the tool invoker
+                tool_invoker_result = Pipeline._run_component(
+                    component_name="tool_invoker",
+                    component={"instance": self._tool_invoker},
+                    inputs={
+                        "messages": modified_tool_call_messages,
+                        "state": exe_context.state,
+                        **exe_context.tool_invoker_inputs,
+                    },
+                    component_visits=exe_context.component_visits,
+                    parent_span=span,
+                )
 
                 tool_messages = tool_invoker_result["tool_messages"]
                 exe_context.state = tool_invoker_result["state"]
@@ -975,12 +764,9 @@ class Agent:
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
-        break_point: AgentBreakpoint | None = None,
-        snapshot: AgentSnapshot | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
-        snapshot_callback: SnapshotCallback | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -996,17 +782,10 @@ class Agent:
             LLM. The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-            the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
             appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
-            The callback receives a `PipelineSnapshot` object and can return an optional string.
-            If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
@@ -1018,110 +797,45 @@ class Agent:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
             - Any additional keys defined in the `state_schema`.
-        :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        agent_inputs = {
-            "messages": messages,
-            "streaming_callback": streaming_callback,
-            "break_point": break_point,
-            "snapshot": snapshot,
-            **kwargs,
-        }
-        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
+        agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
+        self._runtime_checks()
 
-        if snapshot:
-            exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot,
-                streaming_callback=streaming_callback,
-                requires_async=True,
-                tools=tools,
-                generation_kwargs=generation_kwargs,
-                confirmation_strategy_context=confirmation_strategy_context,
-            )
-        else:
-            exe_context = self._initialize_fresh_execution(
-                messages=messages,
-                streaming_callback=streaming_callback,
-                requires_async=True,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                tools=tools,
-                generation_kwargs=generation_kwargs,
-                confirmation_strategy_context=confirmation_strategy_context,
-                **kwargs,
-            )
+        exe_context = self._initialize_fresh_execution(
+            messages=messages,
+            streaming_callback=streaming_callback,
+            requires_async=True,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            tools=tools,
+            generation_kwargs=generation_kwargs,
+            confirmation_strategy_context=confirmation_strategy_context,
+            **kwargs,
+        )
 
         with self._create_agent_span() as span:
             # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
             while exe_context.counter < self.max_agent_steps:
-                # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
-                if exe_context.skip_chat_generator:
-                    llm_messages = exe_context.state.get("messages", [])[-1:]
-                    # Set to False so the next iteration will call the chat generator
-                    exe_context.skip_chat_generator = False
-                else:
-                    try:
-                        result = await AsyncPipeline._run_component_async(
-                            component_name="chat_generator",
-                            component={"instance": self.chat_generator},
-                            component_inputs={
-                                "messages": exe_context.state.data["messages"],
-                                **exe_context.chat_generator_inputs,
-                            },
-                            component_visits=exe_context.component_visits,
-                            parent_span=span,
-                            break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
-                        )
-                    except PipelineRuntimeError as e:
-                        agent_name = getattr(self, "__component_name__", None)
-                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=agent_name, execution_context=exe_context, break_point=None
-                        )
-                        new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                        new_error.pipeline_snapshot = pipe_snapshot
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        # Checked by __component_name__ not being set.
-                        if agent_name is None:
-                            new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                            )
-                        raise new_error from e
-                    except BreakpointException as e:
-                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=break_point.agent_name if break_point else None,
-                            execution_context=exe_context,
-                            break_point=break_point,
-                        )
-                        e._break_point = e.pipeline_snapshot.break_point
-                        # We check if the agent is part of a pipeline by checking for __component_name__
-                        # If it is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        in_pipeline = getattr(self, "__component_name__", None) is not None
-                        if not in_pipeline:
-                            e.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                            )
-                        raise e
+                result = await AsyncPipeline._run_component_async(
+                    component_name="chat_generator",
+                    component={"instance": self.chat_generator},
+                    component_inputs={
+                        "messages": exe_context.state.data["messages"],
+                        **exe_context.chat_generator_inputs,
+                    },
+                    component_visits=exe_context.component_visits,
+                    parent_span=span,
+                )
 
-                    llm_messages = result["replies"]
-                    exe_context.state.set("messages", llm_messages)
+                llm_messages = result["replies"]
+                exe_context.state.set("messages", llm_messages)
 
                 # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
                     exe_context.counter += 1
                     break
-
-                # We only pass down the breakpoint if the tool name matches the tool call in the LLM messages
-                break_point_to_pass = None
-                if (
-                    break_point
-                    and isinstance(break_point.break_point, ToolBreakpoint)
-                    and _should_trigger_tool_invoker_breakpoint(
-                        break_point=break_point.break_point, llm_messages=llm_messages
-                    )
-                ):
-                    break_point_to_pass = break_point.break_point
 
                 # Apply confirmation strategies and update State and messages sent to ToolInvoker
                 # Run confirmation strategies to get updated tool call messages and modified chat history
@@ -1133,50 +847,18 @@ class Agent:
                 # Replace the chat history in state with the modified one
                 exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-                try:
-                    # We only send the messages from the LLM to the tool invoker
-                    tool_invoker_result = await AsyncPipeline._run_component_async(
-                        component_name="tool_invoker",
-                        component={"instance": self._tool_invoker},
-                        component_inputs={
-                            "messages": modified_tool_call_messages,
-                            "state": exe_context.state,
-                            **exe_context.tool_invoker_inputs,
-                        },
-                        component_visits=exe_context.component_visits,
-                        parent_span=span,
-                        break_point=break_point_to_pass,
-                    )
-                except PipelineRuntimeError as e:
-                    agent_name = getattr(self, "__component_name__", None)
-                    tool_name = getattr(e.__cause__, "tool_name", None)
-                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
-                    )
-                    new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                    new_error.pipeline_snapshot = pipe_snapshot
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if agent_name is None:
-                        new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise new_error from e
-                except BreakpointException as e:
-                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
-                        agent_name=break_point.agent_name if break_point else None,
-                        execution_context=exe_context,
-                        break_point=break_point,
-                    )
-                    e._break_point = e.pipeline_snapshot.break_point
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if getattr(self, "__component_name__", None) is None:
-                        e.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise e
+                # We only send the messages from the LLM to the tool invoker
+                tool_invoker_result = await AsyncPipeline._run_component_async(
+                    component_name="tool_invoker",
+                    component={"instance": self._tool_invoker},
+                    component_inputs={
+                        "messages": modified_tool_call_messages,
+                        "state": exe_context.state,
+                        **exe_context.tool_invoker_inputs,
+                    },
+                    component_visits=exe_context.component_visits,
+                    parent_span=span,
+                )
 
                 tool_messages = tool_invoker_result["tool_messages"]
                 exe_context.state = tool_invoker_result["state"]
