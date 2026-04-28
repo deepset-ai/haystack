@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Renamed ExtractiveReader's input from `document` to `documents` to match its type List[Document].

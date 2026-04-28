@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Use new filter syntax in the CacheChecker component instead of legacy one.

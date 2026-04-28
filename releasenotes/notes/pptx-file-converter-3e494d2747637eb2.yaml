@@ -1,4 +1,0 @@
----
-  features:
-    - |
-      Add PptxConverter: a node to convert pptx files to Haystack Documents.

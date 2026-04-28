@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fix `DocumentCleaner` not preserving all `Document` fields when run

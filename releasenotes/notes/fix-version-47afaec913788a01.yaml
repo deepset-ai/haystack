@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fix Haystack imports failing when using local development environment that doesn't have `haystack-ai` installed.

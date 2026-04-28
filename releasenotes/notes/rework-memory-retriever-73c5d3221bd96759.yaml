@@ -1,4 +1,0 @@
----
-features:
-  - Rework `MemoryRetriever` to remove `DocumentStoreAwareMixin`.
-    Now we require a `MemoryDocumentStore` when initialisating the retriever.

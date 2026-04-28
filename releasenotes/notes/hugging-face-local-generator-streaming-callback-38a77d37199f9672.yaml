@@ -1,4 +1,0 @@
----
-features:
- - |
-   Adds 'streaming_callback' parameter to 'HuggingFaceLocalGenerator', allowing users to handle streaming responses.

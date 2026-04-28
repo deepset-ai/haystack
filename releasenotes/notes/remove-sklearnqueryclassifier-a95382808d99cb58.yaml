@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    SklearnQueryClassifier is removed and users should switch to the more powerful TransformersQueryClassifier instead. https://github.com/deepset-ai/haystack/discussions/5447

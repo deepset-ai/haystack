@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    `Pipeline.inputs` and `Pipeline.outputs` can optionally include components input/output sockets that are connected.

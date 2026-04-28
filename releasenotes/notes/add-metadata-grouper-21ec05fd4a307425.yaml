@@ -1,4 +1,0 @@
----
-features:
-  - |
-    We have added a new MetaFieldGroupingRanker component that reorders documents by grouping them based on metadata keys. This can be useful for pre-processing Documents before feeding them to an LLM.

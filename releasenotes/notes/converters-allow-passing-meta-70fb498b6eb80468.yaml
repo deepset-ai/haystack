@@ -1,6 +1,0 @@
----
-enhancements:
-  - |
-    Make all Converters accept `meta` in the `run` method, so that users can
-    provide their own metadata.
-    The length of this list should match the number of `sources`.

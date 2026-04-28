@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixes logs containing JSON data getting lost due to string interpolation.

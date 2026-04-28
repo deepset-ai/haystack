@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Upgrade canals to 0.9.0 to support variadic inputs for Joiner components and "/" in connection names like "text/plain"

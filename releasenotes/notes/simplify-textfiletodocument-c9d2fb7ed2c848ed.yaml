@@ -1,3 +1,0 @@
-preview:
-  - Remove most parameters from TextFileToDocument to make it match all other converters.
-  - Add support for ByteStreams

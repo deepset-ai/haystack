@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Adds support for Azure OpenAI models with AzureOpenAIGenerator and AzureOpenAIChatGenerator components.

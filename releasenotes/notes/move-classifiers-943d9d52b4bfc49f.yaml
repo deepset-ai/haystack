@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Move Text Language Classifier and Document Language Classifier to the
-    classifiers package.

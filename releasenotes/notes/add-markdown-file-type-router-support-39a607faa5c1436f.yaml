@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Adds markdown mimetype support to the file type router i.e. `FileTypeRouter` class.

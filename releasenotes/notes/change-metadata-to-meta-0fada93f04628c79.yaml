@@ -1,6 +1,0 @@
----
-enhancements:
-  - |
-    Rename `metadata` to `meta`.
-    Rename `metadata_fields_to_embed` to `meta_fields_to_embed` in all Embedders.
-    Rename `metadata_field` to `meta_field` in `MetaFieldRanker`.

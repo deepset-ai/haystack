@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Allow passing `generation_kwargs` in the `run` method of the `HuggingFaceLocalGenerator`.
-    This makes this common operation faster.

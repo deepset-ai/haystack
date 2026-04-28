@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Fix a bug where the `output_type` of a `ConditionalRouter` was not being serialized correctly.
-    This would cause the router to work incorrectly after being serialized and deserialized.

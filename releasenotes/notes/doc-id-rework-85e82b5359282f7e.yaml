@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Rework `Document.id` generation, if an `id` is not explicitly set it's generated
-    using all `Document` field' values, `score` is not used.

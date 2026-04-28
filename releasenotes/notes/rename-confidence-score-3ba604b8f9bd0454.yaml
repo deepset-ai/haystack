@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    Renamed the confidence_threshold parameter of the ExtractiveReader to score_threshold as ExtractedAnswers have a score and this is what the threshold is for.
-    For consistency, the term confidence is not mentioned anymore in favor of score.

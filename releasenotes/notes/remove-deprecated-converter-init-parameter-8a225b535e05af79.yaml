@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    Remove deprecated 'converter' init argument from `PyPDFToDocument`. Use other init arguments instead, or create a custom component.

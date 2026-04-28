@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    Removed `Pipeline` init argument `debug_path`. We do not support this anymore.

@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Added support for Apple Silicon GPU acceleration through "mps pytorch", enabling better performance on Apple M1 hardware.

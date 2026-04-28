@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    The internal Agent logic was refactored to help with readability and maintanability. This should help developers understand and extend the internal Agent logic moving forward.

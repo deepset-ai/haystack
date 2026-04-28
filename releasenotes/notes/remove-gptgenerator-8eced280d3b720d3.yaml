@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    Removed the deprecated GPTGenerator and GPTChatGenerator components. Use OpenAIGenerator and OpenAIChatGeneratornotes instead.

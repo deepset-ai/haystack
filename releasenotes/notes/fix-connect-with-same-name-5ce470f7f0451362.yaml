@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fix `Pipeline.connect()` so it connects sockets with same name if multiple sockets with compatible types are found.

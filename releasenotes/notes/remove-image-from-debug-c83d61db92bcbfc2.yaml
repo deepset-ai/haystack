@@ -1,5 +1,0 @@
----
-issues:
-  - |
-    Fix "TypeError: descriptor '__dict__' for 'XXX' objects doesn't apply to a 'XXX' object" when running
-    pipelines with `debug=True` by removing the graph image from the debug payload.

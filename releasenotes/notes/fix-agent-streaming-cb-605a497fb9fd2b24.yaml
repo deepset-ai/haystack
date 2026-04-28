@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Fix Agent `run_async` method to correctly handle async streaming callbacks.
-    This previously triggered errors due to a bug.

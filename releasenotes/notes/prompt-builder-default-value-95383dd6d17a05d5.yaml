@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Fix `PromptBuilder` missing input default values.
-    These missing default value was causing the PromptBuilder to never run if certain inputs are not received.

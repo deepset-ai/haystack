@@ -1,4 +1,0 @@
----
-features:
-  - |
-    The `DocumentSplitter` now has support for the `split_id` and `split_overlap` to allow for more control over the splitting process.

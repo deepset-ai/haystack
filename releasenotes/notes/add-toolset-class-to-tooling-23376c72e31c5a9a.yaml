@@ -1,3 +1,0 @@
-features:
- - |
-   Introduced the Toolset class, allowing for the grouping and management of related tool functionalities. This new abstraction supports dynamic tool loading and registration.

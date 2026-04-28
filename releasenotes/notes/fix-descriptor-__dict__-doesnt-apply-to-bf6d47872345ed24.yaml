@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Fixes the error `descriptor '__dict__' for 'ComponentClassX' objects doesn't apply to a 'ComponentClassX' object` when calling
-    `dir()` on a component instance. This fix should allow auto-completion in code editors.

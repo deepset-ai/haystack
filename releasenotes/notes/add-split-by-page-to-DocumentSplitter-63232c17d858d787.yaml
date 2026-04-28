@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Added split by page to DocumentSplitter, which will split the document at \f

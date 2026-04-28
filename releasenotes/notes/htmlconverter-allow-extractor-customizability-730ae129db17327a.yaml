@@ -1,7 +1,0 @@
----
-enhancements:
-  - |
-    The `HTMLToDocument` converter now allows choosing the boilerpy3 extractor
-    to extract the content from the HTML document.
-    The default extractor has been changed to `DefaultExtractor`, which is better
-    for generic use cases than the previous default (`ArticleExtractor`).

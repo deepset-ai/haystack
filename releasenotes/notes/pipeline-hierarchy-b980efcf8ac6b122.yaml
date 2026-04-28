@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    Create a class hierarchy for pipeline classes, and move the run logic into the child class.
-    Preparation work for introducing multiple run stratgegies.

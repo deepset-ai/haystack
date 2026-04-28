@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Introduced the LinkContentFetcher in Haystack 2.0. This component fetches content from specified
-    URLs and converts them into ByteStream objects for further processing in Haystack pipelines.

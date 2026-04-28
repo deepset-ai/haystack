@@ -1,3 +1,0 @@
----
-fixes:
-  - Fix `pytest` breaking in VSCode due to a name collision in the RAG pipeline tests.

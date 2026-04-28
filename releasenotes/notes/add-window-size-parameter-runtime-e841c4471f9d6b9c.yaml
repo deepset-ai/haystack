@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    The SentenceWindowRetriever now supports the `window_size` parameter at run time, overwriting the value set in the constructor.

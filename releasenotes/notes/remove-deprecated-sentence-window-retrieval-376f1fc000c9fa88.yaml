@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    Removing deprecated `SentenceWindowRetrieval`, replaced by `SentenceWindowRetriever`

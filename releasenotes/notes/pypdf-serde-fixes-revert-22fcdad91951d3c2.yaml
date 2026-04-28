@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Revert change to PyPDFConverter that broke the deserialization of pre 2.6.0 YAMLs.

@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    Improve the URLCacheChecker so that it can work with any type of data in the DocumentStore, not just URL caching.
-    Rename the component to CacheChecker.

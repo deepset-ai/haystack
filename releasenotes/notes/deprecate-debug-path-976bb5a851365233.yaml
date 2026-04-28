@@ -1,4 +1,0 @@
----
-deprecations:
-  - |
-    `Pipeline` init argument `debug_path` is deprecated and will be remove in version `2.7.0`.

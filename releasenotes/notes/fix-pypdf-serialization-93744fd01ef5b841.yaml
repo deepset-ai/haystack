@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Make `PyPDFToDocument` accept a `converter_name` parameter instead of
-    a `converter` instance, to allow a smooth serialization of the component.

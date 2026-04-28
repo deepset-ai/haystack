@@ -1,4 +1,0 @@
----
-deprecations:
-  - |
-    Deprecate the unused `debug` parameter in the `Pipeline.run` method.

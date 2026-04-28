@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    - If only system messages are provided as input a warning will be logged to the user indicating that this likely not intended and that they should probably also provide user messages.

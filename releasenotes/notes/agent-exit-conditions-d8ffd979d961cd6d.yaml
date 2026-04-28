@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    The Agent component allows defining multiple exit conditions instead of a single condition.
-    The init parameter has been renamed from exit_condition to exit_conditions to reflect that.

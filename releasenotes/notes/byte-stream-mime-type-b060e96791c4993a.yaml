@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Add `mime_type` field to `ByteStream` dataclass.

@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    `gpt-3.5-turbo` was replaced by `gpt-4o-mini` as the default model for all components relying on OpenAI API

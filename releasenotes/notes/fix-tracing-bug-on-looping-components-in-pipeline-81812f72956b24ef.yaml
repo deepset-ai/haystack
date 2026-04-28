@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fix tracing `Pipeline` with cycles to correctly track components execution

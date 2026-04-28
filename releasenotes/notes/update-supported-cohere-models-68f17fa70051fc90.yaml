@@ -1,7 +1,0 @@
----
-enhancements:
-  - |
-    Add alias names for Cohere embed models for an easier map between names
-fixes:
-  - |
-    Remove unsupported `medium` and `finance-sentiment` models from supported Cohere embed model list

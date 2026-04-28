@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Introduce the StreamingChunk dataclass for efficiently handling chunks of data streamed from a language model,
-    encapsulating both the content and associated metadata for systematic processing.

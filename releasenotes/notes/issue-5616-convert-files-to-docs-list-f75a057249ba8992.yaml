@@ -1,6 +1,0 @@
----
-enhancements:
-  - |
-    Add `list_of_paths` argument to `utils.convert_files_to_docs` to allow 
-    input of list of file paths to be converted, instead of, or as well as, 
-    the current `dir_path` argument.

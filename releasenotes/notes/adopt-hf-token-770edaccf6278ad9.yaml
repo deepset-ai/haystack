@@ -1,8 +1,0 @@
----
-preview:
-  - |
-    Adopt Hugging Face `token` instead of the deprecated `use_auth_token`.
-    Add this parameter to `ExtractiveReader` and `SimilarityRanker` to allow
-    loading private models.
-    Proper handling of `token` during serialization: if it is a string (a possible valid token)
-    it is not serialized.

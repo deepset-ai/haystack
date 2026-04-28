@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixes issues with deserialization of components in multi-threaded environments.

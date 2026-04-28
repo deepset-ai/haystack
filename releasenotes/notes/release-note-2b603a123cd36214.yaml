@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Add `truncate_dim` parameter to Sentence Transformers Embedders, which allows truncating
-    embeddings. Especially useful for models trained with Matryoshka Representation Learning.

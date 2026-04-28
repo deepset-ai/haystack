@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Adds `generation_kwargs` to the `Agent` component, allowing for more fine-grained control at run-time over the chat generation.

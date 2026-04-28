@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Added a new EvaluationRunResult dataclass that wraps the results of an evaluation pipeline,
-    allowing for its transformation and visualization.

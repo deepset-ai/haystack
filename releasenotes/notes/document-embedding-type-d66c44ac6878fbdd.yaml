@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Change `Document`'s `embedding` field type from `numpy.ndarray` to `List[float]`

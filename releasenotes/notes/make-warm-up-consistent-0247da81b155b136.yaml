@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Make `warm_up()` usage consistent across the codebase.
