@@ -266,18 +266,17 @@ class Agent:
         :raises ValueError: If the exit_conditions are not valid.
         :raises ValueError: If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
         """
-        # Check if chat_generator supports tools parameter
-        chat_generator_run_method = inspect.signature(chat_generator.run)
-        self._chat_generator_supports_tools: bool = "tools" in chat_generator_run_method.parameters
+        # --- Validation ---
+        self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
         if tools and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
-        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
         if exit_conditions is None:
             exit_conditions = ["text"]
+        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
         if not all(condition in valid_exits for condition in exit_conditions):
             raise ValueError(
                 f"Invalid exit conditions provided: {exit_conditions}. "
@@ -285,18 +284,10 @@ class Agent:
                 "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
             )
 
-        # Validate state schema if provided
         if state_schema is not None:
             _validate_schema(state_schema)
-        self._state_schema = state_schema or {}
 
-        # Initialize state schema
-        # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
-        resolved_state_schema = dict(self._state_schema)
-        if resolved_state_schema.get("messages") is None:
-            resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
-        self.state_schema = resolved_state_schema
-
+        # --- Attributes ---
         self.chat_generator = chat_generator
         self.tools = tools or []
         self.system_prompt = system_prompt
@@ -306,48 +297,51 @@ class Agent:
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
+        self.tool_invoker_kwargs = tool_invoker_kwargs
+        self._confirmation_strategies = confirmation_strategies or {}
+        self._is_warmed_up = False
 
-        # Set input and output types for the component based on the State schema
+        # --- State schema ---
+        # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
+        self._state_schema = state_schema or {}
+        self.state_schema = dict(self._state_schema)
+        if self.state_schema.get("messages") is None:
+            self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
+
+        # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
         output_types = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
             output_types[param] = config["type"]
-            # Skip setting input types for parameters that are already in the run method
-            if param in self._run_method_params:
-                continue
-            component.set_input_type(self, name=param, type=config["type"], default=None)
+            if param not in self._run_method_params:
+                component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        # required_variables is initially set to [] and populated later by _register_prompt_variables
+        # --- Prompt builders ---
+        # required_variables starts empty and is populated by _register_prompt_variables once
+        # builder.variables are known
         self._user_chat_prompt_builder = (
             ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
         )
-        # Only create a system prompt builder when the prompt uses Jinja2 message syntax
         self._system_chat_prompt_builder: ChatPromptBuilder | None = None
         if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
             self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
-
         _validate_prompt_message_blocks(user_prompt, system_prompt, self._system_chat_prompt_builder)
         self._register_prompt_variables()
 
-        self.tool_invoker_kwargs = tool_invoker_kwargs
+        # --- Tool invoker ---
         self._tool_invoker = None
         if self.tools:
-            resolved_tool_invoker_kwargs = {
-                "tools": self.tools,
-                "raise_on_failure": self.raise_on_tool_invocation_failure,
-                **(tool_invoker_kwargs or {}),
-            }
-            self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
+            self._tool_invoker = ToolInvoker(
+                tools=self.tools,
+                raise_on_failure=self.raise_on_tool_invocation_failure,
+                **(self.tool_invoker_kwargs or {}),
+            )
         elif type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
             )
-
-        self._confirmation_strategies = confirmation_strategies or {}
-
-        self._is_warmed_up = False
 
     def _register_prompt_variables(self) -> None:
         """
