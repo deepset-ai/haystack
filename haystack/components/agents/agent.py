@@ -16,7 +16,7 @@ from haystack.components.agents.state.state import (
     replace_values,
 )
 from haystack.components.agents.state.state_utils import merge_lists
-from haystack.components.agents.tool_invoker import ToolInvoker, _validate_and_prepare_tools
+from haystack.components.agents.tool_invoker import ToolInvoker
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
@@ -333,9 +333,7 @@ class Agent:
         self._tool_invoker = None
         if self.tools:
             self._tool_invoker = ToolInvoker(
-                tools=self.tools,
-                raise_on_failure=self.raise_on_tool_invocation_failure,
-                **(self.tool_invoker_kwargs or {}),
+                raise_on_failure=self.raise_on_tool_invocation_failure, **(self.tool_invoker_kwargs or {})
             )
         elif type(self).__name__ == "Agent":
             logger.warning(
@@ -404,8 +402,6 @@ class Agent:
                 self.chat_generator.warm_up()
             if self._tool_invoker is not None:
                 warm_up_tools(self.tools)
-                # Rebuild after warm_up in case tools changed (e.g. lazy-connecting toolsets like MCPToolset)
-                self._tool_invoker._tools_with_names = _validate_and_prepare_tools(self.tools)
             self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:

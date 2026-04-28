@@ -316,37 +316,29 @@ class ToolInvoker:
     """
 
     def __init__(
-        self,
-        tools: ToolsType,
-        raise_on_failure: bool = True,
-        enable_streaming_callback_passthrough: bool = False,
-        max_workers: int = 4,
+        self, raise_on_failure: bool = True, enable_streaming_callback_passthrough: bool = False, max_workers: int = 4
     ) -> None:
-        self.tools = tools
         self.raise_on_failure = raise_on_failure
         self.enable_streaming_callback_passthrough = enable_streaming_callback_passthrough
         self.max_workers = max_workers
-        self._tools_with_names = _validate_and_prepare_tools(tools)
 
     def run(
         self,
         messages: list[ChatMessage],
         state: State,
+        tools: ToolsType,
         streaming_callback: StreamingCallbackT | None = None,
-        tools: ToolsType | None = None,
     ) -> tuple[list[ChatMessage], State]:
         """
         Invoke all tools referenced by tool calls in `messages`.
 
         :param messages: ChatMessage objects that may contain tool calls.
         :param state: Runtime state passed to and updated by tools.
+        :param tools: The tools available for invocation.
         :param streaming_callback: Called once per tool result as it becomes available.
-        :param tools: Override the tool set for this invocation.
         :returns: (tool_messages, updated_state)
         """
-        tools_with_names = _validate_and_prepare_tools(tools) if tools is not None else self._tools_with_names
-        if tools is not None:
-            logger.debug("Overriding tools for this invocation: {t}", t=", ".join(tools_with_names))
+        tools_with_names = _validate_and_prepare_tools(tools)
 
         messages_with_tool_calls = [m for m in messages if m.tool_calls]
         if not messages_with_tool_calls:
@@ -407,21 +399,19 @@ class ToolInvoker:
         self,
         messages: list[ChatMessage],
         state: State,
+        tools: ToolsType,
         streaming_callback: StreamingCallbackT | None = None,
-        tools: ToolsType | None = None,
     ) -> tuple[list[ChatMessage], State]:
         """
         Asynchronous variant of `run`. Tool calls execute concurrently via a thread pool.
 
         :param messages: ChatMessage objects that may contain tool calls.
         :param state: Runtime state passed to and updated by tools.
+        :param tools: The tools available for invocation.
         :param streaming_callback: Async callback called once per tool result.
-        :param tools: Override the tool set for this invocation.
         :returns: (tool_messages, updated_state)
         """
-        tools_with_names = _validate_and_prepare_tools(tools) if tools is not None else self._tools_with_names
-        if tools is not None:
-            logger.debug("Overriding tools for this invocation: {t}", t=", ".join(tools_with_names))
+        tools_with_names = _validate_and_prepare_tools(tools)
 
         messages_with_tool_calls = [m for m in messages if m.tool_calls]
         if not messages_with_tool_calls:

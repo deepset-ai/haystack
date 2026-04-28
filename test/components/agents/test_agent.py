@@ -1754,8 +1754,8 @@ class TestAgentWarmUp:
 
         assert call_count["n"] == 1
 
-    def test_warm_up_refreshes_tools_with_names(self):
-        """Agent.warm_up() must rebuild _tools_with_names so lazy toolsets (e.g. MCPToolset) take effect."""
+    def test_warm_up_refreshes_toolset(self):
+        """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
         placeholder_tool = Tool(
             name="mcp_not_connected_placeholder_123",
             description="Placeholder tool before connection",
@@ -1782,10 +1782,8 @@ class TestAgentWarmUp:
         mcp_toolset = MockMCPToolset()
         agent = Agent(chat_generator=MockChatGenerator(), tools=mcp_toolset)
 
-        assert "mcp_not_connected_placeholder_123" in agent._tool_invoker._tools_with_names
-        assert "get_time" not in agent._tool_invoker._tools_with_names
+        assert mcp_toolset.tools == [placeholder_tool]
 
         agent.warm_up()
 
-        assert "mcp_not_connected_placeholder_123" not in agent._tool_invoker._tools_with_names
-        assert "get_time" in agent._tool_invoker._tools_with_names
+        assert mcp_toolset.tools == [actual_tool]
