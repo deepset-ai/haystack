@@ -824,7 +824,7 @@ class Agent:
                 **exe_context.chat_generator_inputs,
             }
             step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
-            result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[union-attr]
+            result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[attr-defined]
             llm_messages = result["replies"]
             step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
             exe_context.state.set("messages", llm_messages)
@@ -840,7 +840,7 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_result = await self._tool_invoker.run_async(  # type: ignore[union-attr]
+            tool_invoker_result = await self._tool_invoker.run_async(
                 messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
             )
             tool_messages = tool_invoker_result["tool_messages"]
