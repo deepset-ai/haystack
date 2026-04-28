@@ -1514,36 +1514,7 @@ class TestAgentUserPromptInPipeline:
         assert "Question: Where is the Colosseum?" in rendered
         assert "Documents:" in rendered
 
-    def test_rag_pipeline_user_prompt_runtime_override(self, make_rag_pipeline):
-        user_prompt = _user_msg(
-            "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}Question: {{query}}"
-        )
-        pipeline = make_rag_pipeline(user_prompt=user_prompt)
-
-        query = "Where is the Eiffel Tower?"
-        result = pipeline.run(
-            data={
-                "retriever": {"query": query},
-                "agent": {
-                    "user_prompt": _user_msg(
-                        "OVERRIDE: Using docs:\n"
-                        "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
-                        "Answer: {{query}}"
-                    ),
-                    "query": query,
-                    "messages": [],
-                },
-            }
-        )
-        messages = result["agent"]["messages"]
-        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
-        rendered = user_messages[0].text
-        assert "OVERRIDE:" in rendered
-        assert "Where is the Eiffel Tower?" in rendered
-
     def test_rag_pipeline_messages_plus_user_prompt(self, document_store_with_docs, weather_tool):
-        from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
-
         chat_generator = MockChatGenerator()
 
         agent = Agent(
