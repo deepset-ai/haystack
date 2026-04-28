@@ -28,7 +28,7 @@ class MultiRetriever:
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
-    from haystack.components.retrievers import QueryEmbeddingRetriever, MultiRetriever
+    from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
     from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
     from haystack.components.writers import DocumentWriter
 
@@ -48,7 +48,7 @@ class MultiRetriever:
     retriever = MultiRetriever(
         retrievers={
             "bm25": InMemoryBM25Retriever(document_store=doc_store),
-            "embedding": QueryEmbeddingRetriever(
+            "embedding": TextEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
                 query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
             ),

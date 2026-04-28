@@ -15,7 +15,7 @@ _import_structure = {
     "multi_query_embedding_retriever": ["MultiQueryEmbeddingRetriever"],
     "multi_query_text_retriever": ["MultiQueryTextRetriever"],
     "sentence_window_retriever": ["SentenceWindowRetriever"],
-    "query_embedding_retriever": ["QueryEmbeddingRetriever"],
+    "text_embedding_retriever": ["TextEmbeddingRetriever"],
 }
 
 if TYPE_CHECKING:
@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     from .multi_query_embedding_retriever import MultiQueryEmbeddingRetriever as MultiQueryEmbeddingRetriever
     from .multi_query_text_retriever import MultiQueryTextRetriever as MultiQueryTextRetriever
     from .multi_retriever import MultiRetriever as MultiRetriever
-    from .query_embedding_retriever import QueryEmbeddingRetriever as QueryEmbeddingRetriever
     from .sentence_window_retriever import SentenceWindowRetriever as SentenceWindowRetriever
+    from .text_embedding_retriever import TextEmbeddingRetriever as TextEmbeddingRetriever
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

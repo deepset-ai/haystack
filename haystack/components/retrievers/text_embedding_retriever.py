@@ -11,7 +11,7 @@ from haystack.core.serialization import component_to_dict
 
 
 @component
-class QueryEmbeddingRetriever:
+class TextEmbeddingRetriever:
     """
     A component that retrieves documents using a query with an embedding-based retriever.
 
@@ -26,7 +26,7 @@ class QueryEmbeddingRetriever:
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-    from haystack.components.retrievers import InMemoryEmbeddingRetriever, QueryEmbeddingRetriever
+    from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
 
     documents = [
@@ -48,7 +48,7 @@ class QueryEmbeddingRetriever:
     # Run the retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
     query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    retriever = QueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
+    retriever = TextEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
     result = retriever.run(query="Geothermal energy")
 
     for doc in result["documents"]:
@@ -59,7 +59,7 @@ class QueryEmbeddingRetriever:
 
     def __init__(self, *, retriever: EmbeddingRetriever, query_embedder: TextEmbedder) -> None:
         """
-        Initialize QueryEmbeddingRetriever.
+        Initialize TextEmbeddingRetriever.
 
         :param retriever: The embedding-based retriever to use for document retrieval.
         :param query_embedder: The query embedder to convert a text query to an embedding.
@@ -118,7 +118,7 @@ class QueryEmbeddingRetriever:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "QueryEmbeddingRetriever":
+    def from_dict(cls, data: dict[str, Any]) -> "TextEmbeddingRetriever":
         """
         Deserializes the component from a dictionary.
 

@@ -13,7 +13,7 @@ from haystack.components.retrievers import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,
     MultiRetriever,
-    QueryEmbeddingRetriever,
+    TextEmbeddingRetriever,
 )
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -86,7 +86,7 @@ def bm25_retriever(document_store_with_embeddings):
 
 @pytest.fixture
 def embedding_retriever(document_store_with_embeddings):
-    return QueryEmbeddingRetriever(
+    return TextEmbeddingRetriever(
         retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
         query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
     )

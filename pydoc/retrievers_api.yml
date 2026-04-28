@@ -2,7 +2,7 @@ loaders:
   - search_path: [../haystack/components/retrievers]
     modules: ["auto_merging_retriever", "filter_retriever", "in_memory/bm25_retriever",
       "in_memory/embedding_retriever", "multi_query_embedding_retriever", "multi_query_text_retriever",
-      "multi_retriever", "query_embedding_retriever", "sentence_window_retriever"]
+      "multi_retriever", "text_embedding_retriever", "sentence_window_retriever"]
 processors:
   - type: filter
     documented_only: true

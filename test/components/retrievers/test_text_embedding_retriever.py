@@ -10,7 +10,7 @@ import pytest
 
 from haystack import Document, component
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
-from haystack.components.retrievers import InMemoryEmbeddingRetriever, QueryEmbeddingRetriever
+from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -23,7 +23,7 @@ class MockQueryEmbedder:
         return {"embedding": np.ones(384).tolist()}
 
 
-class TestQueryEmbeddingRetriever:
+class TestTextEmbeddingRetriever:
     @pytest.fixture
     def sample_documents(self):
         return [
@@ -48,12 +48,12 @@ class TestQueryEmbeddingRetriever:
     def test_init(self):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
         query_embedder = MockQueryEmbedder()
-        retriever = QueryEmbeddingRetriever(retriever=embedding_retriever, query_embedder=query_embedder)
+        retriever = TextEmbeddingRetriever(retriever=embedding_retriever, query_embedder=query_embedder)
         assert retriever.retriever == embedding_retriever
         assert retriever.query_embedder == query_embedder
 
     def test_run_with_empty_document_store(self):
-        retriever = QueryEmbeddingRetriever(
+        retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
             query_embedder=MockQueryEmbedder(),
         )
@@ -74,20 +74,20 @@ class TestQueryEmbeddingRetriever:
             ) -> dict[str, list[Document]]:
                 return {"documents": [doc_low, doc_high, doc_mid]}
 
-        retriever = QueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
+        retriever = TextEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
         result = retriever.run(query="energy")
 
         scores = [doc.score for doc in result["documents"]]
         assert scores == sorted(scores, reverse=True)
 
     def test_to_dict(self):
-        retriever = QueryEmbeddingRetriever(
+        retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
             query_embedder=MockQueryEmbedder(),
         )
         result = retriever.to_dict()
         assert result == {
-            "type": "haystack.components.retrievers.query_embedding_retriever.QueryEmbeddingRetriever",
+            "type": "haystack.components.retrievers.text_embedding_retriever.TextEmbeddingRetriever",
             "init_parameters": {
                 "retriever": {
                     "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
@@ -111,7 +111,7 @@ class TestQueryEmbeddingRetriever:
                     },
                 },
                 "query_embedder": {
-                    "type": "retrievers.test_query_embedding_retriever.MockQueryEmbedder",
+                    "type": "retrievers.test_text_embedding_retriever.MockQueryEmbedder",
                     "init_parameters": {},
                 },
             },
@@ -119,7 +119,7 @@ class TestQueryEmbeddingRetriever:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack.components.retrievers.query_embedding_retriever.QueryEmbeddingRetriever",
+            "type": "haystack.components.retrievers.text_embedding_retriever.TextEmbeddingRetriever",
             "init_parameters": {
                 "retriever": {
                     "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
@@ -165,15 +165,15 @@ class TestQueryEmbeddingRetriever:
                 },
             },
         }
-        result = QueryEmbeddingRetriever.from_dict(data)
-        assert isinstance(result, QueryEmbeddingRetriever)
+        result = TextEmbeddingRetriever.from_dict(data)
+        assert isinstance(result, TextEmbeddingRetriever)
         assert isinstance(result.retriever, InMemoryEmbeddingRetriever)
         assert isinstance(result.query_embedder, SentenceTransformersTextEmbedder)
 
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
-        retriever = QueryEmbeddingRetriever(
+        retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
             query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         )
@@ -184,7 +184,7 @@ class TestQueryEmbeddingRetriever:
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
-        retriever = QueryEmbeddingRetriever(
+        retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
             query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         )
