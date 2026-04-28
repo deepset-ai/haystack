@@ -48,8 +48,8 @@ class LLM(Agent):
         *,
         chat_generator: ChatGenerator,
         system_prompt: str | None = None,
-        user_prompt: str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        user_prompt: str,
+        required_variables: list[str] | Literal["*"] = "*",
         streaming_callback: StreamingCallbackT | None = None,
     ) -> None:
         """
@@ -57,13 +57,21 @@ class LLM(Agent):
 
         :param chat_generator: An instance of the chat generator that the LLM should use.
         :param system_prompt: System prompt for the LLM.
-        :param user_prompt: User prompt for the LLM. If provided this is appended to the messages provided at runtime.
+        :param user_prompt: User prompt for the LLM. Must contain at least one Jinja2 template variable
+            (e.g., ``{{ variable_name }}``). This prompt is appended to the messages provided at runtime.
         :param required_variables:
-            List variables that must be provided as input to user_prompt.
+            Variables that must be provided as input to user_prompt.
             If a variable listed as required is not provided, an exception is raised.
-            If set to `"*"`, all variables found in the prompt are required. Optional.
+            If set to ``"*"``, all variables found in the prompt are required. Defaults to ``"*"``.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+        :raises ValueError: If user_prompt contains no template variables.
+        :raises ValueError: If required_variables is an empty list.
         """
+        if isinstance(required_variables, list) and len(required_variables) == 0:
+            raise ValueError(
+                "required_variables must not be empty. Set it to '*' to require all variables, "
+                "or provide a non-empty list of variable names."
+            )
         super(LLM, self).__init__(  # noqa: UP008
             chat_generator=chat_generator,
             system_prompt=system_prompt,
@@ -71,6 +79,12 @@ class LLM(Agent):
             required_variables=required_variables,
             streaming_callback=streaming_callback,
         )
+        if self._user_chat_prompt_builder is None or len(self._user_chat_prompt_builder.variables) == 0:
+            raise ValueError(
+                "user_prompt must contain at least one template variable (e.g., '{{ variable_name }}'). "
+                "The LLM component requires at least one required input variable to ensure proper "
+                "pipeline scheduling."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -132,7 +146,7 @@ class LLM(Agent):
             - "last_message": The last message exchanged during the LLM's run.
         """
         return super(LLM, self).run(  # noqa: UP008
-            messages=messages,
+            messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
             system_prompt=system_prompt,
@@ -169,7 +183,7 @@ class LLM(Agent):
             - "last_message": The last message exchanged during the LLM's run.
         """
         return await super(LLM, self).run_async(  # noqa: UP008
-            messages=messages,
+            messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
             system_prompt=system_prompt,

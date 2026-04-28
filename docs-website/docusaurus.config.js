@@ -79,12 +79,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.28-unstable',
+              label: '2.29-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.27',
+          lastVersion: '2.28',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -132,12 +132,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.28-unstable',
+            label: '2.29-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.27',
+        lastVersion: '2.28',
       },
     ],
     [
@@ -200,6 +200,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           {
             from: '/docs/dynamicpromptbuilder',
             to: '/docs/promptbuilder',
+          },
+          {
+            from: '/docs/generators-vs-chat-generators',
+            to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
           },
         ],
       },

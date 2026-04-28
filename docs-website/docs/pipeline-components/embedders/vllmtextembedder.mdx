@@ -1,0 +1,139 @@
+---
+title: "VLLMTextEmbedder"
+id: vllmtextembedder
+slug: "/vllmtextembedder"
+description: "This component computes the embeddings of a string using models served with vLLM."
+---
+
+# VLLMTextEmbedder
+
+This component computes the embeddings of a string using models served with [vLLM](https://docs.vllm.ai/).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline                 |
+| **Mandatory init variables**           | `model`: The name of the model served by vLLM                                              |
+| **Mandatory run variables**            | `text`: A string                                                                           |
+| **Output variables**                   | `embedding`: A vector (list of float numbers)                                              |
+| **API reference**                      | [vLLM](/reference/integrations-vllm)                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm      |
+| **Package name** | `vllm-haystack` |
+
+</div>
+
+## Overview
+
+[vLLM](https://docs.vllm.ai/) is a high-throughput and memory-efficient inference and serving engine for LLMs. It exposes an OpenAI-compatible HTTP server, which `VLLMTextEmbedder` uses to compute embeddings through the Embeddings API.
+
+`VLLMTextEmbedder` expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). Use this component to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`VLLMDocumentEmbedder`](vllmdocumentembedder.mdx).
+
+When you perform embedding retrieval, use this component first to transform your query into a vector. Then, the embedding Retriever will use the vector to search for similar or relevant documents.
+
+If the vLLM server was started with `--api-key`, provide the API key through the `VLLM_API_KEY` environment variable or the `api_key` init parameter using Haystack's [Secret](../../concepts/secret-management.mdx) API.
+
+### Compatible models
+
+vLLM supports a range of embedding models. Check the [vLLM pooling models docs](https://docs.vllm.ai/en/stable/models/pooling_models) for the list of supported architectures and models.
+
+### vLLM-specific parameters
+
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens` or `truncation_side`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+
+```python
+embedder = VLLMTextEmbedder(
+    model="google/embeddinggemma-300m",
+    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
+)
+```
+
+### Matryoshka embeddings
+
+If the model was trained with Matryoshka Representation Learning, you can reduce the dimensionality of the output vector through the `dimensions` parameter. See the [vLLM Matryoshka docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#matryoshka-embeddings) for details.
+
+### Instructions
+
+Some embedding models require prepending the text with an instruction to work better for retrieval. For example, if you use [BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list), you should prefix your query with the following instruction: "Represent this sentence for searching relevant passages:".
+
+This is how it works with `VLLMTextEmbedder`:
+
+```python
+instruction = "Represent this sentence for searching relevant passages:"
+embedder = VLLMTextEmbedder(
+    model="BAAI/bge-large-en-v1.5",
+    prefix=instruction,
+)
+```
+
+## Usage
+
+Install the `vllm-haystack` package to use the `VLLMTextEmbedder`:
+
+```shell
+pip install vllm-haystack
+```
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with an embedding model:
+
+```bash
+vllm serve google/embeddinggemma-300m
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.vllm import VLLMTextEmbedder
+
+text_embedder = VLLMTextEmbedder(model="google/embeddinggemma-300m")
+print(text_embedder.run("I love pizza!"))
+
+## {'embedding': [-0.0215301513671875, 0.01499176025390625, ...], 'meta': {...}}
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.vllm import (
+    VLLMDocumentEmbedder,
+    VLLMTextEmbedder,
+)
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
+
+document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
+documents_with_embeddings = document_embedder.run(documents)["documents"]
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder",
+    VLLMTextEmbedder(model="google/embeddinggemma-300m"),
+)
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+```

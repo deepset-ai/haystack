@@ -1,0 +1,135 @@
+---
+title: "VLLMRanker"
+id: vllmranker
+slug: "/vllmranker"
+description: "This component ranks documents based on their similarity to the query using reranker models served with vLLM."
+---
+
+# VLLMRanker
+
+This component ranks documents based on their similarity to the query using reranker models served with [vLLM](https://docs.vllm.ai/).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables**           | `model`: The name of the reranker model served by vLLM                                    |
+| **Mandatory run variables**            | `query`: A query string  <br /> <br />`documents`: A list of document objects             |
+| **Output variables**                   | `documents`: A list of document objects                                                   |
+| **API reference**                      | [vLLM](/reference/integrations-vllm)                                                      |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm      |
+| **Package name** | `vllm-haystack` |
+
+</div>
+
+## Overview
+
+[vLLM](https://docs.vllm.ai/) is a high-throughput and memory-efficient inference and serving engine for LLMs. It exposes an HTTP server, which `VLLMRanker` uses to rerank documents through the `/rerank` endpoint.
+
+`VLLMRanker` expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). Use this component after a Retriever in a query pipeline to reorder the retrieved documents by relevance to the query.
+
+You can also specify the `top_k` parameter to set the maximum number of documents to return, and the `score_threshold` parameter to drop documents with a relevance score below a given value.
+
+If the vLLM server was started with `--api-key`, provide the API key through the `VLLM_API_KEY` environment variable or the `api_key` init parameter using Haystack's [Secret](../../concepts/secret-management.mdx) API.
+
+### Compatible models
+
+vLLM supports a range of reranker models. Check the [vLLM supported models docs](https://docs.vllm.ai/en/stable/models/pooling_models/scoring/#supported-models) for the list of supported architectures and models.
+
+### vLLM-specific parameters
+
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are merged into the request body sent to the `/rerank` endpoint. Use this to pass parameters that are not part of the standard rerank API, such as `truncate_prompt_tokens`. See the [vLLM rerank API docs](https://docs.vllm.ai/en/stable/models/pooling_models/scoring/#rerank-api) for details.
+
+```python
+ranker = VLLMRanker(
+    model="BAAI/bge-reranker-base",
+    extra_parameters={"truncate_prompt_tokens": 256},
+)
+```
+
+### Embedding meta fields
+
+Some use cases benefit from including meta information (such as a title) alongside the document content when reranking. Pass the names of the meta fields to include through the `meta_fields_to_embed` parameter; they will be concatenated with the document content using `meta_data_separator`.
+
+```python
+ranker = VLLMRanker(
+    model="BAAI/bge-reranker-base",
+    meta_fields_to_embed=["title"],
+    meta_data_separator="\n",
+)
+```
+
+## Usage
+
+Install the `vllm-haystack` package to use the `VLLMRanker`:
+
+```shell
+pip install vllm-haystack
+```
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with a reranker model:
+
+```bash
+vllm serve BAAI/bge-reranker-base
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.vllm import VLLMRanker
+
+ranker = VLLMRanker(model="BAAI/bge-reranker-base")
+
+docs = [
+    Document(content="The capital of Brazil is Brasilia."),
+    Document(content="The capital of France is Paris."),
+]
+result = ranker.run(query="What is the capital of France?", documents=docs)
+print(result["documents"][0].content)
+
+## The capital of France is Paris.
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.rankers.vllm import VLLMRanker
+
+docs = [
+    Document(content="Paris is in France"),
+    Document(content="Berlin is in Germany"),
+    Document(content="Lyon is in France"),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = VLLMRanker(model="BAAI/bge-reranker-base")
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+result = document_ranker_pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
+)
+
+print(result["ranker"]["documents"][0])
+
+## Document(id=..., content: 'Paris is in France', score: ...)
+```
