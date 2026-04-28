@@ -14,7 +14,6 @@ from haystack import Document
 from haystack.components.agents.state import State
 from haystack.components.agents.tool_invoker import (
     ResultConversionError,
-    StringConversionError,
     ToolInvoker,
     ToolNotFoundException,
     ToolOutputMergeError,
@@ -664,7 +663,7 @@ class TestToolInvokerErrorHandling:
         chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
         assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": 25}'
 
-    def test_string_conversion_error(self):
+    def test_result_conversion_error_on_handler_failure(self):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -675,10 +674,10 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = datetime.datetime.now()
-        with pytest.raises(StringConversionError):
+        with pytest.raises(ResultConversionError):
             _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
 
-    def test_string_conversion_error_does_not_raise_exception(self):
+    def test_result_conversion_error_on_handler_failure_does_not_raise_exception(self):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
