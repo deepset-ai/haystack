@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Added two new retriever components: ``MultiRetriever`` and ``QueryEmbeddingRetriever``.
+    Added two new retriever components: ``MultiRetriever`` and ``TextEmbeddingRetriever``.
 
     ``MultiRetriever`` is a generalisation of hybrid retrieval.
     Where hybrid retrieval traditionally combines keyword search (BM25) with vector search, ``MultiRetriever`` lets
@@ -13,7 +13,7 @@ features:
 
     All retrievers are queried in parallel and their results are deduplicated before being returned.
 
-    ``QueryEmbeddingRetriever`` wraps an embedding-based retriever together with a query embedder into a single
+    ``TextEmbeddingRetriever`` wraps an embedding-based retriever together with a text embedder into a single
     self-contained component that follows the ``TextRetriever`` protocol.
 
     This simplifies integration with ``MultiRetriever``, allowing both text-based and embedding-based retrievers

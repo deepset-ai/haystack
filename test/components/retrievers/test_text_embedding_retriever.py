@@ -17,7 +17,7 @@ from haystack.document_stores.types import DuplicatePolicy
 
 
 @component
-class MockQueryEmbedder:
+class MockTextEmbedder:
     @component.output_types(embedding=list[float])
     def run(self, text: str) -> dict[str, list[float]]:
         return {"embedding": np.ones(384).tolist()}
@@ -47,15 +47,15 @@ class TestTextEmbeddingRetriever:
 
     def test_init(self):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore())
-        query_embedder = MockQueryEmbedder()
-        retriever = TextEmbeddingRetriever(retriever=embedding_retriever, query_embedder=query_embedder)
+        text_embedder = MockTextEmbedder()
+        retriever = TextEmbeddingRetriever(retriever=embedding_retriever, text_embedder=text_embedder)
         assert retriever.retriever == embedding_retriever
-        assert retriever.query_embedder == query_embedder
+        assert retriever.text_embedder == text_embedder
 
     def test_run_with_empty_document_store(self):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            text_embedder=MockTextEmbedder(),
         )
         result = retriever.run(query="green energy")
         assert "documents" in result
@@ -74,7 +74,7 @@ class TestTextEmbeddingRetriever:
             ) -> dict[str, list[Document]]:
                 return {"documents": [doc_low, doc_high, doc_mid]}
 
-        retriever = TextEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
+        retriever = TextEmbeddingRetriever(retriever=MockRetriever(), text_embedder=MockTextEmbedder())
         result = retriever.run(query="energy")
 
         scores = [doc.score for doc in result["documents"]]
@@ -83,7 +83,7 @@ class TestTextEmbeddingRetriever:
     def test_to_dict(self):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            text_embedder=MockTextEmbedder(),
         )
         result = retriever.to_dict()
         assert result == {
@@ -110,8 +110,8 @@ class TestTextEmbeddingRetriever:
                         "filter_policy": "replace",
                     },
                 },
-                "query_embedder": {
-                    "type": "retrievers.test_text_embedding_retriever.MockQueryEmbedder",
+                "text_embedder": {
+                    "type": "retrievers.test_text_embedding_retriever.MockTextEmbedder",
                     "init_parameters": {},
                 },
             },
@@ -142,7 +142,7 @@ class TestTextEmbeddingRetriever:
                         "filter_policy": "replace",
                     },
                 },
-                "query_embedder": {
+                "text_embedder": {
                     "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa E501
                     "init_parameters": {
                         "model": "sentence-transformers/all-MiniLM-L6-v2",
@@ -168,14 +168,14 @@ class TestTextEmbeddingRetriever:
         result = TextEmbeddingRetriever.from_dict(data)
         assert isinstance(result, TextEmbeddingRetriever)
         assert isinstance(result.retriever, InMemoryEmbeddingRetriever)
-        assert isinstance(result.query_embedder, SentenceTransformersTextEmbedder)
+        assert isinstance(result.text_embedder, SentenceTransformersTextEmbedder)
 
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-            query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         )
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert "documents" in result
@@ -186,7 +186,7 @@ class TestTextEmbeddingRetriever:
     def test_run_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-            query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
         )
         result = retriever.run(query="energy", top_k=2)
         assert "documents" in result

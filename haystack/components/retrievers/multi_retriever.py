@@ -50,7 +50,7 @@ class MultiRetriever:
             "bm25": InMemoryBM25Retriever(document_store=doc_store),
             "embedding": TextEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-                query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+                text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
             ),
         },
         top_k=3,

@@ -15,7 +15,7 @@ class TextEmbeddingRetriever:
     """
     A component that retrieves documents using a query with an embedding-based retriever.
 
-    This component takes a text query, converts it to an embedding using a query embedder, and then uses an
+    This component takes a text query, converts it to an embedding using a text embedder, and then uses an
     embedding-based retriever to find relevant documents.
     The results are sorted by relevance score.
 
@@ -47,8 +47,8 @@ class TextEmbeddingRetriever:
 
     # Run the retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-    query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    retriever = TextEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
+    text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    retriever = TextEmbeddingRetriever(retriever=in_memory_retriever, text_embedder=text_embedder)
     result = retriever.run(query="Geothermal energy")
 
     for doc in result["documents"]:
@@ -57,24 +57,24 @@ class TextEmbeddingRetriever:
     ```
     """
 
-    def __init__(self, *, retriever: EmbeddingRetriever, query_embedder: TextEmbedder) -> None:
+    def __init__(self, *, retriever: EmbeddingRetriever, text_embedder: TextEmbedder) -> None:
         """
         Initialize TextEmbeddingRetriever.
 
         :param retriever: The embedding-based retriever to use for document retrieval.
-        :param query_embedder: The query embedder to convert a text query to an embedding.
+        :param text_embedder: The text embedder to convert a text query to an embedding.
         """
         self.retriever = retriever
-        self.query_embedder = query_embedder
+        self.text_embedder = text_embedder
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the query embedder and the retriever if any has a warm_up method.
+        Warm up the text embedder and the retriever if any has a warm_up method.
         """
         if not self._is_warmed_up:
-            if hasattr(self.query_embedder, "warm_up") and callable(self.query_embedder.warm_up):
-                self.query_embedder.warm_up()
+            if hasattr(self.text_embedder, "warm_up") and callable(self.text_embedder.warm_up):
+                self.text_embedder.warm_up()
             if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
                 self.retriever.warm_up()
             self._is_warmed_up = True
@@ -96,7 +96,7 @@ class TextEmbeddingRetriever:
         if not self._is_warmed_up:
             self.warm_up()
 
-        embedding_result = self.query_embedder.run(text=query)
+        embedding_result = self.text_embedder.run(text=query)
         result = self.retriever.run(query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k)
         docs: list[Document] = result["documents"]
 
@@ -114,7 +114,7 @@ class TextEmbeddingRetriever:
         return default_to_dict(
             self,
             retriever=component_to_dict(obj=self.retriever, name="retriever"),
-            query_embedder=component_to_dict(obj=self.query_embedder, name="query_embedder"),
+            text_embedder=component_to_dict(obj=self.text_embedder, name="text_embedder"),
         )
 
     @classmethod

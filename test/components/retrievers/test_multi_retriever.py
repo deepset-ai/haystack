@@ -88,7 +88,7 @@ def bm25_retriever(document_store_with_embeddings):
 def embedding_retriever(document_store_with_embeddings):
     return TextEmbeddingRetriever(
         retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-        query_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+        text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
     )
 
 
