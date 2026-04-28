@@ -41,12 +41,33 @@ logger = logging.getLogger(__name__)
 
 # Regex to detect the Jinja2 chat template syntax
 _JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
+# Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
+_JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
+
+
+def _validate_prompt_message_blocks(
+    user_prompt: str | None, system_prompt: str | None, system_chat_prompt_builder: "ChatPromptBuilder | None"
+) -> None:
+    """Validate that user_prompt and system_prompt define exactly one message block with the correct role."""
+    if user_prompt is not None:
+        roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
+        if len(roles) > 1:
+            raise ValueError(f"user_prompt must define exactly one message block, found {len(roles)}.")
+        if roles and roles[0] != "user":
+            raise ValueError(f"user_prompt message block must have role 'user', found role '{roles[0]}'.")
+
+    if system_prompt is not None and system_chat_prompt_builder is not None:
+        roles = _JINJA2_MESSAGE_ROLE_RE.findall(system_prompt)
+        if len(roles) > 1:
+            raise ValueError(f"system_prompt must define exactly one message block, found {len(roles)}.")
+        if roles and roles[0] != "system":
+            raise ValueError(f"system_prompt message block must have role 'system', found role '{roles[0]}'.")
 
 
 @dataclass(kw_only=True)
@@ -306,6 +327,7 @@ class Agent:
         if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
             self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
 
+        _validate_prompt_message_blocks(user_prompt, system_prompt, self._system_chat_prompt_builder)
         self._register_prompt_variables()
 
         self.tool_invoker_kwargs = tool_invoker_kwargs
@@ -479,8 +501,6 @@ class Agent:
         streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
@@ -492,9 +512,6 @@ class Agent:
         :param messages: List of ChatMessage objects to start the agent with.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
-        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
         :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
@@ -503,57 +520,24 @@ class Agent:
             to confirmation strategies.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
-        user_prompt = user_prompt or self.user_prompt
-        system_prompt = system_prompt or self.system_prompt
         messages = messages or []
 
-        if user_prompt is not None:
-            if self._user_chat_prompt_builder is None:
-                raise ValueError(
-                    "user_prompt is provided but the ChatPromptBuilder is not initialized. "
-                    "Please make sure a user_prompt is provided at initialization time."
-                )
-
-            # Only forward the prompt kwargs to the prompt builder
+        if self.user_prompt is not None:
             prompt_kwargs = {var: kwargs[var] for var in self._user_chat_prompt_builder.variables if var in kwargs}
-            user_messages = self._user_chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
-            if len(user_messages) != 1:
-                raise ValueError(
-                    f"user_prompt must render to exactly one user message. Got {len(user_messages)} messages."
-                )
-            if not user_messages[0].is_from(ChatRole.USER):
-                raise ValueError(
-                    f"user_prompt must render to a user message. Got a message with role {user_messages[0].role}."
-                )
+            user_messages = self._user_chat_prompt_builder.run(template=self.user_prompt, **prompt_kwargs)["prompt"]
             messages = messages + user_messages
 
-        if system_prompt is not None:
-            if _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
-                if self._system_chat_prompt_builder is None:
-                    raise ValueError(
-                        "system_prompt contains Jinja2 template syntax but no system prompt builder is initialized. "
-                        "Please make sure a system_prompt with Jinja2 template syntax is provided at initialization "
-                        "time."
-                    )
-
+        if self.system_prompt is not None:
+            if self._system_chat_prompt_builder is not None:
                 prompt_kwargs = {
                     var: kwargs[var] for var in self._system_chat_prompt_builder.variables if var in kwargs
                 }
-                system_messages = self._system_chat_prompt_builder.run(template=system_prompt, **prompt_kwargs)[
+                system_messages = self._system_chat_prompt_builder.run(template=self.system_prompt, **prompt_kwargs)[
                     "prompt"
                 ]
-                if len(system_messages) != 1:
-                    raise ValueError(
-                        f"system_prompt must render to exactly one system message. Got {len(system_messages)} messages."
-                    )
-                if not system_messages[0].is_from(ChatRole.SYSTEM):
-                    raise ValueError(
-                        "system_prompt must render to a system message. "
-                        f"Got a message with role {system_messages[0].role}."
-                    )
                 messages = system_messages + messages
             else:
-                messages = [ChatMessage.from_system(system_prompt)] + messages
+                messages = [ChatMessage.from_system(self.system_prompt)] + messages
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
@@ -634,8 +618,6 @@ class Agent:
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any,
@@ -648,9 +630,6 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
-        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
@@ -673,8 +652,6 @@ class Agent:
             messages=messages,
             streaming_callback=streaming_callback,
             requires_async=False,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
             generation_kwargs=generation_kwargs,
             tools=tools,
             confirmation_strategy_context=confirmation_strategy_context,
@@ -705,8 +682,6 @@ class Agent:
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any,
@@ -723,9 +698,6 @@ class Agent:
             LLM. The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
-        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
@@ -747,8 +719,6 @@ class Agent:
             messages=messages,
             streaming_callback=streaming_callback,
             requires_async=True,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
             tools=tools,
             generation_kwargs=generation_kwargs,
             confirmation_strategy_context=confirmation_strategy_context,
