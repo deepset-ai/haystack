@@ -22,6 +22,7 @@ from haystack.components.tools import ToolInvoker
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.human_in_the_loop.strategies import (
+    _deserialize_confirmation_strategies,
     _process_confirmation_strategies,
     _process_confirmation_strategies_async,
 )
@@ -51,9 +52,7 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
 
 
-def _validate_prompt_message_blocks(
-    user_prompt: str | None, system_prompt: str | None, system_chat_prompt_builder: "ChatPromptBuilder | None"
-) -> None:
+def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
     """Validate that user_prompt and system_prompt define exactly one message block with the correct role."""
     if user_prompt is not None:
         roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
@@ -62,7 +61,7 @@ def _validate_prompt_message_blocks(
         if roles and roles[0] != "user":
             raise ValueError(f"user_prompt message block must have role 'user', found role '{roles[0]}'.")
 
-    if system_prompt is not None and system_chat_prompt_builder is not None:
+    if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
         roles = _JINJA2_MESSAGE_ROLE_RE.findall(system_prompt)
         if len(roles) > 1:
             raise ValueError(f"system_prompt must define exactly one message block, found {len(roles)}.")
@@ -286,6 +285,7 @@ class Agent:
 
         if state_schema is not None:
             _validate_schema(state_schema)
+        _validate_prompt_message_blocks(user_prompt, system_prompt)
 
         # --- Attributes ---
         self.chat_generator = chat_generator
@@ -326,7 +326,6 @@ class Agent:
         self._system_chat_prompt_builder: ChatPromptBuilder | None = None
         if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
             self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
-        _validate_prompt_message_blocks(user_prompt, system_prompt, self._system_chat_prompt_builder)
         self._register_prompt_variables()
 
         # --- Tool invoker ---
@@ -457,16 +456,9 @@ class Agent:
         deserialize_tools_or_toolset_inplace(init_params, key="tools")
 
         if init_params.get("confirmation_strategies") is not None:
-            restored: dict[str | tuple[str, ...], Any] = {}
-            for raw_key in init_params["confirmation_strategies"].keys():
-                deserialize_component_inplace(init_params["confirmation_strategies"], key=raw_key)
-                strategy = init_params["confirmation_strategies"][raw_key]
-                if isinstance(raw_key, list):
-                    key = tuple(raw_key)
-                else:
-                    key = raw_key
-                restored[key] = strategy
-            init_params["confirmation_strategies"] = restored
+            init_params["confirmation_strategies"] = _deserialize_confirmation_strategies(
+                init_params["confirmation_strategies"]
+            )
 
         return default_from_dict(cls, data)
 
