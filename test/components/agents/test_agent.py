@@ -941,44 +941,19 @@ class TestAgent:
         assert response["messages"][-1] == response["last_message"]
 
     @pytest.mark.asyncio
-    async def test_run_async_falls_back_to_run_when_chat_generator_has_no_run_async(self, weather_tool):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
-
-        result = await agent.run_async([ChatMessage.from_user("Hello")])
-
-        expected_messages = [
-            ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
-        ]
-        chat_generator.run.assert_called_once_with(messages=expected_messages, tools=[weather_tool])
-
-        assert isinstance(result, dict)
-        assert "messages" in result
-        assert isinstance(result["messages"], list)
-        assert len(result["messages"]) == 2
-        assert [isinstance(reply, ChatMessage) for reply in result["messages"]]
-        assert "Hello" in result["messages"][1].text
-        assert "last_message" in result
-        assert isinstance(result["last_message"], ChatMessage)
-        assert result["messages"][-1] == result["last_message"]
-
-    @pytest.mark.asyncio
     async def test_generation_kwargs(self):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
+        chat_generator = MockChatGenerator()
 
         agent = Agent(chat_generator=chat_generator)
 
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
 
         await agent.run_async([ChatMessage.from_user("Hello")], generation_kwargs={"temperature": 0.0})
 
         expected_messages = [
             ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
         ]
-        chat_generator.run.assert_called_once_with(
+        chat_generator.run_async.assert_called_once_with(
             messages=expected_messages, generation_kwargs={"temperature": 0.0}, tools=[]
         )
 
@@ -1068,21 +1043,15 @@ class TestAgentTracing:
         _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")])
 
         # Ensure tracing span was emitted
-        assert any("Operation: haystack.component.run" in record.message for record in caplog.records)
+        assert any("Operation: haystack.agent.step" in record.message for record in caplog.records)
 
         # Check specific tags
         tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
 
         expected_tag_names = [
-            "haystack.component.name",
-            "haystack.component.type",
-            "haystack.component.fully_qualified_type",
-            "haystack.component.input_types",
-            "haystack.component.input_spec",
-            "haystack.component.output_spec",
-            "haystack.component.input",
-            "haystack.component.visits",
-            "haystack.component.output",
+            "haystack.agent.step",
+            "haystack.agent.step.input",
+            "haystack.agent.step.llm_output",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
@@ -1093,15 +1062,9 @@ class TestAgentTracing:
         ]
 
         expected_tag_values = [
-            "chat_generator",
-            "MockChatGeneratorWithoutRunAsync",
-            "test_agent.MockChatGeneratorWithoutRunAsync",
-            '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
-            '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
-            1,
-            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
+            0,
+            '[{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}]',  # noqa: E501
+            '[{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]',
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
@@ -1130,21 +1093,15 @@ class TestAgentTracing:
         _ = await agent.run_async([ChatMessage.from_user("What's the weather in Paris?")])
 
         # Ensure tracing span was emitted
-        assert any("Operation: haystack.component.run" in record.message for record in caplog.records)
+        assert any("Operation: haystack.agent.step" in record.message for record in caplog.records)
 
         # Check specific tags
         tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
 
         expected_tag_names = [
-            "haystack.component.name",
-            "haystack.component.type",
-            "haystack.component.fully_qualified_type",
-            "haystack.component.input_types",
-            "haystack.component.input_spec",
-            "haystack.component.output_spec",
-            "haystack.component.input",
-            "haystack.component.visits",
-            "haystack.component.output",
+            "haystack.agent.step",
+            "haystack.agent.step.input",
+            "haystack.agent.step.llm_output",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
@@ -1155,15 +1112,9 @@ class TestAgentTracing:
         ]
 
         expected_tag_values = [
-            "chat_generator",
-            "MockChatGenerator",
-            "test_agent.MockChatGenerator",
-            '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
-            '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
-            1,
-            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
+            0,
+            '[{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}]',  # noqa: E501
+            '[{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]',  # noqa: E501
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
@@ -1209,15 +1160,9 @@ class TestAgentTracing:
             "haystack.component.input",
             "haystack.component.visits",
             "haystack.component.output",
-            "haystack.component.name",
-            "haystack.component.type",
-            "haystack.component.fully_qualified_type",
-            "haystack.component.input_types",
-            "haystack.component.input_spec",
-            "haystack.component.output_spec",
-            "haystack.component.input",
-            "haystack.component.visits",
-            "haystack.component.output",
+            "haystack.agent.step",
+            "haystack.agent.step.input",
+            "haystack.agent.step.llm_output",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
