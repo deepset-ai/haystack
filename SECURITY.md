@@ -20,7 +20,7 @@ Haystack is a framework intended to run inside a trusted execution environment. 
 
 Any vulnerability that can only be triggered by passing unsanitized, attacker-controlled input to Haystack is considered out of scope. This reflects a conscious design decision after evaluating the trade-offs and risks: as a framework, Haystack cannot and should not enforce input validation on behalf of every application that uses it.
 
-The following areas are specifically called out and we ask that you read these carefully before submitting.
+The following areas have been deliberately scoped out below and we ask that you read them carefully before submitting.
 
 ### Pipeline Serialization
 
@@ -43,7 +43,7 @@ We are aware that demonstrating an open fetch to `http://169.254.169.254` or sim
 
 Haystack passes documents, metadata, and other retrieved content into prompt templates at runtime. If an attacker can store prompt-injection payloads in a document store or retrieval source that a Haystack pipeline later reads and inserts into a prompt, the LLM may follow those instructions.
 
-**Prompt injection detection and mitigation are the responsibility of the application.** Haystack provides building blocks, including classifier components and documented patterns, for application developers to implement prompt injection defences. Without those countermeasures in place, retrieved content reaches the LLM unfiltered — which is by design when the application has already handled validation, but a risk when it has not.
+**Prompt injection detection and mitigation are the responsibility of the application.** Haystack provides building blocks, including classifier components and documented patterns, for application developers to implement prompt injection defences. Without such defences in place, retrieved content can reach the LLM unfiltered.
 
 We are aware that crafting a document containing `Ignore previous instructions...` and showing it surfaces in a generated response is straightforward to demonstrate. Reports of that form are out of scope. If you find a vulnerability in a Haystack component that *bypasses* a defence a developer has wired into their pipeline, or causes unintended behaviour outside of the LLM interaction (for example, exfiltrating data through Haystack's own APIs), that finding may be in scope.
 
@@ -62,5 +62,4 @@ fixed or to coordinate a vendor response, as needed.
 We'll keep you updated of the status of the issue.
 
 Our goal is to disclose bugs as soon as possible once a user mitigation is available.
-Once we get a good understanding of the vulnerability, we'll set a disclosure date after
-consulting the author of the report and Haystack maintainers.
+Once we get a good understanding of the vulnerability, we'll set a disclosure date after consulting the author of the report and Haystack maintainers.
