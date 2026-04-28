@@ -9,12 +9,6 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-
-from haystack import Document, Pipeline
-from haystack.components.agents.state import State
-from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools.tool_invoker import (
     ResultConversionError,
     StringConversionError,
@@ -22,6 +16,12 @@ from haystack.components.tools.tool_invoker import (
     ToolNotFoundException,
     ToolOutputMergeError,
 )
+
+from haystack import Document, Pipeline
+from haystack.components.agents.state import State
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
@@ -1094,19 +1094,19 @@ class TestToolInvokerUtilities:
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        invoker._merge_tool_outputs(tool=weather_tool, result="test", state=state)
+        invoker._merge_tool_outputs_into_state(tool=weather_tool, result="test", state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_empty_dict(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        invoker._merge_tool_outputs(tool=weather_tool, result={}, state=state)
+        invoker._merge_tool_outputs_into_state(tool=weather_tool, result={}, state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_no_output_mapping(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {}
@@ -1121,7 +1121,7 @@ class TestToolInvokerUtilities:
         )
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
-        invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"weather": "sunny"}
@@ -1136,7 +1136,7 @@ class TestToolInvokerUtilities:
         )
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"all_weather_results": {"type": str}})
-        invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
@@ -1160,7 +1160,7 @@ class TestToolInvokerUtilities:
         state.set("documents", [existing_doc])
 
         # Tool result where the source key is absent (document extraction branch did not execute)
-        invoker._merge_tool_outputs(tool=tool, result={"result": "no web results found"}, state=state)
+        invoker._merge_tool_outputs_into_state(tool=tool, result={"result": "no web results found"}, state=state)
 
         assert state.data["documents"] == [existing_doc]
         assert None not in state.data["documents"]
@@ -1176,7 +1176,7 @@ class TestToolInvokerUtilities:
         )
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"temperature": {"type": str}})
-        invoker._merge_tool_outputs(
+        invoker._merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"temperature": "14"}

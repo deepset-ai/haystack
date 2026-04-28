@@ -20,7 +20,7 @@ from haystack.components.agents.tool_invoker import (
     ToolOutputMergeError,
     _build_tool_result_message,
     _inject_state_args,
-    _merge_tool_outputs,
+    _merge_tool_outputs_into_state,
     _process_tool_output,
     _result_to_string,
     _validate_and_prepare_tools,
@@ -833,17 +833,17 @@ class TestToolInvokerUtilities:
 
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         state = State(schema={"weather": {"type": str}})
-        _merge_tool_outputs(tool=weather_tool, result="test", state=state)
+        _merge_tool_outputs_into_state(tool=weather_tool, result="test", state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_empty_dict(self, weather_tool):
         state = State(schema={"weather": {"type": str}})
-        _merge_tool_outputs(tool=weather_tool, result={}, state=state)
+        _merge_tool_outputs_into_state(tool=weather_tool, result={}, state=state)
         assert state.data == {}
 
     def test_merge_tool_outputs_no_output_mapping(self, weather_tool):
         state = State(schema={"weather": {"type": str}})
-        _merge_tool_outputs(
+        _merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {}
@@ -857,7 +857,7 @@ class TestToolInvokerUtilities:
             outputs_to_state={"weather": {"source": "weather"}},
         )
         state = State(schema={"weather": {"type": str}})
-        _merge_tool_outputs(
+        _merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"weather": "sunny"}
@@ -871,7 +871,7 @@ class TestToolInvokerUtilities:
             outputs_to_state={"all_weather_results": {}},
         )
         state = State(schema={"all_weather_results": {"type": str}})
-        _merge_tool_outputs(
+        _merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
@@ -893,7 +893,7 @@ class TestToolInvokerUtilities:
         state = State(schema={"documents": {"type": list[Document]}})
         state.set("documents", [existing_doc])
 
-        _merge_tool_outputs(tool=tool, result={"result": "no web results found"}, state=state)
+        _merge_tool_outputs_into_state(tool=tool, result={"result": "no web results found"}, state=state)
 
         assert state.data["documents"] == [existing_doc]
         assert None not in state.data["documents"]
@@ -908,7 +908,7 @@ class TestToolInvokerUtilities:
             outputs_to_state={"temperature": {"source": "temperature", "handler": handler}},
         )
         state = State(schema={"temperature": {"type": str}})
-        _merge_tool_outputs(
+        _merge_tool_outputs_into_state(
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"temperature": "14"}

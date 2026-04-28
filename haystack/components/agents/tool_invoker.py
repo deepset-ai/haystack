@@ -93,51 +93,11 @@ def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
     converted_tools = flatten_tools_or_toolsets(tools)
     _check_duplicate_tool_names(converted_tools)
     tool_names = [tool.name for tool in converted_tools]
-    duplicates = {name for name in tool_names if tool_names.count(name) > 1}
-    if duplicates:
-        raise ValueError(f"Duplicate tool names found: {duplicates}")
 
     return dict(zip(tool_names, converted_tools, strict=True))
 
 
-def _get_func_params(tool: Tool) -> dict[str, Any]:
-    """Return parameter names → annotations for a tool's invocation function."""
-    if isinstance(tool, ComponentTool):
-        assert hasattr(tool._component, "__haystack_input__") and isinstance(
-            tool._component.__haystack_input__, Sockets
-        )
-        return {name: socket.type for name, socket in tool._component.__haystack_input__._sockets_dict.items()}
-    return {name: param.annotation for name, param in inspect.signature(tool.function).parameters.items()}
-
-
-def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
-    """
-    Merge LLM-provided arguments with state-sourced arguments.
-
-    LLM args take precedence. State values are pulled in via `inputs_from_state` mappings or
-    parameter-name matching, then the live State object is injected for any param annotated as State.
-    """
-    final_args = dict(llm_args)
-    func_params = _get_func_params(tool)
-
-    param_mappings: dict[str, str]
-    if hasattr(tool, "inputs_from_state") and isinstance(tool.inputs_from_state, dict):
-        param_mappings = tool.inputs_from_state
-    else:
-        param_mappings = {name: name for name in func_params}
-
-    for state_key, param_name in param_mappings.items():
-        if param_name not in final_args and state.has(state_key):
-            final_args[param_name] = state.get(state_key)
-
-    for param_name, param_type in func_params.items():
-        if _unwrap_optional(param_type) is State:
-            final_args[param_name] = state
-
-    return final_args
-
-
-def _merge_tool_outputs(tool: Tool, result: Any, state: State) -> None:
+def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> None:
     """Write tool outputs into State according to the tool's `outputs_to_state` mapping."""
     if not isinstance(result, dict):
         return
@@ -252,6 +212,43 @@ def _make_context_bound_invoke(tool: Tool, args: dict[str, Any]) -> Callable[[],
             return e
 
     return _runner
+
+
+def _get_func_params(tool: Tool) -> dict[str, Any]:
+    """Return parameter names → annotations for a tool's invocation function."""
+    if isinstance(tool, ComponentTool):
+        assert hasattr(tool._component, "__haystack_input__") and isinstance(
+            tool._component.__haystack_input__, Sockets
+        )
+        return {name: socket.type for name, socket in tool._component.__haystack_input__._sockets_dict.items()}
+    return {name: param.annotation for name, param in inspect.signature(tool.function).parameters.items()}
+
+
+def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
+    """
+    Merge LLM-provided arguments with state-sourced arguments.
+
+    LLM args take precedence. State values are pulled in via `inputs_from_state` mappings or
+    parameter-name matching, then the live State object is injected for any param annotated as State.
+    """
+    final_args = dict(llm_args)
+    func_params = _get_func_params(tool)
+
+    param_mappings: dict[str, str]
+    if hasattr(tool, "inputs_from_state") and isinstance(tool.inputs_from_state, dict):
+        param_mappings = tool.inputs_from_state
+    else:
+        param_mappings = {name: name for name in func_params}
+
+    for state_key, param_name in param_mappings.items():
+        if param_name not in final_args and state.has(state_key):
+            final_args[param_name] = state.get(state_key)
+
+    for param_name, param_type in func_params.items():
+        if _unwrap_optional(param_type) is State:
+            final_args[param_name] = state
+
+    return final_args
 
 
 def _collect_tool_call_params(
@@ -381,7 +378,7 @@ class ToolInvoker:
                 else:
                     try:
                         tool = tools_with_names[tool_call.tool_name]
-                        _merge_tool_outputs(tool, result, state)
+                        _merge_tool_outputs_into_state(tool, result, state)
                         tool_messages.append(
                             _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
                         )
@@ -459,7 +456,7 @@ class ToolInvoker:
                 else:
                     try:
                         tool = tools_with_names[tool_call.tool_name]
-                        _merge_tool_outputs(tool, result, state)
+                        _merge_tool_outputs_into_state(tool, result, state)
                         tool_messages.append(
                             _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
                         )
