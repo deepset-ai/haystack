@@ -1635,3 +1635,157 @@ class TestAgentWaitsForBlockedPredecessor:
             }
         )
         assert "agent" in result
+
+
+class TestAgentWarmUp:
+    """Tests that Agent.warm_up() correctly warms up tools and refreshes _tools_with_names."""
+
+    def _make_tracking_tool(self, name: str = "test_tool") -> Tool:
+        tool = Tool(
+            name=name,
+            description="A test tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "result",
+        )
+        tool.was_warmed_up = False
+        original_warm_up = tool.warm_up
+
+        def tracking_warm_up():
+            original_warm_up()
+            tool.was_warmed_up = True
+
+        tool.warm_up = tracking_warm_up
+        return tool
+
+    def _make_tracking_toolset(self, tools: list) -> Toolset:
+        toolset = Toolset(tools)
+        toolset.was_warmed_up = False
+        original_warm_up = toolset.warm_up
+
+        def tracking_warm_up():
+            original_warm_up()
+            toolset.was_warmed_up = True
+
+        toolset.warm_up = tracking_warm_up
+        return toolset
+
+    def test_warm_up_single_tool(self):
+        tool = self._make_tracking_tool()
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool])
+
+        assert not tool.was_warmed_up
+        agent.warm_up()
+        assert tool.was_warmed_up
+
+    def test_warm_up_multiple_tools(self):
+        tool1 = self._make_tracking_tool("tool1")
+        tool2 = self._make_tracking_tool("tool2")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool1, tool2])
+
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+        agent.warm_up()
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+
+    def test_warm_up_toolset(self):
+        inner_tool = self._make_tracking_tool()
+        toolset = self._make_tracking_toolset([inner_tool])
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+
+        assert not toolset.was_warmed_up
+        agent.warm_up()
+        assert toolset.was_warmed_up
+
+    def test_warm_up_mixed_toolsets(self):
+        tool1 = self._make_tracking_tool("tool1")
+        toolset1 = self._make_tracking_toolset([tool1])
+        tool2 = self._make_tracking_tool("tool2")
+        toolset2 = self._make_tracking_toolset([tool2])
+
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset1 + toolset2)
+
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+        agent.warm_up()
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
+    def test_warm_up_mixed_list_of_tools_and_toolsets(self):
+        tool1 = self._make_tracking_tool("standalone_tool1")
+        tool2 = self._make_tracking_tool("standalone_tool2")
+        tool3 = self._make_tracking_tool("toolset_tool1")
+        toolset1 = self._make_tracking_toolset([tool3])
+        tool4 = self._make_tracking_tool("toolset_tool2")
+        toolset2 = self._make_tracking_toolset([tool4])
+
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool1, toolset1, tool2, toolset2])
+
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+        agent.warm_up()
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
+    def test_warm_up_is_idempotent(self):
+        call_count = {"n": 0}
+        tool = Tool(
+            name="counting_tool",
+            description="A tool that counts warm_up calls",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "test",
+        )
+        original = tool.warm_up
+
+        def counting_warm_up():
+            original()
+            call_count["n"] += 1
+
+        tool.warm_up = counting_warm_up
+
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool])
+        agent.warm_up()
+        agent.warm_up()
+        agent.warm_up()
+
+        assert call_count["n"] == 1
+
+    def test_warm_up_refreshes_tools_with_names(self):
+        """Agent.warm_up() must rebuild _tools_with_names so lazy toolsets (e.g. MCPToolset) take effect."""
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        class MockMCPToolset(Toolset):
+            def __init__(self):
+                super().__init__([placeholder_tool])
+                self._connected = False
+
+            def warm_up(self):
+                if not self._connected:
+                    self.tools = [actual_tool]
+                    self._connected = True
+
+        mcp_toolset = MockMCPToolset()
+        agent = Agent(chat_generator=MockChatGenerator(), tools=mcp_toolset)
+
+        assert "mcp_not_connected_placeholder_123" in agent._tool_invoker._tools_with_names
+        assert "get_time" not in agent._tool_invoker._tools_with_names
+
+        agent.warm_up()
+
+        assert "mcp_not_connected_placeholder_123" not in agent._tool_invoker._tools_with_names
+        assert "get_time" in agent._tool_invoker._tools_with_names

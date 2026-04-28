@@ -6,7 +6,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from haystack.components.agents import State
-from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.components.agents.tool_invoker import _get_func_params, _inject_state_args
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
@@ -250,13 +250,13 @@ def _prepare_tool_args(
         A dictionary of final arguments ready for tool invocation.
     """
     # Combine user + state inputs
-    final_args = ToolInvoker._inject_state_args(tool, tool_call_arguments.copy(), state)
+    final_args = _inject_state_args(tool, tool_call_arguments.copy(), state)
     # Check whether to inject streaming_callback
     if (
         enable_streaming_passthrough
         and streaming_callback is not None
         and "streaming_callback" not in final_args
-        and "streaming_callback" in ToolInvoker._get_func_params(tool)
+        and "streaming_callback" in _get_func_params(tool)
     ):
         final_args["streaming_callback"] = streaming_callback
     return final_args

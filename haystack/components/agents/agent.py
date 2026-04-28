@@ -16,9 +16,9 @@ from haystack.components.agents.state.state import (
     replace_values,
 )
 from haystack.components.agents.state.state_utils import merge_lists
+from haystack.components.agents.tool_invoker import ToolInvoker, _validate_and_prepare_tools
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.components.tools import ToolInvoker
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.human_in_the_loop.strategies import (
@@ -34,6 +34,7 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -401,8 +402,10 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
-            if hasattr(self._tool_invoker, "warm_up") and self._tool_invoker is not None:
-                self._tool_invoker.warm_up()
+            if self._tool_invoker is not None:
+                warm_up_tools(self.tools)
+                # Rebuild after warm_up in case tools changed (e.g. lazy-connecting toolsets like MCPToolset)
+                self._tool_invoker._tools_with_names = _validate_and_prepare_tools(self.tools)
             self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -546,12 +549,6 @@ class Agent:
             generator_inputs["streaming_callback"] = streaming_callback
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
-
-        # We add enable_streaming_callback_passthrough to the tool invoker inputs
-        if self._tool_invoker:
-            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
-                self._tool_invoker.enable_streaming_callback_passthrough
-            )
 
         return _ExecutionContext(
             state=state,
@@ -755,12 +752,10 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_result = self._tool_invoker.run(
+            tool_messages, exe_context.state = self._tool_invoker.run(
                 messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
             )
-            tool_messages = tool_invoker_result["tool_messages"]
             step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
-            exe_context.state = tool_invoker_result["state"]
             exe_context.state.set("messages", tool_messages)
 
             if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
@@ -796,12 +791,10 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_result = await self._tool_invoker.run_async(
+            tool_messages, exe_context.state = await self._tool_invoker.run_async(
                 messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
             )
-            tool_messages = tool_invoker_result["tool_messages"]
             step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
-            exe_context.state = tool_invoker_result["state"]
             exe_context.state.set("messages", tool_messages)
 
             if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
