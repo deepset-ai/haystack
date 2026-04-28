@@ -137,7 +137,7 @@ With this type, you leverage an instance of the model shared with other users, w
 Here are the components that support shared hosted models in Haystack:
 
 - Hugging Face API Generators, when querying the [free Hugging Face Inference API](https://huggingface.co/inference-api). The free Inference API provides access to some popular models for quick experimentation, although it comes with rate limitations and is not intended for production use.
-- Various cloud providers offer interfaces compatible with OpenAI Generators. These include Anyscale, Deep Infra, Fireworks, Lemonfox.ai, OctoAI, Together AI, and many others.
+- Various cloud providers offer interfaces compatible with OpenAI Generators. These include Anyscale, Deep Infra, Fireworks, FuturMix, Lemonfox.ai, OctoAI, Together AI, and many others.
   Here is an example using OctoAI and [`OpenAIChatGenerator`](../openaichatgenerator.mdx):
 
 ```python
@@ -155,6 +155,22 @@ generator = OpenAIChatGenerator(
 generator.run(messages=[ChatMessage.from_user("What is the best French cheese?")])
 ```
 
+  Here is an example using [FuturMix](https://futurmix.ai) and [`OpenAIChatGenerator`](../openaichatgenerator.mdx):
+
+```python
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+generator = OpenAIChatGenerator(
+    api_key=Secret.from_token("your-futurmix-api-key"),
+    api_base_url="https://futurmix.ai/v1",
+    model="gpt-4o",
+)
+
+generator.run(messages=[ChatMessage.from_user("What is the best French cheese?")])
+```
 ### Privately Hosted Models
 
 In this case, a private instance of the model is deployed by the provider, and you typically pay per hour.
