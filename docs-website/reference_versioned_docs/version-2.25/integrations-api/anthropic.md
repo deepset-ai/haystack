@@ -95,7 +95,7 @@ __init__(
     *,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Creates an instance of AnthropicChatGenerator.
@@ -217,6 +217,227 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: The responses from the model
 
+## haystack_integrations.components.generators.anthropic.chat.foundry_chat_generator
+
+### AnthropicFoundryChatGenerator
+
+Bases: <code>AnthropicChatGenerator</code>
+
+Enables text generation using Anthropic's Claude models via Azure Foundry.
+
+A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through Azure Foundry.
+
+To use AnthropicFoundryChatGenerator, you must have an Azure subscription with Foundry enabled
+and the desired Anthropic model deployed in your Foundry resource.
+
+For more details, refer to the [Anthropic Foundry documentation](https://github.com/anthropics/anthropic-sdk-python/blob/main/src/anthropic/lib/foundry.md).
+
+Any valid text generation parameters for the Anthropic messaging API can be passed to
+the AnthropicFoundry API. Users can provide these parameters directly to the component via
+the `generation_kwargs` parameter in `__init__` or the `run` method.
+
+For more details on the parameters supported by the Anthropic API, refer to the
+Anthropic Message API [documentation](https://docs.anthropic.com/en/api/messages).
+
+```python
+from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+messages = [ChatMessage.from_user("What's Natural Language Processing?")]
+
+client = AnthropicFoundryChatGenerator(
+    model="claude-sonnet-4-5",
+    api_key=Secret.from_env_var("ANTHROPIC_FOUNDRY_API_KEY"),
+    resource="my-resource",
+)
+
+response = client.run(messages)
+print(response)
+>> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+>> "Natural Language Processing (NLP) is a field of artificial intelligence that
+>> focuses on enabling computers to understand, interpret, and generate human language. It involves developing
+>> techniques and algorithms to analyze and process text or speech data, allowing machines to comprehend and
+>> communicate in natural languages like English, Spanish, or Chinese.")],
+>> _name=None, _meta={'model': 'claude-sonnet-4-5', 'index': 0, 'finish_reason': 'end_turn',
+>> 'usage': {'input_tokens': 15, 'output_tokens': 64}})]}
+```
+
+For more details on supported models and their capabilities, refer to the Anthropic
+[documentation](https://docs.anthropic.com/claude/docs/intro-to-claude).
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
+    "claude-sonnet-4-5",
+    "claude-opus-4-5",
+    "claude-opus-4-1",
+    "claude-haiku-4-5",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+The actual availability depends on your Azure Foundry resource configuration.
+
+#### __init__
+
+```python
+__init__(
+    *,
+    api_key: Secret | None = Secret.from_env_var(
+        "ANTHROPIC_FOUNDRY_API_KEY", strict=True
+    ),
+    resource: str | None = None,
+    endpoint: str | None = None,
+    model: str = "claude-sonnet-4-5",
+    streaming_callback: Callable[[StreamingChunk], None] | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    ignore_tools_thinking_messages: bool = True,
+    tools: ToolsType | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    azure_ad_token_provider: Callable[[], str] | None = None
+) -> None
+```
+
+Creates an instance of AnthropicFoundryChatGenerator.
+
+**Parameters:**
+
+- **api_key** (<code>Secret | None</code>) – The API key to use for authentication.
+  Defaults to the `ANTHROPIC_FOUNDRY_API_KEY` environment variable.
+  Can be `None` when using `azure_ad_token_provider` instead.
+- **resource** (<code>str | None</code>) – The Foundry resource name. Can also be set via the `ANTHROPIC_FOUNDRY_RESOURCE`
+  environment variable. Either `resource` or `endpoint` must be provided.
+- **endpoint** (<code>str | None</code>) – The full Foundry endpoint URL (e.g.,
+  "https://your-resource.openai.azure.com/anthropic").
+  Either `resource` or `endpoint` must be provided.
+- **model** (<code>str</code>) – The name of the model to use (deployment name in Foundry).
+- **streaming_callback** (<code>Callable\\[[StreamingChunk\], None\] | None</code>) – A callback function that is called when a new token is received from the stream.
+  The callback function accepts StreamingChunk as an argument.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Other parameters to use for the model. These parameters are all sent directly to
+  the AnthropicFoundry endpoint. See Anthropic [documentation](https://docs.anthropic.com/claude/reference/messages_post)
+  for more details.
+  Supported generation_kwargs parameters are:
+- `system`: The system message to be passed to the model.
+- `max_tokens`: The maximum number of tokens to generate.
+- `metadata`: A dictionary of metadata to be passed to the model.
+- `stop_sequences`: A list of strings that the model should stop generating at.
+- `temperature`: The temperature to use for sampling.
+- `top_p`: The top_p value to use for nucleus sampling.
+- `top_k`: The top_k value to use for top-k sampling.
+- `extra_headers`: A dictionary of extra headers to be passed to the model (i.e. for beta features).
+- **ignore_tools_thinking_messages** (<code>bool</code>) – Anthropic's approach to tools (function calling) resolution involves a
+  "chain of thought" messages before returning the actual function names and parameters in a message. If
+  `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
+  use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
+  for more details.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name.
+- **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
+  the Anthropic client.
+- **azure_ad_token_provider** (<code>Callable\[[], str\] | None</code>) – A function that returns an Azure AD token for authentication.
+  Can be used instead of `api_key` for enhanced security.
+  See [Azure Identity documentation](https://learn.microsoft.com/en-us/azure/developer/python/sdk/authentication/overview)
+  for more details.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Create the AnthropicFoundry clients.
+
+This method is idempotent — it only creates clients once.
+
+#### run
+
+```python
+run(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+) -> dict[str, list[ChatMessage]]
+```
+
+Invokes the AnthropicFoundry API with the given messages and generation kwargs.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name. If set, it will override the `tools` parameter set during component
+  initialization.
+
+**Returns:**
+
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
+- `replies`: The responses from the model
+
+#### run_async
+
+```python
+run_async(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+) -> dict[str, list[ChatMessage]]
+```
+
+Async version of the run method. Invokes the AnthropicFoundry API with the given messages and generation kwargs.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+  Each tool should have a unique name. If set, it will override the `tools` parameter set during component
+  initialization.
+
+**Returns:**
+
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
+- `replies`: The responses from the model
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AnthropicFoundryChatGenerator
+```
+
+Deserialize this component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
+
+**Returns:**
+
+- <code>AnthropicFoundryChatGenerator</code> – The deserialized component instance.
+
 ## haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator
 
 ### AnthropicVertexChatGenerator
@@ -224,6 +445,7 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 Bases: <code>AnthropicChatGenerator</code>
 
 Enables text generation using Anthropic's Claude models via the Anthropic Vertex AI API.
+
 A variety of Claude models (Opus, Sonnet, Haiku, and others) are available through the Vertex AI API endpoint.
 
 To use AnthropicVertexChatGenerator, you must have a GCP project with Vertex AI enabled.
@@ -298,7 +520,7 @@ __init__(
     *,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Creates an instance of AnthropicVertexChatGenerator.
@@ -397,7 +619,7 @@ __init__(
     *,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Initialize the AnthropicGenerator.
