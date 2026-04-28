@@ -358,7 +358,7 @@ class TestToolInvokerRun:
 
         assert isinstance(tool_call_result, ToolCallResult)
         assert not tool_call_result.error
-        assert tool_call_result.result == '"Hello, world!"'
+        assert tool_call_result.result == "Hello, world!"
 
     def test_run_with_tools_override(self, weather_tool, faulty_tool):
         """Tests that tools passed to run override the tools passed in init"""
@@ -806,7 +806,7 @@ class TestToolInvokerErrorHandling:
 
 class TestToolInvokerUtilities:
     def test_result_to_string(self):
-        assert _result_to_string("hello") == '"hello"'
+        assert _result_to_string("hello") == "hello"
         assert _result_to_string(42) == "42"
         assert _result_to_string(3.14) == "3.14"
         assert _result_to_string(True) == "true"
@@ -815,7 +815,7 @@ class TestToolInvokerUtilities:
         assert _result_to_string([1, 2, 3]) == "[1, 2, 3]"
         assert _result_to_string({"key": "value"}) == '{"key": "value"}'
 
-        assert _result_to_string("Hello 🌍") == '"Hello 🌍"'
+        assert _result_to_string("Hello 🌍") == "Hello 🌍"
 
     def test_result_to_string_with_serializable_objects(self):
         class MockObject:

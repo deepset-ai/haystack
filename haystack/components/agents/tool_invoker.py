@@ -153,7 +153,17 @@ def _merge_tool_outputs(tool: Tool, result: Any, state: State) -> None:
 
 
 def _result_to_string(result: Any) -> str:
-    """Convert a tool result to a JSON string."""
+    """
+    Convert a tool result to a string.
+
+    Strings are returned as-is; all other types are passed through a JSON serialization step to produce more readable
+    output, with a fallback to plain str() conversion if serialization fails.
+
+    :param result: The tool result to convert.
+    :returns: A string representation of the tool result.
+    """
+    if isinstance(result, str):
+        return result
     serializable = _serializable_value(value=result, use_placeholders=False)
     try:
         return json.dumps(serializable, ensure_ascii=False)
