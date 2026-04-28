@@ -3,6 +3,9 @@ features:
   - |
     Added two new retriever components: ``MultiRetriever`` and ``TextEmbeddingRetriever``.
 
+    ``MultiRetriever`` is marked as experimental and may change or be removed in future releases without prior
+    deprecation notice. An ``ExperimentalWarning`` is emitted on instantiation.
+
     ``MultiRetriever`` is a generalisation of hybrid retrieval.
     Where hybrid retrieval traditionally combines keyword search (BM25) with vector search, ``MultiRetriever`` lets
     you compose any number of retrievers into a single component.

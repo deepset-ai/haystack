@@ -18,6 +18,9 @@ from haystack.components.retrievers import (
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
+from haystack.utils.experimental import ExperimentalWarning
+
+pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
 
 @component
@@ -439,3 +442,14 @@ class TestMultiRetrieverAsync:
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")
         assert result_bm25_active == result_bm25
+
+
+class TestMultiRetrieverExperimental:
+    @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
+    def test_emits_experimental_warning_on_init(self):
+        with pytest.warns(ExperimentalWarning, match="MultiRetriever.*experimental"):
+            MultiRetriever(retrievers={"mock": MockRetriever()})
+
+    @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
+    def test_experimental_attribute_is_set(self):
+        assert getattr(MultiRetriever, "__experimental__", False) is True

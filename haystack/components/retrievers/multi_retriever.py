@@ -10,13 +10,19 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
+from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents
 
 
+@_experimental
 @component
 class MultiRetriever:
     """
     A component that runs multiple retrievers in parallel and combines their results.
+
+    > **Note:** This component is experimental and may change or be removed in future releases without prior
+    deprecation notice.
+
 
     Each retriever is queried concurrently using a thread pool.
     The results are deduplicated and returned as a single list of documents.
