@@ -823,16 +823,6 @@ class TestAgent:
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert response["messages"][0].text == "This is a system prompt."
 
-    def test_run_with_system_prompt_run_param(self, weather_tool):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-        agent = Agent(
-            chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is the init system prompt."
-        )
-        response = agent.run(
-            [ChatMessage.from_user("What is the weather in Berlin?")], system_prompt="This is the run system prompt."
-        )
-        assert response["messages"][0].text == "This is the run system prompt."
-
     def test_run_with_tools_run_param(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
         @component
         class MockChatGenerator:
@@ -1359,61 +1349,10 @@ class TestRegisterPromptVariables:
 
     def test_register_prompt_variables_raises_on_run_param_conflict(self, make_agent):
         with pytest.raises(
-            ValueError, match="Variable 'system_prompt' from user_prompt conflicts with input names in the run method."
+            ValueError,
+            match="Variable 'streaming_callback' from user_prompt conflicts with input names in the run method.",
         ):
-            make_agent(user_prompt=_user_msg("{{system_prompt}} is already a run parameter."))
-
-
-class TestInitializeFreshExecution:
-    def test_initialize_fresh_execution_raises_with_init_run_mismatch(self, make_agent):
-        agent = make_agent(system_prompt="Plain init prompt.")
-        with pytest.raises(ValueError, match="no system prompt builder is initialized"):
-            agent._initialize_fresh_execution(
-                messages=None,
-                streaming_callback=None,
-                requires_async=False,
-                user_prompt=None,
-                system_prompt=_sys_msg("Jinja2 syntax."),
-            )
-
-        agent = make_agent()
-        with pytest.raises(ValueError, match="user_prompt is provided but the ChatPromptBuilder is not initialized"):
-            agent._initialize_fresh_execution(
-                messages=None,
-                streaming_callback=None,
-                requires_async=False,
-                user_prompt=_user_msg("Jinja2 syntax."),
-                system_prompt=None,
-            )
-
-    def test_initialize_fresh_execution_raises_with_wrong_role(self, make_agent):
-        agent = make_agent(system_prompt=_user_msg("This is a user message, not system."))
-        with pytest.raises(ValueError, match="system_prompt must render to a system message"):
-            agent._initialize_fresh_execution(
-                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
-            )
-
-        agent = make_agent(user_prompt=_sys_msg("This is a user message, not system."))
-        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
-            agent._initialize_fresh_execution(
-                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
-            )
-
-    def test_initialize_fresh_execution_raises_with_incorrect_prompt_length(self, make_agent):
-        multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
-        {% message role='user' %}How are you?{% endmessage %}"""
-
-        agent = make_agent(system_prompt=multi_message_prompt)
-        with pytest.raises(ValueError, match="system_prompt must render to exactly one system message"):
-            agent._initialize_fresh_execution(
-                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
-            )
-
-        agent = make_agent(user_prompt=multi_message_prompt)
-        with pytest.raises(ValueError, match="user_prompt must render to exactly one user message"):
-            agent._initialize_fresh_execution(
-                messages=None, streaming_callback=None, requires_async=False, user_prompt=None, system_prompt=None
-            )
+            make_agent(user_prompt=_user_msg("{{streaming_callback}} is already a run parameter."))
 
 
 class TestPrompts:
@@ -1454,14 +1393,6 @@ class TestPrompts:
         assert messages[0].text == "System message with meta"
         assert messages[0].meta == {"key": "value"}
 
-    def test_system_prompt_runtime_override(self, make_agent):
-        agent = make_agent(system_prompt=_sys_msg("You are a helpful assistant."))
-        result = agent.run(
-            messages=[ChatMessage.from_user("Hi")], system_prompt=_sys_msg("You are an Haystack expert.")
-        )
-        assert result["messages"][0].text == "You are an Haystack expert."
-        assert result["messages"][1].text == "Hi"
-
     def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
@@ -1485,12 +1416,6 @@ class TestPrompts:
         assert "cities" in input_names
         assert "date" in input_names
 
-    def test_runtime_user_prompt_overrides_init_prompt(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Default prompt for {{city}}."))
-        result = agent.run(messages=[], user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "Runtime prompt for Berlin."
-
     def test_user_prompt_appended_after_initial_messages(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("And now: {{query}}"))
         initial_messages = [ChatMessage.from_user("First message")]
@@ -1498,17 +1423,6 @@ class TestPrompts:
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "First message"
         assert user_messages[1].text == "And now: What is the weather?"
-
-    def test_runtime_user_prompt_appended_after_initial_messages(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Init prompt: {{question}}"))
-        initial_messages = [ChatMessage.from_user("Context message")]
-        result = agent.run(
-            messages=initial_messages, user_prompt=_user_msg("Follow-up: {{question}}"), question="Is it raining?"
-        )
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert len(user_messages) == 2
-        assert user_messages[0].text == "Context message"
-        assert user_messages[1].text == "Follow-up: Is it raining?"
 
     def test_system_prompt_and_user_prompt(self, make_agent):
         agent = make_agent(
@@ -1524,6 +1438,23 @@ class TestPrompts:
         assert messages[0].text == "You help users of Haystack."
         user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
+
+    def test_prompt_wrong_role_raises_at_init(self, make_agent):
+        with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
+            make_agent(system_prompt=_user_msg("This is a user message, not system."))
+
+        with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
+            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
+
+    def test_prompt_multiple_message_blocks_raises_at_init(self, make_agent):
+        multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
+        {% message role='user' %}How are you?{% endmessage %}"""
+
+        with pytest.raises(ValueError, match="system_prompt must define exactly one message block"):
+            make_agent(system_prompt=multi_message_prompt)
+
+        with pytest.raises(ValueError, match="user_prompt must define exactly one message block"):
+            make_agent(user_prompt=multi_message_prompt)
 
 
 @pytest.mark.integration
@@ -1583,36 +1514,7 @@ class TestAgentUserPromptInPipeline:
         assert "Question: Where is the Colosseum?" in rendered
         assert "Documents:" in rendered
 
-    def test_rag_pipeline_user_prompt_runtime_override(self, make_rag_pipeline):
-        user_prompt = _user_msg(
-            "Documents:\n{% for doc in documents %}{{doc.content}}\n{% endfor %}Question: {{query}}"
-        )
-        pipeline = make_rag_pipeline(user_prompt=user_prompt)
-
-        query = "Where is the Eiffel Tower?"
-        result = pipeline.run(
-            data={
-                "retriever": {"query": query},
-                "agent": {
-                    "user_prompt": _user_msg(
-                        "OVERRIDE: Using docs:\n"
-                        "{% for doc in documents %}{{doc.content}}\n{% endfor %}"
-                        "Answer: {{query}}"
-                    ),
-                    "query": query,
-                    "messages": [],
-                },
-            }
-        )
-        messages = result["agent"]["messages"]
-        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
-        rendered = user_messages[0].text
-        assert "OVERRIDE:" in rendered
-        assert "Where is the Eiffel Tower?" in rendered
-
     def test_rag_pipeline_messages_plus_user_prompt(self, document_store_with_docs, weather_tool):
-        from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
-
         chat_generator = MockChatGenerator()
 
         agent = Agent(

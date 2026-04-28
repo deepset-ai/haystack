@@ -590,3 +590,19 @@ def _update_chat_history(
     insertion_point = max(last_user_idx, last_tool_idx)
 
     return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
+
+
+def _deserialize_confirmation_strategies(data: dict[str, Any]) -> dict[str | tuple[str, ...], ConfirmationStrategy]:
+    """
+    Deserialize a confirmation strategies dictionary from its serialized form.
+
+    Deserializes each strategy component in-place and converts any list keys back to tuples,
+    since JSON serializes tuple keys as lists.
+
+    :param data: Raw dictionary of serialized confirmation strategies, keyed by tool name(s).
+    :returns: Deserialized confirmation strategies with proper key types.
+    """
+    for raw_key in list(data):
+        deserialize_component_inplace(data, key=raw_key)
+
+    return {(tuple(raw_key) if isinstance(raw_key, list) else raw_key): strategy for raw_key, strategy in data.items()}
