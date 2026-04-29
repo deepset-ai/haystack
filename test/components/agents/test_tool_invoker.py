@@ -119,7 +119,7 @@ def tool_set():
     )
 
 
-class TestToolInvokerCore:
+class TestCore:
     def test_validate_and_prepare_tools(self, weather_tool, faulty_tool):
         result = _validate_and_prepare_tools([weather_tool, faulty_tool])
         assert result == {"weather_tool": weather_tool, "faulty_tool": faulty_tool}
@@ -682,7 +682,7 @@ class TestRunToolErrorHandling:
             )
 
 
-class TestToolInvokerUtilities:
+class TestUtilities:
     def test_result_to_string(self):
         assert _result_to_string("hello") == "hello"
         assert _result_to_string(42) == "42"
