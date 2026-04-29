@@ -113,9 +113,8 @@ class MultiRetriever:
         """
         Merge per-retriever result lists according to `join_mode`.
 
-        In `concatenate` mode, all lists are flattened and deduplicated.
-        In `reciprocal_rank_fusion` mode, results are deduplicated and re-scored using RRF, then returned in
-        descending score order.
+        In `concatenate` mode, all lists are flattened and deduplicated. In `reciprocal_rank_fusion` mode, results
+        are deduplicated and re-scored using RRF, then returned in descending score order.
         """
         if self.join_mode == "reciprocal_rank_fusion":
             documents = _reciprocal_rank_fusion(document_lists)

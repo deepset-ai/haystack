@@ -155,12 +155,13 @@ def _reciprocal_rank_fusion(
 
     See the original paper: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
 
-    The constant k is set to 61 (60 was suggested by the original paper,
-    plus 1 as python lists are 0-based and the paper used 1-based ranking).
+    The constant k is set to 61 (60 was suggested by the original paper, plus 1 as python lists are 0-based and the
+    paper used 1-based ranking).
 
     :param document_lists: A list of ranked document lists to fuse.
     :param weights: Optional per-list weights. Defaults to equal weights.
-    :returns: Deduplicated list of documents with updated RRF scores.
+    :returns:
+        Deduplicated list of documents with updated RRF scores.
     """
     if not document_lists:
         return []
