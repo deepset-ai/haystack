@@ -24,22 +24,12 @@ from haystack.tracing.utils import _serializable_value
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Exceptions
-# ---------------------------------------------------------------------------
-
-
 class ToolNotFoundException(Exception):
     """Exception raised when a tool is not found in the list of available tools."""
 
     def __init__(self, tool_name: str, available_tools: list[str]) -> None:
         message = f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools)}"
         super().__init__(message)
-
-
-# ---------------------------------------------------------------------------
-# Standalone functions
-# ---------------------------------------------------------------------------
 
 
 def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
@@ -261,11 +251,6 @@ def _collect_tool_call_params(
             tool_call_params.append({"tool": tool, "args": args})
 
     return tool_calls, tool_call_params, error_messages
-
-
-# ---------------------------------------------------------------------------
-# Orchestration
-# ---------------------------------------------------------------------------
 
 
 def run_tool(
