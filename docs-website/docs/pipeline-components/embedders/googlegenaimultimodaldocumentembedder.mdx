@@ -17,7 +17,7 @@ It uses Google AI multimodal embedding models with the ability to embed text, im
 | **Mandatory init variables** | `api_key`: The Google API key. Can be set with `GOOGLE_API_KEY` or `GEMINI_API_KEY` env var. |
 | **Mandatory run variables** | `documents`:  A list of documents, with a meta field containing an image file path |
 | **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
-| **API reference** | [Google AI](/reference/integrations-google-genai) |
+| **API reference** | [Google GenAI](/reference/integrations-google-genai) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
 | **Package name** | `google-genai-haystack` |
 
@@ -31,7 +31,7 @@ The embedder efficiently loads the files, computes the embeddings using a Google
 
 `GoogleGenAIMultimodalDocumentEmbedder` is commonly used in indexing pipelines. At retrieval time, you need to use the same model with a `GoogleGenAITextEmbedder` to embed the query, before using an Embedding Retriever.
 
-This component is compatible with Gemini multimodal models: `gemini-embedding-2-preview` and later. For a complete list of supported models, see the [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings).
+This component is compatible with Gemini multimodal models: `gemini-embedding-2` and later. For a complete list of supported models, see the [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings).
 
 To embed a textual document, you should use the [`GoogleGenAIDocumentEmbedder`](googlegenaidocumentembedder.mdx).
 To embed a string, you should use the [`GoogleGenAITextEmbedder`](googlegenaitextembedder.mdx).
@@ -125,7 +125,7 @@ print(result["documents"][0].embedding)
 
 ### Setting embedding dimensions
 
-Models like `gemini-embedding-2-preview` have a default embedding dimension of 3072, but, thanks to
+Models like `gemini-embedding-2` have a default embedding dimension of 3072, but, thanks to
 Matryoshka Representation Learning, it's possible to reduce embedding size while keeping similar performance.
 
 Check the [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#control-embedding-size) for more information.
