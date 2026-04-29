@@ -2,12 +2,12 @@
 title: "MultiRetriever"
 id: multiretriever
 slug: "/multiretriever"
-description: "Runs multiple text retrievers in parallel and combines their deduplicated results."
+description: "Runs multiple text retrievers in parallel and combines their results using reciprocal rank fusion or deduplication."
 ---
 
 # MultiRetriever
 
-Runs multiple text retrievers in parallel and combines their deduplicated results.
+Runs multiple text retrievers in parallel and combines their results using reciprocal rank fusion or deduplication.
 
 :::warning[Experimental]
 
@@ -21,8 +21,9 @@ Runs multiple text retrievers in parallel and combines their deduplicated result
 | --- | --- |
 | **Most common position in a pipeline** | After query input, before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) in RAG pipelines |
 | **Mandatory init variables** | `retrievers`: A dictionary mapping names to text retrievers (implementing the `TextRetriever` protocol) |
+| **Optional init variables** | `join_mode`: `"reciprocal_rank_fusion"` (default) or `"concatenate"` |
 | **Mandatory run variables** | `query`: A query string |
-| **Output variables** | `documents`: A deduplicated list of retrieved documents |
+| **Output variables** | `documents`: A merged list of retrieved documents |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/multi_retriever.py |
 | **Package name** | `haystack-ai` |
@@ -31,20 +32,27 @@ Runs multiple text retrievers in parallel and combines their deduplicated result
 
 ## Overview
 
-`MultiRetriever` composes any number of text retrievers into a single component. All retrievers are queried in parallel using a thread pool, and their results are deduplicated before being returned.
+`MultiRetriever` composes any number of text retrievers into a single component. All retrievers are queried in parallel using a thread pool, and their results are merged before being returned.
 
 The component:
 - Queries all retrievers concurrently for better performance
-- Automatically deduplicates results across retrievers
+- Merges results across retrievers using the configured `join_mode`
 - Supports selectively enabling retrievers at runtime via `active_retrievers`
 
 All retrievers passed to `MultiRetriever` must implement the `TextRetriever` protocol — their `run` method must accept a text `query`, `filters`, and `top_k`. Use [`TextEmbeddingRetriever`](textembeddingretriever.mdx) to wrap an embedding-based retriever so it can be used with this component.
+
+### Join modes
+
+The `join_mode` parameter controls how results from multiple retrievers are merged:
+
+- **`reciprocal_rank_fusion`** (default): Assigns scores based on each document's rank across retrieval lists using the [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) algorithm. Documents appearing highly ranked in multiple lists receive higher scores. Results are deduplicated and returned in descending score order. This is the recommended mode when combining retrievers with incomparable scores, such as BM25 and embedding retrievers.
+- **`concatenate`**: Combines all results into a single list and deduplicates.
 
 ## Usage
 
 ### On its own
 
-This example sets up a `MultiRetriever` combining a BM25 retriever and an embedding-based retriever (wrapped with `TextEmbeddingRetriever`). Both are queried in parallel and the deduplicated results are returned.
+This example sets up a `MultiRetriever` combining a BM25 retriever and an embedding-based retriever (wrapped with `TextEmbeddingRetriever`). Both are queried in parallel and the results are merged using reciprocal rank fusion.
 
 ```python
 from haystack import Document
