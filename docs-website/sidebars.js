@@ -229,6 +229,7 @@ export default {
             'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
+            'pipeline-components/converters/doclingconverter',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
             'pipeline-components/converters/filetofilecontent',
@@ -254,7 +255,6 @@ export default {
             'pipeline-components/converters/tikadocumentconverter',
             'pipeline-components/converters/unstructuredfileconverter',
             'pipeline-components/converters/xlsxtodocument',
-            'pipeline-components/converters/external-integrations-converters',
           ],
         },
         {
