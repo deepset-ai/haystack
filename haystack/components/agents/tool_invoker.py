@@ -104,13 +104,12 @@ def _result_to_string(result: Any) -> str:
         return str(result)
 
 
-# TODO Not getting the motivation for raw_result + handler behavior. Feels like raw_result should always win.
 def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCall) -> Any:
     """
     Extract and convert a single tool output according to `config`.
 
-    `config` may contain `source` (key to extract from result dict), `handler` (conversion
-    callable), and `raw_result` (return the value without string conversion).
+    `config` may contain `source` (key to extract from result dict), `handler` (conversion callable), and
+    `raw_result` (return the value without string conversion).
     """
     source_key = config.get("source")
     value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
@@ -119,6 +118,8 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
     raw_result = config.get("raw_result", False)
 
     if handler is None:
+        # raw result is mostly used to allow ImageContent or TextContent blocks to be directly returned and consumed
+        # by ChatMessage.from_tool without string conversion.
         if raw_result:
             return value
         return _result_to_string(value)
@@ -144,9 +145,9 @@ def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool) -> 
         tool_result = _process_tool_output(outputs_config, result, tool_call)
         return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
-    # Multi-output config: each key maps to its own sub-config — collect raw values then stringify once
+    # Multi-output config: each key maps to its own sub-config — stringify each value, then stringify the whole dict
     tool_result_dict = {
-        output_key: _process_tool_output({**cfg, "raw_result": True}, result, tool_call)
+        output_key: _process_tool_output({**cfg, "raw_result": False}, result, tool_call)
         for output_key, cfg in outputs_config.items()
     }
     return ChatMessage.from_tool(tool_result=_result_to_string(tool_result_dict), origin=tool_call)

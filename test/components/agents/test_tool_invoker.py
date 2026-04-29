@@ -659,7 +659,7 @@ class TestToolInvokerErrorHandling:
 
         tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
         chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool)
-        assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": 25}'
+        assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": "25"}'
 
     def test_output_handler_failure_falls_back_to_string(self):
         weather_tool = Tool(
