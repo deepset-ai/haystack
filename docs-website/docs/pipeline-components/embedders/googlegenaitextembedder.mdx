@@ -17,7 +17,7 @@ This component transforms a string into a vector that captures its semantics usi
 | **Mandatory init variables** | `api_key`: The Google API key. Can be set with `GOOGLE_API_KEY` or `GEMINI_API_KEY` env var. |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `embedding`: A list of float numbers  <br /> <br />`meta`: A dictionary of metadata |
-| **API reference** | [Google AI](/reference/integrations-google-genai) |
+| **API reference** | [Google GenAI](/reference/integrations-google-genai) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
 | **Package name** | `google-genai-haystack` |
 
@@ -27,10 +27,9 @@ This component transforms a string into a vector that captures its semantics usi
 
 `GoogleGenAITextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the [`GoogleGenAIDocumentEmbedder`](googlegenaidocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
-The component supports the following Google AI models:
+The component supports [Google AI Embedding models](https://ai.google.dev/gemini-api/docs/embeddings#model-versions).
 
-- `text-embedding-004` (default)
-- `text-embedding-004-v2`
+`gemini-embedding-001` is the default model.
 
 To start using this integration with Haystack, install it with:
 
@@ -107,7 +106,7 @@ text_embedder = GoogleGenAITextEmbedder()
 
 print(text_embedder.run(text_to_embed))
 ## {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-## 'meta': {'model': 'text-embedding-004',
+## 'meta': {'model': 'gemini-embedding-001',
 ## 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
