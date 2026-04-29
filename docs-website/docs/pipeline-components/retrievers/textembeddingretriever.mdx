@@ -13,7 +13,7 @@ Wraps an embedding-based retriever with a text embedder into a single component 
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | As a retriever inside [`MultiRetriever`](multiretriever.mdx) |
+| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />As a retriever inside [`MultiRetriever`](multiretriever.mdx) |
 | **Mandatory init variables** | `retriever`: An embedding-based Retriever<br />`text_embedder`: A Text Embedder component |
 | **Mandatory run variables** | `query`: A query string |
 | **Output variables** | `documents`: A list of retrieved documents sorted by relevance score |
@@ -27,7 +27,7 @@ Wraps an embedding-based retriever with a text embedder into a single component 
 
 `TextEmbeddingRetriever` bundles a text embedder and an embedding-based retriever into a single component. It accepts a plain text query, converts it to an embedding internally, and returns documents sorted by relevance score.
 
-Its primary use case is making embedding-based retrievers compatible with [`MultiRetriever`](multiretriever.mdx), which requires all retrievers to implement the `TextRetriever` protocol (accepting a text `query`). Embedding-based retrievers accept a `query_embedding` instead — `TextEmbeddingRetriever` bridges this gap.
+You can use it anywhere an embedding-based retriever fits: in RAG pipelines before a prompt builder, as the final component in a semantic search pipeline, or as a drop-in retriever inside [`MultiRetriever`](multiretriever.mdx).
 
 ## Usage
 

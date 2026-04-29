@@ -40,17 +40,6 @@ The component:
 
 All retrievers passed to `MultiRetriever` must implement the `TextRetriever` protocol — their `run` method must accept a text `query`, `filters`, and `top_k`. Use [`TextEmbeddingRetriever`](textembeddingretriever.mdx) to wrap an embedding-based retriever so it can be used with this component.
 
-### Selecting Retrievers at Runtime
-
-You can enable or disable specific retrievers at runtime using the `active_retrievers` parameter:
-
-```python
-# Run only the BM25 retriever
-result = retriever.run(query="green energy", active_retrievers=["bm25"])
-```
-
-Names must match the keys provided in the `retrievers` dictionary at initialization.
-
 ## Usage
 
 ### On its own
@@ -105,6 +94,17 @@ retriever = MultiRetriever(
 )
 
 result = retriever.run(query="green energy sources")
+for doc in result["documents"]:
+    print(doc.content)
+```
+
+### Selecting retrievers at runtime
+
+Use the `active_retrievers` parameter to run only a subset of retrievers. Names must match the keys in the `retrievers` dictionary. Building on the example above:
+
+```python
+# Run only the BM25 retriever
+result = retriever.run(query="green energy sources", active_retrievers=["bm25"])
 for doc in result["documents"]:
     print(doc.content)
 ```
