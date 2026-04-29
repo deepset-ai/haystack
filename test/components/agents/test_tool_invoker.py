@@ -16,7 +16,6 @@ from haystack.components.agents.tool_invoker import (
     ResultConversionError,
     ToolInvoker,
     ToolNotFoundException,
-    ToolOutputMergeError,
     _build_tool_result_message,
     _inject_state_args,
     _merge_tool_outputs_into_state,
@@ -728,7 +727,7 @@ class TestToolInvokerErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "Failed to convert" in tool_message.tool_call_results[0].result
 
-    def test_run_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
+    def test_run_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
             def set(self, key: str, value: Any, handler_override=None):
                 raise ValueError("State set operation failed")
@@ -739,31 +738,11 @@ class TestToolInvokerErrorHandling:
         tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
-        tool_messages, _ = invoker.run(messages=[message], state=state, tools=[weather_tool_with_outputs_to_state])
-
-        assert len(tool_messages) == 1
-        assert tool_messages[0].tool_call_results[0].error is True
-        assert (
-            "Failed to merge tool outputs from tool weather_tool into State"
-            in tool_messages[0].tool_call_results[0].result
-        )
-
-    def test_run_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
-        class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
-                raise ValueError("State set operation failed")
-
-        state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(raise_on_failure=True)
-
-        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
+        with pytest.raises(RuntimeError, match="weather_tool"):
             invoker.run(messages=[message], state=state, tools=[weather_tool_with_outputs_to_state])
 
     @pytest.mark.asyncio
-    async def test_run_async_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
+    async def test_run_async_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
             def set(self, key: str, value: Any, handler_override=None):
                 raise ValueError("State set operation failed")
@@ -774,30 +753,7 @@ class TestToolInvokerErrorHandling:
         tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
-        tool_messages, _ = await invoker.run_async(
-            messages=[message], state=state, tools=[weather_tool_with_outputs_to_state]
-        )
-
-        assert len(tool_messages) == 1
-        assert tool_messages[0].tool_call_results[0].error is True
-        assert (
-            "Failed to merge tool outputs from tool weather_tool into State"
-            in tool_messages[0].tool_call_results[0].result
-        )
-
-    @pytest.mark.asyncio
-    async def test_run_async_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
-        class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
-                raise ValueError("State set operation failed")
-
-        state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(raise_on_failure=True)
-
-        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
+        with pytest.raises(RuntimeError, match="weather_tool"):
             await invoker.run_async(messages=[message], state=state, tools=[weather_tool_with_outputs_to_state])
 
 

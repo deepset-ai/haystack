@@ -52,22 +52,6 @@ class ResultConversionError(ToolInvokerError):
         super().__init__(message)
 
 
-class ToolOutputMergeError(ToolInvokerError):
-    """Exception raised when merging tool outputs into state fails."""
-
-    @classmethod
-    def from_exception(cls, tool_name: str, error: Exception) -> "ToolOutputMergeError":
-        """
-        Create a ToolOutputMergeError with a message based on the original exception.
-
-        :param tool_name: Name of the tool whose output merge failed.
-        :param error: The original exception that was raised during the merge process.
-        :returns: An instance of ToolOutputMergeError with a detailed error message.
-        """
-        message = f"Failed to merge tool outputs from tool {tool_name} into State: {error}"
-        return cls(message)
-
-
 # ---------------------------------------------------------------------------
 # Standalone functions
 # ---------------------------------------------------------------------------
@@ -358,20 +342,16 @@ class ToolInvoker:
                     logger.error("{error_exception}", error_exception=result)
                     tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
                 else:
+                    tool = tools_with_names[tool_call.tool_name]
                     try:
-                        tool = tools_with_names[tool_call.tool_name]
                         _merge_tool_outputs_into_state(tool, result, state)
-                        tool_messages.append(
-                            _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
-                        )
                     except Exception as e:
-                        error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
-                        if self.raise_on_failure:
-                            raise error from e
-                        logger.exception("{error_exception}", error_exception=error)
-                        tool_messages.append(
-                            ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
-                        )
+                        raise RuntimeError(
+                            f"Tool '{tool_call.tool_name}': failed to merge outputs into state. {e}"
+                        ) from e
+                    tool_messages.append(
+                        _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
+                    )
 
                 if streaming_callback is not None:
                     streaming_callback(_create_tool_result_streaming_chunk(tool_messages, tool_call))
@@ -434,20 +414,16 @@ class ToolInvoker:
                     logger.error("{error_exception}", error_exception=result)
                     tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
                 else:
+                    tool = tools_with_names[tool_call.tool_name]
                     try:
-                        tool = tools_with_names[tool_call.tool_name]
                         _merge_tool_outputs_into_state(tool, result, state)
-                        tool_messages.append(
-                            _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
-                        )
                     except Exception as e:
-                        error = ToolOutputMergeError.from_exception(tool_name=tool_call.tool_name, error=e)
-                        if self.raise_on_failure:
-                            raise error from e
-                        logger.exception("{error_exception}", error_exception=error)
-                        tool_messages.append(
-                            ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
-                        )
+                        raise RuntimeError(
+                            f"Tool '{tool_call.tool_name}': failed to merge outputs into state. {e}"
+                        ) from e
+                    tool_messages.append(
+                        _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
+                    )
 
                 if streaming_callback is not None:
                     await streaming_callback(  # type: ignore[misc]
