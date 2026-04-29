@@ -13,7 +13,6 @@ import pytest
 from haystack import Document
 from haystack.components.agents.state import State
 from haystack.components.agents.tool_invoker import (
-    ResultConversionError,
     ToolInvoker,
     ToolNotFoundException,
     _build_tool_result_message,
@@ -659,10 +658,10 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
-        chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
+        chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool)
         assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": 25}'
 
-    def test_result_conversion_error_on_handler_failure(self):
+    def test_output_handler_failure_falls_back_to_string(self):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -673,26 +672,12 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = datetime.datetime.now()
-        with pytest.raises(ResultConversionError):
-            _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
+        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool)
 
-    def test_result_conversion_error_on_handler_failure_does_not_raise_exception(self):
-        weather_tool = Tool(
-            name="weather_tool",
-            description="Provides weather information for a given location.",
-            parameters=weather_parameters,
-            function=weather_function,
-            outputs_to_string={"handler": json.dumps},
-        )
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        assert not tool_message.tool_call_results[0].error
+        assert isinstance(tool_message.tool_call_results[0].result, str)
 
-        tool_result = datetime.datetime.now()
-        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
-
-        assert tool_message.tool_call_results[0].error
-        assert "Failed to convert" in tool_message.tool_call_results[0].result
-
-    def test_result_conversion_error(self):
+    def test_output_handler_failure_falls_back_to_string_raw_result(self):
         def handler(result):
             raise ValueError("Handler error")
 
@@ -705,27 +690,10 @@ class TestToolInvokerErrorHandling:
         )
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
-        tool_result = "something"
-        with pytest.raises(ResultConversionError):
-            _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=True)
+        tool_message = _build_tool_result_message("something", tool_call, weather_tool)
 
-    def test_result_conversion_error_does_not_raise_exception(self):
-        def handler(result):
-            raise ValueError("Handler error")
-
-        weather_tool = Tool(
-            name="weather_tool",
-            description="Provides weather information for a given location.",
-            parameters=weather_parameters,
-            function=weather_function,
-            outputs_to_string={"handler": handler, "raw_result": True},
-        )
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-
-        tool_result = "something"
-        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
-        assert tool_message.tool_call_results[0].error
-        assert "Failed to convert" in tool_message.tool_call_results[0].result
+        assert not tool_message.tool_call_results[0].error
+        assert tool_message.tool_call_results[0].result == "something"
 
     def test_run_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):

@@ -44,14 +44,6 @@ class ToolNotFoundException(ToolInvokerError):
         super().__init__(message)
 
 
-class ResultConversionError(ToolInvokerError):
-    """Exception raised when the conversion of a tool output to a result fails."""
-
-    def __init__(self, tool_name: str, conversion_function: str, error: Exception) -> None:
-        message = f"Failed to convert tool output from tool {tool_name} using '{conversion_function}'. Error: {error}"
-        super().__init__(message)
-
-
 # ---------------------------------------------------------------------------
 # Standalone functions
 # ---------------------------------------------------------------------------
@@ -112,6 +104,7 @@ def _result_to_string(result: Any) -> str:
         return str(result)
 
 
+# TODO Not getting the motivation for raw_result + handler behavior. Feels like raw_result should always win.
 def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCall) -> Any:
     """
     Extract and convert a single tool output according to `config`.
@@ -133,29 +126,30 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
     try:
         return handler(value)
     except Exception as e:
-        raise ResultConversionError(tool_call.tool_name, handler.__name__, e) from e
+        logger.warning(
+            "Output handler '{handler}' for tool '{tool}' failed, falling back to string conversion. Error: {err}",
+            handler=handler.__name__,
+            tool=tool_call.tool_name,
+            err=e,
+        )
+        return _result_to_string(value)
 
 
-def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool, *, raise_on_failure: bool) -> ChatMessage:
+def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool) -> ChatMessage:
     """Convert a raw tool result into a ChatMessage, applying `outputs_to_string` config if present."""
     outputs_config = tool.outputs_to_string or {}
-    try:
-        # Single-output config (or no config): keys are at the root level
-        if not outputs_config or any(k in outputs_config for k in ("source", "handler", "raw_result")):
-            tool_result = _process_tool_output(outputs_config, result, tool_call)
-            return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
-        # Multi-output config: each key maps to its own sub-config — collect raw values then stringify once
-        tool_result_dict = {
-            output_key: _process_tool_output({**cfg, "raw_result": True}, result, tool_call)
-            for output_key, cfg in outputs_config.items()
-        }
-        return ChatMessage.from_tool(tool_result=_result_to_string(tool_result_dict), origin=tool_call)
-    except ResultConversionError as e:
-        if raise_on_failure:
-            raise
-        logger.exception("{error_exception}", error_exception=e)
-        return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
+    # Single-output config (or no config): keys are at the root level
+    if not outputs_config or any(k in outputs_config for k in ("source", "handler", "raw_result")):
+        tool_result = _process_tool_output(outputs_config, result, tool_call)
+        return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
+
+    # Multi-output config: each key maps to its own sub-config — collect raw values then stringify once
+    tool_result_dict = {
+        output_key: _process_tool_output({**cfg, "raw_result": True}, result, tool_call)
+        for output_key, cfg in outputs_config.items()
+    }
+    return ChatMessage.from_tool(tool_result=_result_to_string(tool_result_dict), origin=tool_call)
 
 
 def _create_tool_result_streaming_chunk(tool_messages: list[ChatMessage], tool_call: ToolCall) -> StreamingChunk:
@@ -349,9 +343,7 @@ class ToolInvoker:
                         raise RuntimeError(
                             f"Tool '{tool_call.tool_name}': failed to merge outputs into state. {e}"
                         ) from e
-                    tool_messages.append(
-                        _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
-                    )
+                    tool_messages.append(_build_tool_result_message(result, tool_call, tool))
 
                 if streaming_callback is not None:
                     streaming_callback(_create_tool_result_streaming_chunk(tool_messages, tool_call))
@@ -421,9 +413,7 @@ class ToolInvoker:
                         raise RuntimeError(
                             f"Tool '{tool_call.tool_name}': failed to merge outputs into state. {e}"
                         ) from e
-                    tool_messages.append(
-                        _build_tool_result_message(result, tool_call, tool, raise_on_failure=self.raise_on_failure)
-                    )
+                    tool_messages.append(_build_tool_result_message(result, tool_call, tool))
 
                 if streaming_callback is not None:
                     await streaming_callback(  # type: ignore[misc]
