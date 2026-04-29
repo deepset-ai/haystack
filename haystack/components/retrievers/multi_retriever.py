@@ -18,11 +18,13 @@ from haystack.utils.misc import _deduplicate_documents
 @component
 class MultiRetriever:
     """
-    A component that runs multiple retrievers in parallel and combines their results.
+    A component that accepts text retrievers and runs them in parallel, combining their results.
 
     > **Note:** This component is experimental and may change or be removed in future releases without prior
     deprecation notice.
 
+    All retrievers must implement the `TextRetriever` protocol. Use `TextEmbeddingRetriever` to wrap an
+    embedding-based retriever before passing it to this component.
 
     Each retriever is queried concurrently using a thread pool.
     The results are deduplicated and returned as a single list of documents.
@@ -85,7 +87,8 @@ class MultiRetriever:
         Create the MultiRetriever component.
 
         :param retrievers:
-            A dictionary mapping names to retriever components to run in parallel.
+            A dictionary mapping names to text retrievers (implementing the `TextRetriever` protocol) to run in
+            parallel.
         :param filters:
             A dictionary of filters to apply when retrieving documents.
         :param top_k:
@@ -147,14 +150,11 @@ class MultiRetriever:
         :param query:
             The query to run the retrievers on.
         :param filters:
-            The filters to apply to the retrievers. If not provided, the filters from the initialization of the
-            component will be used. If those are also not provided, no filters will be applied.
+            Filters to apply. Defaults to the value set at initialization.
         :param top_k:
-            The number of documents to return per retriever. If not provided, the top_k from the initialization of
-            the component will be used.
+            Maximum documents to return per retriever. Defaults to the value set at initialization.
         :param active_retrievers:
-            A list of retriever names to run. If not provided, all retrievers will be run.
-            Names must match the keys provided in the `retrievers` dictionary at initialization.
+            Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
         :returns:
             A dictionary with the keys:
@@ -203,14 +203,11 @@ class MultiRetriever:
         :param query:
             The query to run the retrievers on.
         :param filters:
-            The filters to apply to the retrievers. If not provided, the filters from the initialization of the
-            component will be used. If those are also not provided, no filters will be applied.
+            Filters to apply. Defaults to the value set at initialization.
         :param top_k:
-            The number of documents to return per retriever. If not provided, the top_k from the initialization of
-            the component will be used.
+            Maximum documents to return per retriever. Defaults to the value set at initialization.
         :param active_retrievers:
-            A list of retriever names to run. If not provided, all retrievers will be run.
-            Names must match the keys provided in the `retrievers` dictionary at initialization.
+            Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
         :returns:
             A dictionary with the keys:
