@@ -29,14 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class ToolInvokerError(Exception):
-    """Base exception class for ToolInvoker errors."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-
-
-class ToolNotFoundException(ToolInvokerError):
+class ToolNotFoundException(Exception):
     """Exception raised when a tool is not found in the list of available tools."""
 
     def __init__(self, tool_name: str, available_tools: list[str]) -> None:
