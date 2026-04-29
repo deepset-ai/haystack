@@ -328,7 +328,8 @@ class TestMultiRetriever:
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
         result_bm25 = bm25_retriever.run(query="energy")
-        assert result_bm25_active == result_bm25
+        # Scores differ because MultiRetriever applies join_mode processing (e.g. RRF) even for a single retriever.
+        assert [doc.id for doc in result_bm25_active["documents"]] == [doc.id for doc in result_bm25["documents"]]
 
 
 class TestMultiRetrieverAsync:
@@ -470,7 +471,8 @@ class TestMultiRetrieverAsync:
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")
-        assert result_bm25_active == result_bm25
+        # Scores differ because MultiRetriever applies join_mode processing (e.g. RRF) even for a single retriever.
+        assert [doc.id for doc in result_bm25_active["documents"]] == [doc.id for doc in result_bm25["documents"]]
 
 
 class TestMultiRetrieverExperimental:
