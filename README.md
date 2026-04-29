@@ -144,7 +144,9 @@
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py                   |       53 |       13 |     75% |102, 167, 217-236 |
 | haystack/components/retrievers/multi\_query\_embedding\_retriever.py                |       48 |        3 |     94% |94, 96, 141 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py                     |       42 |        3 |     93% |76, 100, 120 |
+| haystack/components/retrievers/multi\_retriever.py                                  |       85 |        2 |     98% |  132, 135 |
 | haystack/components/retrievers/sentence\_window\_retriever.py                       |       98 |        6 |     94% |139, 249, 269-276, 291-298 |
+| haystack/components/retrievers/text\_embedding\_retriever.py                        |       32 |        2 |     94% |    77, 79 |
 | haystack/components/retrievers/types/\_\_init\_\_.py                                |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                                    |        5 |        0 |    100% |           |
 | haystack/components/routers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
@@ -251,6 +253,7 @@
 | haystack/utils/dataclasses.py                                                       |       22 |        0 |    100% |           |
 | haystack/utils/deserialization.py                                                   |       18 |        0 |    100% |           |
 | haystack/utils/device.py                                                            |      214 |       13 |     94% |237-239, 364, 447, 468, 484, 512-515, 539-540 |
+| haystack/utils/experimental.py                                                      |       14 |        0 |    100% |           |
 | haystack/utils/filters.py                                                           |      108 |        5 |     95% |19-21, 98, 102 |
 | haystack/utils/hf.py                                                                |      198 |       25 |     87% |99, 233-254, 358, 363-366, 416-419 |
 | haystack/utils/http\_client.py                                                      |       14 |        0 |    100% |           |
@@ -262,7 +265,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17084** | **1224** | **93%** |           |
+| **TOTAL**                                                                           | **17215** | **1228** | **93%** |           |
 
 
 ## Setup coverage badge
