@@ -18,6 +18,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import merge_lists
+from haystack.components.agents.tool_invoker import run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -438,8 +439,6 @@ class TestAgent:
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
         }
         assert agent.tool_invoker_kwargs == {"max_workers": 5, "enable_streaming_callback_passthrough": True}
-        assert agent._tool_invoker.max_workers == 5
-        assert agent._tool_invoker.enable_streaming_callback_passthrough is True
 
     def test_from_dict_with_toolset(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -842,11 +841,10 @@ class TestAgent:
 
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
-        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
-        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
+        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as tool_invoker_run_mock:
+            agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
         tool_invoker_run_mock.assert_called_once()
-        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+        assert tool_invoker_run_mock.call_args.kwargs["tools"] == [weather_tool]
 
     def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
         @component
@@ -871,11 +869,10 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             system_prompt="This is a system prompt.",
         )
-        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
-        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
+        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as tool_invoker_run_mock:
+            agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
         tool_invoker_run_mock.assert_called_once()
-        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+        assert tool_invoker_run_mock.call_args.kwargs["tools"] == [weather_tool]
 
     def test_run_not_warmed_up(self, weather_tool):
         """Warmup is run automatically on first run"""

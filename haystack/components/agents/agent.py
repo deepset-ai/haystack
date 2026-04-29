@@ -16,7 +16,7 @@ from haystack.components.agents.state.state import (
     replace_values,
 )
 from haystack.components.agents.state.state_utils import merge_lists
-from haystack.components.agents.tool_invoker import ToolInvoker
+from haystack.components.agents.tool_invoker import run_tool, run_tool_async
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
@@ -329,13 +329,8 @@ class Agent:
             self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
         self._register_prompt_variables()
 
-        # --- Tool invoker ---
-        self._tool_invoker = None
-        if self.tools:
-            self._tool_invoker = ToolInvoker(
-                raise_on_failure=self.raise_on_tool_invocation_failure, **(self.tool_invoker_kwargs or {})
-            )
-        elif type(self).__name__ == "Agent":
+        # --- No-tools warning ---
+        if not self.tools and type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
@@ -400,7 +395,7 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
-            if self._tool_invoker is not None:
+            if self.tools:
                 warm_up_tools(self.tools)
             self._is_warmed_up = True
 
@@ -737,7 +732,7 @@ class Agent:
             step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
             exe_context.state.set("messages", llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+            if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
                 return False
 
@@ -748,8 +743,12 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_messages, exe_context.state = self._tool_invoker.run(
-                messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
+            tool_messages, exe_context.state = run_tool(
+                messages=modified_tool_call_messages,
+                state=exe_context.state,
+                raise_on_failure=self.raise_on_tool_invocation_failure,
+                **(self.tool_invoker_kwargs or {}),
+                **exe_context.tool_invoker_inputs,
             )
             step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
             exe_context.state.set("messages", tool_messages)
@@ -776,7 +775,7 @@ class Agent:
             step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
             exe_context.state.set("messages", llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+            if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
                 return False
 
@@ -787,8 +786,12 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_messages, exe_context.state = await self._tool_invoker.run_async(
-                messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
+            tool_messages, exe_context.state = await run_tool_async(
+                messages=modified_tool_call_messages,
+                state=exe_context.state,
+                raise_on_failure=self.raise_on_tool_invocation_failure,
+                **(self.tool_invoker_kwargs or {}),
+                **exe_context.tool_invoker_inputs,
             )
             step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
             exe_context.state.set("messages", tool_messages)

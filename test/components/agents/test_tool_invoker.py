@@ -13,7 +13,6 @@ import pytest
 from haystack import Document
 from haystack.components.agents.state import State
 from haystack.components.agents.tool_invoker import (
-    ToolInvoker,
     ToolNotFoundException,
     _build_tool_result_message,
     _inject_state_args,
@@ -21,6 +20,8 @@ from haystack.components.agents.tool_invoker import (
     _process_tool_output,
     _result_to_string,
     _validate_and_prepare_tools,
+    run_tool,
+    run_tool_async,
 )
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -118,21 +119,7 @@ def tool_set():
     )
 
 
-@pytest.fixture
-def invoker():
-    return ToolInvoker(raise_on_failure=True)
-
-
-@pytest.fixture
-def faulty_invoker():
-    return ToolInvoker(raise_on_failure=True)
-
-
 class TestToolInvokerCore:
-    def test_init(self):
-        invoker = ToolInvoker()
-        assert invoker.raise_on_failure
-
     def test_validate_and_prepare_tools(self, weather_tool, faulty_tool):
         result = _validate_and_prepare_tools([weather_tool, faulty_tool])
         assert result == {"weather_tool": weather_tool, "faulty_tool": faulty_tool}
@@ -222,8 +209,8 @@ class TestToolInvokerCore:
         assert args["state"] is state
 
 
-class TestToolInvokerRun:
-    def test_run_with_streaming_callback_finish_reason(self, invoker, weather_tool):
+class TestRunTool:
+    def test_run_with_streaming_callback_finish_reason(self, weather_tool):
         streaming_chunks = []
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -232,11 +219,10 @@ class TestToolInvokerRun:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = invoker.run(
+        tool_messages, _ = run_tool(
             messages=[message], state=State(schema={}), tools=[weather_tool], streaming_callback=streaming_callback
         )
         assert len(tool_messages) == 1
-
         assert len(streaming_chunks) >= 2
         final_chunk = streaming_chunks[-1]
         assert final_chunk.finish_reason == "tool_call_results"
@@ -250,16 +236,13 @@ class TestToolInvokerRun:
         async def streaming_callback(chunk: StreamingChunk) -> None:
             streaming_chunks.append(chunk)
 
-        tool_invoker = ToolInvoker(raise_on_failure=True)
-
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = await tool_invoker.run_async(
+        tool_messages, _ = await run_tool_async(
             messages=[message], state=State(schema={}), tools=[weather_tool], streaming_callback=streaming_callback
         )
         assert len(tool_messages) == 1
-
         assert len(streaming_chunks) >= 2
         final_chunk = streaming_chunks[-1]
         assert final_chunk.finish_reason == "tool_call_results"
@@ -273,10 +256,9 @@ class TestToolInvokerRun:
             name="chat_generator_tool",
             description="A tool that generates chat messages using OpenAI's GPT model.",
         )
-        invoker = ToolInvoker(enable_streaming_callback_passthrough=True)
         with patch("haystack.components.generators.chat.OpenAIChatGenerator.run") as mock_run:
             mock_run.return_value = {"replies": [ChatMessage.from_assistant("Hello! How can I help you?")]}
-            invoker.run(
+            run_tool(
                 messages=[
                     ChatMessage.from_assistant(
                         tool_calls=[
@@ -291,25 +273,26 @@ class TestToolInvokerRun:
                 state=State(schema={}),
                 tools=[llm_tool],
                 streaming_callback=print_streaming_chunk,
+                enable_streaming_callback_passthrough=True,
             )
             mock_run.assert_called_once_with(
                 messages=[ChatMessage.from_user(text="Hello!")], streaming_callback=print_streaming_chunk
             )
 
-    def test_run_no_messages(self, invoker, weather_tool):
-        tool_messages, state = invoker.run(messages=[], state=State(schema={}), tools=[weather_tool])
+    def test_run_no_messages(self, weather_tool):
+        tool_messages, state = run_tool(messages=[], state=State(schema={}), tools=[weather_tool])
         assert tool_messages == []
 
-    def test_run_no_tool_calls(self, invoker, weather_tool):
+    def test_run_no_tool_calls(self, weather_tool):
         user_message = ChatMessage.from_user(text="Hello!")
         assistant_message = ChatMessage.from_assistant(text="How can I help you?")
 
-        tool_messages, _ = invoker.run(
+        tool_messages, _ = run_tool(
             messages=[user_message, assistant_message], state=State(schema={}), tools=[weather_tool]
         )
         assert tool_messages == []
 
-    def test_run_multiple_tool_calls(self, invoker, weather_tool):
+    def test_run_multiple_tool_calls(self, weather_tool):
         tool_calls = [
             ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
             ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
@@ -317,16 +300,14 @@ class TestToolInvokerRun:
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
-        tool_messages, _ = invoker.run(messages=[message], state=State(schema={}), tools=[weather_tool])
+        tool_messages, _ = run_tool(messages=[message], state=State(schema={}), tools=[weather_tool])
         assert len(tool_messages) == 3
 
         for i, tool_message in enumerate(tool_messages):
             assert isinstance(tool_message, ChatMessage)
             assert tool_message.is_from(ChatRole.TOOL)
-
             assert tool_message.tool_call_results
             tool_call_result = tool_message.tool_call_result
-
             assert isinstance(tool_call_result, ToolCallResult)
             assert not tool_call_result.error
             assert tool_call_result.origin == tool_calls[i]
@@ -338,31 +319,22 @@ class TestToolInvokerRun:
             parameters={"type": "object", "properties": {}},
             function=lambda: "Hello, world!",
         )
-        invoker = ToolInvoker()
-
         tool_call = ToolCall(tool_name="hello_world", arguments={})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = invoker.run(messages=[tool_call_message], state=State(schema={}), tools=[hello_world_tool])
+        tool_messages, _ = run_tool(messages=[tool_call_message], state=State(schema={}), tools=[hello_world_tool])
         assert len(tool_messages) == 1
 
-        tool_message = tool_messages[0]
-        assert isinstance(tool_message, ChatMessage)
-        assert tool_message.is_from(ChatRole.TOOL)
-
-        assert tool_message.tool_call_results
-        tool_call_result = tool_message.tool_call_result
-
+        tool_call_result = tool_messages[0].tool_call_result
         assert isinstance(tool_call_result, ToolCallResult)
         assert not tool_call_result.error
         assert tool_call_result.result == "Hello, world!"
 
     def test_run_with_tools(self, weather_tool):
-        invoker = ToolInvoker()
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = invoker.run(messages=[message], state=State(schema={}), tools=[weather_tool])
+        tool_messages, _ = run_tool(messages=[message], state=State(schema={}), tools=[weather_tool])
 
         tool_call_result = tool_messages[0].tool_call_result
         assert not tool_call_result.error
@@ -371,11 +343,10 @@ class TestToolInvokerRun:
 
     @pytest.mark.asyncio
     async def test_run_async_with_tools(self, weather_tool):
-        invoker = ToolInvoker()
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = await invoker.run_async(messages=[message], state=State(schema={}), tools=[weather_tool])
+        tool_messages, _ = await run_tool_async(messages=[message], state=State(schema={}), tools=[weather_tool])
         tool_call_result = tool_messages[0].tool_call_result
         assert not tool_call_result.error
         assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
@@ -407,7 +378,6 @@ class TestToolInvokerRun:
             function=function_1,
             outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
         )
-
         tool_2 = Tool(
             name="state_tool_2",
             description="A tool that updates state counter",
@@ -415,7 +385,6 @@ class TestToolInvokerRun:
             function=function_2,
             outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
         )
-
         tool_3 = Tool(
             name="state_tool_3",
             description="A tool that updates state counter",
@@ -424,8 +393,6 @@ class TestToolInvokerRun:
             outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
         )
 
-        invoker = ToolInvoker(raise_on_failure=True)
-
         state = State(schema={"counter": {"type": int}, "last_tool": {"type": str}})
         tool_calls = [
             ToolCall(tool_name="state_tool_1", arguments={}),
@@ -433,13 +400,12 @@ class TestToolInvokerRun:
             ToolCall(tool_name="state_tool_3", arguments={}),
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
-        invoker.run(messages=[message], state=state, tools=[tool_1, tool_2, tool_3])
+        run_tool(messages=[message], state=state, tools=[tool_1, tool_2, tool_3])
 
         assert len(execution_log) == 3
         assert "tool_1_executed" in execution_log
         assert "tool_2_executed" in execution_log
         assert "tool_3_executed" in execution_log
-
         assert state.has("counter")
         assert state.has("last_tool")
         assert state.get("counter") in [1, 2, 3]
@@ -472,7 +438,6 @@ class TestToolInvokerRun:
             function=function_1,
             outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
         )
-
         tool_2 = Tool(
             name="state_tool_2",
             description="A tool that updates state counter",
@@ -480,7 +445,6 @@ class TestToolInvokerRun:
             function=function_2,
             outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
         )
-
         tool_3 = Tool(
             name="state_tool_3",
             description="A tool that updates state counter",
@@ -489,8 +453,6 @@ class TestToolInvokerRun:
             outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
         )
 
-        invoker = ToolInvoker(raise_on_failure=True)
-
         state = State(schema={"counter": {"type": int}, "last_tool": {"type": str}})
         tool_calls = [
             ToolCall(tool_name="state_tool_1", arguments={}),
@@ -498,19 +460,18 @@ class TestToolInvokerRun:
             ToolCall(tool_name="state_tool_3", arguments={}),
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
-        await invoker.run_async(messages=[message], state=state, tools=[tool_1, tool_2, tool_3])
+        await run_tool_async(messages=[message], state=state, tools=[tool_1, tool_2, tool_3])
 
         assert len(execution_log) == 3
         assert "tool_1_executed" in execution_log
         assert "tool_2_executed" in execution_log
         assert "tool_3_executed" in execution_log
-
         assert state.has("counter")
         assert state.has("last_tool")
         assert state.get("counter") in [1, 2, 3]
         assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]
 
-    def test_call_invoker_two_subsequent_run_calls(self, invoker: ToolInvoker, weather_tool):
+    def test_two_subsequent_run_tool_calls(self, weather_tool):
         tool_calls = [
             ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
             ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
@@ -524,18 +485,18 @@ class TestToolInvokerRun:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        tool_messages_1, _ = invoker.run(
+        tool_messages_1, _ = run_tool(
             messages=[message], state=State(schema={}), tools=[weather_tool], streaming_callback=streaming_callback
         )
         assert len(tool_messages_1) == 3
 
-        tool_messages_2, _ = invoker.run(
+        tool_messages_2, _ = run_tool(
             messages=[message], state=State(schema={}), tools=[weather_tool], streaming_callback=streaming_callback
         )
         assert len(tool_messages_2) == 3
 
     @pytest.mark.asyncio
-    async def test_call_invoker_two_subsequent_run_async_calls(self, invoker: ToolInvoker, weather_tool):
+    async def test_two_subsequent_run_tool_async_calls(self, weather_tool):
         tool_calls = [
             ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
             ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
@@ -549,12 +510,12 @@ class TestToolInvokerRun:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        tool_messages_1, _ = await invoker.run_async(
+        tool_messages_1, _ = await run_tool_async(
             messages=[message], state=State(schema={}), tools=[weather_tool], streaming_callback=streaming_callback
         )
         assert len(tool_messages_1) == 3
 
-        tool_messages_2, _ = await invoker.run_async(
+        tool_messages_2, _ = await run_tool_async(
             messages=[message], state=State(schema={}), tools=[weather_tool], streaming_callback=streaming_callback
         )
         assert len(tool_messages_2) == 3
@@ -572,12 +533,11 @@ class TestToolInvokerRun:
             parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
             function=function_with_state,
         )
-        invoker = ToolInvoker()
         state = State(schema={"city": {"type": str}})
 
         tool_call = ToolCall(tool_name="state_tool", arguments={"city": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        tool_messages, _ = invoker.run(messages=[message], state=state, tools=[state_tool])
+        tool_messages, _ = run_tool(messages=[message], state=state, tools=[state_tool])
 
         assert len(tool_messages) == 1
         assert not tool_messages[0].tool_call_results[0].error
@@ -597,52 +557,50 @@ class TestToolInvokerRun:
             parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
             function=function_with_state,
         )
-        invoker = ToolInvoker()
         state = State(schema={"city": {"type": str}})
 
         tool_call = ToolCall(tool_name="state_tool", arguments={"city": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        tool_messages, _ = await invoker.run_async(messages=[message], state=state, tools=[state_tool])
+        tool_messages, _ = await run_tool_async(messages=[message], state=state, tools=[state_tool])
 
         assert len(tool_messages) == 1
         assert not tool_messages[0].tool_call_results[0].error
         assert received_state["state"] is state
 
 
-class TestToolInvokerErrorHandling:
-    def test_tool_not_found_error(self, invoker, weather_tool):
+class TestRunToolErrorHandling:
+    def test_tool_not_found_error(self, weather_tool):
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
         with pytest.raises(ToolNotFoundException):
-            invoker.run(messages=[tool_call_message], state=State(schema={}), tools=[weather_tool])
+            run_tool(messages=[tool_call_message], state=State(schema={}), tools=[weather_tool])
 
     def test_tool_not_found_does_not_raise_exception(self, weather_tool):
-        invoker = ToolInvoker(raise_on_failure=False)
-
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = invoker.run(messages=[tool_call_message], state=State(schema={}), tools=[weather_tool])
+        tool_messages, _ = run_tool(
+            messages=[tool_call_message], state=State(schema={}), tools=[weather_tool], raise_on_failure=False
+        )
         tool_message = tool_messages[0]
-
         assert tool_message.tool_call_results[0].error
         assert "not found" in tool_message.tool_call_results[0].result
 
-    def test_tool_invocation_error(self, faulty_invoker, faulty_tool):
+    def test_tool_invocation_error(self, faulty_tool):
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
         with pytest.raises(ToolInvocationError):
-            faulty_invoker.run(messages=[tool_call_message], state=State(schema={}), tools=[faulty_tool])
+            run_tool(messages=[tool_call_message], state=State(schema={}), tools=[faulty_tool])
 
     def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool):
-        faulty_invoker = ToolInvoker(raise_on_failure=False)
-
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
-        tool_messages, _ = faulty_invoker.run(messages=[tool_call_message], state=State(schema={}), tools=[faulty_tool])
+        tool_messages, _ = run_tool(
+            messages=[tool_call_message], state=State(schema={}), tools=[faulty_tool], raise_on_failure=False
+        )
         tool_message = tool_messages[0]
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
@@ -691,7 +649,6 @@ class TestToolInvokerErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_message = _build_tool_result_message("something", tool_call, weather_tool)
-
         assert not tool_message.tool_call_results[0].error
         assert tool_message.tool_call_results[0].result == "something"
 
@@ -701,13 +658,13 @@ class TestToolInvokerErrorHandling:
                 raise ValueError("State set operation failed")
 
         state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(raise_on_failure=False)
-
         tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
         with pytest.raises(RuntimeError, match="weather_tool"):
-            invoker.run(messages=[message], state=state, tools=[weather_tool_with_outputs_to_state])
+            run_tool(
+                messages=[message], state=state, tools=[weather_tool_with_outputs_to_state], raise_on_failure=False
+            )
 
     @pytest.mark.asyncio
     async def test_run_async_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
@@ -716,13 +673,13 @@ class TestToolInvokerErrorHandling:
                 raise ValueError("State set operation failed")
 
         state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(raise_on_failure=False)
-
         tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
         with pytest.raises(RuntimeError, match="weather_tool"):
-            await invoker.run_async(messages=[message], state=state, tools=[weather_tool_with_outputs_to_state])
+            await run_tool_async(
+                messages=[message], state=state, tools=[weather_tool_with_outputs_to_state], raise_on_failure=False
+            )
 
 
 class TestToolInvokerUtilities:
@@ -888,13 +845,11 @@ class TestToolInvokerUtilities:
 
         weather_tool.outputs_to_string = {"handler": handler, "raw_result": True}
 
-        invoker = ToolInvoker()
-
         message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
         )
 
-        tool_messages, _ = invoker.run(messages=[message], state=State(schema={}), tools=[weather_tool])
+        tool_messages, _ = run_tool(messages=[message], state=State(schema={}), tools=[weather_tool])
 
         assert tool_messages[0].tool_call_results[0].result == [
             TextContent(text="weather: mostly sunny"),

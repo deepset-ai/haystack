@@ -137,7 +137,7 @@ class TestAgent:
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
         assert len(deserialized_agent.tools) == 1
         assert deserialized_agent.tools[0].name == "addition_tool"
-        assert isinstance(deserialized_agent._tool_invoker, type(agent._tool_invoker))
+        assert deserialized_agent.tool_invoker_kwargs == agent.tool_invoker_kwargs
         assert isinstance(deserialized_agent._confirmation_strategies["addition_tool"], BlockingConfirmationStrategy)
         assert isinstance(
             deserialized_agent._confirmation_strategies["addition_tool"].confirmation_policy, NeverAskPolicy
