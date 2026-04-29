@@ -340,6 +340,7 @@
             "pipeline-components/extractors/llmdocumentcontentextractor",
             "pipeline-components/extractors/llmmetadataextractor",
             "pipeline-components/extractors/namedentityextractor",
+            "pipeline-components/extractors/presidioentityextractor",
             "pipeline-components/extractors/regextextextractor"
           ]
         },
@@ -369,8 +370,7 @@
               "label": "Guides to Generators",
               "items": [
                 "pipeline-components/generators/guides-to-generators/choosing-the-right-generator",
-                "pipeline-components/generators/guides-to-generators/function-calling",
-                "pipeline-components/generators/guides-to-generators/generators-vs-chat-generators"
+                "pipeline-components/generators/guides-to-generators/function-calling"
               ]
             },
             "pipeline-components/generators/amazonbedrockchatgenerator",
@@ -448,6 +448,10 @@
           },
           "items": [
             "pipeline-components/preprocessors/chinesedocumentsplitter",
+            "pipeline-components/preprocessors/chonkierecursivedocumentsplitter",
+            "pipeline-components/preprocessors/chonkiesemanticdocumentsplitter",
+            "pipeline-components/preprocessors/chonkiesentencedocumentsplitter",
+            "pipeline-components/preprocessors/chonkietokendocumentsplitter",
             "pipeline-components/preprocessors/csvdocumentcleaner",
             "pipeline-components/preprocessors/csvdocumentsplitter",
             "pipeline-components/preprocessors/documentcleaner",
@@ -456,7 +460,9 @@
             "pipeline-components/preprocessors/embeddingbaseddocumentsplitter",
             "pipeline-components/preprocessors/hierarchicaldocumentsplitter",
             "pipeline-components/preprocessors/recursivesplitter",
-            "pipeline-components/preprocessors/textcleaner"
+            "pipeline-components/preprocessors/textcleaner",
+            "pipeline-components/preprocessors/presidiodocumentcleaner",
+            "pipeline-components/preprocessors/presidiotextcleaner"
           ]
         },
         {

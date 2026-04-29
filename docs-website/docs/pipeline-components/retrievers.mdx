@@ -90,6 +90,18 @@ Some hybrid Retrievers are available in Haystack, such as [`QdrantHybridRetrieve
 If your preferred Document Store does not have a hybrid Retriever available or if you want to customize the behavior even further, check out the hybrid retrieval pipelines [tutorial](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval).
 :::
 
+##### Multi-Retriever
+
+[`MultiRetriever`](retrievers/multiretriever.mdx) composes any number of text retrievers into a single component, running them in parallel and deduplicating results. Unlike wiring individual retrievers in a pipeline, `MultiRetriever` encapsulates all retrieval strategies in one component and lets you enable or disable specific retrievers at runtime using the `active_retrievers` parameter.
+
+Use [`TextEmbeddingRetriever`](retrievers/textembeddingretriever.mdx) to wrap an embedding-based retriever so it can be used inside `MultiRetriever`.
+
+:::warning[Experimental]
+
+`MultiRetriever` is experimental and may change or be removed in future releases without prior deprecation notice.
+
+:::
+
 ##### Multi-Query Retrieval
 
 Multi-query retrieval improves recall by expanding a single user query into multiple semantically similar queries. Each query variation can capture different aspects of the user's intent and match documents that use different terminology.
@@ -156,6 +168,7 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | [FilterRetriever](retrievers/filterretriever.mdx)                                 | A special Retriever to be used with any Document Store to get the Documents that match specific filters.                        |
 | [MultiQueryEmbeddingRetriever](retrievers/multiqueryembeddingretriever.mdx)       | Retrieves documents using multiple queries in parallel with an embedding-based Retriever.                                       |
 | [MultiQueryTextRetriever](retrievers/multiquerytextretriever.mdx)                 | Retrieves documents using multiple queries in parallel with a text-based Retriever.                                             |
+| [MultiRetriever](retrievers/multiretriever.mdx)                                   | Runs multiple text retrievers in parallel and combines their deduplicated results. Experimental.                                 |
 | [MongoDBAtlasEmbeddingRetriever](retrievers/mongodbatlasembeddingretriever.mdx)   | An embedding Retriever compatible with the MongoDB Atlas Document Store.                                                        |
 | [OpenSearchBM25Retriever](retrievers/opensearchbm25retriever.mdx)                 | A keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.                            |
 | [OpenSearchEmbeddingRetriever](retrievers/opensearchembeddingretriever.mdx)       | An embedding-based Retriever compatible with the OpenSearch Document Store.                                                     |
@@ -168,6 +181,7 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | [QdrantHybridRetriever](retrievers/qdranthybridretriever.mdx)                     | A Retriever based both on dense and sparse embeddings, compatible with the Qdrant Document Store.                               |
 | [SentenceWindowRetriever](retrievers/sentencewindowretrieval.mdx)                   | Retrieves neighboring sentences around relevant sentences to get the full context.                                              |
 | [SnowflakeTableRetriever](retrievers/snowflaketableretriever.mdx)                   | Connects to a Snowflake database to execute an SQL query.                                                                       |
+| [TextEmbeddingRetriever](retrievers/textembeddingretriever.mdx)                   | Wraps an embedding-based retriever with a text embedder into a single component that accepts a text query.                      |
 | [WeaviateBM25Retriever](retrievers/weaviatebm25retriever.mdx)                     | A keyword-based Retriever that fetches Documents matching a query from the Weaviate Document Store.                             |
 | [WeaviateEmbeddingRetriever](retrievers/weaviateembeddingretriever.mdx)           | An embedding Retriever compatible with the Weaviate Document Store.                                                             |
 | [WeaviateHybridRetriever](retrievers/weaviatehybridretriever.mdx)                   | Combines BM25 keyword search and vector similarity to fetch documents from the Weaviate Document Store.                         |
