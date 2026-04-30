@@ -233,6 +233,16 @@ class OpenAPIServiceToFunctions:
 
         return parsed_schema
 
+    @staticmethod
+    def _no_external_ref_loader(uri: str, **_: Any) -> Any:
+        # In-document refs (those starting with "#") are resolved by jsonref without invoking
+        # the loader. Anything else points outside the document (file://, http(s)://, ...) and
+        # is rejected to prevent local file disclosure and outbound requests during parsing.
+        raise RuntimeError(
+            f"Refusing to resolve external $ref '{uri}' while parsing OpenAPI spec. "
+            "Only in-document JSON-pointer references (starting with '#') are supported."
+        )
+
     def _parse_openapi_spec(self, content: str) -> dict[str, Any]:
         """
         Parses OpenAPI specification content, supporting both JSON and YAML formats.
@@ -243,7 +253,7 @@ class OpenAPIServiceToFunctions:
         open_api_spec_content = None
         try:
             open_api_spec_content = json.loads(content)
-            return jsonref.replace_refs(open_api_spec_content)
+            return jsonref.replace_refs(open_api_spec_content, loader=self._no_external_ref_loader, proxies=False)
         except json.JSONDecodeError as json_error:
             # heuristic to confirm that the content is likely malformed JSON
             if content.strip().startswith(("{", "[")):
@@ -258,4 +268,4 @@ class OpenAPIServiceToFunctions:
             raise RuntimeError(error_message, content) from e
 
         # Replace references in the object with their resolved values, if any
-        return jsonref.replace_refs(open_api_spec_content)
+        return jsonref.replace_refs(open_api_spec_content, loader=self._no_external_ref_loader, proxies=False)

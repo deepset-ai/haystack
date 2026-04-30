@@ -1,0 +1,9 @@
+---
+enhancements:
+  - |
+    `OpenAPIServiceToFunctions` now resolves only in-document JSON-pointer
+    references (those starting with `#`) when parsing OpenAPI specifications.
+    External `$ref` URIs (for example `file://` or `http(s)://`) are no longer
+    fetched during parsing; specs that depend on them will raise a
+    `RuntimeError`. This avoids unintended filesystem access or outbound
+    HTTP requests when the spec content is not fully trusted.
