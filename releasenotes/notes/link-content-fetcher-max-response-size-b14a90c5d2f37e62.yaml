@@ -1,0 +1,11 @@
+---
+enhancements:
+  - |
+    `LinkContentFetcher` now caps the size of fetched response bodies. A new
+    `max_response_size` constructor parameter (default: 10 MiB) bounds the
+    number of bytes read from each URL; responses that advertise a larger
+    `Content-Length`, or that stream more bytes than the cap before EOF, are
+    aborted with an `httpx.RequestError`. Pass `max_response_size=None` to
+    restore the previous unbounded behavior. Both the synchronous and
+    asynchronous fetch paths now stream the response and stop reading as
+    soon as the cap is exceeded.
