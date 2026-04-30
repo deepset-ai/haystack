@@ -1,0 +1,4 @@
+---
+preview:
+  - Adds `PerplexityWebSearch` component that uses the Perplexity Search API to retrieve web results.
+    See https://docs.perplexity.ai/api-reference/search-post for more information.
