@@ -34,7 +34,7 @@ jobs:
         python-version: "${{ env.PYTHON_VERSION }}"
 
     - name: Install Hatch
-      run: pip install hatch==${{ env.HATCH_VERSION }}
+      run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to P1D
 
     - name: Run tests
       run: hatch run e2e:test

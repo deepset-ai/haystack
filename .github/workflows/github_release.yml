@@ -27,7 +27,7 @@ jobs:
       - name: Install reno
         run: |
           python -m pip install --upgrade pip
-          pip install "reno<5"
+          pip install "reno<5" --uploaded-prior-to P1D
 
       # Remove next version rc0 tag in the CI environment to prevent reno from assigning notes to future releases.
       # This ensures release notes are correctly aggregated for the current version.
