@@ -78,7 +78,9 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Ruff - check format and linting
         run: hatch run fmt-check
@@ -97,7 +99,9 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
@@ -125,6 +129,7 @@ jobs:
         id: hatch
         shell: bash
         run: |
+          python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
@@ -177,6 +182,7 @@ jobs:
         id: hatch
         if: steps.files.outputs.any_changed == 'true'
         run: |
+          python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
@@ -202,6 +208,7 @@ jobs:
         id: hatch
         shell: bash
         run: |
+          python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
@@ -228,6 +235,7 @@ jobs:
         id: hatch
         shell: bash
         run: |
+          python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
@@ -260,6 +268,7 @@ jobs:
         id: hatch
         shell: bash
         run: |
+          python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 

@@ -30,7 +30,9 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Generate API reference for Docusaurus
         run: hatch run docs
