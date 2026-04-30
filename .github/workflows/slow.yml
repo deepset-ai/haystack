@@ -139,7 +139,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Run Tika
         if: matrix.os == 'ubuntu-latest'
