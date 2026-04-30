@@ -613,6 +613,7 @@ __init__(
     local_files_only: bool = False,
     meta_fields_to_embed: list[str] | None = None,
     meta_data_separator: str = "\n",
+    score_threshold: float | None = None,
 ) -> None
 ```
 
@@ -635,6 +636,8 @@ Creates an instance of the 'FastembedRanker'.
   with the document content for reranking.
 - **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
   to the Document content.
+- **score_threshold** (<code>float | None</code>) – If provided, only documents with a score above the threshold are returned.
+  Applied after `top_k`, so the output may contain fewer than `top_k` documents.
 
 #### to_dict
 
