@@ -1,9 +1,0 @@
----
-security:
-  - |
-    Haystack's uv configuration now excludes packages published within the last
-    24 hours when resolving dependencies, reducing exposure to supply chain
-    attacks via freshly compromised packages. If you need to install a dependency
-    that was published less than 24 hours ago, you can override this by running
-    ``uv sync --exclude-newer="0 days"`` or
-    ``uv pip install <package> --exclude-newer="0 days"``.
