@@ -877,7 +877,10 @@ __init__(
     retrievers: dict[str, TextRetriever],
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
-    max_workers: int = 4
+    max_workers: int = 4,
+    join_mode: Literal[
+        "concatenate", "reciprocal_rank_fusion"
+    ] = "reciprocal_rank_fusion"
 ) -> None
 ```
 
@@ -890,6 +893,9 @@ Create the MultiRetriever component.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary of filters to apply when retrieving documents.
 - **top_k** (<code>int</code>) – The maximum number of documents to return per retriever.
 - **max_workers** (<code>int</code>) – The maximum number of threads to use for parallel retrieval.
+- **join_mode** (<code>Literal['concatenate', 'reciprocal_rank_fusion']</code>) – How to merge results from multiple retrievers. Available modes:
+- `concatenate`: Combines all results into a single list and deduplicates.
+- `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
 
 #### warm_up
 
