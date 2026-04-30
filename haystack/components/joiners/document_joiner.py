@@ -118,7 +118,7 @@ class DocumentJoiner:
         join_mode_functions = {
             JoinMode.CONCATENATE: DocumentJoiner._concatenate,
             JoinMode.MERGE: self._merge,
-            JoinMode.RECIPROCAL_RANK_FUSION: self._reciprocal_rank_fusion,
+            JoinMode.RECIPROCAL_RANK_FUSION: self._rrf,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION: DocumentJoiner._distribution_based_rank_fusion,
         }
         self.join_mode_function = join_mode_functions[join_mode]
@@ -194,7 +194,7 @@ class DocumentJoiner:
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
 
-    def _reciprocal_rank_fusion(self, document_lists: list[list[Document]]) -> list[Document]:
+    def _rrf(self, document_lists: list[list[Document]]) -> list[Document]:
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
         """
