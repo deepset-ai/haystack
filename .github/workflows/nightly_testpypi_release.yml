@@ -36,7 +36,7 @@ jobs:
           echo "Building haystack-ai version: ${NIGHTLY_VERSION}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to P1D
+        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Build Haystack
         run: hatch build

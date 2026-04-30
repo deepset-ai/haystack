@@ -38,7 +38,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to P1D
+        run: pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Generate API reference for Docusaurus
         run: hatch run docs
@@ -46,7 +46,7 @@ jobs:
       - name: Install base dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests toml --uploaded-prior-to P1D
+          pip install requests toml --uploaded-prior-to=P1D
 
       - name: Run snippet tests (verbose)
         shell: bash
