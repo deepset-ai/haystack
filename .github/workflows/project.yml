@@ -4,24 +4,8 @@ on:
   issues:
     types:
       - opened
-      - labeled
 
 jobs:
-  add-bug-label:
-    name: Add bug label on Bug type issues
-    runs-on: ubuntu-slim
-    if: >
-      github.event.issue.type.name == 'Bug' &&
-      (
-        github.event.action == 'opened' ||
-        contains(fromJSON('["P0", "P1", "P2", "P3"]'), github.event.label.name)
-      )
-    steps:
-      - name: Add bug label
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh issue edit ${{ github.event.issue.html_url }} --add-label "bug"
-
   add-to-project:
     name: Add new issues to project for triage
     runs-on: ubuntu-slim
