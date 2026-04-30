@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    `_extract_image_sources_info` (used by image-aware converters and
+    extractors such as `LLMDocumentContentExtractor` and
+    `DocumentToImageContent`) now treats the per-document `file_path`
+    metadata field as untrusted. Absolute paths are rejected and relative
+    paths are resolved and verified to remain inside the configured
+    `root_path`; values that escape via `..` segments raise a `ValueError`
+    instead of silently reading files outside the directory.

@@ -239,6 +239,7 @@ def _extract_image_sources_info(
         invalid, the MIME type is not supported, or the page number is missing for a PDF document.
     """
     images_source_info: list[_ImageSourceInfo] = []
+    resolved_root: Path | None = Path(root_path).resolve() if root_path else None
     for doc in documents:
         file_path = doc.meta.get(file_path_meta_field)
         if file_path is None:
@@ -247,7 +248,21 @@ def _extract_image_sources_info(
                 f" Please ensure that the documents you are trying to convert have this key set."
             )
 
-        resolved_file_path = Path(root_path, file_path)
+        # Document metadata is treated as untrusted: it commonly originates from upstream
+        # converters or user uploads. Reject absolute paths and resolve against root_path so
+        # ``../`` segments cannot escape the configured directory.
+        candidate = Path(file_path)
+        if candidate.is_absolute():
+            raise ValueError(
+                f"Document with ID '{doc.id}' has an absolute file path '{file_path}' in metadata; "
+                f"only paths relative to root_path are supported."
+            )
+        resolved_file_path = (resolved_root / candidate).resolve() if resolved_root else candidate.resolve()
+        if resolved_root is not None and resolved_root != resolved_file_path and resolved_root not in resolved_file_path.parents:
+            raise ValueError(
+                f"Document with ID '{doc.id}' resolves to '{resolved_file_path}', which is outside the "
+                f"configured root_path '{resolved_root}'."
+            )
         if not resolved_file_path.is_file():
             raise ValueError(
                 f"Document with ID '{doc.id}' has an invalid file path '{resolved_file_path}'. "
