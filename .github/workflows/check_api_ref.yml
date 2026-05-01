@@ -65,7 +65,9 @@ jobs:
 
       - name: Install Hatch
         if: steps.changed.outputs.needs_check == 'true'
-        run: pip install hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch --uploaded-prior-to=P1D
 
       - name: Generate API references
         if: steps.changed.outputs.needs_check == 'true'

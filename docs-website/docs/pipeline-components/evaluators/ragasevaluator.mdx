@@ -19,6 +19,7 @@ This component evaluates Haystack pipelines using LLM-based metrics. It supports
 | **Output variables** | `result`: A dictionary mapping metric names to their `MetricResult`. |
 | **API reference** | [Ragas](/reference/integrations-ragas) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ragas |
+| **Package name** | `ragas-haystack` |
 
 </div>
 
@@ -53,21 +54,23 @@ To use the `RagasEvaluator` you need to follow these steps:
 
 #### Evaluate Answer Relevancy
 
-To create an answer relevancy evaluation pipeline:
+To create an answer relevancy evaluation pipeline (note that the `OPENAI_API_KEY` environment variable must be set for this example to work):
 
 ```python
 from haystack import Pipeline
 from haystack_integrations.components.evaluators.ragas import RagasEvaluator
 from openai import AsyncOpenAI
 from ragas.llms import llm_factory
+from ragas.embeddings import embedding_factory
 from ragas.metrics.collections import AnswerRelevancy
 
 client = AsyncOpenAI()
 llm = llm_factory("gpt-4o-mini", client=client)
+embeddings = embedding_factory("openai", model="text-embedding-3-small", client=client)
 
 pipeline = Pipeline()
 evaluator = RagasEvaluator(
-    ragas_metrics=[AnswerRelevancy(llm=llm)],
+    ragas_metrics=[AnswerRelevancy(llm=llm, embeddings=embeddings)],
 )
 pipeline.add_component("evaluator", evaluator)
 ```
