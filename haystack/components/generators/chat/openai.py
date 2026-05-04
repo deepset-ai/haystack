@@ -554,9 +554,11 @@ def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Recursively transform a JSON schema to be OpenAI strict-mode compliant.
 
-    Sets ``additionalProperties: false`` on all objects and ensures every defined
-    property is listed in ``required``.  Walks into nested properties, ``$defs``,
-    array ``items``, and ``anyOf``/``oneOf``/``allOf`` combinators.
+    Sets `additionalProperties: false` on all objects and ensures every defined
+    property is listed in `required`. Walks into nested properties, `$defs`,
+    array `items`, and `anyOf`/`oneOf`/`allOf` combinators.
+
+    See https://platform.openai.com/docs/guides/structured-outputs#supported-schemas
     """
     schema = {**schema}
 
