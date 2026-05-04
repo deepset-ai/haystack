@@ -94,6 +94,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import OpenAIChatGenerator
 
 agent = Agent(
+    system_prompt="You are a helpful assistant that can do math using the tools at your disposal.",
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=math_toolset,
 )
