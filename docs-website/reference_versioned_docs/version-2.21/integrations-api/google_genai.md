@@ -100,15 +100,20 @@ Creates an GoogleGenAIDocumentEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
   The default model is `gemini-embedding-001`.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text. It can be used to specify a task type for
+  `gemini-embedding-2`. For available task types, see
+  [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
 - **batch_size** (<code>int</code>) – Number of documents to embed at once.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
-- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
-  If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
-  For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration.
+  See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
+  for the available options.
+  Specifying task types in `config` does not take effect for `gemini-embedding-2`.
+  See [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types) for more
+  information.
 
 #### to_dict
 
@@ -252,7 +257,7 @@ __init__(
     file_path_meta_field: str = "file_path",
     root_path: str | None = None,
     image_size: tuple[int, int] | None = None,
-    model: str = "gemini-embedding-2-preview",
+    model: str = "gemini-embedding-2",
     batch_size: int = 6,
     progress_bar: bool = True,
     config: dict[str, Any] | None = None
@@ -284,11 +289,10 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   See [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#supported-modalities) for
   more information.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
-- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration.
   You can for example set the output dimensionality of the embedding: `{"output_dimensionality": 768}`.
-  It also allows customizing the task type. If the task type is not specified, it defaults to
-  `{"task_type": "RETRIEVAL_DOCUMENT"}`.
-  For more information, see the [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+  See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
+  for the available options.
 
 #### run
 
@@ -420,11 +424,16 @@ Creates an GoogleGenAITextEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
   The default model is `gemini-embedding-001`.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text to embed.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text. It can be used to specify a task type for
+  `gemini-embedding-2`. For available task types, see
+  [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 - **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
-- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
-  If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
-  For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration.
+  See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
+  for the available options.
+  Specifying task types in `config` does not take effect for `gemini-embedding-2`.
+  See [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types) for more
+  information.
 
 #### to_dict
 

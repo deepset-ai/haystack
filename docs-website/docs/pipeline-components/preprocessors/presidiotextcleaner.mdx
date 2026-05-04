@@ -1,0 +1,125 @@
+---
+title: "PresidioTextCleaner"
+id: presidiotextcleaner
+slug: "/presidiotextcleaner"
+description: "Use `PresidioTextCleaner` to replace PII in plain strings, powered by Microsoft Presidio."
+---
+
+# PresidioTextCleaner
+
+`PresidioTextCleaner` replaces personally identifiable information (PII) in plain strings. It takes a `list[str]` as input and returns a `list[str]`, making it easy to sanitize user queries before they are sent to an LLM.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, before a Generator or Chat Generator |
+| **Mandatory run variables**            | `texts`: A list of strings |
+| **Output variables**                   | `texts`: A list of strings with PII replaced |
+| **API reference**                      | [Presidio](/reference/integrations-presidio) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/presidio |
+| **Package name** | `presidio-haystack` |
+
+</div>
+
+## Overview
+
+[Microsoft Presidio](https://microsoft.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioTextCleaner` uses Presidio's Analyzer and Anonymizer engines to scan plain text strings and replace detected entities with type placeholders such as `<PERSON>` or `<US_SSN>`.
+
+This is useful when you want to sanitize user queries before sending them to an LLM, ensuring that no personally identifiable information is passed to the model.
+
+For sanitizing Haystack `Document` objects rather than plain strings, see [`PresidioDocumentCleaner`](./presidiodocumentcleaner.mdx).
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `language` | `"en"` | ISO 639-1 language code for PII detection. The appropriate spaCy model is selected automatically for [supported languages](#non-english-languages). See [Presidio supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
+| `entities` | `None` | List of PII entity types to detect and anonymize (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://microsoft.github.io/presidio/supported_entities/). |
+| `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be anonymized. |
+| `models` | `None` | Advanced override: explicit list of spaCy model configs, e.g. `[{"lang_code": "fr", "model_name": "fr_core_news_md"}]`. Use this only when you need a specific model variant or a language not in the built-in mapping. If `None`, the model is selected automatically based on `language`. |
+
+## Usage
+
+Install the `presidio-haystack` package to use the `PresidioTextCleaner`.
+
+```bash
+pip install presidio-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+cleaner = PresidioTextCleaner()
+result = cleaner.run(texts=["My name is John Doe, my SSN is 123-45-6789"])
+print(result["texts"][0])
+# My name is <PERSON>, my SSN is <US_SSN>
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+template = [ChatMessage.from_user("Answer this question: {{query}}")]
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("cleaner", PresidioTextCleaner())
+query_pipeline.add_component("prompt_builder", ChatPromptBuilder(template=template))
+query_pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+query_pipeline.connect("cleaner.texts[0]", "prompt_builder.query")
+query_pipeline.connect("prompt_builder", "llm")
+
+query_pipeline.run(
+    {"cleaner": {"texts": ["My name is John Smith. What is the capital of France?"]}},
+)
+```
+
+### Using Custom Parameters
+
+Use `entities` to limit anonymization to the PII types you actually care about. This reduces false positives and improves performance by skipping recognizers you don't need.
+
+Use `score_threshold` to tune the precision-recall tradeoff. The default `0.35` casts a wide net and may anonymize some false positives. Raise it (e.g. `0.7`) when you need high confidence before replacing text; lower it when missing any PII is the bigger risk.
+
+```python
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+cleaner = PresidioTextCleaner(
+    language="de",
+    entities=["PERSON", "EMAIL_ADDRESS"],  # only anonymize names and emails
+    score_threshold=0.7,  # higher precision, fewer false positives
+)
+```
+
+### Non-English languages
+
+For any language in the built-in mapping, just set `language` — the right spaCy model is selected and loaded automatically at warm-up time.
+
+```python
+from haystack_integrations.components.preprocessors.presidio import PresidioTextCleaner
+
+# No `models` parameter needed — de_core_news_lg is selected automatically
+cleaner = PresidioTextCleaner(language="de")
+result = cleaner.run(
+    texts=["Hallo, ich bin Thomas Schmidt und meine E-Mail ist thomas@example.com"],
+)
+print(result["texts"][0])
+# Hallo, ich bin <PERSON> und meine E-Mail ist <EMAIL_ADDRESS>
+```
+
+Supported languages and their default models are listed in `PresidioTextCleaner.SPACY_DEFAULT_MODELS`. Using a language not in that mapping without providing `models` raises a `ValueError` at warm-up time with a list of the supported language codes.
+
+To use a non-default model variant, or a language outside the built-in mapping, pass `models` explicitly:
+
+```python
+cleaner = PresidioTextCleaner(
+    language="fr",
+    models=[{"lang_code": "fr", "model_name": "fr_core_news_md"}],
+)
+```
