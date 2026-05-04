@@ -45,13 +45,17 @@ class Tool:
 
 Keep in mind that the accurate definitions of `name` and `description` are important for the Language Model to prepare the call correctly.
 
-`Tool` exposes a `tool_spec` property, returning the tool specification to be used by Language Models.
+`Tool` exposes a `tool_spec` property, returning the tool specification to be used by Language Models.
 
-It also has an `invoke` method that executes the underlying function with the provided parameters.
+It also has an `invoke` method that executes the underlying function with the provided parameters.
 
 ## Tool Initialization
 
-Here is how to initialize a Tool to work with a specific function:
+:::tip
+For most use cases, we recommend using the [`@tool` decorator](#tool-decorator) or [`create_tool_from_function`](#create_tool_from_function) to create tools. Both automatically generate the `parameters` JSON schema from your function's type hints and [`Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated) parameter descriptions, so you don't need to write the schema by hand. Use the manual approach below when you need full control over the schema.
+:::
+
+Here is how to initialize a Tool manually, specifying the parameters schema yourself:
 
 ```python
 from haystack.tools import Tool
@@ -178,7 +182,7 @@ image_retriever_tool = create_tool_from_function(
 )
 
 agent = Agent(
-    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
     system_prompt="You are an Agent that can retrieve images and describe them.",
     tools=[image_retriever_tool],
 )
@@ -306,14 +310,14 @@ Look out for the `tools` parameter in a specific Chat Generator's `__init__` and
 from haystack.dataclasses import ChatMessage
 from haystack.components.generators.chat import OpenAIChatGenerator
 
-## Initialize the Chat Generator with the addition tool
-chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[add_tool])
+# Initialize the Chat Generator with the addition tool
+chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=[add_tool])
 
-## here we expect the Tool to be invoked
+# here we expect the Tool to be invoked
 res = chat_generator.run([ChatMessage.from_user("10 + 238")])
 print(res)
 
-## here the model can respond without using the Tool
+# here the model can respond without using the Tool
 res = chat_generator.run([ChatMessage.from_user("What is the habitat of a lion?")])
 print(res)
 ```
@@ -336,10 +340,10 @@ print(res)
 The same result of the previous run can be achieved by passing tools at runtime:
 
 ```python
-## Initialize the Chat Generator without tools
-chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+# Initialize the Chat Generator without tools
+chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano")
 
-## pass tools in the run method
+# pass tools in the run method
 res_w_tool_call = chat_generator.run(
     [ChatMessage.from_user("10 + 238")],
     tools=math_toolset,
@@ -349,7 +353,8 @@ print(res_w_tool_call)
 
 ### Executing Tool Calls
 
-To execute prepared tool calls, you can use the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component. This component acts as the execution engine for tools, processing the calls prepared by the Language Model.
+To execute prepared tool calls, you can use the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component.
+This component acts as the execution engine for tools, processing the calls prepared by the Language Model.
 
 Here's an example:
 
@@ -359,7 +364,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.tools import Tool
 
-## Define a dummy weather toolimport random
+# Define a dummy weather tool
 
 
 def dummy_weather(location: str):
@@ -380,10 +385,10 @@ weather_tool = Tool(
     },
 )
 
-## Initialize the Chat Generator with the weather tool
-chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[weather_tool])
+# Initialize the Chat Generator with the weather tool
+chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=[weather_tool])
 
-## Initialize the Tool Invoker with the weather tool
+# Initialize the Tool Invoker with the weather tool
 tool_invoker = ToolInvoker(tools=[weather_tool])
 
 user_message = ChatMessage.from_user("What is the weather in Berlin?")
@@ -391,7 +396,7 @@ user_message = ChatMessage.from_user("What is the weather in Berlin?")
 replies = chat_generator.run(messages=[user_message])["replies"]
 print(f"assistant messages: {replies}")
 
-## If the assistant message contains a tool call, run the tool invoker
+# If the assistant message contains a tool call, run the tool invoker
 if replies[0].tool_calls:
     tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
     print(f"tool messages: {tool_messages}")
@@ -399,7 +404,7 @@ if replies[0].tool_calls:
 
 ```
 assistant messages:[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='weather',
-arguments={'location': 'Berlin'}, id='call_YEvCEAmlvc42JGXV84NU8wtV')], _meta={'model': 'gpt-4o-mini-2024-07-18',
+arguments={'location': 'Berlin'}, id='call_YEvCEAmlvc42JGXV84NU8wtV')], _meta={'model': 'gpt-5.4-nano',
 'index':0, 'finish_reason': 'tool_calls', 'usage':{'completion_tokens':13, 'prompt_tokens':50, 'total_tokens':
 63}})]
 
@@ -414,36 +419,10 @@ In some cases, the raw output from a tool may not be immediately suitable for th
 
 You can refine the tool’s response by passing it back to the Chat Generator. This generates a user-friendly and conversational message.
 
-In this example, we’ll pass the tool’s response back to the Chat Generator for final processing:
+In this example, we’ll pass the tool’s response back to the Chat Generator for final processing. Building on the [previous example](#executing-tool-calls), we extend the `if` block to send all messages back to the Chat Generator:
 
 ```python
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.tools import ToolInvoker
-from haystack.tools import Tool
-
-## Define a dummy weather toolimport random
-
-
-def dummy_weather(location: str):
-    return {
-        "temp": f"{random.randint(-10, 40)} °C",
-        "humidity": f"{random.randint(0, 100)}%",
-    }
-
-
-weather_tool = Tool(
-    name="weather",
-    description="A tool to get the weather",
-    function=dummy_weather,
-    parameters={
-        "type": "object",
-        "properties": {"location": {"type": "string"}},
-        "required": ["location"],
-    },
-)
-
-chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[weather_tool])
-tool_invoker = ToolInvoker(tools=[weather_tool])
+# ... same setup as above (dummy_weather, weather_tool, chat_generator, tool_invoker)
 
 user_message = ChatMessage.from_user("What is the weather in Berlin?")
 
@@ -453,7 +432,7 @@ print(f"assistant messages: {replies}")
 if replies[0].tool_calls:
     tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
     print(f"tool messages: {tool_messages}")
-    # we pass all the messages to the Chat Generator
+    # pass all messages back to the Chat Generator for a final natural-language response
     messages = [user_message] + replies + tool_messages
     final_replies = chat_generator.run(messages=messages)["replies"]
     print(f"final assistant messages: {final_replies}")
@@ -461,7 +440,7 @@ if replies[0].tool_calls:
 
 ```
 assistant messages:[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='weather',
-arguments={'location': 'Berlin'}, id='call_jHX0RCDHRKX7h8V9RrNs6apy')], _meta={'model': 'gpt-4o-mini-2024-07-18',
+arguments={'location': 'Berlin'}, id='call_jHX0RCDHRKX7h8V9RrNs6apy')], _meta={'model': 'gpt-5.4-nano',
 'index':0, 'finish_reason': 'tool_calls', 'usage':{'completion_tokens':13, 'prompt_tokens':50, 'total_tokens':
 63}})]
 
@@ -470,14 +449,15 @@ tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallRes
 id='call_jHX0RCDHRKX7h8V9RrNs6apy'), error=False)], _meta={})]
 
 final assistant messages: [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='The
-current weather in Berlin is 2 °C with a humidity level of 15%.')], _meta={'model': 'gpt-4o-mini-2024-07-18',
+current weather in Berlin is 2 °C with a humidity level of 15%.')], _meta={'model': 'gpt-5.4-nano',
 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 19, 'prompt_tokens': 85, 'total_tokens':
 104}})]
 ```
 
 ### Passing Tools to Agent
 
-You can also use `Tool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
+You can also use `Tool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component.
+Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -487,7 +467,7 @@ from haystack.components.agents import Agent
 from typing import List
 
 
-## Tool Function
+# Tool Function
 def calculate(expression: str) -> dict:
     try:
         result = eval(expression, {"__builtins__": {}})
@@ -496,7 +476,7 @@ def calculate(expression: str) -> dict:
         return {"error": str(e)}
 
 
-## Tool Definition
+# Tool Definition
 calculator_tool = Tool(
     name="calculator",
     description="Evaluate basic math expressions.",
@@ -514,7 +494,7 @@ calculator_tool = Tool(
     outputs_to_state={"calc_result": {"source": "result"}},
 )
 
-## Agent Setup
+# Agent Setup
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[calculator_tool],
@@ -524,10 +504,10 @@ agent = Agent(
     },
 )
 
-## Run the Agent
+# Run the Agent
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
 
-## Output
+# Output
 print(response["messages"])
 print("Calc Result:", response.get("calc_result"))
 ```
