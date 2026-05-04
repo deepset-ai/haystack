@@ -84,11 +84,15 @@ print(add_tool.invoke(a=15, b=10))
 ```
 
 ```
-{'name': 'addition_tool',
+{
+    'name': 'addition_tool',
     'description': 'This tool adds two numbers',
-    'parameters':{'type': 'object',
-        'properties':{'a':{'type': 'integer'}, 'b':{'type': 'integer'}},
-        'required':['a', 'b']}}
+    'parameters': {
+        'type': 'object',
+        'properties': {'a': {'type': 'integer'}, 'b': {'type': 'integer'}},
+        'required': ['a', 'b']
+    }
+}
 
 25
 ```
@@ -221,20 +225,23 @@ print(get_weather)
 ```
 
 ```
-Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-parameters={
-'type': 'object',
-'properties': {
-    'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-    'unit': {
-        'type': 'string',
-        'enum': ['Celsius', 'Fahrenheit'],
-        'description': 'the unit for the temperature',
-        'default': 'Celsius',
+Tool(
+    name='get_weather',
+    description='A simple function to get the current weather for a location.',
+    parameters={
+        'type': 'object',
+        'properties': {
+            'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+            'unit': {
+                'type': 'string',
+                'enum': ['Celsius', 'Fahrenheit'],
+                'description': 'the unit for the temperature',
+                'default': 'Celsius',
+            },
+        },
     },
-    }
-},
-function=<function get_weather at 0x7f7b3a8a9b80>)
+    function=<function get_weather at 0x7f7b3a8a9b80>,
+)
 ```
 
 ### create_tool_from_function
@@ -263,20 +270,23 @@ print(tool)
 ```
 
 ```
-Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-parameters={
-'type': 'object',
-'properties': {
-    'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-    'unit': {
-        'type': 'string',
-        'enum': ['Celsius', 'Fahrenheit'],
-        'description': 'the unit for the temperature',
-        'default': 'Celsius',
+Tool(
+    name='get_weather',
+    description='A simple function to get the current weather for a location.',
+    parameters={
+        'type': 'object',
+        'properties': {
+            'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+            'unit': {
+                'type': 'string',
+                'enum': ['Celsius', 'Fahrenheit'],
+                'description': 'the unit for the temperature',
+                'default': 'Celsius',
+            },
+        },
     },
-    }
-},
-function=<function get_weather at 0x7f7b3a8a9b80>)
+    function=<function get_weather at 0x7f7b3a8a9b80>,
+)
 ```
 
 ## Toolset
@@ -323,18 +333,17 @@ print(res)
 ```
 
 ```
-{'replies':[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
-            _content=[ToolCall(tool_name='addition_tool',
-                    arguments={'a':10, 'b':238},
-                    id='call_rbYtbCdW0UbWMfy2x0sgF1Ap'
-)],
-            _meta={...})]}
+{'replies': [ChatMessage(
+    _role=<ChatRole.ASSISTANT: 'assistant'>,
+    _content=[ToolCall(tool_name='addition_tool', arguments={'a': 10, 'b': 238}, id='call_rbYtbCdW0UbWMfy2x0sgF1Ap')],
+    _meta={...}
+)]}
 
-
-{'replies':[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
-            _content=[TextContent(text='Lions primarily inhabit grasslands, savannas, and open woodlands. ...'
-)],
-            _meta={...})]}
+{'replies': [ChatMessage(
+    _role=<ChatRole.ASSISTANT: 'assistant'>,
+    _content=[TextContent(text='Lions primarily inhabit grasslands, savannas, and open woodlands. ...')],
+    _meta={...}
+)]}
 ```
 
 The same result of the previous run can be achieved by passing tools at runtime:
@@ -403,14 +412,17 @@ if replies[0].tool_calls:
 ```
 
 ```
-assistant messages:[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='weather',
-arguments={'location': 'Berlin'}, id='call_YEvCEAmlvc42JGXV84NU8wtV')], _meta={'model': 'gpt-5.4-nano',
-'index':0, 'finish_reason': 'tool_calls', 'usage':{'completion_tokens':13, 'prompt_tokens':50, 'total_tokens':
-63}})]
+assistant messages: [ChatMessage(
+    _role=<ChatRole.ASSISTANT: 'assistant'>,
+    _content=[ToolCall(tool_name='weather', arguments={'location': 'Berlin'}, id='call_YEvCEAmlvc42JGXV84NU8wtV')],
+    _meta={'model': 'gpt-5.4-nano', 'index': 0, 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 13, 'prompt_tokens': 50, 'total_tokens': 63}}
+)]
 
-tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallResult(result="{'temp': '22 °C',
-'humidity': '35%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'},
-id='call_YEvCEAmlvc42JGXV84NU8wtV'), error=False)], _meta={})]
+tool messages: [ChatMessage(
+    _role=<ChatRole.TOOL: 'tool'>,
+    _content=[ToolCallResult(result="{'temp': '22 °C', 'humidity': '35%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'}, id='call_YEvCEAmlvc42JGXV84NU8wtV'), error=False)],
+    _meta={}
+)]
 ```
 
 ### Processing Tool Results with the Chat Generator
@@ -439,19 +451,23 @@ if replies[0].tool_calls:
 ```
 
 ```
-assistant messages:[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='weather',
-arguments={'location': 'Berlin'}, id='call_jHX0RCDHRKX7h8V9RrNs6apy')], _meta={'model': 'gpt-5.4-nano',
-'index':0, 'finish_reason': 'tool_calls', 'usage':{'completion_tokens':13, 'prompt_tokens':50, 'total_tokens':
-63}})]
+assistant messages: [ChatMessage(
+    _role=<ChatRole.ASSISTANT: 'assistant'>,
+    _content=[ToolCall(tool_name='weather', arguments={'location': 'Berlin'}, id='call_jHX0RCDHRKX7h8V9RrNs6apy')],
+    _meta={'model': 'gpt-5.4-nano', 'index': 0, 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 13, 'prompt_tokens': 50, 'total_tokens': 63}}
+)]
 
-tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallResult(result="{'temp': '2 °C',
-'humidity': '15%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'},
-id='call_jHX0RCDHRKX7h8V9RrNs6apy'), error=False)], _meta={})]
+tool messages: [ChatMessage(
+    _role=<ChatRole.TOOL: 'tool'>,
+    _content=[ToolCallResult(result="{'temp': '2 °C', 'humidity': '15%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'}, id='call_jHX0RCDHRKX7h8V9RrNs6apy'), error=False)],
+    _meta={}
+)]
 
-final assistant messages: [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='The
-current weather in Berlin is 2 °C with a humidity level of 15%.')], _meta={'model': 'gpt-5.4-nano',
-'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 19, 'prompt_tokens': 85, 'total_tokens':
-104}})]
+final assistant messages: [ChatMessage(
+    _role=<ChatRole.ASSISTANT: 'assistant'>,
+    _content=[TextContent(text='The current weather in Berlin is 2 °C with a humidity level of 15%.')],
+    _meta={'model': 'gpt-5.4-nano', 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 19, 'prompt_tokens': 85, 'total_tokens': 104}}
+)]
 ```
 
 ### Passing Tools to Agent
