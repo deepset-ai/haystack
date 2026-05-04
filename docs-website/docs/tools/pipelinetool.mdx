@@ -14,7 +14,7 @@ Wraps a Haystack pipeline so an LLM can call it as a tool.
 |  |  |
 | --- | --- |
 | **Mandatory init variables** | `pipeline`: The Haystack pipeline to wrap  <br /> <br />`name`: The name of the tool  <br /> <br />`description`: Description of the tool |
-| **API reference** | [Tools](/reference/tools-api) |
+| **API reference** | [PipelineTool](/reference/tools-api#pipeline_tool) |
 | **GitHub link**  | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/pipeline_tool.py |
 | **Package name** | `haystack-ai` |
 
@@ -95,6 +95,8 @@ retrieval_tool = PipelineTool(
     name="retrieval_tool",
     description="Search short articles about Nikola Tesla, AC electricity, and related inventors",
 )
+
+print(retrieval_tool)
 ```
 
 ### With the Agent Component
