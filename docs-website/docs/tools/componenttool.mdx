@@ -75,7 +75,7 @@ agent = Agent(
 )
 
 response = agent.run(
-    messages=[ChatMessage.from_user("Give me a brief summary on Nikola Tesla is")],
+    messages=[ChatMessage.from_user("Give me a brief summary on who Nikola Tesla is")],
 )
 
 print(response["messages"][-1].text)
