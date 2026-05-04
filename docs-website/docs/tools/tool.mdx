@@ -51,11 +51,108 @@ It also has an `invoke` method that executes the underlying function with the pr
 
 ## Tool Initialization
 
+There are three ways to create a `Tool`:
+
+- **`@tool` decorator** — recommended for most cases; infers name, description, and schema from the function.
+- **`create_tool_from_function`** — same as `@tool` but called as a function; useful when you can’t decorate directly.
+- **Manual initialization** — construct `Tool(...)` directly when you need full control over the JSON schema.
+
 :::tip
-For most use cases, we recommend using the [`@tool` decorator](#tool-decorator) or [`create_tool_from_function`](#create_tool_from_function) to create tools. Both automatically generate the `parameters` JSON schema from your function's type hints and [`Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated) parameter descriptions, so you don't need to write the schema by hand. Use the manual approach below when you need full control over the schema.
+For most use cases, we recommend `@tool` or `create_tool_from_function`. Both automatically generate the `parameters` JSON schema from your function’s type hints and [`Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated) parameter descriptions, so you don’t need to write the schema by hand.
 :::
 
-Here is how to initialize a Tool manually, specifying the parameters schema yourself:
+### @tool decorator
+
+The `@tool` decorator converts a function into a Tool. It infers the name, description, and parameters from the function and automatically generates a JSON schema. Use `typing.Annotated` to add descriptions to individual parameters. When called without arguments (`@tool`), defaults are inferred from the function. When called with arguments (`@tool(name=..., outputs_to_state=...)`), you can customize any of the Tool fields.
+
+```python
+from typing import Annotated, Literal
+from haystack.tools import tool
+
+
+@tool
+def get_weather(
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[
+        Literal["Celsius", "Fahrenheit"],
+        "the unit for the temperature",
+    ] = "Celsius",
+):
+    """A simple function to get the current weather for a location."""
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
+
+print(get_weather)
+```
+
+```
+Tool(
+    name=’get_weather’,
+    description=’A simple function to get the current weather for a location.’,
+    parameters={
+        ‘type’: ‘object’,
+        ‘properties’: {
+            ‘city’: {‘type’: ‘string’, ‘description’: ‘the city for which to get the weather’, ‘default’: ‘Munich’},
+            ‘unit’: {
+                ‘type’: ‘string’,
+                ‘enum’: [‘Celsius’, ‘Fahrenheit’],
+                ‘description’: ‘the unit for the temperature’,
+                ‘default’: ‘Celsius’,
+            },
+        },
+    },
+    function=<function get_weather at 0x7f7b3a8a9b80>,
+)
+```
+
+### create_tool_from_function
+
+`create_tool_from_function` is the functional equivalent of `@tool` — useful when you’re working with a function you can’t decorate directly (e.g. a method from a library). It accepts the same optional parameters as `@tool` and generates the JSON schema in the same way.
+
+```python
+from typing import Annotated, Literal
+from haystack.tools import create_tool_from_function
+
+
+def get_weather(
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[
+        Literal["Celsius", "Fahrenheit"],
+        "the unit for the temperature",
+    ] = "Celsius",
+):
+    """A simple function to get the current weather for a location."""
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
+
+tool = create_tool_from_function(get_weather)
+
+print(tool)
+```
+
+```
+Tool(
+    name=’get_weather’,
+    description=’A simple function to get the current weather for a location.’,
+    parameters={
+        ‘type’: ‘object’,
+        ‘properties’: {
+            ‘city’: {‘type’: ‘string’, ‘description’: ‘the city for which to get the weather’, ‘default’: ‘Munich’},
+            ‘unit’: {
+                ‘type’: ‘string’,
+                ‘enum’: [‘Celsius’, ‘Fahrenheit’],
+                ‘description’: ‘the unit for the temperature’,
+                ‘default’: ‘Celsius’,
+            },
+        },
+    },
+    function=<function get_weather at 0x7f7b3a8a9b80>,
+)
+```
+
+### Manual Initialization
+
+Use this approach when you need full control over the JSON schema — for example, when the function signature alone isn’t enough to express the parameter constraints.
 
 ```python
 from haystack.tools import Tool
@@ -85,12 +182,12 @@ print(add_tool.invoke(a=15, b=10))
 
 ```
 {
-    'name': 'addition_tool',
-    'description': 'This tool adds two numbers',
-    'parameters': {
-        'type': 'object',
-        'properties': {'a': {'type': 'integer'}, 'b': {'type': 'integer'}},
-        'required': ['a', 'b']
+    ‘name’: ‘addition_tool’,
+    ‘description’: ‘This tool adds two numbers’,
+    ‘parameters’: {
+        ‘type’: ‘object’,
+        ‘properties’: {‘a’: {‘type’: ‘integer’}, ‘b’: {‘type’: ‘integer’}},
+        ‘required’: [‘a’, ‘b’]
     }
 }
 
@@ -198,95 +295,6 @@ result = agent.run(messages=[user_message])
 
 print(result["last_message"].text)
 # Red apple with stem resting on straw.
-```
-
-### @tool decorator
-
-The `@tool` decorator converts a function into a Tool. It infers the name, description, and parameters from the function and automatically generates a JSON schema. Use `typing.Annotated` to add descriptions to individual parameters. When called without arguments (`@tool`), defaults are inferred from the function. When called with arguments (`@tool(name=..., outputs_to_state=...)`), you can customize any of the Tool fields.
-
-```python
-from typing import Annotated, Literal
-from haystack.tools import tool
-
-
-@tool
-def get_weather(
-    city: Annotated[str, "the city for which to get the weather"] = "Munich",
-    unit: Annotated[
-        Literal["Celsius", "Fahrenheit"],
-        "the unit for the temperature",
-    ] = "Celsius",
-):
-    """A simple function to get the current weather for a location."""
-    return f"Weather report for {city}: 20 {unit}, sunny"
-
-
-print(get_weather)
-```
-
-```
-Tool(
-    name='get_weather',
-    description='A simple function to get the current weather for a location.',
-    parameters={
-        'type': 'object',
-        'properties': {
-            'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-            'unit': {
-                'type': 'string',
-                'enum': ['Celsius', 'Fahrenheit'],
-                'description': 'the unit for the temperature',
-                'default': 'Celsius',
-            },
-        },
-    },
-    function=<function get_weather at 0x7f7b3a8a9b80>,
-)
-```
-
-### create_tool_from_function
-
-`create_tool_from_function` is the functional equivalent of `@tool` — useful when you're working with a function you can't decorate directly (e.g. a lambda, a method from a library, or a dynamically constructed callable). It accepts the same optional parameters as `@tool` and generates the JSON schema in the same way.
-
-```python
-from typing import Annotated, Literal
-from haystack.tools import create_tool_from_function
-
-
-def get_weather(
-    city: Annotated[str, "the city for which to get the weather"] = "Munich",
-    unit: Annotated[
-        Literal["Celsius", "Fahrenheit"],
-        "the unit for the temperature",
-    ] = "Celsius",
-):
-    """A simple function to get the current weather for a location."""
-    return f"Weather report for {city}: 20 {unit}, sunny"
-
-
-tool = create_tool_from_function(get_weather)
-
-print(tool)
-```
-
-```
-Tool(
-    name='get_weather',
-    description='A simple function to get the current weather for a location.',
-    parameters={
-        'type': 'object',
-        'properties': {
-            'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-            'unit': {
-                'type': 'string',
-                'enum': ['Celsius', 'Fahrenheit'],
-                'description': 'the unit for the temperature',
-                'default': 'Celsius',
-            },
-        },
-    },
-    function=<function get_weather at 0x7f7b3a8a9b80>,
-)
 ```
 
 ## Toolset
