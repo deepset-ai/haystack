@@ -1885,13 +1885,7 @@ class TestMakeSchemaStrict:
         schema = {
             "type": "object",
             "properties": {
-                "person": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "age": {"type": "integer"},
-                    },
-                }
+                "person": {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}}
             },
         }
         result = _make_schema_strict(schema)
@@ -1906,13 +1900,7 @@ class TestMakeSchemaStrict:
             "type": "object",
             "properties": {"address": {"$ref": "#/$defs/Address"}},
             "$defs": {
-                "Address": {
-                    "type": "object",
-                    "properties": {
-                        "street": {"type": "string"},
-                        "city": {"type": "string"},
-                    },
-                }
+                "Address": {"type": "object", "properties": {"street": {"type": "string"}, "city": {"type": "string"}}}
             },
         }
         result = _make_schema_strict(schema)
@@ -1924,13 +1912,7 @@ class TestMakeSchemaStrict:
         schema = {
             "type": "object",
             "properties": {
-                "people": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {"name": {"type": "string"}},
-                    },
-                }
+                "people": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}}}}
             },
         }
         result = _make_schema_strict(schema)
@@ -1942,12 +1924,7 @@ class TestMakeSchemaStrict:
         schema = {
             "type": "object",
             "properties": {
-                "value": {
-                    "anyOf": [
-                        {"type": "string"},
-                        {"type": "object", "properties": {"x": {"type": "integer"}}},
-                    ]
-                }
+                "value": {"anyOf": [{"type": "string"}, {"type": "object", "properties": {"x": {"type": "integer"}}}]}
             },
         }
         result = _make_schema_strict(schema)
@@ -1975,12 +1952,7 @@ class TestMakeSchemaStrict:
         schema = {
             "type": "object",
             "properties": {
-                "value": {
-                    "oneOf": [
-                        {"type": "string"},
-                        {"type": "object", "properties": {"x": {"type": "integer"}}},
-                    ]
-                }
+                "value": {"oneOf": [{"type": "string"}, {"type": "object", "properties": {"x": {"type": "integer"}}}]}
             },
         }
         result = _make_schema_strict(schema)
@@ -1993,19 +1965,13 @@ class TestMakeSchemaStrict:
         schema = {
             "type": "object",
             "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {"$ref": "#/$defs/ChatMessage"},
-                },
+                "messages": {"type": "array", "items": {"$ref": "#/$defs/ChatMessage"}},
                 "config": {
                     "oneOf": [
                         {"type": "null"},
                         {
                             "type": "object",
-                            "properties": {
-                                "temperature": {"type": "number"},
-                                "max_tokens": {"type": "integer"},
-                            },
+                            "properties": {"temperature": {"type": "number"}, "max_tokens": {"type": "integer"}},
                         },
                     ]
                 },
@@ -2015,12 +1981,7 @@ class TestMakeSchemaStrict:
                     "type": "object",
                     "properties": {
                         "role": {"type": "string"},
-                        "content": {
-                            "anyOf": [
-                                {"type": "string"},
-                                {"type": "null"},
-                            ]
-                        },
+                        "content": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                         "meta": {
                             "type": "object",
                             "properties": {
@@ -2069,10 +2030,7 @@ class TestMakeSchemaStrict:
                     "name": {"type": "string"},
                     "address": {
                         "type": "object",
-                        "properties": {
-                            "street": {"type": "string"},
-                            "city": {"type": "string"},
-                        },
+                        "properties": {"street": {"type": "string"}, "city": {"type": "string"}},
                     },
                 },
                 "required": ["name"],
@@ -2081,10 +2039,7 @@ class TestMakeSchemaStrict:
         )
 
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-key"), tools_strict=True)
-        api_args = component._prepare_api_call(
-            messages=[ChatMessage.from_user("test")],
-            tools=[nested_tool],
-        )
+        api_args = component._prepare_api_call(messages=[ChatMessage.from_user("test")], tools=[nested_tool])
 
         tool_def = api_args["tools"][0]["function"]
         assert tool_def["strict"] is True
