@@ -291,7 +291,8 @@ Tool(
 
 ## Toolset
 
-A Toolset groups multiple Tool instances into a single manageable unit. It simplifies the passing of tools to components like Chat Generators or `ToolInvoker`, and supports filtering, serialization, and reuse.
+A Toolset groups multiple Tool instances into a single manageable unit.
+It simplifies the passing of tools to components like Chat Generators or `ToolInvoker`, and supports filtering, serialization, and reuse.
 
 ```python
 from haystack.tools import Toolset
@@ -332,6 +333,7 @@ def calculator(expression: Annotated[str, "math expression to evaluate"]) -> dic
 
 
 agent = Agent(
+    system_prompt="You are a helpful assistant that can perform calculations using the calculator tool.",
     chat_generator=OpenAIChatGenerator(),
     tools=[calculator],
     state_schema={"calc_result": {"type": int}},
