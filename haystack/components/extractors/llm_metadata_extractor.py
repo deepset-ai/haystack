@@ -439,10 +439,14 @@ class LLMMetadataExtractor:
         # Create ChatMessage prompts for each document
         all_prompts = self._prepare_prompts(documents=documents, expanded_range=expanded_range)
 
-        # Run the LLM on each prompt
+        # Run the LLM on each prompt, bounding concurrency per task so max_workers is enforced.
         sem = Semaphore(max(1, self.max_workers))
-        async with sem:
-            results = await gather(*[self._run_async(prompt) for prompt in all_prompts])
+
+        async def _bounded_run(prompt: ChatMessage | None) -> dict[str, Any]:
+            async with sem:
+                return await self._run_async(prompt)
+
+        results = await gather(*[_bounded_run(prompt) for prompt in all_prompts])
 
         successful_documents, failed_documents = self._process_results(documents, results)
 

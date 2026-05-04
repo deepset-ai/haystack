@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import os
 from unittest.mock import Mock
 
@@ -344,6 +345,41 @@ class TestLLMMetadataExtractor:
 
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_respects_max_workers(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        max_workers = 2
+        in_flight = 0
+        peak_in_flight = 0
+
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+
+        async def fake_run_async(messages, **kwargs):
+            nonlocal in_flight, peak_in_flight
+            in_flight += 1
+            peak_in_flight = max(peak_in_flight, in_flight)
+            try:
+                await asyncio.sleep(0.01)
+                return {"replies": [ChatMessage.from_assistant('{"entities": []}')]}
+            finally:
+                in_flight -= 1
+
+        mock_chat_generator.run_async = fake_run_async
+
+        extractor = LLMMetadataExtractor(
+            prompt="prompt {{document.content}}",
+            chat_generator=mock_chat_generator,
+            expected_keys=["entities"],
+            max_workers=max_workers,
+        )
+
+        docs = [Document(content=f"doc {i}") for i in range(10)]
+        result = await extractor.run_async(documents=docs)
+
+        assert len(result["documents"]) == 10
+        assert peak_in_flight <= max_workers
 
     @pytest.mark.integration
     @pytest.mark.skipif(
