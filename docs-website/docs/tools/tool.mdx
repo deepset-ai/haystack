@@ -202,7 +202,7 @@ print(result["last_message"].text)
 
 ### @tool decorator
 
-The `@tool` decorator simplifies converting a function into a Tool. It infers Tool name, description, and parameters from the function and automatically generates a JSON schema. It uses Python's `typing.Annotated` for the description of parameters. If you need to customize Tool name and description, use `create_tool_from_function` instead.
+The `@tool` decorator converts a function into a Tool. It infers the name, description, and parameters from the function and automatically generates a JSON schema. Use `typing.Annotated` to add descriptions to individual parameters. When called without arguments (`@tool`), defaults are inferred from the function. When called with arguments (`@tool(name=..., outputs_to_state=...)`), you can customize any of the Tool fields.
 
 ```python
 from typing import Annotated, Literal
@@ -246,7 +246,7 @@ Tool(
 
 ### create_tool_from_function
 
-The `create_tool_from_function` method provides more flexibility than the`@tool` decorator and allows setting Tool name and description. It infers the Tool parameters automatically and generates a JSON schema automatically in the same way as the `@tool` decorator.
+`create_tool_from_function` is the functional equivalent of `@tool` — useful when you're working with a function you can't decorate directly (e.g. a lambda, a method from a library, or a dynamically constructed callable). It accepts the same optional parameters as `@tool` and generates the JSON schema in the same way.
 
 ```python
 from typing import Annotated, Literal
@@ -369,36 +369,26 @@ Here's an example:
 
 ```python
 import random
+from typing import Annotated
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.tools import Tool
-
-# Define a dummy weather tool
+from haystack.tools import tool
 
 
-def dummy_weather(location: str):
+@tool
+def weather(location: Annotated[str, "the city to get weather for"]) -> dict:
+    """Get the current weather for a location."""
     return {
         "temp": f"{random.randint(-10, 40)} °C",
         "humidity": f"{random.randint(0, 100)}%",
     }
 
 
-weather_tool = Tool(
-    name="weather",
-    description="A tool to get the weather",
-    function=dummy_weather,
-    parameters={
-        "type": "object",
-        "properties": {"location": {"type": "string"}},
-        "required": ["location"],
-    },
-)
-
 # Initialize the Chat Generator with the weather tool
-chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=[weather_tool])
+chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=[weather])
 
 # Initialize the Tool Invoker with the weather tool
-tool_invoker = ToolInvoker(tools=[weather_tool])
+tool_invoker = ToolInvoker(tools=[weather])
 
 user_message = ChatMessage.from_user("What is the weather in Berlin?")
 
@@ -434,7 +424,7 @@ You can refine the tool’s response by passing it back to the Chat Generator. T
 In this example, we’ll pass the tool’s response back to the Chat Generator for final processing. Building on the [previous example](#executing-tool-calls), we extend the `if` block to send all messages back to the Chat Generator:
 
 ```python
-# ... same setup as above (dummy_weather, weather_tool, chat_generator, tool_invoker)
+# ... same setup as above (weather tool, chat_generator, tool_invoker)
 
 user_message = ChatMessage.from_user("What is the weather in Berlin?")
 
@@ -476,15 +466,16 @@ You can also use `Tool` with the [Agent](../pipeline-components/agents-1/agent.m
 Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
 
 ```python
+from typing import Annotated
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools.tool import Tool
+from haystack.tools import tool
 from haystack.components.agents import Agent
-from typing import List
 
 
-# Tool Function
-def calculate(expression: str) -> dict:
+@tool(outputs_to_state={"calc_result": {"source": "result"}})
+def calculator(expression: Annotated[str, "math expression to evaluate"]) -> dict:
+    """Evaluate a basic math expression."""
     try:
         result = eval(expression, {"__builtins__": {}})
         return {"result": result}
@@ -492,32 +483,11 @@ def calculate(expression: str) -> dict:
         return {"error": str(e)}
 
 
-# Tool Definition
-calculator_tool = Tool(
-    name="calculator",
-    description="Evaluate basic math expressions.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "expression": {
-                "type": "string",
-                "description": "Math expression to evaluate",
-            },
-        },
-        "required": ["expression"],
-    },
-    function=calculate,
-    outputs_to_state={"calc_result": {"source": "result"}},
-)
-
 # Agent Setup
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
-    tools=[calculator_tool],
-    exit_conditions=["calculator"],
-    state_schema={
-        "calc_result": {"type": int},
-    },
+    tools=[calculator],
+    state_schema={"calc_result": {"type": int}},
 )
 
 # Run the Agent
@@ -530,8 +500,13 @@ print("Calc Result:", response.get("calc_result"))
 
 ## Additional References
 
+📚 Tutorials:
+
+- [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
+- [Creating a Multi-Agent System with Haystack](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
+- [Human-in-the-Loop with Haystack Agents](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent)
+
 🧑‍🍳 Cookbooks:
 
 - [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
 - [Newsletter Sending Agent with Haystack Tools](https://haystack.deepset.ai/cookbook/newsletter-agent)
-- [Create a Swarm of Agents](https://haystack.deepset.ai/cookbook/swarm)
