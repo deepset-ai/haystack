@@ -2257,3 +2257,57 @@ class TestMakeSchemaStrict:
             "additionalProperties": False,
             "required": ["messages", "config"],
         }
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_strict_nested_tool(self):
+        tool = Tool(
+            name="create_person",
+            description="Create a person record with an address",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Full name"},
+                    "address": {
+                        "type": "object",
+                        "properties": {
+                            "street": {"type": "string", "description": "Street address"},
+                            "city": {"type": "string", "description": "City name"},
+                        },
+                    },
+                },
+            },
+            function=lambda name, address: f"{name} at {address}",
+        )
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools_strict=True)
+        results = component.run(
+            messages=[ChatMessage.from_user("Create a person named John at 123 Main St, Springfield")], tools=[tool]
+        )
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert tool_call.tool_name == "create_person"
+        assert "name" in tool_call.arguments
+        assert "address" in tool_call.arguments
+        assert "street" in tool_call.arguments["address"]
+        assert "city" in tool_call.arguments["address"]
+
+    def test_prepare_api_call_strict_component_tool(self):
+        tool = ComponentTool(
+            component=MessageExtractor(), name="message_extractor", description="Extracts text from ChatMessage objects"
+        )
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-key"), tools_strict=True)
+        api_args = component._prepare_api_call(messages=[ChatMessage.from_user("test")], tools=[tool])
+
+        params = api_args["tools"][0]["function"]["parameters"]
+        assert params["additionalProperties"] is False
+        assert "messages" in params["required"]
+
+        for def_name, def_schema in params["$defs"].items():
+            if def_schema.get("type") == "object":
+                assert def_schema["additionalProperties"] is False, f"$defs/{def_name} missing additionalProperties"
+                assert "required" in def_schema, f"$defs/{def_name} missing required"
