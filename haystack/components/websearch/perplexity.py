@@ -25,6 +25,9 @@ class PerplexityWebSearch:
     """
     Uses the [Perplexity Search API](https://docs.perplexity.ai/api-reference/search-post) to search the web.
 
+    Recommended as the default general-purpose web search component: a single API and index, snippets
+    pre-filtered for RAG, and one environment variable (`PERPLEXITY_API_KEY`) for setup.
+
     Usage example:
     <!-- test-ignore -->
     ```python

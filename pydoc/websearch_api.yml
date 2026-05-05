@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/components/websearch]
-    modules: ["serper_dev", "searchapi"]
+    modules: ["perplexity", "serper_dev", "searchapi"]
 processors:
   - type: filter
     documented_only: true
