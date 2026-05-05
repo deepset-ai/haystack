@@ -73,16 +73,19 @@ You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) t
 When wrapping an `Agent` as a `ComponentTool`, use `outputs_to_string={"source": "last_message"}` to pass only the specialist's final reply to the coordinator, keeping its context clean rather than forwarding the full tool call trace.
 
 ```python
+from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.fetchers.link_content import LinkContentFetcher
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.websearch import SerperDevWebSearch
 from haystack.dataclasses import ChatMessage
-from haystack.tools import ComponentTool
+from haystack.tools import ComponentTool, tool
 from haystack.utils import Secret
 
 # Create the specialist agent with web search and page fetching tools
+
+# Option 1: ComponentTool — wrap a component directly (good for straightforward cases)
 search_tool = ComponentTool(
     component=SerperDevWebSearch(
         api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
@@ -92,15 +95,26 @@ search_tool = ComponentTool(
     description="Search the web for current information on any topic",
 )
 
-fetch_tool = ComponentTool(
-    component=LinkContentFetcher(),
-    name="fetch_page",
-    description="Fetch the full content of a web page given its URL",
-)
+
+# Option 2: @tool decorator — wrap a component inside a function for a simpler
+# signature, built-in error handling, and custom result formatting
+@tool
+def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
+    """Fetch the full content of a web page given its URL."""
+    try:
+        streams = LinkContentFetcher().run(urls=[url])["streams"]
+        return (
+            streams[0].data.decode("utf-8", errors="replace")
+            if streams
+            else "No content found."
+        )
+    except Exception as e:
+        return f"Failed to fetch page: {e}"
+
 
 research_agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[search_tool, fetch_tool],
+    tools=[search_tool, fetch_page],
     system_prompt=(
         "You are a research specialist. Search the web to find relevant pages, "
         "then fetch their full content for detailed information."
@@ -217,7 +231,7 @@ def add_database_tool(
     surname: Annotated[str, "Last name of the person"],
     job_title: Annotated[Optional[str], "Job title or role of the person"] = None,
     other: Annotated[Optional[str], "Any other relevant information"] = None,
-):
+) -> str:
     """Add a person to the database with information about them."""
     document_store.write_documents(
         [
@@ -227,7 +241,8 @@ def add_database_tool(
             ),
         ],
     )
-    return
+    # Returning a confirmation lets the agent know the tool call succeeded
+    return f"Successfully added {name} {surname} to the database."
 
 
 database_assistant = Agent(
@@ -271,6 +286,12 @@ agent_output = extraction_agent.run(
 )
 
 print(agent_output["database_agent"]["last_message"].text)
+
+# Inspect what was written to the document store
+written_docs = document_store.filter_documents()
+print(f"\n{len(written_docs)} people added to the database:")
+for doc in written_docs:
+    print(f"  - {doc.content}")
 ```
 
 ### In YAML
