@@ -7,9 +7,14 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-_import_structure = {"searchapi": ["SearchApiWebSearch"], "serper_dev": ["SerperDevWebSearch"]}
+_import_structure = {
+    "perplexity": ["PerplexityWebSearch"],
+    "searchapi": ["SearchApiWebSearch"],
+    "serper_dev": ["SerperDevWebSearch"],
+}
 
 if TYPE_CHECKING:
+    from .perplexity import PerplexityWebSearch as PerplexityWebSearch
     from .searchapi import SearchApiWebSearch as SearchApiWebSearch
     from .serper_dev import SerperDevWebSearch as SerperDevWebSearch
 
