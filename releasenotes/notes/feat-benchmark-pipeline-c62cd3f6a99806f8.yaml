@@ -1,0 +1,20 @@
+---
+features:
+  - |
+    Add a new pipeline benchmarking utility for Haystack Pipelines. This supports both overall pipeline as well as individual component benchmarking.
+    The benchmarking configuration can reused across different pipelines. We display the benchmark results in both report format (viewer friendly) as well JSON format.
+    We calculate the p50, p90, p99, avg, and total runtime in ms both pipeline and per component level. Also, we display slowest component, faster/slowest pipeline execution time, number of runs, and other metadata.
+
+    Sample usage:
+    .. code:: python
+    from haystack.core.pipeline.benchmark import BenchmarkConfig, PipelineBenchmark
+    from haystack.pipelines import Pipeline
+
+    pipeline = Pipeline()
+    input_data = {"value": 1}
+    config = BenchmarkConfig(runs=3, warmup_runs=1)
+
+    benchmark = PipelineBenchmark(pipeline, input_data, config)
+    benchmark_result = benchmark.run()
+
+    print(benchmark_result.report())
