@@ -49,8 +49,10 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
-)
+) -> None
 ```
+
+Initialize the ChromaQueryTextRetriever.
 
 **Parameters:**
 
@@ -157,8 +159,10 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
-)
+) -> None
 ```
+
+Initialize the ChromaEmbeddingRetriever.
 
 **Parameters:**
 
@@ -271,10 +275,11 @@ __init__(
     metadata: dict | None = None,
     client_settings: dict[str, Any] | None = None,
     **embedding_function_params: Any
-)
+) -> None
 ```
 
 Creates a new ChromaDocumentStore instance.
+
 It is meant to be connected to a Chroma collection.
 
 Note: for the component to be part of a serializable pipeline, the __init__
@@ -377,49 +382,59 @@ refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filt
 
 ```python
 write_documents(
-    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
 ) -> int
 ```
 
-Writes (or overwrites) documents into the store.
+Writes documents into the store.
 
 **Parameters:**
 
 - **documents** (<code>list\[Document\]</code>) – A list of documents to write into the document store.
-- **policy** (<code>DuplicatePolicy</code>) – Not supported at the moment.
+- **policy** (<code>DuplicatePolicy</code>) – How to handle documents whose `id` already exists in the store:
+- `NONE` (default): treated as `FAIL`.
+- `OVERWRITE`: replace the existing document.
+- `SKIP`: keep the existing document and skip the new one.
+- `FAIL`: raise `DuplicateDocumentError`.
 
 **Returns:**
 
-- <code>int</code> – The number of documents written
+- <code>int</code> – The number of documents written.
 
 **Raises:**
 
 - <code>ValueError</code> – When input is not valid.
+- <code>DuplicateDocumentError</code> – When `policy` is `FAIL` (or `NONE`) and any document `id` already exists.
 
 #### write_documents_async
 
 ```python
 write_documents_async(
-    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE
 ) -> int
 ```
 
-Asynchronously writes (or overwrites) documents into the store.
+Asynchronously writes documents into the store.
 
 Asynchronous methods are only supported for HTTP connections.
 
 **Parameters:**
 
 - **documents** (<code>list\[Document\]</code>) – A list of documents to write into the document store.
-- **policy** (<code>DuplicatePolicy</code>) – Not supported at the moment.
+- **policy** (<code>DuplicatePolicy</code>) – How to handle documents whose `id` already exists in the store:
+- `NONE` (default): treated as `FAIL`.
+- `OVERWRITE`: replace the existing document.
+- `SKIP`: keep the existing document and skip the new one.
+- `FAIL`: raise `DuplicateDocumentError`.
 
 **Returns:**
 
-- <code>int</code> – The number of documents written
+- <code>int</code> – The number of documents written.
 
 **Raises:**
 
 - <code>ValueError</code> – When input is not valid.
+- <code>DuplicateDocumentError</code> – When `policy` is `FAIL` (or `NONE`) and any document `id` already exists.
 
 #### delete_documents
 
@@ -631,8 +646,7 @@ search_embeddings_async(
 ) -> list[list[Document]]
 ```
 
-Asynchronously perform vector search on the stored document, pass the embeddings of the queries instead of
-their text.
+Asynchronously perform vector search using query embeddings instead of text.
 
 Asynchronous methods are only supported for HTTP connections.
 
@@ -690,8 +704,7 @@ count_unique_metadata_by_filter(
 ) -> dict[str, int]
 ```
 
-Returns the number of unique values for each specified metadata field
-of the documents that match the provided filters.
+Return unique value counts for metadata fields of documents matching the provided filters.
 
 **Parameters:**
 
@@ -713,8 +726,7 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the number of unique values for each specified metadata field
-of the documents that match the provided filters.
+Asynchronously return unique value counts for metadata fields of documents matching the provided filters.
 
 Asynchronous methods are only supported for HTTP connections.
 
@@ -859,8 +871,7 @@ get_metadata_field_unique_values(
 ) -> tuple[list[str], int]
 ```
 
-Returns unique values for a metadata field, optionally filtered by
-a search term in the content field, with pagination support.
+Return unique metadata field values, optionally filtered by a content search term, with pagination.
 
 **Parameters:**
 
@@ -886,8 +897,7 @@ get_metadata_field_unique_values_async(
 ) -> tuple[list[str], int]
 ```
 
-Asynchronously returns unique values for a metadata field, optionally filtered by
-a search term in the content field, with pagination support.
+Asynchronously return unique metadata field values, optionally filtered by content, with pagination.
 
 Asynchronous methods are only supported for HTTP connections.
 

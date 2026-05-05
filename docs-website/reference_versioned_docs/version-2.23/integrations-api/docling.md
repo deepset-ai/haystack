@@ -38,6 +38,22 @@ extract_dl_doc_meta(dl_doc: DoclingDocument) -> dict[str, Any]
 
 Extract Docling document meta.
 
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> BaseMetaExtractor
+```
+
+Deserialize from a dictionary.
+
 ### MetaExtractor
 
 Bases: <code>BaseMetaExtractor</code>
@@ -99,6 +115,34 @@ Create a Docling Haystack converter.
   is used.
 - **meta_extractor** (<code>BaseMetaExtractor | None</code>) – The extractor instance to use for populating the output
   document metadata; if not set, a system default is used.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> DoclingConverter
+```
+
+Deserialize this component from a dictionary.
+
+The `converter` and `chunker` parameters are not serializable and are always ignored during
+deserialization; the restored instance will use the default `DocumentConverter` and `HybridChunker`
+respectively.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with keys `type` and `init_parameters`, as produced by `to_dict`.
+
+**Returns:**
+
+- <code>DoclingConverter</code> – A new `DoclingConverter` instance.
 
 #### run
 
