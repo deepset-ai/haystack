@@ -19,12 +19,14 @@ The `Agent` component is a tool-using agent that interacts with chat-based LLMs 
 | **Output variables**                   | `messages`: Chat history with tool and model responses                                 |
 | **API reference**                      | [Agents](/reference/agents-api)                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/agents/agent.py |
+| **Package name** | `haystack-ai` |
 
 </div>
 
 ## Overview
 
-The `Agent` component is a loop-based system that uses a chat-based large language model (LLM) and external tools to solve complex user queries. It works iteratively—calling tools, updating state, and generating prompts—until one of the configurable `exit_conditions` is met.
+The `Agent` component is a loop-based system that uses a chat-based large language model (LLM) and external tools to solve complex user queries.
+It works iteratively—calling tools, updating state, and generating prompts—until one of the configurable `exit_conditions` is met.
 
 It can:
 
@@ -35,76 +37,34 @@ It can:
 The `Agent` returns a dictionary containing:
 
 - `messages`: the full conversation history,
+- `last_message`: the final `ChatMessage` from the agent,
 - Additional dynamic keys based on `state_schema`.
 
-### Parameters
+## Parameters
 
-To initialize the `Agent` component, you need to provide it with an instance of a Chat Generator that supports tools. You can pass a list of [tools](../../tools/tool.mdx) or [`ComponentTool`](../../tools/componenttool.mdx) instances, or wrap them in a [`Toolset`](../../tools/toolset.mdx) to manage them as a group.
+`chat_generator` is the only mandatory parameter — an instance of a Chat Generator that supports tools. All other parameters are optional.
 
-You can additionally configure:
+- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx).
+- `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
+- `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
+- `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`.
+- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`.
+- `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
+- `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
+- `raise_on_tool_invocation_failure`: If `True`, raises an exception when a tool call fails. If `False` (default), the error is passed back to the LLM as a message so it can recover.
+- `confirmation_strategies`: A dict mapping tool names (or tuples of tool names) to a `ConfirmationStrategy`, enabling human review of tool calls before execution. See [Human in the Loop](./human-in-the-loop.mdx).
+- `tool_invoker_kwargs`: Additional keyword arguments forwarded to the internal `ToolInvoker`.
 
-- A `system_prompt` for your Agent,
-- A list of `exit_conditions` strings that will cause the agent to return. Can be either:
-  - “text”, which means  that the Agent will exit as soon as the LLM replies only with a text response,
-  - or specific tool names.
-- A `state_schema` for one agent invocation run. It defines extra information – such as documents or context – that tools can read from or write to during execution. You can use this schema to pass parameters that tools can both produce and consume.
-- `streaming_callback` to stream the tokens from the LLM directly in output.
+### Runtime overrides
+
+`run()` also accepts parameters that override the init-time configuration for a single call:
+
+- `tools`: Pass a list of `Tool`/`Toolset` objects, or a list of tool name strings to select a subset of the agent's configured tools for this run.
+- `generation_kwargs`: Additional keyword arguments forwarded to the LLM, overriding any set at init time (e.g. `{“temperature”: 0.2}`).
 
 :::info
-For a complete list of available parameters, refer to the [Agents API Documentation](/reference/agents-api).
+For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).
 :::
-
-### Agents as Tools
-
-You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to create multi-agent systems where specialized agents act as tools for a coordinator agent.
-
-When wrapping an `Agent` as a `ComponentTool`, use the `outputs_to_string` parameter with `{"source": "last_message"}` to extract only the agent's final response text, rather than the execution trace with tool calls to keep the coordinator agent's context clean and focused.
-
-```python
-## Wrap the agent as a ComponentTool with outputs_to_string
-research_tool = ComponentTool(
-    component=research_agent,  # another agent component
-    name="research_specialist",
-    description="A specialist that can research topics from the knowledge base",
-    outputs_to_string={"source": "last_message"},  ## Extract only the final response
-)
-
-## Create a coordinator agent that uses the specialist
-coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    tools=[research_tool],
-    system_prompt="You are a coordinator that delegates research tasks to a specialist.",
-    exit_conditions=["text"],
-)
-
-## Run
-result = coordinator_agent.run(
-    messages=[ChatMessage.from_user("Tell me about Haystack")],
-)
-
-print(result["last_message"].text)
-```
-
-### Streaming
-
-You can stream output as it’s generated. Pass a callback to `streaming_callback`.
-Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
-
-```python
-from haystack.components.generators.utils import print_streaming_chunk
-
-## Configure the Agent with a streaming callback
-coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    tools=[research_tool],
-    system_prompt="You are a coordinator that delegates research tasks to a specialist.",
-    streaming_callback=print_streaming_chunk,
-)
-```
-
-See our [Streaming Support](../generators/guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
-
-Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
 ## Usage
 
@@ -113,12 +73,16 @@ Give preference to `print_streaming_chunk` by default. Write a custom callback o
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools.tool import Tool
+from haystack.tools import tool
 from haystack.components.agents import Agent
+from typing import Annotated
 
 
-## Tool Function
-def calculate(expression: str) -> dict:
+@tool(outputs_to_state={"calc_result": {"source": "result"}})
+def calculator(
+    expression: Annotated[str, "Math expression to evaluate, e.g. '7 * (4 + 2)'"],
+) -> dict:
+    """Evaluate basic math expressions."""
     try:
         result = eval(expression, {"__builtins__": {}})
         return {"result": result}
@@ -126,43 +90,24 @@ def calculate(expression: str) -> dict:
         return {"error": str(e)}
 
 
-## Tool Definition
-calculator_tool = Tool(
-    name="calculator",
-    description="Evaluate basic math expressions.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "expression": {
-                "type": "string",
-                "description": "Math expression to evaluate",
-            },
-        },
-        "required": ["expression"],
-    },
-    function=calculate,
-    outputs_to_state={"calc_result": {"source": "result"}},
-)
-
-## Agent Setup
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(),
-    tools=[calculator_tool],
-    exit_conditions=["calculator"],
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[calculator],
+    system_prompt="You are a helpful assistant. Always use the calculator tool to evaluate math expressions.",
     state_schema={"calc_result": {"type": int}},
 )
 
-## Run the Agent
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
 
-## Output
-print(response["messages"])
+print(response["last_message"].text)
 print("Calc Result:", response.get("calc_result"))
 ```
 
 ### In a pipeline
 
-The example pipeline below creates a database assistant using `OpenAIChatGenerator`, `LinkContentFetcher`, and custom database tool. It reads the given URL and processes the page content, then builds a prompt for the AI. The assistant uses this information to write people's names and titles from the given page to the database.
+The example pipeline below creates a database assistant using `OpenAIChatGenerator`, `LinkContentFetcher`, and custom database tool.
+It reads the given URL and processes the page content, then builds a prompt for the AI.
+The assistant uses this information to write people's names and titles from the given page to the database.
 
 ```python
 from haystack.components.agents import Agent
@@ -170,23 +115,23 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.converters.html import HTMLToDocument
 from haystack.components.fetchers.link_content import LinkContentFetcher
-from haystack.core.pipeline import Pipeline
-from haystack.tools import tool
+from haystack import Document, Pipeline
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from typing import Optional
-from haystack.dataclasses import ChatMessage, Document
+from haystack.tools import tool
+from typing import Annotated, Optional
 
 document_store = InMemoryDocumentStore()  # create a document store or an SQL database
 
 
 @tool
 def add_database_tool(
-    name: str,
-    surname: str,
-    job_title: Optional[str],
-    other: Optional[str],
-):
-    """Use this tool to add names to the database with information about them"""
+    name: Annotated[str, "First name of the person"],
+    surname: Annotated[str, "Last name of the person"],
+    job_title: Annotated[Optional[str], "Job title or role of the person"] = None,
+    other: Annotated[Optional[str], "Any other relevant information"] = None,
+) -> str:
+    """Add a person to the database with information about them."""
     document_store.write_documents(
         [
             Document(
@@ -195,24 +140,22 @@ def add_database_tool(
             ),
         ],
     )
-    return
+    # Returning a confirmation lets the agent know the tool call succeeded
+    return f"Successfully added {name} {surname} to the database."
 
 
 database_assistant = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[add_database_tool],
     system_prompt="""
     You are a database assistant.
     Your task is to extract the names of people mentioned in the given context and add them to a knowledge base,
     along with additional relevant information about them that can be extracted from the context.
-    Do not use you own knowledge, stay grounded to the given context.
+    Do not use your own knowledge, stay grounded to the given context.
     Do not ask the user for confirmation.
     Instead, automatically update the knowledge base and return a brief summary of the people added,
     including the information stored for each.
     """,
-    exit_conditions=["text"],
-    max_agent_steps=100,
-    raise_on_tool_invocation_failure=False,
 )
 
 extraction_agent = Pipeline()
@@ -238,15 +181,28 @@ extraction_agent.connect("converter.documents", "builder.docs")
 extraction_agent.connect("builder", "database_agent")
 
 agent_output = extraction_agent.run(
-    {"fetcher": {"urls": ["https://haystack.deepset.ai/release-notes/v2.20.0"]}},
+    {
+        "fetcher": {
+            "urls": ["https://github.com/deepset-ai/haystack/releases/tag/v2.27.0"],
+        },
+    },
 )
 
-print(agent_output["database_agent"]["messages"][-1].text)
+print(agent_output["database_agent"]["last_message"].text)
+
+# Inspect what was written to the document store
+written_docs = document_store.filter_documents()
+print(f"\n{len(written_docs)} people added to the database:")
+for doc in written_docs:
+    print(f"  - {doc.content}")
 ```
 
 ### In YAML
 The example pipeline below fetches a webpage, converts its HTML to text, and builds a chat prompt combining the page content with a user query.
 The `Agent` then answers the question based on the provided content and can use its web search tool to find additional information if needed.
+
+<details>
+<summary>View YAML</summary>
 
 ```yaml
 components:
@@ -263,7 +219,7 @@ components:
           generation_kwargs: {}
           http_client_kwargs: null
           max_retries: null
-          model: gpt-4o-mini
+          model: gpt-5.4-nano
           organization: null
           streaming_callback: null
           timeout: null
@@ -355,10 +311,124 @@ max_runs_per_component: 100
 metadata: {}
 ```
 
+</details>
+
+## Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`.
+Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[...],
+    system_prompt="...",
+    streaming_callback=print_streaming_chunk,
+)
+```
+
+See our [Streaming Support](../generators/guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default.
+Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Multi-Agent Systems
+
+You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to build multi-agent systems where specialized agents act as tools for a coordinator agent.
+
+This pattern is useful when a task is too broad or complex for a single agent to handle well.
+Instead of giving one agent a large toolset and hoping it makes good decisions, you can decompose the problem:
+a **coordinator** agent handles planning and delegation, while **specialist** agents each own a focused set of tools and a targeted system prompt.
+
+This is also a form of **context engineering** — deliberately controlling what each agent sees.
+A specialist accumulates its own tool call trace as it works, but the coordinator only needs the final answer.
+By using `outputs_to_string={"source": "last_message"}` when wrapping a specialist as a `ComponentTool`, you surface only its final reply to the coordinator rather than forwarding the full tool call trace.
+This keeps the coordinator's context lean and focused, which leads to better decisions and lower token usage as the conversation grows.
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.fetchers.link_content import LinkContentFetcher
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool, tool
+from haystack.utils import Secret
+
+# Create the specialist agent with web search and page fetching tools
+
+# Option 1: ComponentTool — wrap a component directly (good for straightforward cases)
+search_tool = ComponentTool(
+    component=SerperDevWebSearch(
+        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+        top_k=3,
+    ),
+    name="web_search",
+    description="Search the web for current information on any topic",
+)
+
+
+# Option 2: @tool decorator — wrap a component inside a function for a simpler
+# signature, built-in error handling, and custom result formatting
+@tool
+def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
+    """Fetch the full content of a web page given its URL."""
+    try:
+        streams = LinkContentFetcher().run(urls=[url])["streams"]
+        return (
+            streams[0].data.decode("utf-8", errors="replace")
+            if streams
+            else "No content found."
+        )
+    except Exception as e:
+        return f"Failed to fetch page: {e}"
+
+
+research_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search_tool, fetch_page],
+    system_prompt=(
+        "You are a research specialist. Search the web to find relevant pages, "
+        "then fetch their full content for detailed information."
+    ),
+)
+
+# Wrap the specialist agent as a tool for the coordinator
+research_tool = ComponentTool(
+    component=research_agent,
+    name="research_specialist",
+    description="A specialist that researches topics on the web",
+    outputs_to_string={"source": "last_message"},  # surface only the final reply
+)
+
+# Create the coordinator agent with streaming
+coordinator_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_tool],
+    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
+    streaming_callback=print_streaming_chunk,
+)
+
+result = coordinator_agent.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
+)
+
+print(result["last_message"].text)
+```
+
 ## Additional References
 
-🧑‍🍳 Cookbook: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+📚 Tutorials:
 
-📓 Tutorials:
 - [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
 - [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
+- [Human-in-the-Loop with Haystack Agents](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent/)
+
+🧑‍🍳 Cookbook:
+
+- [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
