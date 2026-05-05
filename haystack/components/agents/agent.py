@@ -96,16 +96,24 @@ class Agent:
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.utils import print_streaming_chunk
     from haystack.dataclasses import ChatMessage
-    from haystack.tools import Tool
+    from haystack.tools import tool
+    from typing import Annotated, Literal
 
     # Tool functions - in practice, these would have real implementations
-    def search(query: str) -> str:
+    @tool
+    def search(query: Annotated[str, "The search query"]) -> str:
         '''Search for information on the web.'''
         # Placeholder: would call actual search API
         return "In France, a 15% service charge is typically included, but leaving 5-10% extra is appreciated."
 
-    def calculator(operation: str, a: float, b: float) -> float:
+    @tool
+    def calculator(
+        operation: Annotated[Literal["multiply", "percentage"], "The mathematical operation to perform"],
+        a: Annotated[float, "First number"],
+        b: Annotated[float, "Second number"],
+    ) -> float:
         '''Perform mathematical calculations.'''
         if operation == "multiply":
             return a * b
@@ -113,54 +121,29 @@ class Agent:
             return (a / 100) * b
         return 0
 
-    # Define tools with JSON Schema
-    tools = [
-        Tool(
-            name="search",
-            description="Searches for information on the web",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The search query"}
-                },
-                "required": ["query"]
-            },
-            function=search
-        ),
-        Tool(
-            name="calculator",
-            description="Performs mathematical calculations",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "operation": {"type": "string", "description": "Operation: multiply, percentage"},
-                    "a": {"type": "number", "description": "First number"},
-                    "b": {"type": "number", "description": "Second number"}
-                },
-                "required": ["operation", "a", "b"]
-            },
-            function=calculator
-        )
-    ]
-
-    # Create and run the agent
     agent = Agent(
+        system_prompt=(
+            "You are a helpful assistant. Use the 'search' tool to find information "
+            "about a user's question and the 'calculator' tool to perform math."
+        ),
         chat_generator=OpenAIChatGenerator(),
-        tools=tools
+        tools=[search, calculator],
+        streaming_callback=print_streaming_chunk,
     )
 
     result = agent.run(
         messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
     )
 
-    print(result["messages"][-1].text)
+    # Access the final response from the Agent
+    # print(result["last_message"].text)
     ```
 
     #### Using a `user_prompt` template with variables
 
     You can define a reusable `user_prompt` with Jinja2 template variables so the Agent can be invoked
     with different inputs without manually constructing `ChatMessage` objects each time.
-    This is especially useful when embedding the Agent in a pipeline or calling it in a loop.
+    This is especially useful when embedding the Agent in a pipeline.
 
     ```python
     from haystack.components.agents import Agent
@@ -229,13 +212,15 @@ class Agent:
             For details on the supported template syntax, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
         :param required_variables:
-            List variables that must be provided as input to user_prompt or system_prompt.
-            If a variable listed as required is not provided, an exception is raised.
+            Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
+            If a required variable is not provided at run time, an exception is raised.
             If set to `"*"`, all variables found in the prompts are required. Optional.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
-        :param state_schema: The schema for the runtime state used by the tools.
+        :param state_schema: A dictionary defining the agent's runtime state. Each key maps to a type config
+            with `"type"` (required) and an optional `"handler"` for merging values across tool calls.
+            Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
             If the agent exceeds this number of steps, it will stop and return the current state.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
@@ -246,7 +231,7 @@ class Agent:
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
-        :raises ValueError: If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
+        :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
         """
         # Check if chat_generator supports tools parameter
         chat_generator_run_method = inspect.signature(chat_generator.run)
@@ -397,7 +382,7 @@ class Agent:
         """
         Serialize the component to a dictionary.
 
-        :return: Dictionary with serialized data
+        :returns: Dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -428,8 +413,8 @@ class Agent:
         """
         Deserialize the agent from a dictionary.
 
-        :param data: Dictionary to deserialize from
-        :return: Deserialized agent
+        :param data: Dictionary to deserialize from.
+        :returns: Deserialized agent.
         """
         init_params = data.get("init_parameters", {})
 
@@ -792,6 +777,8 @@ class Agent:
             to confirmation strategies. Useful in web/server environments to provide per-request
             objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
             can use for non-blocking user interaction.
+        :param kwargs: Additional data to pass to the State schema used by the Agent.
+            The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
