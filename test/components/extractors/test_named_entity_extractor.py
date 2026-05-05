@@ -14,6 +14,7 @@ from haystack import ComponentError, DeserializationError, Document, Pipeline
 from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
+from thinc.api import NumpyOps, get_current_ops, set_current_ops
 
 
 def test_named_entity_extractor_backend():
@@ -198,3 +199,33 @@ def test_named_entity_extractor_run():
         assert "named_entities" in result["documents"][0].meta
         assert result["documents"][0].meta["named_entities"] == expected_annotations[0]
         assert "named_entities" not in documents[0].meta
+
+class TestNamedEntityExtractorDeviceRestoration:
+    def test_spacy_backend_restores_device_state(self):
+        """
+        Verify that NamedEntityExtractor (spaCy) restores the previous Thinc Ops state
+        after the component runs.
+        """
+        # 1. Setup a custom state
+        custom_ops = NumpyOps()
+        custom_ops.owner = "Ritik"
+        set_current_ops(custom_ops)
+
+        try:
+            # 2. Initialize and run (triggering the context manager)
+            extractor = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
+
+            # Since _SpacyBackend is private, we access it via the extractor
+            backend = extractor._backend
+
+            with backend._select_device():
+                # Inside the context, the state might change
+                pass
+
+            # 3. Verify state is restored
+            final_ops = get_current_ops()
+            assert getattr(final_ops, "owner", None) == "Ritik"
+
+        finally:
+            # Clean up global state
+            set_current_ops(NumpyOps())
