@@ -29,16 +29,24 @@ This is an example agent that:
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool
+from haystack.tools import tool
+from typing import Annotated, Literal
 
 # Tool functions - in practice, these would have real implementations
-def search(query: str) -> str:
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
     '''Search for information on the web.'''
     # Placeholder: would call actual search API
     return "In France, a 15% service charge is typically included, but leaving 5-10% extra is appreciated."
 
-def calculator(operation: str, a: float, b: float) -> float:
+@tool
+def calculator(
+    operation: Annotated[Literal["multiply", "percentage"], "The mathematical operation to perform"],
+    a: Annotated[float, "First number"],
+    b: Annotated[float, "Second number"],
+) -> float:
     '''Perform mathematical calculations.'''
     if operation == "multiply":
         return a * b
@@ -46,54 +54,29 @@ def calculator(operation: str, a: float, b: float) -> float:
         return (a / 100) * b
     return 0
 
-# Define tools with JSON Schema
-tools = [
-    Tool(
-        name="search",
-        description="Searches for information on the web",
-        parameters={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "The search query"}
-            },
-            "required": ["query"]
-        },
-        function=search
-    ),
-    Tool(
-        name="calculator",
-        description="Performs mathematical calculations",
-        parameters={
-            "type": "object",
-            "properties": {
-                "operation": {"type": "string", "description": "Operation: multiply, percentage"},
-                "a": {"type": "number", "description": "First number"},
-                "b": {"type": "number", "description": "Second number"}
-            },
-            "required": ["operation", "a", "b"]
-        },
-        function=calculator
-    )
-]
-
-# Create and run the agent
 agent = Agent(
+    system_prompt=(
+        "You are a helpful assistant. Use the 'search' tool to find information "
+        "about a user's question and the 'calculator' tool to perform math."
+    ),
     chat_generator=OpenAIChatGenerator(),
-    tools=tools
+    tools=[search, calculator],
+    streaming_callback=print_streaming_chunk,
 )
 
 result = agent.run(
     messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
 )
 
-print(result["messages"][-1].text)
+# Access the final response from the Agent
+# print(result["last_message"].text)
 ```
 
 #### Using a `user_prompt` template with variables
 
 You can define a reusable `user_prompt` with Jinja2 template variables so the Agent can be invoked
 with different inputs without manually constructing `ChatMessage` objects each time.
-This is especially useful when embedding the Agent in a pipeline or calling it in a loop.
+This is especially useful when embedding the Agent in a pipeline.
 
 ```python
 from haystack.components.agents import Agent
@@ -166,13 +149,15 @@ Initialize the agent component.
   appended to the messages provided at runtime.
   For details on the supported template syntax, refer to the
   [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
-- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to user_prompt or system_prompt.
-  If a variable listed as required is not provided, an exception is raised.
+- **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
+  If a required variable is not provided at run time, an exception is raised.
   If set to `"*"`, all variables found in the prompts are required. Optional.
 - **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
   Can include "text" if the agent should return when it generates a message without tool calls,
   or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
-- **state_schema** (<code>dict\[str, Any\] | None</code>) – The schema for the runtime state used by the tools.
+- **state_schema** (<code>dict\[str, Any\] | None</code>) – A dictionary defining the agent's runtime state. Each key maps to a type config
+  with `"type"` (required) and an optional `"handler"` for merging values across tool calls.
+  Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
 - **max_agent_steps** (<code>int</code>) – Maximum number of steps the agent will run before stopping. Defaults to 100.
   If the agent exceeds this number of steps, it will stop and return the current state.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
@@ -186,7 +171,7 @@ Initialize the agent component.
 
 - <code>TypeError</code> – If the chat_generator does not support tools parameter in its run method.
 - <code>ValueError</code> – If the exit_conditions are not valid.
-- <code>ValueError</code> – If any `user_prompt` variable overlaps with `state` schema or `run` parameters.
+- <code>ValueError</code> – If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
 
 #### warm_up
 
@@ -206,7 +191,7 @@ Serialize the component to a dictionary.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
 #### from_dict
 
@@ -218,11 +203,11 @@ Deserialize the agent from a dictionary.
 
 **Parameters:**
 
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
 
 **Returns:**
 
-- <code>Agent</code> – Deserialized agent
+- <code>Agent</code> – Deserialized agent.
 
 #### run
 
@@ -254,8 +239,8 @@ Process messages and execute tools until an exit condition is met.
   override the parameters passed during component initialization.
 - **break_point** (<code>AgentBreakpoint | None</code>) – An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
   for "tool_invoker".
-- **snapshot** (<code>AgentSnapshot | None</code>) – A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-  the relevant information to restart the Agent execution from where it left off.
+- **snapshot** (<code>AgentSnapshot | None</code>) – An `AgentSnapshot` object containing the state of a previously saved agent execution,
+  used to restart the agent from where it left off.
 - **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
 - **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
   appended to the messages provided at runtime.
@@ -316,8 +301,8 @@ if available.
   override the parameters passed during component initialization.
 - **break_point** (<code>AgentBreakpoint | None</code>) – An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
   for "tool_invoker".
-- **snapshot** (<code>AgentSnapshot | None</code>) – A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-  the relevant information to restart the Agent execution from where it left off.
+- **snapshot** (<code>AgentSnapshot | None</code>) – An `AgentSnapshot` object containing the state of a previously saved agent execution,
+  used to restart the agent from where it left off.
 - **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
 - **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
   appended to the messages provided at runtime.
@@ -325,12 +310,12 @@ if available.
 - **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
   The callback receives a `PipelineSnapshot` object and can return an optional string.
   If provided, the callback is used instead of the default file-saving behavior.
-- **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
-  The keys must match the schema defined in the Agent's `state_schema`.
 - **confirmation_strategy_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary for passing request-scoped resources
   to confirmation strategies. Useful in web/server environments to provide per-request
   objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
   can use for non-blocking user interaction.
+- **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
+  The keys must match the schema defined in the Agent's `state_schema`.
 
 **Returns:**
 
