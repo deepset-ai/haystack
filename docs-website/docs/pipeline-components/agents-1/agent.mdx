@@ -334,7 +334,14 @@ Write a custom callback only if you need a specific transport (for example, SSE/
 
 You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to build multi-agent systems where specialized agents act as tools for a coordinator agent.
 
-When wrapping an `Agent` as a `ComponentTool`, use `outputs_to_string={"source": "last_message"}` to pass only the specialist's final reply to the coordinator, keeping its context clean rather than forwarding the full tool call trace.
+This pattern is useful when a task is too broad or complex for a single agent to handle well.
+Instead of giving one agent a large toolset and hoping it makes good decisions, you can decompose the problem:
+a **coordinator** agent handles planning and delegation, while **specialist** agents each own a focused set of tools and a targeted system prompt.
+
+This is also a form of **context engineering** — deliberately controlling what each agent sees.
+A specialist accumulates its own tool call trace as it works, but the coordinator only needs the final answer.
+By using `outputs_to_string={"source": "last_message"}` when wrapping a specialist as a `ComponentTool`, you surface only its final reply to the coordinator rather than forwarding the full tool call trace.
+This keeps the coordinator's context lean and focused, which leads to better decisions and lower token usage as the conversation grows.
 
 ```python
 from typing import Annotated
