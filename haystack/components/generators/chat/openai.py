@@ -485,7 +485,7 @@ class OpenAIChatGenerator:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
                     function_spec["strict"] = True
-                    function_spec["parameters"]["additionalProperties"] = False
+                    function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
@@ -548,6 +548,39 @@ class OpenAIChatGenerator:
             raise  # Re-raise to propagate cancellation
 
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+
+
+def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
+    """
+    Recursively transform a JSON schema to be OpenAI strict-mode compliant.
+
+    Sets `additionalProperties: false` on all objects and ensures every defined
+    property is listed in `required`. Walks into nested properties, `$defs`,
+    array `items`, and `anyOf`/`oneOf`/`allOf` combinators.
+
+    See https://platform.openai.com/docs/guides/structured-outputs#supported-schemas
+    """
+    schema = {**schema}
+
+    schema_type = schema.get("type")
+
+    if schema_type == "object" or "properties" in schema:
+        schema["additionalProperties"] = False
+        if "properties" in schema:
+            schema["required"] = list(schema["properties"].keys())
+            schema["properties"] = {k: _make_schema_strict(v) for k, v in schema["properties"].items()}
+
+    if "items" in schema:
+        schema["items"] = _make_schema_strict(schema["items"])
+
+    if "$defs" in schema:
+        schema["$defs"] = {k: _make_schema_strict(v) for k, v in schema["$defs"].items()}
+
+    for combinator in ("anyOf", "oneOf", "allOf"):
+        if combinator in schema:
+            schema[combinator] = [_make_schema_strict(s) for s in schema[combinator]]
+
+    return schema
 
 
 def _check_finish_reason(meta: dict[str, Any]) -> None:
