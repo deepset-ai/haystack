@@ -40,7 +40,7 @@ The `Agent` returns a dictionary containing:
 - `last_message`: the final `ChatMessage` from the agent,
 - Additional dynamic keys based on `state_schema`.
 
-### Parameters
+## Parameters
 
 `chat_generator` is the only mandatory parameter — an instance of a Chat Generator that supports tools. All other parameters are optional.
 
@@ -55,7 +55,7 @@ The `Agent` returns a dictionary containing:
 - `confirmation_strategies`: A dict mapping tool names (or tuples of tool names) to a `ConfirmationStrategy`, enabling human review of tool calls before execution. See [Human in the Loop](./human-in-the-loop.mdx).
 - `tool_invoker_kwargs`: Additional keyword arguments forwarded to the internal `ToolInvoker`.
 
-#### Runtime overrides
+### Runtime overrides
 
 `run()` also accepts parameters that override the init-time configuration for a single call:
 
@@ -65,107 +65,6 @@ The `Agent` returns a dictionary containing:
 :::info
 For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).
 :::
-
-### Multi-Agent Systems
-
-You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to build multi-agent systems where specialized agents act as tools for a coordinator agent.
-
-When wrapping an `Agent` as a `ComponentTool`, use `outputs_to_string={"source": "last_message"}` to pass only the specialist's final reply to the coordinator, keeping its context clean rather than forwarding the full tool call trace.
-
-```python
-from typing import Annotated
-from haystack.components.agents import Agent
-from haystack.components.fetchers.link_content import LinkContentFetcher
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.generators.utils import print_streaming_chunk
-from haystack.components.websearch import SerperDevWebSearch
-from haystack.dataclasses import ChatMessage
-from haystack.tools import ComponentTool, tool
-from haystack.utils import Secret
-
-# Create the specialist agent with web search and page fetching tools
-
-# Option 1: ComponentTool — wrap a component directly (good for straightforward cases)
-search_tool = ComponentTool(
-    component=SerperDevWebSearch(
-        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
-        top_k=3,
-    ),
-    name="web_search",
-    description="Search the web for current information on any topic",
-)
-
-
-# Option 2: @tool decorator — wrap a component inside a function for a simpler
-# signature, built-in error handling, and custom result formatting
-@tool
-def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
-    """Fetch the full content of a web page given its URL."""
-    try:
-        streams = LinkContentFetcher().run(urls=[url])["streams"]
-        return (
-            streams[0].data.decode("utf-8", errors="replace")
-            if streams
-            else "No content found."
-        )
-    except Exception as e:
-        return f"Failed to fetch page: {e}"
-
-
-research_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[search_tool, fetch_page],
-    system_prompt=(
-        "You are a research specialist. Search the web to find relevant pages, "
-        "then fetch their full content for detailed information."
-    ),
-)
-
-# Wrap the specialist agent as a tool for the coordinator
-research_tool = ComponentTool(
-    component=research_agent,
-    name="research_specialist",
-    description="A specialist that researches topics on the web",
-    outputs_to_string={"source": "last_message"},  # surface only the final reply
-)
-
-# Create the coordinator agent with streaming
-coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[research_tool],
-    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
-    streaming_callback=print_streaming_chunk,
-)
-
-result = coordinator_agent.run(
-    messages=[
-        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
-    ],
-)
-
-print(result["last_message"].text)
-```
-
-### Streaming
-
-You can stream output as it’s generated. Pass a callback to `streaming_callback`.
-Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
-
-```python
-from haystack.components.generators.utils import print_streaming_chunk
-
-coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[research_tool],
-    system_prompt="You are a coordinator that delegates research tasks to a specialist.",
-    streaming_callback=print_streaming_chunk,
-)
-```
-
-See our [Streaming Support](../generators/guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
-
-Give preference to `print_streaming_chunk` by default.
-Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
 ## Usage
 
@@ -298,6 +197,9 @@ for doc in written_docs:
 The example pipeline below fetches a webpage, converts its HTML to text, and builds a chat prompt combining the page content with a user query.
 The `Agent` then answers the question based on the provided content and can use its web search tool to find additional information if needed.
 
+<details>
+<summary>View YAML</summary>
+
 ```yaml
 components:
   agent:
@@ -403,6 +305,109 @@ connections:
   sender: prompt_builder.prompt
 max_runs_per_component: 100
 metadata: {}
+```
+
+</details>
+
+## Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`.
+Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[...],
+    system_prompt="...",
+    streaming_callback=print_streaming_chunk,
+)
+```
+
+See our [Streaming Support](../generators/guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default.
+Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Multi-Agent Systems
+
+You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to build multi-agent systems where specialized agents act as tools for a coordinator agent.
+
+When wrapping an `Agent` as a `ComponentTool`, use `outputs_to_string={"source": "last_message"}` to pass only the specialist's final reply to the coordinator, keeping its context clean rather than forwarding the full tool call trace.
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.fetchers.link_content import LinkContentFetcher
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool, tool
+from haystack.utils import Secret
+
+# Create the specialist agent with web search and page fetching tools
+
+# Option 1: ComponentTool — wrap a component directly (good for straightforward cases)
+search_tool = ComponentTool(
+    component=SerperDevWebSearch(
+        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+        top_k=3,
+    ),
+    name="web_search",
+    description="Search the web for current information on any topic",
+)
+
+
+# Option 2: @tool decorator — wrap a component inside a function for a simpler
+# signature, built-in error handling, and custom result formatting
+@tool
+def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
+    """Fetch the full content of a web page given its URL."""
+    try:
+        streams = LinkContentFetcher().run(urls=[url])["streams"]
+        return (
+            streams[0].data.decode("utf-8", errors="replace")
+            if streams
+            else "No content found."
+        )
+    except Exception as e:
+        return f"Failed to fetch page: {e}"
+
+
+research_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search_tool, fetch_page],
+    system_prompt=(
+        "You are a research specialist. Search the web to find relevant pages, "
+        "then fetch their full content for detailed information."
+    ),
+)
+
+# Wrap the specialist agent as a tool for the coordinator
+research_tool = ComponentTool(
+    component=research_agent,
+    name="research_specialist",
+    description="A specialist that researches topics on the web",
+    outputs_to_string={"source": "last_message"},  # surface only the final reply
+)
+
+# Create the coordinator agent with streaming
+coordinator_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_tool],
+    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
+    streaming_callback=print_streaming_chunk,
+)
+
+result = coordinator_agent.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
+)
+
+print(result["last_message"].text)
 ```
 
 ## Additional References
