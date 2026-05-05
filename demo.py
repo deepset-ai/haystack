@@ -13,7 +13,7 @@ async def log_chunk(chunk: StreamingChunk) -> None:
     pass
 
 
-async def main() -> None:
+async def happy_path() -> None:
     document_store = InMemoryDocumentStore()
     document_store.write_documents(
         [
@@ -49,6 +49,34 @@ async def main() -> None:
 
     print("\n\n--- final result ---")
     print(handle.result["llm"]["replies"][0].text)
+
+
+async def error_path() -> None:
+    pipe = AsyncPipeline()
+    pipe.add_component("llm", OpenAIChatGenerator(model="not-a-real-model-xyz"))
+
+    handle = pipe.stream(data={"llm": {"messages": [ChatMessage.from_user("hello")]}})
+
+    print("--- error path ---")
+    try:
+        async for chunk in handle:
+            print(chunk.content, end="", flush=True)
+    except Exception as e:
+        print(f"caught {type(e).__name__}: {e}")
+        print()
+    else:
+        print("no error raised (unexpected)")
+
+    try:
+        _ = handle.result
+    except Exception as e:
+        print(f"handle.result also raised: {type(e).__name__}")
+
+
+async def main() -> None:
+    await happy_path()
+    print("\n\n")
+    await error_path()
 
 
 if __name__ == "__main__":
