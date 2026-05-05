@@ -25,7 +25,8 @@ The `Agent` component is a tool-using agent that interacts with chat-based LLMs 
 
 ## Overview
 
-The `Agent` component is a loop-based system that uses a chat-based large language model (LLM) and external tools to solve complex user queries. It works iteratively—calling tools, updating state, and generating prompts—until one of the configurable `exit_conditions` is met.
+The `Agent` component is a loop-based system that uses a chat-based large language model (LLM) and external tools to solve complex user queries.
+It works iteratively—calling tools, updating state, and generating prompts—until one of the configurable `exit_conditions` is met.
 
 It can:
 
@@ -41,19 +42,28 @@ The `Agent` returns a dictionary containing:
 
 ### Parameters
 
-To initialize the `Agent` component, you need to provide it with an instance of a Chat Generator that supports tools. You can pass a list of [tools](../../tools/tool.mdx) or [`ComponentTool`](../../tools/componenttool.mdx) instances, or wrap them in a [`Toolset`](../../tools/toolset.mdx) to manage them as a group.
+`chat_generator` is the only mandatory parameter — an instance of a Chat Generator that supports tools. All other parameters are optional.
 
-You can additionally configure:
+- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx).
+- `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
+- `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
+- `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`.
+- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`.
+- `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
+- `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
+- `raise_on_tool_invocation_failure`: If `True`, raises an exception when a tool call fails. If `False` (default), the error is passed back to the LLM as a message so it can recover.
+- `confirmation_strategies`: A dict mapping tool names (or tuples of tool names) to a `ConfirmationStrategy`, enabling human review of tool calls before execution. See [Human in the Loop](./human-in-the-loop.mdx).
+- `tool_invoker_kwargs`: Additional keyword arguments forwarded to the internal `ToolInvoker`.
 
-- A `system_prompt` for your Agent,
-- A list of `exit_conditions` strings that will cause the agent to return. Can be either:
-  - “text”, which means  that the Agent will exit as soon as the LLM replies only with a text response,
-  - or specific tool names.
-- A `state_schema` for one agent invocation run. It defines extra information – such as documents or context – that tools can read from or write to during execution. You can use this schema to pass parameters that tools can both produce and consume.
-- `streaming_callback` to stream the tokens from the LLM directly in output.
+#### Runtime overrides
+
+`run()` also accepts parameters that override the init-time configuration for a single call:
+
+- `tools`: Pass a list of `Tool`/`Toolset` objects, or a list of tool name strings to select a subset of the agent's configured tools for this run.
+- `generation_kwargs`: Additional keyword arguments forwarded to the LLM, overriding any set at init time (e.g. `{“temperature”: 0.2}`).
 
 :::info
-For a complete list of available parameters, refer to the [Agents API Documentation](/reference/agents-api).
+For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).
 :::
 
 ### Multi-Agent Systems
@@ -140,7 +150,8 @@ coordinator_agent = Agent(
 
 See our [Streaming Support](../generators/guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
 
-Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+Give preference to `print_streaming_chunk` by default.
+Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
 ## Usage
 
@@ -169,7 +180,7 @@ def calculator(
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[calculator],
-    exit_conditions=["calculator"],
+    system_prompt="You are a helpful assistant. Always use the calculator tool to evaluate math expressions.",
     state_schema={"calc_result": {"type": int}},
 )
 
@@ -181,7 +192,9 @@ print("Calc Result:", response.get("calc_result"))
 
 ### In a pipeline
 
-The example pipeline below creates a database assistant using `OpenAIChatGenerator`, `LinkContentFetcher`, and custom database tool. It reads the given URL and processes the page content, then builds a prompt for the AI. The assistant uses this information to write people's names and titles from the given page to the database.
+The example pipeline below creates a database assistant using `OpenAIChatGenerator`, `LinkContentFetcher`, and custom database tool.
+It reads the given URL and processes the page content, then builds a prompt for the AI.
+The assistant uses this information to write people's names and titles from the given page to the database.
 
 ```python
 from haystack.components.agents import Agent
@@ -189,11 +202,11 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.converters.html import HTMLToDocument
 from haystack.components.fetchers.link_content import LinkContentFetcher
-from haystack.core.pipeline import Pipeline
-from haystack.tools import tool
+from haystack import Document, Pipeline
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.tools import tool
 from typing import Annotated, Optional
-from haystack.dataclasses import ChatMessage, Document
 
 document_store = InMemoryDocumentStore()  # create a document store or an SQL database
 
@@ -224,14 +237,11 @@ database_assistant = Agent(
     You are a database assistant.
     Your task is to extract the names of people mentioned in the given context and add them to a knowledge base,
     along with additional relevant information about them that can be extracted from the context.
-    Do not use you own knowledge, stay grounded to the given context.
+    Do not use your own knowledge, stay grounded to the given context.
     Do not ask the user for confirmation.
     Instead, automatically update the knowledge base and return a brief summary of the people added,
     including the information stored for each.
     """,
-    exit_conditions=["text"],
-    max_agent_steps=100,
-    raise_on_tool_invocation_failure=False,
 )
 
 extraction_agent = Pipeline()
@@ -260,7 +270,7 @@ agent_output = extraction_agent.run(
     {"fetcher": {"urls": ["https://haystack.deepset.ai/release-notes/v2.20.0"]}},
 )
 
-print(agent_output["database_agent"]["messages"][-1].text)
+print(agent_output["database_agent"]["last_message"].text)
 ```
 
 ### In YAML
