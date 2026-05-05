@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextlib
 import contextvars
 import inspect
 from collections.abc import AsyncIterator, Mapping
@@ -53,17 +54,17 @@ class StreamHandle:
 
     @property
     def result(self) -> dict[str, Any]:
+        """Final pipeline output dict. Raises if accessed before iteration completes."""
         if self._task is None or not self._task.done():
             raise RuntimeError("Pipeline still running. Iterate this handle to completion first.")
         return self._task.result()
 
     async def aclose(self) -> None:
+        """Cancel the underlying pipeline task; safe to call when iteration ends early."""
         if self._task and not self._task.done():
             self._task.cancel()
-            try:
+            with contextlib.suppress(BaseException):
                 await self._task
-            except BaseException:
-                pass
 
 
 class AsyncPipeline(PipelineBase):

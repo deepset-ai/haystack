@@ -9,11 +9,12 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 async def log_chunk(chunk: StreamingChunk) -> None:
+    """Init-time streaming callback; composed alongside the pipeline forwarder."""
     # print(f"[init-cb saw {len(chunk.content)} chars]")
-    pass
 
 
 async def happy_path() -> None:
+    """RAG over an in-memory BM25 store; streams the LLM answer as it arrives."""
     document_store = InMemoryDocumentStore()
     document_store.write_documents(
         [
@@ -52,6 +53,7 @@ async def happy_path() -> None:
 
 
 async def error_path() -> None:
+    """Trigger a real OpenAI error mid-call and show that it surfaces through `async for`."""
     pipe = AsyncPipeline()
     pipe.add_component("llm", OpenAIChatGenerator(model="not-a-real-model-xyz"))
 
@@ -74,6 +76,7 @@ async def error_path() -> None:
 
 
 async def main() -> None:
+    """Run both demo paths in sequence."""
     await happy_path()
     print("\n\n")
     await error_path()
