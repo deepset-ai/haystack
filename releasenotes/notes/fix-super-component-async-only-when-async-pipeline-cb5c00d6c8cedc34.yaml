@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    Fix ``SuperComponent`` (and ``@super_component``-decorated classes) to only advertise
+    asynchronous support when the wrapped pipeline is an ``AsyncPipeline``. Previously,
+    ``SuperComponent`` always defined ``run_async`` and ``__haystack_supports_async__`` was
+    always ``True``, so:
+
+    - Calling ``run_async`` on a ``SuperComponent`` wrapping a sync ``Pipeline`` raised
+      ``TypeError: Pipeline is not an AsyncPipeline. run_async is not supported.``
+    - Adding such a ``SuperComponent`` to an outer ``AsyncPipeline`` made the outer pipeline
+      route to ``run_async`` and crash with the same error.
+
+    ``run_async`` is now bound on the instance only when the wrapped pipeline is an
+    ``AsyncPipeline``, so ``hasattr(super_component, "run_async")`` and
+    ``__haystack_supports_async__`` correctly reflect the wrapped pipeline's capability.
