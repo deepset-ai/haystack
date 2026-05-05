@@ -18,6 +18,7 @@ description: "`KreuzbergConverter` converts files to Haystack Documents using Kr
 | **Output variables** | `documents`: A list of documents |
 | **API reference** | [Kreuzberg](/reference/integrations-kreuzberg) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/kreuzberg |
+| **Package name** | `kreuzberg-haystack` |
 
 </div>
 
@@ -70,7 +71,10 @@ document_store = InMemoryDocumentStore()
 
 pipeline = Pipeline()
 pipeline.add_component("converter", KreuzbergConverter())
-pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component(
+    "splitter",
+    DocumentSplitter(split_by="sentence", split_length=5),
+)
 pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 
 pipeline.connect("converter", "splitter")

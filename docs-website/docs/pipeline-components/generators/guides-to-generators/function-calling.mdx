@@ -2,12 +2,12 @@
 title: "Function Calling"
 id: function-calling
 slug: "/function-calling"
-description: "Learn about function calling and how to use it as a tool in Haystack."
+description: "Learn about function calling and how to use it in Haystack."
 ---
 
 # Function Calling
 
-Learn about function calling and how to use it as a tool in Haystack.
+Learn about function calling and how to use it in Haystack.
 
 Function calling is a powerful feature that significantly enhances the capabilities of Large Language Models (LLMs). It enables better functionality, immediate data access, and interaction, and sets up for integration with external APIs and services. Function calling turns LLMs into adaptable tools for various use case scenarios.
 
@@ -20,116 +20,105 @@ Function calling is useful for a variety of purposes, but two main points are pa
 
 :::note[Important Note]
 
-The model doesn't actually call the function. Function calling returns JSON with the name of a function and the arguments to invoke it.
+The model doesn't actually call the function. Function calling returns the name of a function and the arguments to invoke it. The actual invocation is performed by your code (or by a Haystack component such as `ToolInvoker` or `Agent`).
 :::
 
 ## Example
 
-In the most simple form, Haystack users can invoke function calling by interacting directly with ChatGenerators. In this example, the human prompt “What's the weather like in Berlin?” is converted into a method parameter invocation descriptor that can, in turn, be passed off to some hypothetical weather service:
+Let's walk through function calling in Haystack in three steps: define a tool, let the LLM pick it, and then actually invoke it.
+
+:::tip[Real-world usage]
+
+We split function calling into separate steps below for clarity. In real applications, the [`Agent`](../../agents-1/agent.mdx) component handles the full loop for you. See [Using the Agent component](#using-the-agent-component) at the end of this section.
+:::
+
+### 1. Define a Tool
+
+The simplest way to expose a Python function to an LLM is the `@tool` decorator. Type hints (and `Annotated` metadata) are used to automatically build the JSON schema the LLM needs.
 
 ```python
-import json
+from typing import Annotated, Literal
+from haystack.tools import tool
 
-from typing import Dict, Any, List
+
+@tool
+def get_weather(
+    city: Annotated[str, "The city to get the weather for"],
+    unit: Annotated[Literal["celsius", "fahrenheit"], "Temperature unit"] = "celsius",
+):
+    """Get the current weather for a city."""
+    # In a real application, this would call a weather API.
+    return {"city": city, "temperature": 18, "unit": unit, "condition": "Partly Cloudy"}
+```
+
+This produces a [`Tool`](../../../tools/tool.mdx) instance you can pass directly to a ChatGenerator. If you prefer to build it explicitly, you can also instantiate `Tool(...)` yourself.
+
+### 2. Let the LLM Pick the Tool
+
+Pass the tool to a ChatGenerator and run it on a user message. The model decides whether to call the tool and, if so, with which arguments. The result lives on `replies[0].tool_calls`.
+
+```python
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_weather",
-            "description": "Get the current weather",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA",
-                    },
-                    "format": {
-                        "type": "string",
-                        "enum": ["celsius", "fahrenheit"],
-                        "description": "The temperature unit to use. Infer this from the users location.",
-                    },
-                },
-                "required": ["location", "format"],
-            },
-        }
-    }
-]
-messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
-generator = OpenAIChatGenerator()
-response = generator.run(messages=messages, generation_kwargs= {"tools": tools})
-response_msg = response["replies"][0]
-
-messages.append(response_msg)
-print(response_msg)
-
->> ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='get_current_weather',
->> arguments={'location': 'Berlin', 'format': 'celsius'}, id='call_9kJ0Vql2w2oXkTZJ5SVt1KGh')],
->> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
->> 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 21, 'prompt_tokens': 88,
->> 'total_tokens': 109, 'completion_tokens_details': {'accepted_prediction_tokens': 0,
->> 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0},
->> 'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}}})
-```
-
-Let’s pretend that the hypothetical weather service responded with some JSON response of the current weather data in Berlin:
-
-```python
-weather_response = [
-    {
-        "id": "response_uhGNifLfopt5JrCUxXw1L3zo",
-        "status": "success",
-        "function": {
-            "name": "get_current_weather",
-            "arguments": {"location": "Berlin", "format": "celsius"},
-        },
-        "data": {
-            "location": "Berlin",
-            "temperature": 18,
-            "weather_condition": "Partly Cloudy",
-            "humidity": "60%",
-            "wind_speed": "15 km/h",
-            "observation_time": "2024-03-05T14:00:00Z",
-        },
-    },
-]
-```
-
-We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) and add it to a list of messages:
-
-```python
-fcm = ChatMessage.from_function(
-    content=json.dumps(weather_response),
-    name="get_current_weather",
+generator = OpenAIChatGenerator(tools=[get_weather])
+response = generator.run(
+    messages=[ChatMessage.from_user("What's the weather like in Berlin?")],
 )
-messages.append(fcm)
+
+print(response["replies"][0].tool_calls)
+# >> [ToolCall(tool_name='get_weather', arguments={'city': 'Berlin', 'unit': 'celsius'}, id='call_...')]
 ```
 
-Sending these messages back to LLM enables the model to understand the context of the ongoing LLM interaction through `ChatMessage` list and respond back with a human-readable weather report for Berlin:
+At this point the model has only *requested* a call. Nothing has been executed yet.
+
+### 3. Actually Invoke the Tool
+
+To execute the requested tool calls, use the [`ToolInvoker`](../../tools/toolinvoker.mdx) component. It takes a list of [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) objects containing tool calls, runs the corresponding tools, and returns new `ChatMessage` objects (with role `tool`) carrying the results as `ToolCallResult`s. To get a final natural-language answer, feed those results back to the ChatGenerator.
 
 ```python
-response = generator.run(messages=messages)
-response_msg = response["replies"][0]
+from haystack.components.tools import ToolInvoker
 
-print(response_msg.content)
+invoker = ToolInvoker(tools=[get_weather])
 
->> Currently in Berlin, the weather is partly cloudy with a temperature of 18°C. The humidity is 60% and there is a wind speed of 15 km/h.
+# Run the tools requested by the assistant.
+tool_messages = invoker.run(messages=response["replies"])["tool_messages"]
+
+# Send the full conversation back to the model for the final reply.
+messages = [
+    ChatMessage.from_user("What's the weather like in Berlin?"),
+    *response["replies"],  # assistant message with the tool call
+    *tool_messages,  # tool result messages
+]
+final = generator.run(messages=messages)
+print(final["replies"][0].text)
+# The weather in Berlin is partly cloudy with a temperature of 18°C.
+```
+
+#### Using the Agent component
+
+In real applications, you typically don't manage the loop yourself: the [`Agent`](../../agents-1/agent.mdx) component does it for you. Internally, it wraps a ChatGenerator and a `ToolInvoker` and iterates until the model produces a final answer.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[get_weather],
+)
+
+response = agent.run(
+    messages=[ChatMessage.from_user("What's the weather like in Berlin?")],
+)
+print(response["messages"][-1].text)
+# The weather in Berlin is partly cloudy with a temperature of 18°C.
 ```
 
 ## Additional References
 
-Haystack 2.0 introduces a better way to call functions using pipelines.
-
-For example, you can easily connect an LLM with a ChatGenerator to an external service using an OpenAPI specification. This lets you resolve service parameters with function calls and then use those parameters to invoke the external service. The service's response is added back into the LLM's context window. This method supports real-time, retriever-augmented generation that works with any OpenAPI-compliant service. It's a big improvement in how LLMs can use external structured data and functionalities.
-
-For more information and examples, see the documentation on [`OpenAPIServiceToFunctions`](../../converters/openapiservicetofunctions.mdx) and [`OpenAPIServiceConnector`](../../connectors/openapiserviceconnector.mdx).
+- [`Tool`](../../../tools/tool.mdx), [`Toolset`](../../../tools/toolset.mdx), and [`ComponentTool`](../../../tools/componenttool.mdx) cover the building blocks for defining tools, grouping them, and exposing existing Haystack components as tools.
+- To connect an LLM to external services or other Haystack applications, the recommended approach is the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). Haystack provides [`MCPTool`](../../../tools/mcptool.mdx) and [`MCPToolset`](../../../tools/mcptoolset.mdx) for connecting to MCP servers over Streamable HTTP or stdio. Install them with `pip install mcp-haystack`.
 
 :notebook: **Tutorial:** [Building a Chat Application with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
-
-🧑‍🍳 **Cookbooks:**
-
-- [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)
-- [Information Extraction with Gorilla](https://haystack.deepset.ai/cookbook/information-extraction-gorilla)

@@ -51,7 +51,8 @@ jobs:
       - name: Verify release notes formatting
         if: steps.changed-files.outputs.any_changed == 'true' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
         run: |
-          pip install "reno<5"
+          python -m pip install --upgrade pip
+          pip install "reno<5" --uploaded-prior-to=P1D
           reno lint .  # it is not possible to pass a list of files to reno lint
 
       - name: Check reStructuredText code formatting

@@ -175,7 +175,9 @@ jobs:
           python-version: "3.13"
 
       - name: Install tomlkit
-        run: pip install tomlkit
+        run: |
+          python -m pip install --upgrade pip
+          pip install tomlkit --uploaded-prior-to=P1D
 
       - name: Update haystack-ai in uv.lock
         run: python haystack/.github/utils/update_haystack_dc_custom_nodes.py "${{ env.VERSION }}" deepset-cloud-custom-nodes/uv.lock

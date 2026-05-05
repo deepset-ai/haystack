@@ -18,6 +18,7 @@ The `FaithfulnessEvaluator` uses an LLM to evaluate whether a generated answer c
 | **Output variables** | A dictionary containing:  <br /> <br />- `score`: A number from 0.0 to 1.0 that represents the average faithfulness score across all questions  <br /> <br />- `individual_scores`: A list of the individual faithfulness scores ranging from 0.0 to 1.0 for each input triple of a question, a list of contexts, and a predicted answer.  <br /> <br />- `results`:  A list of dictionaries with `statements` and `statement_scores` keys. They contain the statements extracted by an LLM from each predicted answer and the corresponding faithfulness scores per statement, which are either 0 or 1. |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/faithfulness.py |
+| **Package name** | `haystack-ai` |
 
 </div>
 
