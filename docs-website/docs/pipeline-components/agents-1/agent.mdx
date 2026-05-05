@@ -36,6 +36,7 @@ It can:
 The `Agent` returns a dictionary containing:
 
 - `messages`: the full conversation history,
+- `last_message`: the final `ChatMessage` from the agent,
 - Additional dynamic keys based on `state_schema`.
 
 ### Parameters
@@ -55,32 +56,67 @@ You can additionally configure:
 For a complete list of available parameters, refer to the [Agents API Documentation](/reference/agents-api).
 :::
 
-### Agents as Tools
+### Multi-Agent Systems
 
-You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to create multi-agent systems where specialized agents act as tools for a coordinator agent.
+You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to build multi-agent systems where specialized agents act as tools for a coordinator agent.
 
-When wrapping an `Agent` as a `ComponentTool`, use the `outputs_to_string` parameter with `{"source": "last_message"}` to extract only the agent's final response text, rather than the execution trace with tool calls to keep the coordinator agent's context clean and focused.
+When wrapping an `Agent` as a `ComponentTool`, use `outputs_to_string={"source": "last_message"}` to pass only the specialist's final reply to the coordinator, keeping its context clean rather than forwarding the full tool call trace.
 
 ```python
-## Wrap the agent as a ComponentTool with outputs_to_string
+from haystack.components.agents import Agent
+from haystack.components.fetchers.link_content import LinkContentFetcher
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.utils import Secret
+
+# Create the specialist agent with web search and page fetching tools
+search_tool = ComponentTool(
+    component=SerperDevWebSearch(
+        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+        top_k=3,
+    ),
+    name="web_search",
+    description="Search the web for current information on any topic",
+)
+
+fetch_tool = ComponentTool(
+    component=LinkContentFetcher(),
+    name="fetch_page",
+    description="Fetch the full content of a web page given its URL",
+)
+
+research_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search_tool, fetch_tool],
+    system_prompt=(
+        "You are a research specialist. Search the web to find relevant pages, "
+        "then fetch their full content for detailed information."
+    ),
+)
+
+# Wrap the specialist agent as a tool for the coordinator
 research_tool = ComponentTool(
-    component=research_agent,  # another agent component
+    component=research_agent,
     name="research_specialist",
-    description="A specialist that can research topics from the knowledge base",
-    outputs_to_string={"source": "last_message"},  ## Extract only the final response
+    description="A specialist that researches topics on the web",
+    outputs_to_string={"source": "last_message"},  # surface only the final reply
 )
 
-## Create a coordinator agent that uses the specialist
+# Create the coordinator agent with streaming
 coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[research_tool],
-    system_prompt="You are a coordinator that delegates research tasks to a specialist.",
-    exit_conditions=["text"],
+    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
+    streaming_callback=print_streaming_chunk,
 )
 
-## Run
 result = coordinator_agent.run(
-    messages=[ChatMessage.from_user("Tell me about Haystack")],
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
 )
 
 print(result["last_message"].text)
@@ -94,9 +130,8 @@ Use the built-in `print_streaming_chunk` to print text tokens and tool events (t
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 
-## Configure the Agent with a streaming callback
 coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[research_tool],
     system_prompt="You are a coordinator that delegates research tasks to a specialist.",
     streaming_callback=print_streaming_chunk,
@@ -114,12 +149,16 @@ Give preference to `print_streaming_chunk` by default. Write a custom callback o
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools.tool import Tool
+from haystack.tools import tool
 from haystack.components.agents import Agent
+from typing import Annotated
 
 
-## Tool Function
-def calculate(expression: str) -> dict:
+@tool(outputs_to_state={"calc_result": {"source": "result"}})
+def calculator(
+    expression: Annotated[str, "Math expression to evaluate, e.g. '7 * (4 + 2)'"],
+) -> dict:
+    """Evaluate basic math expressions."""
     try:
         result = eval(expression, {"__builtins__": {}})
         return {"result": result}
@@ -127,37 +166,16 @@ def calculate(expression: str) -> dict:
         return {"error": str(e)}
 
 
-## Tool Definition
-calculator_tool = Tool(
-    name="calculator",
-    description="Evaluate basic math expressions.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "expression": {
-                "type": "string",
-                "description": "Math expression to evaluate",
-            },
-        },
-        "required": ["expression"],
-    },
-    function=calculate,
-    outputs_to_state={"calc_result": {"source": "result"}},
-)
-
-## Agent Setup
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(),
-    tools=[calculator_tool],
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[calculator],
     exit_conditions=["calculator"],
     state_schema={"calc_result": {"type": int}},
 )
 
-## Run the Agent
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
 
-## Output
-print(response["messages"])
+print(response["last_message"].text)
 print("Calc Result:", response.get("calc_result"))
 ```
 
@@ -174,7 +192,7 @@ from haystack.components.fetchers.link_content import LinkContentFetcher
 from haystack.core.pipeline import Pipeline
 from haystack.tools import tool
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from typing import Optional
+from typing import Annotated, Optional
 from haystack.dataclasses import ChatMessage, Document
 
 document_store = InMemoryDocumentStore()  # create a document store or an SQL database
@@ -182,12 +200,12 @@ document_store = InMemoryDocumentStore()  # create a document store or an SQL da
 
 @tool
 def add_database_tool(
-    name: str,
-    surname: str,
-    job_title: Optional[str],
-    other: Optional[str],
+    name: Annotated[str, "First name of the person"],
+    surname: Annotated[str, "Last name of the person"],
+    job_title: Annotated[Optional[str], "Job title or role of the person"] = None,
+    other: Annotated[Optional[str], "Any other relevant information"] = None,
 ):
-    """Use this tool to add names to the database with information about them"""
+    """Add a person to the database with information about them."""
     document_store.write_documents(
         [
             Document(
@@ -200,7 +218,7 @@ def add_database_tool(
 
 
 database_assistant = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[add_database_tool],
     system_prompt="""
     You are a database assistant.
@@ -264,7 +282,7 @@ components:
           generation_kwargs: {}
           http_client_kwargs: null
           max_retries: null
-          model: gpt-4o-mini
+          model: gpt-5.4-nano
           organization: null
           streaming_callback: null
           timeout: null
@@ -358,8 +376,12 @@ metadata: {}
 
 ## Additional References
 
-🧑‍🍳 Cookbook: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+📚 Tutorials:
 
-📓 Tutorials:
 - [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
 - [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
+- [Human-in-the-Loop with Haystack Agents](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent/)
+
+🧑‍🍳 Cookbooks:
+
+- [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
