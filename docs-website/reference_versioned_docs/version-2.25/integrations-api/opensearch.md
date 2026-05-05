@@ -21,7 +21,7 @@ __init__(
     *,
     document_store: OpenSearchDocumentStore,
     filters: dict[str, Any] | None = None,
-    fuzziness: int | str = "AUTO",
+    fuzziness: int | str = 0,
     top_k: int = 10,
     scale_score: bool = False,
     all_terms_must_match: bool = False,
@@ -42,8 +42,8 @@ Creates the OpenSearchBM25Retriever component.
   required to transform one word into another. For example, the "fuzziness" between the words
   "wined" and "wind" is 1 because only one edit is needed to match them.
 
-Use "AUTO" (the default) for automatic adjustment based on term length, which is optimal for
-most scenarios. For detailed guidance, refer to the
+Defaults to `0` (exact matching). Use `"AUTO"` for automatic adjustment based on term length.
+For detailed guidance, refer to the
 [OpenSearch fuzzy query documentation](https://opensearch.org/docs/latest/query-dsl/term/fuzzy/).
 
 - **top_k** (<code>int</code>) – Maximum number of documents to return.
@@ -940,7 +940,7 @@ __init__(
     *,
     embedder: TextEmbedder,
     filters_bm25: dict[str, Any] | None = None,
-    fuzziness: int | str = "AUTO",
+    fuzziness: int | str = 0,
     top_k_bm25: int = 10,
     scale_score: bool = False,
     all_terms_must_match: bool = False,
