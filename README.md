@@ -57,7 +57,7 @@
 | haystack/components/embedders/backends/\_\_init\_\_.py                              |        0 |        0 |    100% |           |
 | haystack/components/embedders/backends/sentence\_transformers\_backend.py           |       25 |        0 |    100% |           |
 | haystack/components/embedders/backends/sentence\_transformers\_sparse\_backend.py   |       31 |        0 |    100% |           |
-| haystack/components/embedders/hugging\_face\_api\_document\_embedder.py             |      122 |        4 |     97% |174-175, 344, 372 |
+| haystack/components/embedders/hugging\_face\_api\_document\_embedder.py             |      122 |        4 |     97% |174-175, 336, 364 |
 | haystack/components/embedders/hugging\_face\_api\_text\_embedder.py                 |       83 |        4 |     95% |137-138, 252, 254 |
 | haystack/components/embedders/image/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
 | haystack/components/embedders/image/sentence\_transformers\_doc\_image\_embedder.py |       78 |        1 |     99% |       237 |
