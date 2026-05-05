@@ -22,6 +22,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 with LazyImport(message="Run 'pip install spacy'") as spacy_import:
     import spacy
     from spacy import Language as SpacyPipeline
+    from thinc.api import get_current_ops, set_current_ops
 
 
 class NamedEntityExtractorBackend(Enum):
@@ -492,17 +493,11 @@ class _SpacyBackend(_NerBackend):
         """
         Context manager used to run spaCy models on a specific GPU in a scoped manner.
         """
-
-        # TODO: This won't restore the active device.
-        # Since there are no opaque API functions to determine
-        # the active device in spaCy/Thinc, we can't do much
-        # about it as a consumer unless we start poking into their
-        # internals.
         device_id = self._device.to_spacy()
+        previous_ops = get_current_ops()
         try:
             if device_id >= 0:
                 spacy.require_gpu(device_id)
             yield
         finally:
-            if device_id >= 0:
-                spacy.require_cpu()
+            set_current_ops(previous_ops)
