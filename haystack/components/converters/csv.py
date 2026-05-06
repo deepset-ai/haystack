@@ -159,6 +159,7 @@ class CSVToDocument:
                         mb=size_bytes / (1024 * 1024),
                     )
             except Exception:
+                logger.debug("Could not determine size of %s", source)
                 pass
 
             # Create DictReader; if this fails, raise (no fallback)
