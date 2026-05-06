@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Document the combined use of streaming and tool calling in ``OllamaChatGenerator``: pass both ``streaming_callback`` and ``tools`` to receive ``tool_calls`` deltas through the streaming callback, and read the reconstructed call list from ``replies[0].tool_calls`` once the run returns. The component reference page now includes an executable example and notes that, within a single generation step, streamed text tokens and tool-call deltas are mutually exclusive (when the model invokes a tool, ``chunk.content`` is empty and ``replies[0].text`` is ``None``).
