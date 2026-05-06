@@ -11,9 +11,9 @@ description: "`State` is a container for storing shared information during Agent
 
 ## Overview
 
-When building agents that use multiple tools, you often need tools to share information with each other.
-State solves this problem by providing centralized storage that all tools can read from and write to.
-For example, one tool might retrieve documents while another tool uses those documents to generate an answer.
+When building agents that use multiple tools, you often need tools to share information.
+State provides centralized storage that all tools can read from and write to.
+For example, one tool might retrieve documents while another uses those documents to generate an answer.
 
 State uses a schema-based approach where you define:
 
@@ -45,6 +45,7 @@ You don't need to define this in your schema. It uses `list[ChatMessage]` type w
 | `state.get(key, default=None)` | Read a value; returns `default` if the key doesn't exist |
 | `state.set(key, value)` | Write a value, merged using the schema's handler |
 | `state.has(key)` | Returns `True` if the key exists in state |
+| `state.data` | Returns a snapshot of all current state as a `dict` |
 
 ## Schema Definition
 
@@ -129,7 +130,7 @@ Tools interact with State through three mechanisms:
 
 - **`outputs_to_state`**: Write tool results to state keys after the tool runs.
 - **`inputs_from_state`**: Inject state values into tool parameters before the tool runs.
-- **Direct `State` injection**: Declare a `state: State` parameter to receive the live `State` object and read/write freely inside the function. The ToolInvoker detects this annotation automatically and injects the object — it is never exposed to the LLM.
+- **Direct `State` injection**: Add a `state: State` parameter to your tool function's signature. The Agent detects the `State` annotation and injects the live `State` object automatically, so you can read or write any key defined in the schema. The `State` object is never exposed to the LLM's parameter schema.
 
 ### Reading from State: `inputs_from_state`
 
