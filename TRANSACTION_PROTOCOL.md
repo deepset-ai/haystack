@@ -81,5 +81,5 @@ The Transaction Protocol is open source:
 ## Related Specs
 
 - [Identity Protocol](https://workswithagents.com/specs/identity.md) — Ed25519 agent identity for transaction signing
-- [Compliance-as-Code](https://workswithagents.com/specs/compliance.md) — Executable regulation packs
+- [Compliance-as-Code](https://workswithagents.com/specs/compliance-as-code.md) — Executable regulation packs
 - [Trust Score](https://workswithagents.com/specs/trust-score.md) — Verifiable agent reputation
