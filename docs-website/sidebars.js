@@ -27,17 +27,7 @@ export default {
       label: 'Haystack Concepts',
       items: [
         'concepts/concepts-overview',
-        {
-          type: 'category',
-          label: 'Agents',
-          link: {
-            type: 'doc',
-            id: 'concepts/agents'
-          },
-          items: [
-            'concepts/agents/state',
-          ],
-        },
+        'concepts/agents',
         {
           type: 'category',
           label: 'Components',
@@ -149,6 +139,7 @@ export default {
           items: [
             'pipeline-components/agents-1/agent',
             'pipeline-components/agents-1/human-in-the-loop',
+            'pipeline-components/agents-1/state',
           ],
         },
         {
