@@ -23,7 +23,7 @@ class TransformersZeroShotTextRouter:
     Specify the set of labels for categorization when initializing the component.
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore

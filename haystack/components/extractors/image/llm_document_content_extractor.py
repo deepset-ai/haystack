@@ -77,7 +77,7 @@ class LLMDocumentContentExtractor:
     Documents that fail extraction are returned in ``failed_documents`` with ``content_extraction_error`` in metadata.
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack import Document
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -121,8 +121,8 @@ class LLMDocumentContentExtractor:
     )
 
     documents = [
-        Document(content="", meta={"file_path": "/test/test_files/images/image_metadata.png"}),
-        Document(content="", meta={"file_path": "/test/test_files/images/apple.jpg", "page_number": 1})
+        Document(content="", meta={"file_path": "test/test_files/images/image_metadata.png"}),
+        Document(content="", meta={"file_path": "test/test_files/images/apple.jpg", "page_number": 1})
     ]
     result = extractor.run(documents=documents)
     updated_documents = result["documents"]

@@ -123,63 +123,78 @@ from haystack import Pipeline
 
 from haystack_integrations.components.connectors.langfuse import LangfuseConnector
 
+
 @tool
 def get_weather(city: Annotated[str, "The city to get weather for"]) -> str:
-"""Get current weather information for a city."""
-weather_data = {
-  "Berlin": "18°C, partly cloudy",
-  "New York": "22°C, sunny",
-  "Tokyo": "25°C, clear skies"
-}
-return weather_data.get(city, f"Weather information for {city} not available")
+    """Get current weather information for a city."""
+    weather_data = {
+        "Berlin": "18°C, partly cloudy",
+        "New York": "22°C, sunny",
+        "Tokyo": "25°C, clear skies",
+    }
+    return weather_data.get(city, f"Weather information for {city} not available")
+
 
 @tool
-def calculate(operation: Annotated[str, "Mathematical operation: add, subtract, multiply, divide"],
-          a: Annotated[float, "First number"],
-          b: Annotated[float, "Second number"]) -> str:
-"""Perform basic mathematical calculations."""
-if operation == "add":
-  result = a + b
-  elif operation == "subtract":
-  result = a - b
-  elif operation == "multiply":
-  result = a * b
-  elif operation == "divide":
-  if b == 0:
-      return "Error: Division by zero"
-      result = a / b
-  else:
-  return f"Error: Unknown operation '{operation}'"
+def calculate(
+    operation: Annotated[
+        str,
+        "Mathematical operation: add, subtract, multiply, divide",
+    ],
+    a: Annotated[float, "First number"],
+    b: Annotated[float, "Second number"],
+) -> str:
+    """Perform basic mathematical calculations."""
+    if operation == "add":
+        result = a + b
+    elif operation == "subtract":
+        result = a - b
+    elif operation == "multiply":
+        result = a * b
+    elif operation == "divide":
+        if b == 0:
+            return "Error: Division by zero"
+        else:
+            result = a / b
+    else:
+        return f"Error: Unknown operation '{operation}'"
 
-return f"The result of {a} {operation} {b} is {result}"
+    return f"The result of {a} {operation} {b} is {result}"
+
 
 if __name__ == "__main__":
-## Create components
-chat_generator = OpenAIChatGenerator()
+    ## Create components
+    chat_generator = OpenAIChatGenerator()
 
-agent = Agent(
-  chat_generator=chat_generator,
-  tools=[get_weather, calculate],
-  system_prompt="You are a helpful assistant with access to weather and calculator tools. Use them when needed.",
-  exit_conditions=["text"]
-)
+    agent = Agent(
+        chat_generator=chat_generator,
+        tools=[get_weather, calculate],
+        system_prompt="You are a helpful assistant with access to weather and calculator tools. Use them when needed.",
+        exit_conditions=["text"],
+    )
 
-langfuse_connector = LangfuseConnector("Agent Example")
+    langfuse_connector = LangfuseConnector("Agent Example")
 
-## Create and run pipeline
-pipe = Pipeline()
-pipe.add_component("tracer", langfuse_connector)
-pipe.add_component("agent", agent)
+    ## Create and run pipeline
+    pipe = Pipeline()
+    pipe.add_component("tracer", langfuse_connector)
+    pipe.add_component("agent", agent)
 
-response = pipe.run(
-  data={
-      "agent": {"messages": [ChatMessage.from_user("What's the weather in Berlin and calculate 15 + 27?")]},
-      "tracer": {"invocation_context": {"test": "agent_with_tools"}}
-    }
-)
+    response = pipe.run(
+        data={
+            "agent": {
+                "messages": [
+                    ChatMessage.from_user(
+                        "What's the weather in Berlin and calculate 15 + 27?",
+                    ),
+                ],
+            },
+            "tracer": {"invocation_context": {"test": "agent_with_tools"}},
+        },
+    )
 
-print(response["agent"]["last_message"].text)
-print(response["tracer"]["trace_url"])
+    print(response["agent"]["last_message"].text)
+    print(response["tracer"]["trace_url"])
 ```
 
 ## Advanced Usage

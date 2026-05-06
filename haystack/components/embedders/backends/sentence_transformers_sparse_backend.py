@@ -113,8 +113,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
 
         sparse_embeddings: list[SparseEmbedding] = []
         for embedding_tensor in embeddings_list:
-            # encode returns a list of tensors with the parameters above, but the type hint is too broad
-            embedding_tensor = embedding_tensor.coalesce()  # type: ignore[union-attr]
+            embedding_tensor = embedding_tensor.coalesce()
             indices = embedding_tensor.indices()[0].tolist()  # Only column indices
             values = embedding_tensor.values().tolist()
             sparse_embeddings.append(SparseEmbedding(indices=indices, values=values))

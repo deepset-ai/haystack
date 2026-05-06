@@ -200,7 +200,7 @@ response = client.run(
 print(response["replies"][0].text)
 ```
 
-:::info Model Compatibility and Limitations
+:::info[Model Compatibility and Limitations]
 - Both Pydantic models and JSON schemas are supported for latest models starting from GPT-4o.
 - If both `text_format` and `text` are provided, `text_format` takes precedence and the JSON schema passed to `text` is ignored.
 - Streaming is not supported when using structured outputs.

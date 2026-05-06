@@ -20,7 +20,7 @@ class LLMMessagesRouter:
     This component can be used with general-purpose LLMs and with specialized LLMs for moderation like Llama Guard.
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.components.routers.llm_messages_router import LLMMessagesRouter

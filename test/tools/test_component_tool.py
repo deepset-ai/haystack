@@ -13,7 +13,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
 from haystack import Pipeline, SuperComponent, component
-from haystack.components.agents import Agent
+from haystack.components.agents import Agent, State
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
@@ -536,6 +536,36 @@ class TestComponentTool:
         assert "snapshot_callback" not in param_names
         assert "streaming_callback" not in param_names
         assert "messages" in param_names
+
+    def test_from_component_with_state_param_excluded_from_schema(self):
+        @component
+        class ComponentWithState:
+            """A component that takes State as a direct input."""
+
+            @component.output_types(result=str)
+            def run(self, query: str, state: State) -> dict:
+                return {"result": query}
+
+        tool = ComponentTool(component=ComponentWithState(), name="state_comp", description="test")
+
+        param_names = list(tool.parameters.get("properties", {}).keys())
+        assert "state" not in param_names
+        assert "query" in param_names
+
+    def test_from_component_with_optional_state_param_excluded_from_schema(self):
+        @component
+        class ComponentWithOptionalState:
+            """A component that takes Optional[State] as an input (e.g. ToolInvoker style)."""
+
+            @component.output_types(result=str)
+            def run(self, query: str, state: State | None = None) -> dict:
+                return {"result": query}
+
+        tool = ComponentTool(component=ComponentWithOptionalState(), name="opt_state_comp", description="test")
+
+        param_names = list(tool.parameters.get("properties", {}).keys())
+        assert "state" not in param_names
+        assert "query" in param_names
 
     def test_component_invoker_with_agent(self):
         """Tests that Agent as a ComponentTool can be invoked when calling it with a list of dicts"""

@@ -10,8 +10,9 @@ slug: "/integrations-elasticsearch"
 
 ### ElasticsearchBM25Retriever
 
-ElasticsearchBM25Retriever retrieves documents from the ElasticsearchDocumentStore using BM25 algorithm to find the
-most similar documents to a user's query.
+Retrieves documents from ElasticsearchDocumentStore using the BM25 algorithm.
+
+Finds the most similar documents to a user's query.
 
 This retriever is only compatible with ElasticsearchDocumentStore.
 
@@ -50,7 +51,7 @@ __init__(
     top_k: int = 10,
     scale_score: bool = False,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Initialize ElasticsearchBM25Retriever with an instance ElasticsearchDocumentStore.
@@ -190,7 +191,7 @@ __init__(
     top_k: int = 10,
     num_candidates: int | None = None,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Create the ElasticsearchEmbeddingRetriever component.
@@ -325,7 +326,7 @@ __init__(
     document_store: ElasticsearchDocumentStore,
     raise_on_failure: bool = True,
     fetch_size: int | None = None
-)
+) -> None
 ```
 
 Creates the ElasticsearchSQLRetriever component.
@@ -427,8 +428,7 @@ Example:
 
 ### ElasticsearchDocumentStore
 
-An ElasticsearchDocumentStore instance that works with Elastic Cloud or your own
-Elasticsearch cluster.
+An ElasticsearchDocumentStore instance that works with Elastic Cloud or your own Elasticsearch cluster.
 
 Usage example (Elastic Cloud):
 
@@ -473,8 +473,10 @@ __init__(
     embedding_similarity_function: Literal[
         "cosine", "dot_product", "l2_norm", "max_inner_product"
     ] = "cosine",
+    sparse_vector_field: str | None = None,
+    ingest_pipeline: str | None = None,
     **kwargs: Any
-)
+) -> None
 ```
 
 Creates a new ElasticsearchDocumentStore instance.
@@ -507,6 +509,31 @@ of `id:secret`. Secret instances can also be loaded from a token using the `Secr
   To choose the most appropriate function, look for information about your embedding model.
   To understand how document scores are computed, see the Elasticsearch
   [documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/dense-vector.html#dense-vector-params)
+- **sparse_vector_field** (<code>str | None</code>) – If set, the name of the Elasticsearch field where sparse embeddings
+  will be stored using the `sparse_vector` field type. When not set, any `sparse_embedding`
+  data on Documents is silently dropped during writes.
+- **ingest_pipeline** (<code>str | None</code>) – If set, the id of an Elasticsearch ingest pipeline to run on each bulk
+  index or create. This is the recommended way to generate embeddings at index time using
+  Elasticsearch's inference processors (e.g. ELSER or a dense model) without running a
+  Haystack embedder component. Leading and trailing whitespace is stripped.
+
+Requirements when using inference processors:
+
+- Configure the processor with `input_output` so the embedding is written directly
+  to the right field: `output_field` must match `"embedding"` (for dense retrieval)
+  or the value of `sparse_vector_field` (for ELSER / sparse retrieval). The ES default
+  target `ml.inference.<tag>` will not be found by Haystack's retrievers.
+- Do **not** also run a Haystack `DocumentEmbedder` upstream. If documents arrive with
+  a pre-computed `embedding`, the pipeline will overwrite it with its own model's
+  vectors, causing a silent mismatch between stored and query embeddings at retrieval time.
+- If you supply `custom_mapping`, include the output field with the correct type
+  (`dense_vector` or `sparse_vector`).
+
+Sparse embedding note: Elasticsearch does not store `sparse_vector` data generated
+by inference pipelines in `_source`; it goes only into the inverted index. Haystack
+works around this by requesting the field via the ES `fields` API on every search so
+that `Document.sparse_embedding` is populated correctly on returned documents.
+
 - \*\***kwargs** (<code>Any</code>) – Optional arguments that `Elasticsearch` takes.
 
 #### client
@@ -887,8 +914,7 @@ count_unique_metadata_by_filter(
 ) -> dict[str, int]
 ```
 
-Returns the number of unique values for each specified metadata field of the documents
-that match the provided filters.
+Returns the number of unique values for each specified metadata field that match the provided filters.
 
 **Parameters:**
 
@@ -914,8 +940,7 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the number of unique values for each specified metadata field of the documents
-that match the provided filters.
+Asynchronously returns unique value counts for each specified metadata field matching the provided filters.
 
 **Parameters:**
 
@@ -1039,6 +1064,7 @@ get_metadata_field_unique_values(
 ```
 
 Returns unique values for a metadata field, optionally filtered by a search term in the content.
+
 Uses composite aggregations for proper pagination beyond 10k results.
 
 See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
@@ -1069,6 +1095,7 @@ get_metadata_field_unique_values_async(
 ```
 
 Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
+
 Uses composite aggregations for proper pagination beyond 10k results.
 
 See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation

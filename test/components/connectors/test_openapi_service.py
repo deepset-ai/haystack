@@ -7,8 +7,8 @@ import os
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
+import httpx
 import pytest
-import requests
 from openapi3 import OpenAPI
 
 from haystack import Pipeline
@@ -266,10 +266,11 @@ class TestOpenAPIServiceConnector:
         pipe.connect("openapi_container.service_response", "final_prompt_adapter.service_response")
         pipe.connect("final_prompt_adapter", "llm.messages")
 
-        serperdev_spec = requests.get(
-            "https://gist.githubusercontent.com/vblagoje/241a000f2a77c76be6efba71d49e2856/raw/722ccc7fe6170a744afce3e3fb3a30fdd095c184/serper.json"
+        serperdev_spec = httpx.get(
+            "https://gist.githubusercontent.com/vblagoje/241a000f2a77c76be6efba71d49e2856/raw/722ccc7fe6170a744afce3e3fb3a30fdd095c184/serper.json",
+            follow_redirects=True,
         ).json()
-        system_prompt = requests.get("https://bit.ly/serper_dev_system").text
+        system_prompt = httpx.get("https://bit.ly/serper_dev_system", follow_redirects=True).text
 
         query = "Why did Elon Musk sue OpenAI?"
 

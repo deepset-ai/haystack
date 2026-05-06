@@ -1,11 +1,14 @@
 ---
 title: "Pipelines"
 id: pipelines
+sidebar_class_name: hidden-sidebar-item
+sidebar_position: 0
 slug: "/pipelines"
 description: "To build modern search pipelines with LLMs, you need two things: powerful components and an easy way to put them together. The Haystack pipeline is built for this purpose and enables you to design and scale your interactions with LLMs."
 ---
 
 import ClickableImage from "@site/src/components/ClickableImage";
+import YoutubeEmbed from "@site/src/components/YoutubeEmbed";
 
 # Pipelines
 
@@ -56,10 +59,7 @@ While the data (the initial query) flows through the entire pipeline, individual
 
 To connect components and integrations in a pipeline, you must know the names of their inputs and outputs. The output of one component must be accepted as input by the following component. When you connect components in a pipeline with `Pipeline.connect()`, it validates if the input and output types match.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/SxAwyeCkguc"
-title="YouTube video player" frameBorder="0"
-allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-allowFullScreen></iframe>
+<YoutubeEmbed videoId="SxAwyeCkguc" title="Introduction to Haystack Pipelines" />
 
 ## Steps to Create a Pipeline Explained
 

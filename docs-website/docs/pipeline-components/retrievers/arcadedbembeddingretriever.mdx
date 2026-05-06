@@ -19,6 +19,7 @@ An embedding-based Retriever compatible with the ArcadeDB Document Store. It use
 | **Output variables**                   | `documents`: A list of documents |
 | **API reference**                      | [ArcadeDB](/reference/integrations-arcadedb) |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/arcadedb |
+| **Package name** | `arcadedb-haystack` |
 
 </div>
 
@@ -40,7 +41,9 @@ Ensure ArcadeDB is running, for example via Docker, and credentials are set (`AR
 
 ```python
 from haystack_integrations.document_stores.arcadedb import ArcadeDBDocumentStore
-from haystack_integrations.components.retrievers.arcadedb import ArcadeDBEmbeddingRetriever
+from haystack_integrations.components.retrievers.arcadedb import (
+    ArcadeDBEmbeddingRetriever,
+)
 
 document_store = ArcadeDBDocumentStore(
     url="http://localhost:2480",
@@ -65,7 +68,9 @@ from haystack.components.embedders import (
     SentenceTransformersDocumentEmbedder,
 )
 from haystack_integrations.document_stores.arcadedb import ArcadeDBDocumentStore
-from haystack_integrations.components.retrievers.arcadedb import ArcadeDBEmbeddingRetriever
+from haystack_integrations.components.retrievers.arcadedb import (
+    ArcadeDBEmbeddingRetriever,
+)
 
 document_store = ArcadeDBDocumentStore(
     url="http://localhost:2480",
@@ -76,8 +81,12 @@ document_store = ArcadeDBDocumentStore(
 
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(content="Elephants have been observed to recognize themselves in mirrors."),
-    Document(content="Bioluminescent waves can be seen in the Maldives and Puerto Rico."),
+    Document(
+        content="Elephants have been observed to recognize themselves in mirrors.",
+    ),
+    Document(
+        content="Bioluminescent waves can be seen in the Maldives and Puerto Rico.",
+    ),
 ]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
@@ -95,6 +104,8 @@ query_pipeline.add_component(
 )
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
-result = query_pipeline.run({"text_embedder": {"text": "How many languages are there?"}})
+result = query_pipeline.run(
+    {"text_embedder": {"text": "How many languages are there?"}},
+)
 print(result["retriever"]["documents"][0])
 ```

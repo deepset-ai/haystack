@@ -29,7 +29,7 @@ class HuggingFaceLocalGenerator:
     LLMs running locally may need powerful hardware.
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.generators import HuggingFaceLocalGenerator
 
@@ -40,7 +40,7 @@ class HuggingFaceLocalGenerator:
     )
 
     print(generator.run("Who is the best American actor?"))
-    # {'replies': ['John Cusack']}
+    # >> {'replies': ['John Cusack']}
     ```
     """
 

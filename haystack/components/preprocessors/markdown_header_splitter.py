@@ -147,7 +147,6 @@ class MarkdownHeaderSplitter:
         # process headers and build chunks
         chunks: list[dict] = []
         header_stack: list[str | None] = [None] * 6
-        active_parents: list[str] = []  # track active parent headers
         pending_headers: list[str] = []  # store empty headers to prepend to next content
         has_content = False  # flag to track if any header has content
 
@@ -169,16 +168,15 @@ class MarkdownHeaderSplitter:
 
             # skip splits w/o content
             if not content.strip():  # this strip is needed to avoid counting whitespace as content
-                # add as parent for subsequent headers
-                active_parents = [h for h in header_stack[: level - 1] if h is not None]
-                active_parents.append(header_text)
                 if self.keep_headers:
                     header_line = f"{header_prefix} {header_text}"
                     pending_headers.append(header_line)
                 continue
 
             has_content = True  # at least one header has content
-            parent_headers = list(active_parents)
+            # Build parent metadata from the current header stack so the first child of a
+            # contentful section still inherits its full ancestor chain.
+            parent_headers = [h for h in header_stack[: level - 1] if h is not None]
 
             logger.debug(
                 "Creating chunk for header '{header_text}' at level {level}", header_text=header_text, level=level
@@ -197,9 +195,6 @@ class MarkdownHeaderSplitter:
                 pending_headers = []  # reset pending headers
             else:
                 chunks.append({"content": content, "meta": {"header": header_text, "parent_headers": parent_headers}})
-
-            # reset active parents
-            active_parents = [h for h in header_stack[: level - 1] if h is not None]
 
         # return doc unchunked if no headers have content
         if not has_content:

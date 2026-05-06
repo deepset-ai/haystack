@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-import requests
 
 from haystack import Document
 from haystack.components.rankers.hugging_face_tei import HuggingFaceTEIRanker, TruncationDirection
@@ -93,7 +92,7 @@ class TestHuggingFaceTEIRanker:
     def test_run_with_mock(self, mock_request, del_hf_env_vars):
         """Test run method with mocked API response"""
         # Setup mock response
-        mock_response = MagicMock(spec=requests.Response)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = [
             {"index": 2, "score": 0.95},
             {"index": 1, "score": 0.85},
@@ -141,7 +140,7 @@ class TestHuggingFaceTEIRanker:
     def test_run_with_truncation_direction(self, mock_request, del_hf_env_vars):
         """Test run method with truncation direction parameter"""
         # Setup mock response
-        mock_response = MagicMock(spec=requests.Response)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = [{"index": 0, "score": 0.95}]
         mock_request.return_value = mock_response
 
@@ -174,7 +173,7 @@ class TestHuggingFaceTEIRanker:
     def test_run_with_custom_top_k(self, mock_request, del_hf_env_vars):
         """Test run method with custom top_k parameter"""
         # Setup mock response with 5 documents
-        mock_response = MagicMock(spec=requests.Response)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = [
             {"index": 4, "score": 0.95},
             {"index": 3, "score": 0.90},
@@ -210,7 +209,7 @@ class TestHuggingFaceTEIRanker:
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
     def test_run_deduplicates_documents(self, mock_request, del_hf_env_vars):
         """Test that duplicate documents are removed before sending to the API."""
-        mock_response = MagicMock(spec=requests.Response)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = [{"index": 1, "score": 0.9}, {"index": 0, "score": 0.2}]
         mock_request.return_value = mock_response
 
@@ -241,7 +240,7 @@ class TestHuggingFaceTEIRanker:
     def test_error_handling(self, mock_request, del_hf_env_vars):
         """Test error handling in the ranker"""
         # Setup mock response with error
-        mock_response = MagicMock(spec=requests.Response)
+        mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = {"error": "Some error occurred", "error_type": "TestError"}
         mock_request.return_value = mock_response
 

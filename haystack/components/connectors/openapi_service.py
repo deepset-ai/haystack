@@ -174,7 +174,7 @@ class OpenAPIServiceConnector:
     <!-- test-ignore -->
     ```python
     import json
-    import requests
+    import httpx
 
     from haystack.components.connectors import OpenAPIServiceConnector
     from haystack.dataclasses import ChatMessage, ToolCall
@@ -187,7 +187,7 @@ class OpenAPIServiceConnector:
     message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
     serper_token = Secret.from_env_var("SERPERDEV_API_KEY").resolve_value()
-    serperdev_openapi_spec = json.loads(requests.get("https://bit.ly/serper_dev_spec").text)
+    serperdev_openapi_spec = json.loads(httpx.get("https://bit.ly/serper_dev_spec", follow_redirects=True).text)
     service_connector = OpenAPIServiceConnector()
     result = service_connector.run(
         messages=[message],

@@ -424,6 +424,7 @@
             "pipeline-components/generators/vertexaiimagegenerator",
             "pipeline-components/generators/vertexaiimageqa",
             "pipeline-components/generators/vertexaitextgenerator",
+            "pipeline-components/generators/vllmchatgenerator",
             "pipeline-components/generators/watsonxchatgenerator",
             "pipeline-components/generators/watsonxgenerator",
             "pipeline-components/generators/external-integrations-generators"
@@ -483,6 +484,7 @@
             "pipeline-components/rankers/amazonbedrockranker",
             "pipeline-components/rankers/cohereranker",
             "pipeline-components/rankers/fastembedranker",
+            "pipeline-components/rankers/fastembedlateinteractionranker",
             "pipeline-components/rankers/huggingfaceteiranker",
             "pipeline-components/rankers/jinaranker",
             "pipeline-components/rankers/llmranker",

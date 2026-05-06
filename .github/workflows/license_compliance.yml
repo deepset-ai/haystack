@@ -29,7 +29,8 @@ jobs:
 
       - name: Get direct dependencies
         run: |
-          pip install toml
+          python -m pip install --upgrade pip
+          pip install toml --uploaded-prior-to=P1D
           python .github/utils/pyproject_to_requirements.py pyproject.toml > ${{ env.REQUIREMENTS_FILE }}
 
       - name: Check Licenses

@@ -63,37 +63,52 @@ class MockChatGenerator:
 
 class TestLLM:
     class TestInit:
+        USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
+
         def test_is_subclass_of_agent(self):
             assert issubclass(LLM, Agent)
 
         def test_defaults(self):
-            llm = LLM(chat_generator=MockChatGenerator())
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             assert llm.chat_generator is not None
             assert llm.tools == []
             assert llm.system_prompt is None
-            assert llm.user_prompt is None
+            assert llm.user_prompt == self.USER_PROMPT
+            assert llm.required_variables == "*"
             assert llm.streaming_callback is None
             assert llm._tool_invoker is None
 
         def test_output_sockets(self):
-            llm = LLM(chat_generator=MockChatGenerator())
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             assert llm.__haystack_output__._sockets_dict == {
                 "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
                 "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
             }
 
         def test_detects_no_tools_support(self):
-            llm = LLM(chat_generator=MockChatGenerator())
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             assert llm._chat_generator_supports_tools is False
 
         def test_detects_tools_support(self):
-            llm = LLM(chat_generator=MockChatGeneratorWithTools())
+            llm = LLM(chat_generator=MockChatGeneratorWithTools(), user_prompt=self.USER_PROMPT)
             assert llm._chat_generator_supports_tools is True
+
+        def test_raises_if_user_prompt_has_no_variables(self):
+            with pytest.raises(ValueError, match="at least one template variable"):
+                LLM(
+                    chat_generator=MockChatGenerator(),
+                    user_prompt='{% message role="user" %}Hello world{% endmessage %}',
+                )
+
+        def test_raises_if_required_variables_empty(self):
+            with pytest.raises(ValueError, match="required_variables must not be empty"):
+                LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT, required_variables=[])
 
     class TestSerialization:
         def test_to_dict_excludes_agent_only_params(self, monkeypatch):
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-            llm = LLM(chat_generator=OpenAIChatGenerator(), system_prompt="You are helpful.")
+            user_prompt = '{% message role="user" %}{{ query }}{% endmessage %}'
+            llm = LLM(chat_generator=OpenAIChatGenerator(), system_prompt="You are helpful.", user_prompt=user_prompt)
 
             serialized = llm.to_dict()
 
@@ -153,8 +168,8 @@ class TestLLM:
                         },
                     },
                     "system_prompt": "You are helpful.",
-                    "user_prompt": None,
-                    "required_variables": None,
+                    "user_prompt": '{% message role="user" %}{{ query }}{% endmessage %}',
+                    "required_variables": "*",
                     "streaming_callback": None,
                 },
             }
@@ -168,7 +183,10 @@ class TestLLM:
 
         def test_roundtrip(self, monkeypatch):
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-            original = LLM(chat_generator=OpenAIChatGenerator(), system_prompt="You are a poet.")
+            user_prompt = '{% message role="user" %}{{ query }}{% endmessage %}'
+            original = LLM(
+                chat_generator=OpenAIChatGenerator(), system_prompt="You are a poet.", user_prompt=user_prompt
+            )
 
             restored = LLM.from_dict(original.to_dict())
 

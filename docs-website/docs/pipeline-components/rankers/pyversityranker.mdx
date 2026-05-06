@@ -19,6 +19,7 @@ Use this component to rerank documents by balancing relevance and diversity usin
 | **Output variables** | `documents`: A list of document objects |
 | **API reference** | [Pyversity](/reference/integrations-pyversity) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pyversity |
+| **Package name** | `pyversity-haystack` |
 
 </div>
 
@@ -153,7 +154,7 @@ for doc in result["ranker"]["documents"]:
     print(f"{doc.score:.4f}  {doc.content}")
 ```
 
-:::note Embeddings required
+:::note[Embeddings required]
 
 `PyversityRanker` requires documents to have both `score` and `embedding` set. When using a dense retriever, make sure to pass `return_embedding=True`. Documents missing either field are skipped with a warning.
 

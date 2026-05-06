@@ -22,6 +22,7 @@ Retrieves documents using multiple queries in parallel with an embedding-based R
 | **Output variables** | `documents`: A list of retrieved documents sorted by relevance score |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/multi_query_embedding_retriever.py |
+| **Package name** | `haystack-ai` |
 
 </div>
 
@@ -38,7 +39,7 @@ This Retriever is particularly effective when combined with [`QueryExpander`](..
 
 Use `MultiQueryEmbeddingRetriever` when your documents use different words than your users' queries, or when you want to find more diverse results in RAG pipelines. Running multiple queries takes more time, but you can speed it up by increasing `max_workers` to run queries in parallel.
 
-:::tip When to use a `MultiQueryTextRetriever` instead
+:::tip[When to use a `MultiQueryTextRetriever` instead]
 
 If you need exact keyword matching and don't want to use embeddings, use [`MultiQueryTextRetriever`](multiquerytextretriever.mdx) instead. It works with text-based Retrievers like `InMemoryBM25Retriever` and is better when synonyms can be generated through query expansion.
 :::

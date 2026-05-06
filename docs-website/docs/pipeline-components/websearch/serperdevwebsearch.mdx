@@ -19,6 +19,7 @@ Search engine using SerperDev API.
 | **Output variables** | `documents`: A list of documents  <br /> <br />`links`: A list of strings of resulting links |
 | **API reference** | [Websearch](/reference/websearch-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/websearch/serper_dev.py |
+| **Package name** | `haystack-ai` |
 
 </div>
 
@@ -30,7 +31,7 @@ To search the content of the web pages, use the [`LinkContentFetcher`](../fetche
 
 `SerperDevWebSearch` requires a [SerperDev](https://serper.dev/) key to work. It uses a `SERPERDEV_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
 
-:::info Alternative search
+:::info[Alternative search]
 
 To use [Search API](https://www.searchapi.io/) as an alternative, see its respective [documentation page](searchapiwebsearch.mdx).
 :::
@@ -102,6 +103,97 @@ pipe.connect("prompt_builder.messages", "llm.messages")
 query = "What is the most famous landmark in Berlin?"
 
 pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+```
+
+### In YAML
+This is the YAML representation of the RAG pipeline shown above. It searches the web, fetches the resulting pages, converts them to text, builds a prompt with the content, and generates an answer using a chat model.
+
+```yaml
+components:
+  converter:
+    init_parameters:
+      extraction_kwargs: {}
+      store_full_path: false
+    type: haystack.components.converters.html.HTMLToDocument
+  fetcher:
+    init_parameters:
+      client_kwargs:
+        follow_redirects: true
+        timeout: 3
+      http2: false
+      raise_on_failure: true
+      request_headers: {}
+      retry_attempts: 2
+      timeout: 3
+      user_agents:
+      - haystack/LinkContentFetcher/2.27.0rc0
+    type: haystack.components.fetchers.link_content.LinkContentFetcher
+  llm:
+    init_parameters:
+      api_base_url: null
+      api_key:
+        env_vars:
+        - OPENAI_API_KEY
+        strict: true
+        type: env_var
+      generation_kwargs: {}
+      http_client_kwargs: null
+      max_retries: null
+      model: gpt-4o-mini
+      organization: null
+      streaming_callback: null
+      timeout: null
+      tools: null
+      tools_strict: false
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+  prompt_builder:
+    init_parameters:
+      required_variables:
+      - documents
+      - query
+      template:
+      - content:
+        - text: You are a helpful assistant.
+        meta: {}
+        name: null
+        role: system
+      - content:
+        - text: 'Given the information below:
+
+            {% for document in documents %}{{ document.content }}{% endfor %}
+
+            Answer question: {{ query }}.
+
+            Answer:'
+        meta: {}
+        name: null
+        role: user
+      variables: null
+    type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder
+  search:
+    init_parameters:
+      allowed_domains: null
+      api_key:
+        env_vars:
+        - SERPERDEV_API_KEY
+        strict: true
+        type: env_var
+      exclude_subdomains: false
+      search_params: {}
+      top_k: 2
+    type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+connection_type_validation: true
+connections:
+- receiver: fetcher.urls
+  sender: search.links
+- receiver: converter.sources
+  sender: fetcher.streams
+- receiver: prompt_builder.documents
+  sender: converter.documents
+- receiver: llm.messages
+  sender: prompt_builder.prompt
+max_runs_per_component: 100
+metadata: {}
 ```
 
 ## Additional References

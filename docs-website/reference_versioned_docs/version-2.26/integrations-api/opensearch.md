@@ -21,7 +21,7 @@ __init__(
     *,
     document_store: OpenSearchDocumentStore,
     filters: dict[str, Any] | None = None,
-    fuzziness: int | str = "AUTO",
+    fuzziness: int | str = 0,
     top_k: int = 10,
     scale_score: bool = False,
     all_terms_must_match: bool = False,
@@ -42,8 +42,8 @@ Creates the OpenSearchBM25Retriever component.
   required to transform one word into another. For example, the "fuzziness" between the words
   "wined" and "wind" is 1 because only one edit is needed to match them.
 
-Use "AUTO" (the default) for automatic adjustment based on term length, which is optimal for
-most scenarios. For detailed guidance, refer to the
+Defaults to `0` (exact matching). Use `"AUTO"` for automatic adjustment based on term length.
+For detailed guidance, refer to the
 [OpenSearch fuzzy query documentation](https://opensearch.org/docs/latest/query-dsl/term/fuzzy/).
 
 - **top_k** (<code>int</code>) – Maximum number of documents to return.
@@ -940,7 +940,7 @@ __init__(
     *,
     embedder: TextEmbedder,
     filters_bm25: dict[str, Any] | None = None,
-    fuzziness: int | str = "AUTO",
+    fuzziness: int | str = 0,
     top_k_bm25: int = 10,
     scale_score: bool = False,
     all_terms_must_match: bool = False,
@@ -1220,6 +1220,7 @@ __init__(
     use_ssl: bool | None = None,
     verify_certs: bool | None = None,
     timeout: int | None = None,
+    nested_fields: list[str] | Literal["*"] | None = None,
     **kwargs: Any
 ) -> None
 ```
@@ -1259,6 +1260,12 @@ For more information on connection parameters, see the [official OpenSearch docu
 - **use_ssl** (<code>bool | None</code>) – Whether to use SSL. Defaults to None
 - **verify_certs** (<code>bool | None</code>) – Whether to verify certificates. Defaults to None
 - **timeout** (<code>int | None</code>) – Timeout in seconds. Defaults to None
+- **nested_fields** (<code>list\[str\] | Literal['\*'] | None</code>) – List of metadata field paths (without the `meta.` prefix) that should be mapped
+  as OpenSearch `nested` type, enabling multi-condition filtering on array-of-objects fields.
+  Pass `"*"` to auto-detect `list[dict]` fields and map them as nested from
+  the first `write_documents` batch.
+  When the index already exists, nested fields are discovered from the live mapping.
+  Defaults to None (no nested support).
 - \*\***kwargs** (<code>Any</code>) – Optional arguments that `OpenSearch` takes. For the full list of supported kwargs,
   see the [official OpenSearch reference](https://opensearch-project.github.io/opensearch-py/api-ref/clients/opensearch_client.html)
 
@@ -1837,7 +1844,15 @@ Uses composite aggregations for proper pagination beyond 10k results.
 ### normalize_filters
 
 ```python
-normalize_filters(filters: dict[str, Any]) -> dict[str, Any]
+normalize_filters(
+    filters: dict[str, Any], nested_fields: set[str] | None = None
+) -> dict[str, Any]
 ```
 
 Converts Haystack filters in OpenSearch compatible filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dictionary.
+- **nested_fields** (<code>set\[str\] | None</code>) – Set of metadata field paths that are mapped as `nested` type in OpenSearch.
+  When provided, conditions targeting sub-fields of these paths are wrapped in `nested` queries.

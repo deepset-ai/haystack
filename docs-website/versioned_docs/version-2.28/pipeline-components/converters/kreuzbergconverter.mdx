@@ -1,0 +1,144 @@
+---
+title: "KreuzbergConverter"
+id: kreuzbergconverter
+slug: "/kreuzbergconverter"
+description: "`KreuzbergConverter` converts files to Haystack Documents using Kreuzberg, a document intelligence framework with a Rust core that extracts text from 91+ file formats entirely locally with no external API calls."
+---
+
+# KreuzbergConverter
+
+`KreuzbergConverter` converts files to Haystack Documents using [Kreuzberg](https://docs.kreuzberg.dev/), a document intelligence framework with a Rust core that extracts text from 91+ file formats entirely locally with no external API calls.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory run variables** | `sources`: A list of file paths, directory paths, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Kreuzberg](/reference/integrations-kreuzberg) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/kreuzberg |
+
+</div>
+
+## Overview
+
+The `KreuzbergConverter` takes a list of file paths, directory paths, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects and uses Kreuzberg to extract text and metadata. All processing is performed locally with no external API calls.
+
+**Supported format categories:**
+- **Documents**: PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS, ODT, ODS, ODP, RTF, Pages, Keynote, Numbers, and more
+- **Images (via OCR)**: PNG, JPEG, TIFF, GIF, BMP, WebP, JPEG 2000, SVG
+- **Text/Markup**: Markdown, HTML, XML, LaTeX, Typst, JSON, YAML, reStructuredText, Jupyter notebooks
+- **Email**: EML, MSG (with attachment extraction)
+- **Archives**: ZIP, TAR, GZIP, 7Z (extracts and processes contents recursively)
+- **eBooks & Academic**: EPUB, BibTeX, DocBook, JATS
+
+The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#document) per source by default. When per-page extraction or chunking is enabled, it returns one Document per page or chunk instead. Documents include rich metadata such as quality scores, detected languages, extracted keywords, table data, and PDF annotations.
+
+By default, batch processing is enabled, leveraging Rust's rayon thread pool for parallel extraction. Set `batch=False` for sequential processing.
+
+You can customize extraction behavior with Kreuzberg's `ExtractionConfig`, either passed directly or loaded from a TOML, YAML, or JSON configuration file via `config_path`. See the [Kreuzberg documentation](https://docs.kreuzberg.dev/) for the full configuration reference.
+
+## Usage
+
+Install the Kreuzberg integration:
+
+```shell
+pip install kreuzberg-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
+
+converter = KreuzbergConverter()
+result = converter.run(sources=["report.pdf", "notes.docx"])
+documents = result["documents"]
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", KreuzbergConverter())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+pipeline.connect("converter", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": ["report.pdf", "presentation.pptx"]}})
+```
+
+## Additional Features
+
+### Markdown Output with OCR
+
+Use `ExtractionConfig` to customize the output format and OCR settings:
+
+```python
+from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
+from kreuzberg import ExtractionConfig, OcrConfig
+
+converter = KreuzbergConverter(
+    config=ExtractionConfig(
+        output_format="markdown",
+        ocr=OcrConfig(backend="tesseract", language="eng"),
+    ),
+)
+result = converter.run(sources=["scanned_document.pdf"])
+documents = result["documents"]
+```
+
+### Per-Page Extraction
+
+Create one Document per page using `PageConfig`:
+
+```python
+from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
+from kreuzberg import ExtractionConfig, PageConfig
+
+converter = KreuzbergConverter(
+    config=ExtractionConfig(
+        page=PageConfig(extract_pages=True),
+    ),
+)
+result = converter.run(sources=["multipage.pdf"])
+# One Document per page, each with page_number in metadata
+```
+
+### Token Reduction
+
+Reduce output size for LLM consumption with `TokenReductionConfig`. Token reduction uses TF-IDF-based extractive summarization to identify and preserve the most important terms and phrases, progressively removing less critical content such as extra whitespace, filler words, and redundant phrases. Five levels are available: `"off"` (no reduction), `"light"` (~15%), `"moderate"` (~30%), `"aggressive"` (~50%), and `"maximum"` (>50% reduction):
+
+```python
+from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
+from kreuzberg import ExtractionConfig, TokenReductionConfig
+
+converter = KreuzbergConverter(
+    config=ExtractionConfig(
+        token_reduction=TokenReductionConfig(mode="moderate"),
+    ),
+)
+```
+
+### Config from File
+
+Load extraction settings from a TOML, YAML, or JSON file:
+
+```python
+from haystack_integrations.components.converters.kreuzberg import KreuzbergConverter
+
+converter = KreuzbergConverter(config_path="extraction_config.toml")
+```
+
+For the full configuration reference and format support matrix, see the [Kreuzberg documentation](https://docs.kreuzberg.dev/).

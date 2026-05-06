@@ -19,6 +19,7 @@ A ChatGenerator wrapper that tries multiple Chat Generators sequentially until o
 | **Output variables** | `replies`: Generated ChatMessage instances from the first successful generator  <br /> <br />`meta`: Execution metadata including successful generator details |
 | **API reference** | [Generators](/reference/generators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/fallback.py |
+| **Package name** | `haystack-ai` |
 
 </div>
 
@@ -75,7 +76,7 @@ You can use this metadata to:
 
 ### Streaming
 
-`FallbackChatGenerator` supports streaming through the `streaming_callback` parameter. The callback is passed directly to the underlying Generators.
+`FallbackChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) through the `streaming_callback` parameter. The callback is passed directly to the underlying Generators.
 
 ## Usage
 

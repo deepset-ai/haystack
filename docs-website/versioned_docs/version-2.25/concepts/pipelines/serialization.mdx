@@ -130,7 +130,7 @@ restored = component_from_dict(Greeter, data, "my_greeter")
 assert restored.message == greeter.message
 ```
 
-:::caution Init parameters must be stored as instance attributes
+:::caution[Init parameters must be stored as instance attributes]
 
 Default serialization only works when there is a **1:1 mapping** between init parameter names and instance attributes. For every argument in `__init__`, the component must assign it to an attribute with the same name. For example, if you have `def __init__(self, prompt: str)`, you must have `self.prompt = prompt` in the class. Otherwise the serialization logic can't find the value to serialize and raises an error or uses the default value if the parameter has one.
 :::

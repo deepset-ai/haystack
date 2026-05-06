@@ -19,6 +19,7 @@ description: "`OpenAIResponsesChatGenerator` enables chat completion using OpenA
 | **Output variables**                   | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects containing the generated responses                               |
 | **API reference**                      | [Generators](/reference/generators-api)                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/openai_responses.py     |
+| **Package name** | `haystack-ai` |
 
 </div>
 
@@ -171,7 +172,7 @@ response = client.run(
 print(response["replies"][0].text)
 ```
 
-:::info Model Compatibility and Limitations
+:::info[Model Compatibility and Limitations]
 - Both Pydantic models and JSON schemas are supported for latest models starting from GPT-4o.
 - If both `text_format` and `text` are provided, `text_format` takes precedence and the JSON schema passed to `text` is ignored.
 - Streaming is not supported when using structured outputs.

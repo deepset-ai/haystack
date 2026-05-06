@@ -39,6 +39,26 @@
       "source": "/reference/2.18/:slug*",
       "destination": "/reference/:slug*",
       "permanent": true
+    },
+    {
+      "source": "/docs/2.23/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.23/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.22/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.22/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
     }
   ]
 }
