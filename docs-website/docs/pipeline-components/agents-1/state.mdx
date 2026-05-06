@@ -38,6 +38,14 @@ State supports standard Python types:
 State automatically includes a `messages` field that stores the full conversation history during execution.
 You don't need to define this in your schema. It uses `list[ChatMessage]` type with the `merge_lists` handler, so new messages are appended on each iteration.
 
+### State API
+
+| Method | Description |
+| --- | --- |
+| `state.get(key, default=None)` | Read a value; returns `default` if the key doesn't exist |
+| `state.set(key, value)` | Write a value, merged using the schema's handler |
+| `state.has(key)` | Returns `True` if the key exists in state |
+
 ## Schema Definition
 
 The schema defines what data can be stored and how values are updated. Each schema entry consists of:
@@ -112,10 +120,23 @@ state.set("user_name", "Bob", handler_override=concatenate_strings)
 print(state.get("user_name"))  # "Alice-Bob"
 ```
 
-## Using State with Agents
+## Using State
 
 Define a `state_schema` when creating the Agent.
 State keys declared in `state_schema` are exposed as output keys on the agent's result dict alongside `messages` and `last_message`.
+
+Tools interact with State through three mechanisms:
+
+- **`outputs_to_state`**: Write tool results to state keys after the tool runs.
+- **`inputs_from_state`**: Inject state values into tool parameters before the tool runs.
+- **Direct `State` injection**: Declare a `state: State` parameter to receive the live `State` object and read/write freely inside the function. The ToolInvoker detects this annotation automatically and injects the object — it is never exposed to the LLM.
+
+### Reading from State: `inputs_from_state`
+
+`inputs_from_state` maps state keys to function parameter names — `{"state_key": "param_name"}`.
+The value is injected from state before the tool runs, so the LLM never needs to provide it.
+
+Give state-injected parameters a default value so they are optional in the LLM-facing schema:
 
 ```python
 from typing import Annotated
@@ -126,33 +147,28 @@ from haystack.dataclasses import ChatMessage
 from haystack.tools import tool
 
 
-@tool(outputs_to_state={"calc_result": {"source": "result"}})
-def calculator(
-    expression: Annotated[str, "Math expression to evaluate, e.g. '15 + 27'"],
+@tool(inputs_from_state={"user_name": "user_context"})
+def search_documents(
+    query: Annotated[str, "The search query"],
+    user_context: str = "",  # injected from state key "user_name"; LLM does not provide this
 ) -> dict:
-    """Evaluate basic math expressions."""
-    return {"result": eval(expression, {"__builtins__": {}})}
+    """Search documents using query and user context."""
+    return {"results": [f"Found results for '{query}' (user: {user_context})"]}
 
 
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[calculator],
-    system_prompt="Use the calculator tool to evaluate math expressions.",
+    tools=[search_documents],
+    system_prompt="Use the search_documents tool to find information.",
     streaming_callback=print_streaming_chunk,
-    state_schema={"calc_result": {"type": int}},
+    state_schema={"user_name": {"type": str}},
 )
 
-result = agent.run(messages=[ChatMessage.from_user("Calculate 15 + 27")])
-print(result["calc_result"])  # 42
+result = agent.run(
+    messages=[ChatMessage.from_user("Search for Python tutorials")],
+    user_name="Alice",  # extra kwargs passed to agent.run() are stored in state
+)
 ```
-
-## Tools and State
-
-Tools interact with State through three mechanisms:
-
-- **`outputs_to_state`**: Write tool results to state keys after the tool runs.
-- **`inputs_from_state`**: Inject state values into tool parameters before the tool runs.
-- **Direct `State` injection**: Declare a `state: State` parameter to receive the live `State` object and read/write freely inside the function. The ToolInvoker detects this annotation automatically and injects the object — it is never exposed to the LLM.
 
 ### Writing to State: `outputs_to_state`
 
@@ -219,40 +235,9 @@ def get_user_info() -> dict:
     return {"name": "Alice", "email": "alice@example.com", "role": "admin"}
 ```
 
-### Reading from State: `inputs_from_state`
-
-`inputs_from_state` maps state keys to function parameter names — `{"state_key": "param_name"}`.
-The value is injected from state before the tool runs, so the LLM never needs to provide it.
-
-Give state-injected parameters a default value so they are optional in the LLM-facing schema:
-
-```python
-@tool(inputs_from_state={"user_name": "user_context"})
-def search_documents(
-    query: Annotated[str, "The search query"],
-    user_context: str = "",  # injected from state key "user_name"; LLM does not provide this
-) -> dict:
-    """Search documents using query and user context."""
-    return {"results": [f"Found results for '{query}' (user: {user_context})"]}
-
-
-agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[search_documents],
-    system_prompt="Use the search_documents tool to find information.",
-    streaming_callback=print_streaming_chunk,
-    state_schema={"user_name": {"type": str}},
-)
-
-result = agent.run(
-    messages=[ChatMessage.from_user("Search for Python tutorials")],
-    user_name="Alice",  # extra kwargs passed to agent.run() are stored in state
-)
-```
-
 ### Combining Inputs and Outputs
 
-Tools can both read from and write to State, enabling tool chaining across iterations:
+Tools can both read from and write to State, enabling tool chaining across iterations. This example builds on `retrieve_documents` from the previous section:
 
 ```python
 @tool(
@@ -296,14 +281,6 @@ This lets the tool read from and write to any number of state keys without decla
 
 The ToolInvoker detects the `State` annotation and injects the object automatically.
 It is excluded from the LLM-facing schema — the model is never asked to supply it. Both `State` and `State | None` annotations are supported.
-
-**State API:**
-
-| Method | Description |
-| --- | --- |
-| `state.get(key, default=None)` | Read a value; returns `default` if the key doesn't exist |
-| `state.set(key, value)` | Write a value, merged using the schema's handler |
-| `state.has(key)` | Returns `True` if the key exists in state |
 
 For function-based tools, add the `state` parameter and use the `@tool` decorator:
 
