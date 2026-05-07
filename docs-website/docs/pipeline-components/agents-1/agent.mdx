@@ -48,7 +48,7 @@ The `Agent` returns a dictionary containing:
 - `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
 - `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
 - `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`.
-- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`.
+- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`. See [State](./state.mdx) for full details.
 - `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
 - `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
 - `raise_on_tool_invocation_failure`: If `True`, raises an exception when a tool call fails. If `False` (default), the error is passed back to the LLM as a message so it can recover.
@@ -422,6 +422,11 @@ print(result["last_message"].text)
 ```
 
 ## Additional References
+
+📖 Related docs:
+
+- [State](./state.mdx) — managing shared data between tools
+- [Human in the Loop](./human-in-the-loop.mdx) — intercepting tool calls for human review
 
 📚 Tutorials:
 

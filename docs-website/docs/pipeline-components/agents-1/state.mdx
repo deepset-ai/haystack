@@ -2,18 +2,19 @@
 title: "State"
 id: state
 slug: "/state"
-description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to share data between tools and store intermediate results throughout an agent's workflow."
+description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to share data between tools, accumulate results across multiple tool calls, and surface them alongside the agent's final answer."
 ---
 
 # State
 
-`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to share data between tools and store intermediate results throughout an agent's workflow.
+`State` is a container for storing shared information during Agent and Tool execution.
+It provides a structured way to share data between tools, accumulate results across multiple tool calls, and surface them alongside the agent's final answer.
 
 ## Overview
 
-When building agents that use multiple tools, you often need tools to share information.
+When building agents that use multiple tools, you often need tools to share information or accumulate results across iterations.
 State provides centralized storage that all tools can read from and write to.
-For example, one tool might retrieve documents while another uses those documents to generate an answer.
+For example, a search tool called multiple times can append its results to a shared `documents` list, which is then returned alongside the agent's final answer for source inspection.
 
 State uses a schema-based approach where you define:
 
@@ -93,7 +94,8 @@ print(state.get("user_name"))  # "Bob"
 
 ### Custom Handlers
 
-Custom handlers are useful when the default `merge_lists` or `replace_values` behaviors don't fit your needs. A handler takes the current state value and the new value and returns the merged result.
+Custom handlers are useful when the default `merge_lists` or `replace_values` behaviors don't fit your needs.
+A handler takes the current state value and the new value and returns the merged result.
 
 The example below uses a deduplication handler, useful when multiple tool calls might return overlapping results and you want to avoid accumulating duplicates in state:
 
@@ -140,7 +142,8 @@ Tools interact with State through three mechanisms:
 `inputs_from_state` maps state keys to function parameter names using the format `{"state_key": "param_name"}`.
 The value is injected from state before the tool runs, so the LLM never needs to provide it.
 
-Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema. The model never sees or provides them:
+Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema.
+The model never sees or provides them:
 
 ```python
 from typing import Annotated
@@ -249,7 +252,8 @@ def get_user_info() -> dict:
 
 ### Combining Inputs and Outputs
 
-Tools can both read from and write to State, enabling tool chaining across iterations. This example builds on `retrieve_documents` from the previous section:
+Tools can both read from and write to State, enabling tool chaining across iterations.
+This example builds on `retrieve_documents` from the previous section:
 
 ```python
 @tool(
