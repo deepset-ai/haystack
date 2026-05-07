@@ -130,10 +130,6 @@ print(assistant_message.tool_calls)
 # -> [ToolCall(tool_name='get_weather', arguments={'city': 'Berlin'}, ...)]
 ```
 
-:::tip[What to expect when tools fire]
-When the model emits a tool call rather than free-form text, streamed chunks carry `tool_calls` deltas and `chunk.content` is empty. The final `replies[0].text` will be `None`, and `replies[0].tool_calls` holds the reconstructed call list. Plain text streaming and tool calling are mutually exclusive within a single generation step.
-:::
-
 You can use the built-in `print_streaming_chunk` callback (which handles both text tokens and tool events) instead of writing your own.
 
 ## Usage
