@@ -93,20 +93,23 @@ print(state.get("user_name"))  # "Bob"
 
 ### Custom Handlers
 
+Custom handlers are useful when the default `merge_lists` or `replace_values` behaviors don't fit your needs. A handler takes the current state value and the new value and returns the merged result.
+
+The example below uses a deduplication handler — useful when multiple tool calls might return overlapping results and you want to avoid accumulating duplicates in state:
+
 ```python
-def custom_merge(current_value: list | None, new_value: list | int) -> list:
-    """Merge and sort two lists."""
-    current_list = current_value or []
-    new_list = new_value if isinstance(new_value, list) else [new_value]
-    return sorted(current_list + new_list)
+def deduplicate(current_value: list | None, new_value: list) -> list:
+    """Append new items, skipping any already in the list."""
+    existing = set(current_value or [])
+    return (current_value or []) + [item for item in new_value if item not in existing]
 
 
-schema = {"numbers": {"type": list, "handler": custom_merge}}
+schema = {"doc_ids": {"type": list, "handler": deduplicate}}
 
 state = State(schema=schema)
-state.set("numbers", [3, 1])
-state.set("numbers", [2, 4])
-print(state.get("numbers"))  # [1, 2, 3, 4]
+state.set("doc_ids", ["doc-1", "doc-2"])
+state.set("doc_ids", ["doc-2", "doc-3"])
+print(state.get("doc_ids"))  # ["doc-1", "doc-2", "doc-3"]
 ```
 
 You can also override the handler for a single `set()` call:
@@ -137,7 +140,7 @@ Tools interact with State through three mechanisms:
 `inputs_from_state` maps state keys to function parameter names — `{"state_key": "param_name"}`.
 The value is injected from state before the tool runs, so the LLM never needs to provide it.
 
-Give state-injected parameters a default value so they are optional in the LLM-facing schema:
+Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema — the model never sees or provides them:
 
 ```python
 from typing import Annotated
@@ -151,7 +154,7 @@ from haystack.tools import tool
 @tool(inputs_from_state={"user_name": "user_context"})
 def search_documents(
     query: Annotated[str, "The search query"],
-    user_context: str = "",  # injected from state key "user_name"; LLM does not provide this
+    user_context: str,  # injected from state; excluded from LLM schema
 ) -> dict:
     """Search documents using query and user context."""
     return {"results": [f"Found results for '{query}' (user: {user_context})"]}
@@ -167,14 +170,24 @@ agent = Agent(
 
 result = agent.run(
     messages=[ChatMessage.from_user("Search for Python tutorials")],
-    user_name="Alice",  # extra kwargs passed to agent.run() are stored in state
+    user_name="Alice",  # state key "user_name" is pre-populated by passing user_name= to agent.run()
 )
+
+print(result["last_message"].text)
 ```
 
 ### Writing to State: `outputs_to_state`
 
-The `outputs_to_state` parameter maps tool output keys to state keys.
-The structure is `{"state_key": {"source": "tool_output_key"}}`.
+The `outputs_to_state` parameter maps tool output keys to state keys. Each entry supports two optional fields:
+
+```python
+{
+    "state_key": {
+        "source": "tool_output_key",  # which key to read from the tool's return dict; omit to store the entire dict
+        "handler": some_func,  # override the schema's merge handler for this mapping only
+    },
+}
+```
 
 ```python
 from typing import Annotated
@@ -224,8 +237,6 @@ print(result["documents"])  # list of retrieved documents
 print(result["result_count"])  # 2
 print(result["last_query"])  # "Find information about Python"
 ```
-
-Each mapping can also include a `handler` key (a callable) to override how the value is merged into state.
 
 If you omit `source`, the entire tool result dict is stored under the state key:
 
@@ -281,7 +292,8 @@ As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can decl
 This lets the tool read from and write to any number of state keys without declaring mappings upfront.
 
 The ToolInvoker detects the `State` annotation and injects the object automatically.
-It is excluded from the LLM-facing schema — the model is never asked to supply it. Both `State` and `State | None` annotations are supported.
+It is excluded from the LLM-facing schema — the model is never asked to supply it.
+Both `State` and `State | None` annotations are supported.
 
 For function-based tools, add the `state` parameter and use the `@tool` decorator:
 
@@ -318,6 +330,9 @@ result = agent.run(
     messages=[ChatMessage.from_user("Find documents about Python")],
     user_name="Alice",
 )
+
+print(result["last_message"].text)
+print(result["documents"])
 ```
 
 For component-based tools, declare a `State` input socket on the `run` method and wrap it with `ComponentTool`:
@@ -362,51 +377,63 @@ agent = Agent(
 )
 
 result = agent.run(messages=[ChatMessage.from_user("Find documents about Python")])
+
+print(result["last_message"].text)
+print(result["documents"])
 ```
 
 ## Complete Example
 
-This example shows a multi-tool agent where tools share data through State:
+A research agent that accumulates retrieved documents in state alongside the final answer.
+Because `list[Document]` uses `merge_lists` by default, documents from every search call are appended — so if the agent searches multiple times, all results are available for inspection after the run.
 
 ```python
-import math
 from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, Document
 from haystack.tools import tool
 
 
-@tool(outputs_to_state={"factorial_result": {"source": "result"}})
-def factorial(n: Annotated[int, "The number to calculate the factorial of"]) -> dict:
-    """Calculate the factorial of a number."""
-    return {"result": math.factorial(n)}
-
-
-@tool(outputs_to_state={"calc_result": {"source": "result"}})
-def calculator(expression: Annotated[str, "Math expression to evaluate"]) -> dict:
-    """Evaluate a mathematical expression."""
-    return {"result": eval(expression, {"__builtins__": {}})}
+@tool(outputs_to_state={"documents": {"source": "documents"}})
+def search(query: Annotated[str, "The search query"]) -> dict:
+    """Search for documents about a topic and return relevant results."""
+    # In a real application, replace this with a call to a retriever or search API
+    return {
+        "documents": [
+            Document(
+                content=f"Result 1 for '{query}'",
+                meta={"source": "https://example.com/1"},
+            ),
+            Document(
+                content=f"Result 2 for '{query}'",
+                meta={"source": "https://example.com/2"},
+            ),
+        ],
+    }
 
 
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[calculator, factorial],
-    system_prompt="Use the available tools to solve math problems.",
+    tools=[search],
+    system_prompt="Use the search tool to find information. Search multiple times if needed to answer thoroughly.",
     streaming_callback=print_streaming_chunk,
-    state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
+    state_schema={"documents": {"type": list[Document]}},
 )
 
 result = agent.run(
-    messages=[
-        ChatMessage.from_user("Calculate the factorial of 5, then multiply it by 2"),
-    ],
+    messages=[ChatMessage.from_user("What are the main features of Haystack?")],
 )
 
-print(result["factorial_result"])
-print(result["calc_result"])
+print(result["last_message"].text)
 
-for message in result["messages"]:
-    print(f"{message.role}: {message.text}")
+print(f"\nSources ({len(result['documents'])} documents retrieved):")
+for doc in result["documents"]:
+    print(f"  [{doc.meta['source']}] {doc.content}")
 ```
+
+Some more advanced patterns you could build on top of this:
+
+- **Retrieve and filter pipeline**: add a second tool that reads `documents` from state via `inputs_from_state`, filters or re-ranks them, and writes the filtered subset back. See [Combining Inputs and Outputs](#combining-inputs-and-outputs).
+- **Direct state inspection inside a tool**: replace `outputs_to_state` with a `state: State` parameter to read and write multiple keys in one tool call. See [Injecting State Directly into Tools](#injecting-state-directly-into-tools).
