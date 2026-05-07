@@ -30,7 +30,7 @@ async def happy_path() -> None:
 
     prompt_template = [
         ChatMessage.from_user(
-            "Given these documents, answer the question. Lonag answer, at least 3 sentences\n"
+            "Given these documents, answer the question. Lonag answer, at least 10 sentences\n"
             "Documents:\n"
             "{% for doc in documents %}{{ doc.content }}\n{% endfor %}\n"
             "Question: {{ question }}\n"
