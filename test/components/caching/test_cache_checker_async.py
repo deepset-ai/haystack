@@ -8,7 +8,6 @@ import pytest
 
 from haystack import Document
 from haystack.components.caching.cache_checker import CacheChecker
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestCacheCheckerAsync:
