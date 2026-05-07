@@ -21,7 +21,7 @@ State uses a schema-based approach where you define:
 - The type of each piece of data,
 - How values are merged when updated.
 
-The Agent creates and manages the `State` object internally — you never instantiate it directly.
+The Agent creates and manages the `State` object internally. You shouldn't need to instantiate it directly.
 You interact with it through tool definitions (`inputs_from_state`, `outputs_to_state`, or a `state: State` parameter) and read results from the agent's output dict.
 
 ### Supported Types
@@ -95,7 +95,7 @@ print(state.get("user_name"))  # "Bob"
 
 Custom handlers are useful when the default `merge_lists` or `replace_values` behaviors don't fit your needs. A handler takes the current state value and the new value and returns the merged result.
 
-The example below uses a deduplication handler — useful when multiple tool calls might return overlapping results and you want to avoid accumulating duplicates in state:
+The example below uses a deduplication handler, useful when multiple tool calls might return overlapping results and you want to avoid accumulating duplicates in state:
 
 ```python
 def deduplicate(current_value: list | None, new_value: list) -> list:
@@ -137,10 +137,10 @@ Tools interact with State through three mechanisms:
 
 ### Reading from State: `inputs_from_state`
 
-`inputs_from_state` maps state keys to function parameter names — `{"state_key": "param_name"}`.
+`inputs_from_state` maps state keys to function parameter names using the format `{"state_key": "param_name"}`.
 The value is injected from state before the tool runs, so the LLM never needs to provide it.
 
-Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema — the model never sees or provides them:
+Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema. The model never sees or provides them:
 
 ```python
 from typing import Annotated
@@ -292,7 +292,7 @@ As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can decl
 This lets the tool read from and write to any number of state keys without declaring mappings upfront.
 
 The ToolInvoker detects the `State` annotation and injects the object automatically.
-It is excluded from the LLM-facing schema — the model is never asked to supply it.
+It is excluded from the LLM-facing schema. The model is never asked to supply it.
 Both `State` and `State | None` annotations are supported.
 
 For function-based tools, add the `state` parameter and use the `@tool` decorator:
@@ -385,7 +385,8 @@ print(result["documents"])
 ## Complete Example
 
 A research agent that accumulates retrieved documents in state alongside the final answer.
-Because `list[Document]` uses `merge_lists` by default, documents from every search call are appended — so if the agent searches multiple times, all results are available for inspection after the run.
+Because `list[Document]` uses `merge_lists` by default, documents from every search call are appended.
+If the agent searches multiple times, all results are available for inspection after the run.
 
 ```python
 from typing import Annotated
