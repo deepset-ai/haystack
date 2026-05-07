@@ -383,7 +383,7 @@ class DocumentRetriever:
     """Retrieve documents and store them in state."""
 
     @component.output_types(reply=str)
-    def run(self, query: str, state: State) -> dict:
+    def run(self, query: str, state: State) -> dict[str, str]:
         """
         Retrieve documents based on query and store them in state.
 
@@ -397,7 +397,7 @@ class DocumentRetriever:
 retriever_tool = ComponentTool(
     component=DocumentRetriever(),
     name="retrieve",
-    description="Retrieve documents and store them in state",
+    description="Retrieve documents based on a search query",
 )
 
 agent = Agent(
