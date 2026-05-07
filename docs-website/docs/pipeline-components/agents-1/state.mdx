@@ -37,7 +37,8 @@ State supports standard Python types:
 ### Automatic Message Handling
 
 State automatically includes a `messages` field that stores the full conversation history during execution.
-You don't need to define this in your schema. It uses `list[ChatMessage]` type with the `merge_lists` handler, so new messages are appended on each iteration.
+You don't need to define this in your schema.
+It uses `list[ChatMessage]` type with the `merge_lists` handler, so new messages are appended on each iteration.
 
 ### State API
 
@@ -68,7 +69,7 @@ If you don't specify a handler, State automatically assigns a default based on t
 
 ### Default Handlers
 
-State provides two built-in merge behaviors:
+State provides two built-in merge behaviors (importable from `haystack.components.agents`):
 
 - **`merge_lists`**: Appends to the existing list (default for list types)
 - **`replace_values`**: Overwrites the existing value (default for non-list types)
@@ -117,10 +118,14 @@ print(state.get("doc_ids"))  # ["doc-1", "doc-2", "doc-3"]
 You can also override the handler for a single `set()` call:
 
 ```python
+from haystack.components.agents import State
+
+
 def concatenate_strings(current: str | None, new: str) -> str:
     return f"{current}-{new}" if current else new
 
 
+state = State(schema={"user_name": {"type": str}})
 state.set("user_name", "Alice")
 state.set("user_name", "Bob", handler_override=concatenate_strings)
 print(state.get("user_name"))  # "Alice-Bob"
@@ -236,18 +241,39 @@ agent = Agent(
 
 result = agent.run(messages=[ChatMessage.from_user("Find information about Python")])
 
-print(result["documents"])  # list of retrieved documents
-print(result["result_count"])  # 2
-print(result["last_query"])  # "Find information about Python"
+print(f"Documents: {result['documents']}")
+print(f"Result count: {result['result_count']}")
+print(f"Last query: {result['last_query']}")
 ```
 
 If you omit `source`, the entire tool result dict is stored under the state key:
 
 ```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+
 @tool(outputs_to_state={"user_info": {}})
 def get_user_info() -> dict:
     """Get user information."""
     return {"name": "Alice", "email": "alice@example.com", "role": "admin"}
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[get_user_info],
+    system_prompt="Use the get_user_info tool to look up user details.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={"user_info": {"type": dict}},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What are the user's details?")])
+
+print(result["last_message"].text)
+print(f"User info: {result['user_info']}")
 ```
 
 ### Combining Inputs and Outputs
@@ -279,6 +305,8 @@ agent = Agent(
     streaming_callback=print_streaming_chunk,
     state_schema={
         "documents": {"type": list},
+        "result_count": {"type": int},
+        "last_query": {"type": str},
         "final_docs": {"type": list},
         "final_count": {"type": int},
     },
@@ -437,8 +465,3 @@ print(f"\nSources ({len(result['documents'])} documents retrieved):")
 for doc in result["documents"]:
     print(f"  [{doc.meta['source']}] {doc.content}")
 ```
-
-Some more advanced patterns you could build on top of this:
-
-- **Retrieve and filter pipeline**: add a second tool that reads `documents` from state via `inputs_from_state`, filters or re-ranks them, and writes the filtered subset back. See [Combining Inputs and Outputs](#combining-inputs-and-outputs).
-- **Direct state inspection inside a tool**: replace `outputs_to_state` with a `state: State` parameter to read and write multiple keys in one tool call. See [Injecting State Directly into Tools](#injecting-state-directly-into-tools).
