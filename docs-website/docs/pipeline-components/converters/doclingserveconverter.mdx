@@ -114,7 +114,7 @@ from haystack_integrations.components.converters.docling_serve import (
 )
 
 converter = DoclingServeConverter(base_url="http://localhost:5001")
-result = converter.run(sources=["https://arxiv.org/pdf/2206.01062"])
+result = converter.run(sources=["https://arxiv.org/pdf/2602.17316"])
 print(result["documents"][0].content[:200])
 ```
 
