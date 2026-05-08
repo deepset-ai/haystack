@@ -88,6 +88,50 @@ See our [Streaming Support](guides-to-generators/choosing-the-right-generator.md
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
+### Streaming with Tools
+
+You can combine streaming with tool calling. Pass both `tools` and `streaming_callback`; when the model decides to invoke a tool, the streamed chunks carry tool-call deltas instead of text tokens, and the final reconstructed `ChatMessage` exposes the resolved `tool_calls` list on `replies[0]`.
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.dataclasses.streaming_chunk import StreamingChunk
+from haystack.tools import create_tool_from_function
+from haystack_integrations.components.generators.ollama import OllamaChatGenerator
+
+
+def get_weather(city: str) -> str:
+    """Get current weather for a city."""
+    return f"Sunny, 22°C in {city}"
+
+
+def callback(chunk: StreamingChunk) -> None:
+    if chunk.tool_calls:
+        print(f"[tool delta] {chunk.tool_calls}")
+    elif chunk.content:
+        print(chunk.content, end="", flush=True)
+
+
+generator = OllamaChatGenerator(
+    model="llama3.1:8b",
+    generation_kwargs={"temperature": 0.0},
+    tools=[create_tool_from_function(get_weather)],
+    streaming_callback=callback,
+)
+
+response = generator.run(
+    messages=[ChatMessage.from_user(
+        "What's the weather in Berlin? Use the get_weather tool."
+    )]
+)
+
+# Final reconstructed message: tool_calls populated, text is None
+assistant_message = response["replies"][0]
+print(assistant_message.tool_calls)
+# -> [ToolCall(tool_name='get_weather', arguments={'city': 'Berlin'}, ...)]
+```
+
+You can use the built-in `print_streaming_chunk` callback (which handles both text tokens and tool events) instead of writing your own.
+
 ## Usage
 
 1. You need a running instance of Ollama. The installation instructions are [in the Ollama GitHub repository](https://github.com/jmorganca/ollama).

@@ -94,3 +94,21 @@ Checks if any document associated with the specified cache field is already pres
 - <code>dict\[str, Any\]</code> – A dictionary with two keys:
 - `hits` - Documents that matched with at least one of the items.
 - `misses` - Items that were not present in any documents.
+
+#### run_async
+
+```python
+run_async(items: list[Any]) -> dict[str, Any]
+```
+
+Asynchronously checks if any document associated with the specified cache field is already present in the store.
+
+**Parameters:**
+
+- **items** (<code>list\[Any\]</code>) – Values to be checked against the cache field.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with two keys:
+- `hits` - Documents that matched with at least one of the items.
+- `misses` - Items that were not present in any documents.
