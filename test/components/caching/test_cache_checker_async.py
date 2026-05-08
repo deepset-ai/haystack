@@ -8,9 +8,18 @@ import pytest
 
 from haystack import Document
 from haystack.components.caching.cache_checker import CacheChecker
+from haystack.testing.factory import document_store_class
 
 
 class TestCacheCheckerAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_docstore(self):
+        mocked_docstore_class = document_store_class("MockedDocumentStore")
+        checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
+
+        with pytest.raises(TypeError, match="does not provide async support"):
+            await checker.run_async(items=["https://example.com/1"])
+
     @pytest.mark.asyncio
     async def test_run_async(self, in_memory_doc_store):
         documents = [

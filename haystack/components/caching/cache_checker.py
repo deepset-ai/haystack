@@ -110,9 +110,11 @@ class CacheChecker:
         found_documents = []
         misses = []
 
+        if not hasattr(self.document_store, "filter_documents_async"):
+            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
+
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
-            # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
             found = await self.document_store.filter_documents_async(filters=filters)  # type: ignore[attr-defined]
             if found:
                 found_documents.extend(found)
