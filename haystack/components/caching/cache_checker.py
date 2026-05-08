@@ -115,8 +115,7 @@ class CacheChecker:
 
         for item in items:
             filters = {"field": self.cache_field, "operator": "==", "value": item}
-            # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
-            found = await self.document_store.filter_documents_async(filters=filters)  # type: ignore[attr-defined]
+            found = await self.document_store.filter_documents_async(filters=filters)
             if found:
                 found_documents.extend(found)
             else:
