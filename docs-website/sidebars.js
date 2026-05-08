@@ -28,6 +28,7 @@ export default {
       items: [
         'concepts/concepts-overview',
         'concepts/agents',
+        'concepts/multi-agent-systems',
         {
           type: 'category',
           label: 'Components',
