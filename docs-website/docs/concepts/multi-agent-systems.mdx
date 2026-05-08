@@ -113,11 +113,14 @@ coordinator = Agent(
 The coordinator/specialist pattern splits responsibilities cleanly: the coordinator handles planning and delegation, while each specialist owns a focused toolset and a targeted system prompt.
 
 This is also a form of **context engineering** — deliberately controlling what each agent sees.
-A specialist accumulates its own tool call trace as it works, but the coordinator only needs the final answer.
-By returning just `result["last_message"].text` (with `@tool`) or using `outputs_to_string` (with `ComponentTool`), you surface only the specialist's final reply.
-This keeps the coordinator's context lean and focused, which leads to better decisions and lower token usage.
+A specialist accumulates its own tool call trace, but the coordinator only needs the final answer.
+Returning just `result["last_message"].text` (with `@tool`) or using `outputs_to_string` (with `ComponentTool`) surfaces only the specialist's final reply, keeping the coordinator's context lean.
 
-Here is a complete example with a coordinator that delegates research to a specialist:
+When covering multiple topics, the coordinator can call the same specialist tool several times in a single response.
+All tool calls from one LLM response are executed concurrently using a thread pool.
+Control the level of parallelism with `max_workers` in `tool_invoker_kwargs` (default: `4`).
+
+The example below asks the coordinator about two topics — it calls `research` twice and both specialists run in parallel:
 
 ```python
 from typing import Annotated
@@ -178,13 +181,19 @@ def research(query: Annotated[str, "The research question to investigate"]) -> s
 coordinator = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[research],
-    system_prompt="You are a coordinator. Delegate research tasks to the research tool.",
+    system_prompt=(
+        "You are a coordinator. Delegate research tasks to the research tool. "
+        "For questions covering multiple topics, research each one independently."
+    ),
     streaming_callback=print_streaming_chunk,
+    tool_invoker_kwargs={"max_workers": 4},  # run up to 4 specialist calls in parallel
 )
 
 result = coordinator.run(
     messages=[
-        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+        ChatMessage.from_user(
+            "What are the latest developments in large language models and retrieval-augmented generation?",
+        ),
     ],
 )
 print(result["last_message"].text)
