@@ -102,25 +102,6 @@ pipeline.connect("splitter", "writer")
 pipeline.run({"converter": {"sources": ["report.pdf", "manual.docx"]}})
 ```
 
-### Async usage
-
-```python
-import asyncio
-from haystack_integrations.components.converters.docling_serve import (
-    DoclingServeConverter,
-)
-
-converter = DoclingServeConverter(base_url="http://localhost:5001")
-
-
-async def convert():
-    result = await converter.run_async(sources=["report.pdf", "notes.docx"])
-    return result["documents"]
-
-
-documents = asyncio.run(convert())
-```
-
 ## Additional Features
 
 ### Converting URLs directly
@@ -177,40 +158,4 @@ with open("report.pdf", "rb") as f:
 source = ByteStream(data=data, meta={"file_path": "report.pdf"})
 converter = DoclingServeConverter(base_url="http://localhost:5001")
 result = converter.run(sources=[source])
-```
-
-### Authenticated DoclingServe instance
-
-If the DoclingServe server requires an API key, pass it via the `api_key` parameter or set the `DOCLING_SERVE_API_KEY` environment variable:
-
-```python
-from haystack.utils import Secret
-from haystack_integrations.components.converters.docling_serve import (
-    DoclingServeConverter,
-)
-
-# Read from environment variable (default behavior)
-converter = DoclingServeConverter(base_url="https://my-docling-server.example.com")
-
-# Or pass explicitly
-converter = DoclingServeConverter(
-    base_url="https://my-docling-server.example.com",
-    api_key=Secret.from_token("my-api-key"),
-)
-```
-
-### Custom conversion options
-
-Pass DoclingServe conversion options to control OCR, table detection, and other parsing behavior:
-
-```python
-from haystack_integrations.components.converters.docling_serve import (
-    DoclingServeConverter,
-)
-
-converter = DoclingServeConverter(
-    base_url="http://localhost:5001",
-    convert_options={"do_ocr": True, "ocr_engine": "tesseract"},
-)
-result = converter.run(sources=["scanned_document.pdf"])
 ```
