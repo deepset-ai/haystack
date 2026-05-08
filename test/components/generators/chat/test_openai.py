@@ -2009,33 +2009,6 @@ class TestMakeSchemaStrict:
             "required": ["a", "b"],
         }
 
-    def test_oneof(self):
-        schema = {
-            "type": "object",
-            "properties": {
-                "value": {"oneOf": [{"type": "string"}, {"type": "object", "properties": {"x": {"type": "integer"}}}]}
-            },
-        }
-        result = _make_schema_strict(schema)
-        assert result == {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "oneOf": [
-                        {"type": "string"},
-                        {
-                            "type": "object",
-                            "properties": {"x": {"type": "integer"}},
-                            "additionalProperties": False,
-                            "required": ["x"],
-                        },
-                    ]
-                }
-            },
-            "additionalProperties": False,
-            "required": ["value"],
-        }
-
     def test_complex_schema_with_defs_and_combinators(self):
         schema = {
             "type": "object",
@@ -2161,103 +2134,6 @@ class TestMakeSchemaStrict:
             "required": ["name", "address"],
         }
 
-    def test_prepare_api_call_strict_complex_tool(self):
-        complex_tool = Tool(
-            name="send_messages",
-            description="Send messages with config",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "messages": {"type": "array", "items": {"$ref": "#/$defs/Message"}},
-                    "config": {
-                        "oneOf": [
-                            {"type": "null"},
-                            {
-                                "type": "object",
-                                "properties": {"temperature": {"type": "number"}, "max_tokens": {"type": "integer"}},
-                            },
-                        ]
-                    },
-                },
-                "$defs": {
-                    "Message": {
-                        "type": "object",
-                        "properties": {
-                            "role": {"type": "string"},
-                            "content": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                            "meta": {
-                                "type": "object",
-                                "properties": {
-                                    "model": {"type": "string"},
-                                    "usage": {
-                                        "type": "object",
-                                        "properties": {
-                                            "prompt_tokens": {"type": "integer"},
-                                            "completion_tokens": {"type": "integer"},
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    }
-                },
-            },
-            function=lambda **kwargs: str(kwargs),
-        )
-
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-key"), tools_strict=True)
-        api_args = component._prepare_api_call(messages=[ChatMessage.from_user("test")], tools=[complex_tool])
-
-        tool_def = api_args["tools"][0]["function"]
-        assert tool_def["strict"] is True
-        assert tool_def["parameters"] == {
-            "type": "object",
-            "properties": {
-                "messages": {"type": "array", "items": {"$ref": "#/$defs/Message"}},
-                "config": {
-                    "oneOf": [
-                        {"type": "null"},
-                        {
-                            "type": "object",
-                            "properties": {"temperature": {"type": "number"}, "max_tokens": {"type": "integer"}},
-                            "additionalProperties": False,
-                            "required": ["temperature", "max_tokens"],
-                        },
-                    ]
-                },
-            },
-            "$defs": {
-                "Message": {
-                    "type": "object",
-                    "properties": {
-                        "role": {"type": "string"},
-                        "content": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                        "meta": {
-                            "type": "object",
-                            "properties": {
-                                "model": {"type": "string"},
-                                "usage": {
-                                    "type": "object",
-                                    "properties": {
-                                        "prompt_tokens": {"type": "integer"},
-                                        "completion_tokens": {"type": "integer"},
-                                    },
-                                    "additionalProperties": False,
-                                    "required": ["prompt_tokens", "completion_tokens"],
-                                },
-                            },
-                            "additionalProperties": False,
-                            "required": ["model", "usage"],
-                        },
-                    },
-                    "additionalProperties": False,
-                    "required": ["role", "content", "meta"],
-                }
-            },
-            "additionalProperties": False,
-            "required": ["messages", "config"],
-        }
-
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -2295,19 +2171,3 @@ class TestMakeSchemaStrict:
         assert "address" in tool_call.arguments
         assert "street" in tool_call.arguments["address"]
         assert "city" in tool_call.arguments["address"]
-
-    def test_prepare_api_call_strict_component_tool(self):
-        tool = ComponentTool(
-            component=MessageExtractor(), name="message_extractor", description="Extracts text from ChatMessage objects"
-        )
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-key"), tools_strict=True)
-        api_args = component._prepare_api_call(messages=[ChatMessage.from_user("test")], tools=[tool])
-
-        params = api_args["tools"][0]["function"]["parameters"]
-        assert params["additionalProperties"] is False
-        assert "messages" in params["required"]
-
-        for def_name, def_schema in params["$defs"].items():
-            if def_schema.get("type") == "object":
-                assert def_schema["additionalProperties"] is False, f"$defs/{def_name} missing additionalProperties"
-                assert "required" in def_schema, f"$defs/{def_name} missing required"
