@@ -120,11 +120,19 @@ When covering multiple topics, the coordinator can call the same specialist tool
 All tool calls from one LLM response are executed concurrently using a thread pool.
 Control the level of parallelism with `max_workers` in `tool_invoker_kwargs` (default: `4`).
 
-The example below asks the coordinator about two topics — it calls `research` twice and both specialists run in parallel:
+The example below asks the coordinator about two topics — it calls `research` twice and both specialists run in parallel.
+
+`HTMLToDocument` uses [Trafilatura](https://trafilatura.readthedocs.io) to extract clean text from HTML pages.
+Install it before running:
+
+```shell
+pip install trafilatura
+```
 
 ```python
 from typing import Annotated
 from haystack.components.agents import Agent
+from haystack.components.converters import HTMLToDocument
 from haystack.components.fetchers.link_content import LinkContentFetcher
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
@@ -146,14 +154,13 @@ search_tool = ComponentTool(
 
 @tool
 def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
-    """Fetch the full content of a web page given its URL."""
+    """Fetch the content of a web page given its URL."""
     try:
         streams = LinkContentFetcher().run(urls=[url])["streams"]
-        return (
-            streams[0].data.decode("utf-8", errors="replace")
-            if streams
-            else "No content found."
-        )
+        if not streams:
+            return "No content found."
+        documents = HTMLToDocument().run(sources=streams)["documents"]
+        return documents[0].content if documents else "No content extracted."
     except Exception as e:
         return f"Failed to fetch page: {e}"
 
