@@ -221,6 +221,7 @@ export default {
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/doclingconverter',
+            'pipeline-components/converters/doclingserveconverter',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
             'pipeline-components/converters/filetofilecontent',
