@@ -272,7 +272,7 @@ class HuggingFaceAPIDocumentEmbedder:
         ):
             batch = texts_to_embed[i : i + batch_size]
 
-            np_embeddings = self._client.feature_extraction(text=batch, truncate=truncate, normalize=normalize)
+            np_embeddings = self._client.feature_extraction(text=batch, truncate=truncate, normalize=normalize)  # type: ignore
 
             if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):
                 raise ValueError(f"Expected embedding shape ({batch_size}, embedding_dim), got {np_embeddings.shape}")
@@ -293,7 +293,7 @@ class HuggingFaceAPIDocumentEmbedder:
         async def _runner(batch: list[str]) -> list[list[float]]:
             async with sem:
                 np_embeddings = await self._async_client.feature_extraction(
-                    text=batch, truncate=truncate, normalize=normalize
+                    text=batch, truncate=truncate, normalize=normalize  # type: ignore
                 )
 
                 if np_embeddings.ndim != 2 or np_embeddings.shape[0] != len(batch):

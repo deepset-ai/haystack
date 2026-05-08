@@ -9,12 +9,12 @@
 from unittest.mock import patch
 
 import pytest
+from thinc.api import NumpyOps, get_current_ops, set_current_ops
 
 from haystack import ComponentError, DeserializationError, Document, Pipeline
 from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
-from thinc.api import NumpyOps, get_current_ops, set_current_ops
 
 
 def test_named_entity_extractor_backend():
@@ -199,6 +199,7 @@ def test_named_entity_extractor_run():
         assert "named_entities" in result["documents"][0].meta
         assert result["documents"][0].meta["named_entities"] == expected_annotations[0]
         assert "named_entities" not in documents[0].meta
+
 
 class TestNamedEntityExtractorDeviceRestoration:
     def test_spacy_backend_restores_device_state(self):
