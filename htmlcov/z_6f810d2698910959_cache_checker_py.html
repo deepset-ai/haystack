@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">24 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">24<span class="text"> run</span></button>
+            <span class="text">37 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">37<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">0<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_67ef6b940745a3be___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-07 16:33 +0000
+            created at 2026-05-08 13:48 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -176,6 +176,33 @@
     <p class="pln"><span class="n"><a id="t94" href="#t94">94</a></span><span class="t">            <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t95" href="#t95">95</a></span><span class="t">                <span class="nam">misses</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">item</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t96" href="#t96">96</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"hits"</span><span class="op">:</span> <span class="nam">found_documents</span><span class="op">,</span> <span class="str">"misses"</span><span class="op">:</span> <span class="nam">misses</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t97" href="#t97">97</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t98" href="#t98">98</a></span><span class="t">    <span class="op">@</span><span class="nam">component</span><span class="op">.</span><span class="nam">output_types</span><span class="op">(</span><span class="nam">hits</span><span class="op">=</span><span class="nam">list</span><span class="op">[</span><span class="nam">Document</span><span class="op">]</span><span class="op">,</span> <span class="nam">misses</span><span class="op">=</span><span class="nam">list</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t99" href="#t99">99</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">run_async</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">items</span><span class="op">:</span> <span class="nam">list</span><span class="op">[</span><span class="nam">Any</span><span class="op">]</span><span class="op">)</span> <span class="op">-></span> <span class="nam">dict</span><span class="op">[</span><span class="nam">str</span><span class="op">,</span> <span class="nam">Any</span><span class="op">]</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t100" href="#t100">100</a></span><span class="t">        <span class="str">"""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t101" href="#t101">101</a></span><span class="t"><span class="str">        Asynchronously checks if any document associated with the specified cache field is already present in the store.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t102" href="#t102">102</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t103" href="#t103">103</a></span><span class="t"><span class="str">        :param items:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t104" href="#t104">104</a></span><span class="t"><span class="str">            Values to be checked against the cache field.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t105" href="#t105">105</a></span><span class="t"><span class="str">        :return:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t106" href="#t106">106</a></span><span class="t"><span class="str">            A dictionary with two keys:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t107" href="#t107">107</a></span><span class="t"><span class="str">            - `hits` - Documents that matched with at least one of the items.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t108" href="#t108">108</a></span><span class="t"><span class="str">            - `misses` - Items that were not present in any documents.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t">        <span class="nam">found_documents</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t">        <span class="nam">misses</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">        <span class="key">if</span> <span class="key">not</span> <span class="nam">hasattr</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">,</span> <span class="str">"filter_documents_async"</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">            <span class="key">raise</span> <span class="nam">TypeError</span><span class="op">(</span><span class="fst">f"</span><span class="fst">Document store </span><span class="op">{</span><span class="nam">type</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">)</span><span class="op">.</span><span class="nam">__name__</span><span class="op">}</span><span class="fst"> does not provide async support.</span><span class="fst">"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">        <span class="key">for</span> <span class="nam">item</span> <span class="key">in</span> <span class="nam">items</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">            <span class="nam">filters</span> <span class="op">=</span> <span class="op">{</span><span class="str">"field"</span><span class="op">:</span> <span class="nam">self</span><span class="op">.</span><span class="nam">cache_field</span><span class="op">,</span> <span class="str">"operator"</span><span class="op">:</span> <span class="str">"=="</span><span class="op">,</span> <span class="str">"value"</span><span class="op">:</span> <span class="nam">item</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">            <span class="nam">found</span> <span class="op">=</span> <span class="key">await</span> <span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">.</span><span class="nam">filter_documents_async</span><span class="op">(</span><span class="nam">filters</span><span class="op">=</span><span class="nam">filters</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">            <span class="key">if</span> <span class="nam">found</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">                <span class="nam">found_documents</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">found</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">            <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">                <span class="nam">misses</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">item</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"hits"</span><span class="op">:</span> <span class="nam">found_documents</span><span class="op">,</span> <span class="str">"misses"</span><span class="op">:</span> <span class="nam">misses</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -185,7 +212,7 @@
             <a class="nav" href="z_67ef6b940745a3be___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-07 16:33 +0000
+            created at 2026-05-08 13:48 +0000
         </p>
     </div>
 </footer>

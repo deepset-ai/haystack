@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_ab8d802d31465915___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-07 16:33 +0000
+            created at 2026-05-08 13:48 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -347,7 +347,7 @@
     <p class="pln"><span class="n"><a id="t265" href="#t265">265</a></span><span class="t">        <span class="nam">serialized_tools</span><span class="op">:</span> <span class="nam">dict</span><span class="op">[</span><span class="nam">str</span><span class="op">,</span> <span class="nam">Any</span><span class="op">]</span> <span class="op">|</span> <span class="nam">list</span><span class="op">[</span><span class="nam">dict</span><span class="op">[</span><span class="nam">str</span><span class="op">,</span> <span class="nam">Any</span><span class="op">]</span><span class="op">]</span> <span class="op">|</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t266" href="#t266">266</a></span><span class="t">        <span class="key">if</span> <span class="nam">self</span><span class="op">.</span><span class="nam">tools</span> <span class="key">and</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">tools</span><span class="op">,</span> <span class="nam">list</span><span class="op">)</span> <span class="key">and</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">tools</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">,</span> <span class="nam">dict</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t267" href="#t267">267</a></span><span class="t">            <span class="com"># mypy can't infer that self.tools is list[dict] here</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t268" href="#t268">268</a></span><span class="t">            <span class="nam">serialized_tools</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">tools</span>  <span class="com"># type: ignore[assignment]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="mis show_mis"><span class="n"><a id="t268" href="#t268">268</a></span><span class="t">            <span class="nam">serialized_tools</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">tools</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t269" href="#t269">269</a></span><span class="t">        <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t270" href="#t270">270</a></span><span class="t">            <span class="nam">serialized_tools</span> <span class="op">=</span> <span class="nam">serialize_tools_or_toolset</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">tools</span><span class="op">)</span>  <span class="com"># type: ignore[arg-type]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t271" href="#t271">271</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -570,7 +570,7 @@
     <p class="pln"><span class="n"><a id="t488" href="#t488">488</a></span><span class="t">            <span class="com"># Convert all tool objects to the correct OpenAI-compatible structure</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t489" href="#t489">489</a></span><span class="t">            <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t490" href="#t490">490</a></span><span class="t">                <span class="com"># mypy can't infer that tools is ToolsType here</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t491" href="#t491">491</a></span><span class="t">                <span class="nam">flattened_tools</span> <span class="op">=</span> <span class="nam">flatten_tools_or_toolsets</span><span class="op">(</span><span class="nam">tools</span><span class="op">)</span>  <span class="com"># type: ignore[arg-type]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t491" href="#t491">491</a></span><span class="t">                <span class="nam">flattened_tools</span> <span class="op">=</span> <span class="nam">flatten_tools_or_toolsets</span><span class="op">(</span><span class="nam">tools</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t492" href="#t492">492</a></span><span class="t">                <span class="nam">_check_duplicate_tool_names</span><span class="op">(</span><span class="nam">flattened_tools</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t493" href="#t493">493</a></span><span class="t">                <span class="key">for</span> <span class="nam">t</span> <span class="key">in</span> <span class="nam">flattened_tools</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t494" href="#t494">494</a></span><span class="t">                    <span class="nam">function_spec</span> <span class="op">=</span> <span class="op">{</span><span class="op">**</span><span class="nam">t</span><span class="op">.</span><span class="nam">tool_spec</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
@@ -1017,7 +1017,7 @@
             <a class="nav" href="z_ab8d802d31465915___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-07 16:33 +0000
+            created at 2026-05-08 13:48 +0000
         </p>
     </div>
 </footer>
