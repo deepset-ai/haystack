@@ -20,8 +20,10 @@ from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 # - list[Tool]: Most common pattern - list of Tool objects
 # - list[Toolset]: Less common pattern - list of Toolset objects
 # - list[Union[Tool, Toolset]]: Mixing Tools and Toolsets in one list
+# - list[ComponentTool]: List of ComponentTool objects
+# - list[PipelineTool]: List of PipelineTool objects
 # - Toolset: Single Toolset (not in a list)
-ToolsType = list[Tool] | list[Toolset] | list[Tool | Toolset] | Toolset
+ToolsType = list[Tool] | list[Toolset] | list[Tool | Toolset] | list[ComponentTool] | list[PipelineTool] | Toolset
 
 __all__ = [
     "_check_duplicate_tool_names",
