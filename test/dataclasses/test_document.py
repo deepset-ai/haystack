@@ -37,7 +37,7 @@ def test_init():
 
 def test_init_with_wrong_parameters():
     with pytest.raises(TypeError):
-        Document(text="")
+        Document(text="")  # type: ignore[call-arg]
 
 
 def test_init_with_parameters():
@@ -53,6 +53,7 @@ def test_init_with_parameters():
     )
     assert doc.id == "1aa43af57c1dbc317241bf55d3067049f334d3b458d95dc72f71a7111f6c1a56"
     assert doc.content == "test text"
+    assert doc.blob is not None
     assert doc.blob.data == blob_data
     assert doc.blob.mime_type == "text/markdown"
     assert doc.meta == {"text": "test text"}
@@ -88,7 +89,7 @@ def test_init_with_legacy_field():
     doc = Document(
         content="test text",
         content_type="text",  # type: ignore
-        id_hash_keys=["content"],  # type: ignore
+        id_hash_keys=["content"],
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
@@ -265,7 +266,7 @@ def test_from_dict_with_legacy_field_and_flat_meta():
     ) == Document(
         content="test text",
         content_type="text",  # type: ignore
-        id_hash_keys=["content"],  # type: ignore
+        id_hash_keys=["content"],
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
