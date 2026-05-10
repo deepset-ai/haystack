@@ -5,7 +5,6 @@
 from typing import Any
 
 import pytest
-from pandas import DataFrame
 
 from haystack.evaluation import EvaluationRunResult
 
@@ -197,7 +196,7 @@ def test_comparative_individual_scores_report():
     result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
     results = result1.comparative_detailed_report(result2, keep_columns=["predicted_answer"])
 
-    assert isinstance(results, DataFrame)
+    assert isinstance(results, dict)
     assert list(results.keys()) == [
         "query_id",
         "question",
