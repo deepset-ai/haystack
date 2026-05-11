@@ -486,6 +486,26 @@ def test_add_answer_page_number_returns_same_answer(mock_reader: ExtractiveReade
         assert "page_number must be int" in caplog.text
 
 
+def test_add_answer_page_number_with_none_meta(mock_reader: ExtractiveReader):
+    # when answer.meta is None, it should be initialized to {} without triggering a mutation warning
+    document = Document(content="I thought a lot about this. The answer is 42.", meta={"page_number": 5})
+    answer = ExtractedAnswer(
+        data="42",
+        query="What is the answer?",
+        document=document,
+        score=1.0,
+        document_offset=ExtractedAnswer.Span(42, 44),
+        meta=None,
+    )
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = mock_reader._add_answer_page_number(answer=answer)
+    assert result.meta is not None
+    assert "answer_page_number" in result.meta
+
+
 def test_add_answer_page_number_with_form_feed(mock_reader: ExtractiveReader):
     document = Document(
         content="I thought a lot about this. \f And this document is long. \f The answer is 42.",
