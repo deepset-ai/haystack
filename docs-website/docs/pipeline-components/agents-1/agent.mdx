@@ -340,6 +340,13 @@ You can wrap an `Agent` as a tool to build multi-agent systems where specialist 
 
 See [Multi-Agent Systems](../../concepts/agents/multi-agent-systems.mdx) for a full guide, including the recommended `@tool` decorator approach for full interface control and `ComponentTool` for declarative configuration.
 
+## MCP Integration
+
+Agents work with MCP in two directions:
+
+- **Consuming MCP tools**: Pass `MCPTool` or `MCPToolset` instances in the `tools` list to call tools on any MCP-compatible server (filesystem, browser, databases, and more). See [MCPTool](../../tools/mcptool.mdx) and [MCPToolset](../../tools/mcptoolset.mdx).
+- **Exposing as an MCP server**: Use [Hayhooks](../../development/hayhooks.mdx) to deploy your agent and expose it as an MCP server, making it callable from any MCP-compatible client such as Claude Desktop or Cursor.
+
 ## Additional References
 
 📖 Related docs:
