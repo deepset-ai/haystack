@@ -83,7 +83,7 @@
 | haystack/components/extractors/image/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/llm\_document\_content\_extractor.py           |      105 |        0 |    100% |           |
 | haystack/components/extractors/llm\_metadata\_extractor.py                          |      153 |       31 |     80% |287-298, 305-316, 331-343, 380, 422-426, 437 |
-| haystack/components/extractors/named\_entity\_extractor.py                          |      182 |       59 |     68% |24, 39, 158-161, 170-177, 196, 202, 261, 274, 377-389, 392-397, 412, 440-448, 452-464, 467-474, 484, 488, 501-508 |
+| haystack/components/extractors/named\_entity\_extractor.py                          |      183 |       60 |     67% |24-25, 40, 159-162, 171-178, 197, 203, 262, 275, 378-390, 393-398, 413, 441-449, 453-465, 468-475, 485, 489, 496-503 |
 | haystack/components/extractors/regex\_text\_extractor.py                            |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
 | haystack/components/fetchers/link\_content.py                                       |      188 |       26 |     86% |160-165, 222-224, 246, 255-262, 292-296, 385-392, 425, 458 |
@@ -265,7 +265,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17254** | **1229** | **93%** |           |
+| **TOTAL**                                                                           | **17255** | **1230** | **93%** |           |
 
 
 ## Setup coverage badge
