@@ -421,6 +421,7 @@ pipeline.add_component("prompt_builder", prompt_builder)
 pipeline.add_component("agent", agent)
 pipeline.connect("prompt_builder.prompt", "agent.messages")
 
+# Download or provide your own chart image as "chart.png"
 image = ImageContent.from_file_path("chart.png")
 result = pipeline.run(
     {
