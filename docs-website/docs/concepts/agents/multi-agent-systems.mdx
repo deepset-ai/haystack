@@ -8,7 +8,7 @@ description: "Learn how to build multi-agent systems in Haystack by spawning age
 # Multi-Agent Systems
 
 Multi-agent systems let you compose multiple `Agent` instances into larger architectures where a **coordinator** agent delegates to **specialist** agents.
-Each specialist focuses on a specific task with its own tools and system prompt — the coordinator plans and routes work without needing to know how each task gets done.
+Each specialist focuses on a specific task with its own tools and system prompt - the coordinator plans and routes work without needing to know how each task gets done.
 
 Spawning agents as tools is useful when:
 
@@ -29,7 +29,7 @@ Wrapping an agent inside a `@tool` function gives you full control over what the
 - **Error handling**: catch exceptions and return a clean message so the coordinator can recover
 
 This approach works better with smaller LLMs because the tool has a clean, minimal signature.
-The coordinator only needs to provide a query string — all the `ChatMessage` construction and result unpacking is hidden inside the function.
+The coordinator only needs to provide a query string - all the `ChatMessage` construction and result unpacking is hidden inside the function.
 
 ```python
 from typing import Annotated
@@ -80,13 +80,12 @@ result = coordinator.run(
         ChatMessage.from_user("What are the latest developments in Haystack AI?"),
     ],
 )
-print(result["last_message"].text)
 ```
 
 ### `ComponentTool`
 
 `ComponentTool` wraps an agent directly without a wrapper function.
-Choose it when you want **declarative configuration**: the full specialist setup — model, tools, system prompt — lives in one serializable object alongside the coordinator.
+Choose it when you want **declarative configuration**: the full specialist setup (model, tools, system prompt) lives in one serializable object alongside the coordinator.
 
 Use `outputs_to_string={"source": "last_message"}` to surface only the specialist's final reply to the coordinator rather than the full result dict.
 
@@ -110,9 +109,9 @@ coordinator = Agent(
 
 ## Coordinator / Specialist Pattern
 
-The coordinator/specialist pattern splits responsibilities cleanly: the coordinator handles planning and delegation, while each specialist owns a focused toolset and a targeted system prompt.
+The coordinator/specialist pattern cleanly splits responsibilities: the coordinator handles planning and delegation, while each specialist owns a focused toolset and a targeted system prompt.
 
-This is also a form of **context engineering** — deliberately controlling what each agent sees.
+This is also a form of **context engineering**: deliberately controlling what each agent sees.
 A specialist accumulates its own tool call trace, but the coordinator only needs the final answer.
 Returning just `result["last_message"].text` (with `@tool`) or using `outputs_to_string` (with `ComponentTool`) surfaces only the specialist's final reply, keeping the coordinator's context lean.
 
@@ -120,7 +119,7 @@ When covering multiple topics, the coordinator can call the same specialist tool
 All tool calls from one LLM response are executed concurrently using a thread pool.
 Control the level of parallelism with `max_workers` in `tool_invoker_kwargs` (default: `4`).
 
-The example below asks the coordinator about two topics — it calls `research` twice and both specialists run in parallel.
+The example below asks the coordinator about two topics: it calls `research` twice and both specialists run in parallel.
 
 `HTMLToDocument` uses [Trafilatura](https://trafilatura.readthedocs.io) to extract clean text from HTML pages.
 Install it before running:
@@ -170,7 +169,8 @@ research_agent = Agent(
     tools=[search_tool, fetch_page],
     system_prompt=(
         "You are a research specialist. Search the web to find relevant pages, "
-        "then fetch their full content for detailed information."
+        "then fetch their full content for detailed information. "
+        "Return a concise summary of your findings in 3-5 sentences."
     ),
 )
 
@@ -190,7 +190,8 @@ coordinator = Agent(
     tools=[research],
     system_prompt=(
         "You are a coordinator. Delegate research tasks to the research tool. "
-        "For questions covering multiple topics, research each one independently."
+        "For questions covering multiple topics, research each one independently. "
+        "Keep your final answer concise."
     ),
     streaming_callback=print_streaming_chunk,
     tool_invoker_kwargs={"max_workers": 4},  # run up to 4 specialist calls in parallel
@@ -203,7 +204,6 @@ result = coordinator.run(
         ),
     ],
 )
-print(result["last_message"].text)
 ```
 
 ## Additional References
