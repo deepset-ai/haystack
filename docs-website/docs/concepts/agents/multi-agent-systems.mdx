@@ -86,7 +86,7 @@ print(result["last_message"].text)
 ### `ComponentTool`
 
 `ComponentTool` wraps an agent directly without a wrapper function.
-This is the right choice when configuring pipelines from YAML or through a visual pipeline builder, since the full component graph serialises without any custom Python code.
+Choose it when you want **declarative configuration**: the full specialist setup — model, tools, system prompt — lives in one serializable object alongside the coordinator.
 
 Use `outputs_to_string={"source": "last_message"}` to surface only the specialist's final reply to the coordinator rather than the full result dict.
 
