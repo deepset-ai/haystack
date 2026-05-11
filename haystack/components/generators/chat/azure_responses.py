@@ -221,7 +221,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         serialized_tools: dict[str, Any] | list[dict[str, Any]] | None
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
             # mypy can't infer that self.tools is list[dict] here
-            serialized_tools = self.tools
+            serialized_tools = self.tools  # type: ignore
         else:
             serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[arg-type]
 
