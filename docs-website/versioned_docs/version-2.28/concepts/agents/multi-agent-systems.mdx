@@ -105,6 +105,12 @@ coordinator = Agent(
     system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
     streaming_callback=print_streaming_chunk,
 )
+
+result = coordinator.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
+)
 ```
 
 ## Coordinator / Specialist Pattern
