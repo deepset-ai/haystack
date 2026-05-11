@@ -45,6 +45,7 @@ Key capabilities include:
 - **Human-in-the-loop**: Intercept tool calls for human review before execution. See [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx).
 - **Multi-agent systems**: Wrap an `Agent` as a `ComponentTool` to build coordinator/specialist architectures. See [Multi-Agent Systems](./agents/multi-agent-systems.mdx).
 - **MCP server exposure**: Expose your agent as an MCP server using [Hayhooks](../development/hayhooks.mdx), making it callable from any MCP-compatible client such as Claude Desktop or Cursor.
+- **Multimodal inputs**: Pass images alongside text using `ImageContent` in `ChatMessage` content parts, or return `ImageContent` from tools for dynamic image analysis. Requires a vision-capable model such as `gpt-5` or `gemini-2.5-flash`. See [Multimodal Inputs](../pipeline-components/agents-1/agent.mdx#multimodal-inputs).
 
 Check out the [Agent](../pipeline-components/agents-1/agent.mdx) documentation, or the [example](#tool-calling-agent) below to get started.
 
