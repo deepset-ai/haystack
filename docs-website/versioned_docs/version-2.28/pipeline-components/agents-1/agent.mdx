@@ -334,6 +334,108 @@ See our [Streaming Support](../generators/guides-to-generators/choosing-the-righ
 Give preference to `print_streaming_chunk` by default.
 Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
+## Multimodal Inputs
+
+Agents support multimodal inputs when paired with a vision-capable model such as `gpt-5` (OpenAI) or `gemini-2.5-flash` (Google).
+Pass images alongside text by including `ImageContent` objects in the `content_parts` of a `ChatMessage`:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+
+image = ImageContent.from_url("https://example.com/chart.png")
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(content_parts=["What does this chart show?", image]),
+    ],
+)
+```
+
+Tools can also return `ImageContent` directly, letting the agent fetch and reason about images dynamically during its loop.
+Two things are required: set `outputs_to_string={"raw_result": True}` so the `ToolInvoker` skips string conversion, and return a `list[ImageContent]` (the tool result type is `str | Sequence[TextContent | ImageContent]`).
+
+The standard Chat Completions API doesn't support images in tool results — use `OpenAIResponsesChatGenerator` (OpenAI's Responses API) instead:
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack.tools import tool
+
+
+@tool(outputs_to_string={"raw_result": True})
+def fetch_image(
+    url: Annotated[str, "URL of the image to fetch and analyze"],
+) -> list[ImageContent]:
+    """Fetch an image from a URL so the agent can analyze its contents."""
+    return [ImageContent.from_url(url)]
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5"),
+    tools=[fetch_image],
+    system_prompt="You are a helpful assistant that can fetch and analyze images from URLs.",
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Fetch the image at https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Bikesgray.jpg/320px-Bikesgray.jpg and describe what you see.",
+        ),
+    ],
+)
+print(result["last_message"].text)
+```
+
+`ImageContent` can be created from a URL, a local file path, or a PDF page using the `PDFToImageContent` converter.
+
+### In a pipeline
+
+When an `Agent` sits inside a pipeline, use `ChatPromptBuilder` with its string template format and the `| templatize_part` filter to pass images as structured content parts:
+
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ImageContent
+
+template = """
+{% message role="user" %}
+{{ question }}
+{{ image | templatize_part }}
+{% endmessage %}
+"""
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5"),
+    system_prompt="You are a helpful assistant that can analyze images.",
+)
+prompt_builder = ChatPromptBuilder(
+    template=template,
+    required_variables=["question", "image"],
+)
+
+pipeline = Pipeline()
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("agent", agent)
+pipeline.connect("prompt_builder.prompt", "agent.messages")
+
+image = ImageContent.from_file_path("chart.png")
+result = pipeline.run(
+    {
+        "prompt_builder": {"question": "What does this chart show?", "image": image},
+    },
+)
+print(result["agent"]["last_message"].text)
+```
+
+:::tip
+See these cookbooks for complete multimodal agent examples:
+- [Multimodal Agents](https://haystack.deepset.ai/cookbook/multimodal_intro#multimodal-agent) — image inputs and tool use with agents
+- [Gemma Chat RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag) — vision model in a RAG pipeline
+:::
+
 ## Multi-Agent Systems
 
 You can wrap an `Agent` as a tool to build multi-agent systems where specialist agents handle focused subtasks and a coordinator agent plans and delegates.
@@ -363,3 +465,5 @@ Agents work with MCP in two directions:
 🧑‍🍳 Cookbook:
 
 - [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+- [Multimodal Agents](https://haystack.deepset.ai/cookbook/multimodal_intro#multimodal-agent)
+- [Gemma Chat RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag)
