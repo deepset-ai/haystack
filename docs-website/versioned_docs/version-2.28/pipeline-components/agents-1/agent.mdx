@@ -336,90 +336,9 @@ Write a custom callback only if you need a specific transport (for example, SSE/
 
 ## Multi-Agent Systems
 
-You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to build multi-agent systems where specialized agents act as tools for a coordinator agent.
+You can wrap an `Agent` as a tool to build multi-agent systems where specialist agents handle focused subtasks and a coordinator agent plans and delegates.
 
-This pattern is useful when a task is too broad or complex for a single agent to handle well.
-Instead of giving one agent a large toolset and hoping it makes good decisions, you can decompose the problem:
-a **coordinator** agent handles planning and delegation, while **specialist** agents each own a focused set of tools and a targeted system prompt.
-
-This is also a form of **context engineering** — deliberately controlling what each agent sees.
-A specialist accumulates its own tool call trace as it works, but the coordinator only needs the final answer.
-By using `outputs_to_string={"source": "last_message"}` when wrapping a specialist as a `ComponentTool`, you surface only its final reply to the coordinator rather than forwarding the full tool call trace.
-This keeps the coordinator's context lean and focused, which leads to better decisions and lower token usage as the conversation grows.
-
-```python
-from typing import Annotated
-from haystack.components.agents import Agent
-from haystack.components.fetchers.link_content import LinkContentFetcher
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.generators.utils import print_streaming_chunk
-from haystack.components.websearch import SerperDevWebSearch
-from haystack.dataclasses import ChatMessage
-from haystack.tools import ComponentTool, tool
-from haystack.utils import Secret
-
-# Create the specialist agent with web search and page fetching tools
-
-# Option 1: ComponentTool — wrap a component directly (good for straightforward cases)
-search_tool = ComponentTool(
-    component=SerperDevWebSearch(
-        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
-        top_k=3,
-    ),
-    name="web_search",
-    description="Search the web for current information on any topic",
-)
-
-
-# Option 2: @tool decorator — wrap a component inside a function for a simpler
-# signature, built-in error handling, and custom result formatting
-@tool
-def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
-    """Fetch the full content of a web page given its URL."""
-    try:
-        streams = LinkContentFetcher().run(urls=[url])["streams"]
-        return (
-            streams[0].data.decode("utf-8", errors="replace")
-            if streams
-            else "No content found."
-        )
-    except Exception as e:
-        return f"Failed to fetch page: {e}"
-
-
-research_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[search_tool, fetch_page],
-    system_prompt=(
-        "You are a research specialist. Search the web to find relevant pages, "
-        "then fetch their full content for detailed information."
-    ),
-)
-
-# Wrap the specialist agent as a tool for the coordinator
-research_tool = ComponentTool(
-    component=research_agent,
-    name="research_specialist",
-    description="A specialist that researches topics on the web",
-    outputs_to_string={"source": "last_message"},  # surface only the final reply
-)
-
-# Create the coordinator agent with streaming
-coordinator_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[research_tool],
-    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
-    streaming_callback=print_streaming_chunk,
-)
-
-result = coordinator_agent.run(
-    messages=[
-        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
-    ],
-)
-
-print(result["last_message"].text)
-```
+See [Multi-Agent Systems](../../concepts/agents/multi-agent-systems.mdx) for a full guide, including the recommended `@tool` decorator approach for full interface control and `ComponentTool` for declarative configuration.
 
 ## Additional References
 
