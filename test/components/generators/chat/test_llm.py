@@ -217,21 +217,23 @@ class TestLLM:
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             prior_message = ChatMessage.from_user("Some prior context")
             result = llm.run(query="What is 2+2?", messages=[prior_message])
-            assert "last_message" in result
             assert result["last_message"].text == "Sync reply"
+            assert prior_message in result["messages"]
 
         def test_run_without_messages(self):
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             result = llm.run(query="What is 2+2?")
             assert result["last_message"].text == "Sync reply"
+            user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+            assert any("What is 2+2?" in m.text for m in user_messages)
 
         @pytest.mark.asyncio
         async def test_run_async_accepts_messages_via_kwargs(self):
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             prior_message = ChatMessage.from_user("Some prior context")
             result = await llm.run_async(query="What is 2+2?", messages=[prior_message])
-            assert "last_message" in result
             assert result["last_message"].text == "Async reply"
+            assert prior_message in result["messages"]
 
     class TestPipelineIntegration:
         @pytest.fixture()
