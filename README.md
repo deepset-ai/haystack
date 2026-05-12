@@ -82,7 +82,7 @@
 | haystack/components/extractors/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/llm\_document\_content\_extractor.py           |      105 |        0 |    100% |           |
-| haystack/components/extractors/llm\_metadata\_extractor.py                          |      153 |       31 |     80% |287-298, 305-316, 331-343, 380, 422-426, 437 |
+| haystack/components/extractors/llm\_metadata\_extractor.py                          |      155 |       21 |     86% |287-298, 307-315, 333-336, 380, 422-426, 437 |
 | haystack/components/extractors/named\_entity\_extractor.py                          |      183 |       60 |     67% |24-25, 40, 159-162, 171-178, 197, 203, 262, 275, 378-390, 393-398, 413, 441-449, 453-465, 468-475, 485, 489, 496-503 |
 | haystack/components/extractors/regex\_text\_extractor.py                            |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
@@ -265,7 +265,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17255** | **1229** | **93%** |           |
+| **TOTAL**                                                                           | **17257** | **1219** | **93%** |           |
 
 
 ## Setup coverage badge
