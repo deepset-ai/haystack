@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">229 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">219<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">10<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">220<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">9<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b12fb4765b6fa33a___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-11 14:41 +0000
+            created at 2026-05-12 06:44 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -405,7 +405,7 @@
     <p class="pln"><span class="n"><a id="t323" href="#t323">323</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t324" href="#t324">324</a></span><span class="t">    <span class="key">def</span> <span class="nam">_add_answer_page_number</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">answer</span><span class="op">:</span> <span class="nam">ExtractedAnswer</span><span class="op">)</span> <span class="op">-></span> <span class="nam">ExtractedAnswer</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t325" href="#t325">325</a></span><span class="t">        <span class="key">if</span> <span class="nam">answer</span><span class="op">.</span><span class="nam">meta</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t326" href="#t326">326</a></span><span class="t">            <span class="nam">answer</span><span class="op">.</span><span class="nam">meta</span> <span class="op">=</span> <span class="op">{</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t326" href="#t326">326</a></span><span class="t">            <span class="nam">answer</span> <span class="op">=</span> <span class="nam">replace</span><span class="op">(</span><span class="nam">answer</span><span class="op">,</span> <span class="nam">meta</span><span class="op">=</span><span class="op">{</span><span class="op">}</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t327" href="#t327">327</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t328" href="#t328">328</a></span><span class="t">        <span class="key">if</span> <span class="nam">answer</span><span class="op">.</span><span class="nam">document_offset</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t329" href="#t329">329</a></span><span class="t">            <span class="key">return</span> <span class="nam">answer</span>&nbsp;</span><span class="r"></span></p>
@@ -746,7 +746,7 @@
             <a class="nav" href="z_b12fb4765b6fa33a___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-11 14:41 +0000
+            created at 2026-05-12 06:44 +0000
         </p>
     </div>
 </footer>
