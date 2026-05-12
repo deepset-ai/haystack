@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import warnings
 from math import ceil, exp
 from unittest.mock import Mock, patch
 
@@ -497,7 +498,6 @@ def test_add_answer_page_number_with_none_meta(mock_reader: ExtractiveReader):
         document_offset=ExtractedAnswer.Span(42, 44),
         meta=None,
     )
-    import warnings
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
