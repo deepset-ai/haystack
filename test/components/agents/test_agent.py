@@ -21,8 +21,10 @@ from haystack.components.agents.state import merge_lists
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners.branch import BranchJoiner
 from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
@@ -1788,3 +1790,58 @@ class TestAgentWaitsForBlockedPredecessor:
             }
         )
         assert "agent" in result
+
+
+class TestAgentNotTriggeredByInjectedInput:
+    """
+    Regression test for https://github.com/deepset-ai/haystack/issues/11109.
+
+    ConditionalRouter routes to `planning`, BranchJoiner never runs, so Agent.messages
+    gets no input. A `streaming_callback` injected via `pipeline.run` data must not
+    by itself trigger the Agent (would happen if `messages` were optional, since any
+    `sender=None` entry flips `has_user_input()` to True).
+    """
+
+    def test_agent_not_triggered_by_injected_streaming_callback(self, weather_tool):
+        @component
+        class Planner:
+            @component.output_types(messages=list[ChatMessage], last_role=str)
+            def run(self) -> dict:
+                return {"messages": [ChatMessage.from_assistant("?")], "last_role": "assistant"}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
+
+        router = ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ last_role == 'tool' }}",
+                    "output": "{{ messages }}",
+                    "output_name": "processing",
+                    "output_type": list[ChatMessage],
+                },
+                {
+                    "condition": "{{ True }}",
+                    "output": "{{ messages }}",
+                    "output_name": "planning",
+                    "output_type": list[ChatMessage],
+                },
+            ],
+            unsafe=True,
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("planner", Planner())
+        pipeline.add_component("router", router)
+        pipeline.add_component("branch_joiner", BranchJoiner(type_=list[ChatMessage]))
+        pipeline.add_component("agent", agent)
+        pipeline.connect("planner.messages", "router.messages")
+        pipeline.connect("planner.last_role", "router.last_role")
+        pipeline.connect("router.processing", "branch_joiner.value")
+        pipeline.connect("branch_joiner.value", "agent.messages")
+
+        result = pipeline.run(data={"agent": {"streaming_callback": sync_streaming_callback}})
+
+        assert "agent" not in result
+        chat_generator.run.assert_not_called()

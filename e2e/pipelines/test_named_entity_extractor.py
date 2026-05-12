@@ -10,6 +10,7 @@ import os
 import sys
 
 import pytest
+from thinc.api import NumpyOps, get_current_ops, set_current_ops
 
 from haystack import Document, Pipeline
 from haystack.components.extractors import (
@@ -132,3 +133,34 @@ def _check_predictions(predicted, expected) -> None:
             assert a.entity == b.entity
             assert a.start == b.start
             assert a.end == b.end
+
+class TestNamedEntityExtractorDeviceRestoration:
+    def test_spacy_backend_restores_device_state(self):
+        """
+        Verify that NamedEntityExtractor (spaCy) restores the previous Thinc Ops state
+        after the component runs.
+        """
+        # 1. Setup a custom state
+        custom_ops = NumpyOps()
+        setattr(custom_ops, "owner", "test_marker")
+        set_current_ops(custom_ops)
+
+        try:
+            # 2. Initialize and run (triggering the context manager)
+            extractor = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
+
+            # Since _SpacyBackend is private, we access it via getattr to avoid IDE warnings
+            backend = getattr(extractor, "_backend")
+            select_device_method = getattr(backend, "_select_device")
+
+            with select_device_method():
+                # Inside the context, the state might change
+                pass
+
+            # 3. Verify state is restored
+            final_ops = get_current_ops()
+            assert getattr(final_ops, "owner", None) == "test_marker"
+
+        finally:
+            # Clean up global state
+            set_current_ops(NumpyOps())

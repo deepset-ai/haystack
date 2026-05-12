@@ -103,14 +103,32 @@ class TestMultiRetriever:
         assert retriever.filters is None
         assert retriever.top_k == 10
         assert retriever.max_workers == 4
+        assert retriever.join_mode == "reciprocal_rank_fusion"
 
     def test_init_custom_parameters(self):
         retrievers = {"mock": MockRetriever()}
-        retriever = MultiRetriever(retrievers=retrievers, filters={"field": "meta.category"}, top_k=5, max_workers=2)
+        retriever = MultiRetriever(
+            retrievers=retrievers, filters={"field": "meta.category"}, top_k=5, max_workers=2, join_mode="concatenate"
+        )
         assert retriever.retrievers == retrievers
         assert retriever.filters == {"field": "meta.category"}
         assert retriever.top_k == 5
         assert retriever.max_workers == 2
+        assert retriever.join_mode == "concatenate"
+
+    def test_run_rrf_assigns_scores_and_sorts(self, sample_documents):
+        docs_a = [sample_documents[0], sample_documents[1], sample_documents[2]]
+        docs_b = [sample_documents[2], sample_documents[0], sample_documents[3]]
+        retriever = MultiRetriever(
+            retrievers={"a": MockRetriever(docs_a), "b": MockRetriever(docs_b)}, join_mode="reciprocal_rank_fusion"
+        )
+        result = retriever.run(query="energy")
+        assert all(doc.score is not None for doc in result["documents"])
+        scores = [doc.score for doc in result["documents"]]
+        assert scores == sorted(scores, reverse=True)
+        # doc1 ranked 1st in a and 2nd in b, doc3 ranked 3rd in a and 1st in b — doc1 should beat doc3
+        ids = [doc.id for doc in result["documents"]]
+        assert ids.index("doc1") < ids.index("doc3")
 
     def test_run_with_empty_document_store(self):
         retriever = MultiRetriever(retrievers={"mock": MockRetriever()})
@@ -223,6 +241,7 @@ class TestMultiRetriever:
                 "filters": None,
                 "top_k": 5,
                 "max_workers": 2,
+                "join_mode": "reciprocal_rank_fusion",
             },
         }
 
@@ -255,6 +274,7 @@ class TestMultiRetriever:
                 "filters": None,
                 "top_k": 5,
                 "max_workers": 2,
+                "join_mode": "concatenate",
             },
         }
         result = MultiRetriever.from_dict(data)
@@ -264,6 +284,7 @@ class TestMultiRetriever:
         assert isinstance(result.retrievers["bm25"], InMemoryBM25Retriever)
         assert result.top_k == 5
         assert result.max_workers == 2
+        assert result.join_mode == "concatenate"
 
     def test_from_dict_with_no_retrievers(self):
         data = {
@@ -290,7 +311,6 @@ class TestMultiRetriever:
             MultiRetriever.from_dict(data)
 
     @pytest.mark.integration
-    @pytest.mark.slow
     def test_run_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
@@ -298,19 +318,18 @@ class TestMultiRetriever:
         assert result["documents"][0].meta["category"] == "solar"
 
     @pytest.mark.integration
-    @pytest.mark.slow
     def test_run_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
     @pytest.mark.integration
-    @pytest.mark.slow
     def test_run_with_active_retrievers_integration(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
         result_bm25 = bm25_retriever.run(query="energy")
-        assert result_bm25_active == result_bm25
+        # Scores differ because MultiRetriever applies join_mode processing (e.g. RRF) even for a single retriever.
+        assert [doc.id for doc in result_bm25_active["documents"]] == [doc.id for doc in result_bm25["documents"]]
 
 
 class TestMultiRetrieverAsync:
@@ -344,6 +363,20 @@ class TestMultiRetrieverAsync:
         result = await retriever.run_async(query="energy")
         assert len(result["documents"]) == 2
         assert [doc.id for doc in result["documents"]].count("doc1") == 1
+
+    @pytest.mark.asyncio
+    async def test_run_async_rrf_assigns_scores_and_sorts(self, sample_documents):
+        docs_a = [sample_documents[0], sample_documents[1], sample_documents[2]]
+        docs_b = [sample_documents[2], sample_documents[0], sample_documents[3]]
+        retriever = MultiRetriever(
+            retrievers={"a": MockRetriever(docs_a), "b": MockRetriever(docs_b)}, join_mode="reciprocal_rank_fusion"
+        )
+        result = await retriever.run_async(query="energy")
+        assert all(doc.score is not None for doc in result["documents"])
+        scores = [doc.score for doc in result["documents"]]
+        assert scores == sorted(scores, reverse=True)
+        ids = [doc.id for doc in result["documents"]]
+        assert ids.index("doc1") < ids.index("doc3")
 
     @pytest.mark.asyncio
     async def test_run_async_resolves_filters_and_top_k(self):
@@ -414,7 +447,6 @@ class TestMultiRetrieverAsync:
         assert result["documents"][0].id == "async1"
 
     @pytest.mark.integration
-    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_run_async_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
@@ -425,7 +457,6 @@ class TestMultiRetrieverAsync:
         assert result["documents"][0].meta["category"] == "solar"
 
     @pytest.mark.integration
-    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_run_async_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
@@ -433,7 +464,6 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 2
 
     @pytest.mark.integration
-    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers_integration(
         self, del_hf_env_vars, bm25_retriever, embedding_retriever
@@ -441,7 +471,8 @@ class TestMultiRetrieverAsync:
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")
-        assert result_bm25_active == result_bm25
+        # Scores differ because MultiRetriever applies join_mode processing (e.g. RRF) even for a single retriever.
+        assert [doc.id for doc in result_bm25_active["documents"]] == [doc.id for doc in result_bm25["documents"]]
 
 
 class TestMultiRetrieverExperimental:

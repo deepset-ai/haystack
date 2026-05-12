@@ -323,7 +323,7 @@ class ExtractiveReader:
 
     def _add_answer_page_number(self, answer: ExtractedAnswer) -> ExtractedAnswer:
         if answer.meta is None:
-            answer.meta = {}
+            answer = replace(answer, meta={})
 
         if answer.document_offset is None:
             return answer

@@ -819,6 +819,26 @@ Extracts the responses from the Amazon Bedrock streaming response.
 
 - <code>list\[str\]</code> – A list of string responses.
 
+#### get_stream_responses_and_metadata
+
+```python
+get_stream_responses_and_metadata(
+    stream: EventStream, streaming_callback: SyncStreamingCallbackT
+) -> tuple[list[str], dict[str, Any]]
+```
+
+Extracts both the responses and normalized metadata from the Amazon Bedrock streaming response.
+
+**Parameters:**
+
+- **stream** (<code>EventStream</code>) – The streaming response from the Amazon Bedrock request.
+- **streaming_callback** (<code>SyncStreamingCallbackT</code>) – The handler for the streaming response.
+
+**Returns:**
+
+- <code>tuple\[list\[str\], dict\[str, Any\]\]</code> – A tuple of `(responses, metadata)` where `responses` is a list of string
+  responses and `metadata` is a dictionary that may contain a normalized `usage` block.
+
 ### AnthropicClaudeAdapter
 
 Bases: <code>BedrockModelAdapter</code>

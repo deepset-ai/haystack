@@ -4,14 +4,15 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from math import inf
+from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
 from haystack.utils.experimental import _experimental
-from haystack.utils.misc import _deduplicate_documents
+from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
 
 @_experimental
@@ -82,6 +83,7 @@ class MultiRetriever:
         filters: dict[str, Any] | None = None,
         top_k: int = 10,
         max_workers: int = 4,
+        join_mode: Literal["concatenate", "reciprocal_rank_fusion"] = "reciprocal_rank_fusion",
     ) -> None:
         """
         Create the MultiRetriever component.
@@ -95,12 +97,29 @@ class MultiRetriever:
             The maximum number of documents to return per retriever.
         :param max_workers:
             The maximum number of threads to use for parallel retrieval.
+        :param join_mode:
+            How to merge results from multiple retrievers. Available modes:
+            - `concatenate`: Combines all results into a single list and deduplicates.
+            - `reciprocal_rank_fusion`: Deduplicates and assigns scores based on reciprocal rank fusion.
         """
         self.retrievers = retrievers
         self.filters = filters
         self.top_k = top_k
         self.max_workers = max_workers
+        self.join_mode = join_mode
         self._is_warmed_up = False
+
+    def _merge_results(self, document_lists: list[list[Document]]) -> list[Document]:
+        """
+        Merge per-retriever result lists according to `join_mode`.
+
+        In `concatenate` mode, all lists are flattened and deduplicated. In `reciprocal_rank_fusion` mode, results
+        are deduplicated and re-scored using RRF, then returned in descending score order.
+        """
+        if self.join_mode == "reciprocal_rank_fusion":
+            documents = _reciprocal_rank_fusion(document_lists)
+            return sorted(documents, key=lambda d: d.score if d.score is not None else -inf, reverse=True)
+        return _deduplicate_documents([doc for docs in document_lists for doc in docs])
 
     def _resolve_retrievers(self, active_retrievers: list[str] | None) -> dict[str, TextRetriever]:
         """
@@ -171,7 +190,7 @@ class MultiRetriever:
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
 
-        all_documents: list[Document] = []
+        results_by_name: dict[str, list[Document]] = {}
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_name = {
                 executor.submit(retriever.run, query=query, filters=resolved_filters, top_k=resolved_top_k): name
@@ -180,11 +199,12 @@ class MultiRetriever:
             for future in as_completed(future_to_name):
                 name = future_to_name[future]
                 try:
-                    all_documents.extend(future.result().get("documents", []))
+                    results_by_name[name] = future.result().get("documents", [])
                 except Exception as e:
                     raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
-        return {"documents": _deduplicate_documents(all_documents)}
+        document_lists = [results_by_name[name] for name in retrievers_to_run]
+        return {"documents": self._merge_results(document_lists)}
 
     @component.output_types(documents=list[Document])
     async def run_async(
@@ -238,13 +258,8 @@ class MultiRetriever:
             except Exception as e:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
-        results = await asyncio.gather(*[_run_one(name, r) for name, r in retrievers_to_run.items()])
-
-        all_documents: list[Document] = []
-        for docs in results:
-            all_documents.extend(docs)
-
-        return {"documents": _deduplicate_documents(all_documents)}
+        document_lists = list(await asyncio.gather(*[_run_one(name, r) for name, r in retrievers_to_run.items()]))
+        return {"documents": self._merge_results(document_lists)}
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -259,6 +274,7 @@ class MultiRetriever:
             filters=self.filters,
             top_k=self.top_k,
             max_workers=self.max_workers,
+            join_mode=self.join_mode,
         )
 
     @classmethod

@@ -11,6 +11,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
+from haystack.utils.misc import _reciprocal_rank_fusion
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ class DocumentJoiner:
         join_mode_functions = {
             JoinMode.CONCATENATE: DocumentJoiner._concatenate,
             JoinMode.MERGE: self._merge,
-            JoinMode.RECIPROCAL_RANK_FUSION: self._reciprocal_rank_fusion,
+            JoinMode.RECIPROCAL_RANK_FUSION: self._rrf,
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION: DocumentJoiner._distribution_based_rank_fusion,
         }
         self.join_mode_function = join_mode_functions[join_mode]
@@ -193,35 +194,11 @@ class DocumentJoiner:
 
         return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
 
-    def _reciprocal_rank_fusion(self, document_lists: list[list[Document]]) -> list[Document]:
+    def _rrf(self, document_lists: list[list[Document]]) -> list[Document]:
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
-
-        The constant k is set to 61 (60 was suggested by the original paper,
-        plus 1 as python lists are 0-based and the paper used 1-based ranking).
         """
-        # This check prevents a division by zero when no documents are passed
-        if not document_lists:
-            return []
-
-        k = 61
-
-        scores_map: dict = defaultdict(int)
-        documents_map = {}
-        weights = self.weights if self.weights else [1 / len(document_lists)] * len(document_lists)
-
-        # Calculate weighted reciprocal rank fusion score
-        for documents, weight in zip(document_lists, weights, strict=True):
-            for rank, doc in enumerate(documents):
-                scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
-                documents_map[doc.id] = doc
-
-        # Normalize scores. Note: len(results) / k is the maximum possible score,
-        # achieved by being ranked first in all doc lists with non-zero weight.
-        for _id in scores_map:
-            scores_map[_id] /= len(document_lists) / k
-
-        return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
+        return _reciprocal_rank_fusion(document_lists, weights=self.weights)
 
     @staticmethod
     def _distribution_based_rank_fusion(document_lists: list[list[Document]]) -> list[Document]:
