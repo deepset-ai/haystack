@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -10,13 +11,20 @@ from haystack import Document, Pipeline, component
 from haystack.components.agents.agent import Agent
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners.branch import BranchJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
+
+
+def sync_streaming_callback(chunk: StreamingChunk) -> None:
+    pass
 
 
 @component
@@ -280,3 +288,56 @@ class TestLLM:
 
             assert llm_output["last_message"].is_from(ChatRole.ASSISTANT)
             assert llm_output["last_message"].text == "Sync reply"
+
+
+class TestLLMNotTriggeredByInjectedInput:
+    """
+    Regression guard for the optional-messages scheduling hazard described in
+    https://github.com/deepset-ai/haystack/issues/11109.
+
+    When `user_prompt` contains template variables, `messages` is optional on the LLM.
+    An optional input with `sender=None` (i.e., injected directly via `pipeline.run`)
+    would flip `has_user_input()` to True and incorrectly trigger the component even
+    when its required inputs (e.g. `query`) never arrive.
+    """
+
+    USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
+
+    def test_llm_not_triggered_by_injected_streaming_callback(self):
+        @component
+        class Planner:
+            @component.output_types(query=str, last_role=str)
+            def run(self) -> dict:
+                return {"query": "What is 2+2?", "last_role": "assistant"}
+
+        chat_generator = MockChatGenerator()
+        llm = LLM(chat_generator=chat_generator, user_prompt=self.USER_PROMPT)
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
+
+        router = ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ last_role == 'tool' }}",
+                    "output": "{{ query }}",
+                    "output_name": "processing",
+                    "output_type": str,
+                },
+                {"condition": "{{ True }}", "output": "{{ query }}", "output_name": "planning", "output_type": str},
+            ],
+            unsafe=True,
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("planner", Planner())
+        pipeline.add_component("router", router)
+        pipeline.add_component("branch_joiner", BranchJoiner(type_=str))
+        pipeline.add_component("llm", llm)
+        pipeline.connect("planner.query", "router.query")
+        pipeline.connect("planner.last_role", "router.last_role")
+        pipeline.connect("router.processing", "branch_joiner.value")
+        pipeline.connect("branch_joiner.value", "llm.query")
+
+        result = pipeline.run(data={"llm": {"streaming_callback": sync_streaming_callback}})
+
+        assert "llm" not in result
+        chat_generator.run.assert_not_called()
