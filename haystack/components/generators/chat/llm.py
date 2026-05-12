@@ -48,7 +48,7 @@ class LLM(Agent):
         *,
         chat_generator: ChatGenerator,
         system_prompt: str | None = None,
-        user_prompt: str,
+        user_prompt: str | None = None,
         required_variables: list[str] | Literal["*"] = "*",
         streaming_callback: StreamingCallbackT | None = None,
     ) -> None:
@@ -59,12 +59,13 @@ class LLM(Agent):
         :param system_prompt: System prompt for the LLM.
         :param user_prompt: User prompt for the LLM. This prompt is appended to the messages provided at
             runtime. If it contains Jinja2 template variables (e.g., `{{ variable_name }}`), they become
-            inputs to the component. If there are no template variables, `messages` must be provided at
-            runtime instead.
+            inputs to the component. If omitted or if there are no template variables, `messages` must be
+            provided at runtime instead.
         :param required_variables:
             Variables that must be provided as input to user_prompt.
             If a variable listed as required is not provided, an exception is raised.
             If set to `"*"`, all variables found in the prompt are required. Defaults to `"*"`.
+            Only relevant when `user_prompt` contains template variables.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
         :raises ValueError: If user_prompt contains template variables but required_variables is an empty list.
         """

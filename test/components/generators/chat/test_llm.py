@@ -301,28 +301,32 @@ class TestLLMNotTriggeredByInjectedInput:
     when its required inputs (e.g. `query`) never arrive.
     """
 
-    USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
-
     def test_llm_not_triggered_by_injected_streaming_callback(self):
+
         @component
         class Planner:
-            @component.output_types(query=str, last_role=str)
+            @component.output_types(messages=list[ChatMessage], last_role=str)
             def run(self) -> dict:
-                return {"query": "What is 2+2?", "last_role": "assistant"}
+                return {"messages": [ChatMessage.from_user("hello")], "last_role": "assistant"}
 
         chat_generator = MockChatGenerator()
-        llm = LLM(chat_generator=chat_generator, user_prompt=self.USER_PROMPT)
+        llm = LLM(chat_generator=chat_generator)
         chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
 
         router = ConditionalRouter(
             routes=[
                 {
                     "condition": "{{ last_role == 'tool' }}",
-                    "output": "{{ query }}",
+                    "output": "{{ messages }}",
                     "output_name": "processing",
-                    "output_type": str,
+                    "output_type": list[ChatMessage],
                 },
-                {"condition": "{{ True }}", "output": "{{ query }}", "output_name": "planning", "output_type": str},
+                {
+                    "condition": "{{ True }}",
+                    "output": "{{ messages }}",
+                    "output_name": "planning",
+                    "output_type": list[ChatMessage],
+                },
             ],
             unsafe=True,
         )
@@ -330,12 +334,12 @@ class TestLLMNotTriggeredByInjectedInput:
         pipeline = Pipeline()
         pipeline.add_component("planner", Planner())
         pipeline.add_component("router", router)
-        pipeline.add_component("branch_joiner", BranchJoiner(type_=str))
+        pipeline.add_component("branch_joiner", BranchJoiner(type_=list[ChatMessage]))
         pipeline.add_component("llm", llm)
-        pipeline.connect("planner.query", "router.query")
+        pipeline.connect("planner.messages", "router.messages")
         pipeline.connect("planner.last_role", "router.last_role")
         pipeline.connect("router.processing", "branch_joiner.value")
-        pipeline.connect("branch_joiner.value", "llm.query")
+        pipeline.connect("branch_joiner.value", "llm.messages")
 
         result = pipeline.run(data={"llm": {"streaming_callback": sync_streaming_callback}})
 
