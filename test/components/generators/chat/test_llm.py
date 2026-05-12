@@ -11,7 +11,7 @@ from haystack.components.agents.agent import Agent
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.core.component.types import OutputSocket
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -93,12 +93,19 @@ class TestLLM:
             llm = LLM(chat_generator=MockChatGeneratorWithTools(), user_prompt=self.USER_PROMPT)
             assert llm._chat_generator_supports_tools is True
 
-        def test_raises_if_user_prompt_has_no_variables(self):
-            with pytest.raises(ValueError, match="at least one template variable"):
-                LLM(
-                    chat_generator=MockChatGenerator(),
-                    user_prompt='{% message role="user" %}Hello world{% endmessage %}',
-                )
+        def test_messages_required_when_no_prompt_variables(self):
+            llm = LLM(
+                chat_generator=MockChatGenerator(), user_prompt='{% message role="user" %}Hello world{% endmessage %}'
+            )
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]
+            assert isinstance(messages_socket, InputSocket)
+            assert messages_socket.is_mandatory
+
+        def test_messages_optional_when_prompt_has_variables(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]
+            assert isinstance(messages_socket, InputSocket)
+            assert not messages_socket.is_mandatory
 
         def test_raises_if_required_variables_empty(self):
             with pytest.raises(ValueError, match="required_variables must not be empty"):
@@ -194,6 +201,29 @@ class TestLLM:
             assert isinstance(restored.chat_generator, OpenAIChatGenerator)
             assert restored.system_prompt == original.system_prompt
             assert restored.tools == []
+
+    class TestRun:
+        USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
+
+        def test_run_accepts_messages_via_kwargs(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            prior_message = ChatMessage.from_user("Some prior context")
+            result = llm.run(query="What is 2+2?", messages=[prior_message])
+            assert "last_message" in result
+            assert result["last_message"].text == "Sync reply"
+
+        def test_run_without_messages(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            result = llm.run(query="What is 2+2?")
+            assert result["last_message"].text == "Sync reply"
+
+        @pytest.mark.asyncio
+        async def test_run_async_accepts_messages_via_kwargs(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            prior_message = ChatMessage.from_user("Some prior context")
+            result = await llm.run_async(query="What is 2+2?", messages=[prior_message])
+            assert "last_message" in result
+            assert result["last_message"].text == "Async reply"
 
     class TestPipelineIntegration:
         @pytest.fixture()
