@@ -95,7 +95,7 @@
 | haystack/components/generators/chat/fallback.py                                     |       86 |        4 |     95% |92, 240-245 |
 | haystack/components/generators/chat/hugging\_face\_api.py                           |      229 |        7 |     97% |189, 420-421, 487, 579, 632, 703 |
 | haystack/components/generators/chat/hugging\_face\_local.py                         |      208 |       27 |     87% |70-72, 75, 83-85, 235, 278-280, 340, 370, 426, 455-460, 487, 538-541, 576-582, 598, 654-655 |
-| haystack/components/generators/chat/llm.py                                          |       30 |        2 |     93% |  117, 185 |
+| haystack/components/generators/chat/llm.py                                          |       33 |        1 |     97% |       120 |
 | haystack/components/generators/chat/openai.py                                       |      212 |        4 |     98% |421, 471, 642, 742 |
 | haystack/components/generators/chat/openai\_responses.py                            |      316 |       39 |     88% |237, 268, 356, 434, 449, 486, 493-500, 508, 549-558, 574-575, 580, 593-609, 618, 748, 790-791, 804, 847, 869, 888 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
@@ -265,7 +265,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17257** | **1219** | **93%** |           |
+| **TOTAL**                                                                           | **17260** | **1218** | **93%** |           |
 
 
 ## Setup coverage badge
