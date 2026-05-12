@@ -121,7 +121,7 @@ class LLM(Agent):
 
         return default_from_dict(cls, data)
 
-    def run(
+    def run(  # type: ignore[override]  # `messages` is in **kwargs to allow dynamic required/optional status
         self,
         *,
         streaming_callback: StreamingCallbackT | None = None,
@@ -161,7 +161,7 @@ class LLM(Agent):
             **kwargs,
         )
 
-    async def run_async(
+    async def run_async(  # type: ignore[override]  # `messages` is in **kwargs to allow dynamic required/optional status
         self,
         *,
         streaming_callback: StreamingCallbackT | None = None,
