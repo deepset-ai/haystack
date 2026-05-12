@@ -17,8 +17,9 @@ The vectors computed by this component are necessary to perform embedding retrie
 | **Mandatory init variables** | `api_key`: The Google API key. Can be set with `GOOGLE_API_KEY` or `GEMINI_API_KEY` env var. |
 | **Mandatory run variables** | `documents`: A list of documents to be embedded |
 | **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
-| **API reference** | [Google AI](/reference/integrations-google-genai) |
+| **API reference** | [Google GenAI](/reference/integrations-google-genai) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
+| **Package name** | `google-genai-haystack` |
 
 </div>
 
@@ -26,10 +27,9 @@ The vectors computed by this component are necessary to perform embedding retrie
 
 `GoogleGenAIDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, you should use the [`GoogleGenAITextEmbedder`](googlegenaitextembedder.mdx).
 
-The component supports the following Google AI models:
+The component supports [Google AI Embedding models](https://ai.google.dev/gemini-api/docs/embeddings#model-versions).
 
-- `text-embedding-004` (default)
-- `text-embedding-004-v2`
+`gemini-embedding-001` is the default model.
 
 To start using this integration with Haystack, install it with:
 

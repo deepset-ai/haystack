@@ -1,0 +1,176 @@
+---
+title: "VLLMDocumentEmbedder"
+id: vllmdocumentembedder
+slug: "/vllmdocumentembedder"
+description: "This component computes the embeddings of a list of documents using models served with vLLM."
+---
+
+# VLLMDocumentEmbedder
+
+This component computes the embeddings of a list of documents using models served with [vLLM](https://docs.vllm.ai/).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline         |
+| **Mandatory init variables**           | `model`: The name of the model served by vLLM                                              |
+| **Mandatory run variables**            | `documents`: A list of documents                                                           |
+| **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                |
+| **API reference**                      | [vLLM](/reference/integrations-vllm)                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm      |
+| **Package name** | `vllm-haystack` |
+
+</div>
+
+## Overview
+
+[vLLM](https://docs.vllm.ai/) is a high-throughput and memory-efficient inference and serving engine for LLMs. It exposes an OpenAI-compatible HTTP server, which `VLLMDocumentEmbedder` uses to compute embeddings through the Embeddings API.
+
+`VLLMDocumentEmbedder` computes the embeddings of a list of documents and stores the obtained vectors in the `embedding` field of each document. It expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). To embed a string (such as a query), use the [`VLLMTextEmbedder`](vllmtextembedder.mdx).
+
+The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector that represents the query is compared with those of the documents to find the most similar or relevant ones.
+
+If the vLLM server was started with `--api-key`, provide the API key through the `VLLM_API_KEY` environment variable or the `api_key` init parameter using Haystack's [Secret](../../concepts/secret-management.mdx) API.
+
+### Compatible models
+
+vLLM supports a range of embedding models. Check the [vLLM pooling models docs](https://docs.vllm.ai/en/stable/models/pooling_models) for the list of supported architectures and models.
+
+### vLLM-specific parameters
+
+You can pass vLLM-specific parameters through the `extra_parameters` dictionary. These are forwarded as `extra_body` to the OpenAI-compatible embeddings endpoint. Use this to pass parameters that are not part of the standard OpenAI Embeddings API, such as `truncate_prompt_tokens` or `truncation_side`. See the [vLLM Embeddings API docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#openai-compatible-embeddings-api) for details.
+
+```python
+embedder = VLLMDocumentEmbedder(
+    model="google/embeddinggemma-300m",
+    extra_parameters={"truncate_prompt_tokens": 256, "truncation_side": "right"},
+)
+```
+
+### Matryoshka embeddings
+
+If the model was trained with Matryoshka Representation Learning, you can reduce the dimensionality of the output vector through the `dimensions` parameter. See the [vLLM Matryoshka docs](https://docs.vllm.ai/en/stable/models/pooling_models/embed/#matryoshka-embeddings) for details.
+
+### Batching and failure handling
+
+`VLLMDocumentEmbedder` encodes documents in batches. Use `batch_size` (default `32`) to control how many documents are sent in a single request to the vLLM server, and `progress_bar` to toggle the progress indicator.
+
+By default (`raise_on_failure=False`), failed embedding requests are logged and processing continues with the remaining documents. Set `raise_on_failure=True` to raise an exception instead.
+
+### Instructions
+
+Some embedding models require prepending the document text with an instruction to work better for retrieval. For example, if you use [intfloat/e5-large-v2](https://huggingface.co/intfloat/e5-large-v2), you should prefix your document with the following instruction: "passage:".
+
+This is how it works with `VLLMDocumentEmbedder`:
+
+```python
+instruction = "passage:"
+embedder = VLLMDocumentEmbedder(
+    model="intfloat/e5-large-v2",
+    prefix=instruction,
+)
+```
+
+### Embedding metadata
+
+Documents often come with a set of metadata. If they are distinctive and semantically meaningful, you can embed them along with the text of the document to improve retrieval. Pass the relevant fields through `meta_fields_to_embed`; they are concatenated to the document text using `embedding_separator` (a newline by default):
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.vllm import VLLMDocumentEmbedder
+
+doc = Document(content="some text", meta={"title": "relevant title", "page_number": 18})
+
+embedder = VLLMDocumentEmbedder(
+    model="google/embeddinggemma-300m",
+    meta_fields_to_embed=["title"],
+)
+
+docs_with_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+Install the `vllm-haystack` package to use the `VLLMDocumentEmbedder`:
+
+```shell
+pip install vllm-haystack
+```
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server with an embedding model:
+
+```bash
+vllm serve google/embeddinggemma-300m
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.vllm import VLLMDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+## [-0.0215301513671875, 0.01499176025390625, ...]
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.embedders.vllm import (
+    VLLMDocumentEmbedder,
+    VLLMTextEmbedder,
+)
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
+
+document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
+writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("document_embedder", document_embedder)
+indexing_pipeline.add_component("writer", writer)
+indexing_pipeline.connect("document_embedder", "writer")
+
+indexing_pipeline.run({"document_embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder",
+    VLLMTextEmbedder(model="google/embeddinggemma-300m"),
+)
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+```

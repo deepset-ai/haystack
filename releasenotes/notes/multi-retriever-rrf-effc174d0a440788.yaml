@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Add ``join_mode`` parameter to the experimental ``MultiRetriever`` component, supporting
+    ``"reciprocal_rank_fusion"`` (default) and ``"concatenate"``. Reciprocal Rank Fusion merges
+    the ranked result lists from all retrievers into a single deduplicated list ordered by RRF score.
+    The underlying RRF logic is extracted into a shared utility ``_reciprocal_rank_fusion`` in
+    ``haystack.utils.misc``, which is now also used by ``DocumentJoiner``.

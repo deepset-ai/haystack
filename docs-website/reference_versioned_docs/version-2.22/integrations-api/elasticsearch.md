@@ -474,6 +474,7 @@ __init__(
         "cosine", "dot_product", "l2_norm", "max_inner_product"
     ] = "cosine",
     sparse_vector_field: str | None = None,
+    ingest_pipeline: str | None = None,
     **kwargs: Any
 ) -> None
 ```
@@ -511,6 +512,28 @@ of `id:secret`. Secret instances can also be loaded from a token using the `Secr
 - **sparse_vector_field** (<code>str | None</code>) – If set, the name of the Elasticsearch field where sparse embeddings
   will be stored using the `sparse_vector` field type. When not set, any `sparse_embedding`
   data on Documents is silently dropped during writes.
+- **ingest_pipeline** (<code>str | None</code>) – If set, the id of an Elasticsearch ingest pipeline to run on each bulk
+  index or create. This is the recommended way to generate embeddings at index time using
+  Elasticsearch's inference processors (e.g. ELSER or a dense model) without running a
+  Haystack embedder component. Leading and trailing whitespace is stripped.
+
+Requirements when using inference processors:
+
+- Configure the processor with `input_output` so the embedding is written directly
+  to the right field: `output_field` must match `"embedding"` (for dense retrieval)
+  or the value of `sparse_vector_field` (for ELSER / sparse retrieval). The ES default
+  target `ml.inference.<tag>` will not be found by Haystack's retrievers.
+- Do **not** also run a Haystack `DocumentEmbedder` upstream. If documents arrive with
+  a pre-computed `embedding`, the pipeline will overwrite it with its own model's
+  vectors, causing a silent mismatch between stored and query embeddings at retrieval time.
+- If you supply `custom_mapping`, include the output field with the correct type
+  (`dense_vector` or `sparse_vector`).
+
+Sparse embedding note: Elasticsearch does not store `sparse_vector` data generated
+by inference pipelines in `_source`; it goes only into the inverted index. Haystack
+works around this by requesting the field via the ES `fields` API on every search so
+that `Document.sparse_embedding` is populated correctly on returned documents.
+
 - \*\***kwargs** (<code>Any</code>) – Optional arguments that `Elasticsearch` takes.
 
 #### client

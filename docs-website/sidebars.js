@@ -35,7 +35,7 @@ export default {
             id: 'concepts/agents'
           },
           items: [
-            'concepts/agents/state',
+            'concepts/agents/multi-agent-systems',
           ],
         },
         {
@@ -115,6 +115,7 @@ export default {
         },
         'document-stores/elasticsearch-document-store',
         'document-stores/faissdocumentstore',
+        'document-stores/falkordbdocumentstore',
         {
           type: 'link',
           label: 'LanceDBDocumentStore',
@@ -149,6 +150,7 @@ export default {
           items: [
             'pipeline-components/agents-1/agent',
             'pipeline-components/agents-1/human-in-the-loop',
+            'pipeline-components/agents-1/state',
           ],
         },
         {
@@ -229,6 +231,8 @@ export default {
             'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
+            'pipeline-components/converters/doclingconverter',
+            'pipeline-components/converters/doclingserveconverter',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
             'pipeline-components/converters/filetofilecontent',
@@ -254,7 +258,6 @@ export default {
             'pipeline-components/converters/tikadocumentconverter',
             'pipeline-components/converters/unstructuredfileconverter',
             'pipeline-components/converters/xlsxtodocument',
-            'pipeline-components/converters/external-integrations-converters',
           ],
         },
         {
@@ -542,6 +545,8 @@ export default {
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
             'pipeline-components/retrievers/faissembeddingretriever',
+            'pipeline-components/retrievers/falkordbcypherretriever',
+            'pipeline-components/retrievers/falkordbembeddingretriever',
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
@@ -549,6 +554,7 @@ export default {
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
             'pipeline-components/retrievers/multiqueryembeddingretriever',
             'pipeline-components/retrievers/multiquerytextretriever',
+            'pipeline-components/retrievers/multiretriever',
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
@@ -560,6 +566,7 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretrieval',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/textembeddingretriever',
             'pipeline-components/retrievers/valkeyembeddingretriever',
             'pipeline-components/retrievers/weaviatebm25retriever',
             'pipeline-components/retrievers/weaviateembeddingretriever',
@@ -621,6 +628,7 @@ export default {
             id: 'pipeline-components/websearch'
           },
           items: [
+            'pipeline-components/websearch/bravewebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
