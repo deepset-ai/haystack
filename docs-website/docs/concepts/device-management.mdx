@@ -37,7 +37,7 @@ To use a single device for inference, use either the `ComponentDevice.from_singl
 from haystack.utils import ComponentDevice, Device
 
 device = ComponentDevice.from_single(Device.gpu(id=1))
-## Alternatively, use a PyTorch device string
+# Alternatively, use a PyTorch device string
 device = ComponentDevice.from_str("cuda:1")
 generator = HuggingFaceLocalGenerator(model="llama2", device=device)
 ```
@@ -98,16 +98,16 @@ class MyComponent(Component):
         init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         return default_from_dict(cls, data)
 
-## Automatically selects a device.
+# Automatically selects a device.
 c = MyComponent(device=None)
 
-## Uses the first GPU available.
+# Uses the first GPU available.
 c = MyComponent(device=ComponentDevice.from_str("cuda:0"))
 
-## Uses the CPU.
+# Uses the CPU.
 c = MyComponent(device=ComponentDevice.from_single(Device.cpu()))
 
-## Allow the component to use multiple devices using a device map.
+# Allow the component to use multiple devices using a device map.
 c = MyComponent(device=ComponentDevice.from_multiple(DeviceMap({
     "layer1": Device.cpu(),
     "layer2": Device.gpu(1),

@@ -37,7 +37,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 my_doc_store = InMemoryDocumentStore()
 
-## For URL-based caching
+# For URL-based caching
 cache_checker = CacheChecker(document_store=my_doc_store, cache_field="url")
 cache_check_results = cache_checker.run(
     items=[
@@ -52,7 +52,7 @@ print(
     cache_check_results["misses"],
 )  # URLs that were not found in the cache, like ["https://example.com/resource"]
 
-## For caching based on a custom identifier
+# For caching based on a custom identifier
 cache_checker = CacheChecker(document_store=my_doc_store, cache_field="metadata_field")
 cache_check_results = cache_checker.run(items=["12345", "ABCDE"])
 print(
@@ -96,11 +96,11 @@ pipeline.connect("splitter.documents", "writer.documents")
 
 pipeline.draw("pipeline.png")
 
-## Take the current directory as input and run the pipeline
+# Take the current directory as input and run the pipeline
 result = pipeline.run({"cache_checker": {"items": ["code_of_conduct_1.txt"]}})
 print(result)
 
-## The second execution skips the files that were already processed
+# The second execution skips the files that were already processed
 result = pipeline.run({"cache_checker": {"items": ["code_of_conduct_1.txt"]}})
 print(result)
 ```

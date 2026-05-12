@@ -113,7 +113,7 @@ doc_embedder = FastembedDocumentEmbedder()
 result = doc_embedder.run(document_list)
 print(result["documents"][0].embedding)
 
-## [-0.04235665127635002, 0.021791068837046623, ...]
+# [-0.04235665127635002, 0.021791068837046623, ...]
 ```
 
 ### In a pipeline
@@ -162,9 +162,9 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])  # noqa: T201
 
-## Document(id=...,
-## content: 'fastembed is supported by and maintained by Qdrant.',
-## score: 0.758..)
+# Document(id=...,
+# content: 'fastembed is supported by and maintained by Qdrant.',
+# score: 0.758..)
 ```
 
 ## Additional References

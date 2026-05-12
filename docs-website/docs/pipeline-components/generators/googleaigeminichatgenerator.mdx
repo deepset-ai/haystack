@@ -84,7 +84,7 @@ from typing import Annotated
 from haystack.tools import create_tool_from_function
 
 
-## example function to get the current weather
+# example function to get the current weather
 def get_current_weather(
     location: Annotated[
         str,
@@ -145,7 +145,7 @@ from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
 
-## no parameter init, we don't use any runtime template variables
+# no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"

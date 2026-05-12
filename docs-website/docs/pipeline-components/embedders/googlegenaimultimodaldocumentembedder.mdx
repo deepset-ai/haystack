@@ -66,7 +66,7 @@ from haystack_integrations.components.embedders.google_genai import (
     GoogleGenAIMultimodalDocumentEmbedder,
 )
 
-## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+# set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 embedder = GoogleGenAIMultimodalDocumentEmbedder()
 ```
 
@@ -77,7 +77,7 @@ from haystack_integrations.components.embedders.google_genai import (
     GoogleGenAIMultimodalDocumentEmbedder,
 )
 
-## Using Application Default Credentials (requires gcloud auth setup)
+# Using Application Default Credentials (requires gcloud auth setup)
 embedder = GoogleGenAIMultimodalDocumentEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
@@ -92,7 +92,7 @@ from haystack_integrations.components.embedders.google_genai import (
     GoogleGenAIMultimodalDocumentEmbedder,
 )
 
-## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+# set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 embedder = GoogleGenAIMultimodalDocumentEmbedder(api="vertex")
 ```
 
@@ -120,7 +120,7 @@ document_embedder = GoogleGenAIMultimodalDocumentEmbedder()
 
 result = document_embedder.run(documents=docs)
 print(result["documents"][0].embedding)
-## [0.017020374536514282, -0.023255806416273117, ...]
+# [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
 ### Setting embedding dimensions

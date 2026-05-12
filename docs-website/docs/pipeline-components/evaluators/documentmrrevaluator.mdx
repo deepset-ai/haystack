@@ -54,9 +54,9 @@ result = evaluator.run(
     ],
 )
 print(result["individual_scores"])
-## [1.0, 1.0]
+# [1.0, 1.0]
 print(result["score"])
-## 1.0
+# 1.0
 ```
 
 ### In a pipeline
@@ -101,10 +101,10 @@ result = pipeline.run(
 
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
-## [1.0, 1.0]
-## [1.0, 1.0]
+# [1.0, 1.0]
+# [1.0, 1.0]
 for evaluator in result:
     print(result[evaluator]["score"])
-## 1.0
-## 1.0
+# 1.0
+# 1.0
 ```

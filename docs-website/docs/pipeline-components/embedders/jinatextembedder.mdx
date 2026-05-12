@@ -56,9 +56,9 @@ text_embedder = JinaTextEmbedder(api_key=Secret.from_token("<your-api-key>"))
 
 print(text_embedder.run(text_to_embed))
 
-## {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-## 'meta': {'model': 'text-embedding-ada-002-v2',
-## 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
+# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+# 'meta': {'model': 'text-embedding-ada-002-v2',
+# 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 ```
 
 :::info
@@ -104,8 +104,8 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., mimetype: 'text/plain',
-## text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., mimetype: 'text/plain',
+# text: 'My name is Wolfgang and I live in Berlin')
 ```
 
 ## Additional References

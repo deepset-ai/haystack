@@ -68,7 +68,7 @@ document_store = AzureAISearchDocumentStore()
 
 retriever = AzureAISearchEmbeddingRetriever(document_store=document_store)
 
-## example run query
+# example run query
 retriever.run(query_embedding=[0.1] * 384)
 ```
 
@@ -113,7 +113,7 @@ documents = [
 
 document_embedder = SentenceTransformersDocumentEmbedder(model=model)
 
-## Indexing Pipeline
+# Indexing Pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component(instance=document_embedder, name="doc_embedder")
 indexing_pipeline.add_component(
@@ -124,7 +124,7 @@ indexing_pipeline.connect("doc_embedder", "doc_writer")
 
 indexing_pipeline.run({"doc_embedder": {"documents": documents}})
 
-## Query Pipeline
+# Query Pipeline
 query_pipeline = Pipeline()
 query_pipeline.add_component(
     "text_embedder",

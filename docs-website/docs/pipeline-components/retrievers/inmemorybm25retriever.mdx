@@ -73,7 +73,7 @@ from haystack.components.generators import OpenAIGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-## Create a RAG query pipeline
+# Create a RAG query pipeline
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -103,10 +103,10 @@ rag_pipeline.connect("llm.replies", "answer_builder.replies")
 rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
-## Draw the pipeline
+# Draw the pipeline
 rag_pipeline.draw("./rag_pipeline.png")
 
-## Add Documents
+# Add Documents
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
@@ -118,7 +118,7 @@ documents = [
 ]
 rag_pipeline.get_component("retriever").document_store.write_documents(documents)
 
-## Run the pipeline
+# Run the pipeline
 question = "How many languages are there?"
 result = rag_pipeline.run(
     {
@@ -140,14 +140,14 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.pipeline import Pipeline
 
-## Create components and a query pipeline
+# Create components and a query pipeline
 document_store = InMemoryDocumentStore()
 retriever = InMemoryBM25Retriever(document_store=document_store)
 
 pipeline = Pipeline()
 pipeline.add_component(instance=retriever, name="retriever")
 
-## Add Documents
+# Add Documents
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
@@ -159,7 +159,7 @@ documents = [
 ]
 document_store.write_documents(documents)
 
-## Run the pipeline
+# Run the pipeline
 result = pipeline.run(data={"retriever": {"query": "How many languages are there?"}})
 
 print(result["retriever"]["documents"][0])

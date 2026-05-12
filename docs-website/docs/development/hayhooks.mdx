@@ -173,17 +173,17 @@ from hayhooks.settings import settings
 from fastapi import Request
 from hayhooks import create_app
 
-## Create the Hayhooks app
+# Create the Hayhooks app
 hayhooks = create_app()
 
 
-## Add a custom route
+# Add a custom route
 @hayhooks.get("/custom")
 async def custom_route():
     return {"message": "Hi, this is a custom route!"}
 
 
-## Add a custom middleware
+# Add a custom middleware
 @hayhooks.middleware("http")
 async def custom_middleware(request: Request, call_next):
     response = await call_next(request)

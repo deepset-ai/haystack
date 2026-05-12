@@ -99,7 +99,7 @@ p.connect("passage_embedder.embedding", "passage_retriever.query_embedding")
 p.connect("text_router.query", "query_embedder.text")
 p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 
-## Query Example
+# Query Example
 result = p.run({"text_router": {"text": "What is the capital of Germany?"}})
 print(result)
 

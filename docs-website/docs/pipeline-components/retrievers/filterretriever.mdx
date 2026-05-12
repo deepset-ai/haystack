@@ -94,7 +94,7 @@ documents = [
 ]
 document_store.write_documents(documents=documents)
 
-## Create a RAG query pipeline
+# Create a RAG query pipeline
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}

@@ -85,7 +85,7 @@ embedder = CohereDocumentEmbedder()
 
 result = embedder.run([doc])
 print(result["documents"][0].embedding)
-## [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
+# [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
 ```
 
 ### In a pipeline
@@ -132,5 +132,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., text: 'My name is Wolfgang and I live in Berlin')
 ```

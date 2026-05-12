@@ -142,7 +142,7 @@ We use the `LlamaCppGenerator` in a Retrieval Augmented Generation pipeline on t
 Load the dataset:
 
 ```python
-## Install HuggingFace Datasets using "pip install datasets"
+# Install HuggingFace Datasets using "pip install datasets"
 from datasets import load_dataset
 from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
@@ -155,10 +155,10 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-## Import LlamaCppGenerator
+# Import LlamaCppGenerator
 from haystack_integrations.components.generators.llama_cpp import LlamaCppGenerator
 
-## Load first 100 rows of the Simple Wikipedia Dataset from HuggingFace
+# Load first 100 rows of the Simple Wikipedia Dataset from HuggingFace
 dataset = load_dataset("pszemraj/simple_wikipedia", split="validation[:100]")
 
 docs = [
@@ -181,7 +181,7 @@ doc_embedder = SentenceTransformersDocumentEmbedder(
     model="sentence-transformers/all-MiniLM-L6-v2",
 )
 
-## Indexing Pipeline
+# Indexing Pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component(instance=doc_embedder, name="DocEmbedder")
 indexing_pipeline.add_component(
@@ -196,7 +196,7 @@ indexing_pipeline.run({"DocEmbedder": {"documents": docs}})
 Create the Retrieval Augmented Generation (RAG) pipeline and add the `LlamaCppGenerator` to it:
 
 ```python
-## Prompt Template for the https://huggingface.co/openchat/openchat-3.5-1210 LLM
+# Prompt Template for the https://huggingface.co/openchat/openchat-3.5-1210 LLM
 prompt_template = """GPT4 Correct User: Answer the question using the provided context.
 Question: {{question}}
 Context:
@@ -213,7 +213,7 @@ text_embedder = SentenceTransformersTextEmbedder(
     model="sentence-transformers/all-MiniLM-L6-v2",
 )
 
-## Load the LLM using LlamaCppGenerator
+# Load the LLM using LlamaCppGenerator
 model_path = "openchat-3.5-1210.Q3_K_S.gguf"
 generator = LlamaCppGenerator(model=model_path, n_ctx=4096, n_batch=128)
 
@@ -254,5 +254,5 @@ result = rag_pipeline.run(
 
 generated_answer = result["answer_builder"]["answers"][0]
 print(generated_answer.data)
-## The Joker movie was released on October 4, 2019.
+# The Joker movie was released on October 4, 2019.
 ```

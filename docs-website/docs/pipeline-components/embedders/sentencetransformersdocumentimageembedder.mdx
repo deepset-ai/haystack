@@ -78,12 +78,12 @@ result = embedder.run(documents=documents)
 documents_with_embeddings = result["documents"]
 print(documents_with_embeddings)
 
-## [Document(id=...,
-## content='A photo of a cat',
-## meta={'file_path': 'cat.jpg',
-## 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
-## embedding=vector of size 512),
-## ...]
+# [Document(id=...,
+# content='A photo of a cat',
+# meta={'file_path': 'cat.jpg',
+# 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
+# embedding=vector of size 512),
+# ...]
 ```
 
 ### In a pipeline
@@ -109,7 +109,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 document_store = InMemoryDocumentStore()
 
-## Indexing pipeline
+# Indexing pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("image_converter", ImageFileToDocument())
 indexing_pipeline.add_component(
@@ -124,7 +124,7 @@ indexing_pipeline.connect("embedder", "writer")
 
 indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "hyena.jpeg"]}})
 
-## Multimodal retrieval pipeline
+# Multimodal retrieval pipeline
 retrieval_pipeline = Pipeline()
 retrieval_pipeline.add_component(
     "embedder",
@@ -139,34 +139,34 @@ retrieval_pipeline.connect("embedder", "retriever")
 result = retrieval_pipeline.run(data={"text": "man's best friend"})
 print(result)
 
-## {
-## 'retriever': {
-## 'documents': [
-## Document(
-## id=0c96...,
-## meta={
-## 'file_path': 'dog.jpg',
-## 'embedding_source': {
-## 'type': 'image',
-## 'file_path_meta_field': 'file_path'
-## }
-## },
-## score=32.025817780129856
-## ),
-## Document(
-## id=5e76...,
-## meta={
-## 'file_path': 'hyena.jpeg',
-## 'embedding_source': {
-## 'type': 'image',
-## 'file_path_meta_field': 'file_path'
-## }
-## },
-## score=20.648225327085242
-## )
-## ]
-## }
-## }
+# {
+# 'retriever': {
+# 'documents': [
+# Document(
+# id=0c96...,
+# meta={
+# 'file_path': 'dog.jpg',
+# 'embedding_source': {
+# 'type': 'image',
+# 'file_path_meta_field': 'file_path'
+# }
+# },
+# score=32.025817780129856
+# ),
+# Document(
+# id=5e76...,
+# meta={
+# 'file_path': 'hyena.jpeg',
+# 'embedding_source': {
+# 'type': 'image',
+# 'file_path_meta_field': 'file_path'
+# }
+# },
+# score=20.648225327085242
+# )
+# ]
+# }
+# }
 ```
 
 ## Additional References

@@ -98,7 +98,7 @@ from haystack.components.preprocessors import CSVDocumentSplitter
 from haystack.components.preprocessors import CSVDocumentCleaner
 from haystack.components.writers import DocumentWriter
 
-## Initialize components
+# Initialize components
 document_store = InMemoryDocumentStore()
 p = Pipeline()
 p.add_component(instance=CSVToDocument(), name="csv_file_converter")
@@ -106,12 +106,12 @@ p.add_component(instance=CSVDocumentSplitter(), name="splitter")
 p.add_component(instance=CSVDocumentCleaner(), name="cleaner")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 
-## Connect components
+# Connect components
 p.connect("csv_file_converter.documents", "splitter.documents")
 p.connect("splitter.documents", "cleaner.documents")
 p.connect("cleaner.documents", "writer.documents")
 
-## Run pipeline
+# Run pipeline
 p.run({"csv_file_converter": {"sources": ["path/to/your/file.csv"]}})
 ```
 

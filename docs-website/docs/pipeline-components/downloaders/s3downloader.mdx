@@ -86,19 +86,19 @@ Here's how to use `S3Downloader` to download files from S3:
 from haystack.dataclasses import Document
 from haystack_integrations.components.downloaders.s3 import S3Downloader
 
-## Create documents with file names in metadata
+# Create documents with file names in metadata
 documents = [
     Document(meta={"file_name": "report.pdf"}),
     Document(meta={"file_name": "data.txt"}),
 ]
 
-## Initialize the downloader
+# Initialize the downloader
 downloader = S3Downloader(file_root_path="/tmp/s3_downloads")
 
-## Download the files
+# Download the files
 result = downloader.run(documents=documents)
 
-## Access the downloaded files
+# Access the downloaded files
 for doc in result["documents"]:
     print(f"File downloaded to: {doc.meta['file_path']}")
 ```
@@ -115,14 +115,14 @@ documents = [
     Document(meta={"file_name": "data.txt"}),
 ]
 
-## Only download PDF files
+# Only download PDF files
 downloader = S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf"])
 
 result = downloader.run(documents=documents)
 
-## Only report.pdf is downloaded
+# Only report.pdf is downloaded
 print(f"Downloaded {len(result['documents'])} file(s)")
-## Output: Downloaded 1 file(s)
+# Output: Downloaded 1 file(s)
 ```
 
 With custom S3 key generation:
@@ -165,16 +165,16 @@ from haystack.dataclasses import Document
 
 from haystack_integrations.components.downloaders.s3 import S3Downloader
 
-## Create a pipeline
+# Create a pipeline
 pipe = Pipeline()
 
-## Add S3Downloader to download files from S3
+# Add S3Downloader to download files from S3
 pipe.add_component(
     "downloader",
     S3Downloader(file_root_path="/tmp/s3_downloads", file_extensions=[".pdf", ".txt"]),
 )
 
-## Route documents by file type
+# Route documents by file type
 pipe.add_component(
     "router",
     DocumentTypeRouter(
@@ -183,20 +183,20 @@ pipe.add_component(
     ),
 )
 
-## Convert PDFs to documents
+# Convert PDFs to documents
 pipe.add_component("pdf_converter", PDFMinerToDocument())
 
-## Connect components
+# Connect components
 pipe.connect("downloader.documents", "router.documents")
 pipe.connect("router.application/pdf", "pdf_converter.documents")
 
-## Create documents with S3 file names
+# Create documents with S3 file names
 documents = [
     Document(meta={"file_name": "report.pdf"}),
     Document(meta={"file_name": "summary.txt"}),
 ]
 
-## Run the pipeline
+# Run the pipeline
 result = pipe.run({"downloader": {"documents": documents}})
 ```
 
@@ -214,19 +214,19 @@ from haystack_integrations.components.generators.amazon_bedrock import (
     AmazonBedrockChatGenerator,
 )
 
-## Create documents with file names
+# Create documents with file names
 documents = [
     Document(meta={"file_name": "chart.png"}),
     Document(meta={"file_name": "report.pdf"}),
 ]
 
-## Create pipeline
+# Create pipeline
 pipe = Pipeline()
 
-## Download files from S3
+# Download files from S3
 pipe.add_component("downloader", S3Downloader(file_root_path="/tmp/s3_downloads"))
 
-## Route by document type
+# Route by document type
 pipe.add_component(
     "router",
     DocumentTypeRouter(
@@ -235,10 +235,10 @@ pipe.add_component(
     ),
 )
 
-## Convert images for LLM
+# Convert images for LLM
 pipe.add_component("image_converter", DocumentToImageContent(detail="auto"))
 
-## Create chat prompt with template
+# Create chat prompt with template
 template = """{% message role="user" %}
 Answer the question based on the provided images.
 
@@ -251,19 +251,19 @@ Question: {{ question }}
 
 pipe.add_component("prompt_builder", ChatPromptBuilder(template=template))
 
-## Generate response
+# Generate response
 pipe.add_component(
     "llm",
     AmazonBedrockChatGenerator(model="anthropic.claude-3-haiku-20240307-v1:0"),
 )
 
-## Connect components
+# Connect components
 pipe.connect("downloader.documents", "router.documents")
 pipe.connect("router.image/png", "image_converter.documents")
 pipe.connect("image_converter.image_contents", "prompt_builder.image_contents")
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
-## Run pipeline
+# Run pipeline
 result = pipe.run(
     {
         "downloader": {"documents": documents},

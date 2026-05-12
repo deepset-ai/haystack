@@ -86,7 +86,7 @@ builder = ChatPromptBuilder(
 )
 
 result = builder.run(name="Alice")
-## Output: "Hello, Alice. How can I assist you with ?"
+# Output: "Hello, Alice. How can I assist you with ?"
 ```
 
 The component only waits for the required inputs before running.
@@ -343,7 +343,7 @@ from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 from haystack.utils import Secret
 
-## no parameter init, we don't use any runtime template variables
+# no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
 llm = OpenAIChatGenerator()
 
@@ -379,7 +379,7 @@ from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 from haystack.utils import Secret
 
-## no parameter init, we don't use any runtime template variables
+# no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
 llm = OpenAIChatGenerator()
 

@@ -67,7 +67,7 @@ os.environ["PG_CONN_STR"] = "postgresql://postgres:postgres@localhost:5432/postg
 document_store = PgvectorDocumentStore()
 retriever = PgvectorEmbeddingRetriever(document_store=document_store)
 
-## using a fake vector to keep the example simple
+# using a fake vector to keep the example simple
 retriever.run(query_embedding=[0.1] * 768)
 ```
 

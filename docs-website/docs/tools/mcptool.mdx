@@ -56,11 +56,11 @@ You can create an `MCPTool` that connects to an external HTTP server using strea
 ```python
 from haystack_integrations.tools.mcp import MCPTool, StreamableHttpServerInfo
 
-## Create an MCP tool that connects to an HTTP server
+# Create an MCP tool that connects to an HTTP server
 server_info = StreamableHttpServerInfo(url="http://localhost:8000/mcp")
 tool = MCPTool(name="my_tool", server_info=server_info)
 
-## Use the tool
+# Use the tool
 result = tool.invoke(param1="value1", param2="value2")
 ```
 
@@ -75,11 +75,11 @@ You can create an `MCPTool` that connects to an external HTTP server using SSE t
 ```python
 from haystack_integrations.tools.mcp import MCPTool, SSEServerInfo
 
-## Create an MCP tool that connects to an HTTP server
+# Create an MCP tool that connects to an HTTP server
 server_info = SSEServerInfo(url="http://localhost:8000/sse")
 tool = MCPTool(name="my_tool", server_info=server_info)
 
-## Use the tool
+# Use the tool
 result = tool.invoke(param1="value1", param2="value2")
 ```
 
@@ -90,14 +90,14 @@ You can also create an `MCPTool` that executes a local program directly and conn
 ```python
 from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
 
-## Create an MCP tool that uses stdio transport
+# Create an MCP tool that uses stdio transport
 server_info = StdioServerInfo(
     command="uvx",
     args=["mcp-server-time", "--local-timezone=Europe/Berlin"],
 )
 tool = MCPTool(name="get_current_time", server_info=server_info)
 
-## Get the current time in New York
+# Get the current time in New York
 result = tool.invoke(timezone="America/New_York")
 ```
 
@@ -152,7 +152,7 @@ result = pipeline.run(
 )
 
 print(result["response_llm"]["replies"][0].text)
-## The current time in New York is 1:57 PM.
+# The current time in New York is 1:57 PM.
 ```
 
 ### With the Agent Component
@@ -174,18 +174,18 @@ time_tool = MCPTool(
     ),
 )
 
-## Agent Setup
+# Agent Setup
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
     tools=[time_tool],
     exit_conditions=["text"],
 )
 
-## Run the Agent
+# Run the Agent
 response = agent.run(
     messages=[ChatMessage.from_user("What is the time in New York? Be brief.")],
 )
 
-## Output
+# Output
 print(response["messages"][-1].text)
 ```

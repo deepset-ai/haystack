@@ -57,7 +57,7 @@ document_store = MongoDBAtlasDocumentStore()
 
 retriever = MongoDBAtlasEmbeddingRetriever(document_store=document_store)
 
-## example run query
+# example run query
 retriever.run(query_embedding=[0.1] * 384)
 ```
 
@@ -80,22 +80,22 @@ from haystack_integrations.components.embedders.mongodb_atlas import (
     MongoDBAtlasEmbeddingRetriever,
 )
 
-## Create some example documents
+# Create some example documents
 documents = [
     Document(content="My name is Jean and I live in Paris."),
     Document(content="My name is Mark and I live in Berlin."),
     Document(content="My name is Giorgio and I live in Rome."),
 ]
 
-## We support many different databases. Here we load a simple and lightweight in-memory document store.
+# We support many different databases. Here we load a simple and lightweight in-memory document store.
 document_store = MongoDBAtlasDocumentStore()
 
-## Define some more components
+# Define some more components
 doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
 query_embedder = SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2")
 
-## Pipeline that ingests document for retrieval
+# Pipeline that ingests document for retrieval
 ingestion_pipe = Pipeline()
 ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
 ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
@@ -103,8 +103,8 @@ ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
 ingestion_pipe.connect("doc_embedder.documents", "doc_writer.documents")
 ingestion_pipe.run({"doc_embedder": {"documents": documents}})
 
-## Build a RAG pipeline with a Retriever to get relevant documents to
-## the query and a OpenAIGenerator interacting with LLMs using a custom prompt.
+# Build a RAG pipeline with a Retriever to get relevant documents to
+# the query and a OpenAIGenerator interacting with LLMs using a custom prompt.
 prompt_template = """
 Given these documents, answer the question.\nDocuments:
 {% for doc in documents %}
@@ -129,7 +129,7 @@ rag_pipeline.connect("query_embedder", "retriever.query_embedding")
 rag_pipeline.connect("embedding_retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm")
 
-## Ask a question on the data you just added.
+# Ask a question on the data you just added.
 question = "Where does Mark live?"
 result = rag_pipeline.run(
     {
@@ -138,6 +138,6 @@ result = rag_pipeline.run(
     },
 )
 
-## For details, like which documents were used to generate the answer, look into the GeneratedAnswer object
+# For details, like which documents were used to generate the answer, look into the GeneratedAnswer object
 print(result["answer_builder"]["answers"])
 ```

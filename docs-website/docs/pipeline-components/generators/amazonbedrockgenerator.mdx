@@ -70,7 +70,7 @@ result = generator.run("Who is the best American actor?")
 for reply in result["replies"]:
     print(reply)
 
-## >>> 'There is no definitive "best" American actor, as acting skill and talent a# re subjective. However, some of the most acclaimed and influential American act# ors include Tom Hanks, Daniel Day-Lewis, Denzel Washington, Meryl Streep, Rober# t De Niro, Al Pacino, Marlon Brando, Jack Nicholson, Leonardo DiCaprio and John# ny Depp. Choosing a single "best" actor comes down to personal preference.'
+# >>> 'There is no definitive "best" American actor, as acting skill and talent a# re subjective. However, some of the most acclaimed and influential American act# ors include Tom Hanks, Daniel Day-Lewis, Denzel Washington, Meryl Streep, Rober# t De Niro, Al Pacino, Marlon Brando, Jack Nicholson, Leonardo DiCaprio and John# ny Depp. Choosing a single "best" actor comes down to personal preference.'
 ```
 
 ### In a pipeline
@@ -113,7 +113,7 @@ pipe.connect("prompt_builder", "generator")
 
 pipe.run({"retriever": {"query": "France"}, "prompt_builder": {"country": "France"}})
 
-## {'generator': {'replies': ['Based on the context provided, the official language of France is French.']}}
+# {'generator': {'replies': ['Based on the context provided, the official language of France is French.']}}
 ```
 
 ## Additional References

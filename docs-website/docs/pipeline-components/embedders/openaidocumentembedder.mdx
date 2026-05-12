@@ -70,7 +70,7 @@ document_embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("<your-api-
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
 
-## [0.017020374536514282, -0.023255806416273117, ...]
+# [0.017020374536514282, -0.023255806416273117, ...]
 ```
 
 :::info
@@ -115,6 +115,6 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., mimetype: 'text/plain',
-## text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., mimetype: 'text/plain',
+# text: 'My name is Wolfgang and I live in Berlin')
 ```

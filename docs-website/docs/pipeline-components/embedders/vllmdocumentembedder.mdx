@@ -121,7 +121,7 @@ document_embedder = VLLMDocumentEmbedder(model="google/embeddinggemma-300m")
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
 
-## [-0.0215301513671875, 0.01499176025390625, ...]
+# [-0.0215301513671875, 0.01499176025390625, ...]
 ```
 
 ### In a pipeline
@@ -172,5 +172,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

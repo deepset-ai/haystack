@@ -93,7 +93,7 @@ docs = [
 result = ranker.run(query="What is the capital of France?", documents=docs)
 print(result["documents"][0].content)
 
-## The capital of France is Paris.
+# The capital of France is Paris.
 ```
 
 ### In a pipeline
@@ -131,5 +131,5 @@ result = document_ranker_pipeline.run(
 
 print(result["ranker"]["documents"][0])
 
-## Document(id=..., content: 'Paris is in France', score: ...)
+# Document(id=..., content: 'Paris is in France', score: ...)
 ```

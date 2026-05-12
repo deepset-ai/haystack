@@ -89,14 +89,14 @@ from haystack.components.embedders import SentenceTransformersTextEmbedder, Sent
 from haystack_integrations.components.retrievers.opensearch import OpenSearchHybridRetriever
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 
-## Initialize the document store
+# Initialize the document store
 doc_store = OpenSearchDocumentStore(
     hosts=["http://localhost:9200"],
     index="document_store",
     embedding_dim=384,
 )
 
-## Create some sample documents
+# Create some sample documents
 docs = [
     Document(content="Machine learning is a subset of artificial intelligence."),
     Document(content="Deep learning is a subset of machine learning."),
@@ -105,15 +105,15 @@ docs = [
     Document(content="Supervised learning is a type of machine learning."),
 ]
 
-## Embed the documents and add them to the document store
+# Embed the documents and add them to the document store
 doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 docs = doc_embedder.run(docs)
 doc_store.write_documents(docs['documents'])
 
-## Initialize some haystack text embedder, in this case the SentenceTransformersTextEmbedder
+# Initialize some haystack text embedder, in this case the SentenceTransformersTextEmbedder
 embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
 
-## Initialize the hybrid retriever
+# Initialize the hybrid retriever
 retriever = OpenSearchHybridRetriever(
     document_store=doc_store,
     embedder=embedder,
@@ -122,7 +122,7 @@ retriever = OpenSearchHybridRetriever(
     join_mode="reciprocal_rank_fusion"
 )
 
-## Run the retriever
+# Run the retriever
 results = retriever.run(query="What is reinforcement learning?", filters_bm25=None, filters_embedding=None)
 
 >> results['documents']

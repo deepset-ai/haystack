@@ -83,7 +83,7 @@ NER_PROMPT = """
     2. Return output in a single list with all the entities identified in steps 1.
 
     -Examples-
-    ######################
+    #####################
     Example 1:
     entity_types: [organization, person, partnership, financial metric, product, service, industry, investment strategy, market trend]
     text: Another area of strength is our co-brand issuance. Visa is the primary network partner for eight of the top
@@ -100,12 +100,12 @@ NER_PROMPT = """
     ------------------------
     output:
     {"entities": [{"entity": "Visa", "entity_type": "company"}, {"entity": "Alaska Airlines", "entity_type": "company"}, {"entity": "Qatar Airways", "entity_type": "company"}, {"entity": "British Airways", "entity_type": "company"}, {"entity": "National Bank of Kuwait", "entity_type": "company"}, {"entity": "Marriott", "entity_type": "company"}, {"entity": "Qatar Islamic Bank", "entity_type": "company"}, {"entity": "Emirates Skywards", "entity_type": "company"}, {"entity": "Royal Air Maroc", "entity_type": "company"}]}
-    #############################
+    ############################
     -Real Data-
-    ######################
+    #####################
     entity_types: [company, organization, person, country, product, service]
     text: {{ document.content }}
-    ######################
+    #####################
     output:
     """
 ```

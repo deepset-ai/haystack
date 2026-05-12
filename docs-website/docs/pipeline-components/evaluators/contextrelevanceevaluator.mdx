@@ -81,11 +81,11 @@ contexts = [
 evaluator = ContextRelevanceEvaluator()
 result = evaluator.run(questions=questions, contexts=contexts)
 print(result["score"])
-## 1.0
+# 1.0
 print(result["individual_scores"])
-## [1.0]
+# [1.0]
 print(result["results"])
-## [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
+# [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
 ```
 
 ### In a pipeline
@@ -128,10 +128,10 @@ result = pipeline.run(
 
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
-## [1.0]
-## [0.5]
+# [1.0]
+# [0.5]
 for evaluator in result:
     print(result[evaluator]["score"])
-## 1.0
-## 0.5
+# 1.0
+# 0.5
 ```

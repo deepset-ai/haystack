@@ -85,7 +85,7 @@ import os
 
 api_key = os.environ["OPENAI_API_KEY"]
 
-## Create a RAG query pipeline
+# Create a RAG query pipeline
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -103,7 +103,7 @@ document_store = OpenSearchDocumentStore(
     http_auth=("admin", "admin"),
 )
 
-## Add Documents
+# Add Documents
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
@@ -114,7 +114,7 @@ documents = [
     ),
 ]
 
-## DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
+# DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
 document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 
 retriever = OpenSearchBM25Retriever(document_store=document_store)

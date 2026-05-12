@@ -38,10 +38,10 @@ The current implementation supports two NER backends: Hugging Face and spaCy. Th
 Here’s an example of how you could initialize different backends:
 
 ```python
-## Initialize with HF backend
+# Initialize with HF backend
 extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
 
-## Initialize with spaCy backend
+# Initialize with spaCy backend
 extractor = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
 ```
 
@@ -92,7 +92,7 @@ extractor.run(documents)
 annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in documents]
 print(annotations)
 
-## If a Document doesn't contain any annotations, this returns None.
+# If a Document doesn't contain any annotations, this returns None.
 new_doc = Document(content="In one of many possible worlds...")
 assert NamedEntityExtractor.get_stored_annotations(new_doc) is None
 ```

@@ -84,7 +84,7 @@ os.environ["AWS_ACCESS_KEY_ID"] = "..."
 os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # example
 
-## Point Documents to image/PDF files via metadata (default key: "file_path")
+# Point Documents to image/PDF files via metadata (default key: "file_path")
 documents = [
     Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
     Document(
@@ -126,16 +126,16 @@ from haystack_integrations.components.embedders.amazon_bedrock import (
     AmazonBedrockTextEmbedder,
 )
 
-## Document store using vector similarity for retrieval
+# Document store using vector similarity for retrieval
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-## Sample corpus with file paths in metadata
+# Sample corpus with file paths in metadata
 documents = [
     Document(content="A sketch of a horse", meta={"file_path": "horse.png"}),
     Document(content="A city map", meta={"file_path": "map.jpg"}),
 ]
 
-## Indexing pipeline: image embeddings -> write to store
+# Indexing pipeline: image embeddings -> write to store
 indexing = Pipeline()
 indexing.add_component(
     "image_embedder",
@@ -145,7 +145,7 @@ indexing.add_component("writer", DocumentWriter(document_store=document_store))
 indexing.connect("image_embedder", "writer")
 indexing.run({"image_embedder": {"documents": documents}})
 
-## Query pipeline: text -> embedding -> vector retriever
+# Query pipeline: text -> embedding -> vector retriever
 query = Pipeline()
 query.add_component(
     "text_embedder",

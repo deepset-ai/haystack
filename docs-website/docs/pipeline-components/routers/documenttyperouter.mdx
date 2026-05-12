@@ -94,10 +94,10 @@ router = DocumentTypeRouter(
 
 result = router.run(documents=docs)
 
-## Result will have:
-## - "text/.*": 3 documents (text/plain, text/html, text/markdown)
-## - "image/.*": 2 documents (image/jpeg, image/png)
-## - "unclassified": 1 document (application/pdf)
+# Result will have:
+# - "text/.*": 3 documents (text/plain, text/html, text/markdown)
+# - "image/.*": 2 documents (image/jpeg, image/png)
+# - "unclassified": 1 document (application/pdf)
 ```
 
 ### Using custom MIME types
@@ -141,10 +141,10 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import Document
 
-## Create document store
+# Create document store
 document_store = InMemoryDocumentStore()
 
-## Create pipeline
+# Create pipeline
 p = Pipeline()
 p.add_component(
     instance=DocumentTypeRouter(
@@ -163,12 +163,12 @@ p.add_component(
     name="pdf_writer",
 )
 
-## Connect components
+# Connect components
 p.connect("document_type_router.text/plain", "text_splitter.documents")
 p.connect("text_splitter.documents", "text_writer.documents")
 p.connect("document_type_router.application/pdf", "pdf_writer.documents")
 
-## Create test documents
+# Create test documents
 docs = [
     Document(
         content="This is a text document that will be split and stored.",
@@ -184,11 +184,11 @@ docs = [
     ),
 ]
 
-## Run pipeline
+# Run pipeline
 result = p.run({"document_type_router": {"documents": docs}})
 
-## The pipeline will route documents based on their MIME types:
-## - Text documents (text/plain) → DocumentSplitter → DocumentWriter
-## - PDF documents (application/pdf) → DocumentWriter (direct)
-## - Other documents → unclassified output
+# The pipeline will route documents based on their MIME types:
+# - Text documents (text/plain) → DocumentSplitter → DocumentWriter
+# - PDF documents (application/pdf) → DocumentWriter (direct)
+# - Other documents → unclassified output
 ```

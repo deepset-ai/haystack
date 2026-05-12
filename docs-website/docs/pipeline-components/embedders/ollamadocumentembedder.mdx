@@ -70,9 +70,9 @@ document_embedder = OllamaDocumentEmbedder()
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
 
-## Calculating embeddings: 100%|██████████| 1/1 [00:02<00:00, 2.82s/it]
+# Calculating embeddings: 100%|██████████| 1/1 [00:02<00:00, 2.82s/it]
 
-## [-0.16412407159805298, -3.8359334468841553, ... ]
+# [-0.16412407159805298, -3.8359334468841553, ... ]
 ```
 
 ### In a pipeline
@@ -103,22 +103,22 @@ writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OV
 
 indexing_pipeline = Pipeline()
 
-## Add components to pipeline
+# Add components to pipeline
 indexing_pipeline.add_component("embedder", embedder)
 indexing_pipeline.add_component("converter", file_converter)
 indexing_pipeline.add_component("cleaner", cleaner)
 indexing_pipeline.add_component("splitter", splitter)
 indexing_pipeline.add_component("writer", writer)
 
-## Connect components in pipeline
+# Connect components in pipeline
 indexing_pipeline.connect("converter", "cleaner")
 indexing_pipeline.connect("cleaner", "splitter")
 indexing_pipeline.connect("splitter", "embedder")
 indexing_pipeline.connect("embedder", "writer")
 
-## Run Pipeline
+# Run Pipeline
 indexing_pipeline.run({"converter": {"sources": ["files/test_pdf_data.pdf"]}})
 
-## Calculating embeddings: 100%|██████████| 115/115
-## {'embedder': {'meta': {'model': 'nomic-embed-text'}},  'writer': {'documents_written': 115}}
+# Calculating embeddings: 100%|██████████| 115/115
+# {'embedder': {'meta': {'model': 'nomic-embed-text'}},  'writer': {'documents_written': 115}}
 ```

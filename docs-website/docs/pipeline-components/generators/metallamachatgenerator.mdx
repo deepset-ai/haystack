@@ -115,7 +115,7 @@ llm = MetaLlamaChatGenerator(
 
 response = llm.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
 
-## check the model used for the response
+# check the model used for the response
 print("\n\n Model used: ", response["replies"][0].meta["model"])
 ```
 
@@ -143,7 +143,7 @@ print(response)
 ### In a pipeline
 
 ```python
-## To run this example, you will need to set a `LLAMA_API_KEY` environment variable.
+# To run this example, you will need to set a `LLAMA_API_KEY` environment variable.
 
 from haystack import Document, Pipeline
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -157,7 +157,7 @@ from haystack_integrations.components.generators.meta_llama import (
     MetaLlamaChatGenerator,
 )
 
-## Write documents to InMemoryDocumentStore
+# Write documents to InMemoryDocumentStore
 document_store = InMemoryDocumentStore()
 document_store.write_documents(
     [
@@ -167,7 +167,7 @@ document_store.write_documents(
     ],
 )
 
-## Build a RAG pipeline
+# Build a RAG pipeline
 prompt_template = [
     ChatMessage.from_user(
         "Given these documents, answer the question.\n"
@@ -177,7 +177,7 @@ prompt_template = [
     ),
 ]
 
-## Define required variables explicitly
+# Define required variables explicitly
 prompt_builder = ChatPromptBuilder(
     template=prompt_template,
     required_variables={"question", "documents"},
@@ -196,7 +196,7 @@ rag_pipeline.add_component("llm", llm)
 rag_pipeline.connect("retriever", "prompt_builder.documents")
 rag_pipeline.connect("prompt_builder", "llm.messages")
 
-## Ask a question
+# Ask a question
 question = "Who lives in Paris?"
 rag_pipeline.run(
     {

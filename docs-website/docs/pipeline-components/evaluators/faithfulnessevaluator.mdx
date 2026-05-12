@@ -87,12 +87,12 @@ result = evaluator.run(
 )
 
 print(result["individual_scores"])
-## [0.5]
+# [0.5]
 print(result["score"])
-## 0.5
+# 0.5
 print(result["results"])
-## [{'statements': ['Python is a high-level general-purpose programming language.',
-## 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+# [{'statements': ['Python is a high-level general-purpose programming language.',
+# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
 ```
 
 ### In a pipeline
@@ -135,10 +135,10 @@ result = pipeline.run(
 
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
-## ...
-## [0.5]
+# ...
+# [0.5]
 for evaluator in result:
     print(result[evaluator]["score"])
-##
-## 0.5
+#
+# 0.5
 ```

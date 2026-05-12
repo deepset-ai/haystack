@@ -94,7 +94,7 @@ doc_embedder = SentenceTransformersDocumentEmbedder()
 result = doc_embedder.run([doc])
 print(result["documents"][0].embedding)
 
-## [-0.07804739475250244, 0.1498992145061493, ...]
+# [-0.07804739475250244, 0.1498992145061493, ...]
 ```
 
 ### In a pipeline
@@ -138,6 +138,6 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., mimetype: 'text/plain',
-## text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., mimetype: 'text/plain',
+# text: 'My name is Wolfgang and I live in Berlin')
 ```

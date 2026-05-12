@@ -104,7 +104,7 @@ document_store = MongoDBAtlasDocumentStore(
     full_text_search_index="test_full_text_search_index",
 )
 
-## Clean out any old data so this example is repeatable
+# Clean out any old data so this example is repeatable
 print(f"Clearing collection {document_store.collection_name} …")
 document_store.collection.delete_many({})
 
@@ -129,7 +129,7 @@ embed_retriever = MongoDBAtlasEmbeddingRetriever(document_store=document_store, 
 query_pipe.add_component(instance=embed_retriever, name="embedding_retriever")
 query_pipe.connect("text_embedder", "embedding_retriever")
 
-## (c) full-text retriever
+# (c) full-text retriever
 ft_retriever = MongoDBAtlasFullTextRetriever(document_store=document_store, top_k=3)
 query_pipe.add_component(instance=ft_retriever, name="full_text_retriever")
 

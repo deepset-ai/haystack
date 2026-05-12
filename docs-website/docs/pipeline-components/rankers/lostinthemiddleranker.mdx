@@ -67,7 +67,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 
-## Define prompt template
+# Define prompt template
 prompt_template = [
     ChatMessage.from_system("You are a helpful assistant."),
     ChatMessage.from_user(
@@ -77,7 +77,7 @@ prompt_template = [
     ),
 ]
 
-## Define documents
+# Define documents
 docs = [
     Document(content="Paris is in France..."),
     Document(content="Berlin is in Germany..."),

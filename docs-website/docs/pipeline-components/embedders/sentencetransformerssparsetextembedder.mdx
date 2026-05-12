@@ -101,7 +101,7 @@ text_embedder = SentenceTransformersSparseTextEmbedder()
 
 print(text_embedder.run(text_to_embed))
 
-## {'sparse_embedding': SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])}
+# {'sparse_embedding': SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])}
 ```
 
 ### In a pipeline
@@ -140,14 +140,14 @@ documents = [
     Document(content="Sentence Transformers provides sparse embedding models."),
 ]
 
-## Embed and write documents
+# Embed and write documents
 sparse_document_embedder = SentenceTransformersSparseDocumentEmbedder(
     model="prithivida/Splade_PP_en_v2",
 )
 documents_with_sparse_embeddings = sparse_document_embedder.run(documents)["documents"]
 document_store.write_documents(documents_with_sparse_embeddings)
 
-## Query pipeline
+# Query pipeline
 query_pipeline = Pipeline()
 query_pipeline.add_component(
     "sparse_text_embedder",
@@ -168,7 +168,7 @@ result = query_pipeline.run({"sparse_text_embedder": {"text": query}})
 
 print(result["sparse_retriever"]["documents"][0])
 
-## Document(id=...,
-## content: 'Sentence Transformers provides sparse embedding models.',
-## score: 0.56...)
+# Document(id=...,
+# content: 'Sentence Transformers provides sparse embedding models.',
+# score: 0.56...)
 ```
