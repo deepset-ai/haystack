@@ -102,7 +102,7 @@ class TestSearchableToolset:
         with pytest.raises(TypeError):
             SearchableToolset(catalog=123)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            SearchableToolset(catalog=[123])  # type: ignore[arg-type]
+            SearchableToolset(catalog=[123])  # type: ignore[list-item]
         with pytest.raises(TypeError):
             SearchableToolset(
                 catalog=Tool(  # type: ignore[arg-type]
@@ -682,7 +682,7 @@ class TestSearchableToolsetLazyToolset:
             for i in range(5)
         ]
 
-        toolset = SearchableToolset(catalog=[LazyToolset()] + eager_tools)  # type: ignore[arg-type]
+        toolset = SearchableToolset(catalog=[LazyToolset(), *eager_tools])
         toolset.warm_up()
 
         # Should have 5 lazy + 5 eager = 10 tools

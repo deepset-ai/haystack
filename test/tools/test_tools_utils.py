@@ -140,13 +140,13 @@ class TestFlattenToolsOrToolsets:
     def test_flatten_invalid_type_in_list(self):
         """Test that invalid types in the list raise TypeError."""
         with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
-            flatten_tools_or_toolsets(["not_a_tool"])  # type: ignore[arg-type]
+            flatten_tools_or_toolsets(["not_a_tool"])  # type: ignore[list-item]
 
         with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
-            flatten_tools_or_toolsets([123])  # type: ignore[arg-type]
+            flatten_tools_or_toolsets([123])  # type: ignore[list-item]
 
         with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
-            flatten_tools_or_toolsets([{"key": "value"}])  # type: ignore[arg-type]
+            flatten_tools_or_toolsets([{"key": "value"}])  # type: ignore[list-item]
 
     def test_flatten_invalid_type(self):
         """Test that invalid root types raise TypeError."""
@@ -215,7 +215,7 @@ class TestWarmUpTools:
         )
 
         assert not tool.was_warmed_up
-        warm_up_tools([tool])  # type: ignore[arg-type]
+        warm_up_tools([tool])
         assert tool.was_warmed_up
 
     def test_warm_up_tools_with_single_toolset(self):
@@ -270,7 +270,7 @@ class TestWarmUpTools:
         assert not tool1.was_warmed_up
         assert not tool2.was_warmed_up
 
-        warm_up_tools([toolset])  # type: ignore[arg-type]
+        warm_up_tools([toolset])
 
         # Both the toolset itself and individual tools should be warmed up
         assert toolset.was_warmed_up
@@ -307,7 +307,7 @@ class TestWarmUpTools:
         assert not tool2.was_warmed_up
         assert not tool3.was_warmed_up
 
-        warm_up_tools([toolset1, toolset2])  # type: ignore[arg-type]
+        warm_up_tools([toolset1, toolset2])
 
         # Both toolsets and all individual tools should be warmed up
         assert toolset1.was_warmed_up
@@ -344,7 +344,7 @@ class TestWarmUpTools:
         assert not toolset_tool1.was_warmed_up
         assert not toolset_tool2.was_warmed_up
 
-        warm_up_tools([standalone_tool, toolset])  # type: ignore[arg-type]
+        warm_up_tools([standalone_tool, toolset])
 
         # All tools and the toolset should be warmed up
         assert standalone_tool.was_warmed_up
