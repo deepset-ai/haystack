@@ -33,7 +33,7 @@ Each returned `Document` contains a text snippet as its `content` and a `meta` d
 
 The `top_k` parameter controls the maximum number of results returned (between 1 and 20, default is 10).
 
-You can filter and refine search results using `search_params`, which supports keys such as `country`, `search_recency_filter`, `search_domain_filter`, and date range filters. These can be set at initialization or overridden per `run()` call.
+You can filter and refine search results using `search_params`, which supports keys such as `country`, `search_recency_filter`, `search_domain_filter`, and date range filters. These can be set at initialization or overridden per `run()` call. See the [Perplexity Search API reference](https://docs.perplexity.ai/api-reference/search-post) for the full list of parameters.
 
 `PerplexityWebSearch` supports both synchronous (`run()`) and asynchronous (`run_async()`) operation.
 

@@ -36,15 +36,7 @@ It supports the following models:
 - `xai/grok-4-1`
 - `google/gemini-3-flash-preview`
 
-`PerplexityChatGenerator` needs a Perplexity API key to work. It uses a `PERPLEXITY_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
-
-```python
-from haystack_integrations.components.generators.perplexity import (
-    PerplexityChatGenerator,
-)
-
-generator = PerplexityChatGenerator(model="openai/gpt-4o")
-```
+`PerplexityChatGenerator` needs a Perplexity API key to work. It uses a `PERPLEXITY_API_KEY` environment variable by default.
 
 The component accepts a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (such as `user`, `assistant`, or `system`), and optional metadata. See the [usage](#usage) section for an example.
 
@@ -114,7 +106,7 @@ from haystack_integrations.components.generators.perplexity import (
 prompt_builder = ChatPromptBuilder()
 llm = PerplexityChatGenerator(
     api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
-    model="openai/gpt-4o",
+    model="openai/gpt-5.4",
 )
 
 pipe = Pipeline()
