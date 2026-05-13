@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack.evaluation import EvaluationRunResult
 
 
 def test_init_results_evaluator():
-    data = {
+    data: dict[str, dict[str, Any]] = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7"],
             "question": ["What is the capital of France?", "What is the capital of Spain?"],
@@ -70,7 +72,7 @@ def test_init_results_evaluator():
 
 
 def test_score_report():
-    data = {
+    data: dict[str, dict[str, Any]] = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7"],
             "question": ["What is the capital of France?", "What is the capital of Spain?"],
@@ -107,7 +109,7 @@ def test_score_report():
 
 
 def test_to_df():
-    data = {
+    data: dict[str, dict[str, Any]] = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7", "53c3b3e6", "225f87f7"],
             "question": [
@@ -154,7 +156,7 @@ def test_to_df():
 
 
 def test_comparative_individual_scores_report():
-    data_1 = {
+    data_1: dict[str, dict[str, Any]] = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7"],
             "question": ["What is the capital of France?", "What is the capital of Spain?"],
@@ -172,7 +174,7 @@ def test_comparative_individual_scores_report():
         },
     }
 
-    data_2 = {
+    data_2: dict[str, dict[str, Any]] = {
         "inputs": {
             "query_id": ["53c3b3e6", "225f87f7"],
             "question": ["What is the capital of France?", "What is the capital of Spain?"],
@@ -194,6 +196,7 @@ def test_comparative_individual_scores_report():
     result2 = EvaluationRunResult("testing_pipeline_2", inputs=data_2["inputs"], results=data_2["metrics"])
     results = result1.comparative_detailed_report(result2, keep_columns=["predicted_answer"])
 
+    assert isinstance(results, dict)
     assert list(results.keys()) == [
         "query_id",
         "question",

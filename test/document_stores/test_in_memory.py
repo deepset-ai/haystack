@@ -6,6 +6,7 @@ import asyncio
 import gc
 import logging
 import tempfile
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -126,12 +127,12 @@ class TestMemoryDocumentStore(
         }
         store = InMemoryDocumentStore.from_dict(data)
         mock_regex.compile.assert_called_with("custom_regex")
-        assert store.tokenizer
+        assert store.tokenizer is not None
         assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
         assert store.index == "my_cool_index"
 
-    def test_save_to_disk_and_load_from_disk(self, in_memory_doc_store, tmp_dir: str):
+    def test_save_to_disk_and_load_from_disk(self, in_memory_doc_store: InMemoryDocumentStore, tmp_dir: str) -> None:
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         in_memory_doc_store.write_documents(docs)
         tmp_dir = tmp_dir + "/in_memory_doc_store.json"
@@ -144,7 +145,7 @@ class TestMemoryDocumentStore(
 
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
-            InMemoryDocumentStore(bm25_algorithm="invalid")
+            InMemoryDocumentStore(bm25_algorithm="invalid")  # type: ignore[arg-type]
 
     def test_write_documents(self, document_store):
         docs = [Document(id="1")]
@@ -152,7 +153,7 @@ class TestMemoryDocumentStore(
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(docs)
 
-    def test_bm25_retrieval(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         document_store.write_documents(docs)
@@ -160,7 +161,9 @@ class TestMemoryDocumentStore(
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
 
-    def test_bm25_retrieval_with_empty_document_store(self, document_store: InMemoryDocumentStore, caplog):
+    def test_bm25_retrieval_with_empty_document_store(
+        self, document_store: InMemoryDocumentStore, caplog: pytest.LogCaptureFixture
+    ) -> None:
         caplog.set_level(logging.INFO)
         # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the
         # DocumentStore.
@@ -168,14 +171,14 @@ class TestMemoryDocumentStore(
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
 
-    def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         document_store.write_documents(docs)
         with pytest.raises(ValueError, match="Query should be a non-empty string"):
             document_store.bm25_retrieval(query="", top_k=1)
 
-    def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_different_top_k(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method correctly changes the number of returned documents
         # based on the top_k parameter.
         docs = [
@@ -206,7 +209,7 @@ class TestMemoryDocumentStore(
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
-    def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_two_queries(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns different documents for different queries.
         docs = [
             Document(content="Javascript is a popular programming language"),
@@ -225,7 +228,7 @@ class TestMemoryDocumentStore(
 
     # Test a query, add a new document and make sure results are appropriately updated
 
-    def test_bm25_retrieval_with_updated_docs(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_updated_docs(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method correctly updates the retrieved documents when new
         # documents are added to the DocumentStore.
         docs = [Document(content="Hello world")]
@@ -244,7 +247,7 @@ class TestMemoryDocumentStore(
         assert len(results) == 1
         assert results[0].content == "Python is a popular programming language"
 
-    def test_bm25_retrieval_with_scale_score(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_with_scale_score(self, document_store: InMemoryDocumentStore) -> None:
         docs = [Document(content="Python programming"), Document(content="Java programming")]
         document_store.write_documents(docs)
 
@@ -284,13 +287,13 @@ class TestMemoryDocumentStore(
 
         results1 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=False)
         assert len(results1) == 3
-        assert all(res.score < 0.0 for res in results1)
+        assert all(res.score < 0.0 for res in results1 if res.score)
 
         results2 = document_store.bm25_retrieval(query="Haystack installation", top_k=10, scale_score=True)
         assert len(results2) == 3
-        assert all(0.0 <= res.score <= 1.0 for res in results2)
+        assert all(0.0 <= res.score <= 1.0 for res in results2 if res.score)
 
-    def test_bm25_retrieval_default_filter(self, document_store: InMemoryDocumentStore):
+    def test_bm25_retrieval_default_filter(self, document_store: InMemoryDocumentStore) -> None:
         docs = [Document(), Document(content="Gardening"), Document(content="Bird watching")]
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
@@ -355,7 +358,7 @@ class TestMemoryDocumentStore(
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
             in_memory_doc_store.embedding_retrieval(query_embedding=[])
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
-            in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])  # type: ignore
+            in_memory_doc_store.embedding_retrieval(query_embedding=["invalid", "list", "of", "strings"])
 
     def test_embedding_retrieval_no_embeddings(self, in_memory_doc_store, caplog):
         caplog.set_level(logging.WARNING)
@@ -496,14 +499,14 @@ class TestMemoryDocumentStore(
     # Test async/await methods and concurrency
 
     @pytest.mark.asyncio
-    async def test_write_documents_async(self, document_store: InMemoryDocumentStore):
+    async def test_write_documents_async(self, document_store: InMemoryDocumentStore) -> None:
         docs = [Document(id="1")]
         assert await document_store.write_documents_async(docs) == 1
         with pytest.raises(DuplicateDocumentError):
             await document_store.write_documents_async(docs)
 
     @pytest.mark.asyncio
-    async def test_filter_documents(self, document_store: InMemoryDocumentStore):
+    async def test_filter_documents(self, document_store: InMemoryDocumentStore) -> None:
         filterable_docs = [Document(content="1", meta={"number": -10}), Document(content="2", meta={"number": 100})]
         await document_store.write_documents_async(filterable_docs)
         result = await document_store.filter_documents_async(
@@ -514,7 +517,7 @@ class TestMemoryDocumentStore(
         )
 
     @pytest.mark.asyncio
-    async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore):
+    async def test_bm25_retrieval_async(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
         await document_store.write_documents_async(docs)
@@ -537,7 +540,7 @@ class TestMemoryDocumentStore(
         assert results[0].content == "Haystack supports multiple languages"
 
     @pytest.mark.asyncio
-    async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore):
+    async def test_concurrent_bm25_retrievals(self, document_store: InMemoryDocumentStore) -> None:
         # Test multiple concurrent BM25 retrievals
         docs = [
             Document(content="Python is a popular programming language"),
@@ -587,7 +590,7 @@ class TestMemoryDocumentStore(
             assert result[0].content == expected
 
     @pytest.mark.asyncio
-    async def test_mixed_concurrent_operations(self, document_store: InMemoryDocumentStore):
+    async def test_mixed_concurrent_operations(self, document_store: InMemoryDocumentStore) -> None:
         # Test a mix of concurrent operations including writes and retrievals
         docs = [
             Document(content="First document"),
@@ -603,7 +606,7 @@ class TestMemoryDocumentStore(
             document_store.bm25_retrieval_async(query="Fourth", top_k=1),
             document_store.filter_documents_async(),
         ]
-        results = await asyncio.gather(*tasks)
+        results = cast(tuple[list[Document], int, list[Document], list[Document]], await asyncio.gather(*tasks))
 
         # Verify results
         assert len(results[0]) == 1  # First retrieval
@@ -612,7 +615,7 @@ class TestMemoryDocumentStore(
         assert len(results[3]) == 4  # Filter operation
 
     @pytest.mark.asyncio
-    async def test_concurrent_operations_with_errors(self, document_store: InMemoryDocumentStore):
+    async def test_concurrent_operations_with_errors(self, document_store: InMemoryDocumentStore) -> None:
         # Test concurrent operations where some might fail
         docs = [Document(content="Test document")]
         await document_store.write_documents_async(docs)
@@ -629,7 +632,7 @@ class TestMemoryDocumentStore(
             await asyncio.gather(*tasks)
 
     @pytest.mark.asyncio
-    async def test_concurrent_operations_with_large_dataset(self, document_store: InMemoryDocumentStore):
+    async def test_concurrent_operations_with_large_dataset(self, document_store: InMemoryDocumentStore) -> None:
         # Test concurrent operations with a larger dataset
         # Create 100 documents with different content
         docs = [Document(content=f"Document {i} content") for i in range(100)]

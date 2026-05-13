@@ -84,7 +84,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.28',
+          lastVersion: '2.29',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -137,7 +137,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.28',
+        lastVersion: '2.29',
       },
     ],
     [

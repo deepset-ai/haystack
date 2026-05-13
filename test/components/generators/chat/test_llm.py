@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -10,13 +11,20 @@ from haystack import Document, Pipeline, component
 from haystack.components.agents.agent import Agent
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners.branch import BranchJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.core.component.types import OutputSocket
+from haystack.components.routers.conditional_router import ConditionalRouter
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
+
+
+def sync_streaming_callback(chunk: StreamingChunk) -> None:
+    pass
 
 
 @component
@@ -93,12 +101,19 @@ class TestLLM:
             llm = LLM(chat_generator=MockChatGeneratorWithTools(), user_prompt=self.USER_PROMPT)
             assert llm._chat_generator_supports_tools is True
 
-        def test_raises_if_user_prompt_has_no_variables(self):
-            with pytest.raises(ValueError, match="at least one template variable"):
-                LLM(
-                    chat_generator=MockChatGenerator(),
-                    user_prompt='{% message role="user" %}Hello world{% endmessage %}',
-                )
+        def test_messages_required_when_no_prompt_variables(self):
+            llm = LLM(
+                chat_generator=MockChatGenerator(), user_prompt='{% message role="user" %}Hello world{% endmessage %}'
+            )
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]
+            assert isinstance(messages_socket, InputSocket)
+            assert messages_socket.is_mandatory
+
+        def test_messages_optional_when_prompt_has_variables(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]
+            assert isinstance(messages_socket, InputSocket)
+            assert not messages_socket.is_mandatory
 
         def test_raises_if_required_variables_empty(self):
             with pytest.raises(ValueError, match="required_variables must not be empty"):
@@ -195,6 +210,31 @@ class TestLLM:
             assert restored.system_prompt == original.system_prompt
             assert restored.tools == []
 
+    class TestRun:
+        USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
+
+        def test_run_accepts_messages_via_kwargs(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            prior_message = ChatMessage.from_user("Some prior context")
+            result = llm.run(query="What is 2+2?", messages=[prior_message])
+            assert result["last_message"].text == "Sync reply"
+            assert prior_message in result["messages"]
+
+        def test_run_without_messages(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            result = llm.run(query="What is 2+2?")
+            assert result["last_message"].text == "Sync reply"
+            user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+            assert any("What is 2+2?" in m.text for m in user_messages)
+
+        @pytest.mark.asyncio
+        async def test_run_async_accepts_messages_via_kwargs(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            prior_message = ChatMessage.from_user("Some prior context")
+            result = await llm.run_async(query="What is 2+2?", messages=[prior_message])
+            assert result["last_message"].text == "Async reply"
+            assert prior_message in result["messages"]
+
     class TestPipelineIntegration:
         @pytest.fixture()
         def document_store_with_docs(self):
@@ -250,3 +290,60 @@ class TestLLM:
 
             assert llm_output["last_message"].is_from(ChatRole.ASSISTANT)
             assert llm_output["last_message"].text == "Sync reply"
+
+
+class TestLLMNotTriggeredByInjectedInput:
+    """
+    Regression guard for the optional-messages scheduling hazard described in
+    https://github.com/deepset-ai/haystack/issues/11109.
+
+    When `user_prompt` contains template variables, `messages` is optional on the LLM.
+    An optional input with `sender=None` (i.e., injected directly via `pipeline.run`)
+    would flip `has_user_input()` to True and incorrectly trigger the component even
+    when its required inputs (e.g. `query`) never arrive.
+    """
+
+    def test_llm_not_triggered_by_injected_streaming_callback(self):
+
+        @component
+        class Planner:
+            @component.output_types(messages=list[ChatMessage], last_role=str)
+            def run(self) -> dict:
+                return {"messages": [ChatMessage.from_user("hello")], "last_role": "assistant"}
+
+        chat_generator = MockChatGenerator()
+        llm = LLM(chat_generator=chat_generator)
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
+
+        router = ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ last_role == 'tool' }}",
+                    "output": "{{ messages }}",
+                    "output_name": "processing",
+                    "output_type": list[ChatMessage],
+                },
+                {
+                    "condition": "{{ True }}",
+                    "output": "{{ messages }}",
+                    "output_name": "planning",
+                    "output_type": list[ChatMessage],
+                },
+            ],
+            unsafe=True,
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("planner", Planner())
+        pipeline.add_component("router", router)
+        pipeline.add_component("branch_joiner", BranchJoiner(type_=list[ChatMessage]))
+        pipeline.add_component("llm", llm)
+        pipeline.connect("planner.messages", "router.messages")
+        pipeline.connect("planner.last_role", "router.last_role")
+        pipeline.connect("router.processing", "branch_joiner.value")
+        pipeline.connect("branch_joiner.value", "llm.messages")
+
+        result = pipeline.run(data={"llm": {"streaming_callback": sync_streaming_callback}})
+
+        assert "llm" not in result
+        chat_generator.run.assert_not_called()

@@ -1221,7 +1221,7 @@ __init__(
     *,
     chat_generator: ChatGenerator,
     system_prompt: str | None = None,
-    user_prompt: str,
+    user_prompt: str | None = None,
     required_variables: list[str] | Literal["*"] = "*",
     streaming_callback: StreamingCallbackT | None = None
 ) -> None
@@ -1233,17 +1233,19 @@ Initialize the LLM component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that the LLM should use.
 - **system_prompt** (<code>str | None</code>) – System prompt for the LLM.
-- **user_prompt** (<code>str</code>) – User prompt for the LLM. Must contain at least one Jinja2 template variable
-  (e.g., `{{ variable_name }}`). This prompt is appended to the messages provided at runtime.
+- **user_prompt** (<code>str | None</code>) – User prompt for the LLM. This prompt is appended to the messages provided at
+  runtime. If it contains Jinja2 template variables (e.g., `{{ variable_name }}`), they become
+  inputs to the component. If omitted or if there are no template variables, `messages` must be
+  provided at runtime instead.
 - **required_variables** (<code>list\[str\] | Literal['\*']</code>) – Variables that must be provided as input to user_prompt.
   If a variable listed as required is not provided, an exception is raised.
   If set to `"*"`, all variables found in the prompt are required. Defaults to `"*"`.
+  Only relevant when `user_prompt` contains template variables.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
 
 **Raises:**
 
-- <code>ValueError</code> – If user_prompt contains no template variables.
-- <code>ValueError</code> – If required_variables is an empty list.
+- <code>ValueError</code> – If user_prompt contains template variables but required_variables is an empty list.
 
 #### to_dict
 
@@ -1277,9 +1279,8 @@ Deserialize the LLM from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage] | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
     *,
+    streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
@@ -1291,7 +1292,9 @@ Process messages and generate a response from the language model.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **messages** – Optional list of ChatMessage objects to prepend to the conversation. Whether this is
+  required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
+  variables, `messages` must be provided. Passed via `**kwargs`.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
   will override the parameters passed during component initialization.
@@ -1311,9 +1314,8 @@ Process messages and generate a response from the language model.
 
 ```python
 run_async(
-    messages: list[ChatMessage] | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
     *,
+    streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
@@ -1325,7 +1327,9 @@ Asynchronously process messages and generate a response from the language model.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **messages** – Optional list of ChatMessage objects to prepend to the conversation. Whether this is
+  required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
+  variables, `messages` must be provided. Passed via `**kwargs`.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed
   from the LLM.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters

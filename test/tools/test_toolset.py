@@ -363,10 +363,10 @@ class TestToolset:
 
         # Test adding types that aren't supported
         with pytest.raises(TypeError):
-            toolset1 + "not_a_tool"
+            toolset1 + "not_a_tool"  # type: ignore[operator]
 
         with pytest.raises(TypeError):
-            toolset1 + 123
+            toolset1 + 123  # type: ignore[operator]
 
     def test_toolset_serialization(self):
         """Test that a Toolset can be serialized and deserialized."""
@@ -617,7 +617,8 @@ class TestToolsetList:
         # Mix: Toolset, standalone Tool, another Toolset
         toolset2 = Toolset([add_tool])
 
-        invoker = ToolInvoker(tools=[toolset1, multiply_tool, toolset2])
+        tools: list[Tool | Toolset] = [toolset1, multiply_tool, toolset2]
+        invoker = ToolInvoker(tools=tools)
 
         # Verify tools are flattened internally
         assert "weather_tool" in invoker._tools_with_names

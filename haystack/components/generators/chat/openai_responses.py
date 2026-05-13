@@ -488,7 +488,7 @@ class OpenAIResponsesChatGenerator:
             # Convert all tool objects to the correct OpenAI-compatible structure
             else:
                 # mypy can't infer that tools is ToolsType here
-                flattened_tools = flatten_tools_or_toolsets(tools)
+                flattened_tools = flatten_tools_or_toolsets(tools)  # type: ignore[arg-type]
                 _check_duplicate_tool_names(flattened_tools)
                 for t in flattened_tools:
                     function_spec = {**t.tool_spec}
