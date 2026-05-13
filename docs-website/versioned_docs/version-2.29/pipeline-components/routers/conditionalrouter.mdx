@@ -14,11 +14,11 @@ description: "`ConditionalRouter` routes your data through different paths down 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible                                                                                                                              |
-| **Mandatory init variables**           | `routes`: A list of dictionaries defining routs (See the [Overview](#overview) section below)                                         |
-| **Mandatory run variables**            | `**kwargs`: Input variables to evaluate in order to choose a specific route. See [Variables](#variables)  section for more details. |
+| **Mandatory init variables**           | `routes`: A list of dictionaries defining routes (See the [Overview](#overview) section below)                                        |
+| **Mandatory run variables**            | `**kwargs`: Input variables to evaluate in order to choose a specific route. See [Variables](#variables) section for more details. |
 | **Output variables**                   | A dictionary containing one or more output names and values of the chosen route                                                       |
-| **API reference**                      | [Routers](/reference/routers-api)                                                                                                            |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/conditional_router.py                                  |
+| **API reference**                      | [Routers](/reference/routers-api)                                                                                                     |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/conditional_router.py                                   |
 | **Package name** | `haystack-ai` |
 
 </div>
@@ -29,14 +29,76 @@ To use `ConditionalRouter` you need to define a list of routes.
 Each route is a dictionary with the following elements:
 
 - `'condition'`: A Jinja2 string expression that determines if the route is selected.
-- `'output'`:  A Jinja2 expression or list of expressions defining one or more output values.
-- `'output_type'`: The expected type or list of types corresponding to each output (for example, `str`, `List[int]`).
+- `'output'`: A Jinja2 expression or list of expressions defining one or more output values.
+- `'output_type'`: The expected type or list of types corresponding to each output (for example, `str`, `list[int]`).
   - Note that this doesn't enforce the type conversion of the output. Instead, the output field is rendered using Jinja2, which automatically infers types. If you need to ensure the result is a string (for example, "123" instead of `123`), wrap the Jinja expression in single quotes like this: `output: "'{{message.text}}'"`. This ensures the rendered output is treated as a string by Jinja2.
 - `'output_name'`: The name or list of names under which the output values are published. This is used to connect the router to other components in the pipeline.
 
+## Usage
+
+### Basic routing
+
+In this example, we configure two routes. The first route sends the `'streams'` value to `'enough_streams'` if the stream count exceeds two. Conversely, the second route directs `'streams'` to `'insufficient_streams'` when there are two or fewer streams.
+
+```python
+from haystack.components.routers import ConditionalRouter
+
+routes = [
+    {
+        "condition": "{{streams|length > 2}}",
+        "output": "{{streams}}",
+        "output_name": "enough_streams",
+        "output_type": list[int],
+    },
+    {
+        "condition": "{{streams|length <= 2}}",
+        "output": "{{streams}}",
+        "output_name": "insufficient_streams",
+        "output_type": list[int],
+    },
+]
+
+router = ConditionalRouter(routes)
+
+result = router.run(streams=[1, 2, 3], query="Haystack")
+
+print(result)
+# {"enough_streams": [1, 2, 3]}
+```
+
+### Multiple outputs per route
+
+Each route can emit more than one output at a time. Pass lists to `output`, `output_name`, and `output_type` — all three must have the same length.
+
+```python
+from haystack.components.routers import ConditionalRouter
+
+routes = [
+    {
+        "condition": "{{ query|length > 10 }}",
+        "output": ["{{ query }}", "{{ query|length }}"],
+        "output_name": ["long_query", "char_count"],
+        "output_type": [str, int],
+    },
+    {
+        "condition": "{{ query|length <= 10 }}",
+        "output": ["{{ query }}", "{{ query|length }}"],
+        "output_name": ["short_query", "char_count"],
+        "output_type": [str, int],
+    },
+]
+
+router = ConditionalRouter(routes=routes)
+result = router.run(query="Hello")
+print(result)
+# {'short_query': 'Hello', 'char_count': 5}
+```
+
+All outputs from the selected route are emitted together, so downstream components can consume any combination of them.
+
 ### Variables
 
-The `ConditionalRouter` lets you define which variables are optional in your routing conditions.
+By default, every Jinja2 variable referenced in your route `condition` and `output` templates is required — the component won't run until all of them are provided. You can mark specific variables as optional using the `optional_variables` init parameter.
 
 ```python
 from haystack.components.routers import ConditionalRouter
@@ -58,53 +120,17 @@ routes = [
 
 # 'path' is optional, 'question' is required
 router = ConditionalRouter(routes=routes, optional_variables=["path"])
+
+# 'path' provided — first route matches
+print(router.run(question="What is RAG?", path="rag"))
+# {'rag_route': 'What is RAG?'}
+
+# 'path' omitted — evaluates as None, fallback route fires
+print(router.run(question="What is RAG?"))
+# {'default_route': 'What is RAG?'}
 ```
 
-The component only waits for the required inputs before running. If you use an optional variable in a condition but don't provide it at runtime, it’s evaluated as `None`, which generally does not raise an error but can affect the condition’s outcome.
-
-### Unsafe behaviour
-
-The `ConditionalRouter` internally renders all the rules' templates using Jinja, by default this is a safe behaviour. Though it limits the output types to strings, bytes, numbers, tuples, lists, dicts, sets, booleans, `None` and `Ellipsis` (`...`), as well as any combination of these structures.
-
-If you want to use more types like `ChatMessage`, `Document` or `Answer` you must enable rendering of unsafe templates by setting the `unsafe` init argument to `True`.
-
-Beware that this is unsafe and can lead to remote code execution if a rule `condition` or `output` templates are customizable by the end user.
-
-## Usage
-
-### On its own
-
-This component is primarily meant to be used in pipelines.
-
-In this example, we configure two routes. The first route sends the `'streams'` value to `'enough_streams'` if the stream count exceeds two. Conversely, the second route directs `'streams'` to `'insufficient_streams'` when there are two or fewer streams.
-
-```python
-from haystack.components.routers import ConditionalRouter
-from typing import List
-
-routes = [
-    {
-        "condition": "{{streams|length > 2}}",
-        "output": "{{streams}}",
-        "output_name": "enough_streams",
-        "output_type": List[int],
-    },
-    {
-        "condition": "{{streams|length <= 2}}",
-        "output": "{{streams}}",
-        "output_name": "insufficient_streams",
-        "output_type": List[int],
-    },
-]
-
-router = ConditionalRouter(routes)
-
-kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
-result = router.run(**kwargs)
-
-print(result)
-# {"enough_streams": [1, 2, 3]}
-```
+If an optional variable is not provided at runtime, it's evaluated as `None`, which generally does not raise an error but can affect the condition's outcome.
 
 ### In a pipeline
 
@@ -145,7 +171,7 @@ pipe.add_component(
     "prompt_builder",
     ChatPromptBuilder(
         template=[ChatMessage.from_user("Answer the following query: {{ query }}")],
-        required_variables={"query"},
+        required_variables=["query"],
     ),
 )
 pipe.add_component("generator", OpenAIChatGenerator())
@@ -159,7 +185,84 @@ print(pipe.run(data={"router": {"query": "Berlin"}}))
 
 # Long query: length > 10 ⇒ first route fires.
 print(pipe.run(data={"router": {"query": "What is the capital of Italy?"}}))
-# {'generator': {'replies': ['The capital of Italy is Rome.'], …}}
+# {
+#   'router': {'length': 29},
+#   'generator': {'replies': [ChatMessage(content='The capital of Italy is Rome (Italian: Roma).', role=<ChatRole.ASSISTANT: 'assistant'>)]}
+# }
+```
+
+## Configuration
+
+### Unsafe mode
+
+The `ConditionalRouter` internally renders all the rules' templates using Jinja, by default this is a safe behaviour. Though it limits the output types to strings, bytes, numbers, tuples, lists, dicts, sets, booleans, `None` and `Ellipsis` (`...`), as well as any combination of these structures.
+
+If you want to use more types like `ChatMessage`, `Document` or `Answer` you must enable rendering of unsafe templates by setting the `unsafe` init argument to `True`.
+
+Beware that this is unsafe and can lead to remote code execution if a rule `condition` or `output` templates are customizable by the end user.
+
+### Custom filters
+
+You can pass custom Jinja2 filter functions to use inside your route `condition` and `output` templates via the `custom_filters` init parameter.
+
+```python
+from haystack.components.routers import ConditionalRouter
+
+
+def first_word(value: str) -> str:
+    return value.split()[0] if value else ""
+
+
+routes = [
+    {
+        "condition": '{{ query|first_word == "summarize" }}',
+        "output": "{{ query }}",
+        "output_name": "summarize_route",
+        "output_type": str,
+    },
+    {
+        "condition": "{{ True }}",
+        "output": "{{ query }}",
+        "output_name": "default_route",
+        "output_type": str,
+    },
+]
+
+router = ConditionalRouter(routes=routes, custom_filters={"first_word": first_word})
+
+print(router.run(query="summarize this document"))
+# {'summarize_route': 'summarize this document'}
+
+print(router.run(query="what is the capital of France?"))
+# {'default_route': 'what is the capital of France?'}
+```
+
+### Output type validation
+
+By default, `ConditionalRouter` does not verify that a route's output matches the declared `output_type`.
+Set `validate_output_type=True` to enable this check which is useful to catch cases where a template didn't produce the type you expected.
+
+```python
+from haystack.components.routers import ConditionalRouter
+
+routes = [
+    {
+        "condition": "{{ True }}",
+        "output": "{{ value }}",
+        "output_name": "result",
+        "output_type": int,
+    },
+]
+
+# Without validation: a string passes through silently
+router = ConditionalRouter(routes=routes)
+print(router.run(value="not_a_number"))
+# {'result': 'not_a_number'}  — wrong type, no error raised
+
+# With validation: type mismatch raises a ValueError
+strict_router = ConditionalRouter(routes=routes, validate_output_type=True)
+strict_router.run(value="not_a_number")
+# ValueError: Route 'result' type doesn't match expected type
 ```
 
 <br />
