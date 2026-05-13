@@ -1,0 +1,170 @@
+---
+title: "PerplexityChatGenerator"
+id: perplexitychatgenerator
+slug: "/perplexitychatgenerator"
+description: "`PerplexityChatGenerator` enables chat completion using models via the Perplexity Agent API."
+---
+
+# PerplexityChatGenerator
+
+`PerplexityChatGenerator` enables chat completion using models via the Perplexity Agent API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: A Perplexity API key. Can be set with `PERPLEXITY_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat |
+| **Output variables** | `replies`: A list of alternative replies of the LLM to the input chat |
+| **API reference** | [Integrations](/reference/integrations-perplexity) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/perplexity/src/haystack_integrations/components/generators/perplexity/chat/chat_generator.py |
+| **Package name** | `perplexity-haystack` |
+
+</div>
+
+## Overview
+
+`PerplexityChatGenerator` is built on top of `OpenAIResponsesChatGenerator` and communicates with the [Perplexity Agent API](https://docs.perplexity.ai/) (`POST /v1/agent`), which uses an OpenAI Responses-compatible interface.
+
+It supports the following models:
+
+- `openai/gpt-5.5`
+- `openai/gpt-5.4` (default)
+- `openai/gpt-4o`
+- `anthropic/claude-sonnet-4-6`
+- `xai/grok-4-1`
+- `google/gemini-3-flash-preview`
+
+`PerplexityChatGenerator` needs a Perplexity API key to work. It uses a `PERPLEXITY_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+generator = PerplexityChatGenerator(model="openai/gpt-4o")
+```
+
+The component accepts a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (such as `user`, `assistant`, or `system`), and optional metadata. See the [usage](#usage) section for an example.
+
+You can pass any parameters supported by the Perplexity Agent API using the `generation_kwargs` parameter, both at initialization and in the `run()` method.
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens as they arrive.
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+generator = PerplexityChatGenerator(streaming_callback=print_streaming_chunk)
+```
+
+:::info
+Streaming works only with a single response. Set `n=1` in `generation_kwargs` if needed.
+:::
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+client = PerplexityChatGenerator()
+response = client.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+)
+print(response["replies"][0].text)
+```
+
+With streaming:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+client = PerplexityChatGenerator(
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
+response = client.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
+)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+
+prompt_builder = ChatPromptBuilder()
+llm = PerplexityChatGenerator(
+    api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
+    model="openai/gpt-4o",
+)
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Always respond in a concise manner."),
+    ChatMessage.from_user("Tell me about {{topic}}"),
+]
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"topic": "large language models"},
+            "template": messages,
+        },
+    },
+)
+print(result["llm"]["replies"][0].text)
+```
+
+### In YAML
+
+```yaml
+components:
+  llm:
+    init_parameters:
+      api_base_url: https://api.perplexity.ai/v1
+      api_key:
+        env_vars:
+        - PERPLEXITY_API_KEY
+        strict: true
+        type: env_var
+      generation_kwargs: null
+      max_retries: null
+      model: openai/gpt-5.4
+      organization: null
+      streaming_callback: null
+      timeout: null
+      tools: null
+      tools_strict: false
+    type: haystack_integrations.components.generators.perplexity.chat.chat_generator.PerplexityChatGenerator
+  prompt_builder:
+    init_parameters:
+      required_variables: null
+      template: null
+      variables: null
+    type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder
+connections:
+- receiver: llm.messages
+  sender: prompt_builder.prompt
+```
