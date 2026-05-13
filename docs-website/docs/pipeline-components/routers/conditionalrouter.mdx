@@ -34,6 +34,36 @@ Each route is a dictionary with the following elements:
   - Note that this doesn't enforce the type conversion of the output. Instead, the output field is rendered using Jinja2, which automatically infers types. If you need to ensure the result is a string (for example, "123" instead of `123`), wrap the Jinja expression in single quotes like this: `output: "'{{message.text}}'"`. This ensures the rendered output is treated as a string by Jinja2.
 - `'output_name'`: The name or list of names under which the output values are published. This is used to connect the router to other components in the pipeline.
 
+### Multiple outputs per route
+
+Each route can emit more than one output at a time. Pass lists to `output`, `output_name`, and `output_type` — all three must have the same length.
+
+```python
+from haystack.components.routers import ConditionalRouter
+
+routes = [
+    {
+        "condition": "{{ query|length > 10 }}",
+        "output": ["{{ query }}", "{{ query|length }}"],
+        "output_name": ["long_query", "char_count"],
+        "output_type": [str, int],
+    },
+    {
+        "condition": "{{ query|length <= 10 }}",
+        "output": ["{{ query }}", "{{ query|length }}"],
+        "output_name": ["short_query", "char_count"],
+        "output_type": [str, int],
+    },
+]
+
+router = ConditionalRouter(routes=routes)
+result = router.run(query="Hello")
+print(result)
+# {'short_query': 'Hello', 'char_count': 5}
+```
+
+All outputs from the selected route are emitted together, so downstream components can consume any combination of them.
+
 ### Variables
 
 The `ConditionalRouter` lets you define which variables are optional in your routing conditions.
