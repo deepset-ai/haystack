@@ -80,7 +80,7 @@ from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.document_stores.types import DuplicatePolicy
 
-## Create a RAG query pipeline
+# Create a RAG query pipeline
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -93,7 +93,7 @@ prompt_template = """
 
 document_store = WeaviateDocumentStore(url="http://localhost:8080")
 
-## Add Documents
+# Add Documents
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
@@ -104,7 +104,7 @@ documents = [
     ),
 ]
 
-## DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
+# DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
 document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 
 rag_pipeline = Pipeline()

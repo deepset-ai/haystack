@@ -62,8 +62,8 @@ text_to_embed = "I love pizza!"
 text_embedder = CohereTextEmbedder()
 
 print(text_embedder.run(text_to_embed))
-## {'embedding': [-0.453125, 1.2236328, 2.0058594, 0.67871094...],
-## 'meta': {'api_version': {'version': '1'}, 'billed_units': {'input_tokens': 4}}}
+# {'embedding': [-0.453125, 1.2236328, 2.0058594, 0.67871094...],
+# 'meta': {'api_version': {'version': '1'}, 'billed_units': {'input_tokens': 4}}}
 ```
 
 ### In a pipeline
@@ -106,5 +106,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
 ```

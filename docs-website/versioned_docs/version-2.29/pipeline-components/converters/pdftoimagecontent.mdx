@@ -51,11 +51,11 @@ sources = ["file.pdf", "another_file.pdf"]
 image_contents = converter.run(sources=sources)["image_contents"]
 print(image_contents)
 
-## [ImageContent(base64_image='...',
-## mime_type='application/pdf',
-## detail=None,
-## meta={'file_path': 'file.pdf', 'page_number': 1}),
-## ...]
+# [ImageContent(base64_image='...',
+# mime_type='application/pdf',
+# detail=None,
+# meta={'file_path': 'file.pdf', 'page_number': 1}),
+# ...]
 ```
 
 ### In a pipeline
@@ -68,7 +68,7 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.converters.image import PDFToImageContent
 
-## Query pipeline
+# Query pipeline
 pipeline = Pipeline()
 pipeline.add_component("image_converter", PDFToImageContent(detail="auto"))
 pipeline.add_component(
@@ -104,12 +104,12 @@ result = pipeline.run(
 )
 print(result["replies"][0].text)
 
-## ('The main takeaway of Figure 6 is that Flan-PaLM demonstrates improved '
-## 'performance in zero-shot reasoning tasks when utilizing chain-of-thought '
-## '(CoT) reasoning, as indicated by higher accuracy across different model '
-## 'sizes compared to PaLM without finetuning. This highlights the importance of '
-## 'instruction finetuning combined with CoT for enhancing reasoning '
-## 'capabilities in models.')
+# ('The main takeaway of Figure 6 is that Flan-PaLM demonstrates improved '
+# 'performance in zero-shot reasoning tasks when utilizing chain-of-thought '
+# '(CoT) reasoning, as indicated by higher accuracy across different model '
+# 'sizes compared to PaLM without finetuning. This highlights the importance of '
+# 'instruction finetuning combined with CoT for enhancing reasoning '
+# 'capabilities in models.')
 ```
 
 ## Additional References

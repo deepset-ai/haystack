@@ -39,10 +39,10 @@ from haystack import component, Document
 from haystack.components.converters import OutputAdapter
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 
-## We need to ensure we have the OpenAI API key in our environment variables
+# We need to ensure we have the OpenAI API key in our environment variables
 os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_KEY"
 
-## Initializing standard Haystack components
+# Initializing standard Haystack components
 generator = OpenAIGenerator(
     model="gpt-3.5-turbo",
     generation_kwargs={"n": 5, "temperature": 0.75, "max_tokens": 400},
@@ -63,7 +63,7 @@ embedder = SentenceTransformersDocumentEmbedder(
 embedder.warm_up()
 
 
-## Adding one custom component that returns one, "average" embedding from multiple (hypothetical) document embeddings
+# Adding one custom component that returns one, "average" embedding from multiple (hypothetical) document embeddings
 @component
 class HypotheticalDocumentEmbedder:
     @component.output_types(hypothetical_embedding=List[float])
@@ -93,7 +93,7 @@ pipeline.connect("embedder.documents", "hyde.documents")
 query = "What should I do if I have a fever?"
 result = pipeline.run(data={"prompt_builder": {"question": query}})
 
-## 'hypothetical_embedding': [0.0990725576877594, -0.017647066991776227, 0.05918873250484467, ...]}
+# 'hypothetical_embedding': [0.0990725576877594, -0.017647066991776227, 0.05918873250484467, ...]}
 ```
 
 Here's the graph of the resulting pipeline:

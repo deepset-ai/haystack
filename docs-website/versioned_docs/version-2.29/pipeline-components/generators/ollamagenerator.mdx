@@ -91,10 +91,10 @@ generator = OllamaGenerator(
 
 print(generator.run("Who is the best American actor?"))
 
-## {'replies': ['I do not have the ability to form opinions or preferences.
-## However, some of the most acclaimed american actors in recent years include
-## denzel washington, tom hanks, leonardo dicaprio, matthew mcconaughey...'],
-## 'meta': [{'model': 'zephyr', ...}]}
+# {'replies': ['I do not have the ability to form opinions or preferences.
+# However, some of the most acclaimed american actors in recent years include
+# denzel washington, tom hanks, leonardo dicaprio, matthew mcconaughey...'],
+# 'meta': [{'model': 'zephyr', ...}]}
 ```
 
 ### In a Pipeline
@@ -148,8 +148,8 @@ result = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": qu
 
 print(result)
 
-## {'llm': {'replies': ['Based on the provided context, it seems that you enjoy
-## soccer and summer. Unfortunately, there is no direct information given about
-## what else you enjoy...'],
-## 'meta': [{'model': 'zephyr', ...]}}
+# {'llm': {'replies': ['Based on the provided context, it seems that you enjoy
+# soccer and summer. Unfortunately, there is no direct information given about
+# what else you enjoy...'],
+# 'meta': [{'model': 'zephyr', ...]}}
 ```

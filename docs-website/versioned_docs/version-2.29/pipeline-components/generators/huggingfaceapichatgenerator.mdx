@@ -69,7 +69,7 @@ messages = [
     ChatMessage.from_user("What's Natural Language Processing?"),
 ]
 
-## the api_type can be expressed using the HFGenerationAPIType enum or as a string
+# the api_type can be expressed using the HFGenerationAPIType enum or as a string
 api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
 api_type = "serverless_inference_api"  # this is equivalent to the above
 
@@ -122,10 +122,10 @@ from haystack.dataclasses import ChatMessage, ImageContent
 from haystack.utils import Secret
 from haystack.utils.hf import HFGenerationAPIType
 
-## Create an image from file path, URL, or base64
+# Create an image from file path, URL, or base64
 image = ImageContent.from_file_path("path/to/your/image.jpg")
 
-## Create a multimodal message with both text and image
+# Create a multimodal message with both text and image
 messages = [
     ChatMessage.from_user(content_parts=["Describe this image in detail", image]),
 ]
@@ -190,7 +190,7 @@ from haystack import Pipeline
 from haystack.utils import Secret
 from haystack.utils.hf import HFGenerationAPIType
 
-## no parameter init, we don't use any runtime template variables
+# no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
 llm = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,

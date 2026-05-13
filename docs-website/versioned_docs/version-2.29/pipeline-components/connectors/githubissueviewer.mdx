@@ -87,7 +87,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.connectors.github import GitHubIssueViewer
 
-## Initialize components
+# Initialize components
 issue_viewer = GitHubIssueViewer()
 
 prompt_template = [
@@ -109,17 +109,17 @@ prompt_template = [
 prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
 llm = OpenAIChatGenerator(model="gpt-4o-mini")
 
-## Create pipeline
+# Create pipeline
 pipeline = Pipeline()
 pipeline.add_component("issue_viewer", issue_viewer)
 pipeline.add_component("prompt_builder", prompt_builder)
 pipeline.add_component("llm", llm)
 
-## Connect components
+# Connect components
 pipeline.connect("issue_viewer.documents", "prompt_builder.documents")
 pipeline.connect("prompt_builder.prompt", "llm.messages")
 
-## Run pipeline
+# Run pipeline
 issue_url = "https://github.com/deepset-ai/haystack/issues/123"
 result = pipeline.run(data={"issue_viewer": {"url": issue_url}})
 

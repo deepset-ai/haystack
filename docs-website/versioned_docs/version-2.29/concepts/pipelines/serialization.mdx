@@ -23,12 +23,12 @@ from haystack import Pipeline
 pipe = Pipeline()
 print(pipe.dumps())
 
-## Prints:
-##
-## components: {}
-## connections: []
-## max_runs_per_component: 100
-## metadata: {}
+# Prints:
+#
+# components: {}
+# connections: []
+# max_runs_per_component: 100
+# metadata: {}
 ```
 
 You can also use `dump()` method to save the YAML representation of a pipeline in a file:
@@ -51,7 +51,7 @@ from haystack import Pipeline
 from haystack.core.serialization import DeserializationCallbacks
 from typing import Type, Dict, Any
 
-## This is the YAML you want to convert to Python:
+# This is the YAML you want to convert to Python:
 pipeline_yaml = """
 components:
   cleaner:
@@ -203,7 +203,7 @@ A `Marshaller` is a Python class responsible for converting text to a dictionary
 This is the code for a custom TOML marshaller that relies on the `rtoml` library:
 
 ```python
-## This code requires a `pip install rtoml`
+# This code requires a `pip install rtoml`
 from typing import Dict, Any, Union
 import rtoml
 
@@ -224,8 +224,8 @@ from my_custom_marshallers import TomlMarshaller
 
 pipe = Pipeline()
 pipe.dumps(TomlMarshaller())
-## prints:
-## 'max_runs_per_component = 100\nconnections = []\n\n[metadata]\n\n[components]\n'
+# prints:
+# 'max_runs_per_component = 100\nconnections = []\n\n[metadata]\n\n[components]\n'
 ```
 
 ## Additional References

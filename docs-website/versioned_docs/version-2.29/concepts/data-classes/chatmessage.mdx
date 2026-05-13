@@ -380,10 +380,10 @@ You can no longer directly initialize `ChatMessage` using `role`, `content`, and
 ```python
 from haystack.dataclasses import ChatMessage
 
-## LEGACY - DOES NOT WORK IN 2.9.0
+# LEGACY - DOES NOT WORK IN 2.9.0
 message = ChatMessage(role=ChatRole.USER, content="Hello!")
 
-## Use the class method instead
+# Use the class method instead
 message = ChatMessage.from_user("Hello!")
 ```
 
@@ -405,9 +405,9 @@ from haystack.dataclasses import ChatMessage
 
 message = ChatMessage.from_user("Hello!")
 
-## LEGACY - DOES NOT WORK IN 2.9.0
+# LEGACY - DOES NOT WORK IN 2.9.0
 print(message.content)
 
-## Use the appropriate property instead
+# Use the appropriate property instead
 print(message.text)
 ```

@@ -40,7 +40,7 @@ pip install python-docx
 from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat
 
 converter = DOCXToDocument()
-## or define the table format
+# or define the table format
 converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
 
 results = converter.run(
@@ -51,7 +51,7 @@ documents = results["documents"]
 
 print(documents[0].content)
 
-## 'This is the text from the DOCX file.'
+# 'This is the text from the DOCX file.'
 ```
 
 ### In a pipeline

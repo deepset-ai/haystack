@@ -100,7 +100,7 @@ import os
 
 api_key = os.environ["OPENAI_API_KEY"]
 
-## Create a RAG query pipeline
+# Create a RAG query pipeline
 prompt_template = """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
@@ -113,7 +113,7 @@ prompt_template = """
 
 document_store = AzureAISearchDocumentStore(index_name="haystack-docs")
 
-## Add Documents
+# Add Documents
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
     Document(
@@ -124,7 +124,7 @@ documents = [
     ),
 ]
 
-## policy param is optional, as AzureAISearchDocumentStore has a default policy of DuplicatePolicy.OVERWRITE
+# policy param is optional, as AzureAISearchDocumentStore has a default policy of DuplicatePolicy.OVERWRITE
 document_store.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
 
 retriever = AzureAISearchBM25Retriever(document_store=document_store)

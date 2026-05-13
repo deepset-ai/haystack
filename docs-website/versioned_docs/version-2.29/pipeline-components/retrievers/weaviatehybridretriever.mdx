@@ -69,7 +69,7 @@ document_store = WeaviateDocumentStore(url="http://localhost:8080")
 
 retriever = WeaviateHybridRetriever(document_store=document_store)
 
-## using a fake vector to keep the example simple
+# using a fake vector to keep the example simple
 retriever.run(query="How many languages are there?", query_embedding=[0.1] * 768)
 ```
 
@@ -135,22 +135,22 @@ You can set the `alpha` parameter at initialization or override it at query time
 ```python
 from haystack_integrations.components.retrievers.weaviate import WeaviateHybridRetriever
 
-## Favor keyword search (good for exact matches)
+# Favor keyword search (good for exact matches)
 retriever_keyword_heavy = WeaviateHybridRetriever(
     document_store=document_store,
     alpha=0.25,
 )
 
-## Balanced hybrid search
+# Balanced hybrid search
 retriever_balanced = WeaviateHybridRetriever(document_store=document_store, alpha=0.5)
 
-## Favor vector search (good for semantic similarity)
+# Favor vector search (good for semantic similarity)
 retriever_vector_heavy = WeaviateHybridRetriever(
     document_store=document_store,
     alpha=0.75,
 )
 
-## Override alpha at query time
+# Override alpha at query time
 result = retriever_balanced.run(
     query="artificial intelligence",
     query_embedding=embedding,

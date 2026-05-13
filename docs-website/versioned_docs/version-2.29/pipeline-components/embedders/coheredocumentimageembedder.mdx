@@ -74,12 +74,12 @@ result = embedder.run(documents=documents)
 documents_with_embeddings = result["documents"]
 print(documents_with_embeddings)
 
-## [Document(id=...,
-## content='A photo of a cat',
-## meta={'file_path': 'cat.jpg',
-## 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
-## embedding=vector of size 1536),
-## ...]
+# [Document(id=...,
+# content='A photo of a cat',
+# meta={'file_path': 'cat.jpg',
+# 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
+# embedding=vector of size 1536),
+# ...]
 ```
 
 ### In a pipeline
@@ -106,7 +106,7 @@ from haystack_integrations.components.embedders.cohere import (
 
 document_store = InMemoryDocumentStore()
 
-## Indexing pipeline
+# Indexing pipeline
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("image_converter", ImageFileToDocument())
 indexing_pipeline.add_component(
@@ -119,7 +119,7 @@ indexing_pipeline.connect("embedder", "writer")
 
 indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "hyena.jpeg"]}})
 
-## Multimodal retrieval pipeline
+# Multimodal retrieval pipeline
 retrieval_pipeline = Pipeline()
 retrieval_pipeline.add_component("embedder", CohereTextEmbedder(model="embed-v4.0"))
 retrieval_pipeline.add_component(
@@ -131,34 +131,34 @@ retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 result = retrieval_pipeline.run(data={"text": "man's best friend"})
 print(result)
 
-## {
-## 'retriever': {
-## 'documents': [
-## Document(
-## id=0c96...,
-## meta={
-## 'file_path': 'dog.jpg',
-## 'embedding_source': {
-## 'type': 'image',
-## 'file_path_meta_field': 'file_path'
-## }
-## },
-## score=0.288
-## ),
-## Document(
-## id=5e76...,
-## meta={
-## 'file_path': 'hyena.jpeg',
-## 'embedding_source': {
-## 'type': 'image',
-## 'file_path_meta_field': 'file_path'
-## }
-## },
-## score=0.248
-## )
-## ]
-## }
-## }
+# {
+# 'retriever': {
+# 'documents': [
+# Document(
+# id=0c96...,
+# meta={
+# 'file_path': 'dog.jpg',
+# 'embedding_source': {
+# 'type': 'image',
+# 'file_path_meta_field': 'file_path'
+# }
+# },
+# score=0.288
+# ),
+# Document(
+# id=5e76...,
+# meta={
+# 'file_path': 'hyena.jpeg',
+# 'embedding_source': {
+# 'type': 'image',
+# 'file_path_meta_field': 'file_path'
+# }
+# },
+# score=0.248
+# )
+# ]
+# }
+# }
 ```
 
 ## Additional References

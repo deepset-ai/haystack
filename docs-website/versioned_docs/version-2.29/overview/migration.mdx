@@ -225,17 +225,17 @@ from haystack.nodes.file_converter import TextConverter
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.pipelines import Pipeline
 
-## Initialize a DocumentStore
+# Initialize a DocumentStore
 document_store = InMemoryDocumentStore()
 
-## Indexing Pipeline
+# Indexing Pipeline
 indexing_pipeline = Pipeline()
 
-## Makes sure the file is a TXT file (FileTypeClassifier node)
+# Makes sure the file is a TXT file (FileTypeClassifier node)
 classifier = FileTypeClassifier()
 indexing_pipeline.add_node(classifier, name="Classifier", inputs=["File"])
 
-## Converts a file into text and performs basic cleaning (TextConverter node)
+# Converts a file into text and performs basic cleaning (TextConverter node)
 text_converter = TextConverter(remove_numeric_tables=True)
 indexing_pipeline.add_node(
     text_converter,
@@ -243,7 +243,7 @@ indexing_pipeline.add_node(
     inputs=["Classifier.output_1"],
 )
 
-## Pre-processes the text by performing splits and adding metadata to the text (Preprocessor node)
+# Pre-processes the text by performing splits and adding metadata to the text (Preprocessor node)
 preprocessor = PreProcessor(
     clean_whitespace=True,
     clean_empty_lines=True,
@@ -253,14 +253,14 @@ preprocessor = PreProcessor(
 )
 indexing_pipeline.add_node(preprocessor, name="Preprocessor", inputs=["Text_converter"])
 
-## - Writes the resulting documents into the document store
+# - Writes the resulting documents into the document store
 indexing_pipeline.add_node(
     document_store,
     name="Document_Store",
     inputs=["Preprocessor"],
 )
 
-## Then we run it with the documents and their metadata as input
+# Then we run it with the documents and their metadata as input
 result = indexing_pipeline.run(file_paths=file_paths, meta=files_metadata)
 ```
 
@@ -278,41 +278,41 @@ from haystack.components.converters import TextFileToDocument
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.writers import DocumentWriter
 
-## Initialize a DocumentStore
+# Initialize a DocumentStore
 document_store = InMemoryDocumentStore()
 
-## Indexing Pipeline
+# Indexing Pipeline
 indexing_pipeline = Pipeline()
 
-## Makes sure the file is a TXT file (FileTypeRouter component)
+# Makes sure the file is a TXT file (FileTypeRouter component)
 classifier = FileTypeRouter(mime_types=["text/plain"])
 indexing_pipeline.add_component("file_type_router", classifier)
 
-## Converts a file into a Document (TextFileToDocument component)
+# Converts a file into a Document (TextFileToDocument component)
 text_converter = TextFileToDocument()
 indexing_pipeline.add_component("text_converter", text_converter)
 
-## Performs basic cleaning (DocumentCleaner component)
+# Performs basic cleaning (DocumentCleaner component)
 cleaner = DocumentCleaner(
     remove_empty_lines=True,
     remove_extra_whitespaces=True,
 )
 indexing_pipeline.add_component("cleaner", cleaner)
 
-## Pre-processes the text by performing splits and adding metadata to the text (DocumentSplitter component)
+# Pre-processes the text by performing splits and adding metadata to the text (DocumentSplitter component)
 preprocessor = DocumentSplitter(split_by="passage", split_length=100, split_overlap=50)
 indexing_pipeline.add_component("preprocessor", preprocessor)
 
-## - Writes the resulting documents into the document store
+# - Writes the resulting documents into the document store
 indexing_pipeline.add_component("writer", DocumentWriter(document_store))
 
-## Connect all the components
+# Connect all the components
 indexing_pipeline.connect("file_type_router.text/plain", "text_converter")
 indexing_pipeline.connect("text_converter", "cleaner")
 indexing_pipeline.connect("cleaner", "preprocessor")
 indexing_pipeline.connect("preprocessor", "writer")
 
-## Then we run it with the documents and their metadata as input
+# Then we run it with the documents and their metadata as input
 result = indexing_pipeline.run({"file_type_router": {"sources": file_paths}})
 ```
 

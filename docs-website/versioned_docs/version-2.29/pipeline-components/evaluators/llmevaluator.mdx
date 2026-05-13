@@ -97,7 +97,7 @@ responses = [
 ]
 results = llm_evaluator.run(responses=responses)
 print(results)
-## {'results': [{'score': 0}, {'score': 0}]}
+# {'results': [{'score': 0}, {'score': 0}]}
 ```
 
 ### In a pipeline
@@ -137,5 +137,5 @@ result = pipeline.run({"llm_evaluator": {"responses": responses}})
 
 for evaluator in result:
     print(result[evaluator]["results"])
-## [{'score': 0}, {'score': 0}]
+# [{'score': 0}, {'score': 0}]
 ```

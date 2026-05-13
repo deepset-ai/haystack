@@ -50,13 +50,13 @@ Use `required_variables` and `variables` to specify the input types and required
 ```python
 from haystack.components.builders import PromptBuilder
 
-## All variables optional (default to empty string)
+# All variables optional (default to empty string)
 builder = PromptBuilder(
     template="Hello {{name}}! {{greeting}}",
     required_variables=[],  # or omit this parameter entirely
 )
 
-## Some variables required
+# Some variables required
 builder = PromptBuilder(
     template="Hello {{name}}! {{greeting}}",
     required_variables=["name"],  # 'greeting' remains optional
@@ -126,7 +126,7 @@ The common format codes are:
 ```python
 from haystack.components.builders import PromptBuilder
 
-## Define template using Jinja-style formatting
+# Define template using Jinja-style formatting
 template = """
 Current date is: {% now 'UTC' %}
 Thank you for providing the date
@@ -162,7 +162,7 @@ from haystack.utils import Secret
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
-## in a real world use case documents could come from a retriever, web, or any other source
+# in a real world use case documents could come from a retriever, web, or any other source
 documents = [
     Document(content="Joe lives in Berlin"),
     Document(content="Joe is a software engineer"),

@@ -167,7 +167,7 @@ def calculate(
 
 
 if __name__ == "__main__":
-    ## Create components
+    # Create components
     chat_generator = OpenAIChatGenerator()
 
     agent = Agent(
@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
     langfuse_connector = LangfuseConnector("Agent Example")
 
-    ## Create and run pipeline
+    # Create and run pipeline
     pipe = Pipeline()
     pipe.add_component("tracer", langfuse_connector)
     pipe.add_component("agent", agent)
@@ -229,6 +229,6 @@ class CustomSpanHandler(DefaultSpanHandler):
                 span._span.update(level="WARNING", status_message="Response too short")
 
 
-## Add the custom handler to the LangfuseConnector
+# Add the custom handler to the LangfuseConnector
 connector = LangfuseConnector(span_handler=CustomSpanHandler())
 ```

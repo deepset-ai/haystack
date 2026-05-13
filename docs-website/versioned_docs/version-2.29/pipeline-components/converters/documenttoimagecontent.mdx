@@ -64,16 +64,16 @@ result = converter.run(documents)
 image_contents = result["image_contents"]
 print(image_contents)
 
-## [
-## ImageContent(
-## base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
-## meta={"file_path": "mountain.jpg"}
-## ),
-## ImageContent(
-## base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
-## meta={"file_path": "report.pdf", "page_number": 1}
-## )
-## ]
+# [
+# ImageContent(
+# base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
+# meta={"file_path": "mountain.jpg"}
+# ),
+# ImageContent(
+# base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
+# meta={"file_path": "report.pdf", "page_number": 1}
+# )
+# ]
 ```
 
 ### In a pipeline
@@ -88,7 +88,7 @@ from haystack.components.converters.image.document_to_image import (
     DocumentToImageContent,
 )
 
-## Query pipeline
+# Query pipeline
 pipeline = Pipeline()
 pipeline.add_component("image_converter", DocumentToImageContent(detail="auto"))
 pipeline.add_component(
@@ -130,23 +130,23 @@ result = pipeline.run(
 )
 print(result)
 
-## {
-## "llm": {
-## "replies": [
-## ChatMessage(
-## _role=<ChatRole.ASSISTANT: 'assistant'>,
-## _content=[TextContent(text="The cat is orange with some black.")],
-## _name=None,
-## _meta={
-## "model": "gpt-4o-mini-2024-07-18",
-## "index": 0,
-## "finish_reason": "stop",
-## "usage": {...},
-## },
-## )
-## ]
-## }
-## }
+# {
+# "llm": {
+# "replies": [
+# ChatMessage(
+# _role=<ChatRole.ASSISTANT: 'assistant'>,
+# _content=[TextContent(text="The cat is orange with some black.")],
+# _name=None,
+# _meta={
+# "model": "gpt-4o-mini-2024-07-18",
+# "index": 0,
+# "finish_reason": "stop",
+# "usage": {...},
+# },
+# )
+# ]
+# }
+# }
 ```
 
 ## Additional References

@@ -83,7 +83,7 @@ from haystack_integrations.components.generators.google_genai import (
     GoogleGenAIChatGenerator,
 )
 
-## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+# set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIChatGenerator()
 ```
 
@@ -94,7 +94,7 @@ from haystack_integrations.components.generators.google_genai import (
     GoogleGenAIChatGenerator,
 )
 
-## Using Application Default Credentials (requires gcloud auth setup)
+# Using Application Default Credentials (requires gcloud auth setup)
 chat_generator = GoogleGenAIChatGenerator(
     api="vertex",
     vertex_ai_project="my-project",
@@ -109,7 +109,7 @@ from haystack_integrations.components.generators.google_genai import (
     GoogleGenAIChatGenerator,
 )
 
-## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+# set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIChatGenerator(api="vertex")
 ```
 
@@ -129,10 +129,10 @@ from haystack_integrations.components.generators.google_genai import (
     GoogleGenAIChatGenerator,
 )
 
-## Initialize the chat generator
+# Initialize the chat generator
 chat_generator = GoogleGenAIChatGenerator()
 
-## Generate a response
+# Generate a response
 messages = [ChatMessage.from_user("Tell me about movie Shawshank Redemption")]
 response = chat_generator.run(messages=messages)
 print(response["replies"][0].text)
@@ -166,7 +166,7 @@ from typing import Annotated
 from haystack.tools import create_tool_from_function
 
 
-## example function to get the current weather
+# example function to get the current weather
 def get_current_weather(
     location: Annotated[
         str,
@@ -232,13 +232,13 @@ def streaming_callback(chunk: StreamingChunk):
     print(chunk.content, end="", flush=True)
 
 
-## Initialize with streaming callback
+# Initialize with streaming callback
 chat_generator = GoogleGenAIChatGenerator(streaming_callback=streaming_callback)
 
-## Generate a streaming response
+# Generate a streaming response
 messages = [ChatMessage.from_user("Write a short story")]
 response = chat_generator.run(messages=messages)
-## Text will stream in real-time through the callback
+# Text will stream in real-time through the callback
 ```
 
 ### In a pipeline
@@ -252,7 +252,7 @@ from haystack_integrations.components.generators.google_genai import (
     GoogleGenAIChatGenerator,
 )
 
-## no parameter init, we don't use any runtime template variables
+# no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"

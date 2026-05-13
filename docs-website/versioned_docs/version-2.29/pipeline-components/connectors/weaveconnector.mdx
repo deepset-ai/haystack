@@ -90,7 +90,7 @@ You can then see the complete trace for your pipeline at `https://wandb.ai/<user
 ```python
 import os
 
-## Enable Haystack content tracing
+# Enable Haystack content tracing
 os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
 
 from typing import Annotated
@@ -141,10 +141,10 @@ def calculate(
     return f"The result of {a} {operation} {b} is {result}"
 
 
-## Create the chat generator
+# Create the chat generator
 chat_generator = OpenAIChatGenerator()
 
-## Create the agent with tools
+# Create the agent with tools
 agent = Agent(
     chat_generator=chat_generator,
     tools=[get_weather, calculate],
@@ -152,15 +152,15 @@ agent = Agent(
     exit_conditions=["text"],
 )
 
-## Create the WeaveConnector for tracing
+# Create the WeaveConnector for tracing
 weave_connector = WeaveConnector(pipeline_name="Agent Example")
 
-## Build the pipeline
+# Build the pipeline
 pipe = Pipeline()
 pipe.add_component("tracer", weave_connector)
 pipe.add_component("agent", agent)
 
-## Run the pipeline
+# Run the pipeline
 response = pipe.run(
     data={
         "agent": {
@@ -174,7 +174,7 @@ response = pipe.run(
     },
 )
 
-## Display results
+# Display results
 print("Agent Response:")
 print(response["agent"]["last_message"].text)
 print(f"\nPipeline Name: {response['tracer']['pipeline_name']}")

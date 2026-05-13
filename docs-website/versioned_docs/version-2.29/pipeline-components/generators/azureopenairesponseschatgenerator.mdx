@@ -255,15 +255,15 @@ You can stream output as it's generated. Pass a callback to `streaming_callback`
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 
-## Configure any `Generator` or `ChatGenerator` with a streaming callback
+# Configure any `Generator` or `ChatGenerator` with a streaming callback
 component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
 
-## If this is a `ChatGenerator`, pass a list of messages:
-## from haystack.dataclasses import ChatMessage
-## component.run([ChatMessage.from_user("Your question here")])
+# If this is a `ChatGenerator`, pass a list of messages:
+# from haystack.dataclasses import ChatMessage
+# component.run([ChatMessage.from_user("Your question here")])
 
-## If this is a (non-chat) `Generator`, pass a prompt:
-## component.run({"prompt": "Your prompt here"})
+# If this is a (non-chat) `Generator`, pass a prompt:
+# component.run({"prompt": "Your prompt here"})
 ```
 
 :::info

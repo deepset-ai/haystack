@@ -44,12 +44,12 @@ from haystack.components.generators.chat import (
 )
 from haystack.dataclasses import ChatMessage
 
-## Set up generators
+# Set up generators
 primary = OpenAIChatGenerator(model="gpt-4o")
 backup = OpenAIChatGenerator(model="gpt-4o-mini")
 generator = FallbackChatGenerator(chat_generators=[primary, backup])
 
-## Run and inspect metadata
+# Run and inspect metadata
 result = generator.run(messages=[ChatMessage.from_user("Hello")])
 
 meta = result["meta"]
@@ -88,14 +88,14 @@ Basic usage with fallback from a primary to a backup model:
 from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
-## Create primary and backup generators
+# Create primary and backup generators
 primary = OpenAIChatGenerator(model="gpt-4o", timeout=30)
 backup = OpenAIChatGenerator(model="gpt-4o-mini", timeout=30)
 
-## Wrap them in a FallbackChatGenerator
+# Wrap them in a FallbackChatGenerator
 generator = FallbackChatGenerator(chat_generators=[primary, backup])
 
-## Use it like any other Chat Generator
+# Use it like any other Chat Generator
 messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 result = generator.run(messages=messages)
 
@@ -120,7 +120,7 @@ from haystack.components.generators.chat import (
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
-## Create generators from different providers
+# Create generators from different providers
 openai_gen = OpenAIChatGenerator(
     model="gpt-4o-mini",
     api_key=Secret.from_env_var("OPENAI_API_KEY"),
@@ -134,7 +134,7 @@ azure_gen = AzureOpenAIChatGenerator(
     timeout=30,
 )
 
-## Fallback will try OpenAI first, then Azure
+# Fallback will try OpenAI first, then Azure
 generator = FallbackChatGenerator(chat_generators=[openai_gen, azure_gen])
 
 messages = [ChatMessage.from_user("Explain quantum computing briefly.")]
@@ -177,14 +177,14 @@ from haystack.components.generators.chat import (
 )
 from haystack.dataclasses import ChatMessage
 
-## Create primary and backup generators with timeouts
+# Create primary and backup generators with timeouts
 primary = OpenAIChatGenerator(model="gpt-4o", timeout=30)
 backup = OpenAIChatGenerator(model="gpt-4o-mini", timeout=30)
 
-## Wrap in fallback
+# Wrap in fallback
 fallback_generator = FallbackChatGenerator(chat_generators=[primary, backup])
 
-## Build pipeline
+# Build pipeline
 prompt_builder = ChatPromptBuilder()
 
 pipe = Pipeline()
@@ -192,7 +192,7 @@ pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", fallback_generator)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
-## Run pipeline
+# Run pipeline
 messages = [
     ChatMessage.from_system(
         "You are a helpful assistant that provides concise answers.",
@@ -225,7 +225,7 @@ from haystack.components.generators.chat import (
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
-## Create generators with invalid credentials to demonstrate error handling
+# Create generators with invalid credentials to demonstrate error handling
 primary = OpenAIChatGenerator(api_key=Secret.from_token("invalid-key-1"))
 backup = OpenAIChatGenerator(api_key=Secret.from_token("invalid-key-2"))
 

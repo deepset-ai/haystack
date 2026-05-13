@@ -78,20 +78,20 @@ from haystack.components.connectors.openapi import OpenAPIConnector
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import Secret
 
-## Initialize the OpenAPIConnector
+# Initialize the OpenAPIConnector
 connector = OpenAPIConnector(
     openapi_spec="https://bit.ly/serperdev_openapi",
     credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
 )
 
-## Create a ChatMessage from the user
+# Create a ChatMessage from the user
 user_message = ChatMessage.from_user(text="Who was Nikola Tesla?")
 
-## Define the pipeline
+# Define the pipeline
 pipeline = Pipeline()
 pipeline.add_component("openapi_connector", connector)
 
-## Run the pipeline
+# Run the pipeline
 response = pipeline.run(
     data={
         "openapi_connector": {
@@ -101,7 +101,7 @@ response = pipeline.run(
     },
 )
 
-## Extract the answer from the response
+# Extract the answer from the response
 answer = response.get("openapi_connector", {}).get("response", {})
 print(answer)
 ```

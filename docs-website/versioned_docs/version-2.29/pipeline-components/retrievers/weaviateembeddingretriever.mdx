@@ -63,7 +63,7 @@ document_store = WeaviateDocumentStore(url="http://localhost:8080")
 
 retriever = WeaviateEmbeddingRetriever(document_store=document_store)
 
-## using a fake vector to keep the example simple
+# using a fake vector to keep the example simple
 retriever.run(query_embedding=[0.1] * 768)
 ```
 

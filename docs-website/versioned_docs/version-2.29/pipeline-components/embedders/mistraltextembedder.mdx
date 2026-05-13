@@ -68,7 +68,7 @@ embedder = MistralTextEmbedder(
 result = embedder.run(text="How can I ise the Mistral embedding models with Haystack?")
 
 print(result["embedding"])
-## [-0.0015687942504882812, 0.052154541015625, 0.037109375...]
+# [-0.0015687942504882812, 0.052154541015625, 0.037109375...]
 ```
 
 ### In a pipeline
@@ -93,10 +93,10 @@ from haystack_integrations.components.embedders.mistral.text_embedder import (
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
-## Initialize document store
+# Initialize document store
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-## Indexing components
+# Indexing components
 fetcher = LinkContentFetcher()
 converter = HTMLToDocument()
 embedder = MistralDocumentEmbedder()
@@ -123,11 +123,11 @@ indexing.run(
     },
 )
 
-## Retrieval components
+# Retrieval components
 text_embedder = MistralTextEmbedder()
 retriever = InMemoryEmbeddingRetriever(document_store=document_store)
 
-## Define prompt template
+# Define prompt template
 prompt_template = [
     ChatMessage.from_system("You are a helpful assistant."),
     ChatMessage.from_user(

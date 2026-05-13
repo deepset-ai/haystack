@@ -59,7 +59,7 @@ document_embedder = STACKITDocumentEmbedder(model="intfloat/e5-mistral-7b-instru
 result = document_embedder.run([doc])
 print(result["documents"][0].embedding)
 
-## [0.0215301513671875, 0.01499176025390625, ...]
+# [0.0215301513671875, 0.01499176025390625, ...]
 ```
 
 ### In a pipeline
@@ -104,7 +104,7 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```
 
 You can find more usage examples in the STACKIT integration [repository](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/stackit/examples) and its [integration page](https://haystack.deepset.ai/integrations/stackit).

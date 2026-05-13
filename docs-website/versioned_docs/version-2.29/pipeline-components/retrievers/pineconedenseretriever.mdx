@@ -45,7 +45,7 @@ from haystack_integrations.components.retrievers.pinecone import (
 )
 from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 
-## Make sure you have the PINECONE_API_KEY environment variable set
+# Make sure you have the PINECONE_API_KEY environment variable set
 document_store = PineconeDocumentStore(
     index="my_index_with_documents",
     namespace="my_namespace",
@@ -54,7 +54,7 @@ document_store = PineconeDocumentStore(
 
 retriever = PineconeEmbeddingRetriever(document_store=document_store)
 
-## using an imaginary vector to keep the example simple, example run query:
+# using an imaginary vector to keep the example simple, example run query:
 retriever.run(query_embedding=[0.1] * 768)
 ```
 
@@ -82,7 +82,7 @@ from haystack_integrations.components.retrievers.pinecone import (
 )
 from haystack_integrations.document_stores.pinecone import PineconeDocumentStore
 
-## Make sure you have the PINECONE_API_KEY environment variable set
+# Make sure you have the PINECONE_API_KEY environment variable set
 document_store = PineconeDocumentStore(
     index="my_index",
     namespace="my_namespace",

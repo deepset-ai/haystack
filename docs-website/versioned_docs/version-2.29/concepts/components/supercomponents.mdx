@@ -20,7 +20,7 @@ With this decorator, the `to_dict` and `from_dict` serialization is optional, as
 The custom HybridRetriever example SuperComponent below turns your query into embeddings, then runs both a BM25 search and an embedding-based search at the same time. It finally merges those two result sets and returns the combined documents.
 
 ```python
-## pip install haystack-ai datasets "sentence-transformers>=3.0.0"
+# pip install haystack-ai datasets "sentence-transformers>=3.0.0"
 
 from haystack import Document, Pipeline, super_component
 from haystack.components.joiners import DocumentJoiner
@@ -145,7 +145,7 @@ pipeline.add_component("llm", OpenAIChatGenerator())
 pipeline.connect("retriever.documents", "prompt_builder.documents")
 pipeline.connect("prompt_builder.prompt", "llm.messages")
 
-## Create a super component with simplified input/output mapping
+# Create a super component with simplified input/output mapping
 wrapper = SuperComponent(
     pipeline=pipeline,
     input_mapping={
@@ -157,7 +157,7 @@ wrapper = SuperComponent(
     }
 )
 
-## Run the pipeline with simplified interface
+# Run the pipeline with simplified interface
 result = wrapper.run(query="What is the capital of France?")
 print(result)
 {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,

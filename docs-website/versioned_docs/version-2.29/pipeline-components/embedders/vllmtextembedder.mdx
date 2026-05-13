@@ -92,7 +92,7 @@ from haystack_integrations.components.embedders.vllm import VLLMTextEmbedder
 text_embedder = VLLMTextEmbedder(model="google/embeddinggemma-300m")
 print(text_embedder.run("I love pizza!"))
 
-## {'embedding': [-0.0215301513671875, 0.01499176025390625, ...], 'meta': {...}}
+# {'embedding': [-0.0215301513671875, 0.01499176025390625, ...], 'meta': {...}}
 ```
 
 ### In a pipeline
@@ -135,5 +135,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

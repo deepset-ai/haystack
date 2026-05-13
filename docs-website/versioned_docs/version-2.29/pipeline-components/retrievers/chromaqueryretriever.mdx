@@ -43,7 +43,7 @@ document_store = ChromaDocumentStore()
 
 retriever = ChromaQueryTextRetriever(document_store=document_store)
 
-## example run query
+# example run query
 retriever.run(query="How does Chroma Retriever work?")
 ```
 
@@ -66,7 +66,7 @@ from haystack.components.writers import DocumentWriter
 from haystack_integrations.document_stores.chroma import ChromaDocumentStore
 from haystack_integrations.components.retrievers.chroma import ChromaQueryTextRetriever
 
-## Chroma is used in-memory so we use the same instances in the two pipelines below
+# Chroma is used in-memory so we use the same instances in the two pipelines below
 document_store = ChromaDocumentStore()
 
 documents = [

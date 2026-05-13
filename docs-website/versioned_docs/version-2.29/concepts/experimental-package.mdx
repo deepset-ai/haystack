@@ -48,11 +48,11 @@ c.run([ChatMessage.from_user("What's an experiment? Be brief.")])
 Experiments can also override existing Haystack features. For example, you can opt into an experimental type of `Pipeline` by changing the usual import:
 
 ```python
-## from haystack import Pipeline
+# from haystack import Pipeline
 from haystack_experimental import Pipeline
 
 pipe = Pipeline()
-## ...
+# ...
 pipe.run(...)
 ```
 

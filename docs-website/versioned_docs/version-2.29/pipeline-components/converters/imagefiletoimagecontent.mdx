@@ -53,16 +53,16 @@ result = converter.run(sources=sources)
 image_contents = result["image_contents"]
 print(image_contents)
 
-## [
-## ImageContent(
-## base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
-## meta={"file_path": "cat.jpg"}
-## ),
-## ImageContent(
-## base64_image="/9j/4A...", mime_type="image/png", detail="high",
-## meta={"file_path": "scenery.png"}
-## )
-## ]
+# [
+# ImageContent(
+# base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
+# meta={"file_path": "cat.jpg"}
+# ),
+# ImageContent(
+# base64_image="/9j/4A...", mime_type="image/png", detail="high",
+# meta={"file_path": "scenery.png"}
+# )
+# ]
 ```
 
 ### In a pipeline
@@ -75,7 +75,7 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.converters.image import ImageFileToImageContent
 
-## Query pipeline
+# Query pipeline
 pipeline = Pipeline()
 pipeline.add_component("image_converter", ImageFileToImageContent(detail="auto"))
 pipeline.add_component(
@@ -111,17 +111,17 @@ result = pipeline.run(
 )
 print(result)
 
-## {
-## "llm": {
-## "replies": [
-## ChatMessage(
-## _role=<ChatRole.ASSISTANT: 'assistant'>,
-## _content=[TextContent(text="The Haystack logo features...")],
-## ...
-## )
-## ]
-## }
-## }
+# {
+# "llm": {
+# "replies": [
+# ChatMessage(
+# _role=<ChatRole.ASSISTANT: 'assistant'>,
+# _content=[TextContent(text="The Haystack logo features...")],
+# ...
+# )
+# ]
+# }
+# }
 ```
 
 ## Additional References

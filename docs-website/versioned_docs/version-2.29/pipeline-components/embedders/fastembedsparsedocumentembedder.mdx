@@ -112,9 +112,9 @@ doc_embedder = FastembedSparseDocumentEmbedder()
 result = doc_embedder.run(document_list)
 print(result["documents"][0])
 
-## Document(id=...,
-## content: 'I love pizza!',
-## sparse_embedding: vector with 24 non-zero elements)
+# Document(id=...,
+# content: 'I love pizza!',
+# sparse_embedding: vector with 24 non-zero elements)
 ```
 
 ### In a pipeline
@@ -181,9 +181,9 @@ result = query_pipeline.run({"sparse_text_embedder": {"text": query}})
 
 print(result["sparse_retriever"]["documents"][0])  # noqa: T201
 
-## Document(id=...,
-## content: 'fastembed is supported by and maintained by Qdrant.',
-## score: 0.758..)
+# Document(id=...,
+# content: 'fastembed is supported by and maintained by Qdrant.',
+# score: 0.758..)
 ```
 
 ## Additional References

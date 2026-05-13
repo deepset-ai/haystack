@@ -67,7 +67,7 @@ converter = JSONConverter(content_key="text")
 results = converter.run(sources=[source])
 documents = results["documents"]
 print(documents[0].content)
-## 'This is the content of my document'
+# 'This is the content of my document'
 ```
 
 In the following more complex example, we provide a `jq_schema` string to filter the JSON source files and `extra_meta_fields` to extract from the filtered data:
@@ -104,16 +104,16 @@ converter = JSONConverter(
 results = converter.run(sources=[source])
 documents = results["documents"]
 print(documents[0].content)
-## 'for his demonstrations of the existence of new radioactive elements produced by
-## neutron irradiation, and for his related discovery of nuclear reactions brought
-## about by slow neutrons'
+# 'for his demonstrations of the existence of new radioactive elements produced by
+# neutron irradiation, and for his related discovery of nuclear reactions brought
+# about by slow neutrons'
 
 print(documents[0].meta)
-## {'firstname': 'Enrico', 'surname': 'Fermi'}
+# {'firstname': 'Enrico', 'surname': 'Fermi'}
 
 print(documents[1].content)
-## 'for their discoveries of growth factors'
+# 'for their discoveries of growth factors'
 
 print(documents[1].meta)
-## {'firstname': 'Rita', 'surname': 'Levi-Montalcini'}
+# {'firstname': 'Rita', 'surname': 'Levi-Montalcini'}
 ```

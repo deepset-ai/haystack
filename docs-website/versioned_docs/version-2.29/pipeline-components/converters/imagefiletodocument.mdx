@@ -56,8 +56,8 @@ documents = result["documents"]
 
 print(documents)
 
-## [Document(id=..., content=None, meta={'file_path': 'image.jpg'}),
-## Document(id=..., content=None, meta={'file_path': 'another_image.png'})]
+# [Document(id=..., content=None, meta={'file_path': 'image.jpg'}),
+# Document(id=..., content=None, meta={'file_path': 'another_image.png'})]
 ```
 
 ### In a pipeline
@@ -73,10 +73,10 @@ from haystack.components.embedders.image import (
 from haystack.components.writers.document_writer import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-## Create our document store
+# Create our document store
 doc_store = InMemoryDocumentStore()
 
-## Define pipeline with components
+# Define pipeline with components
 indexing_pipe = Pipeline()
 indexing_pipe.add_component(
     "image_converter",
@@ -97,7 +97,7 @@ indexing_result = indexing_pipe.run(
 
 indexed_documents = doc_store.filter_documents()
 print(f"Indexed {len(indexed_documents)} documents")
-## Indexed 2 documents
+# Indexed 2 documents
 ```
 
 ## Additional References

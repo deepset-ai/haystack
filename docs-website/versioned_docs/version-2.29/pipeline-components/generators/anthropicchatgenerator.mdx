@@ -78,15 +78,15 @@ You can stream output as it’s generated. Pass a callback to `streaming_callbac
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 
-## Configure any `Generator` or `ChatGenerator` with a streaming callback
+# Configure any `Generator` or `ChatGenerator` with a streaming callback
 component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
 
-## If this is a `ChatGenerator`, pass a list of messages:
-## from haystack.dataclasses import ChatMessage
-## component.run([ChatMessage.from_user("Your question here")])
+# If this is a `ChatGenerator`, pass a list of messages:
+# from haystack.dataclasses import ChatMessage
+# component.run([ChatMessage.from_user("Your question here")])
 
-## If this is a (non-chat) `Generator`, pass a prompt:
-## component.run({"prompt": "Your prompt here"})
+# If this is a (non-chat) `Generator`, pass a prompt:
+# component.run({"prompt": "Your prompt here"})
 ```
 
 :::info
@@ -120,12 +120,12 @@ system_message.meta["cache_control"] = {"type": "ephemeral"}
 messages = [system_message, ChatMessage.from_user("A query about the long text for example")]
 result = claude_llm.run(messages)
 
-## and now invoke again with
+# and now invoke again with
 
 messages = [system_message, ChatMessage.from_user("Another query about the long text etc")]
 result = claude_llm.run(messages)
 
-## and so on, either invoking component directly or in the pipeline
+# and so on, either invoking component directly or in the pipeline
 ```
 
 For more details, refer to Anthropic's [documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) and integration [examples](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic/example).
