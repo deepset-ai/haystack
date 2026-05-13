@@ -88,6 +88,14 @@ routes = [
 
 # 'path' is optional, 'question' is required
 router = ConditionalRouter(routes=routes, optional_variables=["path"])
+
+# 'path' provided — first route matches
+print(router.run(question="What is RAG?", path="rag"))
+# {'rag_route': 'What is RAG?'}
+
+# 'path' omitted — evaluates as None, fallback route fires
+print(router.run(question="What is RAG?"))
+# {'default_route': 'What is RAG?'}
 ```
 
 The component only waits for the required inputs before running. If you use an optional variable in a condition but don't provide it at runtime, it’s evaluated as `None`, which generally does not raise an error but can affect the condition’s outcome.
@@ -128,11 +136,19 @@ routes = [
 ]
 
 router = ConditionalRouter(routes=routes, custom_filters={"first_word": first_word})
+
+print(router.run(query="summarize this document"))
+# {'summarize_route': 'summarize this document'}
+
+print(router.run(query="what is the capital of France?"))
+# {'default_route': 'what is the capital of France?'}
 ```
 
 ### Output type validation
 
-By default, `ConditionalRouter` does not check that a route's output value actually matches the declared `output_type`. Set `validate_output_type=True` to enable this check. If the value doesn't match, a `ValueError` is raised at runtime.
+By default, `ConditionalRouter` does not check that a route's output value actually matches the declared `output_type`.
+Set `validate_output_type=True` to enable this check.
+If the value doesn't match, a `ValueError` is raised at runtime.
 
 ```python
 router = ConditionalRouter(routes=routes, validate_output_type=True)
@@ -166,8 +182,7 @@ routes = [
 
 router = ConditionalRouter(routes)
 
-kwargs = {"streams": [1, 2, 3], "query": "Haystack"}
-result = router.run(**kwargs)
+result = router.run(streams=[1, 2, 3], query="Haystack")
 
 print(result)
 # {"enough_streams": [1, 2, 3]}
@@ -212,7 +227,7 @@ pipe.add_component(
     "prompt_builder",
     ChatPromptBuilder(
         template=[ChatMessage.from_user("Answer the following query: {{ query }}")],
-        required_variables={"query"},
+        required_variables=["query"],
     ),
 )
 pipe.add_component("generator", OpenAIChatGenerator())
@@ -226,7 +241,10 @@ print(pipe.run(data={"router": {"query": "Berlin"}}))
 
 # Long query: length > 10 ⇒ first route fires.
 print(pipe.run(data={"router": {"query": "What is the capital of Italy?"}}))
-# {'generator': {'replies': ['The capital of Italy is Rome.'], …}}
+# {
+#   'router': {'length': 29},
+#   'generator': {'replies': [ChatMessage(content='The capital of Italy is Rome (Italian: Roma).', role=<ChatRole.ASSISTANT: 'assistant'>)]}
+# }
 ```
 
 <br />
