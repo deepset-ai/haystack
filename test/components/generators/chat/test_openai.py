@@ -34,6 +34,7 @@ from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
+    _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import (
@@ -1871,3 +1872,302 @@ class TestChatCompletionChunkConversion:
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
+
+
+class TestMakeSchemaStrict:
+    def test_flat_object(self):
+        schema = {"type": "object", "properties": {"name": {"type": "string"}}}
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "additionalProperties": False,
+            "required": ["name"],
+        }
+
+    def test_nested_object(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "person": {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}}
+            },
+        }
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {
+                "person": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                    "additionalProperties": False,
+                    "required": ["name", "age"],
+                }
+            },
+            "additionalProperties": False,
+            "required": ["person"],
+        }
+
+    def test_defs_and_ref(self):
+        schema = {
+            "type": "object",
+            "properties": {"address": {"$ref": "#/$defs/Address"}},
+            "$defs": {
+                "Address": {"type": "object", "properties": {"street": {"type": "string"}, "city": {"type": "string"}}}
+            },
+        }
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {"address": {"$ref": "#/$defs/Address"}},
+            "$defs": {
+                "Address": {
+                    "type": "object",
+                    "properties": {"street": {"type": "string"}, "city": {"type": "string"}},
+                    "additionalProperties": False,
+                    "required": ["street", "city"],
+                }
+            },
+            "additionalProperties": False,
+            "required": ["address"],
+        }
+
+    def test_array_items(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "people": {"type": "array", "items": {"type": "object", "properties": {"name": {"type": "string"}}}}
+            },
+        }
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {
+                "people": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                        "additionalProperties": False,
+                        "required": ["name"],
+                    },
+                }
+            },
+            "additionalProperties": False,
+            "required": ["people"],
+        }
+
+    def test_anyof(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "value": {"anyOf": [{"type": "string"}, {"type": "object", "properties": {"x": {"type": "integer"}}}]}
+            },
+        }
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {
+                            "type": "object",
+                            "properties": {"x": {"type": "integer"}},
+                            "additionalProperties": False,
+                            "required": ["x"],
+                        },
+                    ]
+                }
+            },
+            "additionalProperties": False,
+            "required": ["value"],
+        }
+
+    def test_does_not_mutate_original(self):
+        schema = {"type": "object", "properties": {"a": {"type": "string"}}}
+        result = _make_schema_strict(schema)
+        assert "additionalProperties" not in schema
+        assert "required" not in schema
+        assert result == {
+            "type": "object",
+            "properties": {"a": {"type": "string"}},
+            "additionalProperties": False,
+            "required": ["a"],
+        }
+
+    def test_preserves_existing_required(self):
+        schema = {
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "integer"}},
+            "required": ["a"],
+        }
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "integer"}},
+            "additionalProperties": False,
+            "required": ["a", "b"],
+        }
+
+    def test_complex_schema_with_defs_and_combinators(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "messages": {"type": "array", "items": {"$ref": "#/$defs/ChatMessage"}},
+                "config": {
+                    "oneOf": [
+                        {"type": "null"},
+                        {
+                            "type": "object",
+                            "properties": {"temperature": {"type": "number"}, "max_tokens": {"type": "integer"}},
+                        },
+                    ]
+                },
+            },
+            "$defs": {
+                "ChatMessage": {
+                    "type": "object",
+                    "properties": {
+                        "role": {"type": "string"},
+                        "content": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                        "meta": {
+                            "type": "object",
+                            "properties": {
+                                "model": {"type": "string"},
+                                "usage": {
+                                    "type": "object",
+                                    "properties": {
+                                        "prompt_tokens": {"type": "integer"},
+                                        "completion_tokens": {"type": "integer"},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                }
+            },
+        }
+        result = _make_schema_strict(schema)
+        assert result == {
+            "type": "object",
+            "properties": {
+                "messages": {"type": "array", "items": {"$ref": "#/$defs/ChatMessage"}},
+                "config": {
+                    "oneOf": [
+                        {"type": "null"},
+                        {
+                            "type": "object",
+                            "properties": {"temperature": {"type": "number"}, "max_tokens": {"type": "integer"}},
+                            "additionalProperties": False,
+                            "required": ["temperature", "max_tokens"],
+                        },
+                    ]
+                },
+            },
+            "$defs": {
+                "ChatMessage": {
+                    "type": "object",
+                    "properties": {
+                        "role": {"type": "string"},
+                        "content": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                        "meta": {
+                            "type": "object",
+                            "properties": {
+                                "model": {"type": "string"},
+                                "usage": {
+                                    "type": "object",
+                                    "properties": {
+                                        "prompt_tokens": {"type": "integer"},
+                                        "completion_tokens": {"type": "integer"},
+                                    },
+                                    "additionalProperties": False,
+                                    "required": ["prompt_tokens", "completion_tokens"],
+                                },
+                            },
+                            "additionalProperties": False,
+                            "required": ["model", "usage"],
+                        },
+                    },
+                    "additionalProperties": False,
+                    "required": ["role", "content", "meta"],
+                }
+            },
+            "additionalProperties": False,
+            "required": ["messages", "config"],
+        }
+
+    def test_prepare_api_call_strict_nested_tool(self):
+        nested_tool = Tool(
+            name="create_person",
+            description="Create a person record",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "address": {
+                        "type": "object",
+                        "properties": {"street": {"type": "string"}, "city": {"type": "string"}},
+                    },
+                },
+                "required": ["name"],
+            },
+            function=lambda name, address: f"{name} at {address}",
+        )
+
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-key"), tools_strict=True)
+        api_args = component._prepare_api_call(messages=[ChatMessage.from_user("test")], tools=[nested_tool])
+
+        tool_def = api_args["tools"][0]["function"]
+        assert tool_def["strict"] is True
+        assert tool_def["parameters"] == {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "address": {
+                    "type": "object",
+                    "properties": {"street": {"type": "string"}, "city": {"type": "string"}},
+                    "additionalProperties": False,
+                    "required": ["street", "city"],
+                },
+            },
+            "additionalProperties": False,
+            "required": ["name", "address"],
+        }
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_strict_nested_tool(self):
+        tool = Tool(
+            name="create_person",
+            description="Create a person record with an address",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Full name"},
+                    "address": {
+                        "type": "object",
+                        "properties": {
+                            "street": {"type": "string", "description": "Street address"},
+                            "city": {"type": "string", "description": "City name"},
+                        },
+                    },
+                },
+            },
+            function=lambda name, address: f"{name} at {address}",
+        )
+        component = OpenAIChatGenerator(model="gpt-4.1-nano", tools_strict=True)
+        results = component.run(
+            messages=[ChatMessage.from_user("Create a person named John at 123 Main St, Springfield")], tools=[tool]
+        )
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert tool_call.tool_name == "create_person"
+        assert "name" in tool_call.arguments
+        assert "address" in tool_call.arguments
+        assert "street" in tool_call.arguments["address"]
+        assert "city" in tool_call.arguments["address"]

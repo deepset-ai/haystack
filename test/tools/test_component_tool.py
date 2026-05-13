@@ -46,6 +46,11 @@ class SimpleComponentUsingChatMessages:
 class SimpleComponent:
     """A simple component that generates text."""
 
+    def warm_up(self):
+        """
+        Prepare the component for use.
+        """
+
     @component.output_types(reply=str)
     def run(self, text: str) -> dict[str, str]:
         """
@@ -143,7 +148,7 @@ class DocumentProcessor:
         :param top_k: The number of top documents to concatenate
         :returns: Dictionary containing the concatenated document contents
         """
-        return {"concatenated": "\n".join(doc.content for doc in documents[:top_k])}
+        return {"concatenated": "\n".join(doc.content for doc in documents[:top_k] if doc.content)}
 
 
 @component
@@ -215,7 +220,7 @@ class TestComponentTool:
     def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
         with pytest.raises(TypeError, match="must be str, not dict"):
-            ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
+            ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})  # type: ignore[dict-item]
 
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
@@ -369,13 +374,13 @@ class TestComponentTool:
 
     def test_from_component_with_invalid_component(self):
         class NotAComponent:
-            def foo(self, text: str):
+            def foo(self, text: str) -> dict[str, str]:
                 return {"reply": f"Hello, {text}!"}
 
         not_a_component = NotAComponent()
 
         with pytest.raises(TypeError):
-            ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
+            ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")  # type: ignore[arg-type]
 
     def test_component_invoker_with_chat_message_input(self):
         tool = ComponentTool(
@@ -392,7 +397,7 @@ class TestComponentTool:
             """An annotated component with descriptive parameter docstrings."""
 
             @component.output_types(result=str)
-            def run(self, text: str, number: int = 42):
+            def run(self, text: str, number: int = 42) -> dict[str, str]:
                 """
                 Process inputs and return result.
 
@@ -447,7 +452,7 @@ class TestComponentTool:
             """Component A with descriptive docstrings."""
 
             @component.output_types(output_a=str)
-            def run(self, query: str):
+            def run(self, query: str) -> dict[str, str]:
                 """
                 Process query in component A.
 
@@ -460,7 +465,7 @@ class TestComponentTool:
             """Component B with descriptive docstrings."""
 
             @component.output_types(output_b=str)
-            def run(self, text: str):
+            def run(self, text: str) -> dict[str, str]:
                 """
                 Process text in component B.
 
@@ -503,20 +508,20 @@ class TestComponentTool:
 
     def test_warm_up_is_idempotent(self):
         """Test that calling warm_up multiple times only warms up the component once."""
-        from unittest.mock import MagicMock
+        from unittest.mock import MagicMock, patch
 
         component = SimpleComponent()
-        component.warm_up = MagicMock()
 
         tool = ComponentTool(component=component)
 
-        # Call warm_up multiple times
-        tool.warm_up()
-        tool.warm_up()
-        tool.warm_up()
+        with patch.object(component, "warm_up", MagicMock()) as mock_warm_up:
+            # Call warm_up multiple times
+            tool.warm_up()
+            tool.warm_up()
+            tool.warm_up()
 
-        # Component's warm_up should only be called once
-        component.warm_up.assert_called_once()
+            # Component's warm_up should only be called once
+            mock_warm_up.assert_called_once()
 
     def test_from_component_with_callable_params_skipped(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

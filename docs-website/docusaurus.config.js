@@ -79,12 +79,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.29-unstable',
+              label: '2.30-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.28',
+          lastVersion: '2.29',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -132,12 +132,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.29-unstable',
+            label: '2.30-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.28',
+        lastVersion: '2.29',
       },
     ],
     [

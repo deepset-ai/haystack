@@ -1,0 +1,182 @@
+---
+title: "FastembedLateInteractionRanker"
+id: fastembedlateinteractionranker
+slug: "/fastembedlateinteractionranker"
+description: "Use this component to rank documents based on late interaction scoring using models supported by FastEmbed."
+---
+
+# FastembedLateInteractionRanker
+
+Use this component to rank documents based on their similarity to the query using ColBERT models via FastEmbed.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [FastEmbed](/reference/fastembed-embedders) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+| **Package name** | `fastembed-haystack` |
+
+</div>
+
+## Overview
+
+`FastembedLateInteractionRanker` ranks documents using **late interaction scoring**. Unlike cross-encoder rankers (which encode the query and document together), ColBERT encodes the query and each document independently into token-level embeddings, then computes a **MaxSim** score: for each query token, it finds the most similar document token, and sums these maximum similarities into a final relevance score.
+
+This approach gives ColBERT a strong balance between accuracy and efficiency — it is more expressive than bi-encoders while being faster than cross-encoders at inference time.
+
+`FastembedLateInteractionRanker` is most useful in query pipelines such as a retrieval-augmented generation (RAG) pipeline or a document search pipeline. Use it after a Retriever to rerank a candidate set of documents by relevance. When combining with a Retriever, set the Retriever's `top_k` higher than the Ranker's `top_k` — retrieve a broad candidate set, then let ColBERT select the best ones.
+
+By default, this component uses the `colbert-ir/colbertv2.0` model. For details on different initialization settings, check out the [API reference](/reference/fastembed-embedders) page.
+
+:::note
+ColBERT scores are **unnormalized sums** (not probabilities). Their magnitude depends on query length and document length, typically ranging from ~3 to ~30. They are meaningful for ranking within a single query but should not be compared across different queries.
+:::
+
+### Compatible Models
+
+You can find the compatible ColBERT models in the [FastEmbed documentation](https://qdrant.github.io/fastembed/examples/Supported_Models/).
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install fastembed-haystack
+```
+
+### Parameters
+
+You can set the path where the model is stored in a cache directory. You can also set the number of threads a single `onnxruntime` session can use.
+
+```python
+ranker = FastembedLateInteractionRanker(
+    model_name="colbert-ir/colbertv2.0",
+    cache_dir="/your_cache_directory",
+    threads=2,
+)
+```
+
+For offline encoding of large document sets, enable data-parallel processing:
+
+```python
+ranker = FastembedLateInteractionRanker(
+    model_name="colbert-ir/colbertv2.0",
+    batch_size=64,
+    parallel=2,  # number of parallel processes; 0 = use all cores
+)
+```
+
+## Usage
+
+### On its own
+
+This example uses `FastembedLateInteractionRanker` to rank two simple documents.
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.fastembed import (
+    FastembedLateInteractionRanker,
+)
+
+docs = [Document(content="Paris"), Document(content="Berlin")]
+
+ranker = FastembedLateInteractionRanker(model_name="colbert-ir/colbertv2.0", top_k=1)
+
+result = ranker.run(query="City in Germany", documents=docs)
+print(result["documents"][0].content)
+# Berlin
+```
+
+### In a pipeline
+
+Below is an example of a full RAG pipeline that retrieves documents using embedding similarity, reranks them with `FastembedLateInteractionRanker`, and generates an answer with an LLM.
+
+This example uses the `HuggingFaceLocalChatGenerator`, which requires additional packages:
+
+```shell
+pip install "transformers[torch]"
+```
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+from haystack.components.writers import DocumentWriter
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.rankers.fastembed import (
+    FastembedLateInteractionRanker,
+)
+from haystack_integrations.components.embedders.fastembed import (
+    FastembedDocumentEmbedder,
+    FastembedTextEmbedder,
+)
+
+# Set up and populate the document store
+document_store = InMemoryDocumentStore()
+docs = [
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="Madrid is the capital of Spain."),
+]
+
+indexing = Pipeline()
+indexing.add_component("embedder", FastembedDocumentEmbedder())
+indexing.add_component("writer", DocumentWriter(document_store=document_store))
+indexing.connect("embedder", "writer")
+indexing.run({"embedder": {"documents": docs}})
+
+# Define the chat prompt template
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\n"
+        "Documents:\n{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{query}}\nAnswer:",
+    ),
+]
+
+# Build the query pipeline with ColBERT reranking
+rag = Pipeline()
+rag.add_component("text_embedder", FastembedTextEmbedder())
+rag.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=3),
+)
+rag.add_component(
+    "ranker",
+    FastembedLateInteractionRanker(model_name="colbert-ir/colbertv2.0", top_k=2),
+)
+rag.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(
+        template=prompt_template,
+        required_variables={"query", "documents"},
+    ),
+)
+rag.add_component(
+    "llm",
+    HuggingFaceLocalChatGenerator(model="HuggingFaceTB/SmolLM2-360M-Instruct"),
+)
+
+rag.connect("text_embedder.embedding", "retriever.query_embedding")
+rag.connect("retriever.documents", "ranker.documents")
+rag.connect("ranker.documents", "prompt_builder.documents")
+rag.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is the capital of Germany?"
+result = rag.run(
+    {
+        "text_embedder": {"text": query},
+        "ranker": {"query": query},
+        "prompt_builder": {"query": query},
+    },
+)
+print(result["llm"]["replies"][0].text)
+```
