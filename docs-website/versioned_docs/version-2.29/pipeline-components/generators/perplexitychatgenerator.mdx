@@ -31,33 +31,17 @@ It supports the following models:
 
 - `openai/gpt-5.5`
 - `openai/gpt-5.4` (default)
-- `openai/gpt-4o`
 - `anthropic/claude-sonnet-4-6`
 - `xai/grok-4-1`
 - `google/gemini-3-flash-preview`
+
+See the [Perplexity Agent API models page](https://docs.perplexity.ai/docs/agent-api/models) for the current list.
 
 `PerplexityChatGenerator` needs a Perplexity API key to work. It uses a `PERPLEXITY_API_KEY` environment variable by default.
 
 The component accepts a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (such as `user`, `assistant`, or `system`), and optional metadata. See the [usage](#usage) section for an example.
 
 You can pass any parameters supported by the Perplexity Agent API using the `generation_kwargs` parameter, both at initialization and in the `run()` method.
-
-### Streaming
-
-You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens as they arrive.
-
-```python
-from haystack.components.generators.utils import print_streaming_chunk
-from haystack_integrations.components.generators.perplexity import (
-    PerplexityChatGenerator,
-)
-
-generator = PerplexityChatGenerator(streaming_callback=print_streaming_chunk)
-```
-
-:::info
-Streaming works only with a single response. Set `n=1` in `generation_kwargs` if needed.
-:::
 
 ## Usage
 
@@ -69,25 +53,24 @@ from haystack_integrations.components.generators.perplexity import (
     PerplexityChatGenerator,
 )
 
-client = PerplexityChatGenerator()
-response = client.run(
+chat_generator = PerplexityChatGenerator()
+response = chat_generator.run(
     [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
 )
 print(response["replies"][0].text)
 ```
 
-With streaming:
+With streaming — pass any callable to `streaming_callback`, or use the built-in `print_streaming_chunk`:
 
 ```python
 from haystack.dataclasses import ChatMessage
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack_integrations.components.generators.perplexity import (
     PerplexityChatGenerator,
 )
 
-client = PerplexityChatGenerator(
-    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
-)
-response = client.run(
+chat_generator = PerplexityChatGenerator(streaming_callback=print_streaming_chunk)
+response = chat_generator.run(
     [ChatMessage.from_user("What's Natural Language Processing? Be brief.")],
 )
 ```
@@ -103,7 +86,13 @@ from haystack_integrations.components.generators.perplexity import (
     PerplexityChatGenerator,
 )
 
-prompt_builder = ChatPromptBuilder()
+prompt_builder = ChatPromptBuilder(
+    template=[
+        ChatMessage.from_system("You are a helpful assistant."),
+        ChatMessage.from_user("Tell me about {{topic}}"),
+    ],
+    required_variables="*",
+)
 llm = PerplexityChatGenerator(
     api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
     model="openai/gpt-5.4",
@@ -114,17 +103,8 @@ pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 pipe.connect("prompt_builder.prompt", "llm.messages")
 
-messages = [
-    ChatMessage.from_system("Always respond in a concise manner."),
-    ChatMessage.from_user("Tell me about {{topic}}"),
-]
 result = pipe.run(
-    data={
-        "prompt_builder": {
-            "template_variables": {"topic": "large language models"},
-            "template": messages,
-        },
-    },
+    data={"prompt_builder": {"topic": "large language models"}},
 )
 print(result["llm"]["replies"][0].text)
 ```
