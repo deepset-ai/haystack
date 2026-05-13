@@ -30,7 +30,7 @@ Each route is a dictionary with the following elements:
 
 - `'condition'`: A Jinja2 string expression that determines if the route is selected.
 - `'output'`:  A Jinja2 expression or list of expressions defining one or more output values.
-- `'output_type'`: The expected type or list of types corresponding to each output (for example, `str`, `List[int]`).
+- `'output_type'`: The expected type or list of types corresponding to each output (for example, `str`, `list[int]`).
   - Note that this doesn't enforce the type conversion of the output. Instead, the output field is rendered using Jinja2, which automatically infers types. If you need to ensure the result is a string (for example, "123" instead of `123`), wrap the Jinja expression in single quotes like this: `output: "'{{message.text}}'"`. This ensures the rendered output is treated as a string by Jinja2.
 - `'output_name'`: The name or list of names under which the output values are published. This is used to connect the router to other components in the pipeline.
 
@@ -70,6 +70,44 @@ If you want to use more types like `ChatMessage`, `Document` or `Answer` you mus
 
 Beware that this is unsafe and can lead to remote code execution if a rule `condition` or `output` templates are customizable by the end user.
 
+### Custom filters
+
+You can pass custom Jinja2 filter functions to use inside your route `condition` and `output` templates via the `custom_filters` init parameter.
+
+```python
+from haystack.components.routers import ConditionalRouter
+
+
+def first_word(value: str) -> str:
+    return value.split()[0] if value else ""
+
+
+routes = [
+    {
+        "condition": '{{ query|first_word == "summarize" }}',
+        "output": "{{ query }}",
+        "output_name": "summarize_route",
+        "output_type": str,
+    },
+    {
+        "condition": "{{ True }}",
+        "output": "{{ query }}",
+        "output_name": "default_route",
+        "output_type": str,
+    },
+]
+
+router = ConditionalRouter(routes=routes, custom_filters={"first_word": first_word})
+```
+
+### Output type validation
+
+By default, `ConditionalRouter` does not check that a route's output value actually matches the declared `output_type`. Set `validate_output_type=True` to enable this check. If the value doesn't match, a `ValueError` is raised at runtime.
+
+```python
+router = ConditionalRouter(routes=routes, validate_output_type=True)
+```
+
 ## Usage
 
 ### On its own
@@ -80,20 +118,19 @@ In this example, we configure two routes. The first route sends the `'streams'` 
 
 ```python
 from haystack.components.routers import ConditionalRouter
-from typing import List
 
 routes = [
     {
         "condition": "{{streams|length > 2}}",
         "output": "{{streams}}",
         "output_name": "enough_streams",
-        "output_type": List[int],
+        "output_type": list[int],
     },
     {
         "condition": "{{streams|length <= 2}}",
         "output": "{{streams}}",
         "output_name": "insufficient_streams",
-        "output_type": List[int],
+        "output_type": list[int],
     },
 ]
 
