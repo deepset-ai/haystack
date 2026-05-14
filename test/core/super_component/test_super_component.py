@@ -252,6 +252,16 @@ class TestSuperComponent:
         assert "final_answers" in result
         assert isinstance(result["final_answers"][0], GeneratedAnswer)
 
+    @pytest.mark.asyncio
+    async def test_super_component_run_async_with_sync_pipeline(self, rag_pipeline):
+        input_mapping = {"search_query": ["retriever.query", "prompt_builder.query", "answer_builder.query"]}
+        output_mapping = {"answer_builder.answers": "final_answers"}
+        wrapper = SuperComponent(pipeline=rag_pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
+        wrapper.warm_up()
+        result = await wrapper.run_async(search_query="What is the capital of France?")
+        assert "final_answers" in result
+        assert isinstance(result["final_answers"][0], GeneratedAnswer)
+
     def test_wrapper_serialization(self, document_store):
         """Test serialization and deserialization of pipeline wrapper."""
         pipeline = Pipeline()

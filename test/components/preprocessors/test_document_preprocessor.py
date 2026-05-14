@@ -132,3 +132,20 @@ class TestDocumentPreprocessor:
         processed_docs = result["documents"]
         assert len(processed_docs) == 3  # Should be split into 3 sentences
         assert all("." not in doc.content for doc in processed_docs)  # Each doc should be a single sentence
+
+    @pytest.mark.asyncio
+    async def test_run_async(self, preprocessor: DocumentPreprocessor) -> None:
+        documents = [
+            Document(content="This is a test document. It has multiple sentences."),
+            Document(content="Another test document with some content."),
+        ]
+
+        result = await preprocessor.run_async(documents=documents)
+
+        assert "documents" in result
+        processed_docs = result["documents"]
+        assert len(processed_docs) > len(documents)
+        for doc in processed_docs:
+            assert doc.content.strip() == doc.content
+            assert len(doc.content.split()) <= 3
+            assert doc.id is not None

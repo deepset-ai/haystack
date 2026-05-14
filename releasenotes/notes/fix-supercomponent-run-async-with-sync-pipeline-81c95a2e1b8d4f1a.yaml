@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``SuperComponent.run_async`` for sync-backed super components by running the wrapped ``Pipeline`` in a
+    worker thread. This prevents runtime failures for components such as ``DocumentPreprocessor`` when ``run_async``
+    is called.

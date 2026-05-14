@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import functools
 from pathlib import Path
 from types import new_class
@@ -141,15 +142,20 @@ class _SuperComponent:
         :param kwargs: Keyword arguments matching the SuperComponent's input names
         :returns:
             Dictionary containing the SuperComponent's output values
-        :raises TypeError:
-            If the pipeline is not an AsyncPipeline
         """
-        if not isinstance(self.pipeline, AsyncPipeline):
-            raise TypeError("Pipeline is not an AsyncPipeline. run_async is not supported.")
-
         filtered_inputs = {param: value for param, value in kwargs.items() if value != _delegate_default}
         pipeline_inputs = self._map_explicit_inputs(input_mapping=self.input_mapping, inputs=filtered_inputs)
-        pipeline_outputs = await self.pipeline.run_async(data=pipeline_inputs)
+        include_outputs_from = self._get_include_outputs_from()
+
+        if isinstance(self.pipeline, AsyncPipeline):
+            pipeline_outputs = await self.pipeline.run_async(
+                data=pipeline_inputs, include_outputs_from=include_outputs_from
+            )
+        else:
+            pipeline_outputs = await asyncio.to_thread(
+                self.pipeline.run, data=pipeline_inputs, include_outputs_from=include_outputs_from
+            )
+
         return self._map_explicit_outputs(pipeline_outputs, self.output_mapping)
 
     @staticmethod
