@@ -50,7 +50,7 @@ class DeleteAllAsyncTest:
     """
 
     @staticmethod
-    def _delete_all_supports_recreate(document_store: AsyncDocumentStore) -> str | None:
+    def _delete_all_async_supports_recreate(document_store: AsyncDocumentStore) -> str | None:
         """
         Return the recreate parameter name if delete_all_documents_async supports it, else None.
         """
@@ -100,7 +100,7 @@ class DeleteAllAsyncTest:
 
         Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
         """
-        param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
+        param_name = DeleteAllAsyncTest._delete_all_async_supports_recreate(document_store)
         if param_name is None:
             pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
 
@@ -123,7 +123,7 @@ class DeleteAllAsyncTest:
 
         Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
         """
-        param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
+        param_name = DeleteAllAsyncTest._delete_all_async_supports_recreate(document_store)
         if param_name is None:
             pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
 
