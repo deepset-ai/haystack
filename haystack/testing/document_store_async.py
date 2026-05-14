@@ -92,28 +92,6 @@ class DeleteAllAsyncTest:
         assert await document_store.count_documents_async() == 0
         await document_store.delete_all_documents_async()  # type:ignore[attr-defined]
 
-
-class CountDocumentsAsyncTest:
-    """
-    Utility class to test a Document Store `count_documents_async` method.
-
-    To use it create a custom test class and override the `document_store` fixture to return your Document Store.
-    Example usage:
-
-    ```python
-    class MyDocumentStoreTest(CountDocumentsAsyncTest):
-        @pytest.fixture
-        def document_store(self):
-            return MyDocumentStore()
-    ```
-    """
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_empty_async(document_store: AsyncDocumentStore):
-        """Test count is zero for an empty document store."""
-        assert await document_store.count_documents_async() == 0
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_delete_all_documents_without_recreate_index_async(document_store: AsyncDocumentStore):
@@ -163,6 +141,37 @@ class CountDocumentsAsyncTest:
         retrieved = await document_store.filter_documents_async()
         assert len(retrieved) == 1
         assert retrieved[0].content == "New document after delete all with recreate"
+
+
+class CountDocumentsAsyncTest:
+    """
+    Utility class to test a Document Store `count_documents_async` method.
+
+    To use it create a custom test class and override the `document_store` fixture to return your Document Store.
+    Example usage:
+
+    ```python
+    class MyDocumentStoreTest(CountDocumentsAsyncTest):
+        @pytest.fixture
+        def document_store(self):
+            return MyDocumentStore()
+    ```
+    """
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_count_empty_async(document_store: AsyncDocumentStore):
+        """Test count is zero for an empty document store."""
+        assert await document_store.count_documents_async() == 0
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_count_not_empty_async(document_store: AsyncDocumentStore):
+        """Test count is greater than zero if the document store contains documents."""
+        await document_store.write_documents_async(
+            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
+        )
+        assert await document_store.count_documents_async() == 3
 
 
 class CountDocumentsByFilterAsyncTest:
@@ -408,15 +417,6 @@ class DeleteByFilterAsyncTest:
         )
         assert deleted_count == 2
         assert await document_store.count_documents_async() == 0
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_not_empty_async(document_store: AsyncDocumentStore):
-        """Test count is greater than zero if the document store contains documents."""
-        await document_store.write_documents_async(
-            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
-        )
-        assert await document_store.count_documents_async() == 3
 
 
 class UpdateByFilterAsyncTest:
