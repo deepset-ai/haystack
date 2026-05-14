@@ -7,7 +7,7 @@ import contextlib
 import contextvars
 import inspect
 from collections.abc import AsyncIterator, Mapping
-from typing import Any
+from typing import Any, ClassVar, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -21,6 +21,7 @@ from haystack.core.pipeline.base import (
     _validate_component_output_keys,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, SyncStreamingCallbackT
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
 from haystack.utils.asynchronous import is_callable_async_compatible
@@ -28,7 +29,11 @@ from haystack.utils.asynchronous import is_callable_async_compatible
 logger = logging.getLogger(__name__)
 
 
-class StreamHandle:
+class _EndOfStream:
+    """Sentinel type indicating no more chunks will arrive on the stream."""
+
+
+class PipelineStreamHandle:
     """
     Handle returned by `AsyncPipeline.stream()`.
 
@@ -36,31 +41,32 @@ class StreamHandle:
     After iteration ends, `result` holds the final pipeline output dict.
     """
 
-    def __init__(self) -> None:
-        self._queue: asyncio.Queue[Any] = asyncio.Queue()
-        self._sentinel: object = object()
-        self._task: asyncio.Task[dict[str, Any]] | None = None
+    _END_OF_STREAM: ClassVar[_EndOfStream] = _EndOfStream()
 
-    def __aiter__(self) -> "StreamHandle":
+    def __init__(
+        self, queue: asyncio.Queue["StreamingChunk | _EndOfStream"], task: asyncio.Task[dict[str, Any]]
+    ) -> None:
+        self._queue = queue
+        self._task = task
+
+    def __aiter__(self) -> "PipelineStreamHandle":
         return self
 
-    async def __anext__(self) -> Any:
+    async def __anext__(self) -> StreamingChunk:
         item = await self._queue.get()
-        if item is self._sentinel:
-            assert self._task is not None
-            await self._task  # surface exceptions; task is done by now
+        if item is self._END_OF_STREAM:
+            await self._task  # called to make exceptions surface
             raise StopAsyncIteration
-        return item
+        return cast(StreamingChunk, item)  # at this point, item is guaranteed to be a StreamingChunk
 
     @property
     def result(self) -> dict[str, Any]:
         """
         Final pipeline output dict, available only after a successful, complete run.
 
-        Raises a clear `RuntimeError` for each non-success state (not finished, cancelled, failed)
-        so the caller does not need to inspect the underlying task to interpret the outcome.
+        Raises a clear `RuntimeError` for each non-success state (not finished, cancelled, failed).
         """
-        if self._task is None or not self._task.done():
+        if not self._task.done():
             raise RuntimeError("Pipeline has not finished; iterate the handle first.")
         if self._task.cancelled():
             raise RuntimeError("Pipeline was cancelled; no result available.")
@@ -70,8 +76,8 @@ class StreamHandle:
         return self._task.result()
 
     async def aclose(self) -> None:
-        """Cancel the underlying pipeline task; safe to call when iteration ends early."""
-        if self._task and not self._task.done():
+        """Cancel the underlying pipeline task; to be called if abandoning iteration early."""
+        if not self._task.done():
             self._task.cancel()
             with contextlib.suppress(BaseException):
                 await self._task
@@ -635,49 +641,127 @@ class AsyncPipeline(PipelineBase):
         return final or {}
 
     def stream(
-        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
-    ) -> StreamHandle:
+        self,
+        data: dict[str, Any],
+        streaming_components: list[str] | None = None,
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+    ) -> PipelineStreamHandle:
         """
         Run the pipeline and return a handle that streams `StreamingChunk`s as they arrive.
 
-        Iterate the handle to consume chunks; after iteration ends, `handle.result` holds the
-        final pipeline output dict (same shape as `run_async`).
+        Iterate the handle to consume chunks; after iteration ends, `handle.result` holds the final pipeline output dict
+        (same as `run_async`).
 
-        For every async-capable component whose `run_async` accepts `streaming_callback`, a
-        forwarder is injected at runtime that pushes chunks onto the handle's queue. The
-        forwarder composes with any user-supplied `streaming_callback`: a callback passed via
-        `data` takes precedence over one set at component init (matching the precedence rule
-        of `select_streaming_callback`); the chosen one is invoked after each chunk is queued.
+        For every async-capable component whose `run_async` accepts `streaming_callback`, a forwarder is injected
+        at runtime that pushes chunks onto the handle's queue. The forwarder composes with any user-supplied
+        `streaming_callback`.
+
+        Usage:
+        ```python
+        import asyncio
+
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.core.pipeline import AsyncPipeline
+        from haystack.dataclasses import ChatMessage
+
+        pipe = AsyncPipeline()
+        pipe.add_component(
+            "prompt_builder",
+            ChatPromptBuilder(template=[ChatMessage.from_user("Tell me about {{topic}}")]),
+        )
+        pipe.add_component("llm", OpenAIChatGenerator())
+        pipe.connect("prompt_builder.prompt", "llm.messages")
+
+        async def main():
+            handle = pipe.stream(data={"prompt_builder": {"topic": "Italy"}})
+            async for chunk in handle:
+                print(chunk.content, end="", flush=True)
+            return handle.result
+
+        result = asyncio.run(main())
+        print(result["llm"]["replies"])
+        ```
+
+        :param data:
+            A dictionary of inputs for the pipeline's components. Each key is a component name
+            and its value is a dictionary of that component's input parameters:
+            ```
+            data = {
+                "comp1": {"input1": 1, "input2": 2},
+            }
+            ```
+            For convenience, this format is also supported when input names are unique:
+            ```
+            data = {
+                "input1": 1, "input2": 2,
+            }
+            ```
+        :param streaming_components: Names of components to stream from. If `None` (default), every streaming-capable
+            component is forwarded. If a list, only the listed components are forwarded; unknown names or names of
+            components that do not support streaming raise `ValueError`.
+        :param include_outputs_from:
+            Set of component names whose individual outputs are to be
+            included in the pipeline's output. For components that are
+            invoked multiple times (in a loop), only the last-produced
+            output is included.
+        :param concurrency_limit: The maximum number of components that should be allowed to run concurrently.
+        :returns:
+            A `PipelineStreamHandle` that is async-iterable over `StreamingChunk`s. After iteration ends,
+            `handle.result` holds the final pipeline output dict (same shape as `run_async`).
+
+        :raises ValueError:
+            If `streaming_components` contains unknown component names or components that do not support streaming,
+            or if invalid inputs are provided to the pipeline.
+        :raises PipelineRuntimeError:
+            Surfaced during iteration. If the Pipeline contains cycles with unsupported connections that would cause
+            it to get stuck and fail running, or if a Component fails or returns output in an unsupported type.
+        :raises PipelineMaxComponentRuns:
+            Surfaced during iteration. If a Component reaches the maximum number of times it can be run in this
+            Pipeline.
         """
-        handle = StreamHandle()
-        queue = handle._queue
+        streaming_capable = {
+            name
+            for name in self.graph.nodes
+            if getattr(self.graph.nodes[name]["instance"], "__haystack_supports_async__", False)
+            and "streaming_callback" in inspect.signature(self.graph.nodes[name]["instance"].run_async).parameters
+        }
+        if streaming_components is not None:
+            requested = set(streaming_components)
+            unknown = requested - set(self.graph.nodes)
+            non_streaming = requested - unknown - streaming_capable
+            if unknown:
+                raise ValueError(f"Unknown components in streaming_components: {sorted(unknown)}")
+            if non_streaming:
+                raise ValueError(f"Components do not support streaming: {sorted(non_streaming)}")
 
-        def make_forwarder(user_cb: Any) -> Any:
-            async def forwarder(chunk: Any) -> None:
+        queue: asyncio.Queue[StreamingChunk | _EndOfStream] = asyncio.Queue()
+
+        def make_forwarder(user_callback: StreamingCallbackT | None) -> AsyncStreamingCallbackT:
+            async def forwarder(chunk: StreamingChunk) -> None:
                 await queue.put(chunk)
-                if user_cb is None:
+                if user_callback is None:
                     return
-                if is_callable_async_compatible(user_cb):
-                    await user_cb(chunk)
+                if is_callable_async_compatible(user_callback):
+                    await cast(AsyncStreamingCallbackT, user_callback)(chunk)
                 else:
-                    user_cb(chunk)
+                    cast(SyncStreamingCallbackT, user_callback)(chunk)
 
             return forwarder
 
         new_data: dict[str, Any] = {k: (dict(v) if isinstance(v, dict) else v) for k, v in data.items()}
-        for name in self.graph.nodes:
+        for name in streaming_capable:
+            if streaming_components is not None and name not in streaming_components:
+                continue
             instance = self.graph.nodes[name]["instance"]
-            if not getattr(instance, "__haystack_supports_async__", False):
-                continue
-            if "streaming_callback" not in inspect.signature(instance.run_async).parameters:
-                continue
             comp_inputs = new_data.setdefault(name, {})
             if not isinstance(comp_inputs, dict):
                 continue
-            runtime_cb = comp_inputs.get("streaming_callback")
-            init_cb = getattr(instance, "streaming_callback", None)
-            user_cb = runtime_cb if runtime_cb is not None else init_cb
-            comp_inputs["streaming_callback"] = make_forwarder(user_cb)
+            runtime_callback: StreamingCallbackT | None = comp_inputs.get("streaming_callback")
+            init_callback: StreamingCallbackT | None = getattr(instance, "streaming_callback", None)
+            user_callback = runtime_callback if runtime_callback is not None else init_callback
+            comp_inputs["streaming_callback"] = make_forwarder(user_callback)
 
         async def runner() -> dict[str, Any]:
             try:
@@ -685,10 +769,10 @@ class AsyncPipeline(PipelineBase):
                     new_data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit
                 )
             finally:
-                await queue.put(handle._sentinel)
+                await queue.put(PipelineStreamHandle._END_OF_STREAM)
 
-        handle._task = asyncio.create_task(runner())
-        return handle
+        task = asyncio.create_task(runner())
+        return PipelineStreamHandle(queue=queue, task=task)
 
     def run(
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
