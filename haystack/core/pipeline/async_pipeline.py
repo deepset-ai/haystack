@@ -54,9 +54,19 @@ class StreamHandle:
 
     @property
     def result(self) -> dict[str, Any]:
-        """Final pipeline output dict. Raises if accessed before iteration completes."""
+        """
+        Final pipeline output dict, available only after a successful, complete run.
+
+        Raises a clear `RuntimeError` for each non-success state (not finished, cancelled, failed)
+        so the caller does not need to inspect the underlying task to interpret the outcome.
+        """
         if self._task is None or not self._task.done():
-            raise RuntimeError("Pipeline still running. Iterate this handle to completion first.")
+            raise RuntimeError("Pipeline has not finished; iterate the handle first.")
+        if self._task.cancelled():
+            raise RuntimeError("Pipeline was cancelled; no result available.")
+        exc = self._task.exception()
+        if exc is not None:
+            raise RuntimeError("Pipeline failed; no result available.") from exc
         return self._task.result()
 
     async def aclose(self) -> None:
