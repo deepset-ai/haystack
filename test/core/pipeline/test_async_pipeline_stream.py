@@ -6,25 +6,31 @@ import pytest
 
 from haystack import AsyncPipeline, component
 from haystack.core.errors import PipelineRuntimeError
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk
 
 
 @component
 class StreamingEcho:
     """Streaming component used by tests: emits `n_chunks` chunks then returns a final reply."""
 
-    def __init__(self, prefix: str = "tok", n_chunks: int = 3, fail: bool = False, streaming_callback=None) -> None:
+    def __init__(
+        self,
+        prefix: str = "tok",
+        n_chunks: int = 3,
+        fail: bool = False,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> None:
         self.prefix = prefix
         self.n_chunks = n_chunks
         self.fail = fail
         self.streaming_callback = streaming_callback
 
     @component.output_types(reply=str)
-    def run(self, prompt: str, streaming_callback=None) -> dict:
+    def run(self, prompt: str, streaming_callback: AsyncStreamingCallbackT | None = None) -> dict:
         return {"reply": f"{self.prefix}-final"}
 
     @component.output_types(reply=str)
-    async def run_async(self, prompt: str, streaming_callback=None) -> dict:
+    async def run_async(self, prompt: str, streaming_callback: AsyncStreamingCallbackT | None = None) -> dict:
         for i in range(self.n_chunks):
             chunk = StreamingChunk(content=f"{self.prefix}{i}")
             if streaming_callback is not None:
