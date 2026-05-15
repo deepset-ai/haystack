@@ -734,7 +734,7 @@ class AsyncPipeline(PipelineBase):
             if unknown:
                 raise ValueError(f"Unknown components in streaming_components: {sorted(unknown)}")
             if non_streaming:
-                raise ValueError(f"Components do not support streaming: {sorted(non_streaming)}")
+                raise ValueError(f"These components do not support streaming: {sorted(non_streaming)}")
 
         queue: asyncio.Queue[StreamingChunk | _EndOfStream] = asyncio.Queue()
 
