@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import os
 from unittest.mock import patch
 
@@ -173,5 +174,10 @@ class TestDALLEImageGenerator:
         generator = DALLEImageGenerator(model="gpt-image-1-mini", size="1024x1024", quality="low")
         response = generator.run("A nice cat")
         assert isinstance(response, dict)
-        assert isinstance(response["images"][0], str)
         assert isinstance(response["revised_prompt"], str)
+
+        image_str = response["images"][0]
+        assert isinstance(image_str, str) and image_str
+
+        decoded = base64.b64decode(image_str, validate=True)
+        assert decoded.startswith(b"\x89PNG\r\n\x1a\n")
