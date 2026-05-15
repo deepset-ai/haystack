@@ -35,7 +35,7 @@ To set up an AlloyDB cluster and instance, follow the [AlloyDB quickstart](https
 
 ### Authentication
 
-The `AlloyDBDocumentStore` uses [Secrets](/secret-management) and reads connection details from environment variables by default:
+The `AlloyDBDocumentStore` uses [Secrets](../concepts/secret-management.mdx) and reads connection details from environment variables by default:
 
 - `ALLOYDB_INSTANCE_URI`: the AlloyDB instance URI in the format `projects/PROJECT/locations/REGION/clusters/CLUSTER/instances/INSTANCE`.
 - `ALLOYDB_USER`: the database user. When using IAM database authentication, use the service account email (omitting `.gserviceaccount.com`) or the full IAM user email.
@@ -92,7 +92,7 @@ The `AlloyDBDocumentStore` fully supports comparison operators (`==`, `!=`, `>`,
 
 The `NOT` logical operator is **not** supported. Because every comparison operator already has a negated counterpart (`==`/`!=`, `in`/`not in`, `like`/`not like`), any filter expressible with `NOT` around a single condition can be rewritten by inverting the comparison operator instead. To negate a nested `AND`/`OR` group, apply De Morgan's laws — for example, `NOT (A AND B)` becomes `(NOT A) OR (NOT B)`, where each `NOT A` / `NOT B` is expressed via the inverted comparison.
 
-For more details on filter syntax, refer to [Metadata Filtering](/metadata-filtering).
+For more details on filter syntax, refer to [Metadata Filtering](../concepts/metadata-filtering.mdx).
 
 ### Supported Retrievers
 
