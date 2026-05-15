@@ -21,10 +21,9 @@ from haystack.core.pipeline.base import (
     _validate_component_output_keys,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
-from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, SyncStreamingCallbackT
+from haystack.dataclasses import AsyncStreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
-from haystack.utils.asynchronous import is_callable_async_compatible
 
 logger = logging.getLogger(__name__)
 
@@ -653,9 +652,11 @@ class AsyncPipeline(PipelineBase):
         Iterate the handle to consume chunks; after iteration ends, `handle.result` holds the final pipeline output dict
         (same as `run_async`).
 
-        For every async-capable component whose `run_async` accepts `streaming_callback`, a forwarder is injected
-        at runtime that pushes chunks onto the handle's queue. The forwarder composes with any user-supplied
-        `streaming_callback`.
+        For every async-capable component whose `run_async` accepts an input parameter called `streaming_callback`, a
+        forwarder is injected at runtime that pushes chunks onto the handle's queue.
+        If a `streaming_callback` is provided at component init or at call time (inside `data`, e.g.
+        `data={"llm": {"streaming_callback": cb}}`), it is also invoked for each chunk. The callback must be async;
+        sync callbacks are rejected with a `ValueError`.
 
         Usage:
         ```python
@@ -738,15 +739,11 @@ class AsyncPipeline(PipelineBase):
 
         queue: asyncio.Queue[StreamingChunk | _EndOfStream] = asyncio.Queue()
 
-        def make_forwarder(user_callback: StreamingCallbackT | None) -> AsyncStreamingCallbackT:
+        def make_forwarder(user_callback: AsyncStreamingCallbackT | None) -> AsyncStreamingCallbackT:
             async def forwarder(chunk: StreamingChunk) -> None:
                 await queue.put(chunk)
-                if user_callback is None:
-                    return
-                if is_callable_async_compatible(user_callback):
-                    await cast(AsyncStreamingCallbackT, user_callback)(chunk)
-                else:
-                    cast(SyncStreamingCallbackT, user_callback)(chunk)
+                if user_callback is not None:
+                    await user_callback(chunk)
 
             return forwarder
 
@@ -756,11 +753,12 @@ class AsyncPipeline(PipelineBase):
                 continue
             instance = self.graph.nodes[name]["instance"]
             comp_inputs = new_data.setdefault(name, {})
-            if not isinstance(comp_inputs, dict):
-                continue
-            runtime_callback: StreamingCallbackT | None = comp_inputs.get("streaming_callback")
-            init_callback: StreamingCallbackT | None = getattr(instance, "streaming_callback", None)
-            user_callback = runtime_callback if runtime_callback is not None else init_callback
+
+            user_callback = select_streaming_callback(
+                init_callback=getattr(instance, "streaming_callback", None),
+                runtime_callback=comp_inputs.get("streaming_callback"),
+                requires_async=True,
+            )
             comp_inputs["streaming_callback"] = make_forwarder(user_callback)
 
         async def runner() -> dict[str, Any]:
