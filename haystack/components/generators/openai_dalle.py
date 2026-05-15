@@ -124,7 +124,8 @@ class DALLEImageGenerator:
         if self.client is None:
             self.warm_up()
 
-        assert self.client
+        # at this point the client is initialized, but mypy doesn't know that
+        assert self.client is not None
 
         size = size or self.size
         quality = quality or self.quality
