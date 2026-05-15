@@ -2,12 +2,12 @@
 title: "DALLEImageGenerator"
 id: dalleimagegenerator
 slug: "/dalleimagegenerator"
-description: "Generate images using OpenAI's DALL-E model."
+description: "Generate images using OpenAI's image generation models such as `gpt-image-2`."
 ---
 
 # DALLEImageGenerator
 
-Generate images using OpenAI's DALL-E model.
+Generate images using OpenAI's image generation models such as `gpt-image-2`.
 
 <div className="key-value-table">
 
@@ -25,9 +25,9 @@ Generate images using OpenAI's DALL-E model.
 
 ## Overview
 
-The `DALLEImageGenerator` component generates images using OpenAI's DALL-E model.
+The `DALLEImageGenerator` component generates images using OpenAI's image generation models (such as `gpt-image-2`).
 
-By default, the component uses `dall-e-3` model, standard picture quality, and 1024x1024 resolution. You can change these parameters using `model` (during component initialization), `quality`, and `size` (during component initialization or run) parameters.
+By default, the component uses the `gpt-image-2` model, `"auto"` quality, and 1024x1024 resolution. You can change these parameters using `model` (during component initialization), `quality`, and `size` (during component initialization or run) parameters.
 
 `DALLEImageGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
@@ -35,7 +35,7 @@ By default, the component uses `dall-e-3` model, standard picture quality, and 1
 image_generator = DALLEImageGenerator(api_key=Secret.from_token("<your-api-key>"))
 ```
 
-Check our [API reference](/reference/generators-api#dalleimagegenerator) for the detailed component parameters description, or the [OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create) for the details on OpenAI API parameters.
+Check our [API reference](/reference/generators-api#dalleimagegenerator) for the detailed component parameters description, or the [OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate) for the details on OpenAI API parameters.
 
 ## Usage
 
@@ -93,6 +93,6 @@ results = pipeline.run(
 generated_images = results["image_generator"]["images"]
 revised_prompt = results["image_generator"]["revised_prompt"]
 
-print(f"Generated image URL: {generated_images[0]}")
+print(f"Generated image (base64-encoded): {generated_images[0]}")
 print(f"Revised prompt: {revised_prompt}")
 ```
