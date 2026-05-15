@@ -79,8 +79,9 @@ The prerequisites necessary for running this code are:
 ```python
 from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.types import DuplicatePolicy
 
 from haystack_integrations.document_stores.alloydb import AlloyDBDocumentStore
@@ -89,15 +90,14 @@ from haystack_integrations.components.retrievers.alloydb import (
 )
 
 ## Create a RAG query pipeline
-prompt_template = """
-    Given these documents, answer the question.\nDocuments:
-    {% for doc in documents %}
-        {{ doc.content }}
-    {% endfor %}
-
-    \nQuestion: {{question}}
-    \nAnswer:
-    """
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\nDocuments:\n"
+        "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{question}}\nAnswer:",
+    ),
+]
 
 document_store = AlloyDBDocumentStore(
     language="english",  # this parameter influences text parsing for keyword retrieval
@@ -120,15 +120,17 @@ retriever = AlloyDBKeywordRetriever(document_store=document_store)
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(name="retriever", instance=retriever)
 rag_pipeline.add_component(
-    instance=PromptBuilder(template=prompt_template),
+    instance=ChatPromptBuilder(
+        template=prompt_template,
+        required_variables={"question", "documents"},
+    ),
     name="prompt_builder",
 )
-rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("prompt_builder.messages", "llm.messages")
 rag_pipeline.connect("llm.replies", "answer_builder.replies")
-rag_pipeline.connect("llm.meta", "answer_builder.meta")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 question = "languages spoken around the world today"
