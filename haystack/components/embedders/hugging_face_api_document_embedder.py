@@ -211,6 +211,7 @@ class HuggingFaceAPIDocumentEmbedder:
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
+            concurrency_limit=self.concurrency_limit,
         )
 
     @classmethod
