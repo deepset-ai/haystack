@@ -104,6 +104,7 @@ export default {
       label: 'Document Stores',
       items: [
         'document-stores/inmemorydocumentstore',
+        'document-stores/alloydbdocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
@@ -537,6 +538,8 @@ export default {
             id: 'pipeline-components/retrievers'
           },
           items: [
+            'pipeline-components/retrievers/alloydbembeddingretriever',
+            'pipeline-components/retrievers/alloydbkeywordretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
