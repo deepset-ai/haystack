@@ -6,7 +6,7 @@ import pytest
 
 from haystack import AsyncPipeline, component
 from haystack.core.errors import PipelineRuntimeError
-from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk
+from haystack.dataclasses import AsyncStreamingCallbackT, StreamingChunk
 
 
 @component
@@ -18,7 +18,7 @@ class StreamingEcho:
         prefix: str = "tok",
         n_chunks: int = 3,
         fail: bool = False,
-        streaming_callback: StreamingCallbackT | None = None,
+        streaming_callback: AsyncStreamingCallbackT | None = None,
     ) -> None:
         self.prefix = prefix
         self.n_chunks = n_chunks
@@ -83,14 +83,14 @@ async def test_stream_composes_with_init_streaming_callback():
 
 
 @pytest.mark.asyncio
-async def test_stream_runtime_callback_overrides_init_and_supports_sync():
+async def test_stream_runtime_callback_overrides_init():
     init_seen = []
     runtime_seen = []
 
     async def init_callback(chunk: StreamingChunk) -> None:
         init_seen.append(chunk.content)
 
-    def runtime_callback(chunk: StreamingChunk) -> None:
+    async def runtime_callback(chunk: StreamingChunk) -> None:
         runtime_seen.append(chunk.content)
 
     pipeline = AsyncPipeline()
@@ -101,6 +101,17 @@ async def test_stream_runtime_callback_overrides_init_and_supports_sync():
 
     assert init_seen == []
     assert runtime_seen == ["s0", "s1"]
+
+
+def test_stream_rejects_sync_runtime_callback():
+    def sync_callback(chunk: StreamingChunk) -> None:
+        pass
+
+    pipeline = AsyncPipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2))
+
+    with pytest.raises(ValueError, match="async"):
+        pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": sync_callback}})
 
 
 @pytest.mark.asyncio
