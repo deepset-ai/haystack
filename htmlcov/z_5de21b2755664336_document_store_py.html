@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">408 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">387<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">21<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">388<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">20<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_fd3f9c8f3e4c697c___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-14 14:39 +0000
+            created at 2026-05-15 06:39 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -1032,7 +1032,7 @@
     <p class="pln"><span class="n"><a id="t950" href="#t950">950</a></span><span class="t">        <span class="str">"""</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t951" href="#t951">951</a></span><span class="t"><span class="str">        Deletes all documents in the document store.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t952" href="#t952">952</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t953" href="#t953">953</a></span><span class="t">        <span class="key">await</span> <span class="nam">asyncio</span><span class="op">.</span><span class="nam">get_running_loop</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">run_in_executor</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">executor</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">delete_all_documents</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t953" href="#t953">953</a></span><span class="t">        <span class="key">await</span> <span class="nam">asyncio</span><span class="op">.</span><span class="nam">get_running_loop</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">run_in_executor</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">executor</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">delete_all_documents</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t954" href="#t954">954</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t955" href="#t955">955</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">bm25_retrieval_async</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t956" href="#t956">956</a></span><span class="t">        <span class="nam">self</span><span class="op">,</span> <span class="nam">query</span><span class="op">:</span> <span class="nam">str</span><span class="op">,</span> <span class="nam">filters</span><span class="op">:</span> <span class="nam">dict</span><span class="op">[</span><span class="nam">str</span><span class="op">,</span> <span class="nam">Any</span><span class="op">]</span> <span class="op">|</span> <span class="key">None</span> <span class="op">=</span> <span class="key">None</span><span class="op">,</span> <span class="nam">top_k</span><span class="op">:</span> <span class="nam">int</span> <span class="op">=</span> <span class="num">10</span><span class="op">,</span> <span class="nam">scale_score</span><span class="op">:</span> <span class="nam">bool</span> <span class="op">=</span> <span class="key">False</span>&nbsp;</span><span class="r"></span></p>
@@ -1088,7 +1088,7 @@
             <a class="nav" href="z_fd3f9c8f3e4c697c___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-14 14:39 +0000
+            created at 2026-05-15 06:39 +0000
         </p>
     </div>
 </footer>
