@@ -664,6 +664,7 @@ export default {
           type: 'category',
           label: 'Ready-made Tools',
           items: [
+            'tools/ready-made-tools/e2btoolset',
             'tools/ready-made-tools/githubfileeditortool',
             'tools/ready-made-tools/githubissuecommentertool',
             'tools/ready-made-tools/githubissueviewertool',
