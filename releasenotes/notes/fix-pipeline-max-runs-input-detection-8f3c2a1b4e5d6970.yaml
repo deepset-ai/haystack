@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``max_runs_per_component`` so components cannot run more times than the configured limit (off-by-one).
+    Flat ``Pipeline.run()`` inputs whose values are dictionaries (for example ``filters``) are no longer mistaken for nested component input.
+    Resuming a pipeline from a snapshot with missing socket inputs now raises ``PipelineInvalidPipelineSnapshotError`` instead of ``IndexError``.

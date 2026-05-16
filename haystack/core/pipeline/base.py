@@ -22,6 +22,7 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineInvalidPipelineSnapshotError,
     PipelineMaxComponentRuns,
     PipelineRuntimeError,
     PipelineValidationError,
@@ -1019,10 +1020,7 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             A dictionary mapping component names to their respective matched inputs.
         """
-        # check whether the data is a nested dictionary of component inputs where each key is a component name
-        # and each value is a dictionary of input parameters for that component
-        is_nested_component_input = all(isinstance(value, dict) for value in data.values())
-        if not is_nested_component_input:
+        if not self._is_nested_component_input(data):
             # flat input, a dict where keys are input names and values are the corresponding values
             # we need to convert it to a nested dictionary of component inputs and then run the pipeline
             # just like in the previous case
@@ -1126,6 +1124,12 @@ class PipelineBase:  # noqa: PLW1641
 
             # if we are resuming a component, the inputs are already consumed, so we just return the first input
             if is_resume:
+                if not socket_inputs_values:
+                    msg = (
+                        f"Cannot resume component '{component_name}': missing input for socket '{socket_name}'. "
+                        "The pipeline snapshot may be invalid or incomplete."
+                    )
+                    raise PipelineInvalidPipelineSnapshotError(message=msg)
                 consumed_inputs[socket_name] = socket_inputs_values[0]
                 continue
 
@@ -1242,10 +1246,24 @@ class PipelineBase:  # noqa: PLW1641
 
         component_name = item[1]
         comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        if comp["visits"] > self._max_runs_per_component:
+        if comp["visits"] >= self._max_runs_per_component:
             msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
             raise PipelineMaxComponentRuns(msg)
         return ComponentPriority(item[0]), component_name, comp
+
+    def _is_nested_component_input(self, data: dict[str, Any]) -> bool:
+        """
+        Return True if `data` maps component names to their input dictionaries.
+
+        Flat input uses input socket names as keys and can also have dict values (e.g. filters).
+        Nested input is detected only when every key is a known component name in the pipeline graph.
+        """
+        if not data:
+            return True
+        if not all(isinstance(value, dict) for value in data.values()):
+            return False
+        component_names = set(self.graph.nodes)
+        return all(key in component_names for key in data)
 
     @staticmethod
     def _add_missing_input_defaults(

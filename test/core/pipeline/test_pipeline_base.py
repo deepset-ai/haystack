@@ -17,6 +17,7 @@ from haystack.core.errors import (
     PipelineConnectError,
     PipelineDrawingError,
     PipelineError,
+    PipelineInvalidPipelineSnapshotError,
     PipelineMaxComponentRuns,
     PipelineRuntimeError,
 )
@@ -897,6 +898,27 @@ class TestPipelineBase:
             "please check your run parameters." in caplog.text
         )
 
+    def test__prepare_component_input_data_dict_values_treated_as_flat(self):
+        """Flat inputs whose values are dicts must not be mistaken for nested component input."""
+        MockComponent = component_class("MockComponent", input_types={"filters": dict[str, Any], "query": str})
+        pipe = PipelineBase()
+        pipe.add_component("retriever", MockComponent())
+
+        res = pipe._prepare_component_input_data(
+            {"filters": {"type": "keyword"}, "query": "Who lives in Paris?"}
+        )
+        assert res == {
+            "retriever": {"filters": {"type": "keyword"}, "query": "Who lives in Paris?"},
+        }
+
+    def test__prepare_component_input_data_nested_when_keys_are_components(self):
+        MockComponent = component_class("MockComponent", input_types={"query": str})
+        pipe = PipelineBase()
+        pipe.add_component("retriever", MockComponent())
+
+        res = pipe._prepare_component_input_data({"retriever": {"query": "Who lives in Paris?"}})
+        assert res == {"retriever": {"query": "Who lives in Paris?"}}
+
     @pytest.mark.parametrize(
         "component_inputs,sockets,expected_inputs",
         [
@@ -1385,10 +1407,10 @@ class TestPipelineBase:
         pipeline = PipelineBase(max_runs_per_component=2)
         queue = FIFOPriorityQueue()
         queue.push("ready_component", ComponentPriority.READY)
-        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 3}
+        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 2}
 
         with pytest.raises(PipelineMaxComponentRuns) as exc_info:
-            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 3})
+            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 2})
 
         assert "Maximum run count 2 reached for component 'ready_component'" in str(exc_info.value)
 
@@ -1560,6 +1582,13 @@ class TestPipelineBase:
         inputs = {"test_component": {"input1": [{"sender": "sender1", "value": DataFrame({"a": [1, 2], "b": [1, 2]})}]}}
         consumed = PipelineBase._consume_component_inputs("test_component", comp, inputs)
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
+
+    def test__consume_component_inputs_resume_missing_input_raises(self):
+        comp = {"input_sockets": {"input1": InputSocket("input1", int)}}
+        inputs: dict[str, dict[str, list[dict[str, Any]]]] = {"test_component": {"input1": []}}
+
+        with pytest.raises(PipelineInvalidPipelineSnapshotError, match="Cannot resume component 'test_component'"):
+            PipelineBase._consume_component_inputs("test_component", comp, inputs, is_resume=True)
 
     @pytest.mark.integration
     def test_find_super_components(self, in_memory_doc_store):
