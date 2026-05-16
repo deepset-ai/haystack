@@ -104,6 +104,7 @@ export default {
       label: 'Document Stores',
       items: [
         'document-stores/inmemorydocumentstore',
+        'document-stores/alloydbdocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
@@ -537,6 +538,8 @@ export default {
             id: 'pipeline-components/retrievers'
           },
           items: [
+            'pipeline-components/retrievers/alloydbembeddingretriever',
+            'pipeline-components/retrievers/alloydbkeywordretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
@@ -664,6 +667,7 @@ export default {
           type: 'category',
           label: 'Ready-made Tools',
           items: [
+            'tools/ready-made-tools/e2btoolset',
             'tools/ready-made-tools/githubfileeditortool',
             'tools/ready-made-tools/githubissuecommentertool',
             'tools/ready-made-tools/githubissueviewertool',
