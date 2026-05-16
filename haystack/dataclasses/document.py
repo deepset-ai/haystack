@@ -114,8 +114,9 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         blob = self.blob.data if self.blob is not None else None
         mime_type = self.blob.mime_type if self.blob is not None else None
         meta = self.meta or {}
-        embedding = self.embedding if self.embedding is not None else None
-        sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
+        # Keep legacy placeholders so documents without embeddings preserve their generated IDs.
+        embedding = None
+        sparse_embedding = ""
         data = f"{text}{dataframe}{blob!r}{mime_type}{meta}{embedding}{sparse_embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 

@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    ``Document`` instances created without an explicit ``id`` no longer include dense or sparse embeddings when
+    generating their default ID. If your application depends on embedding-specific document IDs, pass an explicit
+    ``id`` when creating those documents.
+fixes:
+  - |
+    Generated ``Document`` IDs now ignore dense and sparse embeddings so equivalent source documents keep stable
+    identities across embedding model or embedding value changes.

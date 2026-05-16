@@ -51,7 +51,7 @@ def test_init_with_parameters():
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=sparse_embedding,
     )
-    assert doc.id == "1aa43af57c1dbc317241bf55d3067049f334d3b458d95dc72f71a7111f6c1a56"
+    assert doc.id == "b97b952e9dbe218b6104150256054958ec9e08c0ee6257f199311570e6292cd1"
     assert doc.content == "test text"
     assert doc.blob is not None
     assert doc.blob.data == blob_data
@@ -71,7 +71,7 @@ def test_init_with_legacy_fields():
         score=0.812,
         embedding=[0.1, 0.2, 0.3],  # type: ignore
     )
-    assert doc.id == "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af"
+    assert doc.id == "f63a61aeda788a9deb6f83bf52388ab254c085c3df40b324e13c3f5112efd485"
     assert doc.content == "test text"
     assert doc.blob == None
     assert doc.meta == {}
@@ -94,7 +94,7 @@ def test_init_with_legacy_field():
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
     )
-    assert doc.id == "a2c0321b34430cc675294611e55529fceb56140ca3202f1c59a43a8cecac1f43"
+    assert doc.id == "2ca95e84e2cfc1b790a6ee09bf1e18088f76422211fed334071df88b0f247de7"
     assert doc.content == "test text"
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
@@ -120,6 +120,22 @@ def test_basic_equality_id():
     doc2 = replace(doc2, id="5678")
 
     assert doc1 != doc2
+
+
+def test_generated_id_ignores_embedding():
+    doc1 = Document(content="test text", embedding=[0.1, 0.2, 0.3])
+    doc2 = Document(content="test text", embedding=[0.4, 0.5, 0.6])
+    doc3 = Document(content="test text")
+
+    assert doc1.id == doc2.id == doc3.id
+
+
+def test_generated_id_ignores_sparse_embedding():
+    doc1 = Document(content="test text", sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.1, 0.2]))
+    doc2 = Document(content="test text", sparse_embedding=SparseEmbedding(indices=[1, 3], values=[0.3, 0.4]))
+    doc3 = Document(content="test text")
+
+    assert doc1.id == doc2.id == doc3.id
 
 
 def test_to_dict():
