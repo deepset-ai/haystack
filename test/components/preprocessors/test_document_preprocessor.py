@@ -147,5 +147,5 @@ class TestDocumentPreprocessor:
         assert len(processed_docs) > len(documents)
         for doc in processed_docs:
             assert doc.content.strip() == doc.content
-            assert len(doc.content.split()) <= 3
+            assert len(doc.content.split()) <= preprocessor.split_length
             assert doc.id is not None

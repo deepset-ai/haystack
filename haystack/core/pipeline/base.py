@@ -1256,14 +1256,15 @@ class PipelineBase:  # noqa: PLW1641
         Return True if `data` maps component names to their input dictionaries.
 
         Flat input uses input socket names as keys and can also have dict values (e.g. filters).
-        Nested input is detected only when every key is a known component name in the pipeline graph.
+        Nested input is detected when every value is a dict and at least one key is a known component
+        name. Unknown component keys in nested input are rejected later by ``validate_input``.
         """
         if not data:
             return True
         if not all(isinstance(value, dict) for value in data.values()):
             return False
         component_names = set(self.graph.nodes)
-        return all(key in component_names for key in data)
+        return any(key in component_names for key in data)
 
     @staticmethod
     def _add_missing_input_defaults(

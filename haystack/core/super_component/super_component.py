@@ -136,8 +136,12 @@ class _SuperComponent:
 
         Steps:
         1. Maps the inputs from kwargs to pipeline component inputs
-        2. Runs the pipeline async
+        2. Runs the pipeline async (or in a worker thread for sync pipelines)
         3. Maps the pipeline outputs to the SuperComponent's outputs
+
+        If the wrapped pipeline is a sync :class:`~haystack.core.pipeline.Pipeline`, ``run()`` is executed
+        in a background thread via ``asyncio.to_thread``. Concurrent ``run_async()`` calls may therefore run
+        multiple threads; thread-safety depends on the wrapped pipeline and its components.
 
         :param kwargs: Keyword arguments matching the SuperComponent's input names
         :returns:

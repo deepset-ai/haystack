@@ -919,6 +919,15 @@ class TestPipelineBase:
         res = pipe._prepare_component_input_data({"retriever": {"query": "Who lives in Paris?"}})
         assert res == {"retriever": {"query": "Who lives in Paris?"}}
 
+    def test__prepare_component_input_data_typo_in_component_name_stays_nested(self):
+        """Misspelled component names must not be treated as flat socket inputs."""
+        MockComponent = component_class("MockComponent", input_types={"query": str})
+        pipe = PipelineBase()
+        pipe.add_component("retriever", MockComponent())
+
+        res = pipe._prepare_component_input_data({"retrievr": {"query": "Who lives in Paris?"}})
+        assert res == {"retrievr": {"query": "Who lives in Paris?"}}
+
     @pytest.mark.parametrize(
         "component_inputs,sockets,expected_inputs",
         [
