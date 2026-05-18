@@ -175,7 +175,7 @@ class LLMEvaluator:
                 )
                 raise ValueError(msg)
 
-    @component.output_types(results=list[dict[str, Any]])
+    @component.output_types(results=list[dict[str, Any]], evaluation_statuses=list[str])
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -204,6 +204,7 @@ class LLMEvaluator:
         list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
 
         results: list[dict[str, Any] | None] = []
+        evaluation_statuses: list[str] = []
         metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
@@ -216,6 +217,7 @@ class LLMEvaluator:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
                 logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
                 results.append(None)
+                evaluation_statuses.append("error")
                 errors += 1
                 continue
 
@@ -224,9 +226,11 @@ class LLMEvaluator:
             )
             if parsed_result is None:
                 results.append(None)
+                evaluation_statuses.append("error")
                 errors += 1
             else:
                 results.append(parsed_result)
+                evaluation_statuses.append("evaluated")
 
             if result["replies"][0].meta:
                 metadata.append(result["replies"][0].meta)
@@ -238,7 +242,7 @@ class LLMEvaluator:
                 len=len(list_of_input_names_to_values),
             )
 
-        return {"results": results, "meta": metadata or None}
+        return {"results": results, "meta": metadata or None, "evaluation_statuses": evaluation_statuses}
 
     def prepare_template(self) -> str:
         """
