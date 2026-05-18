@@ -1242,7 +1242,7 @@ class PipelineBase:  # noqa: PLW1641
 
         component_name = item[1]
         comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        if comp["visits"] > self._max_runs_per_component:
+        if comp["visits"] >= self._max_runs_per_component:
             msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
             raise PipelineMaxComponentRuns(msg)
         return ComponentPriority(item[0]), component_name, comp
