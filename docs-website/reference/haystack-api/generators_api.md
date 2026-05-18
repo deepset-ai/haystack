@@ -2299,10 +2299,10 @@ Invoke the text generation inference based on the provided messages and generati
 
 ### DALLEImageGenerator
 
-Generates images using OpenAI's DALL-E model.
+Generates images using OpenAI's image generation models such as `gpt-image-2`.
 
 For details on OpenAI API parameters, see
-[OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create).
+[OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate).
 
 ### Usage example
 
@@ -2317,12 +2317,10 @@ print(response)
 
 ```python
 __init__(
-    model: str = "dall-e-3",
-    quality: Literal["standard", "hd"] = "standard",
-    size: Literal[
-        "256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"
-    ] = "1024x1024",
-    response_format: Literal["url", "b64_json"] = "url",
+    model: str = "gpt-image-2",
+    quality: Literal["auto", "high", "medium", "low"] = "auto",
+    size: Literal["1024x1024", "1024x1536", "1536x1024", "auto"] = "1024x1024",
+    response_format: Literal["b64_json"] = "b64_json",
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -2332,16 +2330,17 @@ __init__(
 ) -> None
 ```
 
-Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
+Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-image-2.
 
 **Parameters:**
 
-- **model** (<code>str</code>) – The model to use for image generation. Can be "dall-e-2" or "dall-e-3".
-- **quality** (<code>Literal['standard', 'hd']</code>) – The quality of the generated image. Can be "standard" or "hd".
-- **size** (<code>Literal['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792']</code>) – The size of the generated images.
-  Must be one of 256x256, 512x512, or 1024x1024 for dall-e-2.
-  Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
-- **response_format** (<code>Literal['url', 'b64_json']</code>) – The format of the response. Can be "url" or "b64_json".
+- **model** (<code>str</code>) – The model to use for image generation. Model names can be found in the
+  [OpenAI documentation](https://developers.openai.com/api/docs/models/all).
+- **quality** (<code>Literal['auto', 'high', 'medium', 'low']</code>) – The quality of the generated image. Can be "auto", "high", "medium", or "low".
+- **size** (<code>Literal['1024x1024', '1024x1536', '1536x1024', 'auto']</code>) – The size of the generated images. One of 1024x1024, 1024x1536, 1536x1024, or "auto".
+  `gpt-image-2` also supports arbitrary sizes. You can find more information about supported sizes in
+  the [OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate).
+- **response_format** (<code>Literal['b64_json']</code>) – This parameter is ignored and only kept for backward compatibility.
 - **api_key** (<code>Secret</code>) – The OpenAI API key to connect to OpenAI.
 - **api_base_url** (<code>str | None</code>) – An optional base URL.
 - **organization** (<code>str | None</code>) – The Organization ID, defaults to `None`.
@@ -2365,12 +2364,9 @@ Warm up the OpenAI client.
 ```python
 run(
     prompt: str,
-    size: (
-        Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"]
-        | None
-    ) = None,
-    quality: Literal["standard", "hd"] | None = None,
-    response_format: Literal["url", "b64_json"] | None = None,
+    size: Literal["1024x1024", "1024x1536", "1536x1024", "auto"] | None = None,
+    quality: Literal["auto", "high", "medium", "low"] | None = None,
+    response_format: Literal["b64_json"] | None = None,
 ) -> dict[str, Any]
 ```
 
@@ -2379,14 +2375,13 @@ Invokes the image generation inference based on the provided prompt and generati
 **Parameters:**
 
 - **prompt** (<code>str</code>) – The prompt to generate the image.
-- **size** (<code>Literal['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792'] | None</code>) – If provided, overrides the size provided during initialization.
-- **quality** (<code>Literal['standard', 'hd'] | None</code>) – If provided, overrides the quality provided during initialization.
-- **response_format** (<code>Literal['url', 'b64_json'] | None</code>) – If provided, overrides the response format provided during initialization.
+- **size** (<code>Literal['1024x1024', '1024x1536', '1536x1024', 'auto'] | None</code>) – If provided, overrides the size provided during initialization.
+- **quality** (<code>Literal['auto', 'high', 'medium', 'low'] | None</code>) – If provided, overrides the quality provided during initialization.
+- **response_format** (<code>Literal['b64_json'] | None</code>) – This parameter is ignored and only kept for backward compatibility.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary containing the generated list of images and the revised prompt.
-  Depending on the `response_format` parameter, the list of images can be URLs or base64 encoded JSON strings.
+- <code>dict\[str, Any\]</code> – A dictionary containing the generated list of images as base64 encoded JSON strings and the revised prompt.
   The revised prompt is the prompt that was used to generate the image, if there was any revision
   to the prompt made by OpenAI.
 
