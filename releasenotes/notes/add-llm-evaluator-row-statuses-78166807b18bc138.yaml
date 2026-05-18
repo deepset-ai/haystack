@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Adds an ``evaluation_statuses`` output to ``LLMEvaluator`` results so each evaluated row can report whether it was successfully evaluated or failed during generation/parsing when ``raise_on_failure=False`` is used.
