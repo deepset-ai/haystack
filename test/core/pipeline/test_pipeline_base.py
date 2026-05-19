@@ -1385,10 +1385,10 @@ class TestPipelineBase:
         pipeline = PipelineBase(max_runs_per_component=2)
         queue = FIFOPriorityQueue()
         queue.push("ready_component", ComponentPriority.READY)
-        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 3}
+        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 2}
 
         with pytest.raises(PipelineMaxComponentRuns) as exc_info:
-            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 3})
+            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 2})
 
         assert "Maximum run count 2 reached for component 'ready_component'" in str(exc_info.value)
 
