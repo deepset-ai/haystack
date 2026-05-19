@@ -108,6 +108,8 @@ After (v3.0):
 # you can wire up a Langfuse tracer for a standalone Agent by instantiating a
 # LangfuseConnector — its constructor registers the tracer globally, so any
 # subsequent Agent.run call will be traced.
+
+# NOTE: install the langfuse integration first with `pip install langfuse-haystack` to run this example.
 import os
 
 os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
