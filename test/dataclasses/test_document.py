@@ -259,6 +259,16 @@ def test_from_dict_does_not_mutate_input():
     assert data == original_data
 
 
+def test_from_dict_does_not_mutate_input_with_explicit_meta():
+    data = {"content": "test text", "meta": {"date": "10-10-2023", "type": "article"}, "score": 0.812}
+    original_data = deepcopy(data)
+
+    assert Document.from_dict(data) == Document(
+        content="test text", meta={"date": "10-10-2023", "type": "article"}, score=0.812
+    )
+    assert data == original_data
+
+
 def test_from_dict_with_legacy_fields():
     assert Document.from_dict(
         {
