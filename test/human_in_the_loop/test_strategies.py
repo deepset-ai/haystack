@@ -53,7 +53,6 @@ def tools() -> list[Tool]:
 def execution_context(tools: list[Tool]) -> _ExecutionContext:
     return _ExecutionContext(
         state=State(schema={"messages": {"type": list[ChatMessage]}}),
-        component_visits={"chat_generator": 0, "tool_invoker": 0},
         chat_generator_inputs={},
         tool_invoker_inputs={"tools": tools},
         counter=0,
@@ -481,7 +480,6 @@ class TestRunContext:
         confirmation_strategy_context = {"event_queue": "mock_queue", "redis_client": "mock_redis"}
         execution_context = _ExecutionContext(
             state=State(schema={"messages": {"type": list[ChatMessage]}}),
-            component_visits={"chat_generator": 0, "tool_invoker": 0},
             chat_generator_inputs={},
             tool_invoker_inputs={"tools": tools},
             counter=0,
@@ -508,7 +506,6 @@ class TestRunContext:
         confirmation_strategy_context = {"websocket": "mock_websocket", "request_id": "12345"}
         execution_context = _ExecutionContext(
             state=State(schema={"messages": {"type": list[ChatMessage]}}),
-            component_visits={"chat_generator": 0, "tool_invoker": 0},
             chat_generator_inputs={},
             tool_invoker_inputs={"tools": tools},
             counter=0,
