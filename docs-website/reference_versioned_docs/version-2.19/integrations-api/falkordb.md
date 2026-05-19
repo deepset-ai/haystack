@@ -399,3 +399,133 @@ Delete documents by their IDs using a single `UNWIND`-based query.
 **Parameters:**
 
 - **document_ids** (<code>list\[str\]</code>) – List of document IDs to remove from the graph.
+
+#### delete_all_documents
+
+```python
+delete_all_documents() -> None
+```
+
+Delete all documents from the graph.
+
+#### delete_by_filter
+
+```python
+delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Delete all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict.
+
+**Returns:**
+
+- <code>int</code> – Number of documents deleted.
+
+#### update_by_filter
+
+```python
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Update metadata fields on all documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict selecting which documents to update.
+- **meta** (<code>dict\[str, Any\]</code>) – Metadata fields to set. Keys may include or omit the `meta.` prefix.
+
+**Returns:**
+
+- <code>int</code> – Number of documents updated.
+
+#### count_documents_by_filter
+
+```python
+count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Return the number of documents that match the provided filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict.
+
+**Returns:**
+
+- <code>int</code> – Integer count of matching document nodes.
+
+#### count_unique_metadata_by_filter
+
+```python
+count_unique_metadata_by_filter(
+    filters: dict[str, Any], metadata_fields: list[str]
+) -> dict[str, int]
+```
+
+Return the number of unique values for each metadata field among matching documents.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Haystack filter dict. Pass an empty dict to count across all documents.
+- **metadata_fields** (<code>list\[str\]</code>) – List of metadata field names. May include or omit the `meta.` prefix.
+
+**Returns:**
+
+- <code>dict\[str, int\]</code> – Dict mapping each field name (without `meta.` prefix) to its unique value count.
+
+#### get_metadata_fields_info
+
+```python
+get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Return type information for each metadata field present on document nodes.
+
+**Returns:**
+
+- <code>dict\[str, dict\[str, str\]\]</code> – Dict mapping field names to a `{"type": <typename>}` dict.
+  Type names are `"str"`, `"int"`, `"float"`, or `"bool"`.
+
+#### get_metadata_field_min_max
+
+```python
+get_metadata_field_min_max(metadata_field: str) -> dict[str, Any]
+```
+
+Return the minimum and maximum values for the given metadata field.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – Metadata field name. May include or omit the `meta.` prefix.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dict with keys `"min"` and `"max"`. Values are `None` when no documents
+  have a non-null value for the field.
+
+#### get_metadata_field_unique_values
+
+```python
+get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    size: int | None = 10000,
+    after: dict[str, Any] | None = None,
+) -> tuple[list[Any], dict[str, Any] | None]
+```
+
+Return distinct values for the given metadata field with optional filtering and pagination.
+
+**Parameters:**
+
+- **metadata_field** (<code>str</code>) – Metadata field name. May include or omit the `meta.` prefix.
+- **search_term** (<code>str | None</code>) – Optional substring filter applied to string field values.
+- **size** (<code>int | None</code>) – Maximum number of values to return per page. Defaults to 10 000.
+- **after** (<code>dict\[str, Any\] | None</code>) – Pagination cursor returned by a previous call. Pass `None` for the first page.
+
+**Returns:**
+
+- <code>tuple\[list\[Any\], dict\[str, Any\] | None\]</code> – Tuple of `(values, next_cursor)`. `next_cursor` is `None` on the last page.

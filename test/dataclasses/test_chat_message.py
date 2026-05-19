@@ -4,6 +4,7 @@
 
 import json
 import warnings
+from collections.abc import Sequence
 
 import pytest
 
@@ -306,7 +307,7 @@ class TestChatMessage:
 
     def test_from_assistant_with_invalid_reasoning(self):
         with pytest.raises(TypeError):
-            ChatMessage.from_assistant(text="text", reasoning=123)
+            ChatMessage.from_assistant(text="text", reasoning=123)  # type: ignore[arg-type]
 
     def test_from_user_with_valid_content(self):
         text = "I have a question."
@@ -354,7 +355,7 @@ class TestChatMessage:
         assert message.texts == [""]
 
     def test_from_user_with_content_parts(self, base64_image_string, base64_pdf_string):
-        content_parts = [
+        content_parts: list[TextContent | ImageContent | FileContent | str] = [
             TextContent(text="text"),
             ImageContent(base64_image=base64_image_string),
             FileContent(base64_data=base64_pdf_string),
@@ -393,7 +394,7 @@ class TestChatMessage:
     def test_from_user_with_content_parts_fails_unsupported_parts(self):
         with pytest.raises(TypeError):
             ChatMessage.from_user(
-                content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]
+                content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]  # type: ignore[list-item]
             )
 
     def test_from_user_with_content_parts_fails_with_empty_parts(self):
@@ -442,7 +443,10 @@ class TestChatMessage:
         assert not message.reasoning
 
     def test_from_tool_with_valid_mixed_content(self, base64_image_string):
-        tool_result = [TextContent(text="Hello"), ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+        tool_result: list[TextContent | ImageContent] = [
+            TextContent(text="Hello"),
+            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+        ]
         message = ChatMessage.from_tool(
             tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}), error=False
         )
@@ -472,7 +476,10 @@ class TestChatMessage:
         assert len(message) == 2
 
     def test_mixed_content(self):
-        content = [TextContent(text="Hello"), ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]
+        content: list[TextContent | ToolCall] = [
+            TextContent(text="Hello"),
+            ToolCall(id="123", tool_name="mytool", arguments={"a": 1}),
+        ]
 
         message = ChatMessage(_role=ChatRole.ASSISTANT, _content=content)
 
@@ -485,16 +492,16 @@ class TestChatMessage:
 
     def test_from_function_class_method_removed(self):
         with pytest.raises(AttributeError):
-            ChatMessage.from_function("Result of function invocation", "my_function")
+            ChatMessage.from_function("Result of function invocation", "my_function")  # type: ignore[attr-defined]
 
     def test_chat_message_content_attribute_removed(self):
         message = ChatMessage.from_user(text="This is a message")
         with pytest.raises(AttributeError):
-            message.content
+            message.content  # type: ignore[attr-defined]
 
     def test_chat_message_init_parameters_removed(self):
         with pytest.raises(TypeError):
-            ChatMessage(role="irrelevant", content="This is a message")
+            ChatMessage(role="irrelevant", content="This is a message")  # type: ignore[call-arg]
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
@@ -572,7 +579,7 @@ class TestChatMessageSerde:
         text_content = TextContent(text="Hello")
         invalid_content = "invalid"
 
-        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[text_content, invalid_content])
+        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[text_content, invalid_content])  # type: ignore[list-item]
 
         with pytest.raises(TypeError):
             message.to_dict()
@@ -888,7 +895,7 @@ class TestToOpenaiDictFormat:
         assert openai_msg == {"role": "tool", "content": "result"}
 
     def test_to_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
-        tool_result = [
+        tool_result: Sequence[TextContent | ImageContent] = [
             TextContent(text="first result"),
             ImageContent(base64_image=base64_image_string, mime_type="image/png"),
         ]
@@ -940,6 +947,7 @@ class TestFromOpenaiDictFormat:
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "tool"
+        assert message.tool_call_result is not None
         assert message.tool_call_result.result == "The weather is sunny"
         assert message.tool_call_result.origin.id == "call_123"
 
@@ -951,6 +959,7 @@ class TestFromOpenaiDictFormat:
         }
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "tool"
+        assert message.tool_call_result is not None
         assert message.tool_call_result.result == [TextContent(text="first result"), TextContent(text="second result")]
         assert message.tool_call_result.origin.id == "call_123"
 
@@ -958,6 +967,7 @@ class TestFromOpenaiDictFormat:
         openai_msg = {"role": "tool", "content": "The weather is sunny"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "tool"
+        assert message.tool_call_result is not None
         assert message.tool_call_result.result == "The weather is sunny"
         assert message.tool_call_result.origin.id is None
 

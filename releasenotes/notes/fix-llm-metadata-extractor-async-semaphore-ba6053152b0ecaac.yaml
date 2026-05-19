@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed a bug in ``LLMMetadataExtractor.run_async`` where the ``asyncio.Semaphore``
+    intended to bound concurrent LLM calls to ``max_workers`` was acquired once
+    around the outer ``gather(...)`` call instead of inside each task. As a result,
+    ``max_workers`` had no effect in ``run_async`` and all LLM requests for a batch
+    were issued simultaneously. The semaphore is now acquired per task, so
+    ``max_workers`` correctly caps in-flight requests.

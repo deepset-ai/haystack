@@ -1,0 +1,145 @@
+---
+title: "AlloyDBKeywordRetriever"
+id: alloydbkeywordretriever
+slug: "/alloydbkeywordretriever"
+description: "A keyword-based Retriever that fetches documents matching a query from the AlloyDB Document Store."
+---
+
+# AlloyDBKeywordRetriever
+
+A keyword-based Retriever that fetches documents matching a query from the AlloyDB Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of an [AlloyDBDocumentStore](../../document-stores/alloydbdocumentstore.mdx)                                                                                                                                  |
+| **Mandatory run variables**            | `query`:  A string                                                                                                                                                                                                     |
+| **Output variables**                   | `documents`: A list of documents (matching the query)                                                                                                                                                                  |
+| **API reference**                      | [AlloyDB](/reference/integrations-alloydb)                                                                                                                                                                                  |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/alloydb                                                                                                                             |
+| **Package name** | `alloydb-haystack` |
+
+</div>
+
+## Overview
+
+The `AlloyDBKeywordRetriever` is a keyword-based Retriever compatible with the `AlloyDBDocumentStore`.
+
+It uses PostgreSQL full-text search (`to_tsvector` / `plainto_tsquery`) to find Documents and ranks them with `ts_rank_cd`. The ranking considers how often the query terms appear in the Document, how close together the terms are, and how important the part of the Document is where they occur. For more details, see the [PostgreSQL documentation](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING).
+
+Keep in mind that, unlike similar components such as `ElasticsearchBM25Retriever`, this Retriever does not apply fuzzy search out of the box, so it’s necessary to carefully formulate the query in order to avoid getting zero results.
+
+The language used to parse query and Document content for keyword retrieval is set via the `language` parameter on the `AlloyDBDocumentStore` (defaults to `"english"`). To list the supported languages on your database, run:
+
+```sql
+SELECT cfgname FROM pg_ts_config;
+```
+
+In addition to the `query`, the `AlloyDBKeywordRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow the search space.
+
+## Installation
+
+Install the `alloydb-haystack` integration:
+
+```shell
+pip install alloydb-haystack
+```
+
+To set up an AlloyDB cluster and instance, follow the [AlloyDB quickstart](https://cloud.google.com/alloydb/docs/quickstart).
+
+## Usage
+
+### On its own
+
+This Retriever needs the `AlloyDBDocumentStore` and indexed Documents to run.
+
+Set the `ALLOYDB_INSTANCE_URI`, `ALLOYDB_USER`, and `ALLOYDB_PASSWORD` environment variables to connect to your AlloyDB instance.
+
+```python
+from haystack_integrations.document_stores.alloydb import AlloyDBDocumentStore
+from haystack_integrations.components.retrievers.alloydb import (
+    AlloyDBKeywordRetriever,
+)
+
+document_store = AlloyDBDocumentStore()
+retriever = AlloyDBKeywordRetriever(document_store=document_store)
+
+retriever.run(query="my nice query")
+```
+
+### In a RAG pipeline
+
+The prerequisites necessary for running this code are:
+
+- Set an environment variable `OPENAI_API_KEY` with your OpenAI API key.
+- Set the `ALLOYDB_INSTANCE_URI`, `ALLOYDB_USER`, and `ALLOYDB_PASSWORD` environment variables to connect to your AlloyDB instance.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.types import DuplicatePolicy
+
+from haystack_integrations.document_stores.alloydb import AlloyDBDocumentStore
+from haystack_integrations.components.retrievers.alloydb import (
+    AlloyDBKeywordRetriever,
+)
+
+## Create a RAG query pipeline
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\nDocuments:\n"
+        "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{question}}\nAnswer:",
+    ),
+]
+
+document_store = AlloyDBDocumentStore(
+    language="english",  # this parameter influences text parsing for keyword retrieval
+    recreate_table=True,
+)
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+retriever = AlloyDBKeywordRetriever(document_store=document_store)
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="retriever", instance=retriever)
+rag_pipeline.add_component(
+    instance=ChatPromptBuilder(
+        template=prompt_template,
+        required_variables={"question", "documents"},
+    ),
+    name="prompt_builder",
+)
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.messages", "llm.messages")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "languages spoken around the world today"
+result = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+        "answer_builder": {"query": question},
+    },
+)
+print(result["answer_builder"])
+```

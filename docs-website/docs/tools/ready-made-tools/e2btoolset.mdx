@@ -1,0 +1,160 @@
+---
+title: "E2BToolset"
+id: e2btoolset
+slug: "/e2btoolset"
+description: "A Toolset that gives Agents access to a live E2B cloud sandbox for executing bash commands and managing files."
+---
+
+# E2BToolset
+
+A Toolset that gives Agents access to a live [E2B](https://e2b.dev/) cloud sandbox for executing bash commands and managing files.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `api_key`: E2B API key. Can be set with `E2B_API_KEY` env var. |
+| **API reference**            | [E2B](/reference/integrations-e2b) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/e2b |
+
+</div>
+
+## Overview
+
+`E2BToolset` bundles four tools that operate inside the same [E2B](https://e2b.dev/) cloud sandbox, giving an Agent a secure, isolated Linux environment to execute code and manipulate files:
+
+- **`run_bash_command`** (`RunBashCommandTool`): Runs a bash command and returns the combined `exit_code`, `stdout`, and `stderr`. Use it for shell scripts, package installation, code compilation, or any system-level operation.
+- **`read_file`** (`ReadFileTool`): Reads the text content of a file from the sandbox filesystem.
+- **`write_file`** (`WriteFileTool`): Writes text content to a file in the sandbox. Parent directories are created automatically and existing files are overwritten.
+- **`list_directory`** (`ListDirectoryTool`): Lists files and subdirectories at a given path.
+
+All four tools share a single `E2BSandbox` instance, so a file written by `write_file` is immediately available to `run_bash_command` and `read_file` in the same Agent run. The toolset owns the sandbox lifecycle: `warm_up()` starts the sandbox, `close()` shuts it down, and YAML serialization round-trips preserve the shared-sandbox relationship.
+
+### Parameters
+
+- `api_key` is _mandatory_ and must be an E2B API key. The default setting uses the environment variable `E2B_API_KEY`. Get a key at [e2b.dev](https://e2b.dev/).
+- `sandbox_template` is _optional_ and defaults to `"base"`. Sets the E2B sandbox template to use.
+- `timeout` is _optional_ and defaults to `120`. Sets the sandbox inactivity timeout in seconds.
+- `environment_vars` is _optional_ and lets you inject environment variables into the sandbox process.
+
+## Usage
+
+Install the E2B integration to use `E2BToolset`:
+
+```shell
+pip install e2b-haystack
+```
+
+Set your E2B API key:
+
+```shell
+export E2B_API_KEY="your-e2b-api-key"
+```
+
+### With an Agent
+
+You can use `E2BToolset` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically start the sandbox, invoke the tools to write, run, and inspect code, and let the LLM chain calls together inside the same sandbox process.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.tools.e2b import E2BToolset
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=E2BToolset(),
+    system_prompt=(
+        "You are a helpful coding assistant with access to a live Linux sandbox. "
+        "Use the available tools freely to explore, write files, and run commands. "
+        "All tools operate inside the same sandbox environment, so files written "
+        "with write_file are immediately available to run_bash_command and read_file."
+    ),
+    max_agent_steps=15,
+)
+
+response = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Write a Python script to /tmp/primes.py that prints all prime numbers "
+            "up to 50, run it, and then read the file back so I can see both the "
+            "script and its output.",
+        ),
+    ],
+)
+
+print(response["last_message"].text)
+```
+
+### Using individual tools
+
+If you only need a subset of the tools, you can instantiate them directly and pass them a shared `E2BSandbox`:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+from haystack_integrations.tools.e2b import (
+    E2BSandbox,
+    ListDirectoryTool,
+    ReadFileTool,
+    RunBashCommandTool,
+    WriteFileTool,
+)
+
+sandbox = E2BSandbox(sandbox_template="base", timeout=300)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[
+        RunBashCommandTool(sandbox=sandbox),
+        ReadFileTool(sandbox=sandbox),
+        WriteFileTool(sandbox=sandbox),
+        ListDirectoryTool(sandbox=sandbox),
+    ],
+)
+```
+
+When using the tools standalone (outside an Agent or Pipeline), call `sandbox.warm_up()` before the first invocation and `sandbox.close()` when you are done to release the cloud resources.
+
+### In a Pipeline
+
+`E2BToolset` is fully serializable, so you can wrap an Agent that uses it in a Pipeline and save the Pipeline to YAML:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.core.pipeline import Pipeline
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.tools.e2b import E2BToolset
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=E2BToolset(sandbox_template="base", timeout=120),
+    system_prompt="You are a helpful coding assistant with access to a live Linux sandbox.",
+    max_agent_steps=10,
+)
+
+pipeline = Pipeline()
+pipeline.add_component("agent", agent)
+
+# Serialize and restore - all four tools still share the same E2BSandbox after the round-trip.
+yaml_str = pipeline.dumps()
+restored = Pipeline.loads(yaml_str)
+
+result = restored.run(
+    data={
+        "agent": {
+            "messages": [
+                ChatMessage.from_user(
+                    "Write a Python one-liner to /tmp/hello.py that prints "
+                    "'Hello from E2B!', run it, then show me the output.",
+                ),
+            ],
+        },
+    },
+)
+print(result["agent"]["last_message"].text)
+```

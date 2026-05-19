@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add ``run_async`` to ``CacheChecker``, enabling it to be used in ``AsyncPipeline`` without blocking the event loop.

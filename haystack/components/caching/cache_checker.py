@@ -94,3 +94,30 @@ class CacheChecker:
             else:
                 misses.append(item)
         return {"hits": found_documents, "misses": misses}
+
+    @component.output_types(hits=list[Document], misses=list)
+    async def run_async(self, items: list[Any]) -> dict[str, Any]:
+        """
+        Asynchronously checks if any document associated with the specified cache field is already present in the store.
+
+        :param items:
+            Values to be checked against the cache field.
+        :return:
+            A dictionary with two keys:
+            - `hits` - Documents that matched with at least one of the items.
+            - `misses` - Items that were not present in any documents.
+        """
+        found_documents = []
+        misses = []
+
+        if not hasattr(self.document_store, "filter_documents_async"):
+            raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
+
+        for item in items:
+            filters = {"field": self.cache_field, "operator": "==", "value": item}
+            found = await self.document_store.filter_documents_async(filters=filters)
+            if found:
+                found_documents.extend(found)
+            else:
+                misses.append(item)
+        return {"hits": found_documents, "misses": misses}

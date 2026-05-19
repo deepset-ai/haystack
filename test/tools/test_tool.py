@@ -77,7 +77,7 @@ class TestTool:
                 description="irrelevant",
                 parameters={"type": "object", "properties": {"city": {"type": "string"}}},
                 function=get_weather_report,
-                outputs_to_state={"documents": ["some_value"]},
+                outputs_to_state={"documents": ["some_value"]},  # type: ignore[dict-item]
             )
 
     @pytest.mark.parametrize(
@@ -258,7 +258,7 @@ class TestTool:
                 description="Get weather report",
                 parameters=parameters,
                 function=get_weather_report,
-                inputs_from_state={"state_key": {"source": "city"}},
+                inputs_from_state={"state_key": {"source": "city"}},  # type: ignore[dict-item]
             )
 
     def test_inputs_from_state_validation_with_valid_parameter(self):

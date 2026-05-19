@@ -4,7 +4,7 @@
 
 import inspect
 from collections.abc import Callable
-from typing import Any
+from typing import Any, overload
 
 from pydantic import create_model
 
@@ -186,6 +186,30 @@ def create_tool_from_function(
         outputs_to_state=outputs_to_state,
         outputs_to_string=outputs_to_string,
     )
+
+
+@overload
+def tool(
+    function: Callable,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
+    outputs_to_string: dict[str, Any] | None = None,
+) -> Tool: ...
+
+
+@overload
+def tool(
+    function: None = None,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
+    outputs_to_string: dict[str, Any] | None = None,
+) -> Callable[[Callable], Tool]: ...
 
 
 def tool(

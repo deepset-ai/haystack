@@ -4,6 +4,8 @@
 
 
 import os
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -82,30 +84,28 @@ def small_catalog(weather_tool, add_tool, multiply_tool):
 @pytest.fixture
 def large_catalog():
     """Larger catalog that requires discovery (>= 8 tools)."""
-    return [
-        create_tool_from_function(fn)
-        for fn in [
-            get_weather,
-            add_numbers,
-            multiply_numbers,
-            get_stock_price,
-            search_database,
-            send_email,
-            calculate_tax,
-            convert_currency,
-        ]
+    functions: list[Callable[..., Any]] = [
+        get_weather,
+        add_numbers,
+        multiply_numbers,
+        get_stock_price,
+        search_database,
+        send_email,
+        calculate_tax,
+        convert_currency,
     ]
+    return [create_tool_from_function(fn) for fn in functions]
 
 
 class TestSearchableToolset:
     def test_init_with_invalid_catalog(self):
         with pytest.raises(TypeError):
-            SearchableToolset(catalog=123)
+            SearchableToolset(catalog=123)  # type: ignore[arg-type]
         with pytest.raises(TypeError):
-            SearchableToolset(catalog=[123])
+            SearchableToolset(catalog=[123])  # type: ignore[list-item]
         with pytest.raises(TypeError):
             SearchableToolset(
-                catalog=Tool(
+                catalog=Tool(  # type: ignore[arg-type]
                     name="test",
                     description="test",
                     parameters={"type": "object", "properties": {}},
@@ -132,6 +132,7 @@ class TestSearchableToolset:
     def test_clear(self, large_catalog):
         toolset = SearchableToolset(catalog=large_catalog)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
         toolset._bootstrap_tool.invoke(tool_keywords="weather temperature city")
         assert len(toolset._discovered_tools) > 0
         toolset.clear()
@@ -187,7 +188,7 @@ class TestSearchableToolsetPassthrough:
         toolset.warm_up()
 
         with pytest.raises(TypeError):
-            123 in toolset  # noqa: B015
+            123 in toolset  # type: ignore[operator] # noqa: B015
 
     def test_custom_search_threshold(self, large_catalog):
         """Test that custom search_threshold changes passthrough behavior."""
@@ -318,6 +319,7 @@ class TestSearchableToolsetIteration:
         toolset.warm_up()
 
         assert "search_tools" in toolset
+        assert toolset._bootstrap_tool is not None
         assert toolset._bootstrap_tool in toolset
 
     def test_contains_discovered_tool(self, large_catalog):
@@ -680,7 +682,7 @@ class TestSearchableToolsetLazyToolset:
             for i in range(5)
         ]
 
-        toolset = SearchableToolset(catalog=[LazyToolset()] + eager_tools)
+        toolset = SearchableToolset(catalog=[LazyToolset(), *eager_tools])
         toolset.warm_up()
 
         # Should have 5 lazy + 5 eager = 10 tools
