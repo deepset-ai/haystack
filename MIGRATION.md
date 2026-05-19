@@ -71,7 +71,7 @@ from haystack.dataclasses import Document
 doc = Document(content="col\n1\n2\n3")
 ```
 
-### Agent breakpoints removed
+### Agent
 
 **What changed:** The agent-specific breakpoint API has been removed. The `AgentBreakpoint`, `ToolBreakpoint`, and `AgentSnapshot` dataclasses are no longer exported from `haystack.dataclasses`, and the `break_point`, `snapshot`, and `snapshot_callback` parameters have been removed from `Agent.run` and `Agent.run_async`. `Pipeline.run` no longer accepts an `AgentBreakpoint` for its `break_point` argument, and the `agent_snapshot` field has been removed from `PipelineSnapshot`. Pausing and resuming execution inside an Agent (at the chat generator or tool invoker) is no longer supported.
 
@@ -104,5 +104,22 @@ agent.run(messages=[...], break_point=chat_break_point)
 After (v3.0):
 ```python
 # Pausing inside an Agent is no longer supported. To inspect an Agent's behavior,
-# use tracing instead: https://docs.haystack.deepset.ai/docs/tracing
+# use tracing instead (https://docs.haystack.deepset.ai/docs/tracing). For example,
+# you can wire up a Langfuse tracer for a standalone Agent by instantiating a
+# LangfuseConnector — its constructor registers the tracer globally, so any
+# subsequent Agent.run call will be traced.
+import os
+
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.connectors.langfuse import LangfuseConnector
+
+# Instantiating the connector enables tracing globally — no need to add it to a pipeline.
+LangfuseConnector("Standalone Agent example")
+
+agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[...])
+agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
 ```
