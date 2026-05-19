@@ -1221,7 +1221,7 @@ __init__(
     *,
     chat_generator: ChatGenerator,
     system_prompt: str | None = None,
-    user_prompt: str,
+    user_prompt: str | None = None,
     required_variables: list[str] | Literal["*"] = "*",
     streaming_callback: StreamingCallbackT | None = None
 ) -> None
@@ -1233,17 +1233,19 @@ Initialize the LLM component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that the LLM should use.
 - **system_prompt** (<code>str | None</code>) – System prompt for the LLM.
-- **user_prompt** (<code>str</code>) – User prompt for the LLM. Must contain at least one Jinja2 template variable
-  (e.g., `{{ variable_name }}`). This prompt is appended to the messages provided at runtime.
+- **user_prompt** (<code>str | None</code>) – User prompt for the LLM. This prompt is appended to the messages provided at
+  runtime. If it contains Jinja2 template variables (e.g., `{{ variable_name }}`), they become
+  inputs to the component. If omitted or if there are no template variables, `messages` must be
+  provided at runtime instead.
 - **required_variables** (<code>list\[str\] | Literal['\*']</code>) – Variables that must be provided as input to user_prompt.
   If a variable listed as required is not provided, an exception is raised.
   If set to `"*"`, all variables found in the prompt are required. Defaults to `"*"`.
+  Only relevant when `user_prompt` contains template variables.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
 
 **Raises:**
 
-- <code>ValueError</code> – If user_prompt contains no template variables.
-- <code>ValueError</code> – If required_variables is an empty list.
+- <code>ValueError</code> – If user_prompt contains template variables but required_variables is an empty list.
 
 #### to_dict
 
@@ -1277,9 +1279,8 @@ Deserialize the LLM from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage] | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
     *,
+    streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
@@ -1291,7 +1292,9 @@ Process messages and generate a response from the language model.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **messages** – Optional list of ChatMessage objects to prepend to the conversation. Whether this is
+  required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
+  variables, `messages` must be provided. Passed via `**kwargs`.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
   will override the parameters passed during component initialization.
@@ -1311,9 +1314,8 @@ Process messages and generate a response from the language model.
 
 ```python
 run_async(
-    messages: list[ChatMessage] | None = None,
-    streaming_callback: StreamingCallbackT | None = None,
     *,
+    streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
@@ -1325,7 +1327,9 @@ Asynchronously process messages and generate a response from the language model.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\] | None</code>) – List of Haystack ChatMessage objects to process.
+- **messages** – Optional list of ChatMessage objects to prepend to the conversation. Whether this is
+  required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
+  variables, `messages` must be provided. Passed via `**kwargs`.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed
   from the LLM.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the underlying chat generator. These parameters
@@ -2295,10 +2299,10 @@ Invoke the text generation inference based on the provided messages and generati
 
 ### DALLEImageGenerator
 
-Generates images using OpenAI's DALL-E model.
+Generates images using OpenAI's image generation models such as `gpt-image-2`.
 
 For details on OpenAI API parameters, see
-[OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create).
+[OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate).
 
 ### Usage example
 
@@ -2313,12 +2317,10 @@ print(response)
 
 ```python
 __init__(
-    model: str = "dall-e-3",
-    quality: Literal["standard", "hd"] = "standard",
-    size: Literal[
-        "256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"
-    ] = "1024x1024",
-    response_format: Literal["url", "b64_json"] = "url",
+    model: str = "gpt-image-2",
+    quality: Literal["auto", "high", "medium", "low"] = "auto",
+    size: Literal["1024x1024", "1024x1536", "1536x1024", "auto"] = "1024x1024",
+    response_format: Literal["b64_json"] = "b64_json",
     api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
     api_base_url: str | None = None,
     organization: str | None = None,
@@ -2328,16 +2330,17 @@ __init__(
 ) -> None
 ```
 
-Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
+Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-image-2.
 
 **Parameters:**
 
-- **model** (<code>str</code>) – The model to use for image generation. Can be "dall-e-2" or "dall-e-3".
-- **quality** (<code>Literal['standard', 'hd']</code>) – The quality of the generated image. Can be "standard" or "hd".
-- **size** (<code>Literal['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792']</code>) – The size of the generated images.
-  Must be one of 256x256, 512x512, or 1024x1024 for dall-e-2.
-  Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
-- **response_format** (<code>Literal['url', 'b64_json']</code>) – The format of the response. Can be "url" or "b64_json".
+- **model** (<code>str</code>) – The model to use for image generation. Model names can be found in the
+  [OpenAI documentation](https://developers.openai.com/api/docs/models/all).
+- **quality** (<code>Literal['auto', 'high', 'medium', 'low']</code>) – The quality of the generated image. Can be "auto", "high", "medium", or "low".
+- **size** (<code>Literal['1024x1024', '1024x1536', '1536x1024', 'auto']</code>) – The size of the generated images. One of 1024x1024, 1024x1536, 1536x1024, or "auto".
+  `gpt-image-2` also supports arbitrary sizes. You can find more information about supported sizes in
+  the [OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate).
+- **response_format** (<code>Literal['b64_json']</code>) – This parameter is ignored and only kept for backward compatibility.
 - **api_key** (<code>Secret</code>) – The OpenAI API key to connect to OpenAI.
 - **api_base_url** (<code>str | None</code>) – An optional base URL.
 - **organization** (<code>str | None</code>) – The Organization ID, defaults to `None`.
@@ -2361,12 +2364,9 @@ Warm up the OpenAI client.
 ```python
 run(
     prompt: str,
-    size: (
-        Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"]
-        | None
-    ) = None,
-    quality: Literal["standard", "hd"] | None = None,
-    response_format: Literal["url", "b64_json"] | None = None,
+    size: Literal["1024x1024", "1024x1536", "1536x1024", "auto"] | None = None,
+    quality: Literal["auto", "high", "medium", "low"] | None = None,
+    response_format: Literal["b64_json"] | None = None,
 ) -> dict[str, Any]
 ```
 
@@ -2375,14 +2375,13 @@ Invokes the image generation inference based on the provided prompt and generati
 **Parameters:**
 
 - **prompt** (<code>str</code>) – The prompt to generate the image.
-- **size** (<code>Literal['256x256', '512x512', '1024x1024', '1792x1024', '1024x1792'] | None</code>) – If provided, overrides the size provided during initialization.
-- **quality** (<code>Literal['standard', 'hd'] | None</code>) – If provided, overrides the quality provided during initialization.
-- **response_format** (<code>Literal['url', 'b64_json'] | None</code>) – If provided, overrides the response format provided during initialization.
+- **size** (<code>Literal['1024x1024', '1024x1536', '1536x1024', 'auto'] | None</code>) – If provided, overrides the size provided during initialization.
+- **quality** (<code>Literal['auto', 'high', 'medium', 'low'] | None</code>) – If provided, overrides the quality provided during initialization.
+- **response_format** (<code>Literal['b64_json'] | None</code>) – This parameter is ignored and only kept for backward compatibility.
 
 **Returns:**
 
-- <code>dict\[str, Any\]</code> – A dictionary containing the generated list of images and the revised prompt.
-  Depending on the `response_format` parameter, the list of images can be URLs or base64 encoded JSON strings.
+- <code>dict\[str, Any\]</code> – A dictionary containing the generated list of images as base64 encoded JSON strings and the revised prompt.
   The revised prompt is the prompt that was used to generate the image, if there was any revision
   to the prompt made by OpenAI.
 
