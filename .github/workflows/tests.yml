@@ -17,8 +17,8 @@ on:
       - "v[0-9].*[0-9].x"
     # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
     paths-ignore:
-      - 'docs/**'
-      - 'docs-website/**'
+      - "docs/**"
+      - "docs-website/**"
   pull_request:
     types:
       - opened
@@ -37,9 +37,9 @@ env:
 
 jobs:
   check-if-changed:
-  # This job checks if the relevant files have been changed.
-  # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
-  # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
+    # This job checks if the relevant files have been changed.
+    # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
+    # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
     name: Check if changed
     runs-on: ubuntu-slim
     permissions:
@@ -224,7 +224,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-
       - name: Run
         run: hatch run test:integration-only-fast
 
@@ -256,7 +255,6 @@ jobs:
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
-
 
       - name: Run
         run: hatch run test:integration-only-fast
@@ -297,7 +295,7 @@ jobs:
       - integration-tests-windows
     runs-on: ubuntu-slim
     steps:
-      - uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+      - uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -314,15 +312,15 @@ jobs:
       - integration-tests-windows
 
     steps:
-    - name: Mark tests as completed
-      run: |
-        if [ "${{ needs.check-imports.result }}" = "failure" ] ||
-           [ "${{ needs.mypy.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
-          echo "Tests failed!"
-          exit 1
-        else
-          echo "Tests completed!"
-        fi
+      - name: Mark tests as completed
+        run: |
+          if [ "${{ needs.check-imports.result }}" = "failure" ] ||
+             [ "${{ needs.mypy.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
+            echo "Tests failed!"
+            exit 1
+          else
+            echo "Tests completed!"
+          fi
