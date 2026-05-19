@@ -40,7 +40,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     client = AzureOpenAIGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this a model name, e.g.  gpt-4.1-mini>")
+        azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
     ```
