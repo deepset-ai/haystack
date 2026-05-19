@@ -252,6 +252,48 @@ class TestSuperComponent:
         assert "final_answers" in result
         assert isinstance(result["final_answers"][0], GeneratedAnswer)
 
+    def test_sync_pipeline_does_not_advertise_async_support(self, rag_pipeline):
+        """
+        SuperComponent wrapping a sync Pipeline must NOT advertise async support, otherwise an
+        AsyncPipeline that contains it will route to ``run_async`` and crash. Reported in
+        https://github.com/deepset-ai/haystack/issues/9435.
+        """
+        wrapper = SuperComponent(pipeline=rag_pipeline)
+        assert wrapper.__haystack_supports_async__ is False
+        assert not hasattr(wrapper, "run_async")
+
+    def test_async_pipeline_advertises_async_support(self, async_rag_pipeline):
+        """SuperComponent wrapping an AsyncPipeline must advertise async support."""
+        wrapper = SuperComponent(pipeline=async_rag_pipeline)
+        assert wrapper.__haystack_supports_async__ is True
+        assert hasattr(wrapper, "run_async")
+
+    @pytest.mark.asyncio
+    async def test_super_component_with_sync_pipeline_inside_async_pipeline(self, rag_pipeline):
+        """
+        Regression test for https://github.com/deepset-ai/haystack/issues/9435.
+
+        A SuperComponent wrapping a sync Pipeline used to expose ``run_async`` and set
+        ``__haystack_supports_async__ = True``, which made an outer AsyncPipeline route to
+        ``run_async`` and raise ``TypeError: Pipeline is not an AsyncPipeline.``
+        After the fix, the outer AsyncPipeline must fall back to running the SuperComponent
+        synchronously in a worker thread.
+        """
+        input_mapping = {"search_query": ["retriever.query", "prompt_builder.query", "answer_builder.query"]}
+        output_mapping = {"answer_builder.answers": "final_answers"}
+        wrapper = SuperComponent(
+            pipeline=rag_pipeline, input_mapping=input_mapping, output_mapping=output_mapping
+        )
+
+        outer = AsyncPipeline()
+        outer.add_component("wrapper", wrapper)
+        outer.warm_up()
+
+        result = await outer.run_async(data={"wrapper": {"search_query": "What is the capital of France?"}})
+        assert "wrapper" in result
+        assert "final_answers" in result["wrapper"]
+        assert isinstance(result["wrapper"]["final_answers"][0], GeneratedAnswer)
+
     def test_wrapper_serialization(self, document_store):
         """Test serialization and deserialization of pipeline wrapper."""
         pipeline = Pipeline()

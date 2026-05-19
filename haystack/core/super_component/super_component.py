@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -70,6 +70,15 @@ class _SuperComponent:
         self.pipeline: Pipeline | AsyncPipeline = pipeline
         self._warmed_up = False
 
+        # ``run_async`` is exposed only when the wrapped pipeline can actually run asynchronously.
+        # It is attached per-instance from ``__init__`` rather than living at the class level so
+        # that ``ComponentMeta.__call__`` (which does ``hasattr(instance, "run_async")`` to set
+        # ``__haystack_supports_async__``) sees it only for ``AsyncPipeline``-backed instances.
+        # Otherwise an outer ``AsyncPipeline`` would route the component to ``run_async`` and
+        # crash with ``TypeError: Pipeline is not an AsyncPipeline``. See GitHub issue #9435.
+        if isinstance(pipeline, AsyncPipeline):
+            self.run_async = self._run_async  # type: ignore[method-assign]
+
         # Determine input types based on pipeline and mapping
         pipeline_inputs = self.pipeline.inputs()
         resolved_input_mapping = (
@@ -129,9 +138,22 @@ class _SuperComponent:
         # Collecting the component names from output_mapping
         return {self._split_component_path(path)[0] for path in self.output_mapping.keys()}
 
-    async def run_async(self, **kwargs: Any) -> dict[str, Any]:
+    if TYPE_CHECKING:
+        # Type-only declaration so callers (and downstream typing) can refer to
+        # ``SuperComponent.run_async``. The runtime attribute is bound per-instance
+        # in ``__init__`` only when the wrapped pipeline is an ``AsyncPipeline``;
+        # this keeps ``ComponentMeta`` from advertising async support for sync
+        # pipelines while still presenting a stable public typing surface. See #9435.
+        async def run_async(self, **kwargs: Any) -> dict[str, Any]: ...
+
+    async def _run_async(self, **kwargs: Any) -> dict[str, Any]:
         """
         Runs the wrapped pipeline with the provided inputs async.
+
+        This implementation is exposed as the public ``run_async`` method only when the wrapped
+        pipeline is an :class:`AsyncPipeline`. The ``__init__`` binds ``self.run_async`` to this
+        method in that case; otherwise the attribute is simply absent so that the component is not
+        advertised as async-capable. See GitHub issue #9435.
 
         Steps:
         1. Maps the inputs from kwargs to pipeline component inputs
