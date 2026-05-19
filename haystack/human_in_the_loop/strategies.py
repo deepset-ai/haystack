@@ -362,9 +362,6 @@ def _run_confirmation_strategies(
     """
     state = execution_context.state
     tools_with_names = {tool.name: tool for tool in execution_context.tool_invoker_inputs["tools"]}
-    existing_teds = execution_context.tool_execution_decisions if execution_context.tool_execution_decisions else []
-    existing_teds_by_name = {ted.tool_name: ted for ted in existing_teds if ted.tool_name}
-    existing_teds_by_id = {ted.tool_call_id: ted for ted in existing_teds if ted.tool_call_id}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -397,18 +394,14 @@ def _run_confirmation_strategies(
                 )
                 continue
 
-            # Check if there's already a decision for this tool call in the execution context
-            ted = existing_teds_by_id.get(tool_call.id or "") or existing_teds_by_name.get(tool_name)
-
-            # If not, run the confirmation strategy
-            if not ted:
-                ted = strategy.run(
-                    tool_name=tool_name,
-                    tool_description=tool_to_invoke.description,
-                    tool_params=final_args,
-                    tool_call_id=tool_call.id,
-                    confirmation_strategy_context=execution_context.confirmation_strategy_context,
-                )
+            # Run the confirmation strategy
+            ted = strategy.run(
+                tool_name=tool_name,
+                tool_description=tool_to_invoke.description,
+                tool_params=final_args,
+                tool_call_id=tool_call.id,
+                confirmation_strategy_context=execution_context.confirmation_strategy_context,
+            )
             teds.append(ted)
 
     return teds
@@ -433,9 +426,6 @@ async def _run_confirmation_strategies_async(
     """
     state = execution_context.state
     tools_with_names = {tool.name: tool for tool in execution_context.tool_invoker_inputs["tools"]}
-    existing_teds = execution_context.tool_execution_decisions if execution_context.tool_execution_decisions else []
-    existing_teds_by_name = {ted.tool_name: ted for ted in existing_teds if ted.tool_name}
-    existing_teds_by_id = {ted.tool_call_id: ted for ted in existing_teds if ted.tool_call_id}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -468,28 +458,23 @@ async def _run_confirmation_strategies_async(
                 )
                 continue
 
-            # Check if there's already a decision for this tool call in the execution context
-            ted = existing_teds_by_id.get(tool_call.id or "") or existing_teds_by_name.get(tool_name)
-
-            # If not, run the confirmation strategy (async version)
-            if not ted:
-                # Use run_async if available, otherwise fall back to sync run
-                if hasattr(strategy, "run_async"):
-                    ted = await strategy.run_async(
-                        tool_name=tool_name,
-                        tool_description=tool_to_invoke.description,
-                        tool_params=final_args,
-                        tool_call_id=tool_call.id,
-                        confirmation_strategy_context=execution_context.confirmation_strategy_context,
-                    )
-                else:
-                    ted = strategy.run(
-                        tool_name=tool_name,
-                        tool_description=tool_to_invoke.description,
-                        tool_params=final_args,
-                        tool_call_id=tool_call.id,
-                        confirmation_strategy_context=execution_context.confirmation_strategy_context,
-                    )
+            # Use run_async if available, otherwise fall back to sync run
+            if hasattr(strategy, "run_async"):
+                ted = await strategy.run_async(
+                    tool_name=tool_name,
+                    tool_description=tool_to_invoke.description,
+                    tool_params=final_args,
+                    tool_call_id=tool_call.id,
+                    confirmation_strategy_context=execution_context.confirmation_strategy_context,
+                )
+            else:
+                ted = strategy.run(
+                    tool_name=tool_name,
+                    tool_description=tool_to_invoke.description,
+                    tool_params=final_args,
+                    tool_call_id=tool_call.id,
+                    confirmation_strategy_context=execution_context.confirmation_strategy_context,
+                )
             teds.append(ted)
 
     return teds
