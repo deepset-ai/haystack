@@ -332,7 +332,7 @@ class TestLLMEvaluator:
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
 
         results = component.run(questions=["What is the capital of Germany?"], predicted_answers=["Berlin"])
-        assert results == {"results": [{"score": 0.5}], "meta": None}
+        assert results == {"results": [{"score": 0.5}], "meta": None, "evaluation_statuses": ["evaluated"]}
 
     def test_prepare_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -433,6 +433,28 @@ class TestLLMEvaluator:
 
         result = component.run(predicted_answers=["answer"])
         assert result["results"] == [None]
+        assert result["evaluation_statuses"] == ["error"]
+
+    def test_run_returns_error_status_raise_on_failure_false(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            raise_on_failure=False,
+        )
+
+        def chat_generator_run(self, *args, **kwargs):
+            raise Exception("OpenAI API request failed.")
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        result = component.run(predicted_answers=["answer"])
+        assert result["results"] == [None]
+        assert result["evaluation_statuses"] == ["error"]
 
     def test_output_invalid_json_raise_on_failure_true(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

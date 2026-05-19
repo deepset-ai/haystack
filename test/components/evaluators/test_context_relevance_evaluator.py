@@ -169,6 +169,7 @@ class TestContextRelevanceEvaluator:
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],
+            "evaluation_statuses": ["evaluated", "evaluated"],
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -198,6 +199,7 @@ class TestContextRelevanceEvaluator:
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],
+            "evaluation_statuses": ["evaluated", "evaluated"],
         }
 
     def test_run_missing_parameters(self, monkeypatch):
@@ -237,6 +239,7 @@ class TestContextRelevanceEvaluator:
         assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
         assert results["results"][1]["relevant_statements"] == []
         assert math.isnan(results["results"][1]["score"])
+        assert results["evaluation_statuses"] == ["evaluated", "error"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
