@@ -70,3 +70,39 @@ from haystack.dataclasses import Document
 
 doc = Document(content="col\n1\n2\n3")
 ```
+
+### Agent breakpoints removed
+
+**What changed:** The agent-specific breakpoint API has been removed. The `AgentBreakpoint`, `ToolBreakpoint`, and `AgentSnapshot` dataclasses are no longer exported from `haystack.dataclasses`, and the `break_point`, `snapshot`, and `snapshot_callback` parameters have been removed from `Agent.run` and `Agent.run_async`. `Pipeline.run` no longer accepts an `AgentBreakpoint` for its `break_point` argument, and the `agent_snapshot` field has been removed from `PipelineSnapshot`. Pausing and resuming execution inside an Agent (at the chat generator or tool invoker) is no longer supported.
+
+**Why:** Simplifies the breakpoint and snapshot machinery and removes the special-cased agent-internal control flow. Pipeline-level breakpoints still cover the common debugging use cases.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.agents import Agent
+from haystack.dataclasses import AgentBreakpoint, Breakpoint, ToolBreakpoint
+
+agent = Agent(chat_generator=..., tools=[...])
+
+# Pause before the chat generator runs
+chat_break_point = AgentBreakpoint(
+    agent_name="agent",
+    break_point=Breakpoint(component_name="chat_generator", visit_count=0),
+)
+
+# Or pause before a specific tool is invoked
+tool_break_point = AgentBreakpoint(
+    agent_name="agent",
+    break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="my_tool"),
+)
+
+agent.run(messages=[...], break_point=chat_break_point)
+```
+
+After (v3.0):
+```python
+# Pausing inside an Agent is no longer supported. To inspect an Agent's behavior,
+# use tracing instead: https://docs.haystack.deepset.ai/docs/tracing
+```
