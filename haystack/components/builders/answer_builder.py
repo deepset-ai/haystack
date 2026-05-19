@@ -242,9 +242,25 @@ class AnswerBuilder:
         return ""
 
     @staticmethod
+    def _expand_range_references(reply: str) -> list[int]:
+        """
+        Expand range references like [1-3] into individual 1-based indices [1, 2, 3].
+
+        :param reply: The Generator output string.
+        :returns: List of 1-based indices expanded from range references.
+        """
+        expanded = []
+        for match in re.finditer(r"\[(\d+)-(\d+)\]", reply):
+            start, end = int(match.group(1)), int(match.group(2))
+            if start <= end:
+                expanded.extend(range(start, end + 1))
+        return expanded
+
+    @staticmethod
     def _extract_reference_idxs(reply: str, reference_pattern: str) -> set[int]:
-        document_idxs = re.findall(reference_pattern, reply)
-        return {int(idx) - 1 for idx in document_idxs}
+        individual = {int(idx) - 1 for idx in re.findall(reference_pattern, reply)}
+        range_refs = {idx - 1 for idx in AnswerBuilder._expand_range_references(reply)}
+        return individual | range_refs
 
     @staticmethod
     def _check_num_groups_in_regex(pattern: str) -> None:

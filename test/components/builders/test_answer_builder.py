@@ -418,3 +418,23 @@ class TestAnswerBuilder:
         assert "all_messages" in answers[0].meta
         assert answers[0].meta["all_messages"] == replies
         assert len(answers[0].meta["all_messages"]) == 1
+
+    def test_run_with_range_reference_pattern(self):
+        builder = AnswerBuilder(reference_pattern=r"\[(\d+)\]")
+        replies = ["Paris [1-2] and Rome [3]."]
+        documents = [
+            Document(content="Paris is the capital of France."),
+            Document(content="Berlin is the capital of Germany."),
+            Document(content="Rome is the capital of Italy."),
+        ]
+        result = builder.run(query="Capitals?", replies=replies, documents=documents)
+        referenced = [d for d in result["answers"][0].documents if d.meta.get("referenced")]
+        assert {d.meta["source_index"] for d in referenced} == {1, 2, 3}
+
+    def test_run_with_invalid_range_ignored(self):
+        builder = AnswerBuilder(reference_pattern=r"\[(\d+)\]")
+        replies = ["Answer [3-1] and [1]."]
+        documents = [Document(content="Doc 1"), Document(content="Doc 2"), Document(content="Doc 3")]
+        result = builder.run(query="Q?", replies=replies, documents=documents)
+        referenced = [d for d in result["answers"][0].documents if d.meta.get("referenced")]
+        assert {d.meta["source_index"] for d in referenced} == {1}

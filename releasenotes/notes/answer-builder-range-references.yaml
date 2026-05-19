@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    ``AnswerBuilder`` now supports range references (e.g. ``[1-3]``) in Generator
+    outputs, automatically expanding them into individual document references.
