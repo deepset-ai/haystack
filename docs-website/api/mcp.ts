@@ -6,7 +6,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Accept, Mcp-Session-Id"
+    "Content-Type, Accept, Mcp-Session-Id, Mcp-Protocol-Version"
   );
   res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 
@@ -43,6 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Forward MCP session id so upstream can correlate requests.
           ...(req.headers["mcp-session-id"] && {
             "Mcp-Session-Id": req.headers["mcp-session-id"] as string,
+          }),
+          // Forward the protocol version the client negotiated.
+          ...(req.headers["mcp-protocol-version"] && {
+            "Mcp-Protocol-Version": req.headers[
+              "mcp-protocol-version"
+            ] as string,
           }),
         },
         body: JSON.stringify(req.body),
