@@ -1044,40 +1044,50 @@ class TestAgentTracing:
 
         _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")])
 
-        # Ensure tracing span was emitted
-        assert any("Operation: haystack.agent.step" in record.message for record in caplog.records)
+        # LoggingTracer emits one "Operation: <name>" record when a span exits, immediately followed by that
+        # span's tag records. We walk the log stream and bucket tags under the operation that owns them so we
+        # can assert the agent's nested span hierarchy, not just a flat list of tags.
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
 
-        # Check specific tags
-        tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
+        # Keep only the agent's own spans. With the MockChatGenerator returning no tool calls, the inner
+        # `haystack.agent.step.tool` span never fires - the loop exits after the LLM call.
+        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
 
-        expected_tag_names = [
-            "haystack.agent.step.llm.input",
-            "haystack.agent.step.llm.output",
-            "haystack.agent.step",
-            "haystack.agent.max_steps",
-            "haystack.agent.tools",
-            "haystack.agent.exit_conditions",
-            "haystack.agent.state_schema",
-            "haystack.agent.input",
-            "haystack.agent.output",
-            "haystack.agent.steps_taken",
-        ]
+        # Exit order (innermost first): LLM child -> step wrapper -> agent.run.
+        assert [op for op, _ in agent_spans] == ["haystack.agent.step.llm", "haystack.agent.step", "haystack.agent.run"]
 
-        expected_tag_values = [
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
-            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
-            0,
-            100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
-            '["text"]',
-            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
-            1,
-        ]
-        for idx, record in enumerate(tags_records):
-            assert record.tag_name == expected_tag_names[idx]
-            assert record.tag_value == expected_tag_values[idx]
+        # LLM child span carries the chat_generator's input/output, nothing else.
+        _, llm_tags = agent_spans[0]
+        assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
+        assert (
+            llm_tags["haystack.agent.step.llm.input"]
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}'  # noqa: E501
+        )
+        assert (
+            llm_tags["haystack.agent.step.llm.output"]
+            == '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}'
+        )
+
+        # The step wrapper only carries the iteration counter.
+        _, step_tags = agent_spans[1]
+        assert step_tags == {"haystack.agent.step": 0}
+
+        # agent.run carries the static config + the final input/output/steps-taken summary.
+        _, run_tags = agent_spans[2]
+        assert run_tags == {
+            "haystack.agent.max_steps": 100,
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            "haystack.agent.exit_conditions": '["text"]',
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
+            "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
+            "haystack.agent.steps_taken": 1,
+        }
 
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
@@ -1094,40 +1104,42 @@ class TestAgentTracing:
 
         _ = await agent.run_async([ChatMessage.from_user("What's the weather in Paris?")])
 
-        # Ensure tracing span was emitted
-        assert any("Operation: haystack.agent.step" in record.message for record in caplog.records)
+        # Bucket each tag under the operation it was emitted from (see sync version for details).
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
 
-        # Check specific tags
-        tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
+        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
 
-        expected_tag_names = [
-            "haystack.agent.step.llm.input",
-            "haystack.agent.step.llm.output",
-            "haystack.agent.step",
-            "haystack.agent.max_steps",
-            "haystack.agent.tools",
-            "haystack.agent.exit_conditions",
-            "haystack.agent.state_schema",
-            "haystack.agent.input",
-            "haystack.agent.output",
-            "haystack.agent.steps_taken",
-        ]
+        assert [op for op, _ in agent_spans] == ["haystack.agent.step.llm", "haystack.agent.step", "haystack.agent.run"]
 
-        expected_tag_values = [
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
-            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
-            0,
-            100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
-            '["text"]',
-            '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
-            1,
-        ]
-        for idx, record in enumerate(tags_records):
-            assert record.tag_name == expected_tag_names[idx]
-            assert record.tag_value == expected_tag_values[idx]
+        _, llm_tags = agent_spans[0]
+        assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
+        assert (
+            llm_tags["haystack.agent.step.llm.input"]
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}'  # noqa: E501
+        )
+        assert (
+            llm_tags["haystack.agent.step.llm.output"]
+            == '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}'  # noqa: E501
+        )
+
+        _, step_tags = agent_spans[1]
+        assert step_tags == {"haystack.agent.step": 0}
+
+        _, run_tags = agent_spans[2]
+        assert run_tags == {
+            "haystack.agent.max_steps": 100,
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            "haystack.agent.exit_conditions": '["text"]',
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
+            "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
+            "haystack.agent.steps_taken": 1,
+        }
 
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
@@ -1150,21 +1162,44 @@ class TestAgentTracing:
 
         pipeline.run(data={"prompt_builder": {"location": "Berlin"}})
 
-        assert any("Operation: haystack.pipeline.run" in record.message for record in caplog.records)
-        tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
-        expected_tag_names = [
-            "haystack.component.name",
-            "haystack.component.type",
-            "haystack.component.fully_qualified_type",
-            "haystack.component.input_types",
-            "haystack.component.input_spec",
-            "haystack.component.output_spec",
-            "haystack.component.input",
-            "haystack.component.visits",
-            "haystack.component.output",
-            "haystack.agent.step.llm.input",
-            "haystack.agent.step.llm.output",
+        # Bucket each tag under the operation it was emitted from (see sync standalone test for details).
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        # Full span hierarchy in exit order (innermost first):
+        #   prompt_builder.component.run -> agent.step.llm -> agent.step -> agent.run -> agent.component.run
+        #   -> pipeline.run
+        assert [op for op, _ in spans] == [
+            "haystack.component.run",
+            "haystack.agent.step.llm",
             "haystack.agent.step",
+            "haystack.agent.run",
+            "haystack.component.run",
+            "haystack.pipeline.run",
+        ]
+
+        # The two `haystack.component.run` spans wrap prompt_builder and agent respectively.
+        prompt_builder_component, _ = spans[0], spans[0][1]
+        assert prompt_builder_component[1]["haystack.component.name"] == "prompt_builder"
+        agent_component = spans[4]
+        assert agent_component[1]["haystack.component.name"] == "agent"
+
+        # Agent's own spans: shape and ownership identical to the standalone test.
+        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
+        assert [op for op, _ in agent_spans] == ["haystack.agent.step.llm", "haystack.agent.step", "haystack.agent.run"]
+
+        _, llm_tags = agent_spans[0]
+        assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
+
+        _, step_tags = agent_spans[1]
+        assert step_tags == {"haystack.agent.step": 0}
+
+        _, run_tags = agent_spans[2]
+        assert set(run_tags) == {
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
@@ -1172,22 +1207,17 @@ class TestAgentTracing:
             "haystack.agent.input",
             "haystack.agent.output",
             "haystack.agent.steps_taken",
-            "haystack.component.name",
-            "haystack.component.type",
-            "haystack.component.fully_qualified_type",
-            "haystack.component.input_types",
-            "haystack.component.input_spec",
-            "haystack.component.output_spec",
-            "haystack.component.input",
-            "haystack.component.visits",
-            "haystack.component.output",
+        }
+        assert run_tags["haystack.agent.steps_taken"] == 1
+
+        # And pipeline.run wraps everything, carrying the pipeline-level summary tags.
+        _, pipeline_tags = spans[-1]
+        assert set(pipeline_tags) == {
             "haystack.pipeline.input_data",
             "haystack.pipeline.output_data",
             "haystack.pipeline.metadata",
             "haystack.pipeline.max_runs_per_component",
-        ]
-        for idx, record in enumerate(tags_records):
-            assert record.tag_name == expected_tag_names[idx]
+        }
 
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
