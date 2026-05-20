@@ -2,8 +2,16 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "POST, OPTIONS");
     return res.status(405).end("Method Not Allowed");
   }
 
@@ -23,6 +31,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept:
+            (req.headers.accept as string) ||
+            "application/json, text/event-stream",
           "X-Client-Source": "haystack-docs",
           Authorization: `Bearer ${SEARCH_API_TOKEN}`,
         },
