@@ -1,9 +1,9 @@
 ---
 fixes:
   - |
-    Fixed `DocumentJoiner` in `concatenate` mode so that documents with a score of
-    exactly `0.0` are no longer treated as unscored during deduplication. Previously
-    a truthiness check coerced `score=0.0` to `-inf`, which could cause a worse,
-    negatively-scored duplicate to be kept instead of the `0.0`-scored document.
-    The `merge` mode was updated to the same explicit `is not None` check for
+    Fixed ``DocumentJoiner`` in ``concatenate`` mode so that documents with a score of
+    exactly ``0.0`` are no longer treated as unscored during deduplication. Previously
+    a truthiness check coerced ``score=0.0`` to ``-inf``, which could cause a worse,
+    negatively-scored duplicate to be kept instead of the ``0.0``-scored document.
+    The ``merge`` mode was updated to the same explicit ``is not None`` check for
     consistency; its observable behavior is unchanged.
