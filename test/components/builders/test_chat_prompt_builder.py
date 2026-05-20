@@ -28,11 +28,11 @@ class TestChatPromptBuilder:
                 ChatMessage.from_system("This is a {{ variable2 }}"),
             ]
         )
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder.template[0].text == "This is a {{ variable }}"
         assert builder.template[1].text == "This is a {{ variable2 }}"
         assert builder._variables is None
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -51,9 +51,9 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2"]
         builder = ChatPromptBuilder(variables=variables)
         assert builder.template is None
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder._variables == variables
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -93,10 +93,10 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2", "var3"]
         template = [ChatMessage.from_user("Hello, {{ var1 }}, {{ var2 }}!")]
         builder = ChatPromptBuilder(template=template, variables=variables)
-        assert builder.required_variables == []
+        assert builder.required_variables == "*"
         assert builder._variables == variables
         assert builder.template[0].text == "Hello, {{ var1 }}, {{ var2 }}!"
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
@@ -132,10 +132,17 @@ class TestChatPromptBuilder:
         res = builder.run()
         assert res == {"prompt": [ChatMessage.from_user("This is a template without input")]}
 
-    def test_run_with_missing_input(self):
-        builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
+    def test_run_with_missing_optional_input(self):
+        builder = ChatPromptBuilder(
+            template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=None
+        )
         res = builder.run()
         assert res == {"prompt": [ChatMessage.from_user("This is a ")]}
+
+    def test_run_with_missing_required_input_default(self):
+        builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
+        with pytest.raises(ValueError, match="variable"):
+            builder.run()
 
     def test_run_with_missing_required_input(self):
         builder = ChatPromptBuilder(
@@ -163,7 +170,7 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2", "var3"]
         template = [ChatMessage.from_user("Hello, {{ name }}! {{ var1 }}")]
 
-        builder = ChatPromptBuilder(template=template, variables=variables)
+        builder = ChatPromptBuilder(template=template, variables=variables, required_variables=None)
 
         template_variables = {"name": "John"}
         expected_result = {"prompt": [ChatMessage.from_user("Hello, John! How are you?")]}
@@ -173,7 +180,7 @@ class TestChatPromptBuilder:
     def test_run_with_variables_and_runtime_template(self):
         variables = ["var1", "var2", "var3"]
 
-        builder = ChatPromptBuilder(variables=variables)
+        builder = ChatPromptBuilder(variables=variables, required_variables=None)
 
         template = [ChatMessage.from_user("Hello, {{ name }}! {{ var1 }}")]
         template_variables = {"name": "John"}
@@ -209,7 +216,7 @@ class TestChatPromptBuilder:
         variables = ["var1", "var2", "name"]
         default_template = [ChatMessage.from_user("Hello, {{ name }}!")]
 
-        builder = ChatPromptBuilder(template=default_template, variables=variables)
+        builder = ChatPromptBuilder(template=default_template, variables=variables, required_variables=None)
 
         template = [ChatMessage.from_user("Hello, {{ var1 }} {{ name }}!")]
         expected_result = {"prompt": [ChatMessage.from_user("Hello, Big John!")]}
@@ -346,7 +353,18 @@ class TestChatPromptBuilder:
         }
         assert result == expected_dynamic
 
-    def test_warning_no_required_variables(self, caplog):
+    def test_warning_when_required_variables_explicitly_none(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _ = ChatPromptBuilder(
+                template=[
+                    ChatMessage.from_system("Write your response in this language:{{language}}"),
+                    ChatMessage.from_user("Tell me about {{location}}"),
+                ],
+                required_variables=None,
+            )
+            assert "explicitly set to `None`" in caplog.text
+
+    def test_no_warning_with_default_required_variables(self, caplog):
         with caplog.at_level(logging.WARNING):
             _ = ChatPromptBuilder(
                 template=[
@@ -354,7 +372,7 @@ class TestChatPromptBuilder:
                     ChatMessage.from_user("Tell me about {{location}}"),
                 ]
             )
-            assert "ChatPromptBuilder has 2 prompt variables, but `required_variables` is not set. " in caplog.text
+            assert "required_variables" not in caplog.text
 
 
 class TestChatPromptBuilderWithJinja2TimeExtension:
@@ -697,7 +715,7 @@ class TestChatPromptBuilderDynamic:
 
         assert comp.template is None
         assert comp._variables is None
-        assert comp._required_variables is None
+        assert comp._required_variables == "*"
 
     def test_chat_message_list_with_templatize_part_init_raises_error(self):
         template = [ChatMessage.from_user("This is a {{ variable | templatize_part }}")]
@@ -722,7 +740,7 @@ class TestChatPromptBuilderWithStrTemplate:
 
         assert builder.template == template
         assert builder._variables is None
-        assert builder._required_variables is None
+        assert builder._required_variables == "*"
         assert builder.variables == ["name"]
 
     def test_init_with_invalid_template(self):
@@ -774,13 +792,13 @@ class TestChatPromptBuilderWithStrTemplate:
         result = builder.run()
         assert result["prompt"] == [ChatMessage.from_user("Hello, my name is Lukas!")]
 
-    def test_run_with_missing_input(self):
+    def test_run_with_missing_optional_input(self):
         template = """
         {% message role="user" %}
         Hello, my name is {{name}}!
         {% endmessage %}
         """
-        builder = ChatPromptBuilder(template=template)
+        builder = ChatPromptBuilder(template=template, required_variables=None)
         result = builder.run()
         assert result["prompt"] == [ChatMessage.from_user("Hello, my name is !")]
 
@@ -826,7 +844,7 @@ class TestChatPromptBuilderWithStrTemplate:
         Hello, my name is {{name}}!
         {% endmessage %}
         """
-        builder = ChatPromptBuilder(template=initial_template)
+        builder = ChatPromptBuilder(template=initial_template, required_variables=None)
 
         runtime_template = """
         {% message role="user" %}

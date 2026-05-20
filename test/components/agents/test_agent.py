@@ -254,7 +254,7 @@ class TestAgent:
                                 "init_parameters": {
                                     "template": "{{parrot}}",
                                     "variables": None,
-                                    "required_variables": None,
+                                    "required_variables": "*",
                                 },
                             },
                             "name": "parrot",
@@ -405,7 +405,7 @@ class TestAgent:
                                 "init_parameters": {
                                     "template": "{{parrot}}",
                                     "variables": None,
-                                    "required_variables": None,
+                                    "required_variables": "*",
                                 },
                             },
                             "name": "parrot",
@@ -552,7 +552,7 @@ class TestAgent:
                                 "init_parameters": {
                                     "template": "{{parrot}}",
                                     "variables": None,
-                                    "required_variables": None,
+                                    "required_variables": "*",
                                 },
                             },
                             "name": "parrot",

@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    ``PromptBuilder`` and ``ChatPromptBuilder`` now treat every Jinja2 template variable as **required by default**.
+    Previously, variables were optional by default unless explicitly listed in ``required_variables``.
+
+    To check if you're affected: look for ``PromptBuilder(...)`` or ``ChatPromptBuilder(...)`` calls in your code
+    that do not pass ``required_variables``. If those components relied on missing variables being silently
+    rendered as empty strings (for example, loop-fed variables that arrive after the first iteration), they
+    will now raise a ``ValueError`` at runtime.
+
+    Migration options:
+
+    - To require only a subset of variables, pass ``required_variables=["var1", "var2"]``.
+    - To preserve the previous "all optional" behavior, explicitly pass ``required_variables=None``.
+    - To require everything (the new default), no change is needed.
