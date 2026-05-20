@@ -15,7 +15,6 @@ from haystack.core.pipeline.component_checks import (
     any_predecessors_provided_input,
     any_socket_input_received,
     any_socket_value_from_predecessor_received,
-    are_all_lazy_variadic_sockets_resolved,
     are_all_sockets_ready,
     can_component_run,
     can_not_receive_inputs_from_pipeline,
@@ -616,37 +615,6 @@ class TestPredecessorExecution:
             ],
         }
         assert all_predecessors_executed(complex_component, inputs) is False
-
-
-class TestLazyVariadicResolution:
-    def test_lazy_variadic_sockets_all_resolved(self, complex_component):
-        """Checks that lazy variadic sockets are resolved when all inputs have arrived."""
-        inputs = {"lazy_var": [{"sender": "component1", "value": 42}, {"sender": "component2", "value": 43}]}
-        assert are_all_lazy_variadic_sockets_resolved(complex_component, inputs) is True
-
-    def test_lazy_variadic_sockets_partially_resolved(self, complex_component):
-        """Missing some sender outputs means lazy variadic sockets are not resolved."""
-        inputs = {
-            "lazy_var": [{"sender": "component1", "value": 42}]  # Missing component2
-        }
-        assert are_all_lazy_variadic_sockets_resolved(complex_component, inputs) is False
-
-    def test_lazy_variadic_sockets_with_no_inputs(self, complex_component):
-        """No inputs: lazy variadic socket is not resolved."""
-        assert are_all_lazy_variadic_sockets_resolved(complex_component, {}) is False
-
-    def test_lazy_variadic_sockets_with_predecessors_executed(self, complex_component):
-        """
-        Ensures that if all predecessors have executed (but produced no output),
-        the lazy variadic socket is still considered resolved.
-        """
-        inputs = {
-            "lazy_var": [
-                {"sender": "component1", "value": _NO_OUTPUT_PRODUCED},
-                {"sender": "component2", "value": _NO_OUTPUT_PRODUCED},
-            ]
-        }
-        assert are_all_lazy_variadic_sockets_resolved(complex_component, inputs) is True
 
 
 class TestGreedySocketReadiness:

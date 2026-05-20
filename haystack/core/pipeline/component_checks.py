@@ -201,31 +201,6 @@ def all_predecessors_executed(component: dict, inputs: dict) -> bool:
     )
 
 
-def are_all_lazy_variadic_sockets_resolved(component: dict, inputs: dict) -> bool:
-    """
-    Checks if the final state for all lazy variadic sockets of a component is resolved.
-
-    :param component: Component metadata and the component instance.
-    :param inputs: Inputs for the component.
-    """
-    for socket_name, socket in component["input_sockets"].items():
-        if socket.is_lazy_variadic:
-            socket_inputs = inputs.get(socket_name, [])
-
-            # Checks if a lazy variadic socket is ready to run.
-            # A socket is ready if either:
-            # - it has received all expected inputs, or
-            # - all its predecessors have executed
-            # If none of the conditions are met, the socket is not ready to run and we defer the component.
-            if not (
-                has_lazy_variadic_socket_received_all_inputs(socket, socket_inputs)
-                or all_socket_predecessors_executed(socket, socket_inputs)
-            ):
-                return False
-
-    return True
-
-
 def is_any_greedy_socket_ready(component: dict, inputs: dict) -> bool:
     """
     Checks if the component has any greedy socket that is ready to run.

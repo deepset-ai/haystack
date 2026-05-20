@@ -1667,13 +1667,13 @@ class TestAgentWaitsForBlockedPredecessor:
     1. history_parser runs → sends messages to messages_joiner.
     2. files_processor runs with files=[] → returns {} (no output).
     3. attachments_builder is BLOCKED — its mandatory processed_files input never arrives.
-    4. messages_joiner gets DEFER_LAST (priority=4): it has a lazy-variadic socket and attachments_builder hasn't
-       executed yet, so the joiner doesn't know if more data might still come. It keeps waiting.
-    5. agent gets DEFER (priority=3): retrieval_filters arrives with sender=None (static pipeline input), which
+    4. messages_joiner gets DEFER: it has a lazy-variadic socket and attachments_builder hasn't executed yet,
+       so the joiner doesn't know if more data might still come. It keeps waiting.
+    5. agent also gets DEFER: retrieval_filters arrives with sender=None (static pipeline input), which
        satisfies has_any_trigger() on the first visit. The Agent has no mandatory sockets, so can_component_run()
-       returns True. It also has no unresolved lazy-variadic sockets, so it gets DEFER rather than DEFER_LAST.
-    6. Since DEFER (3) < DEFER_LAST (4), the scheduler picks the Agent before the joiner runs.
-       The Agent executes without messages and raises:
+       returns True.
+    6. The scheduler tie-breaks DEFER components by topological order, so the joiner should run before the Agent.
+       Before the fix the Agent was picked first and executed without messages, raising:
 
         ValueError("No messages provided to the Agent and neither user_prompt nor system_prompt is set.")
     """
@@ -1725,8 +1725,8 @@ class TestAgentWaitsForBlockedPredecessor:
         pipeline.connect("messages_joiner.values", "agent.messages")
 
         # files=[] → files_processor produces no output → attachments_builder BLOCKED
-        # → messages_joiner stays DEFER_LAST
-        # → agent (DEFER) runs first without messages → ValueError
+        # → messages_joiner stays DEFER waiting for the blocked branch
+        # → agent (DEFER) must wait for the joiner via topological tie-break
         result = pipeline.run(
             data={
                 "history_parser": {"query": "What case law applies?"},

@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Simplified the pipeline scheduler by removing the ``DEFER_LAST`` component priority.
+    Components that previously got ``DEFER_LAST`` (those with unresolved lazy-variadic sockets)
+    now share the ``DEFER`` priority and are tie-broken via topological order, matching the
+    behavior of all other deferred components. This should not materially change how
+    components are scheduled in a pipeline.
