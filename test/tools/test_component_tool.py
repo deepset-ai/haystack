@@ -356,7 +356,7 @@ class TestComponentTool:
         assert tool.parameters == {
             "description": "Renders the prompt template with the provided variables.",
             "properties": {
-                "name": {"default": "", "description": "Input 'name' for the component."},
+                "name": {"description": "Input 'name' for the component."},
                 "template": {
                     "anyOf": [{"type": "string"}, {"type": "null"}],
                     "default": None,
@@ -369,6 +369,7 @@ class TestComponentTool:
                     "description": "An optional dictionary of template variables to overwrite the pipeline variables.",
                 },
             },
+            "required": ["name"],
             "type": "object",
         }
 
