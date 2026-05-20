@@ -1051,9 +1051,9 @@ class TestAgentTracing:
         tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
 
         expected_tag_names = [
+            "haystack.agent.step.llm.input",
+            "haystack.agent.step.llm.output",
             "haystack.agent.step",
-            "haystack.agent.step.input",
-            "haystack.agent.step.llm_output",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
@@ -1064,9 +1064,9 @@ class TestAgentTracing:
         ]
 
         expected_tag_values = [
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
             0,
-            '[{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}]',  # noqa: E501
-            '[{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]',
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
@@ -1101,9 +1101,9 @@ class TestAgentTracing:
         tags_records = [r for r in caplog.records if hasattr(r, "tag_name")]
 
         expected_tag_names = [
+            "haystack.agent.step.llm.input",
+            "haystack.agent.step.llm.output",
             "haystack.agent.step",
-            "haystack.agent.step.input",
-            "haystack.agent.step.llm_output",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
@@ -1114,9 +1114,9 @@ class TestAgentTracing:
         ]
 
         expected_tag_values = [
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
             0,
-            '[{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}]',  # noqa: E501
-            '[{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]',  # noqa: E501
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
@@ -1162,9 +1162,9 @@ class TestAgentTracing:
             "haystack.component.input",
             "haystack.component.visits",
             "haystack.component.output",
+            "haystack.agent.step.llm.input",
+            "haystack.agent.step.llm.output",
             "haystack.agent.step",
-            "haystack.agent.step.input",
-            "haystack.agent.step.llm_output",
             "haystack.agent.max_steps",
             "haystack.agent.tools",
             "haystack.agent.exit_conditions",
