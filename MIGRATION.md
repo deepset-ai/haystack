@@ -167,3 +167,43 @@ Pass an instance to the `LangfuseConnector`:
 ```python
 LangfuseConnector("My Agent", span_handler=AgentStepSpanHandler())
 ```
+
+### `PromptBuilder` and `ChatPromptBuilder` template variables are required by default
+
+**What changed:** `PromptBuilder` and `ChatPromptBuilder` now treat every Jinja2 template variable as required by default. Previously, variables were optional by default and missing values were silently rendered as empty strings. The `required_variables` parameter's default has been changed from `None` (all optional) to `"*"` (all required). Passing `required_variables=None` explicitly still opts into the old "all optional" behavior.
+
+**Why:** Avoids silent rendering bugs where a missing variable produces an unexpectedly empty section of the prompt — especially in multi-branch pipelines where the issue often surfaces far from its root cause. Aligns the default with `ConditionalRouter`'s convention that inputs are required unless declared otherwise.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.builders import PromptBuilder
+
+# All variables were optional by default; missing values rendered as "".
+builder = PromptBuilder(template="Hello, {{ name }}! {{ greeting }}")
+builder.run(name="John")  # greeting silently becomes "" → "Hello, John! "
+```
+
+After (v3.0):
+```python
+from haystack.components.builders import PromptBuilder
+
+# Option 1: provide every variable (matches the new safe default).
+builder = PromptBuilder(template="Hello, {{ name }}! {{ greeting }}")
+builder.run(name="John", greeting="Welcome")
+
+# Option 2: declare which variables are required; everything else stays optional.
+builder = PromptBuilder(
+    template="Hello, {{ name }}! {{ greeting }}",
+    required_variables=["name"],
+)
+builder.run(name="John")  # greeting renders as ""
+
+# Option 3: restore the old "all optional" behavior.
+builder = PromptBuilder(
+    template="Hello, {{ name }}! {{ greeting }}",
+    required_variables=None,
+)
+builder.run(name="John")  # greeting renders as ""
+```

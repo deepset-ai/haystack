@@ -997,7 +997,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
 
     pipe = pipeline_class(max_runs_per_component=2)
 
-    pipe.add_component("prompt_builder", PromptBuilder(template=template))
+    pipe.add_component("prompt_builder", PromptBuilder(template=template, required_variables=["query"]))
     pipe.add_component("generator", FakeGenerator())
     pipe.add_component("router", router)
 
@@ -1348,7 +1348,8 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
 If the question cannot be answered given the provided table and columns, return 'no_answer'
 The query is to be answered for the table is called 'absenteeism' with the following
 Columns: {{ columns }};
-Answer:"""
+Answer:""",
+        required_variables=["question", "columns"],
     )
 
     @component
@@ -1385,7 +1386,8 @@ Answer:"""
     fallback_prompt = PromptBuilder(
         template="""User entered a query that cannot be answered with the given table.
 The query was: {{ question }} and the table had columns: {{ columns }}.
-Let the user know why the question cannot be answered"""
+Let the user know why the question cannot be answered""",
+        required_variables=["question"],
     )
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -1486,7 +1488,7 @@ However, this doesn't comply with the format requirements from above and trigger
 Correct the output and try again. Just return the corrected output without any extra explanations.
 {%- endif -%}"""
     )
-    prompt_builder = PromptBuilder(template=template)
+    prompt_builder = PromptBuilder(template=template, required_variables=None)
 
     @component
     class FakeOutputValidator:
@@ -2582,7 +2584,10 @@ def that_has_a_loop_in_the_middle(pipeline_class):
 
     pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("prompt_cleaner", PromptCleaner())
-    pipeline.add_component("prompt_builder", PromptBuilder(template="", variables=["question", "invalid_replies"]))
+    pipeline.add_component(
+        "prompt_builder",
+        PromptBuilder(template="", variables=["question", "invalid_replies"], required_variables=["question"]),
+    )
     pipeline.add_component("llm", FakeGenerator())
     pipeline.add_component(
         "answer_validator",
@@ -3152,8 +3157,8 @@ Provide additional feedback on why it fails.
     pipe = pipeline_class(max_runs_per_component=100)
 
     pipe.add_component("code_llm", FixedGenerator(replies=["invalid code", "valid code"]))
-    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template))
-    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template))
+    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template, required_variables=["task"]))
+    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template, required_variables=["code"]))
     pipe.add_component("feedback_llm", FixedGenerator(replies=["FAIL", "PASS"]))
     pipe.add_component("router", router)
     pipe.add_component(
@@ -3297,8 +3302,8 @@ Provide additional feedback on why it fails.
         "concatenator", OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
     )
     pipe.add_component("code_llm", FixedGenerator(replies=["invalid code", "valid code"]))
-    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template))
-    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template))
+    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template, required_variables=["task"]))
+    pipe.add_component("feedback_prompt", PromptBuilder(template=feedback_prompt_template, required_variables=["code"]))
     pipe.add_component("feedback_llm", FixedGenerator(replies=["FAIL", "PASS"]))
     pipe.add_component("router", router)
     pipe.add_component("answer_builder", AnswerBuilder())
@@ -3465,7 +3470,7 @@ Provide additional feedback on why it fails.
 
     pipe = pipeline_class(max_runs_per_component=8)
 
-    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template))
+    pipe.add_component("code_prompt", PromptBuilder(template=code_prompt_template, required_variables=["task"]))
     pipe.add_component("joiner", BranchJoiner(type_=str))
     pipe.add_component(
         "code_llm", FixedGenerator(replies=["Edit: file_1.py", "Edit: file_2.py", "Edit: file_3.py", "Task finished!"])
