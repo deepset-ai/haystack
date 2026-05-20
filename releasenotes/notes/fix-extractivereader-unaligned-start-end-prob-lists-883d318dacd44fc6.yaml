@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    Fixed ``ExtractiveReader`` raising ``ValueError``` when the number of valid answer spans for a sequence was smaller
+    Fixed ``ExtractiveReader`` raising ``ValueError`` when the number of valid answer spans for a sequence was smaller
     than ``answers_per_seq`` (for example with short documents or when ``answers_per_seq`` exceeded the number of
     upper-triangular, non-masked (start, end) token pairs). ``_postprocess`` now filters the per-sequence probabilities
     by the same validity mask it already applied to the start/end token indices, so the three structures
