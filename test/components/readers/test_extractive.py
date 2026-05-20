@@ -491,8 +491,16 @@ def test_nest_answers_accepts_variable_length_probability_rows(mock_reader: Extr
     )
 
     assert len(nested_answers) == 1
-    scores = sorted((a.score for a in nested_answers[0]), reverse=True)
-    assert scores == pytest.approx([0.8, 0.7, 0.6])
+    sorted_answers = sorted(nested_answers[0], key=lambda a: a.score, reverse=True)
+
+    docs = example_documents[0][:2]
+    expected = [
+        (pytest.approx(0.8), docs[0].id, "Angel"),
+        (pytest.approx(0.7), docs[1].id, "Olaf "),
+        (pytest.approx(0.6), docs[0].id, "ngela"),
+    ]
+    actual = [(a.score, a.document.id, a.data) for a in sorted_answers]
+    assert actual == expected
 
 
 def test_add_answer_page_number_returns_same_answer(mock_reader: ExtractiveReader, caplog):
