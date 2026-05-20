@@ -6,8 +6,14 @@ upgrade:
 
     To check if you're affected: look for ``PromptBuilder(...)`` or ``ChatPromptBuilder(...)`` calls in your code
     that do not pass ``required_variables``. If those components relied on missing variables being silently
-    rendered as empty strings (for example, loop-fed variables that arrive after the first iteration), they
-    will now raise a ``ValueError`` at runtime.
+    rendered as empty strings, the behavior depends on how the missing variable was reaching the builder:
+
+    - Calling ``builder.run()`` directly without providing a required variable now raises ``ValueError``.
+    - In a pipeline, if a required variable is neither provided as a user input nor connected from another
+      component, ``Pipeline.run`` raises ``ValueError("Missing mandatory input '<var>' for component '<name>'.")``.
+    - In a pipeline, if a required variable is connected to a sender that never produces output on a given run
+      (for example, a loop-fed input on the first iteration or a conditional branch that isn't taken), the
+      pipeline cannot make progress and raises ``PipelineComponentsBlockedError``.
 
     Migration options:
 
