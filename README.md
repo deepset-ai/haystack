@@ -135,7 +135,7 @@
 | haystack/components/rankers/sentence\_transformers\_similarity.py                   |       79 |        2 |     97% |  147, 250 |
 | haystack/components/rankers/transformers\_similarity.py                             |      109 |       10 |     91% |143, 148, 154, 175, 261, 272, 275, 296, 308-309 |
 | haystack/components/readers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
-| haystack/components/readers/extractive.py                                           |      229 |        9 |     96% |133, 195, 220-225, 410, 467, 580, 625-626 |
+| haystack/components/readers/extractive.py                                           |      231 |        9 |     96% |133, 195, 220-225, 417, 474, 587, 632-633 |
 | haystack/components/retrievers/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/retrievers/auto\_merging\_retriever.py                          |       80 |        0 |    100% |           |
 | haystack/components/retrievers/filter\_retriever.py                                 |       22 |        1 |     95% |        55 |
@@ -265,7 +265,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17267** | **1215** | **93%** |           |
+| **TOTAL**                                                                           | **17269** | **1215** | **93%** |           |
 
 
 ## Setup coverage badge
