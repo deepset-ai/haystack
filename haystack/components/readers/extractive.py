@@ -392,6 +392,10 @@ class ExtractiveReader:
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
+            # `i // answers_per_seq` assumes every sequence contributes exactly `answers_per_seq`
+            # answers. That's not guaranteed (see _postprocess: invalid candidates are
+            # filtered out per sequence), but is fine here because `run` always passes a single
+            # query, so every entry in `query_ids` is 0 and the index lookup is correct for any i.
             while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
                 current_answers.append(replace(answers_without_query[i], query=queries[query_id]))
                 i += 1
