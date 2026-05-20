@@ -4,7 +4,11 @@ import { VercelRequest, VercelResponse } from "@vercel/node";
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Accept, Mcp-Session-Id"
+  );
+  res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -36,6 +40,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "application/json, text/event-stream",
           "X-Client-Source": "haystack-docs",
           Authorization: `Bearer ${SEARCH_API_TOKEN}`,
+          // Forward MCP session id so upstream can correlate requests.
+          ...(req.headers["mcp-session-id"] && {
+            "Mcp-Session-Id": req.headers["mcp-session-id"] as string,
+          }),
         },
         body: JSON.stringify(req.body),
       }
@@ -46,6 +54,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(apiResponse.status);
     const contentType = apiResponse.headers.get("content-type");
     if (contentType) res.setHeader("Content-Type", contentType);
+    // Surface the session id back to the client (browsers can read it because
+    // it's in Access-Control-Expose-Headers above).
+    const sessionId = apiResponse.headers.get("mcp-session-id");
+    if (sessionId) res.setHeader("Mcp-Session-Id", sessionId);
     return res.send(text);
   } catch (error) {
     console.error("MCP proxy error:", error);
