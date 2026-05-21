@@ -107,7 +107,7 @@ def pipeline_that_has_an_infinite_loop(pipeline_class):
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
 def pipeline_complex(pipeline_class):
-    pipeline = pipeline_class(max_runs_per_component=2)
+    pipeline = pipeline_class(max_runs_per_component=3)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", Accumulate())
     pipeline.add_component("add_two", AddFixedValue(add=2))
