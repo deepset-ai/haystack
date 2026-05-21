@@ -55,7 +55,7 @@ class TestMultiQueryTextRetrieverAsync:
     @pytest.mark.asyncio
     async def test_run_async_deduplication(self):
         doc2 = Document(content="Wind energy is clean", id="doc2", score=0.8)
-        # doc3 shares the same id as doc1 — simulates the same doc retrieved by different queries
+        # doc3 intentionally uses the duplicate id "doc1" to simulate deduplication across multiple queries
         doc3 = Document(content="Solar energy is renewable", id="doc1", score=0.7)
 
         @component
