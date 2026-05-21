@@ -17,6 +17,6 @@ updates:
   - package-ecosystem: 'npm'
     directory: '/docs-website'
     schedule:
-      interval: 'weekly'
+      interval: 'daily'
     cooldown:
       default-days: 1
