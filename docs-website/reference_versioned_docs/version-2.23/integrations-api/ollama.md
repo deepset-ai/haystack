@@ -42,6 +42,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     batch_size: int = 32,
+    dimensions: int | None = None,
 ) -> None
 ```
 
@@ -68,6 +69,10 @@ Create a new OllamaDocumentEmbedder instance.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
 - **batch_size** (<code>int</code>) – Number of documents to process at once.
+- **dimensions** (<code>int | None</code>) – The desired number of dimensions in the embedding output. Only supported by models
+  that implement Matryoshka Representation Learning (MRL), such as nomic-embed-text-v1.5,
+  mxbai-embed-large, and qwen3-embedding. If None (default), the full vector is returned.
+  Requires ollama-python >= 0.6.2.
 
 #### run
 
@@ -119,9 +124,7 @@ Asynchronously run an Ollama Model to compute embeddings of the provided documen
 
 ### OllamaTextEmbedder
 
-Computes the embeddings of a list of Documents and stores the obtained vectors in each Document's embedding field.
-
-It uses embedding models compatible with the Ollama Library.
+Computes the embeddings of a string using embedding models compatible with the Ollama Library.
 
 Usage example:
 
@@ -142,6 +145,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     timeout: int = 120,
     keep_alive: float | str | None = None,
+    dimensions: int | None = None,
 ) -> None
 ```
 
@@ -162,6 +166,9 @@ Create a new OllamaTextEmbedder instance.
 - a number in seconds (such as 3600)
 - any negative number which will keep the model loaded in memory (e.g. -1 or "-1m")
 - '0' which will unload the model immediately after generating a response.
+- **dimensions** (<code>int | None</code>) – The desired number of dimensions in the embedding output. Only supported by models
+  that implement Matryoshka Representation Learning (MRL), such as nomic-embed-text-v1.5,
+  mxbai-embed-large, and qwen3-embedding. If None (default), the full vector is returned.
 
 #### run
 
