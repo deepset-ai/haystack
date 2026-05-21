@@ -1,4 +1,22 @@
 {
+  "rewrites": [
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/well-known"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/:path*",
+      "destination": "/api/well-known"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "/api/well-known"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server/:path*",
+      "destination": "/api/well-known"
+    }
+  ],
   "redirects": [
     {
       "source": "/docs/2.21/:slug*",
