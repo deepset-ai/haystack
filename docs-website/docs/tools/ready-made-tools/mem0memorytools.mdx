@@ -93,7 +93,7 @@ retrieve_memories = Mem0MemoryRetrieverTool(memory_store=store, top_k=10)
 store_memory = Mem0MemoryWriterTool(memory_store=store)
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4"),
     tools=[retrieve_memories, store_memory],
     system_prompt="""You are a helpful assistant with long-term memory.
 
@@ -114,8 +114,6 @@ result = agent.run(
     ],
     user_id="alice",
 )
-
-print(result["last_message"].text)
 ```
 
 ### Pass more IDs through State
@@ -125,6 +123,7 @@ Mem0 supports scoping memories with `user_id`, `run_id`, `agent_id`, and `app_id
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
 from haystack_integrations.tools.mem0 import (
     Mem0MemoryRetrieverTool,
@@ -135,6 +134,7 @@ store = Mem0MemoryStore()
 
 inputs_from_state = {
     "user_id": "user_id",
+    # Map the Agent State key "conversation_id" to the tool's "run_id" parameter.
     "conversation_id": "run_id",
 }
 
@@ -148,11 +148,22 @@ store_memory = Mem0MemoryWriterTool(
 )
 
 agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4"),
     tools=[retrieve_memories, store_memory],
     state_schema={
         "user_id": {"type": str},
         "conversation_id": {"type": str},
     },
+    streaming_callback=print_streaming_chunk,
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Remember that this conversation is about the docs assistant prototype.",
+        ),
+    ],
+    user_id="alice",
+    conversation_id="docs-assistant-prototype",
 )
 ```
