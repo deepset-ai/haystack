@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed `DocumentJoiner` duplicate handling in `concatenate` mode so documents with `score=0.0` are compared by
+    their actual score instead of being treated like documents with no score.
