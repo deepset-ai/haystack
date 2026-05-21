@@ -1,0 +1,145 @@
+---
+title: "Mem0MemoryRetriever"
+id: mem0memoryretriever
+slug: "/mem0memoryretriever"
+description: "Retrieves long-term memories from Mem0 as ChatMessage objects."
+---
+
+# Mem0MemoryRetriever
+
+Retrieves long-term memories from Mem0 as `ChatMessage` objects.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an [`Agent`](../agents-1/agent.mdx) or Chat Generator in memory-augmented pipelines |
+| **Mandatory init variables** | `memory_store`: A `Mem0MemoryStore` instance |
+| **Mandatory run variables** | `query`: A text query or `None`; at least one Mem0 scope through `user_id`, `run_id`, `agent_id`, `app_id`, or `filters` |
+| **Output variables** | `memories`: A list of `ChatMessage` objects |
+| **Mem0 API docs** | [Search Memories](https://docs.mem0.ai/api-reference/memory/search-memories), [Memory Filters](https://docs.mem0.ai/platform/features/v2-memory-filters) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mem0 |
+| **Package name** | `mem0-haystack` |
+
+</div>
+
+## Overview
+
+`Mem0MemoryRetriever` retrieves memories from a `Mem0MemoryStore` and returns them as system `ChatMessage` objects.
+Use it to inject long-term memory into an Agent or a chat generation pipeline before the model produces a response.
+
+The `query` input can be a string or `None`.
+When `query` is a string, the component searches for relevant memories and applies `top_k`.
+When `query` is `None`, it returns all memories matching the provided scope.
+
+Scope the retrieval with at least one Mem0 entity ID: `user_id`, `run_id`, `agent_id`, or `app_id`.
+You can also pass Haystack-style `filters`; when filters and ID parameters are both provided, they are combined with an `AND` condition.
+For general filter syntax, see [Metadata Filtering](../../concepts/metadata-filtering.mdx).
+
+User-provided Mem0 metadata is included in each returned message's `meta`.
+Mem0 retrieval fields such as `memory_id`, `user_id`, `score`, and timestamps are included under `meta["mem0"]`.
+
+### Installation
+
+Install the Mem0 integration:
+
+```shell
+pip install mem0-haystack
+```
+
+Set your Mem0 API key:
+
+```shell
+export MEM0_API_KEY="your-mem0-api-key"
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.retrievers.mem0 import Mem0MemoryRetriever
+from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
+
+store = Mem0MemoryStore()
+store.add_memories(
+    messages=[ChatMessage.from_user("Alice prefers concise Python examples.")],
+    user_id="alice",
+    infer=False,
+)
+
+retriever = Mem0MemoryRetriever(memory_store=store, top_k=3)
+
+result = retriever.run(query="answer style", user_id="alice")
+memories = result["memories"]
+
+for memory in memories:
+    print(memory.text)
+```
+
+To retrieve all memories in scope, pass `query=None`:
+
+```python
+all_memories = retriever.run(query=None, user_id="alice")["memories"]
+```
+
+### In a Pipeline
+
+This example retrieves memories, prepends them to the current user message, and passes the combined message list to an Agent.
+
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+from haystack.components.converters import OutputAdapter
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.retrievers.mem0 import Mem0MemoryRetriever
+from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
+
+store = Mem0MemoryStore()
+
+pipeline = Pipeline()
+pipeline.add_component("retriever", Mem0MemoryRetriever(memory_store=store, top_k=5))
+pipeline.add_component(
+    "memory_context",
+    OutputAdapter(
+        template="{{ memories + user_messages }}",
+        output_type=list[ChatMessage],
+        unsafe=True,
+    ),
+)
+pipeline.add_component(
+    "agent",
+    Agent(
+        chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+        system_prompt=(
+            "Use any system messages at the start of the conversation as long-term memory. "
+            "Answer concisely."
+        ),
+    ),
+)
+
+pipeline.connect("retriever.memories", "memory_context.memories")
+pipeline.connect("memory_context.output", "agent.messages")
+
+query = "Give me a short implementation tip."
+
+result = pipeline.run(
+    {
+        "retriever": {
+            "query": query,
+            "user_id": "alice",
+        },
+        "memory_context": {
+            "user_messages": [
+                ChatMessage.from_user(query),
+            ],
+        },
+    },
+)
+
+print(result["agent"]["last_message"].text)
+```
