@@ -77,6 +77,7 @@ This example connects an Agent's full `messages` output to `Mem0MemoryWriter` wi
 from haystack import Pipeline
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
 
 from haystack_integrations.components.writers.mem0 import Mem0MemoryWriter
@@ -92,6 +93,7 @@ pipeline.add_component(
         system_prompt=(
             "Answer the user and preserve durable user facts or preferences for future conversations."
         ),
+        streaming_callback=print_streaming_chunk,
     ),
 )
 pipeline.add_component("writer", Mem0MemoryWriter(memory_store=store, infer=True))

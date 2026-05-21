@@ -83,6 +83,7 @@ To retrieve all memories in scope, pass `query=None`:
 
 ```python
 all_memories = retriever.run(query=None, user_id="alice")["memories"]
+print([memory.text for memory in all_memories])
 ```
 
 ### In a Pipeline
@@ -94,6 +95,7 @@ from haystack import Pipeline
 from haystack.components.agents import Agent
 from haystack.components.converters import OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
 
 from haystack_integrations.components.retrievers.mem0 import Mem0MemoryRetriever
@@ -119,6 +121,7 @@ pipeline.add_component(
             "Use any system messages at the start of the conversation as long-term memory. "
             "Answer concisely."
         ),
+        streaming_callback=print_streaming_chunk,
     ),
 )
 
@@ -127,7 +130,7 @@ pipeline.connect("memory_context.output", "agent.messages")
 
 query = "Give me a short implementation tip."
 
-result = pipeline.run(
+pipeline.run(
     {
         "retriever": {
             "query": query,
@@ -140,6 +143,4 @@ result = pipeline.run(
         },
     },
 )
-
-print(result["agent"]["last_message"].text)
 ```
