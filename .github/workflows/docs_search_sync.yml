@@ -31,7 +31,8 @@ jobs:
       - name: Install Docusaurus and build docs-website
         working-directory: docs-website
         run: |
-          npm install
+          npm install --ignore-scripts
+          npm rebuild sharp
           npm run build
 
       - name: Install script dependencies
