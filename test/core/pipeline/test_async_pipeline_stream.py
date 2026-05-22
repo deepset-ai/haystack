@@ -41,6 +41,31 @@ class StreamingEcho:
 
 
 @component
+class DynamicStreamingEcho:
+    """Streaming component that declares `streaming_callback` via `set_input_type` instead of the run signature."""
+
+    def __init__(self, prefix: str = "tok", n_chunks: int = 2) -> None:
+        self.prefix = prefix
+        self.n_chunks = n_chunks
+        self.streaming_callback = None
+        component.set_input_type(self, "prompt", str)
+        component.set_input_type(self, "streaming_callback", AsyncStreamingCallbackT | None, None)
+
+    @component.output_types(reply=str)
+    def run(self, **kwargs) -> dict:
+        return {"reply": f"{self.prefix}-final"}
+
+    @component.output_types(reply=str)
+    async def run_async(self, **kwargs) -> dict:
+        cb = kwargs.get("streaming_callback")
+        for i in range(self.n_chunks):
+            chunk = StreamingChunk(content=f"{self.prefix}{i}")
+            if cb is not None:
+                await cb(chunk)
+        return {"reply": f"{self.prefix}-final"}
+
+
+@component
 class Passthrough:
     """Non-streaming async component used by filter-validation tests."""
 
@@ -112,6 +137,18 @@ def test_stream_rejects_sync_runtime_callback():
 
     with pytest.raises(ValueError, match="async"):
         pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": sync_callback}})
+
+
+@pytest.mark.asyncio
+async def test_stream_detects_streaming_callback_declared_via_set_input_type():
+    pipeline = AsyncPipeline()
+    pipeline.add_component("streamer", DynamicStreamingEcho(prefix="d", n_chunks=3))
+
+    handle = pipeline.stream(data={"streamer": {"prompt": "hi"}})
+    chunks = [c async for c in handle]
+
+    assert [c.content for c in chunks] == ["d0", "d1", "d2"]
+    assert handle.result["streamer"] == {"reply": "d-final"}
 
 
 @pytest.mark.asyncio

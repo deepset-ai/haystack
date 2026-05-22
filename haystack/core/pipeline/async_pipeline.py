@@ -5,7 +5,6 @@
 import asyncio
 import contextlib
 import contextvars
-import inspect
 from collections.abc import AsyncIterator, Mapping
 from typing import Any, ClassVar, cast
 
@@ -652,9 +651,9 @@ class AsyncPipeline(PipelineBase):
         Iterate the handle to consume chunks; after iteration ends, `handle.result` holds the final pipeline output dict
         (same as `run_async`).
 
-        For every async-capable component whose `run_async` accepts an input parameter called `streaming_callback`, a
-        forwarder is injected at runtime that pushes chunks onto the handle's queue.
-        If a `streaming_callback` is provided at component init or at call time (inside `data`, e.g.
+        For every async-capable component that exposes a `streaming_callback` input socket (either as a `run_async`
+        parameter or declared via `set_input_type`), a forwarder is injected at runtime that pushes chunks onto the
+        handle's queue. If a `streaming_callback` is provided at component init or at call time (inside `data`, e.g.
         `data={"llm": {"streaming_callback": cb}}`), it is also invoked for each chunk. The callback must be async;
         sync callbacks are rejected with a `ValueError`.
 
@@ -726,7 +725,7 @@ class AsyncPipeline(PipelineBase):
             name
             for name in self.graph.nodes
             if getattr(self.graph.nodes[name]["instance"], "__haystack_supports_async__", False)
-            and "streaming_callback" in inspect.signature(self.graph.nodes[name]["instance"].run_async).parameters
+            and "streaming_callback" in self.graph.nodes[name]["instance"].__haystack_input__
         }
         if streaming_components is not None:
             requested = set(streaming_components)
