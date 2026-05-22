@@ -418,3 +418,15 @@ class TestAnswerBuilder:
         assert "all_messages" in answers[0].meta
         assert answers[0].meta["all_messages"] == replies
         assert len(answers[0].meta["all_messages"]) == 1
+
+    def test_run_does_not_mutate_input_documents_meta(self):
+        doc = Document(content="Paris is the capital of France.", meta={"source": "wiki"})
+        component = AnswerBuilder()
+        component.run(query="Capital of France?", replies=["Paris."], documents=[doc])
+        assert doc.meta == {"source": "wiki"}
+
+    def test_run_does_not_mutate_input_documents_meta_with_reference_pattern(self):
+        doc = Document(content="Paris is the capital of France.", meta={"source": "wiki"})
+        component = AnswerBuilder(reference_pattern=r"\[(\d+)\]", return_only_referenced_documents=False)
+        component.run(query="Capital?", replies=["Paris [1]."], documents=[doc])
+        assert doc.meta == {"source": "wiki"}

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix `AnswerBuilder.run()` mutating the `meta` dict of input `Document` objects.
+    `source_index` (and `referenced` when `reference_pattern` is set) are now only added
+    to the document copies inside `GeneratedAnswer.documents`, not to the originals.
