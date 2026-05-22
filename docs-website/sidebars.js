@@ -15,6 +15,7 @@ export default {
       items: [
         'overview/installation',
         'overview/get-started',
+        'overview/docs-mcp-server',
         'overview/faq',
         'overview/telemetry',
         'overview/breaking-change-policy',
@@ -557,6 +558,7 @@ export default {
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
+            'pipeline-components/retrievers/mem0memoryretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
             'pipeline-components/retrievers/multiqueryembeddingretriever',
@@ -651,6 +653,7 @@ export default {
           label: 'Writers',
           items: [
             'pipeline-components/writers/documentwriter',
+            'pipeline-components/writers/mem0memorywriter',
           ],
         },
       ],
@@ -669,6 +672,10 @@ export default {
         {
           type: 'category',
           label: 'Ready-made Tools',
+          link: {
+            type: 'doc',
+            id: 'tools/ready-made-tools'
+          },
           items: [
             'tools/ready-made-tools/e2btoolset',
             'tools/ready-made-tools/githubfileeditortool',
@@ -676,6 +683,7 @@ export default {
             'tools/ready-made-tools/githubissueviewertool',
             'tools/ready-made-tools/githubprcreatortool',
             'tools/ready-made-tools/githubrepoviewertool',
+            'tools/ready-made-tools/mem0memorytools',
           ],
         },
       ],
