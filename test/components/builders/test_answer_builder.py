@@ -418,3 +418,66 @@ class TestAnswerBuilder:
         assert "all_messages" in answers[0].meta
         assert answers[0].meta["all_messages"] == replies
         assert len(answers[0].meta["all_messages"]) == 1
+
+
+class TestAnswerBuilderDocMetaImmutability:
+    """Regression tests for issue #11371 — AnswerBuilder.run() must not mutate input Document.meta."""
+
+    def test_run_does_not_mutate_input_document_meta(self):
+        """source_index must not appear on the original Document.meta after run()."""
+        from haystack import Document
+        from haystack.components.builders import AnswerBuilder
+
+        doc = Document(content="Paris is the capital of France.", meta={"source": "wiki"})
+        original_meta = dict(doc.meta)  # snapshot before run
+
+        builder = AnswerBuilder()
+        builder.run(query="Capital of France?", replies=["Paris."], documents=[doc])
+
+        assert doc.meta == original_meta, (
+            f"AnswerBuilder mutated input Document.meta: got {doc.meta}, expected {original_meta}"
+        )
+        assert "source_index" not in doc.meta
+
+    def test_run_with_reference_pattern_does_not_mutate_input_document_meta(self):
+        """Neither source_index nor 'referenced' should appear on the original doc.meta."""
+        from haystack import Document
+        from haystack.components.builders import AnswerBuilder
+
+        doc = Document(content="Berlin is the capital of Germany.", meta={"topic": "geography"})
+        original_meta = dict(doc.meta)
+
+        builder = AnswerBuilder(reference_pattern="\\[([0-9]+)\\]")
+        builder.run(
+            query="Capital of Germany?",
+            replies=["[1] Berlin."],
+            documents=[doc],
+        )
+
+        assert doc.meta == original_meta
+        assert "source_index" not in doc.meta
+        assert "referenced" not in doc.meta
+
+    def test_answer_documents_have_source_index(self):
+        """The copy inside GeneratedAnswer.documents must still have source_index."""
+        from haystack import Document
+        from haystack.components.builders import AnswerBuilder
+
+        doc = Document(content="Rome is the capital of Italy.", meta={"lang": "en"})
+        builder = AnswerBuilder()
+        result = builder.run(query="Capital of Italy?", replies=["Rome."], documents=[doc])
+
+        answer_doc = result["answers"][0].documents[0]
+        assert answer_doc.meta["source_index"] == 1
+        assert answer_doc.meta["lang"] == "en"
+
+    def test_run_does_not_mutate_document_with_empty_meta(self):
+        """Document with no metadata should also be unaffected."""
+        from haystack import Document
+        from haystack.components.builders import AnswerBuilder
+
+        doc = Document(content="No meta here.")
+        builder = AnswerBuilder()
+        builder.run(query="test", replies=["answer"], documents=[doc])
+
+        assert "source_index" not in doc.meta
