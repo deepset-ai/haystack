@@ -639,6 +639,7 @@ export default {
             'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
+            'pipeline-components/websearch/siftqwebsearch',
             'pipeline-components/websearch/tavilywebsearch',
             'pipeline-components/websearch/external-integrations-websearch',
           ],

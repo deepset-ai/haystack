@@ -1,0 +1,131 @@
+---
+title: "SiftqWebSearch"
+id: siftqwebsearch
+slug: "/siftqwebsearch"
+description: "Search engine using the SiftQ AI-powered search API."
+---
+
+# SiftqWebSearch
+
+Search the web using [SiftQ](https://siftq.com), an AI-powered search engine with multi-scope support for webpages, documents, scholarly papers, images, videos, and podcasts.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | None. Defaults to the built-in free tier key (100 searches/day). Set `SIFTQ_API_KEY` env var or `api_key` parameter for more. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing search result content and metadata. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [SiftqWebSearch API](/reference/native-api/websearch#siftqwebsearch) |
+| **GitHub link** | https://github.com/siftq/siftq |
+
+</div>
+
+## Overview
+
+When you give `SiftqWebSearch` a query, it uses the [SiftQ](https://siftq.com) Search API to search the web and return relevant content as Haystack `Document` objects. It also returns a list of the source URLs.
+
+SiftQ is an AI-powered search engine built for LLM applications. It supports six search scopes: webpages, documents, scholarly papers, images, videos, and podcasts — each returning structured results with titles, snippets, URLs, and metadata. Use the `scope` parameter to select which scope to query (defaults to `"webpage"`).
+
+### API Key
+
+By default, `SiftqWebSearch` uses a **built-in free tier API key** (100 searches/day, no configuration needed). For higher usage limits, you can provide your own key via:
+
+- **Environment variable**: Set `SIFTQ_API_KEY`
+- **Explicit parameter**: Pass `api_key=Secret.from_token("your-key")` during initialization
+
+The resolution order is: explicit parameter → env var → built-in free tier key.
+
+## Usage
+
+### On its own
+
+Here is a quick example of how `SiftqWebSearch` searches the web based on a query and returns a list of Documents.
+
+```python
+from haystack.components.websearch import SiftqWebSearch
+
+web_search = SiftqWebSearch(top_k=5)
+query = "What is Haystack by deepset?"
+
+response = web_search.run(query=query)
+
+for doc in response["documents"]:
+    print(doc.content)
+```
+
+### With custom scope
+
+Search for scholarly papers instead of webpages:
+
+```python
+from haystack.components.websearch import SiftqWebSearch
+
+web_search = SiftqWebSearch(top_k=5, scope="scholar")
+response = web_search.run(query="transformer attention mechanism")
+
+for doc in response["documents"]:
+    print(doc.meta["title"], "-", doc.meta.get("venue", ""))
+```
+
+### With summary-enhanced recall and raw content
+
+Use `includeSummary: True` to fetch full-page summaries for better retrieval recall. Use `includeRawContent: True` to get the raw text content from all source pages.
+
+```python
+from haystack.components.websearch import SiftqWebSearch
+
+web_search = SiftqWebSearch(
+    top_k=3,
+    search_params={"includeSummary": True, "includeRawContent": True},
+)
+response = web_search.run(query="retrieval augmented generation")
+```
+
+### In a pipeline
+
+Here is an example of a Retrieval-Augmented Generation (RAG) pipeline that uses `SiftqWebSearch` to look up an answer on the web.
+
+```python
+from haystack import Pipeline
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.websearch import SiftqWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+web_search = SiftqWebSearch(top_k=3)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables={"query", "documents"},
+)
+
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+
+print(result["llm"]["replies"][0].text)
+```
