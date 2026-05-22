@@ -13,3 +13,10 @@ updates:
       interval: 'daily'
     cooldown:
       default-days: 1
+
+  - package-ecosystem: 'npm'
+    directory: '/docs-website'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
