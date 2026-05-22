@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix an off-by-one error in ``max_runs_per_component`` so a component cannot run more
+    times than the configured limit within a single ``Pipeline.run()`` call.
