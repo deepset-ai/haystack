@@ -85,8 +85,8 @@ p.add_component(
 
 p.connect("text_router.en", "english_prompt_builder.query")
 p.connect("text_router.de", "german_prompt_builder.query")
-p.connect("english_prompt_builder.messages", "english_llm.messages")
-p.connect("german_prompt_builder.messages", "german_llm.messages")
+p.connect("english_prompt_builder.prompt", "english_llm.messages")
+p.connect("german_prompt_builder.prompt", "german_llm.messages")
 
 # English Example
 print(p.run({"text_router": {"text": "What is the capital of Germany?"}}))

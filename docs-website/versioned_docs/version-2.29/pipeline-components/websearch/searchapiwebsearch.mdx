@@ -96,7 +96,7 @@ pipe.add_component("llm", llm)
 pipe.connect("search.links", "fetcher.urls")
 pipe.connect("fetcher.streams", "converter.sources")
 pipe.connect("converter.documents", "prompt_builder.documents")
-pipe.connect("prompt_builder.messages", "llm.messages")
+pipe.connect("prompt_builder.prompt", "llm.messages")
 
 query = "What is the most famous landmark in Berlin?"
 
