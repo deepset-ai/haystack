@@ -215,6 +215,26 @@ async def test_stream_propagates_pipeline_exception_during_iteration():
 
 
 @pytest.mark.asyncio
+async def test_failing_callback_does_not_drop_chunk():
+    async def failing_callback(chunk: StreamingChunk) -> None:
+        raise RuntimeError("callback boom")
+
+    pipeline = AsyncPipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3, streaming_callback=failing_callback))
+
+    handle = pipeline.stream(data={"streamer": {"prompt": "hi"}})
+
+    received = []
+    with pytest.raises(PipelineRuntimeError) as excinfo:
+        async for chunk in handle:
+            received.append(chunk.content)
+
+    assert received == ["s0"]  # queued before the callback raised
+    chain = [excinfo.value, excinfo.value.__cause__, getattr(excinfo.value.__cause__, "__cause__", None)]
+    assert any("callback boom" in str(e) for e in chain if e is not None)
+
+
+@pytest.mark.asyncio
 async def test_result_raises_after_failure_with_chained_cause():
     pipeline = AsyncPipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=1, fail=True))
