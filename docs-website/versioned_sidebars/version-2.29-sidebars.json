@@ -134,6 +134,7 @@
         "document-stores/pinecone-document-store",
         "document-stores/qdrant-document-store",
         "document-stores/valkeydocumentstore",
+        "document-stores/vespadocumentstore",
         "document-stores/weaviatedocumentstore"
       ]
     },
@@ -570,6 +571,8 @@
             "pipeline-components/retrievers/snowflaketableretriever",
             "pipeline-components/retrievers/textembeddingretriever",
             "pipeline-components/retrievers/valkeyembeddingretriever",
+            "pipeline-components/retrievers/vespaembeddingretriever",
+            "pipeline-components/retrievers/vespakeywordretriever",
             "pipeline-components/retrievers/weaviatebm25retriever",
             "pipeline-components/retrievers/weaviateembeddingretriever",
             "pipeline-components/retrievers/weaviatehybridretriever"
