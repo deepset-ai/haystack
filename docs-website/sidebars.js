@@ -15,6 +15,7 @@ export default {
       items: [
         'overview/installation',
         'overview/get-started',
+        'overview/docs-mcp-server',
         'overview/faq',
         'overview/telemetry',
         'overview/breaking-change-policy',

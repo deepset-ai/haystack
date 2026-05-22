@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/.well-known/:path*",
+      "destination": "/api/well-known"
+    }
+  ],
   "redirects": [
     {
       "source": "/docs/2.21/:slug*",
