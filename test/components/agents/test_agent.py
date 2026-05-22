@@ -985,6 +985,25 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
 
+    @pytest.mark.asyncio
+    async def test_run_async_falls_back_to_sync_run_for_sync_only_chat_generator(self, weather_tool):
+        """`agent.run_async` must accept a chat generator that only implements `run` (no `run_async`).
+        The Agent should dispatch the sync call to the default executor rather than raising AttributeError."""
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+        assert not getattr(chat_generator, "__haystack_supports_async__", False)
+
+        run_mock = MagicMock(wraps=chat_generator.run)
+        chat_generator.run = run_mock
+
+        result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        run_mock.assert_called_once()
+        # MockChatGeneratorWithoutRunAsync.run returns ChatMessage.from_assistant("Hello")
+        assert result["messages"][1].text == "Hello"
+        assert result["last_message"] == result["messages"][-1]
+
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     def test_agent_streaming_with_tool_call(self, weather_tool):
