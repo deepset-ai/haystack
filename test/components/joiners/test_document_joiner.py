@@ -248,6 +248,53 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_concatenate_prefers_zero_score_over_no_score(self):
+        """A document with score=0.0 must beat one with score=None in concatenate mode.
+
+        Previously, `_concatenate` used `if doc.score` which treats 0.0 as falsy,
+        mapping it to -inf — the same as None.  When the unscored document appeared
+        first in the input list, `max()` returned it instead of the explicitly-zeroed one.
+        """
+        joiner = DocumentJoiner()
+        # Same content (same auto-generated ID); one has score=None, one has score=0.0.
+        # Place the unscored doc in the *first* list so it is seen first by
+        # itertools.chain — this is the order that triggered the bug.
+        doc_with_no_score = Document(content="hello")
+        doc_with_zero_score = Document(id=doc_with_no_score.id, content="hello", score=0.0)
+        output = joiner.run([[doc_with_no_score], [doc_with_zero_score]])
+        assert len(output["documents"]) == 1
+        # The explicitly-scored document (0.0 > -inf) must win.
+        assert output["documents"][0].score == 0.0
+
+    def test_concatenate_prefers_zero_score_over_negative_score(self):
+        """score=0.0 must rank above a negative score in concatenate deduplication.
+
+        `if doc.score` maps 0.0 → -inf, so a document with score=-0.5 would
+        incorrectly 'beat' one with score=0.0 under the buggy comparator.
+        """
+        joiner = DocumentJoiner()
+        doc_neg = Document(content="hello", score=-0.5)
+        doc_zero = Document(id=doc_neg.id, content="hello", score=0.0)
+        output = joiner.run([[doc_neg], [doc_zero]])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].score == 0.0
+
+    def test_merge_includes_zero_score_in_weighted_sum(self):
+        """A document with score=0.0 must contribute its value (not be skipped) in merge mode.
+
+        Previously, `_merge` used `(doc.score if doc.score else 0)` which short-circuits
+        on 0.0 and computes `0 * weight` instead of `0.0 * weight`.  The numeric
+        result is the same, but the pattern is inconsistent with the rest of the class
+        and can mask genuine score-is-None bugs.  Validate that zero scores are handled.
+        """
+        joiner = DocumentJoiner(join_mode="merge", weights=[1.0, 1.0])
+        doc_a1 = Document(content="a", score=0.0)
+        doc_a2 = Document(id=doc_a1.id, content="a", score=0.4)
+        output = joiner.run([[doc_a1], [doc_a2]])
+        assert len(output["documents"]) == 1
+        # Expected weighted sum: (0.0 * 0.5) + (0.4 * 0.5) = 0.2
+        assert abs(output["documents"][0].score - 0.2) < 1e-9
+
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
         documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
