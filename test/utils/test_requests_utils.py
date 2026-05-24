@@ -121,6 +121,33 @@ class TestRequestWithRetry:
                 assert mock_request.call_count == 2
                 mock_sleep.assert_called()
 
+    def test_request_with_retry_preserves_timeout_on_retry(self):
+        """Regression test: custom timeout must be forwarded on every retry attempt.
+
+        Previously, ``timeout`` was popped from ``kwargs`` *inside* the
+        ``@retry``-decorated ``run()`` closure.  On the first attempt the pop
+        succeeded and the caller-supplied value was used; on all subsequent
+        retries the key was already gone so ``kwargs.pop("timeout", 10)``
+        silently fell back to the 10-second default, ignoring the user's value.
+        """
+        with patch("time.sleep"):
+            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response.raise_for_status = lambda: None
+
+            with patch("httpx.Client.request") as mock_request:
+                mock_request.side_effect = [
+                    httpx.RequestError("transient error", request=httpx.Request("GET", "https://example.com")),
+                    success_response,
+                ]
+
+                request_with_retry(method="GET", url="https://example.com", attempts=2, timeout=42)
+
+                assert mock_request.call_count == 2
+                for call in mock_request.call_args_list:
+                    assert call.kwargs["timeout"] == 42, (
+                        f"Expected timeout=42 on every attempt, got {call.kwargs['timeout']!r}"
+                    )
+
 
 class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
@@ -234,3 +261,31 @@ class TestAsyncRequestWithRetry:
                 assert response == success_response
                 assert mock_request.call_count == 2
                 mock_sleep.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_async_request_with_retry_preserves_timeout_on_retry(self):
+        """Regression test: custom timeout must be forwarded on every retry attempt.
+
+        Previously, ``timeout`` was popped from ``kwargs`` *inside* the
+        ``@retry``-decorated ``run()`` closure.  On the first attempt the pop
+        succeeded and the caller-supplied value was used; on all subsequent
+        retries the key was already gone so ``kwargs.pop("timeout", 10)``
+        silently fell back to the 10-second default, ignoring the user's value.
+        """
+        with patch("asyncio.sleep"):
+            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response.raise_for_status = lambda: None
+
+            with patch("httpx.AsyncClient.request") as mock_request:
+                mock_request.side_effect = [
+                    httpx.RequestError("transient error", request=httpx.Request("GET", "https://example.com")),
+                    success_response,
+                ]
+
+                await async_request_with_retry(method="GET", url="https://example.com", attempts=2, timeout=42)
+
+                assert mock_request.call_count == 2
+                for call in mock_request.call_args_list:
+                    assert call.kwargs["timeout"] == 42, (
+                        f"Expected timeout=42 on every attempt, got {call.kwargs['timeout']!r}"
+                    )
