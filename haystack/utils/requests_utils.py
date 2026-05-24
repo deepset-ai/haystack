@@ -67,9 +67,10 @@ def request_with_retry(
         after=after_log(logger, logging.DEBUG),
     )
     def run() -> httpx.Response:
-        timeout = kwargs.pop("timeout", 10)
+        request_kwargs = dict(kwargs)
+        timeout = request_kwargs.pop("timeout", 10)
         with httpx.Client() as client:
-            res = client.request(**kwargs, timeout=timeout)
+            res = client.request(**request_kwargs, timeout=timeout)
 
             if res.status_code in status_codes_to_retry:
                 # We raise only for the status codes that must trigger a retry
@@ -177,9 +178,10 @@ async def async_request_with_retry(
         after=after_log(logger, logging.DEBUG),
     )
     async def run() -> httpx.Response:
-        timeout = kwargs.pop("timeout", 10)
+        request_kwargs = dict(kwargs)
+        timeout = request_kwargs.pop("timeout", 10)
         async with httpx.AsyncClient() as client:
-            res = await client.request(**kwargs, timeout=timeout)
+            res = await client.request(**request_kwargs, timeout=timeout)
 
             if res.status_code in status_codes_to_retry:
                 # We raise only for the status codes that must trigger a retry

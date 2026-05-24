@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Preserve user-specified timeouts across retries in `request_with_retry` and
+    `async_request_with_retry`.
