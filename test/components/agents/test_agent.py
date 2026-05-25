@@ -792,6 +792,53 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
 
+    def test_check_exit_conditions_parallel_tool_calls(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        # Exit-condition call first — historically worked.
+        llm_first = [ChatMessage.from_assistant(tool_calls=[finish_call, other_call])]
+        # Exit-condition call second — the case that regressed.
+        llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages_ok = [ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False)]
+
+        assert agent._check_exit_conditions(llm_first, tool_messages_ok) is True
+        assert agent._check_exit_conditions(llm_second, tool_messages_ok) is True
+
+    def test_check_exit_conditions_parallel_calls_with_errored_exit_tool(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages_errored = [ChatMessage.from_tool(tool_result="boom", origin=finish_call, error=True)]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages_errored) is False
+
+    def test_check_exit_conditions_parallel_calls_error_only_on_non_exit_tool(
+        self, monkeypatch, weather_tool, component_tool
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(), tools=[weather_tool, component_tool], exit_conditions=["weather_tool"]
+        )
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="parrot", arguments={"parrot": "hi"})
+
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages = [
+            ChatMessage.from_tool(tool_result="boom", origin=other_call, error=True),
+            ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False),
+        ]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages) is True
+
     def test_agent_with_no_tools(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()

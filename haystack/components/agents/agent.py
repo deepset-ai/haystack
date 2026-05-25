@@ -1190,30 +1190,38 @@ class Agent:
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """
-        Check if any of the LLM messages' tool calls match an exit condition and if there are no errors.
+        Decide whether the agent should stop looping.
+
+        Returns True when the model called at least one tool listed in ``exit_conditions`` and
+        that tool did not error. Every tool call in the message is checked, so the order of
+        parallel tool calls does not matter.
 
         :param llm_messages: List of messages from the LLM
         :param tool_messages: List of messages from the tool invoker
         :return: True if an exit condition is met and there are no errors, False otherwise
         """
-        matched_exit_conditions = set()
+        matched_exit_conditions: set[str] = set()
         has_errors = False
 
         for msg in llm_messages:
-            if msg.tool_call and msg.tool_call.tool_name in self.exit_conditions:
-                matched_exit_conditions.add(msg.tool_call.tool_name)
+            for tool_call in msg.tool_calls:
+                if tool_call.tool_name not in self.exit_conditions:
+                    continue
+                matched_exit_conditions.add(tool_call.tool_name)
 
                 # Check if any error is specifically from the tool matching the exit condition
                 tool_errors = [
                     tool_msg.tool_call_result.error
                     for tool_msg in tool_messages
                     if tool_msg.tool_call_result is not None
-                    and tool_msg.tool_call_result.origin.tool_name == msg.tool_call.tool_name
+                    and tool_msg.tool_call_result.origin.tool_name == tool_call.tool_name
                 ]
                 if any(tool_errors):
                     has_errors = True
                     # No need to check further if we found an error
                     break
+            if has_errors:
+                break
 
         # Only return True if at least one exit condition was matched AND none had errors
         return bool(matched_exit_conditions) and not has_errors
