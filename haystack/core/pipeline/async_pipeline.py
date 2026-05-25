@@ -49,7 +49,6 @@ class PipelineStreamHandle:
         self,
         queue: asyncio.Queue["StreamingChunk | _EndOfStream"],
         task: asyncio.Task[dict[str, Any]],
-        *,
         cancel_on_abandon: bool = True,
     ) -> None:
         self._queue = queue
