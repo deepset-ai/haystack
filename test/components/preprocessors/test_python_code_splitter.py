@@ -139,6 +139,10 @@ class TestInitValidation:
         with pytest.raises(ValueError):
             PythonCodeSplitter(secondary_split_overlap=-1)
 
+    def test_invalid_secondary_split_length(self):
+        with pytest.raises(ValueError):
+            PythonCodeSplitter(secondary_split_length=-1)
+
 
 class TestRunInputValidation:
     def test_none_content_raises_value_error(self):
@@ -875,3 +879,9 @@ class TestEdgeCases:
         # Either yields no chunks or a single empty-ish chunk; both are acceptable
         # but the call must not raise.
         assert isinstance(result["documents"], list)
+
+    def test_invalid_syntax_raises_syntax_error(self):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=5)
+        doc = Document(content="class Broken(\n    pass\n")
+        with pytest.raises(SyntaxError):
+            splitter.run(documents=[doc])
