@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import contextlib
 from typing import Any
 
 import pytest
@@ -20,11 +22,13 @@ class StreamingEcho:
         prefix: str = "tok",
         n_chunks: int = 3,
         fail: bool = False,
+        chunk_delay: float = 0.0,
         streaming_callback: AsyncStreamingCallbackT | None = None,
     ) -> None:
         self.prefix = prefix
         self.n_chunks = n_chunks
         self.fail = fail
+        self.chunk_delay = chunk_delay
         self.streaming_callback = streaming_callback
 
     @component.output_types(reply=str)
@@ -34,6 +38,8 @@ class StreamingEcho:
     @component.output_types(reply=str)
     async def run_async(self, prompt: str, streaming_callback: AsyncStreamingCallbackT | None = None) -> dict:
         for i in range(self.n_chunks):
+            if self.chunk_delay:
+                await asyncio.sleep(self.chunk_delay)
             chunk = StreamingChunk(content=f"{self.prefix}{i}")
             if streaming_callback is not None:
                 await streaming_callback(chunk)
@@ -275,3 +281,50 @@ async def test_aclose_cancels_pipeline_and_result_reports_cancelled():
 
     with pytest.raises(RuntimeError, match="Pipeline was cancelled"):
         handle.result
+
+
+@pytest.mark.asyncio
+async def test_consumer_cancellation_cancels_pipeline():
+    pipeline = AsyncPipeline()
+    # chunk_delay keeps the producer running so the consumer can be cancelled mid-stream
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=100, chunk_delay=0.01))
+
+    handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
+
+    async def consumer() -> None:
+        async for _ in handle:
+            pass
+
+    task = asyncio.create_task(consumer())
+    await asyncio.sleep(0.03)  # let the producer emit a couple of chunks
+    # send a cancel request and wait for the consumer to finish
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+    assert handle._task.done()
+    with pytest.raises(RuntimeError, match="cancelled"):
+        handle.result
+
+
+@pytest.mark.asyncio
+async def test_cancel_on_abandon_false_lets_pipeline_finish():
+    pipeline = AsyncPipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3, chunk_delay=0.01))
+
+    handle = pipeline.stream(data={"streamer": {"prompt": "x"}}, cancel_on_abandon=False)
+
+    async def consumer() -> None:
+        async for _ in handle:
+            pass
+
+    task = asyncio.create_task(consumer())
+    await asyncio.sleep(0.015)  # consume ~1 chunk
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+    # the consumer was cancelled, but cancel_on_abandon=False leaves the pipeline running
+    await handle._task
+    assert not handle._task.cancelled()
+    assert handle.result["streamer"] == {"reply": "s-final"}

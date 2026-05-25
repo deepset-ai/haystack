@@ -35,27 +35,46 @@ class PipelineStreamHandle:
     """
     Handle returned by `AsyncPipeline.stream()`.
 
-    Async-iterable over `StreamingChunk`s produced by streaming components in the pipeline.
-    After iteration ends, `result` holds the final pipeline output dict.
+    Async-iterable over `StreamingChunk`s produced by streaming components in the pipeline. After iteration ends,
+    `result` holds the final pipeline output dict.
+
+    By default, iteration cleans up automatically: if the consumer abandons iteration, the underlying pipeline task is
+    cancelled. `aclose()` is also available for explicit cleanup.
     """
 
     _END_OF_STREAM: ClassVar[_EndOfStream] = _EndOfStream()
+    _CLEANUP_TIMEOUT_SECONDS: ClassVar[float] = 1.0
 
     def __init__(
-        self, queue: asyncio.Queue["StreamingChunk | _EndOfStream"], task: asyncio.Task[dict[str, Any]]
+        self,
+        queue: asyncio.Queue["StreamingChunk | _EndOfStream"],
+        task: asyncio.Task[dict[str, Any]],
+        *,
+        cancel_on_abandon: bool = True,
     ) -> None:
         self._queue = queue
         self._task = task
+        self._cancel_on_abandon = cancel_on_abandon
 
-    def __aiter__(self) -> "PipelineStreamHandle":
-        return self
+    async def __aiter__(self) -> AsyncIterator[StreamingChunk]:
+        """
+        Drain the queue and cancel the pipeline task if iteration is abandoned.
 
-    async def __anext__(self) -> StreamingChunk:
-        item = await self._queue.get()
-        if item is self._END_OF_STREAM:
-            await self._task  # called to make exceptions surface
-            raise StopAsyncIteration
-        return cast(StreamingChunk, item)  # at this point, item is guaranteed to be a StreamingChunk
+        `__aiter__` is an async generator function: each `async for` call gets a generator and `try/finally` runs on
+        exit. When `cancel_on_abandon`is True (default), abandoned iteration cancels the pipeline task; when False,
+        the task is left running to completion.
+        """
+        try:
+            while True:
+                item = await self._queue.get()
+                if item is self._END_OF_STREAM:
+                    await self._task  # called to make exceptions surface
+                    return
+                yield cast(StreamingChunk, item)  # at this point, item is guaranteed to be a StreamingChunk
+
+        finally:
+            if self._cancel_on_abandon:
+                await self.aclose()
 
     @property
     def result(self) -> dict[str, Any]:
@@ -74,11 +93,15 @@ class PipelineStreamHandle:
         return self._task.result()
 
     async def aclose(self) -> None:
-        """Cancel the underlying pipeline task; to be called if abandoning iteration early."""
+        """
+        Cancel the underlying pipeline task.
+
+        Bounded by `_CLEANUP_TIMEOUT_SECONDS` so that components cannot block cleanup indefinitely.
+        """
         if not self._task.done():
             self._task.cancel()
             with contextlib.suppress(BaseException):
-                await self._task
+                await asyncio.wait_for(self._task, timeout=self._CLEANUP_TIMEOUT_SECONDS)
 
 
 class AsyncPipeline(PipelineBase):
@@ -644,18 +667,19 @@ class AsyncPipeline(PipelineBase):
         streaming_components: list[str] | None = None,
         include_outputs_from: set[str] | None = None,
         concurrency_limit: int = 4,
+        cancel_on_abandon: bool = True,
     ) -> PipelineStreamHandle:
         """
         Run the pipeline and return a handle that streams `StreamingChunk`s as they arrive.
 
-        Iterate the handle to consume chunks; after iteration ends, `handle.result` holds the final pipeline output dict
-        (same as `run_async`).
+        Iterate the handle with `async for` to consume chunks; after iteration ends, `handle.result` holds the final
+        pipeline output dict (same as `run_async`). By default, if iteration is abandoned, the underlying pipeline task
+        is cancelled automatically. Pass `cancel_on_abandon=False` to instead let the pipeline run to completion.
 
-        For every async-capable component that exposes a `streaming_callback` input socket (either as a `run_async`
-        parameter or declared via `set_input_type`), a forwarder is injected at runtime that pushes chunks onto the
-        handle's queue. If a `streaming_callback` is provided at component init or at call time (inside `data`, e.g.
-        `data={"llm": {"streaming_callback": cb}}`), it is also invoked for each chunk. The callback must be async;
-        sync callbacks are rejected with a `ValueError`.
+        For every async-capable component that exposes a `streaming_callback` input socket, a forwarder is injected at
+        runtime that pushes chunks onto the handle's queue. If a `streaming_callback` is provided at component init or
+        at runtime (inside `data`, e.g. `data={"llm": {"streaming_callback": cb}}`), it is also invoked for each chunk.
+        The callback must be async; sync callbacks are rejected with a `ValueError`.
 
         Usage:
         ```python
@@ -707,6 +731,8 @@ class AsyncPipeline(PipelineBase):
             invoked multiple times (in a loop), only the last-produced
             output is included.
         :param concurrency_limit: The maximum number of components that should be allowed to run concurrently.
+        :param cancel_on_abandon: If `True` (default), the underlying pipeline task is cancelled when iteration is
+            abandoned. If `False`, the pipeline runs to completion even when the consumer stops reading.
         :returns:
             A `PipelineStreamHandle` that is async-iterable over `StreamingChunk`s. After iteration ends,
             `handle.result` holds the final pipeline output dict (same shape as `run_async`).
@@ -769,7 +795,7 @@ class AsyncPipeline(PipelineBase):
                 await queue.put(PipelineStreamHandle._END_OF_STREAM)
 
         task = asyncio.create_task(runner())
-        return PipelineStreamHandle(queue=queue, task=task)
+        return PipelineStreamHandle(queue=queue, task=task, cancel_on_abandon=cancel_on_abandon)
 
     def run(
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
