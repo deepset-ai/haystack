@@ -22,7 +22,7 @@
 | haystack/components/caching/cache\_checker.py                                       |       37 |        0 |    100% |           |
 | haystack/components/classifiers/\_\_init\_\_.py                                     |        5 |        0 |    100% |           |
 | haystack/components/classifiers/document\_language\_classifier.py                   |       35 |        0 |    100% |           |
-| haystack/components/classifiers/zero\_shot\_document\_classifier.py                 |       58 |        5 |     91% |140-142, 217, 220 |
+| haystack/components/classifiers/zero\_shot\_document\_classifier.py                 |       58 |        5 |     91% |140-142, 219, 222 |
 | haystack/components/connectors/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/connectors/openapi.py                                           |       24 |        0 |    100% |           |
 | haystack/components/connectors/openapi\_service.py                                  |      146 |       55 |     62% |51-140, 338, 365, 373 |
