@@ -61,7 +61,7 @@ class PipelineStreamHandle:
         Drain the queue and cancel the pipeline task if iteration is abandoned.
 
         `__aiter__` is an async generator function: each `async for` call gets a generator and `try/finally` runs on
-        exit. When `cancel_on_abandon`is True (default), abandoned iteration cancels the pipeline task; when False,
+        exit. When `cancel_on_abandon` is True (default), abandoned iteration cancels the pipeline task; when False,
         the task is left running to completion.
         """
         try:
