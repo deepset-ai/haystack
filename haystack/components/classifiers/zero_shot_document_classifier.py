@@ -159,6 +159,8 @@ class TransformersZeroShotDocumentClassifier:
             self,
             labels=self.labels,
             model=self.huggingface_pipeline_kwargs["model"],
+            classification_field=self.classification_field,
+            multi_label=self.multi_label,
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             token=self.token,
         )

@@ -33,6 +33,8 @@ class TestTransformersZeroShotDocumentClassifier:
             "init_parameters": {
                 "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
+                "classification_field": None,
+                "multi_label": False,
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "huggingface_pipeline_kwargs": {
                     "model": "cross-encoder/nli-deberta-v3-xsmall",
@@ -41,6 +43,17 @@ class TestTransformersZeroShotDocumentClassifier:
                 },
             },
         }
+
+    def test_to_dict_from_dict_round_trip(self):
+        component = TransformersZeroShotDocumentClassifier(
+            model="cross-encoder/nli-deberta-v3-xsmall",
+            labels=["a", "b"],
+            classification_field="title",
+            multi_label=True,
+        )
+        restored = TransformersZeroShotDocumentClassifier.from_dict(component.to_dict())
+        assert restored.classification_field == "title"
+        assert restored.multi_label is True
 
     def test_from_dict(self, del_hf_env_vars):
         data = {

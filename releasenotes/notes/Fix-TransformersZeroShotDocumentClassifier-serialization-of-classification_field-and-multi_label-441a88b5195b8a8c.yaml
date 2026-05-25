@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    `TransformersZeroShotDocumentClassifier.to_dict()` now serializes `classification_field` and `multi_label`, so pipeline dump/load round-trips preserve the configured classification behavior.
