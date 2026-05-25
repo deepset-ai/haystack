@@ -510,15 +510,15 @@ class PythonCodeSplitter:
         units: list[_CodeUnit] = []
         cursor = 1
         body = tree.body
-        i = 0
-        n = len(body)
+        node_idx = 0
+        node_count = len(body)
 
-        while i < n:
-            node = body[i]
+        while node_idx < node_count:
+            node = body[node_idx]
 
             # Module docstring (only valid as the very first statement).
             if (
-                i == 0
+                node_idx == 0
                 and isinstance(node, ast.Expr)
                 and isinstance(node.value, ast.Constant)
                 and isinstance(node.value.value, str)
@@ -533,16 +533,16 @@ class PythonCodeSplitter:
                     )
                 )
                 cursor = end + 1
-                i += 1
+                node_idx += 1
                 continue
 
             # Consecutive imports are grouped into a single unit — they are tightly
             # related context and chopping them up is rarely useful.
             if isinstance(node, (ast.Import, ast.ImportFrom)):
-                j = i
-                while j < n and isinstance(body[j], (ast.Import, ast.ImportFrom)):
-                    j += 1
-                last = body[j - 1]
+                import_end_idx = node_idx
+                while import_end_idx < node_count and isinstance(body[import_end_idx], (ast.Import, ast.ImportFrom)):
+                    import_end_idx += 1
+                last = body[import_end_idx - 1]
                 end = last.end_lineno or last.lineno
                 units.append(
                     _CodeUnit(
@@ -553,12 +553,12 @@ class PythonCodeSplitter:
                     )
                 )
                 cursor = end + 1
-                i = j
+                node_idx = import_end_idx
                 continue
 
             if isinstance(node, ast.ClassDef):
                 cursor = self._emit_class_units(node, source_lines, cursor, units)
-                i += 1
+                node_idx += 1
                 continue
 
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -581,7 +581,7 @@ class PythonCodeSplitter:
                     )
                 )
                 cursor = end + 1
-                i += 1
+                node_idx += 1
                 continue
 
             # Catch-all for top-level statements (assignments, conditionals, etc.).
@@ -595,7 +595,7 @@ class PythonCodeSplitter:
                 )
             )
             cursor = end + 1
-            i += 1
+            node_idx += 1
 
         # Append trailing content (e.g. a trailing comment after the last node) to the
         # last unit so the splitter is loss-less w.r.t. the original source.
@@ -630,6 +630,7 @@ class PythonCodeSplitter:
         oversized_threshold = self.oversized_factor * self.max_effective_lines
 
         def flush() -> None:
+            """Flush the current chunk (if any) into ``chunks`` and reset the running state."""
             nonlocal current, current_lines
             if current:
                 chunks.append(current)
@@ -665,6 +666,7 @@ class PythonCodeSplitter:
 
     @staticmethod
     def _ordered_unique(items: list[str]) -> list[str]:
+        """Return the list of unique items in their first-seen order."""
         seen: set[str] = set()
         out: list[str] = []
         for item in items:
@@ -781,14 +783,14 @@ class PythonCodeSplitter:
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
-        Split each Python source ``Document`` into AST-aware chunks.
+        Split each Python source ``Document`` into Python syntax-aware chunks.
 
         :param documents: Documents whose ``content`` is Python source code. Each
             document's ``meta`` is propagated onto its chunks; if ``file_name`` is
             present in the meta it is preserved on every output chunk.
-        :returns: A dictionary with key ``documents`` mapping to the list of chunk
-            ``Document`` instances. Each chunk's meta additionally carries
-            ``source_id``, ``split_id``, ``start_line``, ``end_line``, ``unit_kinds``
+        :returns: A dictionary of the form ``{"documents": [...]}``, where each chunk's 
+            meta additionally carries ``source_id``, ``split_id``, ``start_line``, 
+            ``end_line``, ``unit_kinds``
             and - where applicable - ``include_classes``, ``decorators``, ``docstrings``,
             ``secondary_split``.
         :raises ValueError: If any document's content is ``None``.
