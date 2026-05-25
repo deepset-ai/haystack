@@ -21,7 +21,8 @@ class _CodeUnit:
     :ivar source: The slice of the original Python source code for this unit.
     :ivar start_line: The starting line number (1-indexed) of this unit in the original source.
     :ivar end_line: The ending line number (1-indexed, inclusive) of this unit in the original source.
-    :ivar kind: The kind of unit (could be 'class', 'method', 'function', 'imports', 'module_docstring', 'statement').
+    :ivar kind: The kind of unit. One of: 'module_docstring', 'imports', 'class', 'class_header',
+        'method', 'nested_class', 'function', or 'statement'.
     :ivar name: The name of the unit (for functions, methods, classes), or None.
     :ivar class_name: The name of the enclosing class if this unit belongs to a class, or None.
         Used only for internal bookkeeping.
@@ -357,7 +358,7 @@ class PythonCodeSplitter:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
         # Refuse to strip if the docstring starts on the same line as the def/class
-        # statement — removing it would leave broken syntax behind.
+        # statement - removing it would leave broken syntax behind.
         if first.lineno <= node.lineno:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
