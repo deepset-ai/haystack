@@ -182,7 +182,7 @@ class TestBasicOutput:
         for chunk in result["documents"]:
             assert isinstance(chunk, Document)
             assert isinstance(chunk.content, str)
-            assert chunk.content  # non-empty
+            assert chunk.content  # checks non-empty
 
     def test_split_id_starts_at_zero_and_increments(self, class_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
@@ -764,6 +764,115 @@ class TestDocstringStripping:
         assert "Class-level docstring." not in (header.content or "")
         # Docstring must be captured in meta instead.
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
+
+
+class TestTopLevelStatements:
+    @pytest.fixture
+    def rich_module_source(self):
+        return textwrap.dedent(
+            '''
+            """Utility helpers for the pipeline."""
+            import os
+            import sys
+            from pathlib import Path
+
+            MAX_RETRIES = 3
+            DEFAULT_TIMEOUT = 30.0
+            LOG_PREFIX = "app"
+
+
+            def process(data):
+                """Process data."""
+                result = data.strip()
+                return result
+
+
+            def validate(value):
+                """Validate a value."""
+                if value is None:
+                    raise ValueError("value cannot be None")
+                return True
+
+
+            class Manager:
+                """Resource manager."""
+
+                def __init__(self):
+                    self.items = []
+
+                def add(self, item):
+                    self.items.append(item)
+
+                def remove(self, item):
+                    self.items.remove(item)
+
+
+            if __name__ == "__main__":
+                mgr = Manager()
+                mgr.add(process("test"))
+            '''
+        ).lstrip()
+
+    def test_statement_unit_kind_present(self, rich_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
+        assert "statement" in all_kinds
+
+    def test_import_unit_kind_present(self, rich_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
+        assert "imports" in all_kinds
+
+    def test_module_docstring_unit_kind_present(self, rich_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
+        assert "module_docstring" in all_kinds
+
+    def test_first_chunk_contains_preamble_statements(self, rich_module_source):
+        # The preamble (module docstring + 3 imports + 3 assignments) totals 6 effective
+        # lines at the default expected_chars_per_line=45.  Setting max_effective_lines=6
+        # causes the greedy merger to flush before absorbing the first function definition,
+        # so the first chunk must be exactly the pre-function preamble.
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=6)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        assert len(result["documents"]) >= 2, "Need at least two chunks for this assertion"
+        first = result["documents"][0]
+        content = first.content or ""
+        assert '"""Utility helpers for the pipeline."""' in content
+        assert "import os" in content
+        assert "import sys" in content
+        assert "from pathlib import Path" in content
+        assert "MAX_RETRIES = 3" in content
+        assert "DEFAULT_TIMEOUT = 30.0" in content
+        assert 'LOG_PREFIX = "app"' in content
+        assert "def process" not in content
+        assert "def validate" not in content
+        assert "class Manager" not in content
+
+    def test_if_main_produces_statement_unit(self, rich_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
+        assert "statement" in all_kinds
+        joined = "\n".join(c.content or "" for c in result["documents"])
+        assert 'if __name__ == "__main__"' in joined
+
+    def test_all_imports_appear_in_output(self, rich_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        joined = "\n".join(c.content or "" for c in result["documents"])
+        assert "import os" in joined
+        assert "import sys" in joined
+        assert "from pathlib import Path" in joined
+
+    def test_module_docstring_text_preserved(self, rich_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
+        result = splitter.run(documents=[Document(content=rich_module_source)])
+        joined = "\n".join(c.content or "" for c in result["documents"])
+        assert "Utility helpers for the pipeline." in joined
 
 
 class TestUnitKinds:
