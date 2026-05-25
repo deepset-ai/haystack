@@ -944,7 +944,7 @@ class TestMultipleDocuments:
         per_file_ids = {"a.py": [], "b.py": []}
         for chunk in result["documents"]:
             per_file_ids[chunk.meta["file_name"]].append(chunk.meta["split_id"])
-        for _, ids in per_file_ids.values():
+        for ids in per_file_ids.values():
             assert ids == sorted(ids)
             assert ids[0] == 0
 
