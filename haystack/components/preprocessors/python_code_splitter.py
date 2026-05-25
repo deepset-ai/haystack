@@ -314,6 +314,10 @@ class PythonCodeSplitter:
             return 0
         return max(1, math.ceil(len(text) / self.expected_chars_per_line))
 
+    def _is_oversized(self, unit: "_CodeUnit") -> bool:
+        """Return ``True`` if ``unit`` should trigger the secondary line-based split."""
+        return self._effective_lines(unit.source) > self.oversized_factor * self.max_effective_lines
+
     @staticmethod
     def _slice_lines(source_lines: list[str], start: int, end: int) -> str:
         """Slice ``source_lines`` between the 1-indexed ``start`` and ``end`` (inclusive)."""
@@ -625,7 +629,6 @@ class PythonCodeSplitter:
         current: list[_CodeUnit] = []
         current_lines = 0
         target = self.max_effective_lines
-        oversized_threshold = self.oversized_factor * self.max_effective_lines
 
         def flush() -> None:
             """Flush the current chunk (if any) into ``chunks`` and reset the running state."""
@@ -636,12 +639,12 @@ class PythonCodeSplitter:
                 current_lines = 0
 
         for unit in units:
-            unit_eff = self._effective_lines(unit.source)
-
-            if unit_eff > oversized_threshold:
+            if self._is_oversized(unit):
                 flush()
                 chunks.append([unit])
                 continue
+
+            unit_eff = self._effective_lines(unit.source)
 
             if not current:
                 current = [unit]
@@ -665,13 +668,7 @@ class PythonCodeSplitter:
     @staticmethod
     def _ordered_unique(items: list[str]) -> list[str]:
         """Return the list of unique items in their first-seen order."""
-        seen: set[str] = set()
-        out: list[str] = []
-        for item in items:
-            if item not in seen:
-                seen.add(item)
-                out.append(item)
-        return out
+        return list(dict.fromkeys(items))
 
     def _build_chunk_meta(self, chunk: list[_CodeUnit], parent_doc: Document) -> dict[str, Any]:
         """Construct the output meta dict for a chunk of merged units."""
@@ -679,11 +676,10 @@ class PythonCodeSplitter:
         if parent_doc.meta:
             meta.update({k: v for k, v in parent_doc.meta.items() if k not in {"split_id"}})
         meta["source_id"] = parent_doc.id
-        if "file_name" in parent_doc.meta and "file_name" not in meta:
-            meta["file_name"] = parent_doc.meta["file_name"]
 
-        meta["start_line"] = min(u.start_line for u in chunk)
-        meta["end_line"] = max(u.end_line for u in chunk)
+        # Units are emitted in source order, so chunk[0]/chunk[-1] give the extremes.
+        meta["start_line"] = chunk[0].start_line
+        meta["end_line"] = chunk[-1].end_line
         meta["unit_kinds"] = [u.kind for u in chunk]
 
         include_classes = self._ordered_unique([u.class_name for u in chunk if u.class_name])
@@ -814,11 +810,7 @@ class PythonCodeSplitter:
             chunks = self._merge_units(units)
             split_id = 0
             for chunk in chunks:
-                is_oversized = (
-                    len(chunk) == 1
-                    and self._effective_lines(chunk[0].source) > self.oversized_factor * self.max_effective_lines
-                )
-                if is_oversized:
+                if len(chunk) == 1 and self._is_oversized(chunk[0]):
                     for piece in self._secondary_split(chunk[0], doc):
                         piece.meta["split_id"] = split_id
                         split_id += 1
