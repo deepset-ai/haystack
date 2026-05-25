@@ -1,0 +1,47 @@
+---
+features:
+  - |
+    Added ``PythonCodeSplitter``, an syntax-aware splitter for Python source files.
+
+    The splitter parses each document with :mod:`ast` and produces a flat list of
+    *syntactic units*: the module docstring, blocks of consecutive imports, top-level
+    functions, class headers (the ``class`` signature plus any class-level
+    statements / docstrings preceding the first method), class methods and any other
+    module-level statements. Each unit is sliced directly from the original source
+    using ``node.lineno`` / ``node.end_lineno`` rather than ``ast.unparse``, so chunks
+    read top-to-bottom exactly like the original file, with comments and blank lines
+    preserved. Decorators are never orphaned — for any decorated node the slice starts
+    at ``node.decorator_list[0].lineno``.
+
+    Units are greedily merged in source order to approach a configurable ``max_lines``
+    target without ever cutting through a single statement. Sizing is measured in
+    *effective lines* — defined as ``ceil(len(source) / chars_per_line)`` with
+    ``chars_per_line`` defaulting to ``45`` — so dense one-liners count proportionally
+    against the budget. When adding the next unit would move the running total
+    further from ``max_lines`` than leaving it out, the current chunk is flushed; while
+    the chunk is still below ``min_lines`` the splitter keeps merging regardless.
+
+    Each output ``Document``'s meta carries ``file_name`` (propagated from the input),
+    ``include_classes`` (a deduplicated, source-order list of class names whose members
+    appear in the chunk, when at least one such class is involved), ``decorators``,
+    ``start_line`` / ``end_line`` in the original file, and ``unit_kinds``. When
+    ``strip_docstrings=True`` (default ``False``), function / method / class docstrings
+    are removed from the chunk content and stored under ``docstrings`` in the meta
+    instead.
+
+    When ``preserve_class_definition=True`` (the default), any chunk containing class
+    members whose ``class`` header was emitted into a previous chunk is automatically
+    prefixed with the bare class signature (decorators plus the ``class Foo(...):``
+    line), so that the enclosing class context — including base classes, metaclass, and
+    class decorators — remains visible without fetching the preceding chunk.
+
+    A function or method whose effective length exceeds
+    ``oversized_factor * max_lines`` (default ``3 * max_lines``) is the **only** case
+    where chunks may overlap: it is broken down with a secondary line-based split
+    via ``DocumentSplitter`` and a warning is emitted. The primary AST-based split
+    intentionally does **not** add overlap, because overlap there would mean
+    duplicating entire functions across consecutive chunks — wasteful for storage
+    and embedding cost, and confusing for retrieval (the same self-contained unit
+    would be returned multiple times). Overlap is therefore reserved for the
+    oversized fallback, where it is genuinely useful for stitching back together a
+    function that had to be cut mid-body.
