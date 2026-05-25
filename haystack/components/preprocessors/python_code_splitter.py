@@ -24,8 +24,10 @@ class _CodeUnit:
     :ivar kind: The kind of unit (could be 'class', 'method', 'function', 'imports', 'module_docstring', 'statement').
     :ivar name: The name of the unit (for functions, methods, classes), or None.
     :ivar class_name: The name of the enclosing class if this unit belongs to a class, or None.
-    :ivar parent_classes: List of parent class names for this unit's enclosing class.
-    :ivar metaclass: The metaclass name for this unit's enclosing class, or None.
+        Used only for internal bookkeeping.
+    :ivar class_signature: The source text of the enclosing class signature (decorators plus the
+        ``class Foo(...):`` lines, without the body), or None. Used internally to optionally
+        prepend a class definition to chunks whose class header lives in another chunk.
     :ivar decorators: List of decorator strings for this unit.
     :ivar docstring: The docstring of this unit if stripped, or None.
     """
@@ -36,8 +38,7 @@ class _CodeUnit:
     kind: str
     name: str | None = None
     class_name: str | None = None
-    parent_classes: list[str] = field(default_factory=list)
-    metaclass: str | None = None
+    class_signature: str | None = None
     decorators: list[str] = field(default_factory=list)
     docstring: str | None = None
 
@@ -96,8 +97,8 @@ class PythonCodeSplitter:
     Per-chunk metadata embedded on each output ``Document`` includes:
 
     - ``file_name`` (propagated from the input document's meta, if present),
-    - ``class_name``, ``parent_classes``, ``metaclass`` when every unit in the chunk
-      belongs to the same class,
+    - ``include_classes`` (a deduplicated, source-order list of class names that the
+      units in the chunk belong to, when at least one such class is involved),
     - ``decorators`` (a deduplicated, ordered list of decorator strings for the units
       in the chunk),
     - ``start_line`` and ``end_line`` in the original file (1-indexed, inclusive),
@@ -129,11 +130,11 @@ class PythonCodeSplitter:
             return 2 * 3.14159 * self.r
     '''
 
-    splitter = PythonCodeSplitter(min_effective_lines=4, max_effective_lines=6)
+    splitter = PythonCodeSplitter(min_effective_lines=4, max_effective_lines=6, preserve_class_definition=True)
     result = splitter.run(documents=[Document(content=source, meta={"file_name": "circle.py"})])
     for i, chunk in enumerate(result["documents"]):
         print(f"Chunk {i}: ")
-        print(f"Start line: {chunk.meta['start_line']}, End line: {chunk.meta['end_line']}, class name: {chunk.meta.get('class_name')}")
+        print(f"Start line: {chunk.meta['start_line']}, End line: {chunk.meta['end_line']}, include classes: {chunk.meta.get('include_classes')}")
         print(f"Content:\n{chunk.content}\n")
     ```
 
@@ -141,7 +142,7 @@ class PythonCodeSplitter:
 
     ```
     Chunk 0:
-    Start line: 2, End line: 10, class name: Circle
+    Start line: 2, End line: 10, include classes: ['Circle']
     Content:
     \"\"\"Example module.\"\"\"
     from math import sqrt
@@ -154,8 +155,9 @@ class PythonCodeSplitter:
             self.r = r
 
     Chunk 1:
-    Start line: 12, End line: 21, class name: Circle
+    Start line: 12, End line: 21, include classes: ['Circle']
     Content:
+    class Circle:
 
         def area(self) -> float:
             return 3.14159 * self.r * self.r
@@ -163,6 +165,7 @@ class PythonCodeSplitter:
         def circumference(self) -> float:
             return 2 * 3.14159 * self.r
     ```
+
     #### Stripping docstrings into meta
 
     ```python
@@ -235,6 +238,7 @@ class PythonCodeSplitter:
         expected_chars_per_line: int = 45,
         oversized_factor: int = 3,
         strip_docstrings: bool = False,
+        preserve_class_definition: bool = True,
         secondary_split_overlap: int = 5,
         secondary_split_length: int | None = None,
     ) -> None:
@@ -260,6 +264,13 @@ class PythonCodeSplitter:
             ``docstrings`` key in the chunk's meta (as a list in source order). The
             module-level docstring is left in place because it is itself a top-level
             split unit.
+        :param preserve_class_definition: If ``True`` (default), every chunk that contains
+            class members (methods or nested classes) but whose corresponding class header
+            was emitted into a previous chunk is prefixed with the bare class signature
+            (decorators plus the ``class Foo(...):`` lines) so that the enclosing class
+            context is visible in the chunk. Class signatures are prepended in the source
+            order in which their members first appear in the chunk; chunks that already
+            contain the class header are left unchanged.
         :param secondary_split_overlap: Number of lines of overlap to use when the
             secondary (line-based) splitter is applied to oversized functions. Only
             used in the oversized fallback — the primary AST-based split never adds
@@ -290,6 +301,7 @@ class PythonCodeSplitter:
         self.expected_chars_per_line = expected_chars_per_line
         self.oversized_factor = oversized_factor
         self.strip_docstrings = strip_docstrings
+        self.preserve_class_definition = preserve_class_definition
         self.secondary_split_overlap = secondary_split_overlap
         self.secondary_split_length = secondary_split_length
 
@@ -366,11 +378,6 @@ class PythonCodeSplitter:
         class_start = cls.decorator_list[0].lineno if cls.decorator_list else cls.lineno
         class_end = cls.end_lineno or cls.lineno
         class_name = cls.name
-        parent_classes = [self._safe_unparse(b) for b in cls.bases]
-        metaclass: str | None = None
-        for kw in cls.keywords:
-            if kw.arg == "metaclass":
-                metaclass = self._safe_unparse(kw.value)
         class_decorators = [self._safe_unparse(d) for d in cls.decorator_list]
 
         # Identify body children that should become their own units. Functions, async
@@ -381,6 +388,16 @@ class PythonCodeSplitter:
             for k, child in enumerate(cls.body)
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
         ]
+
+        # Bare class signature lines (decorators + ``class Foo(...):``), i.e. everything
+        # from the start of the class up to the line where the body begins. Used by
+        # ``preserve_class_definition`` to prepend the enclosing class context to chunks
+        # whose class header lives in a previous chunk.
+        class_signature: str | None = None
+        if cls.body:
+            body_start = cls.body[0].lineno
+            if body_start > class_start:
+                class_signature = self._slice_lines(source_lines, class_start, body_start - 1)
 
         # Whole class fits in one unit when there are no inner split points.
         if not split_children_idx:
@@ -396,8 +413,7 @@ class PythonCodeSplitter:
                     kind="class",
                     name=class_name,
                     class_name=class_name,
-                    parent_classes=parent_classes,
-                    metaclass=metaclass,
+                    class_signature=class_signature,
                     decorators=class_decorators,
                     docstring=stripped_docstring,
                 )
@@ -437,8 +453,7 @@ class PythonCodeSplitter:
                 kind="class_header",
                 name=class_name,
                 class_name=class_name,
-                parent_classes=parent_classes,
-                metaclass=metaclass,
+                class_signature=class_signature,
                 decorators=class_decorators,
                 docstring=header_docstring,
             )
@@ -469,8 +484,7 @@ class PythonCodeSplitter:
                     kind=kind,
                     name=child.name,
                     class_name=class_name,
-                    parent_classes=parent_classes,
-                    metaclass=metaclass,
+                    class_signature=class_signature,
                     decorators=decorators,
                     docstring=stripped_docstring,
                 )
@@ -671,17 +685,9 @@ class PythonCodeSplitter:
         meta["end_line"] = max(u.end_line for u in chunk)
         meta["unit_kinds"] = [u.kind for u in chunk]
 
-        class_names = {u.class_name for u in chunk if u.class_name}
-        if len(class_names) == 1:
-            (only,) = class_names
-            meta["class_name"] = only
-            for u in chunk:
-                if u.class_name == only:
-                    if u.parent_classes:
-                        meta["parent_classes"] = list(u.parent_classes)
-                    if u.metaclass:
-                        meta["metaclass"] = u.metaclass
-                    break
+        include_classes = self._ordered_unique([u.class_name for u in chunk if u.class_name])
+        if include_classes:
+            meta["include_classes"] = include_classes
 
         decorators: list[str] = []
         for u in chunk:
@@ -696,6 +702,38 @@ class PythonCodeSplitter:
                 meta["docstrings"] = docstrings
 
         return meta
+
+    def _render_chunk_content(self, chunk: list[_CodeUnit]) -> str:
+        """
+        Build the textual content for ``chunk``.
+
+        When ``preserve_class_definition`` is enabled, every class whose members
+        (methods or nested classes) appear in the chunk but whose ``class`` /
+        ``class_header`` unit does not, gets its bare signature prepended so that
+        the enclosing class context remains visible in the chunk.
+        """
+        body = "".join(u.source for u in chunk)
+        if not self.preserve_class_definition:
+            return body
+
+        classes_with_header = {
+            u.class_name for u in chunk if u.kind in {"class", "class_header"} and u.class_name
+        }
+        prepended: list[str] = []
+        seen: set[str] = set()
+        for u in chunk:
+            if (
+                u.class_name
+                and u.class_name not in classes_with_header
+                and u.class_name not in seen
+                and u.class_signature
+            ):
+                prepended.append(u.class_signature)
+                seen.add(u.class_name)
+
+        if not prepended:
+            return body
+        return "".join(prepended) + body
 
     def _secondary_split(self, unit: _CodeUnit, parent_doc: Document) -> list[Document]:
         """Apply a line-based fallback split with overlap to a single oversized unit."""
@@ -750,8 +788,8 @@ class PythonCodeSplitter:
         :returns: A dictionary with key ``documents`` mapping to the list of chunk
             ``Document`` instances. Each chunk's meta additionally carries
             ``source_id``, ``split_id``, ``start_line``, ``end_line``, ``unit_kinds``
-            and — where applicable — ``class_name``, ``parent_classes``, ``metaclass``,
-            ``decorators``, ``docstrings``, ``secondary_split``.
+            and - where applicable - ``include_classes``, ``decorators``, ``docstrings``,
+            ``secondary_split``.
         :raises ValueError: If any document's content is ``None``.
         :raises TypeError: If any document's content is not a string.
         :raises SyntaxError: If a document's content is not valid Python (raised by
@@ -793,7 +831,7 @@ class PythonCodeSplitter:
                         final_docs.append(piece)
                     continue
 
-                content = "".join(u.source for u in chunk)
+                content = self._render_chunk_content(chunk)
                 meta = self._build_chunk_meta(chunk, doc)
                 meta["split_id"] = split_id
                 split_id += 1
