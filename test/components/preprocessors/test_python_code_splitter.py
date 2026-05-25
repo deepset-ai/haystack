@@ -741,6 +741,30 @@ class TestDocstringStripping:
         # Module docstring should still appear (it's itself a unit).
         assert "Module-level docstring." in joined
 
+    def test_strip_class_header_docstring_moves_to_meta(self):
+        source = textwrap.dedent(
+            '''
+            class MyClass:
+                """Class-level docstring."""
+
+                class_var = 42
+
+                def method(self):
+                    return self.class_var
+            '''
+        ).lstrip()
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        header_chunks = [c for c in result["documents"] if "class_header" in c.meta.get("unit_kinds", [])]
+        assert header_chunks, "expected at least one class_header chunk"
+
+        header = header_chunks[0]
+        # Docstring text must not appear in the chunk content.
+        assert "Class-level docstring." not in (header.content or "")
+        # Docstring must be captured in meta instead.
+        assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
+
 
 class TestUnitKinds:
     def test_unit_kinds_lists_what_was_merged(self, simple_module_source):
