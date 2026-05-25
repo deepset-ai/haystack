@@ -236,7 +236,7 @@ class TestOrderingAndLineRanges:
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
         result = splitter.run(documents=[Document(content=class_source)])
         chunks = result["documents"]
-        for prev, nxt in zip(chunks, chunks[1:]):
+        for prev, nxt in zip(chunks, chunks[1:], strict=False):
             assert nxt.meta["start_line"] > prev.meta["end_line"]
 
     def test_chunks_read_top_to_bottom(self, class_source):
@@ -257,9 +257,7 @@ class TestOrderingAndLineRanges:
 class TestFileNamePropagation:
     def test_file_name_propagated_to_all_chunks(self, simple_module_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
-        result = splitter.run(
-            documents=[Document(content=simple_module_source, meta={"file_name": "sample.py"})]
-        )
+        result = splitter.run(documents=[Document(content=simple_module_source, meta={"file_name": "sample.py"})])
         for chunk in result["documents"]:
             assert chunk.meta["file_name"] == "sample.py"
 
@@ -272,12 +270,7 @@ class TestFileNamePropagation:
     def test_other_meta_is_propagated(self, simple_module_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
         result = splitter.run(
-            documents=[
-                Document(
-                    content=simple_module_source,
-                    meta={"file_name": "x.py", "project": "haystack"},
-                )
-            ]
+            documents=[Document(content=simple_module_source, meta={"file_name": "x.py", "project": "haystack"})]
         )
         for chunk in result["documents"]:
             assert chunk.meta["project"] == "haystack"
@@ -288,24 +281,20 @@ class TestClassMetadata:
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
         result = splitter.run(documents=[Document(content=class_source)])
         # At least one chunk should be from class Circle and carry include_classes.
-        circle_chunks = [
-            c for c in result["documents"] if "Circle" in (c.meta.get("include_classes") or [])
-        ]
+        circle_chunks = [c for c in result["documents"] if "Circle" in (c.meta.get("include_classes") or [])]
         assert circle_chunks, "Expected at least one chunk for class Circle"
 
     def test_class_name_present_for_shape_methods(self, class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
         result = splitter.run(documents=[Document(content=class_source)])
-        shape_chunks = [
-            c for c in result["documents"] if "Shape" in (c.meta.get("include_classes") or [])
-        ]
+        shape_chunks = [c for c in result["documents"] if "Shape" in (c.meta.get("include_classes") or [])]
         assert shape_chunks, "Expected at least one chunk for class Shape"
 
 
 class TestDecorators:
     def test_decorators_metadata_present(self):
         source = textwrap.dedent(
-            '''
+            """
             class A:
                 @staticmethod
                 def s():
@@ -314,7 +303,7 @@ class TestDecorators:
                 @classmethod
                 def c(cls):
                     return 2
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2)
         result = splitter.run(documents=[Document(content=source)])
@@ -326,12 +315,12 @@ class TestDecorators:
 
     def test_decorator_lines_included_in_chunk_content(self):
         source = textwrap.dedent(
-            '''
+            """
             class A:
                 @staticmethod
                 def s():
                     return 1
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2)
         result = splitter.run(documents=[Document(content=source)])
@@ -345,7 +334,7 @@ class TestDecorators:
         # Two methods sharing the same decorator should not list the
         # decorator twice in the chunk's meta if they end up merged.
         source = textwrap.dedent(
-            '''
+            """
             class A:
                 @staticmethod
                 def one():
@@ -354,7 +343,7 @@ class TestDecorators:
                 @staticmethod
                 def two():
                     return 2
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=20)
         result = splitter.run(documents=[Document(content=source)])
@@ -366,7 +355,7 @@ class TestDecorators:
 class TestThreeDecorators:
     def test_function_with_three_decorators_lists_all(self):
         source = textwrap.dedent(
-            '''
+            """
             def deco_a(fn):
                 return fn
 
@@ -384,7 +373,7 @@ class TestThreeDecorators:
             @deco_c
             def triple():
                 return 1
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=200)
         result = splitter.run(documents=[Document(content=source)])
@@ -403,13 +392,13 @@ class TestThreeDecorators:
 
     def test_function_with_three_decorators_all_lines_in_content(self):
         source = textwrap.dedent(
-            '''
+            """
             @deco_a
             @deco_b
             @deco_c
             def triple():
                 return 1
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
         result = splitter.run(documents=[Document(content=source)])
@@ -444,7 +433,7 @@ class TestIncludeClassesMeta:
 
     def test_include_classes_is_deduplicated(self):
         source = textwrap.dedent(
-            '''
+            """
             class A:
                 def one(self):
                     return 1
@@ -454,7 +443,7 @@ class TestIncludeClassesMeta:
 
                 def three(self):
                     return 3
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=200)
         result = splitter.run(documents=[Document(content=source)])
@@ -464,7 +453,7 @@ class TestIncludeClassesMeta:
 
     def test_include_classes_preserves_source_order(self):
         source = textwrap.dedent(
-            '''
+            """
             class First:
                 def f(self):
                     return 1
@@ -478,7 +467,7 @@ class TestIncludeClassesMeta:
             class Third:
                 def h(self):
                     return 3
-            '''
+            """
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=500)
         result = splitter.run(documents=[Document(content=source)])
@@ -522,9 +511,7 @@ class TestPreserveClassDefinition:
         assert splitter.preserve_class_definition is True
 
     def test_class_signature_prepended_to_later_chunks(self, multi_method_class_source):
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=multi_method_class_source)])
         chunks = result["documents"]
         assert len(chunks) >= 2, "Need multiple chunks for this test to be meaningful"
@@ -539,23 +526,18 @@ class TestPreserveClassDefinition:
                 )
 
     def test_disabled_does_not_prepend_class_signature(self, multi_method_class_source):
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1, max_effective_lines=3, preserve_class_definition=False
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=False)
         result = splitter.run(documents=[Document(content=multi_method_class_source)])
         chunks = result["documents"]
         # Exactly one chunk should contain the original `class Greeter` header
         # (the one that actually produced from the class header unit).
         chunks_with_header = [c for c in chunks if "class Greeter" in (c.content or "")]
         assert len(chunks_with_header) == 1, (
-            "With preserve_class_definition=False, only the original chunk should "
-            "contain the class header."
+            "With preserve_class_definition=False, only the original chunk should contain the class header."
         )
 
     def test_preserve_does_not_duplicate_header_in_original_chunk(self, multi_method_class_source):
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=multi_method_class_source)])
         for chunk in result["documents"]:
             content = chunk.content or ""
@@ -589,15 +571,10 @@ class TestPreserveClassDefinition:
                     return 4
             '''
         ).lstrip()
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=source)])
 
-        child_chunks = [
-            c for c in result["documents"]
-            if "Child" in (c.meta.get("include_classes") or [])
-        ]
+        child_chunks = [c for c in result["documents"] if "Child" in (c.meta.get("include_classes") or [])]
         assert len(child_chunks) >= 2, "Need multiple Child chunks for this test"
 
         # Every chunk that contains a member of Child must show the full class
@@ -605,13 +582,12 @@ class TestPreserveClassDefinition:
         for chunk in child_chunks:
             content = chunk.content or ""
             assert "class Child(Base, metaclass=Meta):" in content, (
-                "Expected the full class signature (with bases and metaclass) "
-                f"to be preserved, got:\n{content}"
+                f"Expected the full class signature (with bases and metaclass) to be preserved, got:\n{content}"
             )
 
     def test_preserve_keeps_decorators_on_class(self):
         source = textwrap.dedent(
-            '''
+            """
             def reg(cls):
                 return cls
 
@@ -629,29 +605,22 @@ class TestPreserveClassDefinition:
 
                 def four(self):
                     return 4
-            '''
+            """
         ).lstrip()
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=source)])
 
-        decorated_chunks = [
-            c for c in result["documents"]
-            if "Decorated" in (c.meta.get("include_classes") or [])
-        ]
+        decorated_chunks = [c for c in result["documents"] if "Decorated" in (c.meta.get("include_classes") or [])]
         assert len(decorated_chunks) >= 2
 
         for chunk in decorated_chunks:
             content = chunk.content or ""
             assert "class Decorated" in content
-            assert "@reg" in content, (
-                f"Expected '@reg' decorator to be preserved on class signature, got:\n{content}"
-            )
+            assert "@reg" in content, f"Expected '@reg' decorator to be preserved on class signature, got:\n{content}"
 
     def test_preserve_handles_multiple_classes(self):
         source = textwrap.dedent(
-            '''
+            """
             class A:
                 def a1(self):
                     return 1
@@ -672,11 +641,9 @@ class TestPreserveClassDefinition:
 
                 def b3(self):
                     return 3
-            '''
+            """
         ).lstrip()
-        splitter = PythonCodeSplitter(
-            min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=source)])
 
         for chunk in result["documents"]:
@@ -887,9 +854,7 @@ class TestUnitKinds:
         # We expect at least one function-like and one import-like kind.
         text = " ".join(all_kinds).lower()
         assert any("import" in t for t in all_kinds) or "import" in text
-        assert any("func" in t or "method" in t for t in all_kinds) or any(
-            "func" in t for t in text.split()
-        )
+        assert any("func" in t or "method" in t for t in all_kinds) or any("func" in t for t in text.split())
 
 
 class TestOversizedFallback:
@@ -902,8 +867,7 @@ class TestOversizedFallback:
             result = splitter.run(documents=[Document(content=oversized_function_source)])
 
         warned = bool(caught) or any(
-            "oversiz" in rec.message.lower() or "secondary" in rec.message.lower()
-            for rec in caplog.records
+            "oversiz" in rec.message.lower() or "secondary" in rec.message.lower() for rec in caplog.records
         )
         assert warned, "Splitter should warn the user about oversized function fallback"
         assert len(result["documents"]) >= 2
@@ -934,16 +898,20 @@ class TestEffectiveLines:
     def test_long_lines_count_as_more_effective_lines(self):
         # With expected_chars_per_line=10 and tiny max_effective_lines, even one long line should
         # itself exceed the budget and produce its own chunk.
-        long_line_source = textwrap.dedent(
-            '''
+        long_line_source = (
+            textwrap.dedent(
+                """
             def short():
                 return 1
 
 
             def longer():
                 return "{padding}"
-            '''
-        ).lstrip().format(padding="x" * 500)
+            """
+            )
+            .lstrip()
+            .format(padding="x" * 500)
+        )
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2, expected_chars_per_line=10)
 
         result = splitter.run(documents=[Document(content=long_line_source)])
@@ -976,7 +944,7 @@ class TestMultipleDocuments:
         per_file_ids = {"a.py": [], "b.py": []}
         for chunk in result["documents"]:
             per_file_ids[chunk.meta["file_name"]].append(chunk.meta["split_id"])
-        for _fname, ids in per_file_ids.items():
+        for _, ids in per_file_ids.values():
             assert ids == sorted(ids)
             assert ids[0] == 0
 

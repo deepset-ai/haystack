@@ -52,8 +52,8 @@ class PythonCodeSplitter:
     ### General behavior
 
     Functions of reasonable size will fit as a whole into the documents, which means,
-    each created document will contain complete functions. However, 
-    if the number of effective lines in a function exceeds ``max_effective_lines * oversized_factor`` 
+    each created document will contain complete functions. However,
+    if the number of effective lines in a function exceeds ``max_effective_lines * oversized_factor``
     (which happens for **huge functions**), the splitter falls back to the secondary
     split to split that specific function, under which syntactic correctness is not
     guaranteed anymore.
@@ -70,7 +70,7 @@ class PythonCodeSplitter:
     - class methods,
     - and any remaining module-level statements.
 
-    The resulting chunks read top-to-bottom exactly like the original file, 
+    The resulting chunks read top-to-bottom exactly like the original file,
     with comments and blank lines preserved.
 
     #### Effective lines
@@ -89,8 +89,8 @@ class PythonCodeSplitter:
     retrieval results.
 
     The secondary split always uses ``split_by="line"`` because other split modes (word,
-    sentence, etc.) are not meaningful for code. The chunk size for the secondary split 
-    is controlled by ``secondary_split_length`` (defaults to ``max_effective_lines`` 
+    sentence, etc.) are not meaningful for code. The chunk size for the secondary split
+    is controlled by ``secondary_split_length`` (defaults to ``max_effective_lines``
     when ``None``).
 
     #### Metadata
@@ -135,7 +135,9 @@ class PythonCodeSplitter:
     result = splitter.run(documents=[Document(content=source, meta={"file_name": "circle.py"})])
     for i, chunk in enumerate(result["documents"]):
         print(f"Chunk {i}: ")
-        print(f"Start line: {chunk.meta['start_line']}, End line: {chunk.meta['end_line']}, include classes: {chunk.meta.get('include_classes')}")
+        info = (f"Start line: {chunk.meta['start_line']}, End line: {chunk.meta['end_line']}, "
+                f"include classes: {chunk.meta.get('include_classes')}")
+        print(info)
         print(f"Content:\n{chunk.content}\n")
     ```
 
@@ -198,11 +200,11 @@ class PythonCodeSplitter:
     def add(a: float, b: float) -> float:
         return a + b
 
-    Docstring:  ['Add two numbers together.\n\n:param a: The first number.\n:param b: The second number.\n:return: The sum of a and b.']
+    Docstring:  ['Add two numbers together.\n\n:param a: The first number.\n:param b: ...']
     ```
 
-    This might be useful for RAG, especially if the docstring is too large. One can strip the 
-    docstring to save storage, and upon embedding, one can pass `doc.meta.get("docstrings", [])` 
+    This might be useful for RAG, especially if the docstring is too large. One can strip the
+    docstring to save storage, and upon embedding, one can pass `doc.meta.get("docstrings", [])`
     into `meta_fields_to_embed` field, which results in no performance degradation for
     retrieval, for example:
 
@@ -214,7 +216,7 @@ class PythonCodeSplitter:
     def add(a: float, b: float) -> float:
         \"\"\"
         Add two numbers together.
-        
+
         :param a: The first number.
         :param b: The second number.
         :return: The sum of a and b.
@@ -315,8 +317,7 @@ class PythonCodeSplitter:
     @staticmethod
     def _slice_lines(source_lines: list[str], start: int, end: int) -> str:
         """Slice ``source_lines`` between the 1-indexed ``start`` and ``end`` (inclusive)."""
-        if start < 1:
-            start = 1
+        start = max(start, 1)
         if end < start:
             return ""
         return "".join(source_lines[start - 1 : end])
@@ -351,9 +352,7 @@ class PythonCodeSplitter:
 
         first = body[0]
         if not (
-            isinstance(first, ast.Expr)
-            and isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
+            isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str)
         ):
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
@@ -368,9 +367,7 @@ class PythonCodeSplitter:
         after = source_lines[ds_end:unit_end]
         return "".join(before + after), docstring
 
-    def _emit_class_units(
-        self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]
-    ) -> int:
+    def _emit_class_units(self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]) -> int:
         """
         Emit the class header and per-method units for ``cls``.
 
@@ -423,7 +420,10 @@ class PythonCodeSplitter:
 
         # Class header: from outer cursor up to (but excluding) the first split child.
         first_child = cls.body[split_children_idx[0]]
-        if isinstance(first_child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and first_child.decorator_list:
+        if (
+            isinstance(first_child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and first_child.decorator_list
+        ):
             first_child_start = first_child.decorator_list[0].lineno
         else:
             first_child_start = first_child.lineno
@@ -472,9 +472,7 @@ class PythonCodeSplitter:
             unit_slice = self._slice_lines(source_lines, inner_cursor, child_end)
             stripped_docstring = None
             if self.strip_docstrings:
-                unit_slice, stripped_docstring = self._strip_docstring(
-                    child, source_lines, inner_cursor, child_end
-                )
+                unit_slice, stripped_docstring = self._strip_docstring(child, source_lines, inner_cursor, child_end)
 
             kind = "method" if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) else "nested_class"
             units.append(
@@ -614,7 +612,7 @@ class PythonCodeSplitter:
             )
 
         return units
-    
+
     def _merge_units(self, units: list[_CodeUnit]) -> list[list[_CodeUnit]]:
         """
         Greedily merge ``units`` (in source order) into chunks of roughly ``max_effective_lines``.
@@ -719,9 +717,7 @@ class PythonCodeSplitter:
         if not self.preserve_class_definition:
             return body
 
-        classes_with_header = {
-            u.class_name for u in chunk if u.kind in {"class", "class_header"} and u.class_name
-        }
+        classes_with_header = {u.class_name for u in chunk if u.kind in {"class", "class_header"} and u.class_name}
         prepended: list[str] = []
         seen: set[str] = set()
         for u in chunk:
@@ -760,14 +756,12 @@ class PythonCodeSplitter:
         # split_length is interpreted in physical lines by DocumentSplitter; this is an
         # approximation of `max_effective_lines` effective lines but is good enough for the
         # fallback path (and the warning above flags that the result is approximate).
-        split_length = self.secondary_split_length if self.secondary_split_length is not None else self.max_effective_lines
+        split_length = (
+            self.secondary_split_length if self.secondary_split_length is not None else self.max_effective_lines
+        )
         overlap = min(self.secondary_split_overlap, max(0, split_length - 1))
 
-        splitter = DocumentSplitter(
-            split_by="line",
-            split_length=split_length,
-            split_overlap=overlap,
-        )
+        splitter = DocumentSplitter(split_by="line", split_length=split_length, split_overlap=overlap)
         intermediate = splitter.run(documents=[Document(content=unit.source)])["documents"]
 
         base_meta = self._build_chunk_meta([unit], parent_doc)
@@ -788,8 +782,8 @@ class PythonCodeSplitter:
         :param documents: Documents whose ``content`` is Python source code. Each
             document's ``meta`` is propagated onto its chunks; if ``file_name`` is
             present in the meta it is preserved on every output chunk.
-        :returns: A dictionary of the form ``{"documents": [...]}``, where each chunk's 
-            meta additionally carries ``source_id``, ``split_id``, ``start_line``, 
+        :returns: A dictionary of the form ``{"documents": [...]}``, where each chunk's
+            meta additionally carries ``source_id``, ``split_id``, ``start_line``,
             ``end_line``, ``unit_kinds``
             and - where applicable - ``include_classes``, ``decorators``, ``docstrings``,
             ``secondary_split``.
@@ -801,8 +795,7 @@ class PythonCodeSplitter:
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
-                    "PythonCodeSplitter only works with text documents but content for document"
-                    f" ID {doc.id} is None."
+                    f"PythonCodeSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
             if not isinstance(doc.content, str):
                 raise TypeError("PythonCodeSplitter only works with text documents (str content).")
@@ -811,9 +804,7 @@ class PythonCodeSplitter:
         for doc in documents:
             assert doc.content is not None  # narrowed by the loop above
             if not doc.content.strip():
-                logger.warning(
-                    "Document ID {doc_id} has empty content. Skipping this document.", doc_id=doc.id
-                )
+                logger.warning("Document ID {doc_id} has empty content. Skipping this document.", doc_id=doc.id)
                 continue
 
             units = self._extract_units(doc.content)
