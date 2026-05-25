@@ -89,7 +89,9 @@ class TestInitValidation:
         assert splitter.expected_chars_per_line == 45
         assert splitter.oversized_factor == 3
         assert splitter.strip_docstrings is False
+        assert splitter.preserve_class_definition is True
         assert splitter.secondary_split_overlap == 5
+        assert splitter.secondary_split_length is None
 
     def test_custom_values(self):
         splitter = PythonCodeSplitter(
@@ -98,14 +100,18 @@ class TestInitValidation:
             expected_chars_per_line=80,
             oversized_factor=4,
             strip_docstrings=True,
+            preserve_class_definition=False,
             secondary_split_overlap=2,
+            secondary_split_length=15,
         )
         assert splitter.min_effective_lines == 2
         assert splitter.max_effective_lines == 10
         assert splitter.expected_chars_per_line == 80
         assert splitter.oversized_factor == 4
         assert splitter.strip_docstrings is True
+        assert splitter.preserve_class_definition is False
         assert splitter.secondary_split_overlap == 2
+        assert splitter.secondary_split_length == 15
 
     def test_invalid_min_effective_lines_zero(self):
         with pytest.raises(ValueError):
@@ -265,7 +271,7 @@ class TestFileNamePropagation:
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
         result = splitter.run(documents=[Document(content=simple_module_source)])
         for chunk in result["documents"]:
-            assert chunk.meta.get("file_name") is None or "file_name" not in chunk.meta
+            assert "file_name" not in chunk.meta
 
     def test_other_meta_is_propagated(self, simple_module_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
@@ -859,17 +865,15 @@ class TestUnitKinds:
 
 class TestOversizedFallback:
     def test_warns_on_oversized_function(self, oversized_function_source, caplog):
-        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
-        import warnings
+        import logging
 
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
+
+        with caplog.at_level(logging.WARNING):
             result = splitter.run(documents=[Document(content=oversized_function_source)])
 
-        warned = bool(caught) or any(
-            "oversiz" in rec.message.lower() or "secondary" in rec.message.lower() for rec in caplog.records
-        )
-        assert warned, "Splitter should warn the user about oversized function fallback"
+        text = caplog.text.lower()
+        assert "oversiz" in text or "secondary" in text, "Splitter should warn about oversized function fallback"
         assert len(result["documents"]) >= 2
 
     def test_oversized_chunks_marked_with_secondary_split(self, oversized_function_source):
