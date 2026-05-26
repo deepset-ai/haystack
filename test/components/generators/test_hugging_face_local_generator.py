@@ -420,6 +420,18 @@ class TestHuggingFaceLocalGenerator:
         results = generator.run(prompt="irrelevant")
         assert results == {"replies": ["Hello"]}
 
+    def test_run_stop_words_removal_multiple_entries(self):
+        """Test that multiple stop words are removed and don't cause N*M replies"""
+        generator = HuggingFaceLocalGenerator(
+            model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["world", "universe"]
+        )
+        generator.pipeline = Mock(
+            return_value=[{"generated_text": "Hello world"}, {"generated_text": "Hello universe"}]
+        )
+        generator.stopping_criteria_list = Mock()
+        results = generator.run(prompt="irrelevant")
+        assert results == {"replies": ["Hello", "Hello"]}
+
     @pytest.mark.integration
     def test_stop_words_criteria_using_hf_tokenizer(self):
         """

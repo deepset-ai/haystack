@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed a bug in `HuggingFaceLocalGenerator` where passing multiple stop words returned a cross-product of replies (N x M replies instead of N). Stop words are now removed sequentially.
