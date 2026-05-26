@@ -73,6 +73,8 @@ doc = Document(content="col\n1\n2\n3")
 
 ### Agent
 
+#### Breakpoint and snapshot API removed
+
 **What changed:** The agent-specific breakpoint API has been removed. The `AgentBreakpoint`, `ToolBreakpoint`, and `AgentSnapshot` dataclasses are no longer exported from `haystack.dataclasses`, and the `break_point`, `snapshot`, and `snapshot_callback` parameters have been removed from `Agent.run` and `Agent.run_async`. `Pipeline.run` no longer accepts an `AgentBreakpoint` for its `break_point` argument, and the `agent_snapshot` field has been removed from `PipelineSnapshot`. Pausing and resuming execution inside an Agent (at the chat generator or tool invoker) is no longer supported.
 
 **Why:** Simplifies the breakpoint and snapshot machinery and removes the special-cased agent-internal control flow. Pipeline-level breakpoints still cover the common debugging use cases.
@@ -124,6 +126,46 @@ LangfuseConnector("Standalone Agent example")
 
 agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[...])
 agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
+```
+
+#### Tracing span hierarchy reshaped
+
+**What changed:** Each iteration of the Agent loop now emits a single `haystack.agent.step` Haystack span with two nested children — `haystack.agent.step.llm` for the chat generator call and `haystack.agent.step.tool` for the tool invocation (only when tool calls happen). Previously each iteration produced two child spans through `Pipeline._run_component` (one for the chat generator, one for the tool invoker) tagged with `haystack.component.name` / `haystack.component.type`. The new spans do NOT carry `haystack.component.*` tags; they expose new content tags `haystack.agent.step.llm.input`/`.output` and `haystack.agent.step.tool.input`/`.output`.
+
+**Why:** Removes the dependency on `Pipeline._run_component` inside `Agent.run` and produces a clearer per-iteration trace structure that maps directly onto common agent-tracing conventions (e.g., Langfuse `chain → {generation, tool}`).
+
+**How to migrate:** Custom tracer backends or `SpanHandler` implementations that dispatched on `component_type == "ToolInvoker"` or `component_type.endswith("ChatGenerator")` for Agent-internal spans must now dispatch on the new operation names instead. For example, in the Langfuse integration this means subclassing or updating the `DefaultSpanHandler` and overriding `create_span` to recognize the three new operations:
+
+```python
+from typing import cast
+from haystack_integrations.tracing.langfuse import DefaultSpanHandler, LangfuseSpan
+from haystack_integrations.tracing.langfuse.tracer import ObservationSpanType, SpanContext
+
+
+class AgentStepSpanHandler(DefaultSpanHandler):
+    def create_span(self, context: SpanContext) -> LangfuseSpan:
+        if context.operation_name == "haystack.agent.step":
+            return LangfuseSpan(
+                self.tracer.start_as_current_observation(
+                    name=f"agent step {context.tags.get('haystack.agent.step', 0)}",
+                    as_type=cast(ObservationSpanType, "chain"),
+                )
+            )
+        if context.operation_name == "haystack.agent.step.llm":
+            return LangfuseSpan(
+                self.tracer.start_as_current_observation(name="llm", as_type=cast(ObservationSpanType, "generation"))
+            )
+        if context.operation_name == "haystack.agent.step.tool":
+            return LangfuseSpan(
+                self.tracer.start_as_current_observation(name="tool", as_type=cast(ObservationSpanType, "tool"))
+            )
+        return super().create_span(context)
+```
+
+Pass an instance to the `LangfuseConnector`:
+
+```python
+LangfuseConnector("My Agent", span_handler=AgentStepSpanHandler())
 ```
 
 ### `PromptBuilder` and `ChatPromptBuilder` template variables are required by default
