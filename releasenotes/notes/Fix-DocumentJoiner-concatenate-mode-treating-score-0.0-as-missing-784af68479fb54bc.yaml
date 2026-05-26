@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed `DocumentJoiner` in `concatenate` mode treating documents with a score of `0.0` as unscored when deduplicating by ID.
+    Duplicate documents with a zero score could lose to documents with negative or missing scores.

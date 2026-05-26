@@ -146,6 +146,17 @@ class TestDocumentJoiner:
             output["documents"], key=lambda d: d.id
         )
 
+    def test_concatenate_keeps_highest_score_for_zero_and_negative_scores(self):
+        joiner = DocumentJoiner(sort_by_score=False)
+        documents_1 = [Document(id="dup", content="no score")]
+        documents_2 = [Document(id="dup", content="zero score", score=0.0)]
+        documents_3 = [Document(id="dup", content="negative score", score=-0.1)]
+
+        output = joiner.run([documents_1, documents_2, documents_3])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].content == "zero score"
+        assert output["documents"][0].score == 0.0
+
     def test_run_with_merge_join_mode(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[1.5, 0.5])
         documents_1 = [Document(content="a", score=1.0), Document(content="b", score=2.0)]
