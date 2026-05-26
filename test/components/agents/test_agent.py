@@ -801,7 +801,7 @@ class TestAgent:
 
         # Exit-condition call first — historically worked.
         llm_first = [ChatMessage.from_assistant(tool_calls=[finish_call, other_call])]
-        # Exit-condition call second — the case that regressed.
+        # Exit-condition call second
         llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
         tool_messages_ok = [ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False)]
 
