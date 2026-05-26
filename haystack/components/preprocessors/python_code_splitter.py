@@ -5,7 +5,7 @@
 import ast
 import math
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
@@ -36,9 +36,7 @@ class _CodeUnit:
     source: str
     start_line: int
     end_line: int
-    kind: Literal[
-        "module_docstring", "imports", "class", "class_header", "method", "nested_class", "function", "statement"
-    ]
+    kind: str
     name: str | None = None
     class_name: str | None = None
     class_signature: str | None = None
