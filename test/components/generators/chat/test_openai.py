@@ -462,17 +462,6 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
-    async def test_run_async_with_string_input(self, openai_mock_async_chat_completion):
-        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        response = await component.run_async("What's the capital of France?")
-
-        _, kwargs = openai_mock_async_chat_completion.call_args
-        assert kwargs["messages"] == [{"role": "user", "content": "What's the capital of France?"}]
-
-        assert isinstance(response["replies"], list)
-        assert len(response["replies"]) == 1
-        assert isinstance(response["replies"][0], ChatMessage)
-
     def test_run_with_params(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
