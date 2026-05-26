@@ -55,7 +55,13 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
 
 
 def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
-    """Validate that user_prompt and system_prompt define exactly one message block with the correct role."""
+    """
+    Validate explicit Jinja2 message blocks in Agent prompts.
+
+    :param user_prompt: Optional user prompt template.
+    :param system_prompt: Optional system prompt template.
+    :raises ValueError: If a prompt contains multiple message blocks or a literal block role is invalid.
+    """
     if user_prompt is not None:
         message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(user_prompt)
         roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
@@ -74,7 +80,13 @@ def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str 
 
 
 def _template_for_role(prompt: str, role: str) -> str:
-    """Wrap plain string templates in a message block for the expected role."""
+    """
+    Convert a prompt into a ChatPromptBuilder string template for the expected role.
+
+    :param prompt: Prompt template, with or without an explicit Jinja2 message block.
+    :param role: Role to use when wrapping a plain string prompt.
+    :returns: The original message-block template, or a plain string prompt wrapped in one message block.
+    """
     if _JINJA2_CHAT_TEMPLATE_RE.search(prompt):
         return prompt
     return f'{{% message role="{role}" %}}{prompt}{{% endmessage %}}'
@@ -484,6 +496,16 @@ class Agent:
     def _render_prompt_messages(
         *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
     ) -> list[ChatMessage]:
+        """
+        Render one Agent prompt and validate the rendered message.
+
+        :param prompt_builder: Builder configured with the prompt template.
+        :param expected_role: Role the rendered message must have.
+        :param prompt_label: Prompt name used in error messages.
+        :param kwargs: Runtime values available to the prompt template.
+        :returns: A single rendered prompt message.
+        :raises ValueError: If the prompt renders to zero, multiple, or wrong-role messages.
+        """
         prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
         prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
         if len(prompt_messages) != 1:
