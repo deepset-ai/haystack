@@ -15,7 +15,7 @@
 | haystack/components/audio/whisper\_local.py                                         |       66 |        6 |     91% |128, 164-167, 183 |
 | haystack/components/audio/whisper\_remote.py                                        |       43 |       13 |     70% |96, 149-164 |
 | haystack/components/builders/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
-| haystack/components/builders/answer\_builder.py                                     |       70 |        1 |     99% |       242 |
+| haystack/components/builders/answer\_builder.py                                     |       70 |        1 |     99% |       245 |
 | haystack/components/builders/chat\_prompt\_builder.py                               |      110 |        2 |     98% |  176, 263 |
 | haystack/components/builders/prompt\_builder.py                                     |       50 |        0 |    100% |           |
 | haystack/components/caching/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
