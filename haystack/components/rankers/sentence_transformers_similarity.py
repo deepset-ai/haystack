@@ -264,7 +264,7 @@ class SentenceTransformersSimilarityRanker:
         prepared_documents = []
         for doc in deduplicated_documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
             prepared_documents.append(
                 self.document_prefix
