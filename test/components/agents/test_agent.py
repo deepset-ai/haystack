@@ -799,7 +799,7 @@ class TestAgent:
         finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
 
-        # Exit-condition call first — historically worked.
+        # Exit-condition call first
         llm_first = [ChatMessage.from_assistant(tool_calls=[finish_call, other_call])]
         # Exit-condition call second
         llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
