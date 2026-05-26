@@ -92,6 +92,34 @@ def _template_for_role(prompt: str, role: str) -> str:
     return f'{{% message role="{role}" %}}{prompt}{{% endmessage %}}'
 
 
+def _render_prompt_messages(
+    *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
+) -> list[ChatMessage]:
+    """
+    Render one Agent prompt and validate the rendered message.
+
+    :param prompt_builder: Builder configured with the prompt template.
+    :param expected_role: Role the rendered message must have.
+    :param prompt_label: Prompt name used in error messages.
+    :param kwargs: Runtime values available to the prompt template.
+    :returns: A single rendered prompt message.
+    :raises ValueError: If the prompt renders to zero, multiple, or wrong-role messages.
+    """
+    prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
+    prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
+    if len(prompt_messages) != 1:
+        raise ValueError(
+            f"{prompt_label} must render to exactly one {expected_role.value} message. "
+            f"Got {len(prompt_messages)} messages."
+        )
+    if not prompt_messages[0].is_from(expected_role):
+        raise ValueError(
+            f"{prompt_label} must render to a {expected_role.value} message. "
+            f"Got a message with role {prompt_messages[0].role}."
+        )
+    return prompt_messages
+
+
 @dataclass(kw_only=True)
 class _ExecutionContext:
     """
@@ -492,34 +520,6 @@ class Agent:
             parent_span=parent_span,
         )
 
-    @staticmethod
-    def _render_prompt_messages(
-        *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
-    ) -> list[ChatMessage]:
-        """
-        Render one Agent prompt and validate the rendered message.
-
-        :param prompt_builder: Builder configured with the prompt template.
-        :param expected_role: Role the rendered message must have.
-        :param prompt_label: Prompt name used in error messages.
-        :param kwargs: Runtime values available to the prompt template.
-        :returns: A single rendered prompt message.
-        :raises ValueError: If the prompt renders to zero, multiple, or wrong-role messages.
-        """
-        prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
-        prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
-        if len(prompt_messages) != 1:
-            raise ValueError(
-                f"{prompt_label} must render to exactly one {expected_role.value} message. "
-                f"Got {len(prompt_messages)} messages."
-            )
-        if not prompt_messages[0].is_from(expected_role):
-            raise ValueError(
-                f"{prompt_label} must render to a {expected_role.value} message. "
-                f"Got a message with role {prompt_messages[0].role}."
-            )
-        return prompt_messages
-
     def _initialize_fresh_execution(
         self,
         messages: list[ChatMessage],
@@ -548,7 +548,7 @@ class Agent:
         messages = messages or []
 
         if self._user_chat_prompt_builder is not None:
-            user_messages = self._render_prompt_messages(
+            user_messages = _render_prompt_messages(
                 prompt_builder=self._user_chat_prompt_builder,
                 expected_role=ChatRole.USER,
                 prompt_label="user_prompt",
@@ -557,7 +557,7 @@ class Agent:
             messages = messages + user_messages
 
         if self._system_chat_prompt_builder is not None:
-            system_messages = self._render_prompt_messages(
+            system_messages = _render_prompt_messages(
                 prompt_builder=self._system_chat_prompt_builder,
                 expected_role=ChatRole.SYSTEM,
                 prompt_label="system_prompt",
