@@ -107,6 +107,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             progress_bar=False,
             meta_fields_to_embed=["meta_field"],
             embedding_separator=" ",
+            concurrency_limit=7,
         )
 
         data = embedder.to_dict()
@@ -125,6 +126,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 "progress_bar": False,
                 "meta_fields_to_embed": ["meta_field"],
                 "embedding_separator": " ",
+                "concurrency_limit": 7,
             },
         }
 
@@ -143,6 +145,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 "progress_bar": False,
                 "meta_fields_to_embed": ["meta_field"],
                 "embedding_separator": " ",
+                "concurrency_limit": 7,
             },
         }
 
@@ -158,6 +161,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         assert not embedder.progress_bar
         assert embedder.meta_fields_to_embed == ["meta_field"]
         assert embedder.embedding_separator == " "
+        assert embedder.concurrency_limit == 7
 
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [

@@ -1381,16 +1381,30 @@ class TestPipelineBase:
 
     @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
     def test__get_next_runnable_component_max_visits(self, mock_get_component_with_graph_metadata_and_visits):
-        """Test component exceeding max visits raises exception"""
+        """Test component reaching max visits raises exception"""
         pipeline = PipelineBase(max_runs_per_component=2)
         queue = FIFOPriorityQueue()
         queue.push("ready_component", ComponentPriority.READY)
-        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 3}
+        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 2}
 
         with pytest.raises(PipelineMaxComponentRuns) as exc_info:
-            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 3})
+            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 2})
 
         assert "Maximum run count 2 reached for component 'ready_component'" in str(exc_info.value)
+
+    @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
+    def test__get_next_runnable_component_max_visits_blocked(self, mock_get_component_with_graph_metadata_and_visits):
+        """Test a BLOCKED component that has reached max visits does NOT raise, since it cannot run anyway."""
+        pipeline = PipelineBase(max_runs_per_component=2)
+        queue = FIFOPriorityQueue()
+        queue.push("blocked_component", ComponentPriority.BLOCKED)
+        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 2}
+
+        result = pipeline._get_next_runnable_component(queue, component_visits={"blocked_component": 2})
+        assert result is not None
+        priority, component_name, comp = result
+        assert priority == ComponentPriority.BLOCKED
+        assert component_name == "blocked_component"
 
     @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
     def test__get_next_runnable_component_ready(self, mock_get_component_with_graph_metadata_and_visits):

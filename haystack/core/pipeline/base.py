@@ -1240,7 +1240,9 @@ class PipelineBase:  # noqa: PLW1641
 
         component_name = item[1]
         comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        if comp["visits"] > self._max_runs_per_component:
+        # Only raise the max run count error if the component is not blocked, since if it's blocked it means it
+        # can't run anyway.
+        if item[0] < ComponentPriority.BLOCKED and comp["visits"] >= self._max_runs_per_component:
             msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
             raise PipelineMaxComponentRuns(msg)
         return ComponentPriority(item[0]), component_name, comp
