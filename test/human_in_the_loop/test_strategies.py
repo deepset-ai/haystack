@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -58,7 +57,6 @@ def execution_context(tools: list[Tool]) -> _ExecutionContext:
         chat_generator_inputs={},
         tool_invoker_inputs={"tools": tools},
         counter=0,
-        skip_chat_generator=False,
     )
 
 
@@ -190,32 +188,6 @@ class TestRunConfirmationStrategies:
         )
         assert teds == [
             ToolExecutionDecision(tool_name=tools[0].name, execute=True, final_tool_params={"param1": "value1"})
-        ]
-
-    def test_run_confirmation_strategies_with_existing_teds(self, tools, execution_context):
-        exe_context_with_teds = replace(
-            execution_context,
-            tool_execution_decisions=[
-                ToolExecutionDecision(
-                    tool_name=tools[0].name, execute=True, tool_call_id="123", final_tool_params={"param1": "new_value"}
-                )
-            ],
-        )
-        teds = _run_confirmation_strategies(
-            confirmation_strategies={
-                tools[0].name: BlockingConfirmationStrategy(
-                    confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
-                )
-            },
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"param1": "value1"}, id="123")])
-            ],
-            execution_context=exe_context_with_teds,
-        )
-        assert teds == [
-            ToolExecutionDecision(
-                tool_name=tools[0].name, execute=True, tool_call_id="123", final_tool_params={"param1": "new_value"}
-            )
         ]
 
     def test_run_confirmation_strategies_with_multi_tool_tuple_key(self, tools, execution_context):
@@ -513,7 +485,6 @@ class TestRunContext:
             chat_generator_inputs={},
             tool_invoker_inputs={"tools": tools},
             counter=0,
-            skip_chat_generator=False,
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
@@ -541,7 +512,6 @@ class TestRunContext:
             chat_generator_inputs={},
             tool_invoker_inputs={"tools": tools},
             counter=0,
-            skip_chat_generator=False,
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
@@ -717,29 +687,3 @@ class TestAsyncConfirmationStrategies:
         assert len(teds) == 1
         assert teds[0].tool_name == tools[0].name
         assert teds[0].execute is True
-
-    @pytest.mark.asyncio
-    async def test_run_confirmation_strategies_async_with_existing_teds(self, tools, execution_context):
-        exe_context_with_teds = replace(
-            execution_context,
-            tool_execution_decisions=[
-                ToolExecutionDecision(
-                    tool_name=tools[0].name, execute=True, tool_call_id="123", final_tool_params={"a": 5, "b": 6}
-                )
-            ],
-        )
-        teds = await _run_confirmation_strategies_async(
-            confirmation_strategies={
-                tools[0].name: BlockingConfirmationStrategy(
-                    confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
-                )
-            },
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2}, id="123")])
-            ],
-            execution_context=exe_context_with_teds,
-        )
-        # Should use the existing TED, not create a new one
-        assert len(teds) == 1
-        assert teds[0].tool_call_id == "123"
-        assert teds[0].final_tool_params == {"a": 5, "b": 6}

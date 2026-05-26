@@ -513,12 +513,12 @@ class AsyncPipeline(PipelineBase):
                             # keep adding while concurrency is not locked
                             continue
 
-                        # The next is DEFER/DEFER_LAST => we only schedule it if it "becomes READY"
+                        # The next is DEFER => we only schedule it if it "becomes READY"
                         # We'll handle it in the next iteration or with incremental waiting
                         break
 
-                # We only schedule components with priority DEFER or DEFER_LAST when no other tasks are running
-                elif priority in (ComponentPriority.DEFER, ComponentPriority.DEFER_LAST) and not running_tasks:
+                # We only schedule components with priority DEFER when no other tasks are running
+                elif priority == ComponentPriority.DEFER and not running_tasks:
                     if len(priority_queue) > 0:
                         comp_name, topological_sort = self._tiebreak_waiting_components(
                             component_name=comp_name,
