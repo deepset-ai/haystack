@@ -762,7 +762,7 @@ class Agent:
             result["last_message"] = msgs[-1]
         return result
 
-    def _run_step(self, exe_context: _ExecutionContext, agent_span: Any) -> bool:
+    def _run_step(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step. Returns True to continue the loop, False to stop."""
         with tracing.tracer.trace(
             "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
@@ -809,7 +809,7 @@ class Agent:
             exe_context.counter += 1
             return True
 
-    async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: Any) -> bool:
+    async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
         with tracing.tracer.trace(
             "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
