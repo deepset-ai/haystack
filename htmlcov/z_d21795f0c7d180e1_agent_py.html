@@ -54,9 +54,9 @@
             </div>
         </aside>
         <h2>
-            <span class="text">380 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">368<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">12<span class="text"> missing</span></button>
+            <span class="text">384 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">374<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">10<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b1baed4f908c0402___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-26 07:44 +0000
+            created at 2026-05-26 08:01 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -1272,33 +1272,41 @@
     <p class="pln"><span class="n"><a id="t1190" href="#t1190">1190</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t1191" href="#t1191">1191</a></span><span class="t">    <span class="key">def</span> <span class="nam">_check_exit_conditions</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">llm_messages</span><span class="op">:</span> <span class="nam">list</span><span class="op">[</span><span class="nam">ChatMessage</span><span class="op">]</span><span class="op">,</span> <span class="nam">tool_messages</span><span class="op">:</span> <span class="nam">list</span><span class="op">[</span><span class="nam">ChatMessage</span><span class="op">]</span><span class="op">)</span> <span class="op">-></span> <span class="nam">bool</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1192" href="#t1192">1192</a></span><span class="t">        <span class="str">"""</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1193" href="#t1193">1193</a></span><span class="t"><span class="str">        Check if any of the LLM messages' tool calls match an exit condition and if there are no errors.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1193" href="#t1193">1193</a></span><span class="t"><span class="str">        Decide whether the agent should stop looping.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1194" href="#t1194">1194</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1195" href="#t1195">1195</a></span><span class="t"><span class="str">        :param llm_messages: List of messages from the LLM</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1196" href="#t1196">1196</a></span><span class="t"><span class="str">        :param tool_messages: List of messages from the tool invoker</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1197" href="#t1197">1197</a></span><span class="t"><span class="str">        :return: True if an exit condition is met and there are no errors, False otherwise</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1198" href="#t1198">1198</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1199" href="#t1199">1199</a></span><span class="t">        <span class="nam">matched_exit_conditions</span> <span class="op">=</span> <span class="nam">set</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1200" href="#t1200">1200</a></span><span class="t">        <span class="nam">has_errors</span> <span class="op">=</span> <span class="key">False</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1201" href="#t1201">1201</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1202" href="#t1202">1202</a></span><span class="t">        <span class="key">for</span> <span class="nam">msg</span> <span class="key">in</span> <span class="nam">llm_messages</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1203" href="#t1203">1203</a></span><span class="t">            <span class="key">if</span> <span class="nam">msg</span><span class="op">.</span><span class="nam">tool_call</span> <span class="key">and</span> <span class="nam">msg</span><span class="op">.</span><span class="nam">tool_call</span><span class="op">.</span><span class="nam">tool_name</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">exit_conditions</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1204" href="#t1204">1204</a></span><span class="t">                <span class="nam">matched_exit_conditions</span><span class="op">.</span><span class="nam">add</span><span class="op">(</span><span class="nam">msg</span><span class="op">.</span><span class="nam">tool_call</span><span class="op">.</span><span class="nam">tool_name</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1195" href="#t1195">1195</a></span><span class="t"><span class="str">        Returns True when the model called at least one tool listed in `exit_conditions` and</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1196" href="#t1196">1196</a></span><span class="t"><span class="str">        that tool did not error. Every tool call in the message is checked, so the order of</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1197" href="#t1197">1197</a></span><span class="t"><span class="str">        parallel tool calls does not matter.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1198" href="#t1198">1198</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1199" href="#t1199">1199</a></span><span class="t"><span class="str">        :param llm_messages: List of messages from the LLM</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1200" href="#t1200">1200</a></span><span class="t"><span class="str">        :param tool_messages: List of messages from the tool invoker</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1201" href="#t1201">1201</a></span><span class="t"><span class="str">        :return: True if an exit condition is met and there are no errors, False otherwise</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1202" href="#t1202">1202</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1203" href="#t1203">1203</a></span><span class="t">        <span class="nam">matched_exit_conditions</span><span class="op">:</span> <span class="nam">set</span><span class="op">[</span><span class="nam">str</span><span class="op">]</span> <span class="op">=</span> <span class="nam">set</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1204" href="#t1204">1204</a></span><span class="t">        <span class="nam">has_errors</span> <span class="op">=</span> <span class="key">False</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t1205" href="#t1205">1205</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1206" href="#t1206">1206</a></span><span class="t">                <span class="com"># Check if any error is specifically from the tool matching the exit condition</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1207" href="#t1207">1207</a></span><span class="t">                <span class="nam">tool_errors</span> <span class="op">=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t1208" href="#t1208">1208</a></span><span class="t">                    <span class="nam">tool_msg</span><span class="op">.</span><span class="nam">tool_call_result</span><span class="op">.</span><span class="nam">error</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t1209" href="#t1209">1209</a></span><span class="t">                    <span class="key">for</span> <span class="nam">tool_msg</span> <span class="key">in</span> <span class="nam">tool_messages</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t1210" href="#t1210">1210</a></span><span class="t">                    <span class="key">if</span> <span class="nam">tool_msg</span><span class="op">.</span><span class="nam">tool_call_result</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t1211" href="#t1211">1211</a></span><span class="t">                    <span class="key">and</span> <span class="nam">tool_msg</span><span class="op">.</span><span class="nam">tool_call_result</span><span class="op">.</span><span class="nam">origin</span><span class="op">.</span><span class="nam">tool_name</span> <span class="op">==</span> <span class="nam">msg</span><span class="op">.</span><span class="nam">tool_call</span><span class="op">.</span><span class="nam">tool_name</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t1212" href="#t1212">1212</a></span><span class="t">                <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1213" href="#t1213">1213</a></span><span class="t">                <span class="key">if</span> <span class="nam">any</span><span class="op">(</span><span class="nam">tool_errors</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1214" href="#t1214">1214</a></span><span class="t">                    <span class="nam">has_errors</span> <span class="op">=</span> <span class="key">True</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1215" href="#t1215">1215</a></span><span class="t">                    <span class="com"># No need to check further if we found an error</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t1216" href="#t1216">1216</a></span><span class="t">                    <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1217" href="#t1217">1217</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t1218" href="#t1218">1218</a></span><span class="t">        <span class="com"># Only return True if at least one exit condition was matched AND none had errors</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t1219" href="#t1219">1219</a></span><span class="t">        <span class="key">return</span> <span class="nam">bool</span><span class="op">(</span><span class="nam">matched_exit_conditions</span><span class="op">)</span> <span class="key">and</span> <span class="key">not</span> <span class="nam">has_errors</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1206" href="#t1206">1206</a></span><span class="t">        <span class="key">for</span> <span class="nam">msg</span> <span class="key">in</span> <span class="nam">llm_messages</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1207" href="#t1207">1207</a></span><span class="t">            <span class="key">for</span> <span class="nam">tool_call</span> <span class="key">in</span> <span class="nam">msg</span><span class="op">.</span><span class="nam">tool_calls</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1208" href="#t1208">1208</a></span><span class="t">                <span class="key">if</span> <span class="nam">tool_call</span><span class="op">.</span><span class="nam">tool_name</span> <span class="key">not</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">exit_conditions</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1209" href="#t1209">1209</a></span><span class="t">                    <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1210" href="#t1210">1210</a></span><span class="t">                <span class="nam">matched_exit_conditions</span><span class="op">.</span><span class="nam">add</span><span class="op">(</span><span class="nam">tool_call</span><span class="op">.</span><span class="nam">tool_name</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1211" href="#t1211">1211</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1212" href="#t1212">1212</a></span><span class="t">                <span class="com"># Check if any error is specifically from the tool matching the exit condition</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1213" href="#t1213">1213</a></span><span class="t">                <span class="nam">tool_errors</span> <span class="op">=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t1214" href="#t1214">1214</a></span><span class="t">                    <span class="nam">tool_msg</span><span class="op">.</span><span class="nam">tool_call_result</span><span class="op">.</span><span class="nam">error</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t1215" href="#t1215">1215</a></span><span class="t">                    <span class="key">for</span> <span class="nam">tool_msg</span> <span class="key">in</span> <span class="nam">tool_messages</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t1216" href="#t1216">1216</a></span><span class="t">                    <span class="key">if</span> <span class="nam">tool_msg</span><span class="op">.</span><span class="nam">tool_call_result</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t1217" href="#t1217">1217</a></span><span class="t">                    <span class="key">and</span> <span class="nam">tool_msg</span><span class="op">.</span><span class="nam">tool_call_result</span><span class="op">.</span><span class="nam">origin</span><span class="op">.</span><span class="nam">tool_name</span> <span class="op">==</span> <span class="nam">tool_call</span><span class="op">.</span><span class="nam">tool_name</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t1218" href="#t1218">1218</a></span><span class="t">                <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1219" href="#t1219">1219</a></span><span class="t">                <span class="key">if</span> <span class="nam">any</span><span class="op">(</span><span class="nam">tool_errors</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1220" href="#t1220">1220</a></span><span class="t">                    <span class="nam">has_errors</span> <span class="op">=</span> <span class="key">True</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1221" href="#t1221">1221</a></span><span class="t">                    <span class="com"># No need to check further if we found an error</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1222" href="#t1222">1222</a></span><span class="t">                    <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1223" href="#t1223">1223</a></span><span class="t">            <span class="key">if</span> <span class="nam">has_errors</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1224" href="#t1224">1224</a></span><span class="t">                <span class="key">break</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1225" href="#t1225">1225</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1226" href="#t1226">1226</a></span><span class="t">        <span class="com"># Only return True if at least one exit condition was matched AND none had errors</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t1227" href="#t1227">1227</a></span><span class="t">        <span class="key">return</span> <span class="nam">bool</span><span class="op">(</span><span class="nam">matched_exit_conditions</span><span class="op">)</span> <span class="key">and</span> <span class="key">not</span> <span class="nam">has_errors</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -1308,7 +1316,7 @@
             <a class="nav" href="z_b1baed4f908c0402___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.5">coverage.py v7.13.5</a>,
-            created at 2026-05-26 07:44 +0000
+            created at 2026-05-26 08:01 +0000
         </p>
     </div>
 </footer>
