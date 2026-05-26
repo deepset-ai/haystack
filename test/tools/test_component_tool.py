@@ -584,6 +584,17 @@ class TestComponentTool:
         result = tool.invoke(messages=[{"role": "user", "content": [{"text": "A 4-day trip in the south of France"}]}])
         assert result["last_message"] == ChatMessage.from_assistant("Answer")
 
+    def test_convert_param_union_with_list_arm(self):
+        @component
+        class ComponentWithUnionMessages:
+            @component.output_types(reply=str)
+            def run(self, messages: list[ChatMessage] | str) -> dict:
+                return {"reply": "ok"}
+
+        tool = ComponentTool(component=ComponentWithUnionMessages())
+        result = tool._convert_param([{"role": "user", "content": "Hello"}], list[ChatMessage] | str)
+        assert result == [ChatMessage.from_user("Hello")]
+
 
 class TestComponentToolInPipeline:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
