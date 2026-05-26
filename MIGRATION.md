@@ -128,6 +128,46 @@ agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[..
 agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
 ```
 
+#### Tracing span hierarchy reshaped
+
+**What changed:** Each iteration of the Agent loop now emits a single `haystack.agent.step` Haystack span with two nested children — `haystack.agent.step.llm` for the chat generator call and `haystack.agent.step.tool` for the tool invocation (only when tool calls happen). Previously each iteration produced two child spans through `Pipeline._run_component` (one for the chat generator, one for the tool invoker) tagged with `haystack.component.name` / `haystack.component.type`. The new spans do NOT carry `haystack.component.*` tags; they expose new content tags `haystack.agent.step.llm.input`/`.output` and `haystack.agent.step.tool.input`/`.output`.
+
+**Why:** Removes the dependency on `Pipeline._run_component` inside `Agent.run` and produces a clearer per-iteration trace structure that maps directly onto common agent-tracing conventions (e.g., Langfuse `chain → {generation, tool}`).
+
+**How to migrate:** Custom tracer backends or `SpanHandler` implementations that dispatched on `component_type == "ToolInvoker"` or `component_type.endswith("ChatGenerator")` for Agent-internal spans must now dispatch on the new operation names instead. For example, in the Langfuse integration this means subclassing or updating the `DefaultSpanHandler` and overriding `create_span` to recognize the three new operations:
+
+```python
+from typing import cast
+from haystack_integrations.tracing.langfuse import DefaultSpanHandler, LangfuseSpan
+from haystack_integrations.tracing.langfuse.tracer import ObservationSpanType, SpanContext
+
+
+class AgentStepSpanHandler(DefaultSpanHandler):
+    def create_span(self, context: SpanContext) -> LangfuseSpan:
+        if context.operation_name == "haystack.agent.step":
+            return LangfuseSpan(
+                self.tracer.start_as_current_observation(
+                    name=f"agent step {context.tags.get('haystack.agent.step', 0)}",
+                    as_type=cast(ObservationSpanType, "chain"),
+                )
+            )
+        if context.operation_name == "haystack.agent.step.llm":
+            return LangfuseSpan(
+                self.tracer.start_as_current_observation(name="llm", as_type=cast(ObservationSpanType, "generation"))
+            )
+        if context.operation_name == "haystack.agent.step.tool":
+            return LangfuseSpan(
+                self.tracer.start_as_current_observation(name="tool", as_type=cast(ObservationSpanType, "tool"))
+            )
+        return super().create_span(context)
+```
+
+Pass an instance to the `LangfuseConnector`:
+
+```python
+LangfuseConnector("My Agent", span_handler=AgentStepSpanHandler())
+```
+
 #### Runtime `user_prompt` and `system_prompt` removed from `Agent.run` / `Agent.run_async`
 
 **What changed:** The `user_prompt` and `system_prompt` parameters have been removed from `Agent.run` and `Agent.run_async`. Both prompts must now be set at initialization time on the `Agent`; they can no longer be passed per-run, including via `Pipeline.run(data={"agent": {...}})`.
