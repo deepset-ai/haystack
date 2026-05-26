@@ -592,7 +592,7 @@ class TestComponentTool:
                 return {"reply": "ok"}
 
         tool = ComponentTool(component=ComponentWithUnionMessages())
-        result = tool._convert_param([{"role": "user", "content": "Hello"}], list[ChatMessage] | str)
+        result = tool._convert_param([{"role": "user", "content": "Hello"}], list[ChatMessage] | str)  # type: ignore[arg-type]
         assert result == [ChatMessage.from_user("Hello")]
 
 
