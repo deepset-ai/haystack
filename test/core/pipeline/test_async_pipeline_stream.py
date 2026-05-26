@@ -189,8 +189,9 @@ def test_stream_raises_for_unknown_component_in_filter():
     pipeline = AsyncPipeline()
     pipeline.add_component("streamer", StreamingEcho())
 
-    with pytest.raises(ValueError, match="Unknown components"):
+    with pytest.raises(ValueError, match="Unknown components") as excinfo:
         pipeline.stream(data={"streamer": {"prompt": "x"}}, streaming_components=["typo"])
+    assert "typo" in str(excinfo.value)  # the message names the offending component
 
 
 def test_stream_raises_for_non_streaming_component_in_filter():
@@ -198,10 +199,11 @@ def test_stream_raises_for_non_streaming_component_in_filter():
     pipeline.add_component("streamer", StreamingEcho())
     pipeline.add_component("passthrough", Passthrough())
 
-    with pytest.raises(ValueError, match="do not support streaming"):
+    with pytest.raises(ValueError, match="do not support streaming") as excinfo:
         pipeline.stream(
             data={"streamer": {"prompt": "x"}, "passthrough": {"prompt": "x"}}, streaming_components=["passthrough"]
         )
+    assert "passthrough" in str(excinfo.value)  # the message names the offending component
 
 
 @pytest.mark.asyncio
@@ -215,9 +217,17 @@ async def test_stream_propagates_pipeline_exception_during_iteration():
         async for _ in handle:
             pass
 
-    # the pipeline wraps the original RuntimeError; the "boom" message is preserved in the chain
-    chain = [excinfo.value, excinfo.value.__cause__, getattr(excinfo.value.__cause__, "__cause__", None)]
-    assert any("boom" in str(e) for e in chain if e is not None)
+    # the error message indicates the failing component and the underlying error
+    message = str(excinfo.value)
+    assert "failed to run" in message
+    assert "Component name: 'streamer'" in message
+    assert "Component type: 'StreamingEcho'" in message
+    assert "boom" in message
+
+    # the original exception is preserved as the direct cause
+    cause = excinfo.value.__cause__
+    assert isinstance(cause, RuntimeError)
+    assert str(cause) == "boom"
 
 
 @pytest.mark.asyncio
@@ -236,24 +246,34 @@ async def test_failing_callback_does_not_drop_chunk():
             received.append(chunk.content)
 
     assert received == ["s0"]  # queued before the callback raised
-    chain = [excinfo.value, excinfo.value.__cause__, getattr(excinfo.value.__cause__, "__cause__", None)]
-    assert any("callback boom" in str(e) for e in chain if e is not None)
+
+    # the error message indicates the failing component and the underlying error
+    message = str(excinfo.value)
+    assert "failed to run" in message
+    assert "Component name: 'streamer'" in message
+    assert "callback boom" in message
+
+    # the original exception is preserved as the direct cause
+    cause = excinfo.value.__cause__
+    assert isinstance(cause, RuntimeError)
+    assert str(cause) == "callback boom"
 
 
 @pytest.mark.asyncio
-async def test_result_raises_after_failure_with_chained_cause():
+async def test_result_reraises_original_failure():
     pipeline = AsyncPipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=1, fail=True))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
 
-    with pytest.raises(PipelineRuntimeError):
+    with pytest.raises(PipelineRuntimeError) as iter_excinfo:
         async for _ in handle:
             pass
 
-    with pytest.raises(RuntimeError, match="Pipeline failed") as excinfo:
+    # `result` re-raises the exception raised during iteration
+    with pytest.raises(PipelineRuntimeError) as result_excinfo:
         handle.result
-    assert excinfo.value.__cause__ is not None
+    assert result_excinfo.value is iter_excinfo.value
 
 
 @pytest.mark.asyncio

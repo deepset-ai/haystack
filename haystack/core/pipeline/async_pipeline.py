@@ -80,7 +80,8 @@ class PipelineStreamHandle:
         """
         Final pipeline output dict, available only after a successful, complete run.
 
-        Raises a clear `RuntimeError` for each non-success state (not finished, cancelled, failed).
+        Raises a `RuntimeError` if the pipeline has not finished or was cancelled. If the pipeline failed, re-raises the
+        original exception.
         """
         if not self._task.done():
             raise RuntimeError("Pipeline has not finished; iterate the handle first.")
@@ -88,7 +89,7 @@ class PipelineStreamHandle:
             raise RuntimeError("Pipeline was cancelled; no result available.")
         exc = self._task.exception()
         if exc is not None:
-            raise RuntimeError("Pipeline failed; no result available.") from exc
+            raise exc
         return self._task.result()
 
     async def aclose(self) -> None:
@@ -663,6 +664,7 @@ class AsyncPipeline(PipelineBase):
     def stream(
         self,
         data: dict[str, Any],
+        *,
         streaming_components: list[str] | None = None,
         include_outputs_from: set[str] | None = None,
         concurrency_limit: int = 4,
