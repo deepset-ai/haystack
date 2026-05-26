@@ -99,6 +99,19 @@ async def test_stream_yields_chunks_and_returns_result():
 
 
 @pytest.mark.asyncio
+async def test_stream_yields_chunks_with_flat_input():
+    pipeline = AsyncPipeline()
+    pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3))
+
+    # flat input form (`{"prompt": ...}` instead of `{"streamer": {"prompt": ...}}`)
+    handle = pipeline.stream(data={"prompt": "hi"})
+    chunks = [c async for c in handle]
+
+    assert [c.content for c in chunks] == ["s0", "s1", "s2"]
+    assert handle.result["streamer"] == {"reply": "s-final"}
+
+
+@pytest.mark.asyncio
 async def test_stream_composes_with_init_streaming_callback():
     seen = []
 
