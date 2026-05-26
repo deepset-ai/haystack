@@ -10,8 +10,9 @@ slug: "/integrations-mistral"
 
 ### MistralOCRDocumentConverter
 
-This component extracts text from documents using Mistral's OCR API, with optional structured
-annotations for both individual image regions (bounding boxes) and full documents.
+Extract text from documents using Mistral's OCR API with optional structured annotations.
+
+Supports optional structured annotations for individual image regions (bounding boxes) and full documents.
 
 Accepts document sources in various formats (str/Path for local files, ByteStream for in-memory data,
 DocumentURLChunk for document URLs, ImageURLChunk for image URLs, or FileChunk for Mistral file IDs)
@@ -110,7 +111,7 @@ __init__(
     image_limit: int | None = None,
     image_min_size: int | None = None,
     cleanup_uploaded_files: bool = True,
-)
+) -> None
 ```
 
 Creates a MistralOCRDocumentConverter component.
@@ -213,6 +214,7 @@ Extract text from documents using Mistral OCR.
 Bases: <code>OpenAIDocumentEmbedder</code>
 
 A component for computing Document embeddings using Mistral models.
+
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 Usage example:
@@ -264,7 +266,7 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates a MistralDocumentEmbedder component.
@@ -352,7 +354,7 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates an MistralTextEmbedder component.
@@ -391,6 +393,7 @@ Serializes the component to a dictionary.
 Bases: <code>OpenAIChatGenerator</code>
 
 Enables text generation using Mistral AI generative models.
+
 For supported models, see [Mistral AI docs](https://docs.mistral.ai/getting-started/models).
 
 Users can pass any text generation parameters valid for the Mistral Chat Completion API
@@ -399,9 +402,12 @@ parameter in `run` method.
 
 Key Features and Compatibility:
 
-- **Primary Compatibility**: Designed to work seamlessly with the Mistral API Chat Completion endpoint.
+- **Primary Compatibility**: Compatible with the Mistral API Chat Completion endpoint.
 - **Streaming Support**: Supports streaming responses from the Mistral API Chat Completion endpoint.
 - **Customizability**: Supports all parameters supported by the Mistral API Chat Completion endpoint.
+- **Reasoning Support**: Extracts reasoning/thinking content from models that support it
+  (e.g., mistral-small with `reasoning_effort`, magistral models) and stores it in the
+  `ReasoningContent` field on `ChatMessage`.
 
 This component uses the ChatMessage format for structuring both input and output,
 ensuring coherent and contextually relevant responses in chat-based text generation scenarios.
@@ -429,6 +435,23 @@ print(response)
 >> meaningful and useful.")], _name=None,
 >> _meta={'model': 'mistral-small-latest', 'index': 0, 'finish_reason': 'stop',
 >> 'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
+```
+
+Reasoning usage example:
+
+```python
+from haystack_integrations.components.generators.mistral import MistralChatGenerator
+from haystack.dataclasses import ChatMessage
+
+messages = [ChatMessage.from_user("Solve: if x + 3 = 7, what is x?")]
+
+client = MistralChatGenerator(
+    model="mistral-small-latest",
+    generation_kwargs={"reasoning_effort": "high"},
+)
+response = client.run(messages)
+print(response["replies"][0].reasoning)  # Access reasoning content
+print(response["replies"][0].text)       # Access final answer
 ```
 
 #### SUPPORTED_MODELS
@@ -478,8 +501,6 @@ SUPPORTED_MODELS: list[str] = [
     "voxtral-mini-2507",
     "voxtral-mini-latest",
     "voxtral-mini-2602",
-    "voxtral-mini-latest",
-    "voxtral-mini-2507",
 ]
 
 ```
@@ -502,11 +523,12 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
-Creates an instance of MistralChatGenerator. Unless specified otherwise in the `model`, this is for Mistral's
-`mistral-small-latest` model.
+Creates an instance of MistralChatGenerator.
+
+Unless specified otherwise in the `model`, this is for Mistral's `mistral-small-latest` model.
 
 **Parameters:**
 
@@ -529,6 +551,11 @@ Creates an instance of MistralChatGenerator. Unless specified otherwise in the `
   events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
+- `reasoning_effort`: Controls reasoning/thinking tokens for models that support adjustable reasoning
+  (e.g., `mistral-small-latest`, `mistral-medium`). Accepted values: `"high"`, `"none"`.
+  See [Mistral reasoning docs](https://docs.mistral.ai/capabilities/reasoning/).
+- `prompt_mode`: For native reasoning models (magistral). Set to `"reasoning"` to use the default
+  reasoning system prompt, or omit for the model's default behavior.
 - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
   If provided, the output will always be validated against this
   format (unless the model returns a tool call).
@@ -544,6 +571,67 @@ Creates an instance of MistralChatGenerator. Unless specified otherwise in the `
   If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+
+#### run
+
+```python
+run(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    *,
+    tools: ToolsType | None = None,
+    tools_strict: bool | None = None
+) -> dict[str, list[ChatMessage]]
+```
+
+Invokes chat completion on the Mistral API.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
+  override the parameters passed during component initialization.
+  For details on Mistral API parameters, see
+  [Mistral docs](https://docs.mistral.ai/api/).
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+  If set, it will override the `tools` parameter provided during initialization.
+- **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls.
+
+**Returns:**
+
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
+- `replies`: A list containing the generated responses as ChatMessage instances.
+
+#### run_async
+
+```python
+run_async(
+    messages: list[ChatMessage],
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
+    *,
+    tools: ToolsType | None = None,
+    tools_strict: bool | None = None
+) -> dict[str, list[ChatMessage]]
+```
+
+Asynchronously invokes chat completion on the Mistral API.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
+  Must be a coroutine.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset.
+- **tools_strict** (<code>bool | None</code>) – Whether to enable strict schema adherence for tool calls.
+
+**Returns:**
+
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following key:
+- `replies`: A list containing the generated responses as ChatMessage instances.
 
 #### to_dict
 

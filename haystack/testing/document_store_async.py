@@ -50,7 +50,7 @@ class DeleteAllAsyncTest:
     """
 
     @staticmethod
-    def _delete_all_supports_recreate(document_store: AsyncDocumentStore) -> str | None:
+    def _delete_all_async_supports_recreate(document_store: AsyncDocumentStore) -> str | None:
         """
         Return the recreate parameter name if delete_all_documents_async supports it, else None.
         """
@@ -92,6 +92,56 @@ class DeleteAllAsyncTest:
         assert await document_store.count_documents_async() == 0
         await document_store.delete_all_documents_async()  # type:ignore[attr-defined]
 
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_delete_all_documents_without_recreate_index_async(document_store: AsyncDocumentStore):
+        """
+        Test delete_all_documents_async() with recreate_index/recreate_collection=False when supported.
+
+        Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
+        """
+        param_name = DeleteAllAsyncTest._delete_all_async_supports_recreate(document_store)
+        if param_name is None:
+            pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
+
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 2
+
+        await document_store.delete_all_documents_async(**{param_name: False})  # type:ignore[attr-defined]
+        assert await document_store.count_documents_async() == 0
+
+        new_doc = Document(id="3", content="New document after delete all")
+        await document_store.write_documents_async([new_doc])
+        assert await document_store.count_documents_async() == 1
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_delete_all_documents_with_recreate_index_async(document_store: AsyncDocumentStore):
+        """
+        Test delete_all_documents_async() with recreate_index/recreate_collection=True when supported.
+
+        Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
+        """
+        param_name = DeleteAllAsyncTest._delete_all_async_supports_recreate(document_store)
+        if param_name is None:
+            pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
+
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        await document_store.write_documents_async(docs)
+        assert await document_store.count_documents_async() == 2
+
+        await document_store.delete_all_documents_async(**{param_name: True})  # type:ignore[attr-defined]
+        assert await document_store.count_documents_async() == 0
+
+        new_doc = Document(id="3", content="New document after delete all with recreate")
+        await document_store.write_documents_async([new_doc])
+        assert await document_store.count_documents_async() == 1
+
+        retrieved = await document_store.filter_documents_async()
+        assert len(retrieved) == 1
+        assert retrieved[0].content == "New document after delete all with recreate"
+
 
 class CountDocumentsAsyncTest:
     """
@@ -116,53 +166,12 @@ class CountDocumentsAsyncTest:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_delete_all_documents_without_recreate_index_async(document_store: AsyncDocumentStore):
-        """
-        Test delete_all_documents_async() with recreate_index/recreate_collection=False when supported.
-
-        Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
-        """
-        param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
-        if param_name is None:
-            pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
-
-        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
-        await document_store.write_documents_async(docs)
-        assert await document_store.count_documents_async() == 2
-
-        await document_store.delete_all_documents_async(**{param_name: False})  # type:ignore[attr-defined]
-        assert await document_store.count_documents_async() == 0
-
-        new_doc = Document(id="3", content="New document after delete all")
-        await document_store.write_documents_async([new_doc])
-        assert await document_store.count_documents_async() == 1
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_delete_all_documents_with_recreate_index_async(document_store: AsyncDocumentStore):
-        """
-        Test delete_all_documents_async() with recreate_index/recreate_collection=True when supported.
-
-        Skipped if the store's delete_all_documents_async does not have recreate_index or recreate_collection.
-        """
-        param_name = DeleteAllAsyncTest._delete_all_supports_recreate(document_store)
-        if param_name is None:
-            pytest.skip("delete_all_documents_async has no recreate_index or recreate_collection parameter")
-
-        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
-        await document_store.write_documents_async(docs)
-        assert await document_store.count_documents_async() == 2
-
-        await document_store.delete_all_documents_async(**{param_name: True})  # type:ignore[attr-defined]
-        assert await document_store.count_documents_async() == 0
-
-        new_doc = Document(id="3", content="New document after delete all with recreate")
-        await document_store.write_documents_async([new_doc])
-        assert await document_store.count_documents_async() == 1
-
-        retrieved = await document_store.filter_documents_async()
-        assert len(retrieved) == 1
-        assert retrieved[0].content == "New document after delete all with recreate"
+    async def test_count_not_empty_async(document_store: AsyncDocumentStore):
+        """Test count is greater than zero if the document store contains documents."""
+        await document_store.write_documents_async(
+            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
+        )
+        assert await document_store.count_documents_async() == 3
 
 
 class CountDocumentsByFilterAsyncTest:
@@ -408,15 +417,6 @@ class DeleteByFilterAsyncTest:
         )
         assert deleted_count == 2
         assert await document_store.count_documents_async() == 0
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_count_not_empty_async(document_store: AsyncDocumentStore):
-        """Test count is greater than zero if the document store contains documents."""
-        await document_store.write_documents_async(
-            [Document(content="test doc 1"), Document(content="test doc 2"), Document(content="test doc 3")]
-        )
-        assert await document_store.count_documents_async() == 3
 
 
 class UpdateByFilterAsyncTest:

@@ -91,7 +91,10 @@ class TestPipelineBreakpointsLoops:
         )
 
         pipeline = Pipeline(max_runs_per_component=5)
-        pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template), name="prompt_builder")
+        pipeline.add_component(
+            instance=ChatPromptBuilder(template=prompt_template, required_variables=["passage", "schema"]),
+            name="prompt_builder",
+        )
         pipeline.add_component(instance=FakeChatGenerator(response=response_json), name="llm")
         pipeline.add_component(instance=OutputValidator(pydantic_model=CitiesData), name="output_validator")
 

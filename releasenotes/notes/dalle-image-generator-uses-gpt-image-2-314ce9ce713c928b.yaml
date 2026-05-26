@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    ``DALLEImageGenerator`` has been updated to account for OpenAI's retirement of the DALL-E models.
+    The default model is now ``gpt-image-2`` (previously ``dall-e-3``). To migrate:
+    - Update ``model`` value: besides ``gpt-image-2``, ``gpt-image-1`` and ``gpt-image-1-mini`` are also supported.
+    - Update ``quality`` value: the new accepted values are ``auto``, ``high``, ``medium``, or ``low``
+      (previously ``standard`` or ``hd``).
+    - Update ``size`` value: the new accepted values are ``1024x1024``, ``1024x1536``, ``1536x1024``,
+      or ``auto``. ``gpt-image-2`` also supports arbitrary sizes.
+    - The ``response_format`` parameter is now ignored. The component always returns base64-encoded JSON.

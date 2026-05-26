@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import contextvars
 import inspect
 import re
 from dataclasses import dataclass
@@ -725,10 +727,11 @@ class Agent:
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
             }
-            step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
-            result = self.chat_generator.run(**chat_generator_inputs)
+            with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
+                llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
+                result = self.chat_generator.run(**chat_generator_inputs)
+                llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
-            step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
             exe_context.state.set("messages", llm_messages)
 
             if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
@@ -742,11 +745,16 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_result = self._tool_invoker.run(
-                messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
-            )
+            tool_invoker_inputs = {
+                "messages": modified_tool_call_messages,
+                "state": exe_context.state,
+                **exe_context.tool_invoker_inputs,
+            }
+            with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
+                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_invoker_inputs)
+                tool_invoker_result = self._tool_invoker.run(**tool_invoker_inputs)
+                tool_span.set_content_tag("haystack.agent.step.tool.output", tool_invoker_result)
             tool_messages = tool_invoker_result["tool_messages"]
-            step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
             exe_context.state = tool_invoker_result["state"]
             exe_context.state.set("messages", tool_messages)
 
@@ -766,10 +774,21 @@ class Agent:
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
             }
-            step_span.set_content_tag("haystack.agent.step.input", chat_generator_inputs["messages"])
-            result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[attr-defined]
+            with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
+                llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
+                if getattr(self.chat_generator, "__haystack_supports_async__", False):
+                    result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[attr-defined]
+                else:
+                    # Sync-only generator: dispatch to the default executor so the event loop stays unblocked.
+                    # contextvars don't propagate to the executor by default, so we copy the current context
+                    # to preserve the active tracing span (and anything else stored in contextvars).
+                    loop = asyncio.get_running_loop()
+                    ctx = contextvars.copy_context()
+                    result = await loop.run_in_executor(
+                        None, lambda: ctx.run(lambda: self.chat_generator.run(**chat_generator_inputs))
+                    )
+                llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
-            step_span.set_content_tag("haystack.agent.step.llm_output", llm_messages)
             exe_context.state.set("messages", llm_messages)
 
             if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
@@ -783,11 +802,16 @@ class Agent:
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_result = await self._tool_invoker.run_async(
-                messages=modified_tool_call_messages, state=exe_context.state, **exe_context.tool_invoker_inputs
-            )
+            tool_invoker_inputs = {
+                "messages": modified_tool_call_messages,
+                "state": exe_context.state,
+                **exe_context.tool_invoker_inputs,
+            }
+            with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
+                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_invoker_inputs)
+                tool_invoker_result = await self._tool_invoker.run_async(**tool_invoker_inputs)
+                tool_span.set_content_tag("haystack.agent.step.tool.output", tool_invoker_result)
             tool_messages = tool_invoker_result["tool_messages"]
-            step_span.set_content_tag("haystack.agent.step.tool_output", tool_messages)
             exe_context.state = tool_invoker_result["state"]
             exe_context.state.set("messages", tool_messages)
 

@@ -1,0 +1,24 @@
+---
+upgrade:
+  - |
+    The ``Agent`` component now emits a different shape of tracing spans.
+    Previously each iteration of the agent loop produced two child spans via ``Pipeline._run_component`` —
+    one for the chat generator and one for the tool invoker — each carrying
+    ``haystack.component.name`` and ``haystack.component.type`` tags.
+    The agent now opens a single ``haystack.agent.step`` span per loop iteration with two nested children:
+    ``haystack.agent.step.llm`` (the chat generator call) and ``haystack.agent.step.tool``
+    (the tool invocation, only emitted when tool calls happen).
+    These new spans do NOT carry ``haystack.component.*`` tags; instead they expose new content tags
+    ``haystack.agent.step.llm.input``/``.output`` and ``haystack.agent.step.tool.input``/``.output``.
+
+    Custom tracer backends or ``SpanHandler`` implementations that dispatched on
+    ``component_type == "ToolInvoker"`` or ``component_type.endswith("ChatGenerator")``
+    for Agent-internal spans will need to be updated to dispatch on the new operation
+    names (``haystack.agent.step.llm`` / ``haystack.agent.step.tool``) instead.
+    The Langfuse integration's ``DefaultSpanHandler`` is affected — see ``MIGRATION.md`` for
+    a concrete example of a custom ``SpanHandler`` that maps the new operations to
+    Langfuse ``chain`` / ``generation`` / ``tool`` observations.
+enhancements:
+  - |
+    Removed the use of ``Pipeline._run_component`` inside ``Agent.run`` and ``Agent.run_async``.
+    The chat generator and tool invoker are now invoked directly via their ``run`` / ``run_async`` methods, decoupling the Agent from the Pipeline internals.
