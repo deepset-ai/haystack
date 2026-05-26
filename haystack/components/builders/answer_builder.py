@@ -204,7 +204,7 @@ class AnswerBuilder:
                         )
                         continue
 
-                    doc_meta: dict[str, Any] = dict(doc.meta)
+                    doc_meta: dict[str, Any] = dict(doc.meta or {})
                     doc_meta["source_index"] = idx + 1
                     if reference_pattern:
                         doc_meta["referenced"] = idx in referenced_idxs
