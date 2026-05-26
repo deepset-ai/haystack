@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
+from copy import deepcopy
 from dataclasses import replace
 
 import pytest
@@ -213,7 +214,7 @@ def test_from_dict():
     assert Document.from_dict({}) == Document()
 
 
-def from_from_dict_with_parameters():
+def test_from_dict_with_parameters():
     blob_data = b"some bytes"
     assert Document.from_dict(
         {
@@ -232,6 +233,40 @@ def from_from_dict_with_parameters():
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
     )
+
+
+def test_from_dict_does_not_mutate_input():
+    blob_data = b"some bytes"
+    data = {
+        "content": "test text",
+        "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
+        "score": 0.812,
+        "embedding": [0.1, 0.2, 0.3],
+        "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+        "date": "10-10-2023",
+        "type": "article",
+    }
+    original_data = deepcopy(data)
+
+    assert Document.from_dict(data) == Document(
+        content="test text",
+        blob=ByteStream(blob_data, mime_type="text/markdown"),
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
+        meta={"date": "10-10-2023", "type": "article"},
+    )
+    assert data == original_data
+
+
+def test_from_dict_does_not_mutate_input_with_explicit_meta():
+    data = {"content": "test text", "meta": {"date": "10-10-2023", "type": "article"}, "score": 0.812}
+    original_data = deepcopy(data)
+
+    assert Document.from_dict(data) == Document(
+        content="test text", meta={"date": "10-10-2023", "type": "article"}, score=0.812
+    )
+    assert data == original_data
 
 
 def test_from_dict_with_legacy_fields():

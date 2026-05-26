@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Fix grammar in the ``AzureOpenAIGenerator`` and ``AzureOpenAIChatGenerator`` docstring code examples
+    (``"<this a model name..."`` → ``"<this is a model name..."``) so that copy-pasted snippets read correctly.
