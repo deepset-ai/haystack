@@ -132,33 +132,76 @@ agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
 
 **What changed:** The `user_prompt` and `system_prompt` parameters have been removed from `Agent.run` and `Agent.run_async`. Both prompts must now be set at initialization time on the `Agent`; they can no longer be passed per-run, including via `Pipeline.run(data={"agent": {...}})`.
 
-**Why:** A single source of truth for the Agent's prompts simplifies the API and lets prompt-template validation happen once at construction time instead of on every call.
+**Why:** A single source of truth for the Agent's prompt templates simplifies the API and makes prompts a stable part of the Agent configuration. It also removes the old requirement that variables used by a runtime `user_prompt` override had to already exist in the initialization-time `user_prompt` for pipeline input sockets to be created.
 
 **How to migrate:**
 
-Before (v2.x):
+Before (v2.x), overriding prompts through `Pipeline.run`:
 ```python
+from haystack import Pipeline
 from haystack.components.agents import Agent
 
-agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
-agent.run(messages=[...], system_prompt="Per-run override.")
+init_user_prompt = (
+    "{% message role='user' %}"
+    "Answer {{query}} using these documents:"
+    "{% for doc in documents %}{{doc.content}}{% endfor %}"
+    "{% endmessage %}"
+)
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    system_prompt="Default system prompt.",
+    user_prompt=init_user_prompt,
+)
+pipeline = Pipeline()
+pipeline.add_component("retriever", ...)
+pipeline.add_component("agent", agent)
+
+# This connection only worked because `documents` was already present in
+# `init_user_prompt`, so the Agent had a `documents` input socket.
+pipeline.connect("retriever.documents", "agent.documents")
+
+pipeline.run(
+    data={
+        "retriever": {"query": query},
+        "agent": {
+            "messages": [],
+            "query": query,
+            "system_prompt": "You are a knowledgeable assistant.",
+            "user_prompt": (
+                "{% message role='user' %}"
+                "Use these documents to answer {{query}}:"
+                "{% for doc in documents %}{{doc.content}}{% endfor %}"
+                "{% endmessage %}"
+            ),
+        },
+    }
+)
 ```
 
-After (v3.0):
+After (v3.0), configure both prompts on the `Agent`:
 ```python
+from haystack import Pipeline
 from haystack.components.agents import Agent
-from haystack.dataclasses import ChatMessage
 
-# Option 1: construct a new Agent with the desired prompt.
-agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
-agent.run(messages=[...])
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    system_prompt="You are a knowledgeable assistant.",
+    # `user_prompt` can be a plain string template or an explicit Jinja2 message template.
+    # Explicit message templates must contain a single message block that renders as a user message.
+    user_prompt="Use these documents to answer {{query}}: {% for doc in documents %}{{doc.content}}{% endfor %}",
+)
+pipeline = Pipeline()
+pipeline.add_component("retriever", ...)
+pipeline.add_component("agent", agent)
+pipeline.connect("retriever.documents", "agent.documents")
 
-# Option 2: include a system message at the start of `messages`. The Agent
-# forwards messages to the chat generator as-is, so the system message will be
-# the first message the LLM sees.
-agent = Agent(chat_generator=..., tools=[...])
-agent.run(messages=[ChatMessage.from_system("Runtime system prompt."), ChatMessage.from_user("...")])
+pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "query": query}})
 ```
+
+If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
+For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
 
 #### Tracing span hierarchy reshaped
 

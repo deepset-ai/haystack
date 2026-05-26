@@ -57,18 +57,27 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
 def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
     """Validate that user_prompt and system_prompt define exactly one message block with the correct role."""
     if user_prompt is not None:
+        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(user_prompt)
         roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
-        if len(roles) > 1:
-            raise ValueError(f"user_prompt must define exactly one message block, found {len(roles)}.")
+        if len(message_blocks) > 1:
+            raise ValueError(f"user_prompt must define exactly one message block, found {len(message_blocks)}.")
         if roles and roles[0] != "user":
             raise ValueError(f"user_prompt message block must have role 'user', found role '{roles[0]}'.")
 
     if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(system_prompt)
         roles = _JINJA2_MESSAGE_ROLE_RE.findall(system_prompt)
-        if len(roles) > 1:
-            raise ValueError(f"system_prompt must define exactly one message block, found {len(roles)}.")
+        if len(message_blocks) > 1:
+            raise ValueError(f"system_prompt must define exactly one message block, found {len(message_blocks)}.")
         if roles and roles[0] != "system":
             raise ValueError(f"system_prompt message block must have role 'system', found role '{roles[0]}'.")
+
+
+def _template_for_role(prompt: str, role: str) -> str:
+    """Wrap plain string templates in a message block for the expected role."""
+    if _JINJA2_CHAT_TEMPLATE_RE.search(prompt):
+        return prompt
+    return f'{{% message role="{role}" %}}{prompt}{{% endmessage %}}'
 
 
 @dataclass(kw_only=True)
@@ -223,11 +232,11 @@ class Agent:
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-        :param system_prompt: System prompt for the agent. Can be a plain string or a Jinja2 string template.
+        :param system_prompt: System prompt for the agent. Can be a plain string template or a Jinja2 message template.
             For details on the supported template syntax, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
-        :param user_prompt: User prompt for the agent, defined as a Jinja2 string template. If provided, this is
-            appended to the messages provided at runtime.
+        :param user_prompt: User prompt for the agent. Can be a plain string template or a Jinja2 message template.
+            If provided, this is appended to the messages provided at runtime.
             For details on the supported template syntax, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
         :param required_variables:
@@ -308,11 +317,15 @@ class Agent:
         # required_variables starts empty and is populated by _register_prompt_variables once
         # builder.variables are known
         self._user_chat_prompt_builder = (
-            ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
+            ChatPromptBuilder(template=_template_for_role(user_prompt, "user"), required_variables=[])
+            if user_prompt is not None
+            else None
         )
         self._system_chat_prompt_builder: ChatPromptBuilder | None = None
-        if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
-            self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
+        if system_prompt is not None:
+            self._system_chat_prompt_builder = ChatPromptBuilder(
+                template=_template_for_role(system_prompt, "system"), required_variables=[]
+            )
         self._register_prompt_variables()
 
         # --- Tool invoker ---
@@ -338,11 +351,10 @@ class Agent:
         """
         required_variables = self.required_variables
 
-        if (
-            required_variables is not None
-            and self._system_chat_prompt_builder is None
-            and self._user_chat_prompt_builder is None
-        ):
+        prompt_builders = [
+            builder for builder in (self._system_chat_prompt_builder, self._user_chat_prompt_builder) if builder
+        ]
+        if required_variables is not None and not any(builder.variables for builder in prompt_builders):
             logger.warning(
                 "The parameter required_variables is provided but neither user_prompt nor system_prompt "
                 "contains template variables. Either provide a prompt with Jinja2 template variables "
@@ -468,6 +480,24 @@ class Agent:
             parent_span=parent_span,
         )
 
+    @staticmethod
+    def _render_prompt_messages(
+        *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
+    ) -> list[ChatMessage]:
+        prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
+        prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
+        if len(prompt_messages) != 1:
+            raise ValueError(
+                f"{prompt_label} must render to exactly one {expected_role.value} message. "
+                f"Got {len(prompt_messages)} messages."
+            )
+        if not prompt_messages[0].is_from(expected_role):
+            raise ValueError(
+                f"{prompt_label} must render to a {expected_role.value} message. "
+                f"Got a message with role {prompt_messages[0].role}."
+            )
+        return prompt_messages
+
     def _initialize_fresh_execution(
         self,
         messages: list[ChatMessage],
@@ -495,22 +525,23 @@ class Agent:
         """
         messages = messages or []
 
-        if self.user_prompt is not None:
-            prompt_kwargs = {var: kwargs[var] for var in self._user_chat_prompt_builder.variables if var in kwargs}  # type: ignore[union-attr]
-            user_messages = self._user_chat_prompt_builder.run(template=self.user_prompt, **prompt_kwargs)["prompt"]  # type: ignore[union-attr]
+        if self._user_chat_prompt_builder is not None:
+            user_messages = self._render_prompt_messages(
+                prompt_builder=self._user_chat_prompt_builder,
+                expected_role=ChatRole.USER,
+                prompt_label="user_prompt",
+                kwargs=kwargs,
+            )
             messages = messages + user_messages
 
-        if self.system_prompt is not None:
-            if self._system_chat_prompt_builder is not None:
-                prompt_kwargs = {
-                    var: kwargs[var] for var in self._system_chat_prompt_builder.variables if var in kwargs
-                }
-                system_messages = self._system_chat_prompt_builder.run(template=self.system_prompt, **prompt_kwargs)[
-                    "prompt"
-                ]
-                messages = system_messages + messages
-            else:
-                messages = [ChatMessage.from_system(self.system_prompt)] + messages
+        if self._system_chat_prompt_builder is not None:
+            system_messages = self._render_prompt_messages(
+                prompt_builder=self._system_chat_prompt_builder,
+                expected_role=ChatRole.SYSTEM,
+                prompt_label="system_prompt",
+                kwargs=kwargs,
+            )
+            messages = system_messages + messages
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")

@@ -6,12 +6,10 @@ upgrade:
     per-run, including when the ``Agent`` is used inside a pipeline (``Pipeline.run(data={"agent": {"user_prompt": ...}})``
     is no longer supported).
 
-    Validation of the prompt templates also moves to ``Agent.__init__``. ``system_prompt`` still accepts
-    either a plain string or a Jinja2 message template, and ``user_prompt`` is a Jinja2 message template.
-    When a Jinja2 message template is used, it must contain exactly one message block whose role matches the
-    parameter (``user`` for ``user_prompt``, ``system`` for ``system_prompt``). Previously these checks ran
-    on each call to ``run``/``run_async`` and raised at execution time; invalid templates now fail fast at
-    construction time.
+    ``system_prompt`` and ``user_prompt`` both accept either a plain string template or an explicit Jinja2
+    message template. Plain string templates are rendered as a single message with the expected role
+    (``system`` for ``system_prompt``, ``user`` for ``user_prompt``). Explicit Jinja2 message templates must
+    contain a single message block and render to exactly one message with the matching role.
 
     Before:
 
@@ -28,9 +26,7 @@ upgrade:
       agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
       agent.run(messages=[...])
 
-      # If you really need to change the system prompt at runtime, include it
-      # as a system message at the start of `messages`. The Agent forwards the
-      # messages list to the chat generator as-is, so the system message will
-      # be the first message the LLM sees.
+      # If you need to build prompts at runtime, construct an Agent without
+      # init prompts and pass the prompt messages through the messages input.
       agent = Agent(chat_generator=..., tools=[...])
       agent.run(messages=[ChatMessage.from_system("Runtime system prompt."), ChatMessage.from_user("...")])

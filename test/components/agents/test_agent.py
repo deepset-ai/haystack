@@ -1413,10 +1413,24 @@ class TestPrompts:
 
     def test_system_prompt_plain_string(self, make_agent):
         agent = make_agent(system_prompt="You are a helpful assistant.")
-        assert agent._system_chat_prompt_builder is None
+        assert agent._system_chat_prompt_builder is not None
         result = agent.run(messages=[ChatMessage.from_user("Hi")])
         assert result["messages"][0].is_from(ChatRole.SYSTEM)
         assert result["messages"][0].text == "You are a helpful assistant."
+
+    def test_system_prompt_plain_string_with_template_variables(self, make_agent):
+        agent = make_agent(system_prompt="You are an assistant for {{company}}. Your role is {{role}}.")
+        assert agent._system_chat_prompt_builder is not None
+        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
+
+        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
+        sys_msg = result["messages"][0]
+        assert sys_msg.is_from(ChatRole.SYSTEM)
+        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "company" in input_names
+        assert "role" in input_names
 
     def test_system_prompt_with_template_variables(self, make_agent):
         agent = make_agent(system_prompt=_sys_msg("You are an assistant for {{company}}. Your role is {{role}}."))
@@ -1449,6 +1463,15 @@ class TestPrompts:
         # 'irrelevant_kwarg' is not a template variable — must not raise
         result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
         assert "messages" in result
+
+    def test_user_prompt_plain_string_with_template_variables(self, make_agent):
+        agent = make_agent(user_prompt="Question: {{question}}")
+        result = agent.run(messages=[], question="Will it snow?")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "Question: Will it snow?"
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "question" in input_names
 
     def test_user_prompt_with_template_variables(self, make_agent):
         agent = make_agent(
@@ -1496,6 +1519,11 @@ class TestPrompts:
 
         with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
             make_agent(user_prompt=_sys_msg("This is a system message, not user."))
+
+    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
+        agent = make_agent(user_prompt="{% message role=role_name %}Question: {{question}}{% endmessage %}")
+        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
+            agent.run(messages=[], role_name="assistant", question="Will it snow?")
 
     def test_prompt_multiple_message_blocks_raises_at_init(self, make_agent):
         multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
