@@ -92,19 +92,19 @@
 | haystack/components/generators/chat/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/azure.py                                        |       68 |        4 |     94% |198, 201, 312, 315 |
 | haystack/components/generators/chat/azure\_responses.py                             |       46 |        2 |     96% |  224, 271 |
-| haystack/components/generators/chat/fallback.py                                     |       86 |        4 |     95% |92, 240-245 |
-| haystack/components/generators/chat/hugging\_face\_api.py                           |      229 |        7 |     97% |189, 420-421, 487, 579, 632, 703 |
-| haystack/components/generators/chat/hugging\_face\_local.py                         |      208 |       27 |     87% |70-72, 75, 83-85, 235, 278-280, 340, 370, 426, 455-460, 487, 538-541, 576-582, 598, 654-655 |
+| haystack/components/generators/chat/fallback.py                                     |       89 |        4 |     96% |93, 245-250 |
+| haystack/components/generators/chat/hugging\_face\_api.py                           |      231 |        7 |     97% |189, 420-421, 487, 585, 638, 709 |
+| haystack/components/generators/chat/hugging\_face\_local.py                         |      211 |       27 |     87% |71-73, 76, 84-86, 236, 279-281, 341, 372, 430, 459-464, 491, 544-547, 582-588, 604, 660-661 |
 | haystack/components/generators/chat/llm.py                                          |       33 |        1 |     97% |       120 |
-| haystack/components/generators/chat/openai.py                                       |      212 |        4 |     98% |421, 471, 642, 742 |
-| haystack/components/generators/chat/openai\_responses.py                            |      316 |       39 |     88% |237, 268, 356, 434, 449, 486, 493-500, 508, 549-558, 574-575, 580, 593-609, 618, 748, 790-791, 804, 847, 869, 888 |
+| haystack/components/generators/chat/openai.py                                       |      214 |        4 |     98% |431, 481, 652, 752 |
+| haystack/components/generators/chat/openai\_responses.py                            |      318 |       39 |     88% |237, 268, 358, 438, 453, 490, 497-504, 512, 553-562, 578-579, 584, 597-613, 622, 752, 794-795, 808, 851, 873, 892 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                               |        4 |        0 |    100% |           |
 | haystack/components/generators/hugging\_face\_api.py                                |       86 |        3 |     97% |164-165, 263 |
 | haystack/components/generators/hugging\_face\_local.py                              |       87 |        7 |     92% |128-130, 193, 242-248 |
 | haystack/components/generators/openai.py                                            |       68 |        4 |     94% |149, 215, 217, 243 |
 | haystack/components/generators/openai\_dalle.py                                     |       49 |        0 |    100% |           |
-| haystack/components/generators/utils.py                                             |       79 |        9 |     89% |31, 45, 91, 124-125, 157, 167, 169, 171 |
+| haystack/components/generators/utils.py                                             |       85 |        9 |     89% |31, 45, 91, 124-125, 157, 167, 169, 171 |
 | haystack/components/joiners/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
 | haystack/components/joiners/answer\_joiner.py                                       |       49 |        2 |     96% |  132, 138 |
 | haystack/components/joiners/branch.py                                               |       20 |        3 |     85% |105, 116-117 |
@@ -228,7 +228,7 @@
 | haystack/telemetry/\_environment.py                                                 |       25 |        0 |    100% |           |
 | haystack/telemetry/\_telemetry.py                                                   |       81 |       12 |     85% |69-75, 93-94, 113-114, 187 |
 | haystack/tools/\_\_init\_\_.py                                                      |       11 |        0 |    100% |           |
-| haystack/tools/component\_tool.py                                                   |       90 |        5 |     94% |348-349, 381-383 |
+| haystack/tools/component\_tool.py                                                   |       94 |        5 |     95% |349-350, 393-395 |
 | haystack/tools/errors.py                                                            |        6 |        0 |    100% |           |
 | haystack/tools/from\_function.py                                                    |       55 |        0 |    100% |           |
 | haystack/tools/parameters\_schema\_utils.py                                         |      105 |        3 |     97% |95, 148-149 |
@@ -265,7 +265,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17273** | **1213** | **93%** |           |
+| **TOTAL**                                                                           | **17295** | **1213** | **93%** |           |
 
 
 ## Setup coverage badge
