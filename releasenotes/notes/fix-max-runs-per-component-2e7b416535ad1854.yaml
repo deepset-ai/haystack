@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fix the ``max_runs_per_component`` limit on ``Pipeline`` and ``AsyncPipeline``
+    so that a component is now stopped when its number of runs reaches
+    ``max_runs_per_component`` rather than when it strictly exceeds it. Previously,
+    a component could run one more time than the configured limit before
+    ``PipelineMaxComponentRuns`` was raised. This only affected pipelines with
+    loops. The check is also skipped for ``BLOCKED`` components, since they cannot
+    run anyway and should not trigger the error.

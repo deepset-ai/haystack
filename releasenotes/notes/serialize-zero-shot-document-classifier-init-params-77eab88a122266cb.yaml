@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix ``TransformersZeroShotDocumentClassifier.to_dict`` to include the ``classification_field`` and ``multi_label``
+    init parameters, which were previously dropped on serialization and reset to defaults after ``from_dict``.

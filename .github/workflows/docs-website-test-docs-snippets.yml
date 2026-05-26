@@ -2,13 +2,13 @@ name: Test Python snippets in docs
 
 on:
   schedule:
-    - cron: '17 3 * * *'  # daily at 03:17 UTC
+    - cron: "17 3 * * *" # daily at 03:17 UTC
   workflow_dispatch:
     inputs:
       haystack_version:
-        description: 'Haystack version to test against (e.g., 2.16.1, main)'
+        description: "Haystack version to test against (e.g., 2.16.1, main)"
         required: false
-        default: 'main'
+        default: "main"
         type: string
 
 env:
@@ -35,7 +35,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Hatch
         run: |
@@ -61,6 +61,6 @@ jobs:
       - test-docs-snippets
     runs-on: ubuntu-slim
     steps:
-      - uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+      - uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
