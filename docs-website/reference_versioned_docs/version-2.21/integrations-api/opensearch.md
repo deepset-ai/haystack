@@ -1492,6 +1492,8 @@ Deletes all documents in the document store.
 
 - **recreate_index** (<code>bool</code>) – If True, the index will be deleted and recreated with the original mappings and
   settings. If False, all documents will be deleted using the `delete_by_query` API.
+  `recreate_index=True` is not supported when the configured index name is an alias; a
+  :class:`haystack.document_stores.errors.DocumentStoreError` is raised in that case.
 - **refresh** (<code>bool</code>) – If True, OpenSearch refreshes all shards involved in the delete by query after the request
   completes. If False, no refresh is performed. For more details, see the
   [OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
@@ -1510,6 +1512,8 @@ Asynchronously deletes all documents in the document store.
 
 - **recreate_index** (<code>bool</code>) – If True, the index will be deleted and recreated with the original mappings and
   settings. If False, all documents will be deleted using the `delete_by_query` API.
+  `recreate_index=True` is not supported when the configured index name is an alias; a
+  :class:`haystack.document_stores.errors.DocumentStoreError` is raised in that case.
 - **refresh** (<code>bool</code>) – If True, OpenSearch refreshes all shards involved in the delete by query after the request
   completes. If False, no refresh is performed. For more details, see the
   [OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).

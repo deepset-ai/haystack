@@ -88,7 +88,7 @@ jobs:
           # Node 22+ prefers ESM when available. We force CJS (CommonJS) resolution to use the working katex build.
           # This should be safe because docusaurus-mdx-checker and its dependencies provide CJS builds.
           export NODE_OPTIONS="--conditions=require"
-          npx docusaurus-mdx-checker -v || {
+          npx docusaurus-mdx-checker@3.0.0 -v || {
               echo ""
               echo "For common MDX problems, see https://docusaurus.io/blog/preparing-your-site-for-docusaurus-v3#common-mdx-problems"
               exit 1
