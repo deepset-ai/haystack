@@ -430,3 +430,9 @@ class TestAnswerBuilder:
         component = AnswerBuilder(reference_pattern=r"\[(\d+)\]", return_only_referenced_documents=False)
         component.run(query="Capital?", replies=["Paris [1]."], documents=[doc])
         assert doc.meta == {"source": "wiki"}
+
+    def test_run_does_not_mutate_document_with_empty_meta(self):
+        doc = Document(content="Paris is the capital of France.")
+        component = AnswerBuilder()
+        component.run(query="Capital of France?", replies=["Paris."], documents=[doc])
+        assert doc.meta == {}

@@ -135,9 +135,12 @@ class AnswerBuilder:
         :param documents:
             The documents used as the Generator inputs. If specified, they are added to
             the `GeneratedAnswer` objects.
-            Each Document.meta includes a "source_index" key, representing its 1-based position in the input list.
+            The Document copies inside the returned `GeneratedAnswer.documents` each include a "source_index" key,
+            representing the document's 1-based position in the input list. The original input documents are
+            not modified.
             When `reference_pattern` is provided:
-            - "referenced" key is added to the Document.meta, indicating if the document was referenced in the output.
+            - "referenced" key is added to the Document copies inside `GeneratedAnswer.documents`, indicating if
+            the document was referenced in the output.
             - `return_only_referenced_documents` init parameter controls if all or only referenced documents are
             returned.
         :param pattern:
@@ -204,7 +207,7 @@ class AnswerBuilder:
                         )
                         continue
 
-                    doc_meta: dict[str, Any] = dict(doc.meta)
+                    doc_meta: dict[str, Any] = dict(doc.meta or {})
                     doc_meta["source_index"] = idx + 1
                     if reference_pattern:
                         doc_meta["referenced"] = idx in referenced_idxs
