@@ -5,7 +5,7 @@
 import ast
 import math
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors.document_splitter import DocumentSplitter
@@ -36,7 +36,9 @@ class _CodeUnit:
     source: str
     start_line: int
     end_line: int
-    kind: str
+    kind: Literal[
+        "module_docstring", "imports", "class", "class_header", "method", "nested_class", "function", "statement"
+    ]
     name: str | None = None
     class_name: str | None = None
     class_signature: str | None = None
@@ -83,10 +85,9 @@ class PythonCodeSplitter:
     A function whose effective length exceeds ``oversized_factor * max_effective_lines`` is the only
     case where chunks may overlap: it is broken down with
     a secondary line-based split (using :class:`DocumentSplitter`) and the resulting
-    chunks all carry the originating function's metadata. A warning is emitted when this
-    fallback fires. For the primary split, overlap is intentionally disabled because
-    duplicating whole functions across chunks would be wasteful and produce confusing
-    retrieval results.
+    chunks all carry the originating function's metadata. For the primary split, overlap
+    is intentionally disabled because duplicating whole functions across chunks would be
+    wasteful and produce confusing retrieval results.
 
     The secondary split always uses ``split_by="line"`` because other split modes (word,
     sentence, etc.) are not meaningful for code. The chunk size for the secondary split
@@ -104,7 +105,7 @@ class PythonCodeSplitter:
       in the chunk),
     - ``start_line`` and ``end_line`` in the original file (1-indexed, inclusive),
     - ``docstrings`` when ``strip_docstrings=True`` (a list of stripped docstrings in
-      source order — otherwise docstrings remain in the chunk content),
+      source order - otherwise docstrings remain in the chunk content),
     - ``unit_kinds`` (the kinds of units merged into the chunk),
     - ``source_id`` and ``split_id``.
 
