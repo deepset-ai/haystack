@@ -27,4 +27,5 @@ Steps to reproduce the behavior
 - [ ] Have you had a look at [our new FAQ page](https://docs.haystack.deepset.ai/docs/faq)?
 
 **System:**
- - Haystack version:
+- OS:
+- Haystack version:
