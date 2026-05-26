@@ -128,6 +128,38 @@ agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[..
 agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
 ```
 
+#### Runtime `user_prompt` and `system_prompt` removed from `Agent.run` / `Agent.run_async`
+
+**What changed:** The `user_prompt` and `system_prompt` parameters have been removed from `Agent.run` and `Agent.run_async`. Both prompts must now be set at initialization time on the `Agent`; they can no longer be passed per-run, including via `Pipeline.run(data={"agent": {...}})`.
+
+**Why:** A single source of truth for the Agent's prompts simplifies the API and lets prompt-template validation happen once at construction time instead of on every call.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.agents import Agent
+
+agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
+agent.run(messages=[...], system_prompt="Per-run override.")
+```
+
+After (v3.0):
+```python
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+
+# Option 1: construct a new Agent with the desired prompt.
+agent = Agent(chat_generator=..., tools=[...], system_prompt="Default system prompt.")
+agent.run(messages=[...])
+
+# Option 2: include a system message at the start of `messages`. The Agent
+# forwards messages to the chat generator as-is, so the system message will be
+# the first message the LLM sees.
+agent = Agent(chat_generator=..., tools=[...])
+agent.run(messages=[ChatMessage.from_system("Runtime system prompt."), ChatMessage.from_user("...")])
+```
+
 #### Tracing span hierarchy reshaped
 
 **What changed:** Each iteration of the Agent loop now emits a single `haystack.agent.step` Haystack span with two nested children — `haystack.agent.step.llm` for the chat generator call and `haystack.agent.step.tool` for the tool invocation (only when tool calls happen). Previously each iteration produced two child spans through `Pipeline._run_component` (one for the chat generator, one for the tool invoker) tagged with `haystack.component.name` / `haystack.component.type`. The new spans do NOT carry `haystack.component.*` tags; they expose new content tags `haystack.agent.step.llm.input`/`.output` and `haystack.agent.step.tool.input`/`.output`.
