@@ -1192,7 +1192,7 @@ class Agent:
         """
         Decide whether the agent should stop looping.
 
-        Returns True when the model called at least one tool listed in ``exit_conditions`` and
+        Returns True when the model called at least one tool listed in `exit_conditions` and
         that tool did not error. Every tool call in the message is checked, so the order of
         parallel tool calls does not matter.
 
