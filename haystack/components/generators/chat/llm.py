@@ -27,14 +27,11 @@ class LLM(Agent):
     ```python
     from haystack.components.generators.chat import LLM
     from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.dataclasses import ChatMessage
 
     llm = LLM(
         chat_generator=OpenAIChatGenerator(),
         system_prompt="You are a helpful translation assistant.",
-        user_prompt=\"\"\"{% message role="user"%}
-    Summarize the following document: {{ document }}
-    {% endmessage %}\"\"\",
+        user_prompt="Summarize the following document: {{ document }}",
         required_variables=["document"],
     )
 
@@ -56,16 +53,16 @@ class LLM(Agent):
         Initialize the LLM component.
 
         :param chat_generator: An instance of the chat generator that the LLM should use.
-        :param system_prompt: System prompt for the LLM.
+        :param system_prompt: System prompt for the LLM. Can be a plain string template or a Jinja2 message template.
         :param user_prompt: User prompt for the LLM. This prompt is appended to the messages provided at
-            runtime. If it contains Jinja2 template variables (e.g., `{{ variable_name }}`), they become
-            inputs to the component. If omitted or if there are no template variables, `messages` must be
-            provided at runtime instead.
+            runtime. Can be a plain string template or a Jinja2 message template. If it contains template variables
+            (e.g., `{{ variable_name }}`), they become inputs to the component. If omitted or if there are no
+            template variables, `messages` must be provided at runtime instead.
         :param required_variables:
-            Variables that must be provided as input to user_prompt.
+            Variables that must be provided as input to `user_prompt` or `system_prompt`.
             If a variable listed as required is not provided, an exception is raised.
             If set to `"*"`, all variables found in the prompt are required. Defaults to `"*"`.
-            Only relevant when `user_prompt` contains template variables.
+            Only relevant when `user_prompt` or `system_prompt` contains template variables.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
         :raises ValueError: If user_prompt contains template variables but required_variables is an empty list.
         """
@@ -126,8 +123,6 @@ class LLM(Agent):
         *,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -139,11 +134,8 @@ class LLM(Agent):
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
         :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
             will override the parameters passed during component initialization.
-        :param system_prompt: System prompt for the LLM. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the LLM. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
-        :param kwargs: Additional keyword arguments. These are used to fill template variables in the `user_prompt`
-            (the keys must match template variable names).
+        :param kwargs: Additional keyword arguments. These are used to fill template variables in `user_prompt` or
+            `system_prompt` (the keys must match template variable names).
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
@@ -156,8 +148,6 @@ class LLM(Agent):
             messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
             **kwargs,
         )
 
@@ -166,8 +156,6 @@ class LLM(Agent):
         *,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -180,11 +168,8 @@ class LLM(Agent):
             from the LLM.
         :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
             will override the parameters passed during component initialization.
-        :param system_prompt: System prompt for the LLM. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the LLM. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
-        :param kwargs: Additional keyword arguments. These are used to fill template variables in the `user_prompt`
-            (the keys must match template variable names).
+        :param kwargs: Additional keyword arguments. These are used to fill template variables in `user_prompt` or
+            `system_prompt` (the keys must match template variable names).
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
@@ -197,7 +182,5 @@ class LLM(Agent):
             messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
             **kwargs,
         )
