@@ -615,7 +615,7 @@ class Agent:
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
         )
 
-    def run(  # noqa: PLR0915
+    def run(
         self,
         messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
@@ -686,7 +686,7 @@ class Agent:
             result["last_message"] = msgs[-1]
         return result
 
-    async def run_async(  # noqa: PLR0915
+    async def run_async(
         self,
         messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
