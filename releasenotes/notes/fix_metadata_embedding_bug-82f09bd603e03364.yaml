@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes a bug where falsy metadata values (such as `0`, `False`, or `""`) were ignored when embedding documents or ranking them with metadata fields to embed. Affected components include `SentenceTransformersDocumentEmbedder`, `SentenceTransformersSparseDocumentEmbedder`, `TransformersSimilarityRanker`, `SentenceTransformersSimilarityRanker`, and `SentenceTransformersDiversityRanker`.

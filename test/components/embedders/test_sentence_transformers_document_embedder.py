@@ -471,3 +471,21 @@ class TestSentenceTransformersDocumentEmbedder:
             config_kwargs=None,
             backend="torch",
         )
+
+    def test_embed_metadata_falsy(self):
+        embedder = SentenceTransformersDocumentEmbedder(
+            model="model",
+            meta_fields_to_embed=["rating", "is_awesome", "missing", "missing_key"],
+            embedding_separator="\n",
+        )
+        embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)]]
+        documents = [Document(content="document content", meta={"rating": 0, "is_awesome": False, "missing": None})]
+        embedder.run(documents=documents)
+        embedder.embedding_backend.embed.assert_called_once_with(
+            ["0\nFalse\ndocument content"],
+            batch_size=32,
+            show_progress_bar=True,
+            normalize_embeddings=False,
+            precision="float32",
+        )

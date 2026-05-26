@@ -334,6 +334,20 @@ class TestSentenceTransformersDocumentEmbedder:
             show_progress_bar=True,
         )
 
+    def test_embed_metadata_falsy(self):
+        embedder = SentenceTransformersSparseDocumentEmbedder(
+            model="model",
+            meta_fields_to_embed=["rating", "is_awesome", "missing", "missing_key"],
+            embedding_separator="\n",
+        )
+        embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [SparseEmbedding(indices=[0, 2, 5], values=[0.1, 0.2, 0.3])]
+        documents = [Document(content="document content", meta={"rating": 0, "is_awesome": False, "missing": None})]
+        embedder.run(documents=documents)
+        embedder.embedding_backend.embed.assert_called_once_with(
+            data=["0\nFalse\ndocument content"], batch_size=32, show_progress_bar=True
+        )
+
     @patch(
         "haystack.components.embedders.sentence_transformers_sparse_document_embedder._SentenceTransformersSparseEmbeddingBackendFactory"
     )

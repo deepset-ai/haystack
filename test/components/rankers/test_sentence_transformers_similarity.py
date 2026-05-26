@@ -303,6 +303,27 @@ class TestSentenceTransformersSimilarityRanker:
         assert kwargs["convert_to_numpy"] is True
         assert kwargs["return_documents"] is False
 
+    def test_embed_meta_falsy(self):
+        ranker = SentenceTransformersSimilarityRanker(
+            model="model",
+            meta_fields_to_embed=["rating", "is_awesome", "missing", "missing_key"],
+            embedding_separator="\n",
+        )
+        mock_cross_encoder = MagicMock()
+        ranker._cross_encoder = mock_cross_encoder
+
+        documents = [Document(content="document content", meta={"rating": 0, "is_awesome": False, "missing": None})]
+
+        ranker.run(query="test", documents=documents)
+
+        _, kwargs = mock_cross_encoder.rank.call_args
+        assert kwargs["query"] == "test"
+        assert kwargs["documents"] == ["0\nFalse\ndocument content"]
+        assert kwargs["batch_size"] == 16
+        assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
+        assert kwargs["convert_to_numpy"] is True
+        assert kwargs["return_documents"] is False
+
     def test_prefix(self):
         ranker = SentenceTransformersSimilarityRanker(
             model="model", query_prefix="query_instruction: ", document_prefix="document_instruction: "

@@ -280,7 +280,7 @@ class TransformersSimilarityRanker:
         deduplicated_documents = _deduplicate_documents(documents)
         for doc in deduplicated_documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
             text_to_embed = self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
             query_doc_pairs.append([self.query_prefix + query, self.document_prefix + text_to_embed])

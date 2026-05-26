@@ -474,6 +474,21 @@ class TestSentenceTransformersDiversityRanker:
         ]
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
+    def test_prepare_texts_to_embed_falsy(self, similarity):
+        ranker = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            similarity=similarity,
+            document_prefix="test doc: ",
+            document_suffix=" end doc.",
+            meta_fields_to_embed=["rating", "is_awesome", "missing", "missing_key"],
+            embedding_separator="\n",
+        )
+        documents = [Document(content="document content", meta={"rating": 0, "is_awesome": False, "missing": None})]
+        texts = ranker._prepare_texts_to_embed(documents=documents)
+
+        assert texts == ["test doc: 0\nFalse\ndocument content end doc."]
+
+    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_encode_text(self, similarity):
         """
         Test addition of suffix and prefix to the query and documents when creating embeddings.

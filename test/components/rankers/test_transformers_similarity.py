@@ -244,6 +244,30 @@ class TestSimilarityRanker:
     @patch("torch.sigmoid")
     @patch("torch.sort")
     @patch("torch.stack")
+    def test_embed_meta_falsy(self, mocked_stack, mocked_sort, mocked_sigmoid):
+        mocked_stack.return_value = torch.tensor([0])
+        mocked_sort.return_value = (None, torch.tensor([0]))
+        mocked_sigmoid.return_value = torch.tensor([0])
+        embedder = TransformersSimilarityRanker(
+            model="model",
+            meta_fields_to_embed=["rating", "is_awesome", "missing", "missing_key"],
+            embedding_separator="\n",
+        )
+        embedder.model = MagicMock()
+        embedder.tokenizer = MagicMock()
+        embedder.device = MagicMock()
+
+        documents = [Document(content="document content", meta={"rating": 0, "is_awesome": False, "missing": None})]
+
+        embedder.run(query="test", documents=documents)
+
+        embedder.tokenizer.assert_called_once_with(
+            [["test", "0\nFalse\ndocument content"]], padding=True, truncation=True, return_tensors="pt"
+        )
+
+    @patch("torch.sigmoid")
+    @patch("torch.sort")
+    @patch("torch.stack")
     def test_prefix(self, mocked_stack, mocked_sort, mocked_sigmoid):
         mocked_stack.return_value = torch.tensor([0])
         mocked_sort.return_value = (None, torch.tensor([0]))
