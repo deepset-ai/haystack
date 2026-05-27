@@ -265,7 +265,7 @@ class Agent:
         max_agent_steps: int = 100,
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_concurrency_limit: int = 1,
+        tool_concurrency_limit: int = 4,
         tool_streaming_callback_passthrough: bool = False,
         confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
     ) -> None:
@@ -298,7 +298,7 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param tool_concurrency_limit: Maximum number of tool calls to execute at the same time.
-            Defaults to 1, which disables parallel tool execution.
+            Defaults to 4. Set to 1 to disable parallel tool execution.
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.

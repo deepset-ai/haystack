@@ -102,7 +102,7 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
-                "tool_concurrency_limit": 1,
+                "tool_concurrency_limit": 4,
                 "tool_streaming_callback_passthrough": False,
                 "required_variables": None,
                 "user_prompt": None,
