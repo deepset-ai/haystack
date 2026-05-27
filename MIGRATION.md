@@ -71,6 +71,81 @@ from haystack.dataclasses import Document
 doc = Document(content="col\n1\n2\n3")
 ```
 
+### ToolInvoker component removed
+
+**What changed:** The `ToolInvoker` component has been removed. Imports from `haystack.components.tools`
+and pipeline graphs that use `ToolInvoker` as a standalone component are no longer supported.
+
+**Why:** Tool execution is now owned by `Agent`, so the tool-calling loop, state handling, streaming callback
+passthrough, warm-up, and sync/async execution live in one place.
+
+**How to migrate:** Pass tools directly to `Agent` instead of wiring a chat generator to `ToolInvoker`.
+The `Agent` will pass tool definitions to the chat generator, execute requested tool calls, append tool
+results to the conversation, and continue the loop until an exit condition is reached.
+
+Before (v2.x):
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+
+
+def weather(city: str) -> str:
+    return f"The weather in {city} is sunny."
+
+
+weather_tool = Tool(
+    name="weather",
+    description="Get the weather for a city.",
+    parameters={
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    },
+    function=weather,
+)
+
+chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[weather_tool])
+tool_invoker = ToolInvoker(tools=[weather_tool])
+
+llm_result = chat_generator.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+tool_result = tool_invoker.run(messages=llm_result["replies"])
+```
+
+After (v3.0):
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+
+
+def weather(city: str) -> str:
+    return f"The weather in {city} is sunny."
+
+
+weather_tool = Tool(
+    name="weather",
+    description="Get the weather for a city.",
+    parameters={
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    },
+    function=weather,
+)
+
+agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[weather_tool])
+result = agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+```
+
+If you configured `ToolInvoker` options, move the corresponding options to `Agent`:
+
+- `raise_on_failure` becomes `raise_on_tool_invocation_failure`.
+- `streaming_callback` can be passed to `Agent` at initialization or at run time.
+- `max_workers` and `enable_streaming_callback_passthrough` can be passed through `tool_invoker_kwargs`.
+
 ### Agent
 
 #### Breakpoint and snapshot API removed
