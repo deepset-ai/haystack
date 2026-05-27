@@ -68,13 +68,16 @@ import os
 from haystack import Document
 from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 # Create a RAG query pipeline
-prompt_template = """
+prompt_template = [
+    ChatMessage.from_user(
+        """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
         {{ doc.content }}
@@ -82,7 +85,9 @@ prompt_template = """
 
     \nQuestion: {{question}}
     \nAnswer:
-    """
+    """,
+    ),
+]
 
 os.environ["OPENAI_API_KEY"] = "sk-XXXXXX"
 
@@ -92,15 +97,14 @@ rag_pipeline.add_component(
     name="retriever",
 )
 rag_pipeline.add_component(
-    instance=PromptBuilder(template=prompt_template),
+    instance=ChatPromptBuilder(template=prompt_template, required_variables="*"),
     name="prompt_builder",
 )
-rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 rag_pipeline.connect("llm.replies", "answer_builder.replies")
-rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 # Draw the pipeline

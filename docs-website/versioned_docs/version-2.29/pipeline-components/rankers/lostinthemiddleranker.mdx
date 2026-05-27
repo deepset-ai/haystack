@@ -103,7 +103,7 @@ p.add_component(instance=generator, name="llm")
 
 p.connect("retriever.documents", "ranker.documents")
 p.connect("ranker.documents", "prompt_builder.documents")
-p.connect("prompt_builder.messages", "llm.messages")
+p.connect("prompt_builder.prompt", "llm.messages")
 
 p.run(
     {

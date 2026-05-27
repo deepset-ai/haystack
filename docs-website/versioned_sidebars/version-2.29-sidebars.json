@@ -11,6 +11,7 @@
       "items": [
         "overview/installation",
         "overview/get-started",
+        "overview/docs-mcp-server",
         "overview/faq",
         "overview/telemetry",
         "overview/breaking-change-policy",
@@ -134,6 +135,7 @@
         "document-stores/pinecone-document-store",
         "document-stores/qdrant-document-store",
         "document-stores/valkeydocumentstore",
+        "document-stores/vespadocumentstore",
         "document-stores/weaviatedocumentstore"
       ]
     },
@@ -225,6 +227,7 @@
             "id": "pipeline-components/converters"
           },
           "items": [
+            "pipeline-components/converters/amazontextractconverter",
             "pipeline-components/converters/azuredocumentintelligenceconverter",
             "pipeline-components/converters/azureocrdocumentconverter",
             "pipeline-components/converters/csvtodocument",
@@ -552,6 +555,7 @@
             "pipeline-components/retrievers/filterretriever",
             "pipeline-components/retrievers/inmemorybm25retriever",
             "pipeline-components/retrievers/inmemoryembeddingretriever",
+            "pipeline-components/retrievers/mem0memoryretriever",
             "pipeline-components/retrievers/mongodbatlasembeddingretriever",
             "pipeline-components/retrievers/mongodbatlasfulltextretriever",
             "pipeline-components/retrievers/multiqueryembeddingretriever",
@@ -570,6 +574,8 @@
             "pipeline-components/retrievers/snowflaketableretriever",
             "pipeline-components/retrievers/textembeddingretriever",
             "pipeline-components/retrievers/valkeyembeddingretriever",
+            "pipeline-components/retrievers/vespaembeddingretriever",
+            "pipeline-components/retrievers/vespakeywordretriever",
             "pipeline-components/retrievers/weaviatebm25retriever",
             "pipeline-components/retrievers/weaviateembeddingretriever",
             "pipeline-components/retrievers/weaviatehybridretriever"
@@ -643,7 +649,8 @@
           "type": "category",
           "label": "Writers",
           "items": [
-            "pipeline-components/writers/documentwriter"
+            "pipeline-components/writers/documentwriter",
+            "pipeline-components/writers/mem0memorywriter"
           ]
         }
       ]
@@ -662,13 +669,18 @@
         {
           "type": "category",
           "label": "Ready-made Tools",
+          "link": {
+            "type": "doc",
+            "id": "tools/ready-made-tools"
+          },
           "items": [
             "tools/ready-made-tools/e2btoolset",
             "tools/ready-made-tools/githubfileeditortool",
             "tools/ready-made-tools/githubissuecommentertool",
             "tools/ready-made-tools/githubissueviewertool",
             "tools/ready-made-tools/githubprcreatortool",
-            "tools/ready-made-tools/githubrepoviewertool"
+            "tools/ready-made-tools/githubrepoviewertool",
+            "tools/ready-made-tools/mem0memorytools"
           ]
         }
       ]

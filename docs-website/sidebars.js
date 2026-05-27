@@ -15,6 +15,7 @@ export default {
       items: [
         'overview/installation',
         'overview/get-started',
+        'overview/docs-mcp-server',
         'overview/faq',
         'overview/telemetry',
         'overview/breaking-change-policy',
@@ -138,6 +139,7 @@ export default {
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
         'document-stores/valkeydocumentstore',
+        'document-stores/vespadocumentstore',
         'document-stores/weaviatedocumentstore',
       ],
     },
@@ -229,6 +231,7 @@ export default {
             id: 'pipeline-components/converters'
           },
           items: [
+            'pipeline-components/converters/amazontextractconverter',
             'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
@@ -556,6 +559,7 @@ export default {
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
+            'pipeline-components/retrievers/mem0memoryretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
             'pipeline-components/retrievers/multiqueryembeddingretriever',
@@ -574,6 +578,8 @@ export default {
             'pipeline-components/retrievers/snowflaketableretriever',
             'pipeline-components/retrievers/textembeddingretriever',
             'pipeline-components/retrievers/valkeyembeddingretriever',
+            'pipeline-components/retrievers/vespaembeddingretriever',
+            'pipeline-components/retrievers/vespakeywordretriever',
             'pipeline-components/retrievers/weaviatebm25retriever',
             'pipeline-components/retrievers/weaviateembeddingretriever',
             'pipeline-components/retrievers/weaviatehybridretriever',
@@ -648,6 +654,7 @@ export default {
           label: 'Writers',
           items: [
             'pipeline-components/writers/documentwriter',
+            'pipeline-components/writers/mem0memorywriter',
           ],
         },
       ],
@@ -666,6 +673,10 @@ export default {
         {
           type: 'category',
           label: 'Ready-made Tools',
+          link: {
+            type: 'doc',
+            id: 'tools/ready-made-tools'
+          },
           items: [
             'tools/ready-made-tools/e2btoolset',
             'tools/ready-made-tools/githubfileeditortool',
@@ -673,6 +684,7 @@ export default {
             'tools/ready-made-tools/githubissueviewertool',
             'tools/ready-made-tools/githubprcreatortool',
             'tools/ready-made-tools/githubrepoviewertool',
+            'tools/ready-made-tools/mem0memorytools',
           ],
         },
       ],
