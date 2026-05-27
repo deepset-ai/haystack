@@ -1,0 +1,35 @@
+---
+features:
+  - |
+    Added ``AsyncPipeline.stream()``, a convenient way to stream LLM chunks from an async application, such as an API
+    endpoint.
+    It runs the pipeline and returns a handle that can be iterated with ``async for`` to receive ``StreamingChunk``
+    objects from streaming-capable components as they are produced. After iteration ends, ``handle.result`` holds the
+    final pipeline output (the same dict returned by ``run_async``). By default every streaming-capable component is
+    forwarded; pass ``streaming_components`` to stream only specific components. If the consumer abandons iteration, the
+    underlying pipeline run is cancelled automatically; pass ``cancel_on_abandon=False`` to let it run to completion.
+
+    .. code-block:: python
+
+        import asyncio
+
+        from haystack import AsyncPipeline
+        from haystack.components.builders import ChatPromptBuilder
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.dataclasses import ChatMessage
+
+        pipe = AsyncPipeline()
+        pipe.add_component(
+            "prompt_builder",
+            ChatPromptBuilder(template=[ChatMessage.from_user("Tell me about {{topic}}")]),
+        )
+        pipe.add_component("llm", OpenAIChatGenerator())
+        pipe.connect("prompt_builder.prompt", "llm.messages")
+
+        async def main():
+            handle = pipe.stream(data={"prompt_builder": {"topic": "Italy"}})
+            async for chunk in handle:
+                print(chunk.content, end="", flush=True)
+            return handle.result
+
+        result = asyncio.run(main())
