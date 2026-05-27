@@ -626,7 +626,7 @@ This method calls warm_up() on each underlying generator that supports it.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -637,7 +637,7 @@ Execute chat generators sequentially until one succeeds.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – The conversation history as a list of ChatMessage instances.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – The conversation history as a list of ChatMessage instances.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional parameters for the chat generator (e.g., temperature, max_tokens).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callable for handling streaming responses.
@@ -657,7 +657,7 @@ Execute chat generators sequentially until one succeeds.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -668,7 +668,7 @@ Asynchronously execute chat generators sequentially until one succeeds.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – The conversation history as a list of ChatMessage instances.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – The conversation history as a list of ChatMessage instances.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional parameters for the chat generator (e.g., temperature, max_tokens).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callable for handling streaming responses.
@@ -870,7 +870,7 @@ Deserialize this component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -881,7 +881,8 @@ Invoke the text generation inference based on the provided messages and generati
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override
   the `tools` parameter set during component initialization. This parameter can accept either a
@@ -898,7 +899,7 @@ Invoke the text generation inference based on the provided messages and generati
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -912,7 +913,8 @@ and return values but can be used with `await` in an async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
   parameter set during component initialization. This parameter can accept either a list of `Tool` objects
@@ -1104,7 +1106,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None,
@@ -1115,7 +1117,8 @@ Invoke text generation inference based on the provided messages and generation p
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided,
+  it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -1158,7 +1161,7 @@ Create a ChatMessage instance from the provided text, populated with metadata.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None,
@@ -1172,7 +1175,7 @@ and return values but can be used with `await` in an async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -1538,7 +1541,7 @@ Deserialize this component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     *,
@@ -1551,7 +1554,8 @@ Invokes chat completion based on the provided messages and generation parameters
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
   override the parameters passed during component initialization.
@@ -1571,7 +1575,7 @@ Invokes chat completion based on the provided messages and generation parameters
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     *,
@@ -1587,7 +1591,8 @@ but can be used with `await` in async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
@@ -1792,7 +1797,7 @@ Deserialize this component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     *,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
@@ -1805,7 +1810,7 @@ Invokes response generation based on the provided messages and generation parame
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
   override the parameters passed during component initialization.
@@ -1830,7 +1835,7 @@ Invokes response generation based on the provided messages and generation parame
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     *,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
@@ -1846,7 +1851,7 @@ but can be used with `await` in async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will

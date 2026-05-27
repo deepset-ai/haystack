@@ -23,7 +23,11 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _serialize_object
+from haystack.components.generators.utils import (
+    _convert_streaming_chunks_to_chat_message,
+    _normalize_messages,
+    _serialize_object,
+)
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -300,7 +304,7 @@ class OpenAIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         *,
@@ -311,7 +315,8 @@ class OpenAIChatGenerator:
         Invokes chat completion based on the provided messages and generation parameters.
 
         :param messages:
-            A list of ChatMessage instances representing the input messages.
+            A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
@@ -332,6 +337,8 @@ class OpenAIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         if len(messages) == 0:
             return {"replies": []}
@@ -375,7 +382,7 @@ class OpenAIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         *,
@@ -389,7 +396,8 @@ class OpenAIChatGenerator:
         but can be used with `await` in async code.
 
         :param messages:
-            A list of ChatMessage instances representing the input messages.
+            A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
             Must be a coroutine.
@@ -410,6 +418,8 @@ class OpenAIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(

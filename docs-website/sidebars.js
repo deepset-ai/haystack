@@ -231,6 +231,7 @@ export default {
             id: 'pipeline-components/converters'
           },
           items: [
+            'pipeline-components/converters/amazontextractconverter',
             'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',

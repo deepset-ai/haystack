@@ -15,7 +15,7 @@ description: "`OpenAIResponsesChatGenerator` enables chat completion using OpenA
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
 | **Mandatory init variables**           | `api_key`: An OpenAI API key. Can be set with `OPENAI_API_KEY` env var.                              |
-| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat or a plain string |
 | **Output variables**                   | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects containing the generated responses                               |
 | **API reference**                      | [Generators](/reference/generators-api)                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/openai_responses.py     |
@@ -29,7 +29,7 @@ description: "`OpenAIResponsesChatGenerator` enables chat completion using OpenA
 
 The Responses API is designed for reasoning-capable models and supports features like reasoning summaries, multi-turn conversations with previous response IDs, and structured outputs.
 
-The component requires a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`), and optional metadata. See the [usage](#usage) section for examples.
+The component requires a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. See the [usage](#usage) section for examples.
 
 You can pass any parameters valid for the OpenAI Responses API directly to `OpenAIResponsesChatGenerator` using the `generation_kwargs` parameter, both at initialization and to the `run()` method. For more details on the parameters supported by the OpenAI API, refer to the [OpenAI Responses API documentation](https://platform.openai.com/docs/api-reference/responses).
 

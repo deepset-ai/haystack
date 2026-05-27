@@ -161,6 +161,8 @@ class TransformersZeroShotDocumentClassifier:
             model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             token=self.token,
+            multi_label=self.multi_label,
+            classification_field=self.classification_field,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]

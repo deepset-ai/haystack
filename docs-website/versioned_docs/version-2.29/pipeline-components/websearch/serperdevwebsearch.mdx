@@ -54,7 +54,7 @@ response = web_search.run(query)
 
 ### In a pipeline
 
-Here’s an example of a RAG pipeline where we use a `SerperDevWebSearch` to look up the answer to the query. The resulting documents are then passed to `LinkContentFetcher` to get the full text from the URLs. Finally, `PromptBuilder` and `OpenAIGenerator` work together to form the final answer.
+Here’s an example of a RAG pipeline where we use a `SerperDevWebSearch` to look up the answer to the query. The resulting documents are then passed to `LinkContentFetcher` to get the full text from the URLs. Finally, `ChatPromptBuilder` and `OpenAIChatGenerator` work together to form the final answer.
 
 ```python
 from haystack import Pipeline

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -75,11 +76,8 @@ class HierarchicalDocumentSplitter:
 
     @staticmethod
     def _add_meta_data(document: Document) -> Document:
-        document.meta["__block_size"] = 0
-        document.meta["__parent_id"] = None
-        document.meta["__children_ids"] = []
-        document.meta["__level"] = 0
-        return document
+        new_meta = {**document.meta, "__block_size": 0, "__parent_id": None, "__children_ids": [], "__level": 0}
+        return replace(document, meta=new_meta)
 
     def build_hierarchy_from_doc(self, document: Document) -> list[Document]:
         """
