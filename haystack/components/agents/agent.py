@@ -601,8 +601,6 @@ class Agent:
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
-    # TODO We could make this always return list[Tool] allowing us to simplify _run_tool
-    #      Or accept we will have to do tool validation in _run_tool and in each ChatGenerator
     def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
