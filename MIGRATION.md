@@ -196,9 +196,6 @@ agent = Agent(
 pipeline = Pipeline()
 pipeline.add_component("retriever", ...)
 pipeline.add_component("agent", agent)
-
-# This connection only worked because `documents` was already present in
-# `init_user_prompt`, so the Agent had a `documents` input socket.
 pipeline.connect("retriever.documents", "agent.documents")
 
 pipeline.run(
