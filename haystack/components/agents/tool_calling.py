@@ -295,7 +295,6 @@ def run_tool(
     :param max_workers: Maximum number of parallel tool invocations.
     :returns: (tool_messages, updated_state)
     """
-    # TODO I wonder how much of this validation has already been done in the Agent's run method
     tools_with_names = _validate_and_prepare_tools(tools)
 
     messages_with_tool_calls = [m for m in messages if m.tool_calls]
