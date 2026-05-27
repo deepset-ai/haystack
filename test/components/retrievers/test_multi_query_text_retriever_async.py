@@ -99,19 +99,20 @@ class TestMultiQueryTextRetrieverAsync:
         assert contents.count("Wind energy is clean") == 1
 
     @pytest.mark.asyncio
-    async def test_run_async_falls_back_to_sync_when_no_run_async(self, document_store_with_docs):
+    async def test_run_async_falls_back_to_sync_when_no_run_async(self):
         @component
         class SyncOnlyRetriever:
             @component.output_types(documents=list[Document])
             def run(
                 self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
             ) -> dict[str, list[Document]]:
-                return {"documents": []}
+                return {"documents": [Document(content="Renewable energy", id="doc1", score=0.9)]}
 
         multi_retriever = MultiQueryTextRetriever(retriever=SyncOnlyRetriever())
         result = await multi_retriever.run_async(queries=["query"])
         assert "documents" in result
-        assert result["documents"] == []
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "Renewable energy"
 
     @pytest.mark.asyncio
     @pytest.mark.integration

@@ -106,7 +106,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         assert contents.count("Wind energy is clean") == 1
 
     @pytest.mark.asyncio
-    async def test_run_async_falls_back_to_sync_when_no_run_async(self):
+    async def test_run_async_falls_back_to_sync_when_no_run_async(self, document_store_with_categorized_docs):
         @component
         class SyncOnlyEmbedder:
             @component.output_types(embedding=list[float])
@@ -114,12 +114,12 @@ class TestMultiQueryEmbeddingRetrieverAsync:
                 return {"embedding": np.ones(384).tolist()}
 
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
+            retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_categorized_docs),
             query_embedder=SyncOnlyEmbedder(),
         )
         result = await multi_retriever.run_async(queries=["query"])
         assert "documents" in result
-        assert result["documents"] == []
+        assert len(result["documents"]) > 0
 
     @pytest.mark.asyncio
     async def test_run_async_falls_back_to_sync_retriever_when_no_run_async(self):
