@@ -9,11 +9,12 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
@@ -23,24 +24,21 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 )
 def test_bm25_rag_pipeline(tmp_path):
     # Create the RAG pipeline
-    prompt_template = """
-    Given these documents, answer the question.\nDocuments:
-    {% for doc in documents %}
-        {{ doc.content }}
-    {% endfor %}
-
-    \nQuestion: {{question}}
-    \nAnswer:
-    """
+    prompt_template = [
+        ChatMessage.from_user(
+            "Given these documents, answer the question.\nDocuments:\n"
+            "{% for doc in documents %}\n    {{ doc.content }}\n{% endfor %}\n"
+            "\nQuestion: {{question}}\nAnswer:"
+        )
+    ]
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
-    rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+    rag_pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template), name="prompt_builder")
+    rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
-    rag_pipeline.connect("prompt_builder", "llm")
+    rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
     rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("llm.meta", "answer_builder.meta")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
     # Serialize the pipeline to YAML
@@ -86,15 +84,13 @@ def test_bm25_rag_pipeline(tmp_path):
 )
 def test_embedding_retrieval_rag_pipeline(tmp_path):
     # Create the RAG pipeline
-    prompt_template = """
-    Given these documents, answer the question.\nDocuments:
-    {% for doc in documents %}
-        {{ doc.content }}
-    {% endfor %}
-
-    \nQuestion: {{question}}
-    \nAnswer:
-    """
+    prompt_template = [
+        ChatMessage.from_user(
+            "Given these documents, answer the question.\nDocuments:\n"
+            "{% for doc in documents %}\n    {{ doc.content }}\n{% endfor %}\n"
+            "\nQuestion: {{question}}\nAnswer:"
+        )
+    ]
     rag_pipeline = Pipeline()
     rag_pipeline.add_component(
         instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="text_embedder"
@@ -102,14 +98,13 @@ def test_embedding_retrieval_rag_pipeline(tmp_path):
     rag_pipeline.add_component(
         instance=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()), name="retriever"
     )
-    rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-    rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+    rag_pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template), name="prompt_builder")
+    rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
     rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
     rag_pipeline.connect("text_embedder", "retriever")
     rag_pipeline.connect("retriever", "prompt_builder.documents")
-    rag_pipeline.connect("prompt_builder", "llm")
+    rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
     rag_pipeline.connect("llm.replies", "answer_builder.replies")
-    rag_pipeline.connect("llm.meta", "answer_builder.meta")
     rag_pipeline.connect("retriever", "answer_builder.documents")
 
     # Serialize the pipeline to JSON
