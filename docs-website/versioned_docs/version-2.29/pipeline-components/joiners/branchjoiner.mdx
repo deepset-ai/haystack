@@ -39,8 +39,7 @@ from haystack.components.joiners import BranchJoiner
 bj = BranchJoiner(int)
 bj.run(value=[3, 4, 5])
 
->>> ValueError: BranchJoiner expects only one input, but 3 were received.
-
+# ValueError: BranchJoiner expects only one input, but 3 were received.
 ```
 
 ## Usage
@@ -55,12 +54,12 @@ from haystack.components.joiners import BranchJoiner
 # an example where input and output are strings
 bj = BranchJoiner(str)
 bj.run(value=["hello"])
->>> {"value" : "hello"}
+# {"value" : "hello"}
 
 # an example where input and output are integers
 bj = BranchJoiner(int)
 bj.run(value=[3])
->>> {"value": 3}
+# {"value": 3}
 ```
 
 ### In a pipeline
@@ -136,11 +135,14 @@ from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.joiners import BranchJoiner
-from haystack.components.builders import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.routers import TextLanguageRouter
+from haystack.dataclasses import ChatMessage
 
-prompt_template = """
+prompt_template = [
+    ChatMessage.from_user(
+        """
 Answer the question based on the given reviews.
 Reviews:
   {% for doc in documents %}
@@ -148,7 +150,9 @@ Reviews:
   {% endfor %}
 Question: {{ query}}
 Answer:
-"""
+""",
+    ),
+]
 
 documents = [
     Document(
@@ -191,10 +195,10 @@ rag_pipeline.add_component(
 )
 rag_pipeline.add_component(instance=BranchJoiner(type_=list[Document]), name="joiner")
 rag_pipeline.add_component(
-    instance=PromptBuilder(template=prompt_template),
+    instance=ChatPromptBuilder(template=prompt_template, required_variables="*"),
     name="prompt_builder",
 )
-rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 
 rag_pipeline.connect("router.en", "en_retriever.query")
 rag_pipeline.connect("router.fr", "fr_retriever.query")
@@ -203,7 +207,7 @@ rag_pipeline.connect("en_retriever", "joiner")
 rag_pipeline.connect("fr_retriever", "joiner")
 rag_pipeline.connect("es_retriever", "joiner")
 rag_pipeline.connect("joiner", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 
 en_question = "Does this apartment has a noise problem?"
 
@@ -211,7 +215,7 @@ result = rag_pipeline.run(
     {"router": {"text": en_question}, "prompt_builder": {"query": en_question}},
 )
 
-print(result["llm"]["replies"][0])
+print(result["llm"]["replies"][0].text)
 ```
 
 <details>
