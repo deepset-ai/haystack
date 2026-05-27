@@ -350,8 +350,6 @@ def _run_confirmation_strategies(
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
-    # TODO `tools` should really be passed through flatten_tools_or_toolsets since at this point it
-    #      could be any valid ToolsType
     tools_with_names = {tool.name: tool for tool in tools}
 
     teds = []
@@ -421,8 +419,6 @@ async def _run_confirmation_strategies_async(
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
-    # TODO `tools` should really be passed through flatten_tools_or_toolsets since at this point it
-    #      could be any valid ToolsType
     tools_with_names = {tool.name: tool for tool in tools}
 
     teds = []
@@ -550,6 +546,9 @@ def _apply_tool_execution_decisions(
         if new_tool_calls:
             new_tool_call_messages.append(make_assistant_message(chat_msg, new_tool_calls))
 
+    # new_tool_call_messages is a list of assistant messages with an optional preceding user message explaining
+    #   modifications
+    # rejection_messages is a list of pairs of assistant and tool messages for rejected tool calls
     return rejection_messages, new_tool_call_messages
 
 
