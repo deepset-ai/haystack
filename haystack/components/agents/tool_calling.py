@@ -137,7 +137,13 @@ def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool) -> 
 
 
 def _create_tool_result_streaming_chunk(tool_messages: list[ChatMessage], tool_call: ToolCall) -> StreamingChunk:
-    """Create a streaming chunk that carries the latest tool result."""
+    """
+    Create a streaming chunk that carries the latest tool result.
+
+    :param tool_messages: The list of tool result messages so far, with the latest result at the end.
+    :param tool_call: The ToolCall object that triggered the tool invocation.
+    :returns: A StreamingChunk containing the latest tool result and metadata about the tool call.
+    """
     return StreamingChunk(
         content="",
         index=len(tool_messages) - 1,
@@ -167,7 +173,15 @@ def _make_context_bound_invoke(tool: Tool, args: dict[str, Any]) -> Callable[[],
 
 
 def _get_func_params(tool: Tool) -> dict[str, Any]:
-    """Return parameter names → annotations for a tool's invocation function."""
+    """
+    Return parameter names → annotations for a tool's invocation function.
+
+    - For ComponentTool, this is the annotated input schema defined on the underlying component.
+    - For regular Tools, this is the function signature of the `function` callable.
+
+    :param tool: The tool to inspect.
+    :returns: A dict mapping parameter names to their type annotations.
+    """
     if isinstance(tool, ComponentTool):
         assert hasattr(tool._component, "__haystack_input__") and isinstance(
             tool._component.__haystack_input__, Sockets
@@ -182,6 +196,12 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
 
     LLM args take precedence. State values are pulled in via `inputs_from_state` mappings or
     parameter-name matching, then the live State object is injected for any param annotated as State.
+
+    :param tool: The tool being invoked, used to determine parameter mappings and State injection.
+    :param llm_args: The arguments provided by the LLM, which take precedence over state values.
+    :param state: The current runtime state, used to source additional arguments as needed.
+    :returns: A dict of arguments to invoke the tool with, combining LLM and state values according to the rules
+        described above.
     """
     final_args = dict(llm_args)
     func_params = _get_func_params(tool)
@@ -275,6 +295,7 @@ def run_tool(
     :param max_workers: Maximum number of parallel tool invocations.
     :returns: (tool_messages, updated_state)
     """
+    # TODO I wonder how much of this validation has already been done in the Agent's run method
     tools_with_names = _validate_and_prepare_tools(tools)
 
     messages_with_tool_calls = [m for m in messages if m.tool_calls]
@@ -282,10 +303,10 @@ def run_tool(
         return [], state
 
     tool_calls, tool_call_params, tool_messages = _collect_tool_call_params(
-        messages_with_tool_calls,
-        state,
-        tools_with_names,
-        streaming_callback,
+        messages_with_tool_calls=messages_with_tool_calls,
+        state=state,
+        tools_with_names=tools_with_names,
+        streaming_callback=streaming_callback,
         raise_on_failure=raise_on_failure,
         enable_streaming_callback_passthrough=enable_streaming_callback_passthrough,
     )
@@ -315,6 +336,7 @@ def run_tool(
             if streaming_callback is not None:
                 streaming_callback(_create_tool_result_streaming_chunk(tool_messages, tool_call))
 
+    # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:
         streaming_callback(
             StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"})
@@ -352,10 +374,10 @@ async def run_tool_async(
         return [], state
 
     tool_calls, tool_call_params, tool_messages = _collect_tool_call_params(
-        messages_with_tool_calls,
-        state,
-        tools_with_names,
-        streaming_callback,
+        messages_with_tool_calls=messages_with_tool_calls,
+        state=state,
+        tools_with_names=tools_with_names,
+        streaming_callback=streaming_callback,
         raise_on_failure=raise_on_failure,
         enable_streaming_callback_passthrough=enable_streaming_callback_passthrough,
     )
@@ -389,6 +411,7 @@ async def run_tool_async(
                     _create_tool_result_streaming_chunk(tool_messages, tool_call)
                 )
 
+    # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:
         await streaming_callback(  # type: ignore[misc]
             StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"})

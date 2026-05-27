@@ -7,6 +7,8 @@ upgrade:
     To execute tools in an agentic loop, pass the tools directly to ``haystack.components.agents.Agent``.
     The Agent now owns tool execution, including tool/toolset warm-up, state injection, streaming callback
     passthrough, and sync/async tool invocation.
+    The previous ``tool_invoker_kwargs`` Agent parameter has been removed; use ``tool_concurrency_limit``
+    and ``tool_streaming_callback_passthrough`` instead.
 enhancements:
   - |
     Agent tool execution now warms lazy toolsets before tool selection and before tool calls are sent to the

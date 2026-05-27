@@ -147,7 +147,8 @@ class TestLLM:
                 "exit_conditions",
                 "max_agent_steps",
                 "raise_on_tool_invocation_failure",
-                "tool_invoker_kwargs",
+                "tool_concurrency_limit",
+                "tool_streaming_callback_passthrough",
                 "confirmation_strategies",
                 "state_schema",
             ]

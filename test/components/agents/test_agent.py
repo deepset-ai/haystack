@@ -204,7 +204,8 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             exit_conditions=["text", "weather_tool"],
             state_schema={"foo": {"type": str}},
-            tool_invoker_kwargs={"max_workers": 5, "enable_streaming_callback_passthrough": True},
+            tool_concurrency_limit=5,
+            tool_streaming_callback_passthrough=True,
         )
         serialized_agent = agent.to_dict()
         # Verify the model is truthy and serialized
@@ -275,7 +276,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
-                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "tool_concurrency_limit": 5,
+                "tool_streaming_callback_passthrough": True,
                 "confirmation_strategies": None,
             },
         }
@@ -340,7 +342,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": None,
+                "tool_concurrency_limit": 1,
+                "tool_streaming_callback_passthrough": False,
                 "confirmation_strategies": None,
             },
         }
@@ -424,7 +427,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "tool_concurrency_limit": 5,
+                "tool_streaming_callback_passthrough": True,
             },
         }
         agent = Agent.from_dict(data)
@@ -440,7 +444,8 @@ class TestAgent:
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
         }
-        assert agent.tool_invoker_kwargs == {"max_workers": 5, "enable_streaming_callback_passthrough": True}
+        assert agent.tool_concurrency_limit == 5
+        assert agent.tool_streaming_callback_passthrough is True
 
     def test_from_dict_with_toolset(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -492,7 +497,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": None,
+                "tool_concurrency_limit": 1,
+                "tool_streaming_callback_passthrough": False,
             },
         }
         agent = Agent.from_dict(data)
@@ -569,7 +575,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "tool_concurrency_limit": 5,
+                "tool_streaming_callback_passthrough": True,
             },
         }
         agent = Agent.from_dict(data)
@@ -646,6 +653,13 @@ class TestAgent:
             chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
         )
         assert agent.exit_conditions == ["text", "weather_tool"]
+
+    def test_tool_concurrency_limit_validation(self, weather_tool, monkeypatch):
+        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+
+        with pytest.raises(ValueError, match="tool_concurrency_limit must be greater than or equal to 1"):
+            Agent(chat_generator=generator, tools=[weather_tool], tool_concurrency_limit=0)
 
     def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -842,11 +856,19 @@ class TestAgent:
                 return {"replies": [message]}
 
         chat_generator = MockChatGenerator()
-        agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[component_tool],
+            system_prompt="This is a system prompt.",
+            tool_concurrency_limit=3,
+            tool_streaming_callback_passthrough=True,
+        )
         with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as run_tool_mock:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
+        assert run_tool_mock.call_args.kwargs["max_workers"] == 3
+        assert run_tool_mock.call_args.kwargs["enable_streaming_callback_passthrough"] is True
 
     def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
         @component

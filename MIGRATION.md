@@ -144,7 +144,8 @@ If you configured `ToolInvoker` options, move the corresponding options to `Agen
 
 - `raise_on_failure` becomes `raise_on_tool_invocation_failure`.
 - `streaming_callback` can be passed to `Agent` at initialization or at run time.
-- `max_workers` and `enable_streaming_callback_passthrough` can be passed through `tool_invoker_kwargs`.
+- `max_workers` becomes `tool_concurrency_limit`.
+- `enable_streaming_callback_passthrough` becomes `tool_streaming_callback_passthrough`.
 
 ### Agent
 

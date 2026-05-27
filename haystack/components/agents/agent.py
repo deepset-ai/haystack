@@ -265,7 +265,8 @@ class Agent:
         max_agent_steps: int = 100,
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_invoker_kwargs: dict[str, Any] | None = None,
+        tool_concurrency_limit: int = 1,
+        tool_streaming_callback_passthrough: bool = False,
         confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
     ) -> None:
         """
@@ -296,7 +297,9 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
-        :param tool_invoker_kwargs: Additional keyword arguments to pass to tool execution.
+        :param tool_concurrency_limit: Maximum number of tool calls to execute at the same time.
+            Defaults to 1, which disables parallel tool execution.
+        :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
@@ -323,6 +326,8 @@ class Agent:
         if state_schema is not None:
             _validate_schema(state_schema)
         _validate_prompt_message_blocks(user_prompt, system_prompt)
+        if tool_concurrency_limit < 1:
+            raise ValueError("tool_concurrency_limit must be greater than or equal to 1.")
 
         # --- Attributes ---
         self.chat_generator = chat_generator
@@ -334,7 +339,8 @@ class Agent:
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
-        self.tool_invoker_kwargs = tool_invoker_kwargs
+        self.tool_concurrency_limit = tool_concurrency_limit
+        self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self._confirmation_strategies = confirmation_strategies or {}
         self._is_warmed_up = False
 
@@ -457,7 +463,8 @@ class Agent:
             max_agent_steps=self.max_agent_steps,
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
-            tool_invoker_kwargs=self.tool_invoker_kwargs,
+            tool_concurrency_limit=self.tool_concurrency_limit,
+            tool_streaming_callback_passthrough=self.tool_streaming_callback_passthrough,
             confirmation_strategies={
                 (list(key) if isinstance(key, tuple) else key): component_to_dict(
                     obj=strategy, name="confirmation_strategy"
@@ -583,7 +590,8 @@ class Agent:
             "tools": selected_tools,
             "raise_on_failure": self.raise_on_tool_invocation_failure,
             "streaming_callback": streaming_callback,
-            **(self.tool_invoker_kwargs or {}),
+            "max_workers": self.tool_concurrency_limit,
+            "enable_streaming_callback_passthrough": self.tool_streaming_callback_passthrough,
         }
 
         return _ExecutionContext(

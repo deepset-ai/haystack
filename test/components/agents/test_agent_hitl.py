@@ -102,7 +102,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
-                "tool_invoker_kwargs": None,
+                "tool_concurrency_limit": 1,
+                "tool_streaming_callback_passthrough": False,
                 "required_variables": None,
                 "user_prompt": None,
                 "confirmation_strategies": {
@@ -137,7 +138,8 @@ class TestAgent:
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
         assert len(deserialized_agent.tools) == 1
         assert deserialized_agent.tools[0].name == "addition_tool"
-        assert deserialized_agent.tool_invoker_kwargs == agent.tool_invoker_kwargs
+        assert deserialized_agent.tool_concurrency_limit == agent.tool_concurrency_limit
+        assert deserialized_agent.tool_streaming_callback_passthrough == agent.tool_streaming_callback_passthrough
         assert isinstance(deserialized_agent._confirmation_strategies["addition_tool"], BlockingConfirmationStrategy)
         assert isinstance(
             deserialized_agent._confirmation_strategies["addition_tool"].confirmation_policy, NeverAskPolicy
