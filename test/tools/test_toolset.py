@@ -9,7 +9,7 @@ import pytest
 from haystack import Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.agents.state import State
-from haystack.components.agents.tool_calling import run_tool
+from haystack.components.agents.tool_calling import _run_tool
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ToolCall
@@ -50,7 +50,7 @@ class MockChatGenerator:
 
 
 def _run_tool_messages(messages: list[ChatMessage], tools: Toolset | list[Tool | Toolset]) -> list[ChatMessage]:
-    tool_messages, _ = run_tool(messages=messages, state=State(schema={}), tools=tools)
+    tool_messages, _ = _run_tool(messages=messages, state=State(schema={}), tools=tools)
     return tool_messages
 
 
@@ -571,7 +571,7 @@ class TestToolsetWithAgent:
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
         with pytest.raises(ToolInvocationError):
-            run_tool(messages=[tool_call_message], state=State(schema={}), tools=toolset)
+            _run_tool(messages=[tool_call_message], state=State(schema={}), tools=toolset)
 
     def test_agent_deserialization_with_custom_toolset(self, weather_tool):
         """Test deserialization of Agent with a custom Toolset."""

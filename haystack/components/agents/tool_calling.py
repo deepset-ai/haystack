@@ -41,11 +41,11 @@ def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
     if not tools:
         raise ValueError("Tool execution requires at least one tool.")
 
-    converted_tools = flatten_tools_or_toolsets(tools)
-    _check_duplicate_tool_names(converted_tools)
-    tool_names = [tool.name for tool in converted_tools]
+    available_tools = flatten_tools_or_toolsets(tools)
+    _check_duplicate_tool_names(available_tools)
+    tool_names = [tool.name for tool in available_tools]
 
-    return dict(zip(tool_names, converted_tools, strict=True))
+    return dict(zip(tool_names, available_tools, strict=True))
 
 
 def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> None:
@@ -223,6 +223,44 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
     return final_args
 
 
+def _prepare_tool_args(
+    *,
+    tool: Tool,
+    tool_call_arguments: dict[str, Any],
+    state: State,
+    streaming_callback: StreamingCallbackT | None = None,
+    enable_streaming_passthrough: bool = False,
+) -> dict[str, Any]:
+    """
+    Prepare the final arguments for a tool by injecting state inputs and optionally a streaming callback.
+
+    :param tool:
+        The tool instance to prepare arguments for.
+    :param tool_call_arguments:
+        The initial arguments provided for the tool call.
+    :param state:
+        The current state containing inputs to be injected into the tool arguments.
+    :param streaming_callback:
+        Optional streaming callback to be injected if enabled and applicable.
+    :param enable_streaming_passthrough:
+        Flag indicating whether to inject the streaming callback into the tool arguments.
+
+    :returns:
+        A dictionary of final arguments ready for tool invocation.
+    """
+    # Combine user + state inputs
+    final_args = _inject_state_args(tool, tool_call_arguments.copy(), state)
+    # Check whether to inject streaming_callback
+    if (
+        enable_streaming_passthrough
+        and streaming_callback is not None
+        and "streaming_callback" not in final_args
+        and "streaming_callback" in _get_func_params(tool)
+    ):
+        final_args["streaming_callback"] = streaming_callback
+    return final_args
+
+
 def _collect_tool_call_params(
     messages_with_tool_calls: list[ChatMessage],
     state: State,
@@ -257,23 +295,22 @@ def _collect_tool_call_params(
                 continue
 
             tool = tools_with_names[tool_name]
-            args = _inject_state_args(tool, tool_call.arguments.copy(), state)
 
-            if (
-                enable_streaming_callback_passthrough
-                and streaming_callback is not None
-                and "streaming_callback" not in args
-                and "streaming_callback" in _get_func_params(tool)
-            ):
-                args["streaming_callback"] = streaming_callback
+            final_args = _prepare_tool_args(
+                tool=tool,
+                tool_call_arguments=tool_call.arguments,
+                state=state,
+                streaming_callback=streaming_callback,
+                enable_streaming_passthrough=enable_streaming_callback_passthrough,
+            )
 
             tool_calls.append(tool_call)
-            tool_call_params.append({"tool": tool, "args": args})
+            tool_call_params.append({"tool": tool, "args": final_args})
 
     return tool_calls, tool_call_params, error_messages
 
 
-def run_tool(
+def _run_tool(
     *,
     messages: list[ChatMessage],
     state: State,
@@ -344,7 +381,7 @@ def run_tool(
     return tool_messages, state
 
 
-async def run_tool_async(
+async def _run_tool_async(
     *,
     messages: list[ChatMessage],
     state: State,

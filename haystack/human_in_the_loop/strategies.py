@@ -5,13 +5,11 @@
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from haystack.components.agents import State
-from haystack.components.agents.tool_calling import _get_func_params, _inject_state_args
+from haystack.components.agents.tool_calling import _prepare_tool_args
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
-from haystack.tools import Tool
 from haystack.utils.deserialization import deserialize_component_inplace
 
 # To prevent circular imports
@@ -224,44 +222,6 @@ def _get_confirmation_strategy(
     return None
 
 
-def _prepare_tool_args(
-    *,
-    tool: Tool,
-    tool_call_arguments: dict[str, Any],
-    state: State,
-    streaming_callback: StreamingCallbackT | None = None,
-    enable_streaming_passthrough: bool = False,
-) -> dict[str, Any]:
-    """
-    Prepare the final arguments for a tool by injecting state inputs and optionally a streaming callback.
-
-    :param tool:
-        The tool instance to prepare arguments for.
-    :param tool_call_arguments:
-        The initial arguments provided for the tool call.
-    :param state:
-        The current state containing inputs to be injected into the tool arguments.
-    :param streaming_callback:
-        Optional streaming callback to be injected if enabled and applicable.
-    :param enable_streaming_passthrough:
-        Flag indicating whether to inject the streaming callback into the tool arguments.
-
-    :returns:
-        A dictionary of final arguments ready for tool invocation.
-    """
-    # Combine user + state inputs
-    final_args = _inject_state_args(tool, tool_call_arguments.copy(), state)
-    # Check whether to inject streaming_callback
-    if (
-        enable_streaming_passthrough
-        and streaming_callback is not None
-        and "streaming_callback" not in final_args
-        and "streaming_callback" in _get_func_params(tool)
-    ):
-        final_args["streaming_callback"] = streaming_callback
-    return final_args
-
-
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
@@ -361,6 +321,8 @@ def _run_confirmation_strategies(
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
     state = execution_context.state
+    # TODO This execution_context.tool_execution_inputs["tools"] should really be passed through
+    #      flatten_tools_or_toolsets since at this point it could be any valid ToolsType
     tools_with_names = {tool.name: tool for tool in execution_context.tool_execution_inputs["tools"]}
 
     teds = []
@@ -425,6 +387,8 @@ async def _run_confirmation_strategies_async(
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
     state = execution_context.state
+    # TODO This execution_context.tool_execution_inputs["tools"] should really be passed through
+    #      flatten_tools_or_toolsets since at this point it could be any valid ToolsType
     tools_with_names = {tool.name: tool for tool in execution_context.tool_execution_inputs["tools"]}
 
     teds = []

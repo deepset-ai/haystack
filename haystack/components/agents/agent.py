@@ -18,7 +18,7 @@ from haystack.components.agents.state.state import (
     replace_values,
 )
 from haystack.components.agents.state.state_utils import merge_lists
-from haystack.components.agents.tool_calling import run_tool, run_tool_async
+from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
@@ -601,6 +601,8 @@ class Agent:
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
+    # TODO We could make this always return list[Tool] allowing us to simplify _run_tool
+    #      Or accept we will have to do tool validation in _run_tool and in each ChatGenerator
     def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
@@ -806,7 +808,7 @@ class Agent:
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
                 tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
-                tool_messages, exe_context.state = run_tool(**tool_execution_inputs)
+                tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
                 tool_span.set_content_tag(
                     "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
                 )
@@ -863,7 +865,7 @@ class Agent:
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
                 tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
-                tool_messages, exe_context.state = await run_tool_async(**tool_execution_inputs)
+                tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
                 tool_span.set_content_tag(
                     "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
                 )

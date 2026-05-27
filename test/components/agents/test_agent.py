@@ -18,7 +18,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import merge_lists
-from haystack.components.agents.tool_calling import run_tool
+from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -863,7 +863,7 @@ class TestAgent:
             tool_concurrency_limit=3,
             tool_streaming_callback_passthrough=True,
         )
-        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as run_tool_mock:
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
@@ -893,7 +893,7 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             system_prompt="This is a system prompt.",
         )
-        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as run_tool_mock:
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
