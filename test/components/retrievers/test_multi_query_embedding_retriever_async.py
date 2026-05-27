@@ -121,6 +121,24 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         assert "documents" in result
         assert result["documents"] == []
 
+    @pytest.mark.asyncio
+    async def test_run_async_falls_back_to_sync_retriever_when_no_run_async(self):
+        @component
+        class SyncOnlyRetriever:
+            @component.output_types(documents=list[Document])
+            def run(
+                self, query_embedding: list[float], filters: dict[str, Any] | None = None, top_k: int | None = None
+            ) -> dict[str, list[Document]]:
+                return {"documents": [Document(content="Solar energy", id="doc1", score=0.9)]}
+
+        multi_retriever = MultiQueryEmbeddingRetriever(
+            retriever=SyncOnlyRetriever(), query_embedder=MockQueryEmbedder()
+        )
+        result = await multi_retriever.run_async(queries=["query1", "query2"])
+        assert "documents" in result
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "Solar energy"
+
     @pytest.fixture
     def document_store_with_categorized_docs(self):
         documents = [
