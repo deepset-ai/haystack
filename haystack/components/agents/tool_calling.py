@@ -49,7 +49,11 @@ def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
 
 
 def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> None:
-    """Write tool outputs into State according to the tool's `outputs_to_state` mapping."""
+    """
+    Write tool outputs into State according to the tool's `outputs_to_state` mapping.
+
+    :raises RuntimeError: If writing an output value into the state fails.
+    """
     if not isinstance(result, dict):
         return
     if not hasattr(tool, "outputs_to_state") or not isinstance(tool.outputs_to_state, dict):
@@ -60,7 +64,10 @@ def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> Non
         if source_key and source_key not in result:
             continue
         output_value = result.get(source_key) if source_key else result
-        state.set(state_key, output_value, handler_override=config.get("handler"))
+        try:
+            state.set(state_key, output_value, handler_override=config.get("handler"))
+        except Exception as e:
+            raise RuntimeError(f"Tool '{tool.name}': failed to merge outputs into state. {e}") from e
 
 
 def _result_to_string(result: Any) -> str:
@@ -363,10 +370,7 @@ def _run_tool(
                 tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
             else:
                 tool = tools_with_names[tool_call.tool_name]
-                try:
-                    _merge_tool_outputs_into_state(tool, result, state)
-                except Exception as e:
-                    raise RuntimeError(f"Tool '{tool_call.tool_name}': failed to merge outputs into state. {e}") from e
+                _merge_tool_outputs_into_state(tool, result, state)
                 tool_messages.append(_build_tool_result_message(result, tool_call, tool))
 
             if streaming_callback is not None:
@@ -436,10 +440,7 @@ async def _run_tool_async(
                 tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
             else:
                 tool = tools_with_names[tool_call.tool_name]
-                try:
-                    _merge_tool_outputs_into_state(tool, result, state)
-                except Exception as e:
-                    raise RuntimeError(f"Tool '{tool_call.tool_name}': failed to merge outputs into state. {e}") from e
+                _merge_tool_outputs_into_state(tool, result, state)
                 tool_messages.append(_build_tool_result_message(result, tool_call, tool))
 
             if streaming_callback is not None:
