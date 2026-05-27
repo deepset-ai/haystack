@@ -87,7 +87,7 @@ def test_from_function_annotated():
 
 
 def test_from_function_missing_type_hint():
-    def function_missing_type_hint(city) -> str:
+    def function_missing_type_hint(city) -> str:  # type: ignore[no-untyped-def]
         return f"Weather report for {city}: 20°C, sunny"
 
     with pytest.raises(ValueError):
@@ -95,7 +95,7 @@ def test_from_function_missing_type_hint():
 
 
 def test_from_function_schema_generation_error():
-    def function_with_invalid_type_hint(city: "invalid") -> str:  # noqa: F821
+    def function_with_invalid_type_hint(city: "invalid") -> str:  # type: ignore[name-defined] # noqa: F821
         return f"Weather report for {city}: 20°C, sunny"
 
     with pytest.raises(SchemaGenerationError):

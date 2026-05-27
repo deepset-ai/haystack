@@ -86,7 +86,7 @@ Docling Haystack converter.
 __init__(
     converter: DocumentConverter | None = None,
     convert_kwargs: dict[str, Any] | None = None,
-    export_type: ExportType = ExportType.DOC_CHUNKS,
+    export_type: ExportType = ExportType.MARKDOWN,
     md_export_kwargs: dict[str, Any] | None = None,
     chunker: BaseChunker | None = None,
     meta_extractor: BaseMetaExtractor | None = None,
@@ -103,10 +103,10 @@ Create a Docling Haystack converter.
   system default is used.
 - **export_type** (<code>ExportType</code>) – The export mode to use:
 
-* `ExportType.MARKDOWN` captures each input document as a single
+* `ExportType.MARKDOWN` (default) captures each input document as a single
   markdown `Document`.
-* `ExportType.DOC_CHUNKS` (default) first chunks each input document
-  and then returns one `Document` per chunk.
+* `ExportType.DOC_CHUNKS` first chunks each input document and then returns
+  one `Document` per chunk.
 * `ExportType.JSON` serializes the full Docling document to a JSON string.
 
 - **md_export_kwargs** (<code>dict\[str, Any\] | None</code>) – Any parameters to pass to Markdown export (applicable in

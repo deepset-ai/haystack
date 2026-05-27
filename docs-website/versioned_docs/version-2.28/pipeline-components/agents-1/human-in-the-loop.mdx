@@ -19,6 +19,7 @@ This is useful for high-stakes operations - such as sending emails, modifying da
 | **Key classes**         | `BlockingConfirmationStrategy`, `AlwaysAskPolicy`, `AskOncePolicy`, `NeverAskPolicy`, `RichConsoleUI`, `SimpleConsoleUI` |
 | **Import path**         | `haystack.human_in_the_loop`                                                                     |
 | **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/human_in_the_loop/                    |
+| **Package name** | `haystack-ai` |
 
 </div>
 
@@ -155,6 +156,24 @@ agent = Agent(
 )
 ```
 
+### Customizing feedback messages
+
+When a tool call is rejected or modified, `BlockingConfirmationStrategy` sends a message back to the LLM explaining what happened. Three optional template parameters control these messages — each has a sensible default, so you only need to set them if you want different wording:
+
+- `reject_template`: Sent to the LLM when the user rejects a tool call. Must include a `{tool_name}` placeholder. Default: `"Tool execution for '{tool_name}' was rejected by the user."`
+- `modify_template`: Sent when the user modifies the parameters. Must include `{tool_name}` and `{final_tool_params}` placeholders. Default: `"The parameters for tool '{tool_name}' were updated by the user to:\n{final_tool_params}"`
+- `user_feedback_template`: Appends the user's optional free-text feedback to either message. Must include a `{feedback}` placeholder. Default: `"With user feedback: {feedback}"`
+
+```python
+strategy = BlockingConfirmationStrategy(
+    confirmation_policy=AlwaysAskPolicy(),
+    confirmation_ui=SimpleConsoleUI(),
+    reject_template="Skipping '{tool_name}' — rejected by operator.",
+    modify_template="Updated parameters for '{tool_name}': {final_tool_params}",
+    user_feedback_template="Reason: {feedback}",
+)
+```
+
 ## Policies
 
 Policies control *when* the human is asked.
@@ -185,6 +204,41 @@ class AskForSensitiveParamsPolicy(ConfirmationPolicy):
     ) -> bool:
         to = tool_params.get("to", "")
         return not to.endswith("@mycompany.com")
+```
+
+For stateful policies, also implement `update_after_confirmation`.
+It is called after the user responds and receives the full `ConfirmationUIResult`, letting you update internal state based on the outcome.
+The following policy asks once per tool name and skips re-asking for any tool the user has already confirmed:
+
+```python
+from haystack.human_in_the_loop.types import ConfirmationPolicy
+from haystack.human_in_the_loop import ConfirmationUIResult
+from typing import Any
+
+
+class AskOncePerToolPolicy(ConfirmationPolicy):
+    """Ask once per tool name, regardless of parameters. Skip on repeat confirmed calls."""
+
+    def __init__(self) -> None:
+        self._confirmed_tools: set[str] = set()
+
+    def should_ask(
+        self,
+        tool_name: str,
+        tool_description: str,
+        tool_params: dict[str, Any],
+    ) -> bool:
+        return tool_name not in self._confirmed_tools
+
+    def update_after_confirmation(
+        self,
+        tool_name: str,
+        tool_description: str,
+        tool_params: dict[str, Any],
+        confirmation_result: ConfirmationUIResult,
+    ) -> None:
+        if confirmation_result.action == "confirm":
+            self._confirmed_tools.add(tool_name)
 ```
 
 ## Dataclasses

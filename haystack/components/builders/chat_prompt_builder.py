@@ -38,9 +38,10 @@ class ChatPromptBuilder:
 
     It constructs prompts using static or dynamic templates, which you can update for each pipeline run.
 
-    Template variables in the template are optional unless specified otherwise.
-    If an optional variable isn't provided, it defaults to an empty string. Use `variable` and `required_variables`
-    to define input types and required variables.
+    Template variables in the template are required by default. To make any subset of variables optional,
+    set `required_variables` to an explicit list of the variables that should remain required; any variable
+    not listed becomes optional and defaults to an empty string when missing.
+    Set `required_variables` to `None` to mark every variable as optional.
 
     ### Usage examples
 
@@ -139,7 +140,7 @@ class ChatPromptBuilder:
     def __init__(
         self,
         template: list[ChatMessage] | str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        required_variables: list[str] | Literal["*"] | None = "*",
         variables: list[str] | None = None,
     ) -> None:
         """
@@ -151,8 +152,10 @@ class ChatPromptBuilder:
             the `init` method` or the `run` method.
         :param required_variables:
             List variables that must be provided as input to ChatPromptBuilder.
-            If a variable listed as required is not provided, an exception is raised.
-            If set to `"*"`, all variables found in the prompt are required. Optional.
+            Defaults to `"*"`, which marks every variable found in the prompt as required.
+            Pass an explicit list to only require a subset of the variables; any variable not listed becomes
+            optional and is replaced with an empty string in the rendered prompt when missing.
+            Set to `None` to mark every variable as optional.
         :param variables:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
@@ -192,10 +195,10 @@ class ChatPromptBuilder:
 
         if len(self.variables) > 0 and required_variables is None:
             logger.warning(
-                "ChatPromptBuilder has {length} prompt variables, but `required_variables` is not set. "
-                "By default, all prompt variables are treated as optional, which may lead to unintended behavior in "
-                "multi-branch pipelines. To avoid unexpected execution, ensure that variables intended to be required "
-                "are explicitly set in `required_variables`.",
+                "ChatPromptBuilder has {length} prompt variables and `required_variables` is explicitly set to "
+                "`None`. This treats all prompt variables as optional, which may lead to unintended behavior in "
+                "multi-branch pipelines. Only set `required_variables` to `None` if you intentionally want all "
+                "variables to be optional.",
                 length=len(self.variables),
             )
 

@@ -324,7 +324,7 @@ class Pipeline(PipelineBase):
                     # We always exit the loop since we cannot run the next component.
                     break
 
-                if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
+                if len(priority_queue) > 0 and priority == ComponentPriority.DEFER:
                     component_name, topological_sort = self._tiebreak_waiting_components(
                         component_name=component_name,
                         priority=priority,

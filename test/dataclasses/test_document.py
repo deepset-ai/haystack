@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
+from copy import deepcopy
 from dataclasses import replace
 
 import pytest
@@ -37,7 +38,7 @@ def test_init():
 
 def test_init_with_wrong_parameters():
     with pytest.raises(TypeError):
-        Document(text="")
+        Document(text="")  # type: ignore[call-arg]
 
 
 def test_init_with_parameters():
@@ -53,6 +54,7 @@ def test_init_with_parameters():
     )
     assert doc.id == "1aa43af57c1dbc317241bf55d3067049f334d3b458d95dc72f71a7111f6c1a56"
     assert doc.content == "test text"
+    assert doc.blob is not None
     assert doc.blob.data == blob_data
     assert doc.blob.mime_type == "text/markdown"
     assert doc.meta == {"text": "test text"}
@@ -88,7 +90,7 @@ def test_init_with_legacy_field():
     doc = Document(
         content="test text",
         content_type="text",  # type: ignore
-        id_hash_keys=["content"],  # type: ignore
+        id_hash_keys=["content"],
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
@@ -212,7 +214,7 @@ def test_from_dict():
     assert Document.from_dict({}) == Document()
 
 
-def from_from_dict_with_parameters():
+def test_from_dict_with_parameters():
     blob_data = b"some bytes"
     assert Document.from_dict(
         {
@@ -231,6 +233,40 @@ def from_from_dict_with_parameters():
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
     )
+
+
+def test_from_dict_does_not_mutate_input():
+    blob_data = b"some bytes"
+    data = {
+        "content": "test text",
+        "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
+        "score": 0.812,
+        "embedding": [0.1, 0.2, 0.3],
+        "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+        "date": "10-10-2023",
+        "type": "article",
+    }
+    original_data = deepcopy(data)
+
+    assert Document.from_dict(data) == Document(
+        content="test text",
+        blob=ByteStream(blob_data, mime_type="text/markdown"),
+        score=0.812,
+        embedding=[0.1, 0.2, 0.3],
+        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
+        meta={"date": "10-10-2023", "type": "article"},
+    )
+    assert data == original_data
+
+
+def test_from_dict_does_not_mutate_input_with_explicit_meta():
+    data = {"content": "test text", "meta": {"date": "10-10-2023", "type": "article"}, "score": 0.812}
+    original_data = deepcopy(data)
+
+    assert Document.from_dict(data) == Document(
+        content="test text", meta={"date": "10-10-2023", "type": "article"}, score=0.812
+    )
+    assert data == original_data
 
 
 def test_from_dict_with_legacy_fields():
@@ -265,7 +301,7 @@ def test_from_dict_with_legacy_field_and_flat_meta():
     ) == Document(
         content="test text",
         content_type="text",  # type: ignore
-        id_hash_keys=["content"],  # type: ignore
+        id_hash_keys=["content"],
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},

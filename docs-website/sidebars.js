@@ -15,6 +15,7 @@ export default {
       items: [
         'overview/installation',
         'overview/get-started',
+        'overview/docs-mcp-server',
         'overview/faq',
         'overview/telemetry',
         'overview/breaking-change-policy',
@@ -35,7 +36,7 @@ export default {
             id: 'concepts/agents'
           },
           items: [
-            'concepts/agents/state',
+            'concepts/agents/multi-agent-systems',
           ],
         },
         {
@@ -104,6 +105,7 @@ export default {
       label: 'Document Stores',
       items: [
         'document-stores/inmemorydocumentstore',
+        'document-stores/alloydbdocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
@@ -115,6 +117,7 @@ export default {
         },
         'document-stores/elasticsearch-document-store',
         'document-stores/faissdocumentstore',
+        'document-stores/falkordbdocumentstore',
         {
           type: 'link',
           label: 'LanceDBDocumentStore',
@@ -149,6 +152,7 @@ export default {
           items: [
             'pipeline-components/agents-1/agent',
             'pipeline-components/agents-1/human-in-the-loop',
+            'pipeline-components/agents-1/state',
           ],
         },
         {
@@ -226,10 +230,12 @@ export default {
             id: 'pipeline-components/converters'
           },
           items: [
+            'pipeline-components/converters/amazontextractconverter',
             'pipeline-components/converters/azuredocumentintelligenceconverter',
             'pipeline-components/converters/azureocrdocumentconverter',
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/doclingconverter',
+            'pipeline-components/converters/doclingserveconverter',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
             'pipeline-components/converters/filetofilecontent',
@@ -303,6 +309,8 @@ export default {
             'pipeline-components/embedders/openaitextembedder',
             'pipeline-components/embedders/optimumdocumentembedder',
             'pipeline-components/embedders/optimumtextembedder',
+            'pipeline-components/embedders/perplexitydocumentembedder',
+            'pipeline-components/embedders/perplexitytextembedder',
             'pipeline-components/embedders/sentencetransformersdocumentembedder',
             'pipeline-components/embedders/sentencetransformersdocumentimageembedder',
             'pipeline-components/embedders/sentencetransformerssparsedocumentembedder',
@@ -419,6 +427,7 @@ export default {
             'pipeline-components/generators/openairesponseschatgenerator',
             'pipeline-components/generators/openaigenerator',
             'pipeline-components/generators/openrouterchatgenerator',
+            'pipeline-components/generators/perplexitychatgenerator',
             'pipeline-components/generators/sagemakergenerator',
             'pipeline-components/generators/stackitchatgenerator',
             'pipeline-components/generators/togetheraichatgenerator',
@@ -531,6 +540,8 @@ export default {
             id: 'pipeline-components/retrievers'
           },
           items: [
+            'pipeline-components/retrievers/alloydbembeddingretriever',
+            'pipeline-components/retrievers/alloydbkeywordretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
@@ -542,9 +553,12 @@ export default {
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
             'pipeline-components/retrievers/faissembeddingretriever',
+            'pipeline-components/retrievers/falkordbcypherretriever',
+            'pipeline-components/retrievers/falkordbembeddingretriever',
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
+            'pipeline-components/retrievers/mem0memoryretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
             'pipeline-components/retrievers/multiqueryembeddingretriever',
@@ -623,7 +637,9 @@ export default {
             id: 'pipeline-components/websearch'
           },
           items: [
+            'pipeline-components/websearch/bravewebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
+            'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
             'pipeline-components/websearch/tavilywebsearch',
@@ -635,6 +651,7 @@ export default {
           label: 'Writers',
           items: [
             'pipeline-components/writers/documentwriter',
+            'pipeline-components/writers/mem0memorywriter',
           ],
         },
       ],
@@ -653,12 +670,18 @@ export default {
         {
           type: 'category',
           label: 'Ready-made Tools',
+          link: {
+            type: 'doc',
+            id: 'tools/ready-made-tools'
+          },
           items: [
+            'tools/ready-made-tools/e2btoolset',
             'tools/ready-made-tools/githubfileeditortool',
             'tools/ready-made-tools/githubissuecommentertool',
             'tools/ready-made-tools/githubissueviewertool',
             'tools/ready-made-tools/githubprcreatortool',
             'tools/ready-made-tools/githubrepoviewertool',
+            'tools/ready-made-tools/mem0memorytools',
           ],
         },
       ],

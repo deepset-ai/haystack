@@ -98,7 +98,7 @@ class TestPipelineTool:
         with pytest.raises(
             TypeError, match="The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
         ):
-            PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")
+            PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")  # type: ignore[arg-type]
 
     def test_to_dict(self, sample_pipeline, sample_pipeline_dict):
         tool = PipelineTool(
@@ -381,7 +381,7 @@ class TestPipelineTool:
                 output_mapping={"ranker.documents": "documents"},
                 name="test_tool",
                 description="A test tool",
-                inputs_from_state={"user_query": {"source": "query"}},
+                inputs_from_state={"user_query": {"source": "query"}},  # type: ignore[dict-item]
             )
 
     def test_pipeline_tool_with_valid_outputs_to_state(self, sample_pipeline):
