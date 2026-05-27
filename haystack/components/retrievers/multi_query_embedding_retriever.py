@@ -158,6 +158,7 @@ class MultiQueryEmbeddingRetriever:
         Process a single query on a separate thread.
 
         :param query: The text query to process.
+        :param retriever_kwargs: Arguments to pass to the retriever's run method.
         :returns:
             List of retrieved documents or None if no results.
         """
