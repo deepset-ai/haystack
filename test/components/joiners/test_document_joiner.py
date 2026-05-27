@@ -146,6 +146,29 @@ class TestDocumentJoiner:
             output["documents"], key=lambda d: d.id
         )
 
+    def test_run_with_concatenate_join_mode_keeps_zero_score_over_negative_duplicate(self):
+        joiner = DocumentJoiner(sort_by_score=False)
+        documents_1 = [Document(content="a", score=0.0)]
+        documents_2 = [Document(content="a", score=-0.5)]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].score == 0.0
+
+    def test_run_with_concatenate_join_mode_keeps_zero_score_over_none_duplicate(self):
+        joiner = DocumentJoiner(sort_by_score=False)
+        documents_1 = [Document(content="a", score=0.0)]
+        documents_2 = [Document(content="a")]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].score == 0.0
+
+    def test_run_with_merge_join_mode_handles_zero_score(self):
+        joiner = DocumentJoiner(join_mode="merge", weights=[0.5, 0.5])
+        documents_1 = [Document(content="a", score=0.0)]
+        documents_2 = [Document(content="a", score=0.0)]
+        output = joiner.run([documents_1, documents_2])
+        assert output["documents"][0].score == 0.0
+
     def test_run_with_merge_join_mode(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[1.5, 0.5])
         documents_1 = [Document(content="a", score=1.0), Document(content="b", score=2.0)]
