@@ -12,7 +12,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.agents.state import State
-from haystack.components.agents.tool_invoker import (
+from haystack.components.agents.tool_calling import (
     ToolNotFoundException,
     _build_tool_result_message,
     _inject_state_args,

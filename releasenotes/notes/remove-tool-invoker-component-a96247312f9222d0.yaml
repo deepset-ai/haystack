@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    Removed the ``ToolInvoker`` component. Code that imports ``ToolInvoker`` from ``haystack.components.tools``
+    or uses it as a standalone Pipeline component must be updated.
+
+    To execute tools in an agentic loop, pass the tools directly to ``haystack.components.agents.Agent``.
+    The Agent now owns tool execution, including tool/toolset warm-up, state injection, streaming callback
+    passthrough, and sync/async tool invocation.
+enhancements:
+  - |
+    Agent tool execution now warms lazy toolsets before tool selection and before tool calls are sent to the
+    chat generator, so dynamically populated toolsets expose their real tools during ``Agent.run()`` and
+    ``Agent.run_async()``.

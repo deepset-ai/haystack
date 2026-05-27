@@ -84,7 +84,6 @@ class TestLLM:
             assert llm.user_prompt == self.USER_PROMPT
             assert llm.required_variables == "*"
             assert llm.streaming_callback is None
-            assert llm._tool_invoker is None
 
         def test_output_sockets(self):
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)

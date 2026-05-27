@@ -18,7 +18,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import merge_lists
-from haystack.components.agents.tool_invoker import run_tool
+from haystack.components.agents.tool_calling import run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -843,10 +843,10 @@ class TestAgent:
 
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
-        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as tool_invoker_run_mock:
+        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as run_tool_mock:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
-        tool_invoker_run_mock.assert_called_once()
-        assert tool_invoker_run_mock.call_args.kwargs["tools"] == [weather_tool]
+        run_tool_mock.assert_called_once()
+        assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
     def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
         @component
@@ -871,10 +871,10 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             system_prompt="This is a system prompt.",
         )
-        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as tool_invoker_run_mock:
+        with patch("haystack.components.agents.agent.run_tool", wraps=run_tool) as run_tool_mock:
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
-        tool_invoker_run_mock.assert_called_once()
-        assert tool_invoker_run_mock.call_args.kwargs["tools"] == [weather_tool]
+        run_tool_mock.assert_called_once()
+        assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
     def test_run_not_warmed_up(self, weather_tool):
         """Warmup is run automatically on first run"""
@@ -1096,6 +1096,60 @@ class TestAgentTracing:
         }
 
         # Clean up
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
+
+    def test_agent_tracing_span_run_with_tool_call(self, caplog, monkeypatch, weather_tool):
+        @component
+        class ToolCallingChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+            ) -> dict[str, Any]:
+                if self.tool_invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.tool_invoked = True
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                        )
+                    ]
+                }
+
+        agent = Agent(chat_generator=ToolCallingChatGenerator(), tools=[weather_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        _ = agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
+
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
+        assert [op for op, _ in agent_spans] == [
+            "haystack.agent.step.llm",
+            "haystack.agent.step.tool",
+            "haystack.agent.step",
+            "haystack.agent.step.llm",
+            "haystack.agent.step",
+            "haystack.agent.run",
+        ]
+
+        _, tool_tags = agent_spans[1]
+        assert set(tool_tags) == {"haystack.agent.step.tool.input", "haystack.agent.step.tool.output"}
+
+        _, run_tags = agent_spans[-1]
+        assert run_tags["haystack.agent.steps_taken"] == 2
+
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
@@ -1714,7 +1768,7 @@ class TestAgentWaitsForBlockedPredecessor:
 
 
 class TestAgentWarmUp:
-    """Tests that Agent.warm_up() correctly warms up tools and refreshes _tools_with_names."""
+    """Tests that Agent.warm_up() correctly warms up tools and toolsets."""
 
     def _make_tracking_tool(self, name: str = "test_tool") -> Tool:
         tool = Tool(
@@ -1863,6 +1917,58 @@ class TestAgentWarmUp:
         agent.warm_up()
 
         assert mcp_toolset.tools == [actual_tool]
+
+    def test_run_warms_lazy_toolset_before_tool_selection(self):
+        """
+        Agent.run() must warm up lazy toolsets before passing tools to the ChatGenerator and before executing
+        tool calls.
+        """
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        class MockMCPToolset(Toolset):
+            def __init__(self):
+                super().__init__([placeholder_tool])
+                self._connected = False
+
+            def warm_up(self):
+                if not self._connected:
+                    self.tools = [actual_tool]
+                    self._connected = True
+
+        @component
+        class ToolCallingChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages: list[ChatMessage], tools: Toolset | None = None, **kwargs) -> dict[str, Any]:
+                assert tools is not None
+                assert [tool.name for tool in tools] == ["get_time"]
+                if self.tool_invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.tool_invoked = True
+                return {
+                    "replies": [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})])]
+                }
+
+        mcp_toolset = MockMCPToolset()
+        agent = Agent(chat_generator=ToolCallingChatGenerator(), tools=mcp_toolset)
+
+        result = agent.run([ChatMessage.from_user("What time is it?")])
+
+        assert mcp_toolset.tools == [actual_tool]
+        assert result["messages"][2].tool_call_result.result == "2024-12-01T12:00:00Z"
+        assert result["last_message"].text == "done"
 
 
 class TestAgentNotTriggeredByInjectedInput:

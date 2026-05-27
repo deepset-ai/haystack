@@ -39,7 +39,7 @@ def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
     :raises ValueError: If no tools are provided or if duplicate tool names are found.
     """
     if not tools:
-        raise ValueError("ToolInvoker requires at least one tool.")
+        raise ValueError("Tool execution requires at least one tool.")
 
     converted_tools = flatten_tools_or_toolsets(tools)
     _check_duplicate_tool_names(converted_tools)

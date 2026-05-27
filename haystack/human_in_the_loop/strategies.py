@@ -6,7 +6,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from haystack.components.agents import State
-from haystack.components.agents.tool_invoker import _get_func_params, _inject_state_args
+from haystack.components.agents.tool_calling import _get_func_params, _inject_state_args
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
@@ -361,7 +361,7 @@ def _run_confirmation_strategies(
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
     state = execution_context.state
-    tools_with_names = {tool.name: tool for tool in execution_context.tool_invoker_inputs["tools"]}
+    tools_with_names = {tool.name: tool for tool in execution_context.tool_execution_inputs["tools"]}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -377,8 +377,8 @@ def _run_confirmation_strategies(
                 tool=tool_to_invoke,
                 tool_call_arguments=tool_call.arguments,
                 state=state,
-                streaming_callback=execution_context.tool_invoker_inputs.get("streaming_callback"),
-                enable_streaming_passthrough=execution_context.tool_invoker_inputs.get(
+                streaming_callback=execution_context.tool_execution_inputs.get("streaming_callback"),
+                enable_streaming_passthrough=execution_context.tool_execution_inputs.get(
                     "enable_streaming_passthrough", False
                 ),
             )
@@ -425,7 +425,7 @@ async def _run_confirmation_strategies_async(
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
     state = execution_context.state
-    tools_with_names = {tool.name: tool for tool in execution_context.tool_invoker_inputs["tools"]}
+    tools_with_names = {tool.name: tool for tool in execution_context.tool_execution_inputs["tools"]}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -441,8 +441,8 @@ async def _run_confirmation_strategies_async(
                 tool=tool_to_invoke,
                 tool_call_arguments=tool_call.arguments,
                 state=state,
-                streaming_callback=execution_context.tool_invoker_inputs.get("streaming_callback"),
-                enable_streaming_passthrough=execution_context.tool_invoker_inputs.get(
+                streaming_callback=execution_context.tool_execution_inputs.get("streaming_callback"),
+                enable_streaming_passthrough=execution_context.tool_execution_inputs.get(
                     "enable_streaming_passthrough", False
                 ),
             )

@@ -54,7 +54,7 @@ def execution_context(tools: list[Tool]) -> _ExecutionContext:
     return _ExecutionContext(
         state=State(schema={"messages": {"type": list[ChatMessage]}}),
         chat_generator_inputs={},
-        tool_invoker_inputs={"tools": tools},
+        tool_execution_inputs={"tools": tools},
         counter=0,
     )
 
@@ -481,7 +481,7 @@ class TestRunContext:
         execution_context = _ExecutionContext(
             state=State(schema={"messages": {"type": list[ChatMessage]}}),
             chat_generator_inputs={},
-            tool_invoker_inputs={"tools": tools},
+            tool_execution_inputs={"tools": tools},
             counter=0,
             confirmation_strategy_context=confirmation_strategy_context,
         )
@@ -507,7 +507,7 @@ class TestRunContext:
         execution_context = _ExecutionContext(
             state=State(schema={"messages": {"type": list[ChatMessage]}}),
             chat_generator_inputs={},
-            tool_invoker_inputs={"tools": tools},
+            tool_execution_inputs={"tools": tools},
             counter=0,
             confirmation_strategy_context=confirmation_strategy_context,
         )

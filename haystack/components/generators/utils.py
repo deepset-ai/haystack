@@ -51,7 +51,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 print(tool_call.arguments, flush=True, end="")
 
     ## Tool Call Result streaming
-    # Print tool call results if available (from ToolInvoker)
+    # Print tool call results if available.
     if chunk.tool_call_result:
         # Tool Call Result is fully formed so delta accumulation is not needed
         print(f"[TOOL RESULT]\n{chunk.tool_call_result.result}", flush=True, end="")
