@@ -571,15 +571,20 @@ class Agent:
         )
 
         selected_tools = self._select_tools(tools)
-        tool_execution_inputs: dict[str, Any] = {"tools": selected_tools}
         generator_inputs: dict[str, Any] = {}
         if self._chat_generator_supports_tools:
             generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
-            tool_execution_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
+
+        tool_execution_inputs: dict[str, Any] = {
+            "tools": selected_tools,
+            "raise_on_failure": self.raise_on_tool_invocation_failure,
+            "streaming_callback": streaming_callback,
+            **(self.tool_invoker_kwargs or {}),
+        }
 
         return _ExecutionContext(
             state=state,
@@ -789,8 +794,6 @@ class Agent:
             tool_execution_inputs = {
                 "messages": modified_tool_call_messages,
                 "state": exe_context.state,
-                "raise_on_failure": self.raise_on_tool_invocation_failure,
-                **(self.tool_invoker_kwargs or {}),
                 **exe_context.tool_execution_inputs,
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
@@ -848,8 +851,6 @@ class Agent:
             tool_execution_inputs = {
                 "messages": modified_tool_call_messages,
                 "state": exe_context.state,
-                "raise_on_failure": self.raise_on_tool_invocation_failure,
-                **(self.tool_invoker_kwargs or {}),
                 **exe_context.tool_execution_inputs,
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:

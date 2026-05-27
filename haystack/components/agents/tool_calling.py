@@ -11,9 +11,9 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any
 
+from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component.sockets import Sockets
-from haystack.core.serialization import logging
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
@@ -254,11 +254,11 @@ def _collect_tool_call_params(
 
 
 def run_tool(
+    *,
     messages: list[ChatMessage],
     state: State,
     tools: ToolsType,
     streaming_callback: StreamingCallbackT | None = None,
-    *,
     raise_on_failure: bool = True,
     enable_streaming_callback_passthrough: bool = False,
     max_workers: int = 4,
@@ -324,11 +324,11 @@ def run_tool(
 
 
 async def run_tool_async(
+    *,
     messages: list[ChatMessage],
     state: State,
     tools: ToolsType,
     streaming_callback: StreamingCallbackT | None = None,
-    *,
     raise_on_failure: bool = True,
     enable_streaming_callback_passthrough: bool = False,
     max_workers: int = 4,
