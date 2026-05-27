@@ -74,7 +74,7 @@ doc = Document(content="col\n1\n2\n3")
 ### ToolInvoker component removed
 
 **What changed:** The `ToolInvoker` component has been removed. Imports from `haystack.components.tools`
-and pipeline graphs that use `ToolInvoker` as a standalone component are no longer supported.
+and pipelines that use `ToolInvoker` as a standalone component are no longer supported.
 
 **Why:** Tool execution is now owned by `Agent`, so the tool-calling loop, state handling, streaming callback
 passthrough, warm-up, and sync/async execution live in one place.
@@ -140,15 +140,33 @@ agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[we
 result = agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
 ```
 
-If you configured `ToolInvoker` options, move the corresponding options to `Agent`:
+The `tool_invoker_kwargs` parameter has been removed from `Agent`. Previously, `ToolInvoker` options were
+forwarded through this dictionary; the relevant options are now top-level `Agent` constructor parameters:
 
-- `raise_on_failure` becomes `raise_on_tool_invocation_failure`.
-- `streaming_callback` can be passed to `Agent` at initialization or at run time.
-- `max_workers` becomes `tool_concurrency_limit`.
-- `enable_streaming_callback_passthrough` becomes `tool_streaming_callback_passthrough`.
+- `max_workers` is now the top-level `tool_concurrency_limit` parameter.
+- `enable_streaming_callback_passthrough` is now the top-level `tool_streaming_callback_passthrough` parameter.
 
-The `convert_result_to_json_string` option has been removed. Non-string tool results are now always
-serialized with `json.dumps` rather than `str`, which changes their string form.
+Before (v2.x):
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[weather_tool],
+    tool_invoker_kwargs={"max_workers": 4, "enable_streaming_callback_passthrough": True},
+)
+```
+
+After (v3.0):
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[weather_tool],
+    tool_concurrency_limit=4,
+    tool_streaming_callback_passthrough=True,
+)
+```
+
+The `convert_result_to_json_string` option (also previously set through `tool_invoker_kwargs`) has been removed.
+Non-string tool results are now always serialized with `json.dumps` rather than `str`, which changes their string form.
 
 ### Agent
 
