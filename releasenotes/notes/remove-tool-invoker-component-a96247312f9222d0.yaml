@@ -17,8 +17,3 @@ upgrade:
     appear as JSON rather than Python ``repr`` output: for example, a tool returning ``{"message": "hi"}``
     now produces the string ``{"message": "hi"}`` instead of ``{'message': 'hi'}``. Update any code or
     tests that assert on the previous ``str``-based format.
-enhancements:
-  - |
-    Agent tool execution now warms lazy toolsets before tool selection and before tool calls are sent to the
-    chat generator, so dynamically populated toolsets expose their real tools during ``Agent.run()`` and
-    ``Agent.run_async()``.
