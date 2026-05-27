@@ -39,7 +39,7 @@ document_store = ValkeyDocumentStore(
     nodes_list=[("localhost", 6379)],
     index_name="my_documents",
     embedding_dim=768,
-    distance_metric="cosine"
+    distance_metric="cosine",
 )
 ```
 
@@ -73,12 +73,15 @@ document_store = ValkeyDocumentStore(
     nodes_list=[("localhost", 6379)],
     index_name="my_documents",
     embedding_dim=768,
-    distance_metric="cosine"
+    distance_metric="cosine",
 )
 
 indexing = Pipeline()
 indexing.add_component("converter", MarkdownToDocument())
-indexing.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=2))
+indexing.add_component(
+    "splitter",
+    DocumentSplitter(split_by="sentence", split_length=2),
+)
 indexing.add_component("embedder", SentenceTransformersDocumentEmbedder())
 indexing.add_component("writer", DocumentWriter(document_store))
 indexing.connect("converter", "splitter")
@@ -106,11 +109,13 @@ document_store = ValkeyDocumentStore(
     nodes_list=[("localhost", 6379)],
     index_name="my_documents",
     embedding_dim=768,
-    distance_metric="cosine"
+    distance_metric="cosine",
 )
 
 prompt_template = [
-    ChatMessage.from_system("Answer the question based on the provided context. If the context does not include an answer, reply with 'I don't know'."),
+    ChatMessage.from_system(
+        "Answer the question based on the provided context. If the context does not include an answer, reply with 'I don't know'.",
+    ),
     ChatMessage.from_user(
         "Query: {{query}}\n"
         "Documents:\n{% for doc in documents %}{{ doc.content }}\n{% endfor %}\n"
@@ -120,19 +125,34 @@ prompt_template = [
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
-query_pipeline.add_component("retriever", ValkeyEmbeddingRetriever(document_store=document_store))
-query_pipeline.add_component("prompt_builder", ChatPromptBuilder(template=prompt_template, required_variables=["query", "documents"]))
-query_pipeline.add_component("generator", OpenAIChatGenerator(api_key=Secret.from_token("YOUR_OPENAI_API_KEY"), model="gpt-4o"))
+query_pipeline.add_component(
+    "retriever",
+    ValkeyEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(
+        template=prompt_template,
+        required_variables=["query", "documents"],
+    ),
+)
+query_pipeline.add_component(
+    "generator",
+    OpenAIChatGenerator(
+        api_key=Secret.from_token("YOUR_OPENAI_API_KEY"),
+        model="gpt-4o",
+    ),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 query_pipeline.connect("retriever.documents", "prompt_builder.documents")
-query_pipeline.connect("prompt_builder.messages", "generator.messages")
+query_pipeline.connect("prompt_builder.prompt", "generator.messages")
 
 query = "What is Valkey?"
 results = query_pipeline.run(
     {
         "text_embedder": {"text": query},
         "prompt_builder": {"query": query},
-    }
+    },
 )
 ```
 
