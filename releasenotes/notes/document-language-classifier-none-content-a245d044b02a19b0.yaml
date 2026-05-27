@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Prevent DocumentLanguageClassifier from crashing on Documents with no text by
+    marking them as unmatched and logging a warning.
