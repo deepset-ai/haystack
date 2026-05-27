@@ -259,7 +259,9 @@ class HuggingFaceLocalGenerator:
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:
-            # the output of the pipeline includes the stop word
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies for stop_word in self.stop_words]
+            # The output of the pipeline includes the stop word, so strip each stop word
+            # from each reply without duplicating replies when multiple stop words are set.
+            for stop_word in self.stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         return {"replies": replies}

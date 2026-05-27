@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes `HuggingFaceLocalGenerator` so using multiple `stop_words` no longer duplicates replies while stripping stop words from generated text.
