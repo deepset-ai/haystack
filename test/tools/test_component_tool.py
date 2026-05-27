@@ -614,8 +614,10 @@ class TestComponentToolInPipeline:
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Vladimir" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Vladimir" in tool_call_result.result
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -642,8 +644,10 @@ class TestComponentToolInPipeline:
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Vladimir" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Vladimir" in tool_call_result.result
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -663,8 +667,10 @@ class TestComponentToolInPipeline:
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert tool_message.tool_call_result.result == str({"message": "User Alice is 30 years old"})
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert tool_call_result.result == json.dumps({"message": "User Alice is 30 years old"})
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -681,19 +687,22 @@ class TestComponentToolInPipeline:
 
         result = pipeline.run({"agent": {"messages": [message]}})
         tool_messages = _agent_tool_messages(result)
-        assert len(tool_messages) == 1
+        # The model may issue one or more parallel tool calls, so check the content across all of them.
+        assert len(tool_messages) >= 1
 
-        tool_message = tool_messages[0]
-        assert tool_message.is_from(ChatRole.TOOL)
-        # Check that the result contains the expected words (handle whitespace variations)
-        result_str = tool_message.tool_call_result.result
-        assert "concatenated" in result_str
-        # Normalize whitespace in the result string and check it contains the expected words
-        normalized_result = " ".join(result_str.split())
+        combined = ""
+        for tool_message in tool_messages:
+            assert tool_message.is_from(ChatRole.TOOL)
+            tool_call_result = tool_message.tool_call_result
+            assert tool_call_result is not None and not tool_call_result.error
+            assert isinstance(tool_call_result.result, str)
+            assert "concatenated" in tool_call_result.result
+            combined += " " + tool_call_result.result
+        # Normalize whitespace and check the concatenated output contains the expected words.
+        normalized_result = " ".join(combined.split())
         assert "hello" in normalized_result
         assert "beautiful" in normalized_result
         assert "world" in normalized_result
-        assert not tool_message.tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -717,8 +726,10 @@ class TestComponentToolInPipeline:
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Diana" in tool_message.tool_call_result.result and "Metropolis" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Diana" in tool_call_result.result and "Metropolis" in tool_call_result.result
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -745,11 +756,14 @@ class TestComponentToolInPipeline:
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        result = json.loads(tool_message.tool_call_result.result)
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert isinstance(tool_call_result.result, str)
+        result = json.loads(tool_call_result.result)
         assert "concatenated" in result
         assert "Hello world" in result["concatenated"]
         assert "Goodbye world" in result["concatenated"]
-        assert not tool_message.tool_call_result.error
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -805,8 +819,10 @@ class TestComponentToolInPipeline:
         assert len(tool_messages) == 1
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Nikola Tesla" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Nikola Tesla" in tool_call_result.result
+        assert not tool_call_result.error
 
     def test_serde_in_pipeline(self, monkeypatch):
         monkeypatch.setenv("SERPERDEV_API_KEY", "test-key")

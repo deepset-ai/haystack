@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack import Pipeline, component
@@ -41,7 +43,9 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs):
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
+    ) -> dict[str, list[ChatMessage]]:
         return {"replies": [ChatMessage.from_assistant("done")]}
 
 
@@ -192,7 +196,7 @@ class TestToolset:
         tool_messages = _run_tool_messages(messages=[add_message, multiply_message], tools=toolset)
 
         assert len(tool_messages) == 2
-        tool_results = [message.tool_call_result.result for message in tool_messages]
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
         assert "5" in tool_results
         assert "20" in tool_results
 
@@ -221,7 +225,7 @@ class TestToolset:
         tool_messages = _run_tool_messages(messages=[message], tools=toolset)
 
         assert len(tool_messages) == 1
-        assert tool_messages[0].tool_call_result.result == "5"
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
     def test_toolset_addition(self):
         """Test that toolsets can be combined."""
@@ -281,7 +285,7 @@ class TestToolset:
         tool_messages = _run_tool_messages(messages=[message], tools=combined_toolset)
 
         assert len(tool_messages) == 3
-        tool_results = [message.tool_call_result.result for message in tool_messages]
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
         assert "15" in tool_results
         assert "50" in tool_results
         assert "5" in tool_results
@@ -412,7 +416,7 @@ class TestToolset:
         tool_messages = _run_tool_messages(messages=[message], tools=deserialized)
 
         assert len(tool_messages) == 1
-        assert tool_messages[0].tool_call_result.result == "5"
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
     def test_custom_toolset_serialization(self):
         """Test serialization and deserialization of a custom Toolset subclass."""
@@ -447,7 +451,7 @@ class TestToolset:
         tool_messages = _run_tool_messages(messages=[message], tools=deserialized)
 
         assert len(tool_messages) == 1
-        assert tool_messages[0].tool_call_result.result == "5"
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
     def test_toolset_duplicate_tool_names(self):
         """Test that a Toolset raises an error for duplicate tool names."""
@@ -645,8 +649,8 @@ class TestToolsetList:
         tool_messages = _run_tool_messages(messages=[message], tools=[toolset1, toolset2])
 
         assert len(tool_messages) == 2
-        assert "mostly sunny" in tool_messages[0].tool_call_result.result
-        assert "8" in tool_messages[1].tool_call_result.result
+        assert "mostly sunny" in tool_messages[0].tool_call_results[0].result
+        assert "8" in tool_messages[1].tool_call_results[0].result
 
     def test_agent_serde_with_list_of_toolsets(self, weather_tool):
         """Test serialization and deserialization of Agent with a list of Toolsets."""
@@ -757,7 +761,9 @@ class TestToolsetList:
             tool_invoked = False
 
             @component.output_types(replies=list[ChatMessage])
-            def run(self, messages: list[ChatMessage], tools: list[Tool | Toolset] | None = None, **kwargs):
+            def run(
+                self, messages: list[ChatMessage], tools: list[Tool | Toolset] | None = None, **kwargs: Any
+            ) -> dict[str, list[ChatMessage]]:
                 assert tools == [toolset2, toolset3]
                 if self.tool_invoked:
                     return {"replies": [ChatMessage.from_assistant("done")]}

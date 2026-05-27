@@ -147,6 +147,9 @@ If you configured `ToolInvoker` options, move the corresponding options to `Agen
 - `max_workers` becomes `tool_concurrency_limit`.
 - `enable_streaming_callback_passthrough` becomes `tool_streaming_callback_passthrough`.
 
+The `convert_result_to_json_string` option has been removed. Non-string tool results are now always
+serialized with `json.dumps` rather than `str`, which changes their string form.
+
 ### Agent
 
 #### Breakpoint and snapshot API removed
