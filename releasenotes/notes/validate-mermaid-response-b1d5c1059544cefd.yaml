@@ -1,10 +1,10 @@
 ---
 enhancements:
   - |
-    `Pipeline.draw()` and `Pipeline.show()` now validate the Mermaid server response before
+    ``Pipeline.draw()`` and ``Pipeline.show()`` now validate the Mermaid server response before
     writing it to disk. The response body is checked against the expected output format
-    (PNG, JPEG, WebP, SVG, or PDF) via its magic-byte signature, and the `Content-Type`
+    (PNG, JPEG, WebP, SVG, or PDF) via its magic-byte signature, and the ``Content-Type``
     header is checked as well. If the response is empty or does not match the requested
-    format, a `PipelineDrawingError` is raised and no file is written. This prevents a
-    misconfigured or untrusted `server_url` from causing arbitrary content (for example an
+    format, a ``PipelineDrawingError`` is raised and no file is written. This prevents a
+    misconfigured or untrusted ``server_url`` from causing arbitrary content (for example an
     HTML error page) to be saved verbatim to the output path.
