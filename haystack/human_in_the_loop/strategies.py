@@ -5,11 +5,13 @@
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from haystack.components.agents.state.state import State
 from haystack.components.agents.tool_calling import _prepare_tool_args
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
+from haystack.tools import Tool
 from haystack.utils.deserialization import deserialize_component_inplace
 
 # To prevent circular imports
@@ -245,7 +247,11 @@ def _process_confirmation_strategies(
     teds = _run_confirmation_strategies(
         confirmation_strategies=confirmation_strategies,
         messages_with_tool_calls=messages_with_tool_calls,
-        execution_context=execution_context,
+        tools=execution_context.tool_execution_inputs["tools"],
+        state=execution_context.state,
+        streaming_callback=execution_context.tool_execution_inputs.get("streaming_callback"),
+        enable_streaming_passthrough=execution_context.tool_execution_inputs.get("enable_streaming_passthrough", False),
+        confirmation_strategy_context=execution_context.confirmation_strategy_context,
     )
 
     # Apply tool execution decisions to messages_with_tool_calls
@@ -288,7 +294,11 @@ async def _process_confirmation_strategies_async(
     teds = await _run_confirmation_strategies_async(
         confirmation_strategies=confirmation_strategies,
         messages_with_tool_calls=messages_with_tool_calls,
-        execution_context=execution_context,
+        tools=execution_context.tool_execution_inputs["tools"],
+        state=execution_context.state,
+        streaming_callback=execution_context.tool_execution_inputs.get("streaming_callback"),
+        enable_streaming_passthrough=execution_context.tool_execution_inputs.get("enable_streaming_passthrough", False),
+        confirmation_strategy_context=execution_context.confirmation_strategy_context,
     )
 
     # Apply tool execution decisions to messages_with_tool_calls
@@ -309,21 +319,28 @@ async def _process_confirmation_strategies_async(
 def _run_confirmation_strategies(
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: "_ExecutionContext",
+    tools: list[Tool],
+    state: State,
+    streaming_callback: StreamingCallbackT | None = None,
+    enable_streaming_passthrough: bool = False,
+    confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> list[ToolExecutionDecision]:
     """
     Run confirmation strategies for tool calls in the provided chat messages.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Messages containing tool calls to process
-    :param execution_context: The current execution context containing state and inputs
+    :param tools: The available tools, used to resolve each tool call by name
+    :param state: The current runtime state, used to prepare tool arguments
+    :param streaming_callback: Optional streaming callback to pass through to tools that accept it
+    :param enable_streaming_passthrough: Whether to inject the streaming callback into tool arguments
+    :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
-    state = execution_context.state
-    # TODO This execution_context.tool_execution_inputs["tools"] should really be passed through
-    #      flatten_tools_or_toolsets since at this point it could be any valid ToolsType
-    tools_with_names = {tool.name: tool for tool in execution_context.tool_execution_inputs["tools"]}
+    # TODO `tools` should really be passed through flatten_tools_or_toolsets since at this point it
+    #      could be any valid ToolsType
+    tools_with_names = {tool.name: tool for tool in tools}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -339,10 +356,8 @@ def _run_confirmation_strategies(
                 tool=tool_to_invoke,
                 tool_call_arguments=tool_call.arguments,
                 state=state,
-                streaming_callback=execution_context.tool_execution_inputs.get("streaming_callback"),
-                enable_streaming_passthrough=execution_context.tool_execution_inputs.get(
-                    "enable_streaming_passthrough", False
-                ),
+                streaming_callback=streaming_callback,
+                enable_streaming_passthrough=enable_streaming_passthrough,
             )
 
             # Get tool execution decisions from confirmation strategies
@@ -362,7 +377,7 @@ def _run_confirmation_strategies(
                 tool_description=tool_to_invoke.description,
                 tool_params=final_args,
                 tool_call_id=tool_call.id,
-                confirmation_strategy_context=execution_context.confirmation_strategy_context,
+                confirmation_strategy_context=confirmation_strategy_context,
             )
             teds.append(ted)
 
@@ -372,7 +387,11 @@ def _run_confirmation_strategies(
 async def _run_confirmation_strategies_async(
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: "_ExecutionContext",
+    tools: list[Tool],
+    state: State,
+    streaming_callback: StreamingCallbackT | None = None,
+    enable_streaming_passthrough: bool = False,
+    confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> list[ToolExecutionDecision]:
     """
     Async version of _run_confirmation_strategies.
@@ -382,14 +401,17 @@ async def _run_confirmation_strategies_async(
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
         String keys map individual tools, tuple keys map multiple tools to the same strategy.
     :param messages_with_tool_calls: Messages containing tool calls to process
-    :param execution_context: The current execution context containing state and inputs
+    :param tools: The available tools, used to resolve each tool call by name
+    :param state: The current runtime state, used to prepare tool arguments
+    :param streaming_callback: Optional streaming callback to pass through to tools that accept it
+    :param enable_streaming_passthrough: Whether to inject the streaming callback into tool arguments
+    :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
-    state = execution_context.state
-    # TODO This execution_context.tool_execution_inputs["tools"] should really be passed through
-    #      flatten_tools_or_toolsets since at this point it could be any valid ToolsType
-    tools_with_names = {tool.name: tool for tool in execution_context.tool_execution_inputs["tools"]}
+    # TODO `tools` should really be passed through flatten_tools_or_toolsets since at this point it
+    #      could be any valid ToolsType
+    tools_with_names = {tool.name: tool for tool in tools}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -405,10 +427,8 @@ async def _run_confirmation_strategies_async(
                 tool=tool_to_invoke,
                 tool_call_arguments=tool_call.arguments,
                 state=state,
-                streaming_callback=execution_context.tool_execution_inputs.get("streaming_callback"),
-                enable_streaming_passthrough=execution_context.tool_execution_inputs.get(
-                    "enable_streaming_passthrough", False
-                ),
+                streaming_callback=streaming_callback,
+                enable_streaming_passthrough=enable_streaming_passthrough,
             )
 
             # Get tool execution decisions from confirmation strategies
@@ -429,7 +449,7 @@ async def _run_confirmation_strategies_async(
                     tool_description=tool_to_invoke.description,
                     tool_params=final_args,
                     tool_call_id=tool_call.id,
-                    confirmation_strategy_context=execution_context.confirmation_strategy_context,
+                    confirmation_strategy_context=confirmation_strategy_context,
                 )
             else:
                 ted = strategy.run(
@@ -437,7 +457,7 @@ async def _run_confirmation_strategies_async(
                     tool_description=tool_to_invoke.description,
                     tool_params=final_args,
                     tool_call_id=tool_call.id,
-                    confirmation_strategy_context=execution_context.confirmation_strategy_context,
+                    confirmation_strategy_context=confirmation_strategy_context,
                 )
             teds.append(ted)
 

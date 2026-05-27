@@ -167,7 +167,8 @@ class TestRunConfirmationStrategies:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"param1": "value1"})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
         )
         assert teds == [
             ToolExecutionDecision(tool_name=tools[0].name, execute=True, final_tool_params={"param1": "value1"})
@@ -183,7 +184,8 @@ class TestRunConfirmationStrategies:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"param1": "value1"})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
         )
         assert teds == [
             ToolExecutionDecision(tool_name=tools[0].name, execute=True, final_tool_params={"param1": "value1"})
@@ -201,7 +203,8 @@ class TestRunConfirmationStrategies:
                     tool_calls=[ToolCall(add_tool.name, {"a": 1, "b": 2}), ToolCall(mult_tool.name, {"a": 3, "b": 4})]
                 )
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
         )
 
         assert len(teds) == 2
@@ -492,7 +495,9 @@ class TestRunContext:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
+            confirmation_strategy_context=confirmation_strategy_context,
         )
 
         # Verify the strategy received the confirmation_strategy_context directly
@@ -518,7 +523,9 @@ class TestRunContext:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
+            confirmation_strategy_context=confirmation_strategy_context,
         )
 
         # Verify the strategy received the confirmation_strategy_context directly
@@ -626,7 +633,8 @@ class TestAsyncConfirmationStrategies:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
         )
 
         # Verify that only the async method was called
@@ -661,7 +669,8 @@ class TestAsyncConfirmationStrategies:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
         )
         assert len(teds) == 1
         assert teds[0].tool_name == tools[0].name
@@ -679,7 +688,8 @@ class TestAsyncConfirmationStrategies:
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
-            execution_context=execution_context,
+            tools=tools,
+            state=execution_context.state,
         )
         assert len(teds) == 1
         assert teds[0].tool_name == tools[0].name
