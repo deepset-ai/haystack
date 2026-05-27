@@ -168,6 +168,139 @@ Pass an instance to the `LangfuseConnector`:
 LangfuseConnector("My Agent", span_handler=AgentStepSpanHandler())
 ```
 
+#### Runtime `user_prompt` and `system_prompt` removed from `Agent.run` / `Agent.run_async`
+
+**What changed:** The `user_prompt` and `system_prompt` parameters have been removed from `Agent.run` and `Agent.run_async`. Both prompts must now be set at initialization time on the `Agent`; they can no longer be passed per-run, including via `Pipeline.run(data={"agent": {...}})`.
+
+**Why:** A single source of truth for the Agent's prompt templates simplifies the API and makes prompts a stable part of the Agent configuration. It also removes the old requirement that variables used by a runtime `user_prompt` override had to already exist in the initialization-time `user_prompt` for pipeline input sockets to be created.
+
+**How to migrate:**
+
+Before (v2.x), overriding prompts through `Pipeline.run`:
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+
+init_user_prompt = (
+    "{% message role='user' %}"
+    "Answer {{query}} using these documents:"
+    "{% for doc in documents %}{{doc.content}}{% endfor %}"
+    "{% endmessage %}"
+)
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    system_prompt="Default system prompt.",
+    user_prompt=init_user_prompt,
+)
+pipeline = Pipeline()
+pipeline.add_component("retriever", ...)
+pipeline.add_component("agent", agent)
+pipeline.connect("retriever.documents", "agent.documents")
+
+pipeline.run(
+    data={
+        "retriever": {"query": query},
+        "agent": {
+            "messages": [],
+            "query": query,
+            "system_prompt": "You are a knowledgeable assistant.",
+            "user_prompt": (
+                "{% message role='user' %}"
+                "Use these documents to answer {{query}}:"
+                "{% for doc in documents %}{{doc.content}}{% endfor %}"
+                "{% endmessage %}"
+            ),
+        },
+    }
+)
+```
+
+After (v3.0), configure both prompts on the `Agent`:
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    system_prompt="You are a knowledgeable assistant.",
+    # `user_prompt` can be a plain string template or an explicit Jinja2 message template.
+    # Explicit message templates must contain a single message block that renders as a user message.
+    user_prompt="Use these documents to answer {{query}}: {% for doc in documents %}{{doc.content}}{% endfor %}",
+)
+pipeline = Pipeline()
+pipeline.add_component("retriever", ...)
+pipeline.add_component("agent", agent)
+pipeline.connect("retriever.documents", "agent.documents")
+
+pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "query": query}})
+```
+
+If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
+For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
+
+### LLM
+
+#### Runtime `user_prompt` and `system_prompt` removed from `LLM.run` / `LLM.run_async`
+
+**What changed:** The `user_prompt` and `system_prompt` parameters have been removed from `LLM.run` and `LLM.run_async`. Both prompts must now be set at initialization time on the `LLM`; they can no longer be passed per-run, including via `Pipeline.run(data={"llm": {...}})`.
+
+**Why:** `LLM` prompt templates define the component's dynamic input sockets. The old runtime override path was misleading because any variables used by the override still had to be present in the initialization-time `user_prompt` for pipeline connections such as `llm.documents` to exist.
+
+**How to migrate:**
+
+Before (v2.x), overriding prompts through `Pipeline.run`:
+```python
+from haystack import Pipeline
+from haystack.components.generators.chat import LLM
+
+init_user_prompt = "Answer {{query}} using these documents: {% for doc in documents %}{{doc.content}}{% endfor %}"
+llm = LLM(
+    chat_generator=...,
+    system_prompt="Default system prompt.",
+    user_prompt=init_user_prompt,
+)
+pipeline = Pipeline()
+pipeline.add_component("retriever", ...)
+pipeline.add_component("llm", llm)
+
+# This connection only worked because `documents` was already present in
+# `init_user_prompt`, so the LLM had a `documents` input socket.
+pipeline.connect("retriever.documents", "llm.documents")
+
+pipeline.run(
+    data={
+        "retriever": {"query": query},
+        "llm": {
+            "query": query,
+            "system_prompt": "You are a knowledgeable assistant.",
+            "user_prompt": "Use these documents to answer {{query}}: {% for doc in documents %}{{doc.content}}{% endfor %}",
+        },
+    }
+)
+```
+
+After (v3.0), configure both prompts on the `LLM`:
+```python
+from haystack import Pipeline
+from haystack.components.generators.chat import LLM
+
+llm = LLM(
+    chat_generator=...,
+    system_prompt="You are a knowledgeable assistant.",
+    user_prompt="Use these documents to answer {{query}}: {% for doc in documents %}{{doc.content}}{% endfor %}",
+)
+pipeline = Pipeline()
+pipeline.add_component("retriever", ...)
+pipeline.add_component("llm", llm)
+pipeline.connect("retriever.documents", "llm.documents")
+
+pipeline.run(data={"retriever": {"query": query}, "llm": {"query": query}})
+```
+
+If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `LLM` and pass them through the `messages` input. For a runtime system prompt, construct an `LLM` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
+
 ### `PromptBuilder` and `ChatPromptBuilder` template variables are required by default
 
 **What changed:** `PromptBuilder` and `ChatPromptBuilder` now treat every Jinja2 template variable as required by default. Previously, variables were optional by default and missing values were silently rendered as empty strings. The `required_variables` parameter's default has been changed from `None` (all optional) to `"*"` (all required). Passing `required_variables=None` explicitly still opts into the old "all optional" behavior.

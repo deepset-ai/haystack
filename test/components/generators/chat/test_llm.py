@@ -115,6 +115,18 @@ class TestLLM:
             assert isinstance(messages_socket, InputSocket)
             assert not messages_socket.is_mandatory
 
+        def test_messages_optional_when_plain_prompt_has_variables(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt="Question: {{ query }}")
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]
+            assert isinstance(messages_socket, InputSocket)
+            assert not messages_socket.is_mandatory
+            assert "query" in llm.__haystack_input__._sockets_dict
+
+        def test_runtime_prompt_overrides_not_component_inputs(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            assert "system_prompt" not in llm.__haystack_input__._sockets_dict
+            assert "user_prompt" not in llm.__haystack_input__._sockets_dict
+
         def test_raises_if_required_variables_empty(self):
             with pytest.raises(ValueError, match="required_variables must not be empty"):
                 LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT, required_variables=[])
@@ -226,6 +238,13 @@ class TestLLM:
             assert result["last_message"].text == "Sync reply"
             user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
             assert any("What is 2+2?" in m.text for m in user_messages)
+
+        def test_run_with_plain_user_prompt(self):
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt="Question: {{ query }}")
+            result = llm.run(query="What is 2+2?")
+            assert result["last_message"].text == "Sync reply"
+            user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+            assert any("Question: What is 2+2?" in m.text for m in user_messages)
 
         @pytest.mark.asyncio
         async def test_run_async_accepts_messages_via_kwargs(self):
