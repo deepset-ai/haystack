@@ -85,29 +85,22 @@ results to the conversation, and continue the loop until an exit condition is re
 
 Before (v2.x):
 ```python
+from typing import Annotated
+
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool
+from haystack.tools import tool
 
 
-def weather(city: str) -> str:
+@tool
+def weather(city: Annotated[str, "The name of the city"]) -> str:
+    """Get the weather for a city."""
     return f"The weather in {city} is sunny."
 
 
-weather_tool = Tool(
-    name="weather",
-    description="Get the weather for a city.",
-    parameters={
-        "type": "object",
-        "properties": {"city": {"type": "string"}},
-        "required": ["city"],
-    },
-    function=weather,
-)
-
-chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[weather_tool])
-tool_invoker = ToolInvoker(tools=[weather_tool])
+chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=[weather])
+tool_invoker = ToolInvoker(tools=[weather])
 
 llm_result = chat_generator.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
 tool_result = tool_invoker.run(messages=llm_result["replies"])
@@ -115,28 +108,21 @@ tool_result = tool_invoker.run(messages=llm_result["replies"])
 
 After (v3.0):
 ```python
+from typing import Annotated
+
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool
+from haystack.tools import tool
 
 
-def weather(city: str) -> str:
+@tool
+def weather(city: Annotated[str, "The name of the city"]) -> str:
+    """Get the weather for a city."""
     return f"The weather in {city} is sunny."
 
 
-weather_tool = Tool(
-    name="weather",
-    description="Get the weather for a city.",
-    parameters={
-        "type": "object",
-        "properties": {"city": {"type": "string"}},
-        "required": ["city"],
-    },
-    function=weather,
-)
-
-agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[weather_tool])
+agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"), tools=[weather])
 result = agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
 ```
 
@@ -150,7 +136,7 @@ Before (v2.x):
 ```python
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    tools=[weather_tool],
+    tools=[weather],
     tool_invoker_kwargs={"max_workers": 4, "enable_streaming_callback_passthrough": True},
 )
 ```
@@ -159,7 +145,7 @@ After (v3.0):
 ```python
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    tools=[weather_tool],
+    tools=[weather],
     tool_concurrency_limit=4,
     tool_streaming_callback_passthrough=True,
 )
