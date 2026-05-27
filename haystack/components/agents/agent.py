@@ -797,7 +797,11 @@ class Agent:
             modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
-                execution_context=exe_context,
+                state=exe_context.state,
+                confirmation_strategy_context=exe_context.confirmation_strategy_context,
+                tools=exe_context.tool_execution_inputs["tools"],
+                streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
+                enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
@@ -854,7 +858,11 @@ class Agent:
             modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
-                execution_context=exe_context,
+                tools=exe_context.tool_execution_inputs["tools"],
+                state=exe_context.state,
+                streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
+                enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
+                confirmation_strategy_context=exe_context.confirmation_strategy_context,
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
