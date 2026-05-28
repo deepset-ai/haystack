@@ -1,0 +1,25 @@
+---
+features:
+  - |
+    Add native async tool invocation. ``Tool`` now accepts an optional ``async_function`` (a coroutine function
+    defined with ``async def``) alongside the existing ``function`` field.
+    When ``Agent.run_async`` invokes a tool, it now awaits ``async_function`` directly instead of dispatching ``function`` to a thread pool.
+    Tools that only set ``async_function`` can still be used by ``Agent.run_async``; calling ``Tool.invoke`` on such a tool raises ``ToolInvocationError``.
+
+    ``@tool`` / ``create_tool_from_function`` automatically routes ``async def`` callables to ``async_function``, so simply decorating an ``async def`` produces an async-native tool:
+
+    .. code-block:: python
+
+        from typing import Annotated
+        from haystack.tools import tool
+
+        @tool
+        async def weather(city: Annotated[str, "The name of the city"]) -> str:
+            """Get the weather for a city."""
+            ...
+
+    ``ComponentTool`` automatically wires an async invoker for components that define ``run_async`` (``__haystack_supports_async__`` is ``True``).
+    ``PipelineTool`` enables the async path when wrapping an ``AsyncPipeline`` and falls back to the threaded sync path when wrapping a regular ``Pipeline``.
+
+    The ``tool_concurrency_limit`` knob on ``Agent`` continues to bound parallel tool execution.
+    Inside ``_run_tool_async`` it is now enforced via an ``asyncio.Semaphore`` that applies uniformly to native async tools and sync-fallback tools.

@@ -186,12 +186,35 @@ def _make_context_bound_invoke(tool: Tool, args: dict[str, Any]) -> Callable[[],
     return _runner
 
 
+def _make_bounded_invoke_async(tool: Tool, args: dict[str, Any], semaphore: asyncio.Semaphore) -> Callable[[], Any]:
+    """
+    Return a zero-arg async callable that awaits `tool.invoke_async(**args)` while holding `semaphore`.
+
+    Concurrency is bounded uniformly across native-async tools and sync-fallback tools (which dispatch
+    to a worker thread inside `Tool.invoke_async`). ContextVars naturally inherit into child tasks for
+    the native-async branch, and `asyncio.to_thread` propagates them for the fallback branch.
+
+    Returns a `ToolInvocationError` instead of raising so that gathered executions can collect failures
+    without aborting the whole batch.
+    """
+
+    async def _runner() -> Any:
+        async with semaphore:
+            try:
+                return await tool.invoke_async(**args)
+            except ToolInvocationError as e:
+                return e
+
+    return _runner
+
+
 def _get_func_params(tool: Tool) -> dict[str, Any]:
     """
     Return parameter names → annotations for a tool's invocation function.
 
     - For ComponentTool, this is the annotated input schema defined on the underlying component.
-    - For regular Tools, this is the function signature of the `function` callable.
+    - For regular Tools, this is the function signature of the `function` callable, falling back to
+      `async_function` for async-only tools.
 
     :param tool: The tool to inspect.
     :returns: A dict mapping parameter names to their type annotations.
@@ -201,7 +224,9 @@ def _get_func_params(tool: Tool) -> dict[str, Any]:
             tool._component.__haystack_input__, Sockets
         )
         return {name: socket.type for name, socket in tool._component.__haystack_input__._sockets_dict.items()}
-    return {name: param.annotation for name, param in inspect.signature(tool.function).parameters.items()}
+    # Tool.__post_init__ guarantees that at least one of `function` / `async_function` is set.
+    target = tool.function if tool.function is not None else tool.async_function
+    return {name: param.annotation for name, param in inspect.signature(target).parameters.items()}  # type: ignore[arg-type]
 
 
 def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
@@ -434,30 +459,28 @@ async def _run_tool_async(
     if not tool_call_params:
         return tool_messages, state
 
-    loop = asyncio.get_running_loop()
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        tasks = [
-            loop.run_in_executor(executor, _make_context_bound_invoke(p["tool"], p["args"])) for p in tool_call_params
-        ]
-        results = await asyncio.gather(*tasks)
+    # `max_workers` bounds concurrency uniformly: tools with a native async path are awaited directly,
+    # while sync-only tools dispatch to a worker thread inside `Tool.invoke_async`. A single semaphore
+    # caps both paths at the same limit.
+    semaphore = asyncio.Semaphore(max_workers)
+    tasks = [_make_bounded_invoke_async(p["tool"], p["args"], semaphore)() for p in tool_call_params]
+    results = await asyncio.gather(*tasks)
 
-        for result, tool_call in zip(results, tool_calls, strict=True):
-            if isinstance(result, ToolInvocationError):
-                if raise_on_failure:
-                    raise result
-                logger.error("{error_exception}", error_exception=result)
-                tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
-            else:
-                tool = tools_with_names[tool_call.tool_name]
-                _merge_tool_outputs_into_state(tool, result, state)
-                tool_messages.append(
-                    _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
-                )
+    for result, tool_call in zip(results, tool_calls, strict=True):
+        if isinstance(result, ToolInvocationError):
+            if raise_on_failure:
+                raise result
+            logger.error("{error_exception}", error_exception=result)
+            tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
+        else:
+            tool = tools_with_names[tool_call.tool_name]
+            _merge_tool_outputs_into_state(tool, result, state)
+            tool_messages.append(_build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure))
 
-            if streaming_callback is not None:
-                await streaming_callback(  # type: ignore[misc]
-                    _create_tool_result_streaming_chunk(tool_messages, tool_call)
-                )
+        if streaming_callback is not None:
+            await streaming_callback(  # type: ignore[misc]
+                _create_tool_result_streaming_chunk(tool_messages, tool_call)
+            )
 
     # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:

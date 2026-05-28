@@ -407,3 +407,31 @@ class TestPipelineTool:
                 description="A test tool",
                 outputs_to_state={"result": {"source": "nonexistent"}},
             )
+
+
+class TestPipelineToolAsync:
+    def test_sync_pipeline_clears_async_function(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        assert tool.function is not None
+        # SuperComponent always defines run_async, but PipelineTool clears it for sync pipelines
+        # so that invoke_async transparently falls back to running the sync pipeline in a thread.
+        assert tool.async_function is None
+
+    def test_async_pipeline_keeps_async_function(self, sample_async_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_async_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        assert tool.function is not None
+        assert tool.async_function is not None

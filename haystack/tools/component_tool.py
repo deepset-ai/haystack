@@ -200,6 +200,27 @@ class ComponentTool(Tool):
             )
             return dict(component.run(**converted_kwargs))
 
+        async def async_component_invoker(**kwargs: Any) -> dict[str, Any]:
+            """
+            Asynchronous counterpart of `component_invoker`. Awaits the component's `run_async`.
+
+            :param kwargs: The keyword arguments to invoke the component with.
+            :returns: The result of the component invocation.
+            """
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            converted_kwargs = {
+                param_name: self._convert_param(param_value, input_sockets[param_name].type)
+                for param_name, param_value in kwargs.items()
+            }
+            logger.debug(
+                "Invoking component {component_type} asynchronously with kwargs: {converted_kwargs}",
+                component_type=type(component),
+                converted_kwargs=converted_kwargs,
+            )
+            return dict(await component.run_async(**converted_kwargs))  # type: ignore[attr-defined]
+
+        component_supports_async = getattr(component, "__haystack_supports_async__", False)
+
         # Generate a name for the tool if not provided
         if not name:
             class_name = component.__class__.__name__
@@ -217,12 +238,15 @@ class ComponentTool(Tool):
         self._component = component
         self._is_warmed_up = False
 
-        # Create the Tool instance with the component invoker as the function to be called and the schema
+        # Create the Tool instance with the component invoker as the function to be called and the schema.
+        # When the wrapped component exposes a `run_async`, also wire the async invoker so that
+        # `Agent.run_async` can drive the component natively instead of dispatching `run` to a thread.
         super().__init__(
             name=name,
             description=description,
             parameters=tool_schema,
             function=component_invoker,
+            async_function=async_component_invoker if component_supports_async else None,
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,

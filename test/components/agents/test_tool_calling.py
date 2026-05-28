@@ -48,6 +48,10 @@ def weather_function(location):
     return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
+async def async_weather_function(location):
+    return weather_function(location)
+
+
 weather_parameters = {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
 
 
@@ -58,6 +62,16 @@ def weather_tool():
         description="Provides weather information for a given location.",
         parameters=weather_parameters,
         function=weather_function,
+    )
+
+
+@pytest.fixture
+def async_weather_tool():
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters=weather_parameters,
+        async_function=async_weather_function,
     )
 
 
@@ -875,3 +889,69 @@ class TestUtilities:
             TextContent(text="weather: mostly sunny"),
             TextContent(text="temperature: 7 celsius"),
         ]
+
+
+class TestRunToolAsyncNativeAsyncTool:
+    """Tests that _run_tool_async uses each tool's native async path when available."""
+
+    @pytest.mark.asyncio
+    async def test_native_async_tool_does_not_use_thread(self, async_weather_tool):
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(id="1", tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+
+        # Native async tools must be awaited directly — asyncio.to_thread should never be hit.
+        with patch("haystack.tools.tool.asyncio.to_thread") as to_thread_mock:
+            tool_messages, _ = await _run_tool_async(
+                messages=[message], state=State(schema={}), tools=[async_weather_tool]
+            )
+
+        to_thread_mock.assert_not_called()
+        assert json.loads(tool_messages[0].tool_call_results[0].result)["weather"] == "mostly sunny"
+
+    @pytest.mark.asyncio
+    async def test_sync_only_tool_uses_thread(self, weather_tool):
+        import asyncio as _aio
+
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(id="1", tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+
+        with patch("haystack.tools.tool.asyncio.to_thread", wraps=_aio.to_thread) as to_thread_spy:
+            tool_messages, _ = await _run_tool_async(messages=[message], state=State(schema={}), tools=[weather_tool])
+
+        assert to_thread_spy.call_count == 1
+        assert tool_messages[0].tool_call_results[0].result is not None
+
+    @pytest.mark.asyncio
+    async def test_semaphore_bounds_native_async_concurrency(self):
+        """`max_workers=1` must serialize tool calls even when they are natively async."""
+        import asyncio as _aio
+
+        active = 0
+        max_active_observed = 0
+
+        async def slow_async(location: str) -> str:
+            nonlocal active, max_active_observed
+            active += 1
+            max_active_observed = max(max_active_observed, active)
+            await _aio.sleep(0.01)
+            active -= 1
+            return location
+
+        async_tool = Tool(
+            name="weather_tool",
+            description="Slow async tool.",
+            parameters=weather_parameters,
+            async_function=slow_async,
+        )
+
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id=str(i), tool_name="weather_tool", arguments={"location": f"city-{i}"}) for i in range(4)
+            ]
+        )
+
+        await _run_tool_async(messages=[message], state=State(schema={}), tools=[async_tool], max_workers=1)
+
+        assert max_active_observed == 1
