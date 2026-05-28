@@ -61,11 +61,11 @@ class ComponentTool(Tool):
     ## Usage Example:
     <!-- test-ignore -->
     ```python
-    from haystack import component, Pipeline
+    from haystack import component
     from haystack.tools import ComponentTool
     from haystack.components.websearch import SerperDevWebSearch
     from haystack.utils import Secret
-    from haystack.components.tools.tool_invoker import ToolInvoker
+    from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
 
@@ -79,18 +79,13 @@ class ComponentTool(Tool):
         description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
 
-    # Create pipeline with OpenAIChatGenerator and ToolInvoker
-    pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-    # Connect components
-    pipeline.connect("llm.replies", "tool_invoker.messages")
+    # Create an Agent with an OpenAIChatGenerator and the tool
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
 
     message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
-    # Run pipeline
-    result = pipeline.run({"llm": {"messages": [message]}})
+    # Run the Agent
+    result = agent.run(messages=[message])
 
     print(result)
     ```
@@ -329,7 +324,7 @@ class ComponentTool(Tool):
             if _contains_callable_type(input_type):
                 continue
 
-            # Skip State-typed parameters - ToolInvoker injects them at runtime
+            # Skip State-typed parameters - Agent tool execution injects them at runtime
             if _unwrap_optional(input_type) is State:
                 continue
 

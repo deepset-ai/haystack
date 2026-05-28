@@ -18,9 +18,9 @@ from haystack.components.agents.state.state import (
     replace_values,
 )
 from haystack.components.agents.state.state_utils import merge_lists
+from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.components.tools import ToolInvoker
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.human_in_the_loop.strategies import (
@@ -36,6 +36,7 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -127,7 +128,7 @@ class _ExecutionContext:
 
     :param state: The current state of the agent, including messages and any additional data.
     :param chat_generator_inputs: Runtime inputs to be passed to the chat generator.
-    :param tool_invoker_inputs: Runtime inputs to be passed to the tool invoker.
+    :param tool_execution_inputs: Runtime inputs to be passed to tool execution.
     :param counter: A counter to track the number of steps taken in the agent's run.
     :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
         to confirmation strategies. In web/server environments, this enables passing per-request
@@ -138,7 +139,7 @@ class _ExecutionContext:
 
     state: State
     chat_generator_inputs: dict
-    tool_invoker_inputs: dict
+    tool_execution_inputs: dict
     counter: int = 0
     confirmation_strategy_context: dict[str, Any] | None = None
 
@@ -264,7 +265,8 @@ class Agent:
         max_agent_steps: int = 100,
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_invoker_kwargs: dict[str, Any] | None = None,
+        tool_concurrency_limit: int = 4,
+        tool_streaming_callback_passthrough: bool = False,
         confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
     ) -> None:
         """
@@ -295,7 +297,9 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
-        :param tool_invoker_kwargs: Additional keyword arguments to pass to the ToolInvoker.
+        :param tool_concurrency_limit: Maximum number of tool calls to execute at the same time.
+            Defaults to 4. Set to 1 to disable parallel tool execution.
+        :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
@@ -322,6 +326,8 @@ class Agent:
         if state_schema is not None:
             _validate_schema(state_schema)
         _validate_prompt_message_blocks(user_prompt, system_prompt)
+        if tool_concurrency_limit < 1:
+            raise ValueError("tool_concurrency_limit must be greater than or equal to 1.")
 
         # --- Attributes ---
         self.chat_generator = chat_generator
@@ -333,7 +339,8 @@ class Agent:
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
-        self.tool_invoker_kwargs = tool_invoker_kwargs
+        self.tool_concurrency_limit = tool_concurrency_limit
+        self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self._confirmation_strategies = confirmation_strategies or {}
         self._is_warmed_up = False
 
@@ -368,15 +375,8 @@ class Agent:
             )
         self._register_prompt_variables()
 
-        # --- Tool invoker ---
-        self._tool_invoker = None
-        if self.tools:
-            self._tool_invoker = ToolInvoker(
-                tools=self.tools,
-                raise_on_failure=self.raise_on_tool_invocation_failure,
-                **(self.tool_invoker_kwargs or {}),
-            )
-        elif type(self).__name__ == "Agent":
+        # --- No-tools warning ---
+        if not self.tools and type(self).__name__ == "Agent":
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
@@ -440,8 +440,8 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
-            if hasattr(self._tool_invoker, "warm_up") and self._tool_invoker is not None:
-                self._tool_invoker.warm_up()
+            if self.tools:
+                warm_up_tools(self.tools)
             self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -463,7 +463,8 @@ class Agent:
             max_agent_steps=self.max_agent_steps,
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
-            tool_invoker_kwargs=self.tool_invoker_kwargs,
+            tool_concurrency_limit=self.tool_concurrency_limit,
+            tool_streaming_callback_passthrough=self.tool_streaming_callback_passthrough,
             confirmation_strategies={
                 (list(key) if isinstance(key, tuple) else key): component_to_dict(
                     obj=strategy, name="confirmation_strategy"
@@ -577,26 +578,26 @@ class Agent:
         )
 
         selected_tools = self._select_tools(tools)
-        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
         generator_inputs: dict[str, Any] = {}
         if self._chat_generator_supports_tools:
             generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
-            tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
 
-        # We add enable_streaming_callback_passthrough to the tool invoker inputs
-        if self._tool_invoker:
-            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
-                self._tool_invoker.enable_streaming_callback_passthrough
-            )
+        tool_execution_inputs: dict[str, Any] = {
+            "tools": selected_tools,
+            "raise_on_failure": self.raise_on_tool_invocation_failure,
+            "streaming_callback": streaming_callback,
+            "max_workers": self.tool_concurrency_limit,
+            "enable_streaming_callback_passthrough": self.tool_streaming_callback_passthrough,
+        }
 
         return _ExecutionContext(
             state=state,
             chat_generator_inputs=generator_inputs,
-            tool_invoker_inputs=tool_invoker_inputs,
+            tool_execution_inputs=tool_execution_inputs,
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
@@ -787,28 +788,32 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+            if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
                 return False
 
             modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
-                execution_context=exe_context,
+                state=exe_context.state,
+                confirmation_strategy_context=exe_context.confirmation_strategy_context,
+                tools=exe_context.tool_execution_inputs["tools"],
+                streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
+                enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_inputs = {
+            tool_execution_inputs = {
                 "messages": modified_tool_call_messages,
                 "state": exe_context.state,
-                **exe_context.tool_invoker_inputs,
+                **exe_context.tool_execution_inputs,
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
-                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_invoker_inputs)
-                tool_invoker_result = self._tool_invoker.run(**tool_invoker_inputs)
-                tool_span.set_content_tag("haystack.agent.step.tool.output", tool_invoker_result)
-            tool_messages = tool_invoker_result["tool_messages"]
-            exe_context.state = tool_invoker_result["state"]
+                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
+                tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
+                tool_span.set_content_tag(
+                    "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
+                )
             exe_context.state.set("messages", tool_messages)
 
             if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
@@ -844,28 +849,32 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+            if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
                 return False
 
             modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
-                execution_context=exe_context,
+                tools=exe_context.tool_execution_inputs["tools"],
+                state=exe_context.state,
+                streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
+                enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
+                confirmation_strategy_context=exe_context.confirmation_strategy_context,
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
-            tool_invoker_inputs = {
+            tool_execution_inputs = {
                 "messages": modified_tool_call_messages,
                 "state": exe_context.state,
-                **exe_context.tool_invoker_inputs,
+                **exe_context.tool_execution_inputs,
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
-                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_invoker_inputs)
-                tool_invoker_result = await self._tool_invoker.run_async(**tool_invoker_inputs)
-                tool_span.set_content_tag("haystack.agent.step.tool.output", tool_invoker_result)
-            tool_messages = tool_invoker_result["tool_messages"]
-            exe_context.state = tool_invoker_result["state"]
+                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
+                tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
+                tool_span.set_content_tag(
+                    "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
+                )
             exe_context.state.set("messages", tool_messages)
 
             if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
@@ -880,7 +889,7 @@ class Agent:
         Check if any of the LLM messages' tool calls match an exit condition and if there are no errors.
 
         :param llm_messages: List of messages from the LLM
-        :param tool_messages: List of messages from the tool invoker
+        :param tool_messages: List of messages from tool execution.
         :return: True if an exit condition is met and there are no errors, False otherwise
         """
         matched_exit_conditions = set()

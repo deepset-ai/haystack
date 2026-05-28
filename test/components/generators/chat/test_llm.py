@@ -84,7 +84,6 @@ class TestLLM:
             assert llm.user_prompt == self.USER_PROMPT
             assert llm.required_variables == "*"
             assert llm.streaming_callback is None
-            assert llm._tool_invoker is None
 
         def test_output_sockets(self):
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
@@ -148,7 +147,8 @@ class TestLLM:
                 "exit_conditions",
                 "max_agent_steps",
                 "raise_on_tool_invocation_failure",
-                "tool_invoker_kwargs",
+                "tool_concurrency_limit",
+                "tool_streaming_callback_passthrough",
                 "confirmation_strategies",
                 "state_schema",
             ]

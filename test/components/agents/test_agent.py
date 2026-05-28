@@ -18,6 +18,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import merge_lists
+from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -203,7 +204,8 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             exit_conditions=["text", "weather_tool"],
             state_schema={"foo": {"type": str}},
-            tool_invoker_kwargs={"max_workers": 5, "enable_streaming_callback_passthrough": True},
+            tool_concurrency_limit=5,
+            tool_streaming_callback_passthrough=True,
         )
         serialized_agent = agent.to_dict()
         # Verify the model is truthy and serialized
@@ -274,7 +276,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
-                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "tool_concurrency_limit": 5,
+                "tool_streaming_callback_passthrough": True,
                 "confirmation_strategies": None,
             },
         }
@@ -339,7 +342,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": None,
+                "tool_concurrency_limit": 4,
+                "tool_streaming_callback_passthrough": False,
                 "confirmation_strategies": None,
             },
         }
@@ -423,7 +427,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "tool_concurrency_limit": 5,
+                "tool_streaming_callback_passthrough": True,
             },
         }
         agent = Agent.from_dict(data)
@@ -439,9 +444,8 @@ class TestAgent:
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
         }
-        assert agent.tool_invoker_kwargs == {"max_workers": 5, "enable_streaming_callback_passthrough": True}
-        assert agent._tool_invoker.max_workers == 5
-        assert agent._tool_invoker.enable_streaming_callback_passthrough is True
+        assert agent.tool_concurrency_limit == 5
+        assert agent.tool_streaming_callback_passthrough is True
 
     def test_from_dict_with_toolset(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -493,7 +497,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": None,
+                "tool_concurrency_limit": 1,
+                "tool_streaming_callback_passthrough": False,
             },
         }
         agent = Agent.from_dict(data)
@@ -570,7 +575,8 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "tool_concurrency_limit": 5,
+                "tool_streaming_callback_passthrough": True,
             },
         }
         agent = Agent.from_dict(data)
@@ -647,6 +653,13 @@ class TestAgent:
             chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
         )
         assert agent.exit_conditions == ["text", "weather_tool"]
+
+    def test_tool_concurrency_limit_validation(self, weather_tool, monkeypatch):
+        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
+        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
+
+        with pytest.raises(ValueError, match="tool_concurrency_limit must be greater than or equal to 1"):
+            Agent(chat_generator=generator, tools=[weather_tool], tool_concurrency_limit=0)
 
     def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -786,7 +799,7 @@ class TestAgent:
         assert result["messages"][-2].tool_call.tool_name == "weather_tool"
         assert (
             result["messages"][-1].tool_call_result.result
-            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
+            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         )
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
@@ -843,12 +856,19 @@ class TestAgent:
                 return {"replies": [message]}
 
         chat_generator = MockChatGenerator()
-        agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
-        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
-        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
-        tool_invoker_run_mock.assert_called_once()
-        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[component_tool],
+            system_prompt="This is a system prompt.",
+            tool_concurrency_limit=3,
+            tool_streaming_callback_passthrough=True,
+        )
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
+        run_tool_mock.assert_called_once()
+        assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
+        assert run_tool_mock.call_args.kwargs["max_workers"] == 3
+        assert run_tool_mock.call_args.kwargs["enable_streaming_callback_passthrough"] is True
 
     def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
         @component
@@ -873,11 +893,10 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             system_prompt="This is a system prompt.",
         )
-        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
-        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
-        tool_invoker_run_mock.assert_called_once()
-        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+        with patch("haystack.components.agents.agent._run_tool", wraps=_run_tool) as run_tool_mock:
+            agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
+        run_tool_mock.assert_called_once()
+        assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
     def test_run_not_warmed_up(self, weather_tool):
         """Warmup is run automatically on first run"""
@@ -1099,6 +1118,60 @@ class TestAgentTracing:
         }
 
         # Clean up
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
+
+    def test_agent_tracing_span_run_with_tool_call(self, caplog, monkeypatch, weather_tool):
+        @component
+        class ToolCallingChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+            ) -> dict[str, Any]:
+                if self.tool_invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.tool_invoked = True
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                        )
+                    ]
+                }
+
+        agent = Agent(chat_generator=ToolCallingChatGenerator(), tools=[weather_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        _ = agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
+
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        agent_spans = [(op, tags) for op, tags in spans if op.startswith("haystack.agent")]
+        assert [op for op, _ in agent_spans] == [
+            "haystack.agent.step.llm",
+            "haystack.agent.step.tool",
+            "haystack.agent.step",
+            "haystack.agent.step.llm",
+            "haystack.agent.step",
+            "haystack.agent.run",
+        ]
+
+        _, tool_tags = agent_spans[1]
+        assert set(tool_tags) == {"haystack.agent.step.tool.input", "haystack.agent.step.tool.output"}
+
+        _, run_tags = agent_spans[-1]
+        assert run_tags["haystack.agent.steps_taken"] == 2
+
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
@@ -1714,6 +1787,210 @@ class TestAgentWaitsForBlockedPredecessor:
             }
         )
         assert "agent" in result
+
+
+class TestAgentWarmUp:
+    """Tests that Agent.warm_up() correctly warms up tools and toolsets."""
+
+    def _make_tracking_tool(self, name: str = "test_tool") -> Tool:
+        tool = Tool(
+            name=name,
+            description="A test tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "result",
+        )
+        tool.was_warmed_up = False
+        original_warm_up = tool.warm_up
+
+        def tracking_warm_up():
+            original_warm_up()
+            tool.was_warmed_up = True
+
+        tool.warm_up = tracking_warm_up
+        return tool
+
+    def _make_tracking_toolset(self, tools: list) -> Toolset:
+        toolset = Toolset(tools)
+        toolset.was_warmed_up = False
+        original_warm_up = toolset.warm_up
+
+        def tracking_warm_up():
+            original_warm_up()
+            toolset.was_warmed_up = True
+
+        toolset.warm_up = tracking_warm_up
+        return toolset
+
+    def test_warm_up_single_tool(self):
+        tool = self._make_tracking_tool()
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool])
+
+        assert not tool.was_warmed_up
+        agent.warm_up()
+        assert tool.was_warmed_up
+
+    def test_warm_up_multiple_tools(self):
+        tool1 = self._make_tracking_tool("tool1")
+        tool2 = self._make_tracking_tool("tool2")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool1, tool2])
+
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+        agent.warm_up()
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+
+    def test_warm_up_toolset(self):
+        inner_tool = self._make_tracking_tool()
+        toolset = self._make_tracking_toolset([inner_tool])
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+
+        assert not toolset.was_warmed_up
+        agent.warm_up()
+        assert toolset.was_warmed_up
+
+    def test_warm_up_mixed_toolsets(self):
+        tool1 = self._make_tracking_tool("tool1")
+        toolset1 = self._make_tracking_toolset([tool1])
+        tool2 = self._make_tracking_tool("tool2")
+        toolset2 = self._make_tracking_toolset([tool2])
+
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset1 + toolset2)
+
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+        agent.warm_up()
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
+    def test_warm_up_mixed_list_of_tools_and_toolsets(self):
+        tool1 = self._make_tracking_tool("standalone_tool1")
+        tool2 = self._make_tracking_tool("standalone_tool2")
+        tool3 = self._make_tracking_tool("toolset_tool1")
+        toolset1 = self._make_tracking_toolset([tool3])
+        tool4 = self._make_tracking_tool("toolset_tool2")
+        toolset2 = self._make_tracking_toolset([tool4])
+
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool1, toolset1, tool2, toolset2])
+
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+        agent.warm_up()
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
+    def test_warm_up_is_idempotent(self):
+        call_count = {"n": 0}
+        tool = Tool(
+            name="counting_tool",
+            description="A tool that counts warm_up calls",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "test",
+        )
+        original = tool.warm_up
+
+        def counting_warm_up():
+            original()
+            call_count["n"] += 1
+
+        tool.warm_up = counting_warm_up
+
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[tool])
+        agent.warm_up()
+        agent.warm_up()
+        agent.warm_up()
+
+        assert call_count["n"] == 1
+
+    def test_warm_up_refreshes_toolset(self):
+        """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        class MockMCPToolset(Toolset):
+            def __init__(self):
+                super().__init__([placeholder_tool])
+                self._connected = False
+
+            def warm_up(self):
+                if not self._connected:
+                    self.tools = [actual_tool]
+                    self._connected = True
+
+        mcp_toolset = MockMCPToolset()
+        agent = Agent(chat_generator=MockChatGenerator(), tools=mcp_toolset)
+
+        assert mcp_toolset.tools == [placeholder_tool]
+
+        agent.warm_up()
+
+        assert mcp_toolset.tools == [actual_tool]
+
+    def test_run_warms_lazy_toolset_before_tool_selection(self):
+        """
+        Agent.run() must warm up lazy toolsets before passing tools to the ChatGenerator and before executing
+        tool calls.
+        """
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        class MockMCPToolset(Toolset):
+            def __init__(self):
+                super().__init__([placeholder_tool])
+                self._connected = False
+
+            def warm_up(self):
+                if not self._connected:
+                    self.tools = [actual_tool]
+                    self._connected = True
+
+        @component
+        class ToolCallingChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages: list[ChatMessage], tools: Toolset | None = None, **kwargs) -> dict[str, Any]:
+                assert tools is not None
+                assert [tool.name for tool in tools] == ["get_time"]
+                if self.tool_invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.tool_invoked = True
+                return {
+                    "replies": [ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="get_time", arguments={})])]
+                }
+
+        mcp_toolset = MockMCPToolset()
+        agent = Agent(chat_generator=ToolCallingChatGenerator(), tools=mcp_toolset)
+
+        result = agent.run([ChatMessage.from_user("What time is it?")])
+
+        assert mcp_toolset.tools == [actual_tool]
+        assert result["messages"][2].tool_call_result.result == "2024-12-01T12:00:00Z"
+        assert result["last_message"].text == "done"
 
 
 class TestAgentNotTriggeredByInjectedInput:

@@ -16,7 +16,6 @@ from haystack import Pipeline, SuperComponent, component
 from haystack.components.agents import Agent, State
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.tools import ToolInvoker
 from haystack.components.websearch.serper_dev import SerperDevWebSearch
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
@@ -561,7 +560,7 @@ class TestComponentTool:
     def test_from_component_with_optional_state_param_excluded_from_schema(self):
         @component
         class ComponentWithOptionalState:
-            """A component that takes Optional[State] as an input (e.g. ToolInvoker style)."""
+            """A component that takes Optional[State] as an input (e.g. Agent tool-calling style)."""
 
             @component.output_types(result=str)
             def run(self, query: str, state: State | None = None) -> dict:
@@ -586,10 +585,14 @@ class TestComponentTool:
         assert result["last_message"] == ChatMessage.from_assistant("Answer")
 
 
-class TestComponentToolInPipeline:
+def _agent_tool_messages(result: dict[str, Any]) -> list[ChatMessage]:
+    return [message for message in result["agent"]["messages"] if message.is_from(ChatRole.TOOL)]
+
+
+class TestComponentToolInAgent:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_component_tool_in_pipeline(self):
+    def test_component_tool(self):
         # Create component and convert it to tool
         tool = ComponentTool(
             component=SimpleComponent(),
@@ -597,32 +600,29 @@ class TestComponentToolInPipeline:
             description="A tool that generates a greeting message for the user",
         )
 
-        # Create pipeline with OpenAIChatGenerator and ToolInvoker
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
-        # Connect components
-        pipeline.connect("llm.replies", "tool_invoker.messages")
-
-        message = ChatMessage.from_user(text="Using tools, greet Vladimir")
+        message = ChatMessage.from_user(text="Using a single tool call, greet Vladimir")
 
         # Run pipeline
-        result = pipeline.run({"llm": {"messages": [message]}})
+        result = pipeline.run({"agent": {"messages": [message]}})
 
         # Check results
-        tool_messages = result["tool_invoker"]["tool_messages"]
+        tool_messages = _agent_tool_messages(result)
         assert len(tool_messages) == 1
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Vladimir" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Vladimir" in tool_call_result.result
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_component_tool_in_pipeline_openai_tools_strict(self):
+    def test_component_tool_openai_tools_strict(self):
         # Create component and convert it to tool
         tool = ComponentTool(
             component=SimpleComponent(),
@@ -630,85 +630,83 @@ class TestComponentToolInPipeline:
             description="A tool that generates a greeting message for the user",
         )
 
-        # Create pipeline with OpenAIChatGenerator and ToolInvoker
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool], tools_strict=True))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-        # Connect components
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(tools_strict=True), tools=[tool]))
 
         message = ChatMessage.from_user(text="Using tools, greet Vladimir")
 
         # Run pipeline
-        result = pipeline.run({"llm": {"messages": [message]}})
+        result = pipeline.run({"agent": {"messages": [message]}})
 
         # Check results
-        tool_messages = result["tool_invoker"]["tool_messages"]
+        tool_messages = _agent_tool_messages(result)
         assert len(tool_messages) == 1
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Vladimir" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Vladimir" in tool_call_result.result
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_user_greeter_in_pipeline(self):
+    def test_user_greeter(self):
         tool = ComponentTool(
             component=UserGreeter(), name="user_greeter", description="A tool that greets users with their name and age"
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         message = ChatMessage.from_user(text="Greet the user Alice who is 30 years old")
 
-        result = pipeline.run({"llm": {"messages": [message]}})
-        tool_messages = result["tool_invoker"]["tool_messages"]
+        result = pipeline.run({"agent": {"messages": [message]}})
+        tool_messages = _agent_tool_messages(result)
         assert len(tool_messages) == 1
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert tool_message.tool_call_result.result == str({"message": "User Alice is 30 years old"})
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert tool_call_result.result == json.dumps({"message": "User Alice is 30 years old"})
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_list_processor_in_pipeline(self):
+    def test_list_processor(self):
         tool = ComponentTool(
             component=ListProcessor(), name="list_processor", description="A tool that concatenates a list of strings"
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         # Be explicit about using tools, otherwise model will ignore the tool call and return the result directly.
         message = ChatMessage.from_user(text="Using tools, join these words: hello, beautiful, world")
 
-        result = pipeline.run({"llm": {"messages": [message]}})
-        tool_messages = result["tool_invoker"]["tool_messages"]
-        assert len(tool_messages) == 1
+        result = pipeline.run({"agent": {"messages": [message]}})
+        tool_messages = _agent_tool_messages(result)
+        # The model may issue one or more parallel tool calls, so check the content across all of them.
+        assert len(tool_messages) >= 1
 
-        tool_message = tool_messages[0]
-        assert tool_message.is_from(ChatRole.TOOL)
-        # Check that the result contains the expected words (handle whitespace variations)
-        result_str = tool_message.tool_call_result.result
-        assert "concatenated" in result_str
-        # Normalize whitespace in the result string and check it contains the expected words
-        normalized_result = " ".join(result_str.split())
+        combined = ""
+        for tool_message in tool_messages:
+            assert tool_message.is_from(ChatRole.TOOL)
+            tool_call_result = tool_message.tool_call_result
+            assert tool_call_result is not None and not tool_call_result.error
+            assert isinstance(tool_call_result.result, str)
+            assert "concatenated" in tool_call_result.result
+            combined += " " + tool_call_result.result
+        # Normalize whitespace and check the concatenated output contains the expected words.
+        normalized_result = " ".join(combined.split())
         assert "hello" in normalized_result
         assert "beautiful" in normalized_result
         assert "world" in normalized_result
-        assert not tool_message.tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_person_processor_in_pipeline(self):
+    def test_person_processor(self):
         tool = ComponentTool(
             component=PersonProcessor(),
             name="person_processor",
@@ -716,26 +714,26 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         message = ChatMessage.from_user(
             text="Process information about the person Diana who lives at 123 Elm Street in Metropolis"
         )
 
-        result = pipeline.run({"llm": {"messages": [message]}})
-        tool_messages = result["tool_invoker"]["tool_messages"]
+        result = pipeline.run({"agent": {"messages": [message]}})
+        tool_messages = _agent_tool_messages(result)
         assert len(tool_messages) == 1
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Diana" in tool_message.tool_call_result.result and "Metropolis" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Diana" in tool_call_result.result and "Metropolis" in tool_call_result.result
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_document_processor_in_pipeline(self):
+    def test_document_processor(self):
         tool = ComponentTool(
             component=DocumentProcessor(),
             name="document_processor",
@@ -743,9 +741,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool], convert_result_to_json_string=True))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         message = ChatMessage.from_user(
             text="Concatenate these documents: First one says 'Hello world' and second one says 'Goodbye world' and "
@@ -753,22 +749,25 @@ class TestComponentToolInPipeline:
             "not set id, meta, score, embedding, sparse_embedding, dataframe, blob fields."
         )
 
-        result = pipeline.run({"llm": {"messages": [message]}})
+        result = pipeline.run({"agent": {"messages": [message]}})
 
-        tool_messages = result["tool_invoker"]["tool_messages"]
+        tool_messages = _agent_tool_messages(result)
         assert len(tool_messages) == 1
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        result = json.loads(tool_message.tool_call_result.result)
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert isinstance(tool_call_result.result, str)
+        result = json.loads(tool_call_result.result)
         assert "concatenated" in result
         assert "Hello world" in result["concatenated"]
         assert "Goodbye world" in result["concatenated"]
-        assert not tool_message.tool_call_result.error
+        assert not tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_lost_in_middle_ranker_in_pipeline(self):
+    def test_lost_in_middle_ranker(self):
         from haystack.components.rankers import LostInTheMiddleRanker
 
         tool = ComponentTool(
@@ -778,9 +777,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         message = ChatMessage.from_user(
             text="I have three documents with content: 'First doc', 'Middle doc', and 'Last doc'. Rank them top_k=2. "
@@ -788,9 +785,9 @@ class TestComponentToolInPipeline:
             "sparse_embedding, dataframe, blob fields."
         )
 
-        result = pipeline.run({"llm": {"messages": [message]}})
+        result = pipeline.run({"agent": {"messages": [message]}})
 
-        tool_messages = result["tool_invoker"]["tool_messages"]
+        tool_messages = _agent_tool_messages(result)
         assert len(tool_messages) == 1
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
@@ -798,7 +795,7 @@ class TestComponentToolInPipeline:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.skipif(not os.environ.get("SERPERDEV_API_KEY"), reason="SERPERDEV_API_KEY not set")
     @pytest.mark.integration
-    def test_serper_dev_web_search_in_pipeline(self):
+    def test_serper_dev_web_search(self):
         tool = ComponentTool(
             component=SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3),
             name="web_search",
@@ -806,13 +803,11 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         result = pipeline.run(
             {
-                "llm": {
+                "agent": {
                     "messages": [
                         ChatMessage.from_user(text="Use the web search tool to find information about Nikola Tesla")
                     ]
@@ -820,13 +815,16 @@ class TestComponentToolInPipeline:
             }
         )
 
-        assert len(result["tool_invoker"]["tool_messages"]) == 1
-        tool_message = result["tool_invoker"]["tool_messages"][0]
+        tool_messages = _agent_tool_messages(result)
+        assert len(tool_messages) == 1
+        tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert "Nikola Tesla" in tool_message.tool_call_result.result
-        assert not tool_message.tool_call_result.error
+        tool_call_result = tool_message.tool_call_result
+        assert tool_call_result is not None
+        assert "Nikola Tesla" in tool_call_result.result
+        assert not tool_call_result.error
 
-    def test_serde_in_pipeline(self, monkeypatch):
+    def test_serde(self, monkeypatch):
         monkeypatch.setenv("SERPERDEV_API_KEY", "test-key")
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
@@ -834,20 +832,15 @@ class TestComponentToolInPipeline:
         search = SerperDevWebSearch(top_k=3)
         tool = ComponentTool(component=search, name="web_search", description="Search the web for current information")
 
-        # Create and configure the pipeline
         pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-        pipeline.connect("tool_invoker.tool_messages", "llm.messages")
+        pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
         # Serialize to dict and verify structure
         pipeline_dict = pipeline.to_dict()
-        assert (
-            pipeline_dict["components"]["tool_invoker"]["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
-        )
-        assert len(pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"]) == 1
+        assert pipeline_dict["components"]["agent"]["type"] == "haystack.components.agents.agent.Agent"
+        assert len(pipeline_dict["components"]["agent"]["init_parameters"]["tools"]) == 1
 
-        tool_dict = pipeline_dict["components"]["tool_invoker"]["init_parameters"]["tools"][0]
+        tool_dict = pipeline_dict["components"]["agent"]["init_parameters"]["tools"][0]
         assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
         assert tool_dict["data"]["name"] == "web_search"
         assert tool_dict["data"]["component"]["type"] == "haystack.components.websearch.serper_dev.SerperDevWebSearch"
@@ -857,7 +850,7 @@ class TestComponentToolInPipeline:
         # Test round-trip serialization
         pipeline_yaml = pipeline.dumps()
         new_pipeline = Pipeline.loads(pipeline_yaml)
-        assert new_pipeline == pipeline
+        assert new_pipeline.to_dict() == pipeline_dict
 
     def test_component_tool_serde(self):
         tool = ComponentTool(
@@ -916,7 +909,7 @@ class TestComponentToolInPipeline:
         assert "prompt" in result_from_copy
         assert result_from_copy["prompt"] == result["prompt"]
 
-    def test_jinja_based_component_tool_in_pipeline(self, monkeypatch):
+    def test_jinja_based_component_tool(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
         with patch("openai.resources.chat.completions.Completions.create") as mock_create:

@@ -2,10 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
-from haystack import Pipeline
-from haystack.components.tools import ToolInvoker
+from haystack import Pipeline, component
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
+from haystack.components.agents.tool_calling import _run_tool
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ToolCall
@@ -27,6 +31,27 @@ def multiply_numbers(a: int, b: int) -> int:
 def subtract_numbers(a: int, b: int) -> int:
     """Subtract b from a."""
     return a - b
+
+
+@component
+class MockChatGenerator:
+    def to_dict(self):
+        return {"type": "test_toolset.MockChatGenerator", "init_parameters": {}}
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls()
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
+    ) -> dict[str, list[ChatMessage]]:
+        return {"replies": [ChatMessage.from_assistant("done")]}
+
+
+def _run_tool_messages(messages: list[ChatMessage], tools: Toolset | list[Tool | Toolset]) -> list[ChatMessage]:
+    tool_messages, _ = _run_tool(messages=messages, state=State(schema={}), tools=tools)
+    return tool_messages
 
 
 class CustomToolset(Toolset):
@@ -162,18 +187,16 @@ class TestToolset:
         assert toolset[0].name == "add"
         assert toolset[1].name == "multiply"
 
-        invoker = ToolInvoker(tools=toolset)
-
         add_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         add_message = ChatMessage.from_assistant(tool_calls=[add_call])
 
         multiply_call = ToolCall(tool_name="multiply", arguments={"a": 4, "b": 5})
         multiply_message = ChatMessage.from_assistant(tool_calls=[multiply_call])
 
-        result = invoker.run(messages=[add_message, multiply_message])
+        tool_messages = _run_tool_messages(messages=[add_message, multiply_message], tools=toolset)
 
-        assert len(result["tool_messages"]) == 2
-        tool_results = [message.tool_call_result.result for message in result["tool_messages"]]
+        assert len(tool_messages) == 2
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
         assert "5" in tool_results
         assert "20" in tool_results
 
@@ -197,13 +220,12 @@ class TestToolset:
         assert len(toolset) == 1
         assert toolset[0].name == "add"
 
-        invoker = ToolInvoker(tools=toolset)
         tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
+        tool_messages = _run_tool_messages(messages=[message], tools=toolset)
 
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
+        assert len(tool_messages) == 1
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
     def test_toolset_addition(self):
         """Test that toolsets can be combined."""
@@ -254,18 +276,16 @@ class TestToolset:
         assert "multiply" in tool_names
         assert "subtract" in tool_names
 
-        invoker = ToolInvoker(tools=combined_toolset)
-
         add_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
         multiply_call = ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5})
         subtract_call = ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5})
 
         message = ChatMessage.from_assistant(tool_calls=[add_call, multiply_call, subtract_call])
 
-        result = invoker.run(messages=[message])
+        tool_messages = _run_tool_messages(messages=[message], tools=combined_toolset)
 
-        assert len(result["tool_messages"]) == 3
-        tool_results = [message.tool_call_result.result for message in result["tool_messages"]]
+        assert len(tool_messages) == 3
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
         assert "15" in tool_results
         assert "50" in tool_results
         assert "5" in tool_results
@@ -391,13 +411,12 @@ class TestToolset:
         assert deserialized[0].name == "add"
         assert deserialized[0].description == "Add two numbers"
 
-        invoker = ToolInvoker(tools=deserialized)
         tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
+        tool_messages = _run_tool_messages(messages=[message], tools=deserialized)
 
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
+        assert len(tool_messages) == 1
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
     def test_custom_toolset_serialization(self):
         """Test serialization and deserialization of a custom Toolset subclass."""
@@ -427,13 +446,12 @@ class TestToolset:
         assert len(deserialized) == 1
         assert deserialized[0].name == "add"
 
-        invoker = ToolInvoker(tools=deserialized)
         tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
+        tool_messages = _run_tool_messages(messages=[message], tools=deserialized)
 
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
+        assert len(tool_messages) == 1
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
     def test_toolset_duplicate_tool_names(self):
         """Test that a Toolset raises an error for duplicate tool names."""
@@ -473,25 +491,24 @@ class TestToolset:
 
 
 class TestToolsetIntegration:
-    """Integration tests for Toolset in complete pipelines."""
+    """Integration tests for Toolset serialization in Agent."""
 
-    def test_custom_toolset_serde_in_pipeline(self):
-        """Test serialization and deserialization of a custom toolset within a pipeline."""
+    def test_custom_toolset_serde_in_agent(self):
+        """Test serialization and deserialization of a custom toolset within an Agent."""
 
-        pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=CalculatorToolset()))
+        agent = Agent(chat_generator=MockChatGenerator(), tools=CalculatorToolset())
 
-        pipeline_dict = pipeline.to_dict()
+        agent_dict = agent.to_dict()
 
-        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
-        assert tool_invoker_dict["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
-        assert len(tool_invoker_dict["init_parameters"]["tools"]["data"]) == 0
+        tools_dict = agent_dict["init_parameters"]["tools"]
+        assert tools_dict["type"] == "test_toolset.CalculatorToolset"
+        assert len(tools_dict["data"]) == 0
 
-        new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline == pipeline
+        new_agent = Agent.from_dict(agent_dict)
+        assert isinstance(new_agent.tools, CalculatorToolset)
 
-    def test_regular_toolset_serde_in_pipeline(self):
-        """Test serialization and deserialization of regular Toolsets within a pipeline."""
+    def test_regular_toolset_serde_in_agent(self):
+        """Test serialization and deserialization of regular Toolsets within an Agent."""
 
         add_tool = Tool(
             name="add",
@@ -517,60 +534,50 @@ class TestToolsetIntegration:
 
         toolset = Toolset([add_tool, multiply_tool])
 
-        pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=toolset))
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
 
-        pipeline_dict = pipeline.to_dict()
+        agent_dict = agent.to_dict()
 
-        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
-        assert tool_invoker_dict["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
-
-        # Verify the serialized toolset
-        tools_dict = tool_invoker_dict["init_parameters"]["tools"]
+        tools_dict = agent_dict["init_parameters"]["tools"]
         assert tools_dict["type"] == "haystack.tools.toolset.Toolset"
         assert len(tools_dict["data"]["tools"]) == 2
         tool_names = [tool["data"]["name"] for tool in tools_dict["data"]["tools"]]
         assert "add" in tool_names
         assert "multiply" in tool_names
 
-        # Deserialize and verify
-        new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline == pipeline
+        new_agent = Agent.from_dict(agent_dict)
+        assert isinstance(new_agent.tools, Toolset)
+        assert [tool.name for tool in new_agent.tools] == ["add", "multiply"]
 
 
-class TestToolsetWithToolInvoker:
+class TestToolsetWithAgent:
     def test_init_with_toolset(self, weather_tool):
-        """Test initializing ToolInvoker with a Toolset."""
+        """Test initializing Agent with a Toolset."""
         toolset = Toolset(tools=[weather_tool])
-        invoker = ToolInvoker(tools=toolset)
-        assert invoker.tools == toolset
-        assert invoker._tools_with_names == {tool.name: tool for tool in toolset}
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+        assert agent.tools == toolset
 
     def test_serde_with_toolset(self, weather_tool):
-        """Test serialization and deserialization of ToolInvoker with a Toolset."""
+        """Test serialization and deserialization of Agent with a Toolset."""
         toolset = Toolset(tools=[weather_tool])
-        invoker = ToolInvoker(tools=toolset)
-        data = invoker.to_dict()
-        deserialized_invoker = ToolInvoker.from_dict(data)
-        assert deserialized_invoker.tools == invoker.tools
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
-        assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
-        assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+        data = agent.to_dict()
+        deserialized_agent = Agent.from_dict(data)
+        assert deserialized_agent.tools == agent.tools
 
     def test_tool_invocation_error_with_toolset(self, faulty_tool):
         """Test tool invocation errors with a Toolset."""
         toolset = Toolset(tools=[faulty_tool])
-        invoker = ToolInvoker(tools=toolset)
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
         with pytest.raises(ToolInvocationError):
-            invoker.run(messages=[tool_call_message])
+            _run_tool(messages=[tool_call_message], state=State(schema={}), tools=toolset)
 
-    def test_toolinvoker_deserialization_with_custom_toolset(self, weather_tool):
-        """Test deserialization of ToolInvoker with a custom Toolset."""
+    def test_agent_deserialization_with_custom_toolset(self, weather_tool):
+        """Test deserialization of Agent with a custom Toolset."""
         custom_toolset = CustomToolset(tools=[weather_tool], custom_attr="custom_value")
-        invoker = ToolInvoker(tools=custom_toolset)
-        data = invoker.to_dict()
+        agent = Agent(chat_generator=MockChatGenerator(), tools=custom_toolset)
+        data = agent.to_dict()
 
         assert isinstance(data, dict)
         assert "type" in data and "init_parameters" in data
@@ -580,18 +587,15 @@ class TestToolsetWithToolInvoker:
         assert tools_data["data"]["tools"][0]["type"] == "haystack.tools.tool.Tool"
         assert tools_data.get("custom_attr") == "custom_value"
 
-        deserialized_invoker = ToolInvoker.from_dict(data)
-        assert deserialized_invoker.tools == invoker.tools
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
-        assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
-        assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
+        deserialized_agent = Agent.from_dict(data)
+        assert deserialized_agent.tools == agent.tools
 
 
 class TestToolsetList:
     """Tests for list[Toolset] functionality."""
 
-    def test_tool_invoker_with_list_of_toolsets(self, weather_tool):
-        """Test that ToolInvoker can be initialized with a mixed list of Tools and Toolsets."""
+    def test_agent_with_list_of_toolsets(self, weather_tool):
+        """Test that Agent can be initialized with a mixed list of Tools and Toolsets."""
         add_tool = Tool(
             name="add",
             description="Add two numbers",
@@ -618,16 +622,12 @@ class TestToolsetList:
         toolset2 = Toolset([add_tool])
 
         tools: list[Tool | Toolset] = [toolset1, multiply_tool, toolset2]
-        invoker = ToolInvoker(tools=tools)
+        agent = Agent(chat_generator=MockChatGenerator(), tools=tools)
 
-        # Verify tools are flattened internally
-        assert "weather_tool" in invoker._tools_with_names
-        assert "multiply" in invoker._tools_with_names
-        assert "add" in invoker._tools_with_names
-        assert len(invoker._tools_with_names) == 3
+        assert agent._select_tools(None) == tools
 
-    def test_tool_invoker_run_with_list_of_toolsets(self, weather_tool):
-        """Test running ToolInvoker with a list of Toolsets."""
+    def test_tool_calling_with_list_of_toolsets(self, weather_tool):
+        """Test running tool calls with a list of Toolsets."""
         add_tool = Tool(
             name="add",
             description="Add two numbers",
@@ -642,21 +642,18 @@ class TestToolsetList:
         toolset1 = Toolset([weather_tool])
         toolset2 = Toolset([add_tool])
 
-        invoker = ToolInvoker(tools=[toolset1, toolset2])
-
-        # Call both tools
         weather_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         add_call = ToolCall(tool_name="add", arguments={"a": 5, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[weather_call, add_call])
 
-        result = invoker.run(messages=[message])
+        tool_messages = _run_tool_messages(messages=[message], tools=[toolset1, toolset2])
 
-        assert len(result["tool_messages"]) == 2
-        assert "mostly sunny" in result["tool_messages"][0].tool_call_result.result
-        assert "8" in result["tool_messages"][1].tool_call_result.result
+        assert len(tool_messages) == 2
+        assert "mostly sunny" in tool_messages[0].tool_call_results[0].result
+        assert "8" in tool_messages[1].tool_call_results[0].result
 
-    def test_tool_invoker_serde_with_list_of_toolsets(self, weather_tool):
-        """Test serialization and deserialization of ToolInvoker with a list of Toolsets."""
+    def test_agent_serde_with_list_of_toolsets(self, weather_tool):
+        """Test serialization and deserialization of Agent with a list of Toolsets."""
         add_tool = Tool(
             name="add",
             description="Add two numbers",
@@ -671,8 +668,8 @@ class TestToolsetList:
         toolset1 = Toolset([weather_tool])
         toolset2 = Toolset([add_tool])
 
-        invoker = ToolInvoker(tools=[toolset1, toolset2])
-        data = invoker.to_dict()
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[toolset1, toolset2])
+        data = agent.to_dict()
 
         # Verify serialization preserves list[Toolset] structure
         tools_data = data["init_parameters"]["tools"]
@@ -683,14 +680,13 @@ class TestToolsetList:
         assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
 
         # Deserialize and verify
-        deserialized_invoker = ToolInvoker.from_dict(data)
-        assert isinstance(deserialized_invoker.tools, list)
-        assert len(deserialized_invoker.tools) == 2
-        assert all(isinstance(ts, Toolset) for ts in deserialized_invoker.tools)
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
+        deserialized_agent = Agent.from_dict(data)
+        assert isinstance(deserialized_agent.tools, list)
+        assert len(deserialized_agent.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
     def test_pipeline_with_list_of_toolsets(self):
-        """Test that a Pipeline can serialize/deserialize with a list of Toolsets."""
+        """Test that a Pipeline can serialize/deserialize an Agent with a list of Toolsets."""
         add_tool = Tool(
             name="add",
             description="Add two numbers",
@@ -717,32 +713,23 @@ class TestToolsetList:
         toolset2 = Toolset([multiply_tool])
 
         pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[toolset1, toolset2]))
+        pipeline.add_component("agent", Agent(chat_generator=MockChatGenerator(), tools=[toolset1, toolset2]))
 
         pipeline_dict = pipeline.to_dict()
 
         # Verify the serialized structure
-        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
-        tools_data = tool_invoker_dict["init_parameters"]["tools"]
+        agent_dict = pipeline_dict["components"]["agent"]
+        tools_data = agent_dict["init_parameters"]["tools"]
         assert isinstance(tools_data, list)
         assert len(tools_data) == 2
         assert all(ts["type"] == "haystack.tools.toolset.Toolset" for ts in tools_data)
 
         # Deserialize and verify functionality
         new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline == pipeline
-
-        # Run the pipeline to verify it works
-        tool_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = new_pipeline.run(data={"tool_invoker": {"messages": [message]}})
-
-        assert "tool_invoker" in result
-        assert len(result["tool_invoker"]["tool_messages"]) == 1
-        assert "15" in result["tool_invoker"]["tool_messages"][0].tool_call_result.result
+        assert new_pipeline.to_dict() == pipeline_dict
 
     def test_list_of_toolsets_runtime_override(self, weather_tool):
-        """Test that list of Toolsets can be passed as runtime override to ToolInvoker.run()."""
+        """Test that list of Toolsets can be passed as runtime override to Agent.run()."""
         add_tool = Tool(
             name="add",
             description="Add two numbers",
@@ -765,18 +752,30 @@ class TestToolsetList:
             function=multiply_numbers,
         )
 
-        # Initialize with one toolset
         toolset1 = Toolset([weather_tool])
-        invoker = ToolInvoker(tools=toolset1)
-
-        # Override with a different list of toolsets at runtime
         toolset2 = Toolset([add_tool])
         toolset3 = Toolset([multiply_tool])
 
-        add_call = ToolCall(tool_name="add", arguments={"a": 3, "b": 7})
-        message = ChatMessage.from_assistant(tool_calls=[add_call])
+        @component
+        class AddCallingChatGenerator:
+            tool_invoked = False
 
-        result = invoker.run(messages=[message], tools=[toolset2, toolset3])
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: list[Tool | Toolset] | None = None, **kwargs: Any
+            ) -> dict[str, list[ChatMessage]]:
+                assert tools == [toolset2, toolset3]
+                if self.tool_invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.tool_invoked = True
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="add", arguments={"a": 3, "b": 7})])
+                    ]
+                }
 
-        assert len(result["tool_messages"]) == 1
-        assert "10" in result["tool_messages"][0].tool_call_result.result
+        agent = Agent(chat_generator=AddCallingChatGenerator(), tools=toolset1)
+
+        result = agent.run(messages=[ChatMessage.from_user("Add numbers")], tools=[toolset2, toolset3])
+
+        assert result["messages"][2].tool_call_result.result == "10"

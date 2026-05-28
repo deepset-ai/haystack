@@ -24,7 +24,8 @@ class Toolset:
        Example:
     ```python
     from haystack.tools import Tool, Toolset
-    from haystack.components.tools import ToolInvoker
+    from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
 
     # Define math functions
     def add_numbers(a: int, b: int) -> int:
@@ -65,8 +66,8 @@ class Toolset:
     # Create a toolset with the math tools
     math_toolset = Toolset([add_tool, subtract_tool])
 
-    # Use the toolset with a ToolInvoker or ChatGenerator component
-    invoker = ToolInvoker(tools=math_toolset)
+    # Use the toolset with an Agent
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=math_toolset)
     ```
 
     2. Base class for dynamic tool loading:
@@ -77,7 +78,8 @@ class Toolset:
     ```python
     from haystack.core.serialization import generate_qualified_class_name
     from haystack.tools import Tool, Toolset
-    from haystack.components.tools import ToolInvoker
+    from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
 
     class CalculatorToolset(Toolset):
         '''A toolset for calculator operations.'''
@@ -127,14 +129,14 @@ class Toolset:
         def from_dict(cls, data):
             return cls()  # Recreate the tools dynamically during deserialization
 
-    # Create the dynamic toolset and use it with ToolInvoker
+    # Create the dynamic toolset and use it with an Agent
     calculator_toolset = CalculatorToolset()
-    invoker = ToolInvoker(tools=calculator_toolset)
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=calculator_toolset)
     ```
 
     Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
     making it behave like a list of Tools. This makes it compatible with components that expect
-    iterable tools, such as ToolInvoker or Haystack chat generators.
+    iterable tools, such as Agent or Haystack chat generators.
 
     When implementing a custom Toolset subclass for dynamic tool loading:
     - Perform the dynamic loading in the __init__ method
@@ -320,7 +322,7 @@ class _ToolsetWrapper(Toolset):
     A wrapper that holds multiple toolsets and provides a unified interface.
 
     This is used internally when combining different types of toolsets to preserve
-    their individual configurations while still being usable with ToolInvoker.
+    their individual configurations while still being usable with Agent and Haystack chat generators.
     """
 
     def __init__(self, toolsets: list[Toolset]) -> None:

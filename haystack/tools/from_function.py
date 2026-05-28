@@ -141,7 +141,7 @@ def create_tool_from_function(
         if inputs_from_state and param_name in inputs_from_state.values():
             continue
 
-        # Skip State-typed parameters (including Optional[State]) - ToolInvoker injects them at runtime
+        # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
         if _unwrap_optional(param.annotation) is State:
             continue
 
