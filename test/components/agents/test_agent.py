@@ -16,7 +16,7 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import Agent
+from haystack.components.agents.agent import Agent, _accumulate_usage
 from haystack.components.agents.state import merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -1127,6 +1127,51 @@ class TestAgent:
         assert result["step_count"] == 1
         assert result["token_usage"] == {}
         assert result["tool_call_counts"] == {"weather_tool": 0}
+
+
+class TestAccumulateUsage:
+    """Unit tests for the `_accumulate_usage` helper used to merge ChatGenerator usage dicts."""
+
+    def test_sums_flat_numeric_keys(self):
+        current = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+        new = {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
+        assert _accumulate_usage(current, new) == {"prompt_tokens": 13, "completion_tokens": 7, "total_tokens": 20}
+
+    def test_merges_nested_detail_dicts_recursively(self):
+        current = {"prompt_tokens": 10, "completion_tokens_details": {"reasoning_tokens": 2, "audio_tokens": 0}}
+        new = {
+            "prompt_tokens": 4,
+            "completion_tokens_details": {"reasoning_tokens": 3, "audio_tokens": 1},
+            "prompt_tokens_details": {"cached_tokens": 6},
+        }
+        assert _accumulate_usage(current, new) == {
+            "prompt_tokens": 14,
+            "completion_tokens_details": {"reasoning_tokens": 5, "audio_tokens": 1},
+            "prompt_tokens_details": {"cached_tokens": 6},
+        }
+
+    def test_adds_keys_missing_in_current(self):
+        assert _accumulate_usage({"prompt_tokens": 5}, {"completion_tokens": 7}) == {
+            "prompt_tokens": 5,
+            "completion_tokens": 7,
+        }
+
+    def test_empty_current_dict_returns_copy_of_new(self):
+        new = {"prompt_tokens": 5, "details": {"cached_tokens": 1}}
+        result = _accumulate_usage({}, new)
+        assert result == new
+        # Nested dicts must be deep-copied so future merges don't mutate the source.
+        new["details"]["cached_tokens"] = 999
+        assert result["details"]["cached_tokens"] == 1
+
+    def test_non_dict_non_numeric_falls_back_to_new(self):
+        # Strings, lists, or any other type that isn't a dict-or-number pair returns `new` unchanged.
+        assert _accumulate_usage("old-model", "new-model") == "new-model"
+        assert _accumulate_usage(5, "stringified") == "stringified"
+        assert _accumulate_usage({"model": "gpt-x"}, {"model": "gpt-y"}) == {"model": "gpt-y"}
+
+    def test_sums_floats(self):
+        assert _accumulate_usage(1.5, 2.25) == 3.75
 
 
 class TestAgentTracing:
