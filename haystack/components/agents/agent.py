@@ -79,6 +79,48 @@ def _accumulate_usage(current: Any, new: Any) -> Any:
     return new
 
 
+def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
+    """
+    Aggregate token usage from the latest LLM messages into the State.
+
+    Only writes when at least one message reports `meta["usage"]`, so generators that don't surface usage data
+    leave `token_usage` at its default empty dict rather than overwriting it.
+
+    :param state: The Agent's State, used to read the running `token_usage` total and write back the new total.
+    :param llm_messages: The ChatMessage objects returned from the latest LLM call. Token usage is read from each
+        message's `meta["usage"]` field, if present.
+    """
+    current = state.get("token_usage")
+    updated = False
+    for msg in llm_messages:
+        usage = msg.meta.get("usage")
+        if isinstance(usage, dict):
+            current = _accumulate_usage(current or {}, usage)
+            updated = True
+    if updated:
+        state.set("token_usage", current)
+
+
+def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
+    """
+    Increment per-tool call counts in the State for every successfully dispatched tool.
+
+    :param state: The Agent's State, used to read the running `tool_call_counts` map and write back the new totals.
+    :param tool_messages: The ChatMessage objects returned from the latest tool execution. Per-tool counts are
+        incremented based on each message's `tool_call_result.origin.tool_name`.
+    """
+    counts = state.get("tool_call_counts") or {}
+    updated = False
+    for tm in tool_messages:
+        if tm.tool_call_result is None:
+            continue
+        name = tm.tool_call_result.origin.tool_name
+        counts[name] = counts.get(name, 0) + 1
+        updated = True
+    if updated:
+        state.set("tool_call_counts", counts)
+
+
 def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
@@ -608,18 +650,18 @@ class Agent:
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
+        selected_tools = self._select_tools(tools)
+
         state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
         state = State(schema=self.state_schema, data=state_kwargs)
         state.set("messages", messages)
         state.set("step_count", 0)
         state.set("token_usage", {})
-        state.set("tool_call_counts", {})
+        state.set("tool_call_counts", {tool.name: 0 for tool in flatten_tools_or_toolsets(selected_tools)})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
-
-        selected_tools = self._select_tools(tools)
         generator_inputs: dict[str, Any] = {}
         if self._chat_generator_supports_tools:
             generator_inputs["tools"] = selected_tools
@@ -822,48 +864,6 @@ class Agent:
             result["last_message"] = msgs[-1]
         return result
 
-    @staticmethod
-    def _record_llm_usage(exe_context: _ExecutionContext, llm_messages: list[ChatMessage]) -> None:
-        """
-        Aggregate token usage from the latest LLM messages into the State.
-
-        Only writes when at least one message reports `meta["usage"]`, so generators that don't surface usage data
-        leave `token_usage` absent rather than populating an empty dict.
-
-        :param exe_context: The current execution context, used to access and update the State.
-        :param llm_messages: The list of ChatMessage objects returned from the latest LLM call, which may contain
-            token usage data in their `meta` fields.
-        """
-        current = exe_context.state.get("token_usage")
-        updated = False
-        for msg in llm_messages:
-            usage = msg.meta.get("usage")
-            if isinstance(usage, dict):
-                current = _accumulate_usage(current or {}, usage)
-                updated = True
-        if updated:
-            exe_context.state.set("token_usage", current)
-
-    @staticmethod
-    def _record_tool_calls(exe_context: _ExecutionContext, tool_messages: list[ChatMessage]) -> None:
-        """
-        Increment per-tool call counts in the State for every successfully dispatched tool.
-
-        :param exe_context: The current execution context, used to access and update the State.
-        :param tool_messages: The list of ChatMessage objects returned from the latest tool execution, which should
-            contain tool call results in their `tool_call_result` fields.
-        """
-        counts = exe_context.state.get("tool_call_counts") or {}
-        updated = False
-        for tm in tool_messages:
-            if tm.tool_call_result is None:
-                continue
-            name = tm.tool_call_result.origin.tool_name
-            counts[name] = counts.get(name, 0) + 1
-            updated = True
-        if updated:
-            exe_context.state.set("tool_call_counts", counts)
-
     def _run_step(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step. Returns True to continue the loop, False to stop."""
         with tracing.tracer.trace(
@@ -879,7 +879,7 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
-            self._record_llm_usage(exe_context, llm_messages)
+            _record_llm_usage(exe_context.state, llm_messages)
 
             if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
@@ -909,7 +909,7 @@ class Agent:
                     "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
                 )
             exe_context.state.set("messages", tool_messages)
-            self._record_tool_calls(exe_context, tool_messages)
+            _record_tool_calls(exe_context.state, tool_messages)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -943,7 +943,7 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
-            self._record_llm_usage(exe_context, llm_messages)
+            _record_llm_usage(exe_context.state, llm_messages)
 
             if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
@@ -973,7 +973,7 @@ class Agent:
                     "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
                 )
             exe_context.state.set("messages", tool_messages)
-            self._record_tool_calls(exe_context, tool_messages)
+            _record_tool_calls(exe_context.state, tool_messages)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)

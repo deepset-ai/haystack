@@ -1119,13 +1119,14 @@ class TestAgent:
         assert result["tool_call_counts"] == {"weather_tool": 1}
         assert result["token_usage"] == {"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10}
 
-    def test_token_usage_and_tool_call_counts_omitted_when_no_data(self, weather_tool):
+    def test_metadata_outputs_show_defaults_when_no_data(self, weather_tool):
+        """`token_usage` stays empty and `tool_call_counts` reports zero for every tool when nothing happens."""
         agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
         result = agent.run([ChatMessage.from_user("Hi")])
         # MockChatGenerator returns a text-only reply with no `usage` meta and no tool calls.
         assert result["step_count"] == 1
-        assert "token_usage" not in result
-        assert "tool_call_counts" not in result
+        assert result["token_usage"] == {}
+        assert result["tool_call_counts"] == {"weather_tool": 0}
 
 
 class TestAgentTracing:
@@ -1180,7 +1181,7 @@ class TestAgentTracing:
             "haystack.agent.exit_conditions": '["text"]',
             "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
         }
 
@@ -1286,7 +1287,7 @@ class TestAgentTracing:
             "haystack.agent.exit_conditions": '["text"]',
             "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}], "step_count": 1}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
         }
 
