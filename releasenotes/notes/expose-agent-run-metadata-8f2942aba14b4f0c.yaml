@@ -1,0 +1,17 @@
+---
+enhancements:
+  - |
+    ``Agent`` now exposes three new outputs that are populated automatically during a
+    run and made available alongside ``messages`` and ``last_message`` in the result dict:
+
+    - ``step_count`` (``int``): the number of steps the agent ran.
+    - ``token_usage`` (``dict[str, Any]``): aggregated token usage summed across every LLM call in the run
+    - ``tool_call_counts`` (``dict[str, int]``): number of times each tool was invoked, keyed by tool name.
+
+    These fields are added to ``Agent.state_schema`` automatically so that tools registered via ``inputs_from_state`` can read them mid-run.
+    They are exposed only as Agent outputs so cannot be passed in as inputs to ``Agent.run`` / ``Agent.run_async``.
+upgrade:
+  - |
+    ``step_count``, ``token_usage``, and ``tool_call_counts`` are now reserved keys in ``Agent.state_schema``.
+    Passing any of them via the ``state_schema`` argument now raises ``ValueError``.
+    Rename the conflicting state key (e.g. ``my_token_usage``) to migrate.
