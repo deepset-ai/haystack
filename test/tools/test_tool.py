@@ -330,57 +330,55 @@ class TestTool:
             )
 
 
+@pytest.fixture
+def async_tool():
+    return Tool(
+        name="weather", description="Get weather report", parameters=parameters, async_function=async_get_weather
+    )
+
+
+@pytest.fixture
+def sync_tool():
+    return Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report)
+
+
 class TestToolAsync:
     @pytest.mark.asyncio
-    async def test_invoke_async_uses_async_function(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, async_function=async_get_weather
-        )
+    async def test_invoke_async_awaits_async_function(self, async_tool):
+        assert async_tool.function is None
+        assert async_tool.async_function is async_get_weather
+        assert await async_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
 
-        assert tool.function is None
-        assert tool.async_function is async_get_weather
-        assert await tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
-
-    def test_invoke_sync_on_async_only_tool_raises(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, async_function=async_get_weather
-        )
-
+    def test_invoke_on_async_only_tool_raises(self, async_tool):
         with pytest.raises(ToolInvocationError, match=re.escape("has no sync `function`")):
-            tool.invoke(city="Berlin")
+            async_tool.invoke(city="Berlin")
 
     @pytest.mark.asyncio
-    async def test_invoke_async_falls_back_to_sync_function(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
-        )
-
+    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool):
         # Sync-only tool: invoke_async dispatches to a worker thread via asyncio.to_thread.
-        assert await tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert await sync_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
 
     @pytest.mark.asyncio
-    async def test_invoke_async_prefers_async_function_when_both_set(self):
-        sentinel = "from-async"
+    async def test_async_function_is_preferred_when_both_set(self):
+        async def from_async(city: str) -> str:
+            return "async"
 
-        async def async_marker(city: str) -> str:
-            return sentinel
-
-        def sync_marker(city: str) -> str:
-            return "from-sync"
+        def from_sync(city: str) -> str:
+            return "sync"
 
         tool = Tool(
             name="weather",
             description="Get weather report",
             parameters=parameters,
-            function=sync_marker,
-            async_function=async_marker,
+            function=from_sync,
+            async_function=from_async,
         )
 
-        assert await tool.invoke_async(city="Berlin") == sentinel
-        assert tool.invoke(city="Berlin") == "from-sync"
+        assert await tool.invoke_async(city="Berlin") == "async"
+        assert tool.invoke(city="Berlin") == "sync"
 
     @pytest.mark.asyncio
-    async def test_invoke_async_wraps_exception_in_tool_invocation_error(self):
+    async def test_invoke_async_wraps_exception(self):
         async def boom(city: str) -> str:
             raise RuntimeError("kaboom")
 
@@ -389,38 +387,31 @@ class TestToolAsync:
         with pytest.raises(ToolInvocationError, match="kaboom"):
             await tool.invoke_async(city="Berlin")
 
-    def test_to_dict_roundtrip_with_async_function(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, async_function=async_get_weather
-        )
+    @pytest.mark.parametrize(
+        "kwargs, expected_function, expected_async_function",
+        [
+            pytest.param({"async_function": async_get_weather}, None, "test_tool.async_get_weather", id="async-only"),
+            pytest.param(
+                {"function": get_weather_report, "async_function": async_get_weather},
+                "test_tool.get_weather_report",
+                "test_tool.async_get_weather",
+                id="both",
+            ),
+        ],
+    )
+    def test_serde_roundtrip(self, kwargs, expected_function, expected_async_function):
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, **kwargs)
 
         data = tool.to_dict()
-        assert data["data"]["function"] is None
-        assert data["data"]["async_function"] == "test_tool.async_get_weather"
+        assert data["data"]["function"] == expected_function
+        assert data["data"]["async_function"] == expected_async_function
 
         restored = Tool.from_dict(data)
-        assert restored.function is None
-        assert restored.async_function is async_get_weather
+        assert restored.function == kwargs.get("function")
+        assert restored.async_function == kwargs.get("async_function")
 
-    def test_to_dict_roundtrip_with_both_functions(self):
-        tool = Tool(
-            name="weather",
-            description="Get weather report",
-            parameters=parameters,
-            function=get_weather_report,
-            async_function=async_get_weather,
-        )
-
-        data = tool.to_dict()
-        assert data["data"]["function"] == "test_tool.get_weather_report"
-        assert data["data"]["async_function"] == "test_tool.async_get_weather"
-
-        restored = Tool.from_dict(data)
-        assert restored.function is get_weather_report
-        assert restored.async_function is async_get_weather
-
-    def test_from_dict_without_async_function_key(self):
-        # Backwards-compatible deserialization of a payload produced before `async_function` existed.
+    def test_from_dict_legacy_payload_without_async_function_key(self):
+        # Payload produced before `async_function` existed.
         legacy = {
             "type": "haystack.tools.tool.Tool",
             "data": {

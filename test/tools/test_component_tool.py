@@ -938,18 +938,14 @@ class TestComponentToolInAgent:
 
 
 @component
-class _SyncOnlyComponent:
-    """A simple sync-only component."""
-
+class SyncOnlyComponent:
     @component.output_types(reply=str)
     def run(self, text: str) -> dict[str, str]:
         return {"reply": f"sync:{text}"}
 
 
 @component
-class _DualModeComponent:
-    """A component that defines both `run` and `run_async`."""
-
+class DualModeComponent:
     @component.output_types(reply=str)
     def run(self, text: str) -> dict[str, str]:
         return {"reply": f"sync:{text}"}
@@ -959,35 +955,30 @@ class _DualModeComponent:
         return {"reply": f"async:{text}"}
 
 
+@pytest.fixture
+def sync_tool():
+    return ComponentTool(component=SyncOnlyComponent())
+
+
+@pytest.fixture
+def dual_tool():
+    return ComponentTool(component=DualModeComponent())
+
+
 class TestComponentToolAsync:
-    def test_sync_component_has_no_async_function(self):
-        tool = ComponentTool(component=_SyncOnlyComponent())
-
-        assert tool.function is not None
-        assert tool.async_function is None
-
-    def test_dual_mode_component_wires_async_function(self):
-        tool = ComponentTool(component=_DualModeComponent())
-
-        assert tool.function is not None
-        assert tool.async_function is not None
+    def test_async_function_is_wired_only_when_component_has_run_async(self, sync_tool, dual_tool):
+        assert sync_tool.function is not None
+        assert sync_tool.async_function is None
+        assert dual_tool.function is not None
+        assert dual_tool.async_function is not None
 
     @pytest.mark.asyncio
-    async def test_invoke_async_awaits_run_async_when_available(self):
-        tool = ComponentTool(component=_DualModeComponent())
-
-        result = await tool.invoke_async(text="hi")
-        assert result == {"reply": "async:hi"}
+    async def test_invoke_async_uses_run_async_when_available(self, dual_tool):
+        assert await dual_tool.invoke_async(text="hi") == {"reply": "async:hi"}
 
     @pytest.mark.asyncio
-    async def test_invoke_async_falls_back_to_sync_run_for_sync_only_component(self):
-        tool = ComponentTool(component=_SyncOnlyComponent())
+    async def test_invoke_async_falls_back_to_run_for_sync_only_component(self, sync_tool):
+        assert await sync_tool.invoke_async(text="hi") == {"reply": "sync:hi"}
 
-        result = await tool.invoke_async(text="hi")
-        assert result == {"reply": "sync:hi"}
-
-    def test_sync_invoke_uses_run_on_dual_mode_component(self):
-        tool = ComponentTool(component=_DualModeComponent())
-
-        result = tool.invoke(text="hi")
-        assert result == {"reply": "sync:hi"}
+    def test_invoke_uses_run_on_dual_mode_component(self, dual_tool):
+        assert dual_tool.invoke(text="hi") == {"reply": "sync:hi"}

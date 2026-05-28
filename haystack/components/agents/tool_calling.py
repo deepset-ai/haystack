@@ -459,9 +459,8 @@ async def _run_tool_async(
     if not tool_call_params:
         return tool_messages, state
 
-    # `max_workers` bounds concurrency uniformly: tools with a native async path are awaited directly,
-    # while sync-only tools dispatch to a worker thread inside `Tool.invoke_async`. A single semaphore
-    # caps both paths at the same limit.
+    # `max_workers` + Semaphore bounds concurrency for both sync and async tool calls async tools are awaited directly,
+    # and sync tools are dispatched to a worker thread inside `Tool.invoke_async`.
     semaphore = asyncio.Semaphore(max_workers)
     tasks = [_make_bounded_invoke_async(p["tool"], p["args"], semaphore)() for p in tool_call_params]
     results = await asyncio.gather(*tasks)

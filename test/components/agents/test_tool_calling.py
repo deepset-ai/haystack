@@ -892,16 +892,13 @@ class TestUtilities:
         ]
 
 
-class TestRunToolAsyncNativeAsyncTool:
-    """Tests that _run_tool_async uses each tool's native async path when available."""
-
+class TestRunToolAsync:
     @pytest.mark.asyncio
-    async def test_native_async_tool_does_not_use_thread(self, async_weather_tool):
+    async def test_async_tool_is_awaited_directly(self, async_weather_tool):
         message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(id="1", tool_name="weather_tool", arguments={"location": "Berlin"})]
         )
 
-        # Native async tools must be awaited directly — asyncio.to_thread should never be hit.
         with patch.object(asyncio, "to_thread") as to_thread_mock:
             tool_messages, _ = await _run_tool_async(
                 messages=[message], state=State(schema={}), tools=[async_weather_tool]
@@ -911,7 +908,7 @@ class TestRunToolAsyncNativeAsyncTool:
         assert json.loads(tool_messages[0].tool_call_results[0].result)["weather"] == "mostly sunny"
 
     @pytest.mark.asyncio
-    async def test_sync_only_tool_uses_thread(self, weather_tool):
+    async def test_sync_tool_is_dispatched_to_thread(self, weather_tool):
         message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(id="1", tool_name="weather_tool", arguments={"location": "Berlin"})]
         )
@@ -923,32 +920,30 @@ class TestRunToolAsyncNativeAsyncTool:
         assert tool_messages[0].tool_call_results[0].result is not None
 
     @pytest.mark.asyncio
-    async def test_semaphore_bounds_native_async_concurrency(self):
-        """`max_workers=1` must serialize tool calls even when they are natively async."""
+    async def test_max_workers_serializes_async_tool_calls(self):
         active = 0
-        max_active_observed = 0
+        max_active = 0
 
         async def slow_async(location: str) -> str:
-            nonlocal active, max_active_observed
+            nonlocal active, max_active
             active += 1
-            max_active_observed = max(max_active_observed, active)
+            max_active = max(max_active, active)
             await asyncio.sleep(0.01)
             active -= 1
             return location
 
-        async_tool = Tool(
+        slow_tool = Tool(
             name="weather_tool",
             description="Slow async tool.",
             parameters=weather_parameters,
             async_function=slow_async,
         )
-
         message = ChatMessage.from_assistant(
             tool_calls=[
                 ToolCall(id=str(i), tool_name="weather_tool", arguments={"location": f"city-{i}"}) for i in range(4)
             ]
         )
 
-        await _run_tool_async(messages=[message], state=State(schema={}), tools=[async_tool], max_workers=1)
+        await _run_tool_async(messages=[message], state=State(schema={}), tools=[slow_tool], max_workers=1)
 
-        assert max_active_observed == 1
+        assert max_active == 1

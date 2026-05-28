@@ -340,35 +340,33 @@ def test_remove_title_from_schema_handle_no_title_in_top_level():
     }
 
 
-def test_from_function_async_routes_to_async_function():
-    async def async_get_weather(city: str) -> str:
-        """Get weather report for a city."""
-        return f"Weather report for {city}: 20°C, sunny"
-
-    tool_obj = create_tool_from_function(async_get_weather)
-
-    assert tool_obj.function is None
-    assert tool_obj.async_function is async_get_weather
-    assert tool_obj.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
-
-
-def test_tool_decorator_async_routes_to_async_function():
-    @tool
-    async def async_get_weather(city: str) -> str:
-        """Get weather report for a city."""
-        return f"Weather report for {city}: 20°C, sunny"
-
-    assert async_get_weather.function is None
-    assert async_get_weather.async_function is not None
-    assert async_get_weather.name == "async_get_weather"
+async def async_function_with_docstring(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
 
 
 class TestFromFunctionAsync:
-    @pytest.mark.asyncio
-    async def test_invoke_async_works_for_async_decorated_tool(self):
-        @tool
-        async def async_get_weather(city: str) -> str:
-            """Get weather report for a city."""
-            return f"Weather report for {city}: 20°C, sunny"
+    def test_create_tool_from_async_function(self):
+        tool_obj = create_tool_from_function(async_function_with_docstring)
 
-        assert await async_get_weather.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert tool_obj.function is None
+        assert tool_obj.async_function is async_function_with_docstring
+        assert tool_obj.name == "async_function_with_docstring"
+        assert tool_obj.parameters == {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+        }
+
+    def test_tool_decorator_on_async_function(self):
+        decorated = tool(async_function_with_docstring)
+
+        assert decorated.function is None
+        assert decorated.async_function is async_function_with_docstring
+        assert decorated.name == "async_function_with_docstring"
+
+    @pytest.mark.asyncio
+    async def test_invoke_async(self):
+        decorated = tool(async_function_with_docstring)
+
+        assert await decorated.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
