@@ -246,6 +246,7 @@ class TestSerDe:
                                 "required": ["city"],
                             },
                             "function": "generators.chat.test_azure_responses.get_weather",
+                            "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,

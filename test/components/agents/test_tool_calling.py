@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import datetime
 import json
 import time
@@ -911,13 +912,11 @@ class TestRunToolAsyncNativeAsyncTool:
 
     @pytest.mark.asyncio
     async def test_sync_only_tool_uses_thread(self, weather_tool):
-        import asyncio as _aio
-
         message = ChatMessage.from_assistant(
             tool_calls=[ToolCall(id="1", tool_name="weather_tool", arguments={"location": "Berlin"})]
         )
 
-        with patch("haystack.tools.tool.asyncio.to_thread", wraps=_aio.to_thread) as to_thread_spy:
+        with patch("haystack.tools.tool.asyncio.to_thread", wraps=asyncio.to_thread) as to_thread_spy:
             tool_messages, _ = await _run_tool_async(messages=[message], state=State(schema={}), tools=[weather_tool])
 
         assert to_thread_spy.call_count == 1
@@ -926,8 +925,6 @@ class TestRunToolAsyncNativeAsyncTool:
     @pytest.mark.asyncio
     async def test_semaphore_bounds_native_async_concurrency(self):
         """`max_workers=1` must serialize tool calls even when they are natively async."""
-        import asyncio as _aio
-
         active = 0
         max_active_observed = 0
 
@@ -935,7 +932,7 @@ class TestRunToolAsyncNativeAsyncTool:
             nonlocal active, max_active_observed
             active += 1
             max_active_observed = max(max_active_observed, active)
-            await _aio.sleep(0.01)
+            await asyncio.sleep(0.01)
             active -= 1
             return location
 
