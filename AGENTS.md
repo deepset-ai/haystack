@@ -56,4 +56,9 @@ Every user-facing PR (not docs, not CI) must include a release note:
 
 hatch run release-note SHORT_DESCRIPTION
 
-Edit the generated file in `releasenotes/notes/`.
+Edit the generated file in `releasenotes/notes/`. 
+For inline code, use double backticks to wrap the code:
+
+```
+``OpenAIChatGenerator``
+```
