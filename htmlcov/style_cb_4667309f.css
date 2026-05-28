@@ -164,6 +164,8 @@ header button.par.show_par { background: #ffa; border: 2px solid #bbbb00; margin
 
 kbd { border: 1px solid black; border-color: #888 #333 #333 #888; padding: .1em .35em; font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: bold; background: #eee; border-radius: 3px; }
 
+.sep { padding: 0 .1em; }
+
 #source { padding: 1em 0 1em 3.5rem; font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
 #source p { position: relative; white-space: pre; }
