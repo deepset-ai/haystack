@@ -36,15 +36,12 @@ class Tool:
     :param parameters:
         A JSON schema defining the parameters expected by the Tool.
     :param function:
-        The synchronous function invoked by `Tool.invoke` (called by `Agent.run`). Must be a regular
-        function — coroutine functions belong on `async_function` instead. Either `function` or
-        `async_function` (or both) must be set.
+        The synchronous function invoked by `Tool.invoke`. Must be a regular function — coroutine functions should
+        be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
     :param async_function:
-        Optional coroutine function (defined with `async def`) awaited by `Tool.invoke_async` (called by
-        `Agent.run_async`). When only `async_function` is set, `invoke` raises a `ToolInvocationError`,
-        meaning the tool can only be used via `Agent.run_async`. When only `function` is set,
-        `invoke_async` transparently falls back to running `function` in a worker thread via
-        `asyncio.to_thread`.
+        Optional coroutine function awaited by `Tool.invoke_async`. When only `async_function` is set, `invoke` raises
+        a `ToolInvocationError`. When only `function` is set, `invoke_async` falls back to running `function` in a
+        worker thread via `asyncio.to_thread`.
     :param outputs_to_string:
         Optional dictionary defining how tool outputs should be converted into string(s) or results.
         If not provided, the tool result is converted to a string using a default handler.
@@ -234,8 +231,8 @@ class Tool:
         # Schema properties provide the validated parameter set
         valid_params: set[str] = set()
 
-        # Try to get parameters from function introspection. Prefer `function`; fall back to
-        # `async_function` for async-only tools.
+        # Try to get parameters from function introspection.
+        # Prefer `function`; fall back to `async_function` for async-only tools.
         introspection_target = self.function if self.function is not None else self.async_function
         if introspection_target is not None:
             try:
@@ -309,9 +306,8 @@ class Tool:
         """
         Invoke the Tool asynchronously with the provided keyword arguments.
 
-        If `async_function` is set, it is awaited directly. Otherwise the sync `function` is dispatched
-        to a worker thread via `asyncio.to_thread`, which propagates the current context (including
-        active tracing spans) to the worker.
+        If `async_function` is set, it is awaited directly. Otherwise the sync `function` is dispatched to a worker
+        thread via `asyncio.to_thread`, which propagates the current context to the worker.
 
         :raises ToolInvocationError: If the underlying call raises an exception.
         """

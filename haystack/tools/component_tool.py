@@ -217,6 +217,8 @@ class ComponentTool(Tool):
                 component_type=type(component),
                 converted_kwargs=converted_kwargs,
             )
+            # We know run_async exists at this point b/c we only pass the async invoker if the component has
+            # __haystack_supports_async__ = True
             return dict(await component.run_async(**converted_kwargs))  # type: ignore[attr-defined]
 
         component_supports_async = getattr(component, "__haystack_supports_async__", False)
@@ -239,8 +241,7 @@ class ComponentTool(Tool):
         self._is_warmed_up = False
 
         # Create the Tool instance with the component invoker as the function to be called and the schema.
-        # When the wrapped component exposes a `run_async`, also wire the async invoker so that
-        # `Agent.run_async` can drive the component natively instead of dispatching `run` to a thread.
+        # When the wrapped component exposes a `run_async`, also pass the async invoker.
         super().__init__(
             name=name,
             description=description,
