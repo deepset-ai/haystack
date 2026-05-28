@@ -902,7 +902,7 @@ class TestRunToolAsyncNativeAsyncTool:
         )
 
         # Native async tools must be awaited directly — asyncio.to_thread should never be hit.
-        with patch("haystack.tools.tool.asyncio.to_thread") as to_thread_mock:
+        with patch.object(asyncio, "to_thread") as to_thread_mock:
             tool_messages, _ = await _run_tool_async(
                 messages=[message], state=State(schema={}), tools=[async_weather_tool]
             )
@@ -916,7 +916,7 @@ class TestRunToolAsyncNativeAsyncTool:
             tool_calls=[ToolCall(id="1", tool_name="weather_tool", arguments={"location": "Berlin"})]
         )
 
-        with patch("haystack.tools.tool.asyncio.to_thread", wraps=asyncio.to_thread) as to_thread_spy:
+        with patch.object(asyncio, "to_thread", wraps=asyncio.to_thread) as to_thread_spy:
             tool_messages, _ = await _run_tool_async(messages=[message], state=State(schema={}), tools=[weather_tool])
 
         assert to_thread_spy.call_count == 1

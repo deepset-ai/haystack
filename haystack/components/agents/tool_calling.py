@@ -213,8 +213,8 @@ def _get_func_params(tool: Tool) -> dict[str, Any]:
     Return parameter names → annotations for a tool's invocation function.
 
     - For ComponentTool, this is the annotated input schema defined on the underlying component.
-    - For regular Tools, this is the function signature of the `function` callable, falling back to
-      `async_function` for async-only tools.
+    - For regular Tools, this is the function signature of the `function` callable, falling back to `async_function`
+      for async-only tools.
 
     :param tool: The tool to inspect.
     :returns: A dict mapping parameter names to their type annotations.
@@ -233,8 +233,8 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
     """
     Merge LLM-provided arguments with state-sourced arguments.
 
-    LLM args take precedence. State values are pulled in via `inputs_from_state` mappings or
-    parameter-name matching, then the live State object is injected for any param annotated as State.
+    LLM args take precedence. State values are pulled in via `inputs_from_state` mappings or parameter-name matching,
+    then the live State object is injected for any param annotated as State.
 
     :param tool: The tool being invoked, used to determine parameter mappings and State injection.
     :param llm_args: The arguments provided by the LLM, which take precedence over state values.
