@@ -616,7 +616,7 @@ class TestRunToolErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
-        chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool)
+        chat_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
         assert chat_message.tool_call_results[0].result == '{"weather": "sunny", "temp": "25"}'
 
     def test_output_handler_failure_falls_back_to_string(self):
@@ -630,7 +630,7 @@ class TestRunToolErrorHandling:
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
         tool_result = datetime.datetime.now()
-        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool)
+        tool_message = _build_tool_result_message(tool_result, tool_call, weather_tool, raise_on_failure=False)
 
         assert not tool_message.tool_call_results[0].error
         assert isinstance(tool_message.tool_call_results[0].result, str)
@@ -648,9 +648,25 @@ class TestRunToolErrorHandling:
         )
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
-        tool_message = _build_tool_result_message("something", tool_call, weather_tool)
+        tool_message = _build_tool_result_message("something", tool_call, weather_tool, raise_on_failure=False)
         assert not tool_message.tool_call_results[0].error
         assert tool_message.tool_call_results[0].result == "something"
+
+    def test_output_handler_failure_raises_when_raise_on_failure(self):
+        def handler(result):
+            raise ValueError("Handler error")
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            outputs_to_string={"handler": handler},
+        )
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        with pytest.raises(ValueError, match="Handler error"):
+            _build_tool_result_message("something", tool_call, weather_tool, raise_on_failure=True)
 
     def test_run_state_merge_error_always_raises(self, weather_tool_with_outputs_to_state):
         class ProblematicState(State):
@@ -798,6 +814,7 @@ class TestUtilities:
             config={"raw_result": True},
             result=[image_content],
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+            raise_on_failure=False,
         )
         assert result == [image_content]
 
@@ -808,6 +825,7 @@ class TestUtilities:
             config={"source": "images", "raw_result": True},
             result={"images": [image_content]},
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+            raise_on_failure=False,
         )
         assert result == [image_content]
 
@@ -819,6 +837,7 @@ class TestUtilities:
             config={"handler": handler, "raw_result": True},
             result={"base64_image_string": base64_image_string, "mime_type": "image/png"},
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+            raise_on_failure=False,
         )
         assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
 
@@ -833,6 +852,7 @@ class TestUtilities:
                 "other_key": "other_value",
             },
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
+            raise_on_failure=False,
         )
         assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
 

@@ -94,12 +94,15 @@ def _result_to_string(result: Any) -> str:
         return str(result)
 
 
-def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCall) -> Any:
+def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCall, *, raise_on_failure: bool) -> Any:
     """
     Extract and convert a single tool output according to `config`.
 
     `config` may contain `source` (key to extract from result dict), `handler` (conversion callable), and
     `raw_result` (return the value without string conversion).
+
+    If a configured `handler` raises, the exception is re-raised when `raise_on_failure` is True; otherwise
+    a warning is logged and the value is converted via `_result_to_string`.
     """
     source_key = config.get("source")
     value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
@@ -117,6 +120,8 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
     try:
         return handler(value)
     except Exception as e:
+        if raise_on_failure:
+            raise
         logger.warning(
             "Output handler '{handler}' for tool '{tool}' failed, falling back to string conversion. Error: {err}",
             handler=handler.__name__,
@@ -126,18 +131,20 @@ def _process_tool_output(config: dict[str, Any], result: Any, tool_call: ToolCal
         return _result_to_string(value)
 
 
-def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool) -> ChatMessage:
+def _build_tool_result_message(result: Any, tool_call: ToolCall, tool: Tool, *, raise_on_failure: bool) -> ChatMessage:
     """Convert a raw tool result into a ChatMessage, applying `outputs_to_string` config if present."""
     outputs_config = tool.outputs_to_string or {}
 
     # Single-output config (or no config): keys are at the root level
     if not outputs_config or any(k in outputs_config for k in ("source", "handler", "raw_result")):
-        tool_result = _process_tool_output(outputs_config, result, tool_call)
+        tool_result = _process_tool_output(outputs_config, result, tool_call, raise_on_failure=raise_on_failure)
         return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
     # Multi-output config: each key maps to its own sub-config — stringify each value, then stringify the whole dict
     tool_result_dict = {
-        output_key: _process_tool_output({**cfg, "raw_result": False}, result, tool_call)
+        output_key: _process_tool_output(
+            {**cfg, "raw_result": False}, result, tool_call, raise_on_failure=raise_on_failure
+        )
         for output_key, cfg in outputs_config.items()
     }
     return ChatMessage.from_tool(tool_result=_result_to_string(tool_result_dict), origin=tool_call)
@@ -371,7 +378,9 @@ def _run_tool(
             else:
                 tool = tools_with_names[tool_call.tool_name]
                 _merge_tool_outputs_into_state(tool, result, state)
-                tool_messages.append(_build_tool_result_message(result, tool_call, tool))
+                tool_messages.append(
+                    _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+                )
 
             if streaming_callback is not None:
                 streaming_callback(_create_tool_result_streaming_chunk(tool_messages, tool_call))
@@ -441,7 +450,9 @@ async def _run_tool_async(
             else:
                 tool = tools_with_names[tool_call.tool_name]
                 _merge_tool_outputs_into_state(tool, result, state)
-                tool_messages.append(_build_tool_result_message(result, tool_call, tool))
+                tool_messages.append(
+                    _build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure)
+                )
 
             if streaming_callback is not None:
                 await streaming_callback(  # type: ignore[misc]
