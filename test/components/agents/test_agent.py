@@ -929,6 +929,13 @@ class TestAgent:
         assert "last_message" in response
         assert isinstance(response["last_message"], ChatMessage)
         assert response["messages"][-1] == response["last_message"]
+        # Auto-populated run outputs:
+        # 4 messages → tool call + final answer = 2 LLM calls = 2 steps; one weather_tool invocation.
+        assert response["step_count"] == 2
+        assert response["tool_call_counts"] == {"weather_tool": 1}
+        assert response["token_usage"]["prompt_tokens"] > 0
+        assert response["token_usage"]["completion_tokens"] > 0
+        assert response["token_usage"]["total_tokens"] > 0
 
     @pytest.mark.asyncio
     async def test_generation_kwargs(self):
@@ -1004,13 +1011,21 @@ class TestAgent:
             streaming_callback_called = True
 
         result = agent.run(
-            [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
+            [ChatMessage.from_user("What's the weather in Paris?")],
+            streaming_callback=streaming_callback,
+            generation_kwargs={"stream_options": {"include_usage": True}},
         )
 
         assert result is not None
         assert result["messages"] is not None
         assert result["last_message"] is not None
         assert streaming_callback_called
+        # Auto-populated run outputs.
+        assert result["step_count"] == 2
+        assert result["tool_call_counts"] == {"weather_tool": 1}
+        assert result["token_usage"]["prompt_tokens"] > 0
+        assert result["token_usage"]["completion_tokens"] > 0
+        assert result["token_usage"]["total_tokens"] > 0
 
     @pytest.mark.asyncio
     async def test_run_async_with_async_streaming_callback(self, weather_tool):

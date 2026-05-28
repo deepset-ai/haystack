@@ -90,6 +90,7 @@ class TestLLM:
             assert llm.__haystack_output__._sockets_dict == {
                 "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
                 "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
+                "token_usage": OutputSocket(name="token_usage", type=dict[str, Any], receivers=[]),
             }
 
         def test_detects_no_tools_support(self):
