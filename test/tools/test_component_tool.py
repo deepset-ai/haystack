@@ -589,10 +589,10 @@ def _agent_tool_messages(result: dict[str, Any]) -> list[ChatMessage]:
     return [message for message in result["agent"]["messages"] if message.is_from(ChatRole.TOOL)]
 
 
-class TestComponentToolInPipeline:
+class TestComponentToolInAgent:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_component_tool_in_pipeline(self):
+    def test_component_tool(self):
         # Create component and convert it to tool
         tool = ComponentTool(
             component=SimpleComponent(),
@@ -603,7 +603,7 @@ class TestComponentToolInPipeline:
         pipeline = Pipeline()
         pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
 
-        message = ChatMessage.from_user(text="Using tools, greet Vladimir")
+        message = ChatMessage.from_user(text="Using a single tool call, greet Vladimir")
 
         # Run pipeline
         result = pipeline.run({"agent": {"messages": [message]}})
@@ -622,7 +622,7 @@ class TestComponentToolInPipeline:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_component_tool_in_pipeline_openai_tools_strict(self):
+    def test_component_tool_openai_tools_strict(self):
         # Create component and convert it to tool
         tool = ComponentTool(
             component=SimpleComponent(),
@@ -651,7 +651,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_user_greeter_in_pipeline(self):
+    def test_user_greeter(self):
         tool = ComponentTool(
             component=UserGreeter(), name="user_greeter", description="A tool that greets users with their name and age"
         )
@@ -674,7 +674,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_list_processor_in_pipeline(self):
+    def test_list_processor(self):
         tool = ComponentTool(
             component=ListProcessor(), name="list_processor", description="A tool that concatenates a list of strings"
         )
@@ -706,7 +706,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_person_processor_in_pipeline(self):
+    def test_person_processor(self):
         tool = ComponentTool(
             component=PersonProcessor(),
             name="person_processor",
@@ -733,7 +733,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_document_processor_in_pipeline(self):
+    def test_document_processor(self):
         tool = ComponentTool(
             component=DocumentProcessor(),
             name="document_processor",
@@ -767,7 +767,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_lost_in_middle_ranker_in_pipeline(self):
+    def test_lost_in_middle_ranker(self):
         from haystack.components.rankers import LostInTheMiddleRanker
 
         tool = ComponentTool(
@@ -795,7 +795,7 @@ class TestComponentToolInPipeline:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.skipif(not os.environ.get("SERPERDEV_API_KEY"), reason="SERPERDEV_API_KEY not set")
     @pytest.mark.integration
-    def test_serper_dev_web_search_in_pipeline(self):
+    def test_serper_dev_web_search(self):
         tool = ComponentTool(
             component=SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3),
             name="web_search",
@@ -824,7 +824,7 @@ class TestComponentToolInPipeline:
         assert "Nikola Tesla" in tool_call_result.result
         assert not tool_call_result.error
 
-    def test_serde_in_pipeline(self, monkeypatch):
+    def test_serde(self, monkeypatch):
         monkeypatch.setenv("SERPERDEV_API_KEY", "test-key")
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
@@ -909,7 +909,7 @@ class TestComponentToolInPipeline:
         assert "prompt" in result_from_copy
         assert result_from_copy["prompt"] == result["prompt"]
 
-    def test_jinja_based_component_tool_in_pipeline(self, monkeypatch):
+    def test_jinja_based_component_tool(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
         with patch("openai.resources.chat.completions.Completions.create") as mock_create:
