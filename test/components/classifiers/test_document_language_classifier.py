@@ -50,3 +50,33 @@ class TestDocumentLanguageClassifier:
             classifier = DocumentLanguageClassifier()
             classifier.run(documents=[Document(content=".")])
             assert "Langdetect cannot detect the language of Document with id" in caplog.text
+
+    def test_content_none_does_not_raise(self):
+        """Regression test for https://github.com/deepset-ai/haystack/issues/11418.
+
+        Documents with content=None (blob-only documents) must not raise TypeError.
+        They should be classified as 'unmatched' and a warning must be emitted.
+        """
+        classifier = DocumentLanguageClassifier()
+        # Should NOT raise TypeError
+        result = classifier.run(documents=[Document(content=None)])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].meta["language"] == "unmatched"
+
+    def test_content_none_emits_warning(self, caplog):
+        """Regression test: a warning is logged for documents with content=None."""
+        with caplog.at_level(logging.WARNING):
+            classifier = DocumentLanguageClassifier()
+            classifier.run(documents=[Document(content=None)])
+            assert "Langdetect cannot detect the language of Document with id" in caplog.text
+
+    def test_mixed_none_and_text_content(self):
+        """Documents with content=None and normal documents can coexist in the same batch."""
+        classifier = DocumentLanguageClassifier()
+        docs = [
+            Document(content="This is an english sentence."),
+            Document(content=None),
+        ]
+        result = classifier.run(documents=docs)
+        assert result["documents"][0].meta["language"] == "en"
+        assert result["documents"][1].meta["language"] == "unmatched"
