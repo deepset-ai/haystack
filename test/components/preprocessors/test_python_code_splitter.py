@@ -206,6 +206,41 @@ class TestBasicOutput:
             assert chunk.meta["start_line"] >= 1
             assert chunk.meta["end_line"] >= chunk.meta["start_line"]
 
+    def test_unit_kinds_lists_what_was_merged(self, simple_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=200)
+        result = splitter.run(documents=[Document(content=simple_module_source)])
+        all_kinds = set()
+        for chunk in result["documents"]:
+            for kind in chunk.meta["unit_kinds"]:
+                all_kinds.add(kind)
+        text = " ".join(all_kinds).lower()
+        assert any("import" in t for t in all_kinds) or "import" in text
+        assert any("func" in t or "method" in t for t in all_kinds) or any("func" in t for t in text.split())
+
+    def test_multiple_documents_each_produces_chunks(self, simple_module_source, class_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=10)
+        docs = [
+            Document(content=simple_module_source, meta={"file_name": "a.py"}),
+            Document(content=class_source, meta={"file_name": "b.py"}),
+        ]
+        result = splitter.run(documents=docs)
+        file_names = {c.meta.get("file_name") for c in result["documents"]}
+        assert file_names == {"a.py", "b.py"}
+
+    def test_split_id_resets_per_document(self, simple_module_source, class_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=10)
+        docs = [
+            Document(content=simple_module_source, meta={"file_name": "a.py"}),
+            Document(content=class_source, meta={"file_name": "b.py"}),
+        ]
+        result = splitter.run(documents=docs)
+        per_file_ids: dict[str, list[int]] = {"a.py": [], "b.py": []}
+        for chunk in result["documents"]:
+            per_file_ids[chunk.meta["file_name"]].append(chunk.meta["split_id"])
+        for ids in per_file_ids.values():
+            assert ids == sorted(ids)
+            assert ids[0] == 0
+
 
 class TestOrderingAndLineRanges:
     def test_chunks_are_in_source_order(self, class_source):
@@ -290,21 +325,6 @@ class TestFileNamePropagation:
             assert chunk.meta["project"] == "haystack"
 
 
-class TestClassMetadata:
-    def test_class_name_set_when_chunk_belongs_to_one_class(self, class_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
-        result = splitter.run(documents=[Document(content=class_source)])
-        # At least one chunk should be from class Circle and carry include_classes.
-        circle_chunks = [c for c in result["documents"] if "Circle" in (c.meta.get("include_classes") or [])]
-        assert circle_chunks, "Expected at least one chunk for class Circle"
-
-    def test_class_name_present_for_shape_methods(self, class_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
-        result = splitter.run(documents=[Document(content=class_source)])
-        shape_chunks = [c for c in result["documents"] if "Shape" in (c.meta.get("include_classes") or [])]
-        assert shape_chunks, "Expected at least one chunk for class Shape"
-
-
 class TestDecorators:
     def test_decorators_metadata_present(self):
         source = textwrap.dedent(
@@ -365,8 +385,6 @@ class TestDecorators:
             decorators = chunk.meta.get("decorators") or []
             assert len(decorators) == len(set(decorators))
 
-
-class TestThreeDecorators:
     def test_function_with_three_decorators_lists_all(self):
         source = textwrap.dedent(
             """
@@ -427,6 +445,18 @@ class TestThreeDecorators:
 
 
 class TestIncludeClassesMeta:
+    def test_circle_methods_carry_include_classes(self, class_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
+        result = splitter.run(documents=[Document(content=class_source)])
+        circle_chunks = [c for c in result["documents"] if "Circle" in (c.meta.get("include_classes") or [])]
+        assert circle_chunks, "Expected at least one chunk for class Circle"
+
+    def test_shape_methods_carry_include_classes(self, class_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
+        result = splitter.run(documents=[Document(content=class_source)])
+        shape_chunks = [c for c in result["documents"] if "Shape" in (c.meta.get("include_classes") or [])]
+        assert shape_chunks, "Expected at least one chunk for class Shape"
+
     def test_include_classes_set_for_class_chunks(self, class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
         result = splitter.run(documents=[Document(content=class_source)])
@@ -856,21 +886,6 @@ class TestTopLevelStatements:
         assert "Utility helpers for the pipeline." in joined
 
 
-class TestUnitKinds:
-    def test_unit_kinds_lists_what_was_merged(self, simple_module_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=200)
-        result = splitter.run(documents=[Document(content=simple_module_source)])
-        # Merge everything into one chunk and check that several kinds appear.
-        all_kinds = set()
-        for chunk in result["documents"]:
-            for kind in chunk.meta["unit_kinds"]:
-                all_kinds.add(kind)
-        # We expect at least one function-like and one import-like kind.
-        text = " ".join(all_kinds).lower()
-        assert any("import" in t for t in all_kinds) or "import" in text
-        assert any("func" in t or "method" in t for t in all_kinds) or any("func" in t for t in text.split())
-
-
 class TestOversizedFallback:
     def test_warns_on_oversized_function(self, oversized_function_source, caplog):
         import logging
@@ -905,11 +920,7 @@ class TestOversizedFallback:
         for chunk in result["documents"]:
             assert not chunk.meta.get("secondary_split")
 
-
-class TestEffectiveLines:
     def test_long_lines_count_as_more_effective_lines(self):
-        # With expected_chars_per_line=10 and tiny max_effective_lines, even one long line should
-        # itself exceed the budget and produce its own chunk.
         long_line_source = (
             textwrap.dedent(
                 """
@@ -925,40 +936,11 @@ class TestEffectiveLines:
             .format(padding="x" * 500)
         )
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2, expected_chars_per_line=10)
-
         result = splitter.run(documents=[Document(content=long_line_source)])
-        # The "longer" function should not be merged with "short" because its
-        # effective length already saturates the budget.
         chunks_with_short = [c for c in result["documents"] if "def short" in (c.content or "")]
         chunks_with_long = [c for c in result["documents"] if "def longer" in (c.content or "")]
         assert chunks_with_short and chunks_with_long
         assert chunks_with_short[0] is not chunks_with_long[0]
-
-
-class TestMultipleDocuments:
-    def test_multiple_documents_each_produces_chunks(self, simple_module_source, class_source):
-        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=10)
-        docs = [
-            Document(content=simple_module_source, meta={"file_name": "a.py"}),
-            Document(content=class_source, meta={"file_name": "b.py"}),
-        ]
-        result = splitter.run(documents=docs)
-        file_names = {c.meta.get("file_name") for c in result["documents"]}
-        assert file_names == {"a.py", "b.py"}
-
-    def test_split_id_resets_per_document(self, simple_module_source, class_source):
-        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=10)
-        docs = [
-            Document(content=simple_module_source, meta={"file_name": "a.py"}),
-            Document(content=class_source, meta={"file_name": "b.py"}),
-        ]
-        result = splitter.run(documents=docs)
-        per_file_ids = {"a.py": [], "b.py": []}
-        for chunk in result["documents"]:
-            per_file_ids[chunk.meta["file_name"]].append(chunk.meta["split_id"])
-        for ids in per_file_ids.values():
-            assert ids == sorted(ids)
-            assert ids[0] == 0
 
 
 class TestEdgeCases:
