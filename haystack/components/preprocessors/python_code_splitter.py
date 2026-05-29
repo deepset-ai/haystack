@@ -15,23 +15,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class _CodeUnit:
-    """
-    Internal representation of a single syntactic split unit extracted from a Python source file.
-
-    :ivar source: The slice of the original Python source code for this unit.
-    :ivar start_line: The starting line number (1-indexed) of this unit in the original source.
-    :ivar end_line: The ending line number (1-indexed, inclusive) of this unit in the original source.
-    :ivar kind: The kind of unit. One of: 'module_docstring', 'imports', 'class', 'class_header',
-        'method', 'nested_class', 'function', or 'statement'.
-    :ivar name: The name of the unit (for functions, methods, classes), or None.
-    :ivar class_name: The name of the enclosing class if this unit belongs to a class, or None.
-        Used only for internal bookkeeping.
-    :ivar class_signature: The source text of the enclosing class signature (decorators plus the
-        ``class Foo(...):`` lines, without the body), or None. Used internally to optionally
-        prepend a class definition to chunks whose class header lives in another chunk.
-    :ivar decorators: List of decorator strings for this unit.
-    :ivar docstring: The docstring of this unit if stripped, or None.
-    """
+    """One syntactic split unit (function, class header, method, imports block, statement, ...)."""
 
     source: str
     start_line: int
@@ -47,164 +31,56 @@ class _CodeUnit:
 @component
 class PythonCodeSplitter:
     """
-    Split Python source code.
+    Split Python source code into syntax-aware chunks.
 
-    ### General behavior
+    The component parses each source with :mod:`ast` into *units* (module docstring,
+    consecutive ``import`` blocks, top-level functions, class headers, methods, nested
+    classes, and remaining statements) and merges them greedily in source order toward
+    ``max_effective_lines`` per chunk, where effective lines are
+    ``ceil(len(source) / expected_chars_per_line)``. Functions and methods are kept
+    whole; the resulting chunks read top-to-bottom like the original file with comments
+    and blank lines preserved.
 
-    Functions of reasonable size will fit as a whole into the documents, which means,
-    each created document will contain complete functions. However,
-    if the number of effective lines in a function exceeds ``max_effective_lines * oversized_factor``
-    (which happens for **huge functions**), the splitter falls back to the secondary
-    split to split that specific function, under which syntactic correctness is not
-    guaranteed anymore.
+    A function whose effective length exceeds ``oversized_factor * max_effective_lines``
+    is the only case where chunks may overlap: it is broken down with a line-based
+    secondary split (:class:`DocumentSplitter`, ``split_by="line"``) and the resulting
+    pieces carry ``secondary_split=True`` along with the originating function's metadata.
+    The primary split never adds overlap.
 
-    ### Detailed description
+    Per-chunk metadata: ``source_id``, ``split_id``, ``start_line``, ``end_line``,
+    ``unit_kinds``; plus ``include_classes``, ``decorators``, and ``docstrings`` (when
+    ``strip_docstrings=True``) where applicable. ``file_name`` and any other parent
+    document meta are propagated.
 
-    The component parses the source with :mod:`ast` and produces a flat list of *units*:
-
-    - the module docstring (if present),
-    - blocks of consecutive ``import`` / ``from ... import`` statements,
-    - top-level functions,
-    - class headers (the ``class`` signature plus any class-level statements/docstrings
-      that appear before the first method),
-    - class methods,
-    - and any remaining module-level statements.
-
-    The resulting chunks read top-to-bottom exactly like the original file,
-    with comments and blank lines preserved.
-
-    #### Effective lines
-
-    Units are merged greedily in source order to reach roughly ``max_effective_lines`` per chunk
-    while guaranteeing that methods and functions are fit as whole into the document.
-    Sizing is measured in *effective lines*, defined as:\n
-    ``ceil(len(source) / expected_chars_per_line)`` \n
-
-    A function whose effective length exceeds ``oversized_factor * max_effective_lines`` is the only
-    case where chunks may overlap: it is broken down with
-    a secondary line-based split (using :class:`DocumentSplitter`) and the resulting
-    chunks all carry the originating function's metadata. For the primary split, overlap
-    is intentionally disabled because duplicating whole functions across chunks would be
-    wasteful and produce confusing retrieval results.
-
-    The secondary split always uses ``split_by="line"`` because other split modes (word,
-    sentence, etc.) are not meaningful for code. The chunk size for the secondary split
-    is controlled by ``secondary_split_length`` (defaults to ``max_effective_lines``
-    when ``None``).
-
-    #### Metadata
-
-    Per-chunk metadata embedded on each output ``Document`` includes:
-
-    - ``file_name`` (propagated from the input document's meta, if present),
-    - ``include_classes`` (a deduplicated, source-order list of class names that the
-      units in the chunk belong to, when at least one such class is involved),
-    - ``decorators`` (a deduplicated, ordered list of decorator strings for the units
-      in the chunk),
-    - ``start_line`` and ``end_line`` in the original file (1-indexed, inclusive),
-    - ``docstrings`` when ``strip_docstrings=True`` (a list of stripped docstrings in
-      source order - otherwise docstrings remain in the chunk content),
-    - ``unit_kinds`` (the kinds of units merged into the chunk),
-    - ``source_id`` and ``split_id``.
-
-    ### Usage example
-
-    #### Basic use-case
+    Usage example:
 
     ```python
+    from haystack import Document
+    from haystack.components.preprocessors import PythonCodeSplitter
+
     source = '''
     \"\"\"Example module.\"\"\"
     from math import sqrt
 
 
     class Circle:
-        \"\"\"A geometric circle.\"\"\"
-
         def __init__(self, r: float) -> None:
             self.r = r
 
         def area(self) -> float:
             return 3.14159 * self.r * self.r
-
-        def circumference(self) -> float:
-            return 2 * 3.14159 * self.r
     '''
 
-    splitter = PythonCodeSplitter(min_effective_lines=4, max_effective_lines=6, preserve_class_definition=True)
+    splitter = PythonCodeSplitter(min_effective_lines=4, max_effective_lines=6)
     result = splitter.run(documents=[Document(content=source, meta={"file_name": "circle.py"})])
-    for i, chunk in enumerate(result["documents"]):
-        print(f"Chunk {i}: ")
-        info = (f"Start line: {chunk.meta['start_line']}, End line: {chunk.meta['end_line']}, "
-                f"include classes: {chunk.meta.get('include_classes')}")
-        print(info)
-        print(f"Content:\n{chunk.content}\n")
+    for chunk in result["documents"]:
+        print(chunk.meta["start_line"], chunk.meta["end_line"], chunk.meta.get("include_classes"))
     ```
 
-    This outputs:
-
-    ```
-    Chunk 0:
-    Start line: 2, End line: 10, include classes: ['Circle']
-    Content:
-    \"\"\"Example module.\"\"\"
-    from math import sqrt
-
-
-    class Circle:
-        \"\"\"A geometric circle.\"\"\"
-
-        def __init__(self, r: float) -> None:
-            self.r = r
-
-    Chunk 1:
-    Start line: 12, End line: 21, include classes: ['Circle']
-    Content:
-    class Circle:
-
-        def area(self) -> float:
-            return 3.14159 * self.r * self.r
-
-        def circumference(self) -> float:
-            return 2 * 3.14159 * self.r
-    ```
-
-    #### Stripping docstrings into meta
-
-    ```python
-    from haystack.components.preprocessors import PythonCodeSplitter
-    from haystack import Document
-    code = '''
-    def add(a: float, b: float) -> float:
-        \"\"\"
-        Add two numbers together.
-
-        :param a: The first number.
-        :param b: The second number.
-        :return: The sum of a and b.
-        \"\"\"
-        return a + b
-    '''
-
-    splitter = PythonCodeSplitter(strip_docstrings=True)
-    result = splitter.run(documents=[Document(content=code)])
-    document = result["documents"][0]
-    print(f"Content:\n{document.content}")
-    print("Docstring: ", document.meta.get("docstrings"))
-    ```
-
-    This outputs:
-
-    ```
-    Content:
-    def add(a: float, b: float) -> float:
-        return a + b
-
-    Docstring:  ['Add two numbers together.\n\n:param a: The first number.\n:param b: ...']
-    ```
-
-    This is useful for RAG when docstrings are large: stripping shrinks the stored content,
-    and the docstring text can still influence retrieval by passing ``meta_fields_to_embed=
-    ["docstrings"]`` to the downstream embedder (e.g. ``SentenceTransformersDocumentEmbedder``).
+    Pass ``strip_docstrings=True`` to move docstrings out of the chunk content and into
+    each chunk's ``meta["docstrings"]`` list. This is useful for RAG when docstrings are
+    large: stripping shrinks the stored content while the docstring text can still
+    influence retrieval via ``meta_fields_to_embed=["docstrings"]`` on the embedder.
     """
 
     def __init__(
@@ -222,41 +98,27 @@ class PythonCodeSplitter:
         """
         Initialize the PythonCodeSplitter.
 
-        :param min_effective_lines: Minimum number of *effective lines* a chunk should contain.
-            While the running chunk is below this threshold the splitter keeps merging
-            in the next unit even if doing so moves the total away from ``max_effective_lines``.
-        :param max_effective_lines: Target / maximum number of *effective lines* per chunk. Units
-            are merged greedily as long as adding the next unit brings the running total
-            closer to ``max_effective_lines``; once adding the next unit would move further away,
-            the current chunk is flushed.
-        :param expected_chars_per_line: The expected average number of characters per line, used
-            to convert raw character counts into *effective lines*
-            (``effective_lines = ceil(len(source) / expected_chars_per_line)``). Lines that are
-            longer than this value count as more than one effective line.
-        :param oversized_factor: A single function (or method) whose effective length
-            exceeds ``oversized_factor * max_effective_lines`` triggers the secondary line-based
+        :param min_effective_lines: Minimum effective lines per chunk. While the running
+            chunk is below this threshold the splitter keeps merging in the next unit.
+        :param max_effective_lines: Target effective lines per chunk. Units are merged
+            greedily while doing so brings the running total closer to this target.
+        :param expected_chars_per_line: Used to convert characters into effective lines as
+            ``ceil(len(source) / expected_chars_per_line)``; long lines count as more than one.
+        :param oversized_factor: A function whose effective length exceeds
+            ``oversized_factor * max_effective_lines`` triggers the line-based secondary
             split with overlap.
-        :param strip_docstrings: If ``True``, docstrings of functions, methods and
-            classes are removed from the chunk content and stored under the
-            ``docstrings`` key in the chunk's meta (as a list in source order). The
-            module-level docstring is left in place because it is itself a top-level
-            split unit.
-        :param preserve_class_definition: If ``True`` (default), every chunk that contains
-            class members (methods or nested classes) but whose corresponding class header
-            was emitted into a previous chunk is prefixed with the bare class signature
-            (decorators plus the ``class Foo(...):`` lines) so that the enclosing class
-            context is visible in the chunk. Class signatures are prepended in the source
-            order in which their members first appear in the chunk; chunks that already
-            contain the class header are left unchanged.
-        :param secondary_split_overlap: Number of lines of overlap to use when the
-            secondary (line-based) splitter is applied to oversized functions. Only
-            used in the oversized fallback — the primary AST-based split never adds
-            overlap.
-        :param secondary_split_length: Number of lines per chunk used by the secondary
-            (line-based) splitter when a function is oversized. Defaults to
-            ``max_effective_lines`` when ``None``.
-        :raises ValueError: If any parameter is invalid (negative, zero where positive
-            is required, or ``min_effective_lines > max_effective_lines``).
+        :param strip_docstrings: If ``True``, function/method/class docstrings are moved
+            from the chunk content into ``meta["docstrings"]`` (source order). The
+            module-level docstring is kept in place since it is itself a top-level unit.
+        :param preserve_class_definition: If ``True`` (default), chunks that contain class
+            members but not the class header are prefixed with the bare class signature
+            (decorators plus the ``class Foo(...):`` lines) in source order.
+        :param secondary_split_overlap: Line overlap for the secondary splitter; only used
+            in the oversized fallback. The primary AST split never adds overlap.
+        :param secondary_split_length: Lines per chunk for the secondary splitter.
+            Defaults to ``max_effective_lines`` when ``None``.
+        :raises ValueError: If any parameter is invalid (negative, zero where positive is
+            required, or ``min_effective_lines > max_effective_lines``).
         """
         if min_effective_lines < 1:
             raise ValueError("min_effective_lines must be at least 1.")
@@ -315,14 +177,7 @@ class PythonCodeSplitter:
         unit_start: int,
         unit_end: int,
     ) -> tuple[str, str | None]:
-        """
-        Strip ``node``'s docstring from ``source_lines[unit_start..unit_end]`` if present.
-
-        :returns: A tuple ``(new_source, docstring_or_None)``. If the node has no docstring
-            or its docstring shares a physical line with the ``def``/``class`` statement
-            (in which case removing it would break syntax), the original slice is returned
-            unchanged with ``docstring_or_None=None``.
-        """
+        """Strip ``node``'s docstring from ``source_lines[unit_start..unit_end]`` if safely possible."""
         docstring = ast.get_docstring(node)
         body = node.body
         if not docstring or not body:
@@ -334,10 +189,8 @@ class PythonCodeSplitter:
         ):
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
-        # Refuse to strip if the docstring starts on the same line as the def/class
-        # statement (removing it would leave broken syntax) or extends past the
-        # slice that the caller asked for (e.g. a class_header slice that ends
-        # before the docstring's last line).
+        # Skip stripping when the docstring shares a line with the def/class (would
+        # leave broken syntax) or extends past the caller's slice (e.g. class_header).
         ds_start = first.lineno
         ds_end = first.end_lineno or first.lineno
         if ds_start <= node.lineno or ds_end > unit_end:
@@ -348,29 +201,22 @@ class PythonCodeSplitter:
         return "".join(before + after), docstring
 
     def _emit_class_units(self, cls: ast.ClassDef, source_lines: list[str], cursor: int, units: list[_CodeUnit]) -> int:
-        """
-        Emit the class header and per-method units for ``cls``.
-
-        :returns: The new cursor (1-indexed, next line not yet emitted) after the class.
-        """
+        """Emit class header and per-method units for ``cls``; return the next cursor (1-indexed)."""
         class_start = cls.decorator_list[0].lineno if cls.decorator_list else cls.lineno
         class_end = cls.end_lineno or cls.lineno
         class_name = cls.name
         class_decorators = [self._safe_unparse(d) for d in cls.decorator_list]
 
-        # Identify body children that should become their own units. Functions, async
-        # functions, and nested classes are split out so that "a method should not be
-        # broken mid-statement" holds at this level too.
+        # Methods, async methods, and nested classes become their own units so a
+        # method is never split mid-statement.
         split_children_idx = [
             k
             for k, child in enumerate(cls.body)
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
         ]
 
-        # Bare class signature lines (decorators + ``class Foo(...):``), i.e. everything
-        # from the start of the class up to the line where the body begins. Used by
-        # ``preserve_class_definition`` to prepend the enclosing class context to chunks
-        # whose class header lives in a previous chunk.
+        # Bare class signature (decorators + ``class Foo(...):`` lines) used by
+        # ``preserve_class_definition`` to prefix later chunks of the same class.
         class_signature: str | None = None
         if cls.body:
             body_start = cls.body[0].lineno
@@ -431,7 +277,7 @@ class PythonCodeSplitter:
         for idx in split_children_idx:
             child = cls.body[idx]
             if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                continue  # narrowed by split_children_idx; kept for the type checker
+                continue  # narrowed above; kept for the type checker
             child_start = child.decorator_list[0].lineno if child.decorator_list else child.lineno
             child_end = child.end_lineno or child.lineno
             decorators = [self._safe_unparse(d) for d in child.decorator_list]
@@ -457,8 +303,7 @@ class PythonCodeSplitter:
             )
             inner_cursor = child_end + 1
 
-        # Sweep up any trailing class-body lines (comments, blank lines, dangling
-        # class-level statements after the last method) so we don't lose them.
+        # Append trailing class-body lines (comments / blanks after the last method).
         if inner_cursor <= class_end and units:
             trailing = self._slice_lines(source_lines, inner_cursor, class_end)
             units[-1].source += trailing
@@ -501,8 +346,7 @@ class PythonCodeSplitter:
                 node_idx += 1
                 continue
 
-            # Consecutive imports are grouped into a single unit — they are tightly
-            # related context and chopping them up is rarely useful.
+            # Group consecutive imports into one unit.
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 import_end_idx = node_idx
                 while import_end_idx < node_count and isinstance(body[import_end_idx], (ast.Import, ast.ImportFrom)):
@@ -562,8 +406,7 @@ class PythonCodeSplitter:
             cursor = end + 1
             node_idx += 1
 
-        # Append trailing content (e.g. a trailing comment after the last node) to the
-        # last unit so the splitter is loss-less w.r.t. the original source.
+        # Append trailing content (comments after the last node) so the split is loss-less.
         if cursor <= total_lines and units:
             trailing = self._slice_lines(source_lines, cursor, total_lines)
             units[-1].source += trailing
@@ -581,20 +424,13 @@ class PythonCodeSplitter:
         return units
 
     def _merge_units(self, units: list[_CodeUnit]) -> list[list[_CodeUnit]]:
-        """
-        Greedily merge ``units`` (in source order) into chunks of roughly ``max_effective_lines``.
-
-        A unit whose effective length exceeds ``oversized_factor * max_effective_lines`` is
-        emitted as its own (single-unit) chunk so that the caller can apply the
-        secondary line-based split with overlap; it is never merged with neighbours.
-        """
+        """Greedily merge units toward ``max_effective_lines``; oversized units become solo chunks."""
         chunks: list[list[_CodeUnit]] = []
         current: list[_CodeUnit] = []
         current_lines = 0
         target = self.max_effective_lines
 
         def flush() -> None:
-            """Flush the current chunk (if any) into ``chunks`` and reset the running state."""
             nonlocal current, current_lines
             if current:
                 chunks.append(current)
@@ -614,9 +450,8 @@ class PythonCodeSplitter:
                 current_lines = unit_eff
                 continue
 
+            # Keep merging while below the minimum or while adding moves us closer to the target.
             new_total = current_lines + unit_eff
-            # Keep merging while we are below the minimum, or while adding the next
-            # unit brings the running total closer to the target than leaving it out.
             if current_lines < self.min_effective_lines or abs(new_total - target) < abs(current_lines - target):
                 current.append(unit)
                 current_lines = new_total
@@ -664,14 +499,7 @@ class PythonCodeSplitter:
         return meta
 
     def _render_chunk_content(self, chunk: list[_CodeUnit]) -> str:
-        """
-        Build the textual content for ``chunk``.
-
-        When ``preserve_class_definition`` is enabled, every class whose members
-        (methods or nested classes) appear in the chunk but whose ``class`` /
-        ``class_header`` unit does not, gets its bare signature prepended so that
-        the enclosing class context remains visible in the chunk.
-        """
+        """Render chunk content, optionally prefixing class signatures for orphan members."""
         body = "".join(u.source for u in chunk)
         if not self.preserve_class_definition:
             return body
@@ -712,9 +540,7 @@ class PythonCodeSplitter:
             overlap=self.secondary_split_overlap,
         )
 
-        # split_length is interpreted in physical lines by DocumentSplitter; this is an
-        # approximation of `max_effective_lines` effective lines but is good enough for the
-        # fallback path (and the warning above flags that the result is approximate).
+        # DocumentSplitter measures in physical lines; this approximates effective lines.
         split_length = (
             self.secondary_split_length if self.secondary_split_length is not None else self.max_effective_lines
         )
@@ -736,20 +562,17 @@ class PythonCodeSplitter:
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
-        Split each Python source ``Document`` into Python syntax-aware chunks.
+        Split each Python source ``Document`` into syntax-aware chunks.
 
         :param documents: Documents whose ``content`` is Python source code. Each
-            document's ``meta`` is propagated onto its chunks; if ``file_name`` is
-            present in the meta it is preserved on every output chunk.
-        :returns: A dictionary of the form ``{"documents": [...]}``, where each chunk's
-            meta additionally carries ``source_id``, ``split_id``, ``start_line``,
-            ``end_line``, ``unit_kinds``
-            and - where applicable - ``include_classes``, ``decorators``, ``docstrings``,
+            document's ``meta`` is propagated onto its chunks.
+        :returns: ``{"documents": [...]}`` where each chunk's meta additionally carries
+            ``source_id``, ``split_id``, ``start_line``, ``end_line``, ``unit_kinds`` and
+            - where applicable - ``include_classes``, ``decorators``, ``docstrings``,
             ``secondary_split``.
         :raises ValueError: If any document's content is ``None``.
         :raises TypeError: If any document's content is not a string.
-        :raises SyntaxError: If a document's content is not valid Python (raised by
-            :func:`ast.parse`).
+        :raises SyntaxError: If a document's content is not valid Python.
         """
         for doc in documents:
             if doc.content is None:
