@@ -113,41 +113,23 @@ class TestInitValidation:
         assert splitter.secondary_split_overlap == 2
         assert splitter.secondary_split_length == 15
 
-    def test_invalid_min_effective_lines_zero(self):
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"min_effective_lines": 0},
+            {"min_effective_lines": -1},
+            {"max_effective_lines": 0},
+            {"max_effective_lines": -3},
+            {"min_effective_lines": 10, "max_effective_lines": 5},
+            {"expected_chars_per_line": 0},
+            {"oversized_factor": 0},
+            {"secondary_split_overlap": -1},
+            {"secondary_split_length": -1},
+        ],
+    )
+    def test_invalid_init_raises(self, kwargs):
         with pytest.raises(ValueError):
-            PythonCodeSplitter(min_effective_lines=0)
-
-    def test_invalid_min_effective_lines_negative(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(min_effective_lines=-1)
-
-    def test_invalid_max_effective_lines_zero(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(max_effective_lines=0)
-
-    def test_invalid_max_effective_lines_negative(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(max_effective_lines=-3)
-
-    def test_min_greater_than_max(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(min_effective_lines=10, max_effective_lines=5)
-
-    def test_invalid_expected_chars_per_line(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(expected_chars_per_line=0)
-
-    def test_invalid_oversized_factor(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(oversized_factor=0)
-
-    def test_invalid_secondary_split_overlap(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(secondary_split_overlap=-1)
-
-    def test_invalid_secondary_split_length(self):
-        with pytest.raises(ValueError):
-            PythonCodeSplitter(secondary_split_length=-1)
+            PythonCodeSplitter(**kwargs)
 
 
 class TestRunInputValidation:
