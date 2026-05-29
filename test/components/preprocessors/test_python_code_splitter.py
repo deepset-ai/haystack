@@ -271,9 +271,7 @@ class TestOrderingAndLineRanges:
         # minus at most a fixed-length preamble that bridges from the previous unit's
         # end. We assert that the chunk content ends exactly with the slice and that
         # nothing inside it is rewritten.
-        splitter = PythonCodeSplitter(
-            min_effective_lines=2, max_effective_lines=5, preserve_class_definition=False
-        )
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, preserve_class_definition=False)
         result = splitter.run(documents=[Document(content=class_source)])
         source_lines = class_source.splitlines(keepends=True)
         for chunk in result["documents"]:
