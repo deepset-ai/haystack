@@ -29,29 +29,24 @@ Level 1 lives in the system context (not a tool). Levels 2/3 are pulled in on de
 
 - **Two tools**, both pure/stateless: `load_skill`, `read_skill_file`.
 - **No script execution** in v1 (no Level-3 execution tool).
-- **No search-based discovery** in v1 — Level-1 metadata is injected into the system prompt.
-- **No `state_schema` additions.** Progressive disclosure works through message history:
-  a `load_skill` result is a tool-result message that persists in `state["messages"]`, so
-  the agent already "remembers" what it loaded. No `inputs_from_state` / `outputs_to_state`.
-  (`tool_call_counts`, already tracked internally, covers observability of how often
-  `load_skill` fired.)
 - **Filesystem source only.**
-- **Location:** `haystack/tools/skills/`.
-- **System-prompt injection: Option C** — a generic contribution hook on `Tool`/`Toolset`,
-  consumed automatically by the `Agent`. Chosen over a manual concatenation helper
-  (Option A) because A complicates Agent serialization and can't compose multiple augments.
+- **System-prompt injection:** a generic contribution hook on `Tool`/`Toolset`,
+  consumed automatically by the `Agent`.
+  - An alternative to this approach is to add another tool that lists available skills and their descriptions and
+    force it to be called using the soon to be added condition param.
 
 ## How MCP does the equivalent (reference)
 
-MCP servers return an optional top-level `instructions` string in their `initialize`
-response. The spec frames it as a hint clients MAY add to the system prompt to explain
-the server's tools as a whole. It is **server-level, not per-tool** — individual tools
-only carry a `description`. So the container supplies the system-prompt instructions; the
-tools just describe themselves. This validates the "top-level wins, skip member tools" rule.
+MCP servers return an optional top-level `instructions` string in their `initialize` response.
+The spec frames it as a hint clients MAY add to the system prompt to explain the server's tools as a whole.
+Advantage of adding the **System-prompt injection** feature is that we could extend MCPToolset to inject these
+top-level instructions.
 
-## Component 1 — `system_prompt_contribution()` hook (generic, reusable)
+## Part 1 — `system_prompt_contribution()` hook (generic, reusable)
 
 Add an optional method to both base classes, default `None`:
+
+TODO: Add support for ComponentTool + PipelineTool
 
 ```python
 # haystack/tools/tool.py  (on Tool)
@@ -61,17 +56,14 @@ def system_prompt_contribution(self) -> str | None:
     return None
 ```
 
-- `Tool` also gains an optional `system_prompt: str | None = None` dataclass field so a
-  plain `Tool` can carry instructions without subclassing; `system_prompt_contribution()`
-  returns it by default (subclasses may override for dynamism). The field round-trips through
-  `to_dict`/`from_dict` and is always present in the serialized dict (existing tool
-  serialization snapshots were updated to include `system_prompt: null`).
+- `Tool` also gains an optional `system_prompt: str | None = None` dataclass field so a plain `Tool` can carry
+  instructions without subclassing. `system_prompt_contribution()` returns it by default (subclasses may override for
+  dynamism).
 - `Toolset` subclasses (like `SkillToolset`) override the method.
 
-### Agent consumption — `_initialize_fresh_execution` (`agent.py:~654`)
+### Agent consumption — `_initialize_fresh_execution`
 
-Right after `selected_tools = self._select_tools(tools)`, collect contributions and merge
-them into the system message:
+Right after `selected_tools = self._select_tools(tools)`, collect contributions and merge them into the system message:
 
 ```python
 selected_tools = self._select_tools(tools)
@@ -80,10 +72,9 @@ if contributions:
     messages = _merge_system_prompt_contributions(messages, contributions)
 ```
 
-Collection rules (a free function, unit-testable):
+Collection rules:
 
-- Recurse through `list`, `_ToolsetWrapper` (descend into `.toolsets` — this is the
-  `toolset_a + toolset_b` compose path), `Toolset`, `Tool`.
+- Go through `list`, `_ToolsetWrapper` (descend into `.toolsets`), `Toolset`, `Tool`.
 - **Top-level wins:** if a `Toolset` returns a contribution, use it and DO NOT descend into
   its member tools. Only if it returns `None` do we gather member tools' contributions.
 - Bare `Tool` passed directly contributes its own.
@@ -91,21 +82,13 @@ Collection rules (a free function, unit-testable):
 Merge rules:
 
 - Join contributions with `\n\n`.
-- If `messages[0]` is a system message (the rendered `system_prompt`, or a user-supplied
-  system message), append the contribution text to it.
+- If `messages[0]` is a system message (the rendered `system_prompt`, or a user-supplied system message), append
+  the contribution text to it.
 - Otherwise prepend a new system message built from the contributions.
-- Collect from `selected_tools` (respects per-run `run(tools=...)` filtering) and inject
-  **after** Jinja rendering — never into the template string — so skill text containing
-  `{{`/`{%` can't break `ChatPromptBuilder`.
+- Collect from `selected_tools` and inject **after** Jinja rendering — never into the template string — so skill text
+  containing `{{`/`{%` can't break `ChatPromptBuilder`.
 
-### Why this keeps Agent serialization clean
-
-Nothing about the augmentation is stored on the `Agent`. The system-prompt text is
-regenerated from the toolset on every run, so `Agent.to_dict()` only serializes the
-toolset (which serializes its `skills_dir`). Multiple augmenting toolsets compose via
-`_ToolsetWrapper` and each contributes independently.
-
-## Component 2 — `SkillToolset(Toolset)`
+## Part 2 — `SkillToolset(Toolset)`
 
 `haystack/tools/skills/skill_toolset.py`
 
@@ -168,20 +151,7 @@ when relevant; if a skill references a file, fetch it with `read_skill_file`. If
 matches, proceed normally.
 ```
 
-## Files touched
-
-- `haystack/tools/tool.py` — add `system_prompt` field + `system_prompt_contribution()`; serde.
-- `haystack/tools/toolset.py` — add `system_prompt_contribution()` (default None).
-- `haystack/components/agents/agent.py` — collect + merge contributions in
-  `_initialize_fresh_execution` (+ two free helpers).
-- `haystack/tools/skills/__init__.py`, `haystack/tools/skills/skill_toolset.py` — new.
-- `haystack/tools/__init__.py` — export `SkillToolset`.
-- Tests: `test/tools/skills/`, plus `system_prompt_contribution` cases in tool/toolset/agent tests.
-- Reno release note.
-
 ## Out of scope (future)
 
 - Script execution (`run_skill_script`) with confirmation-strategy gating.
 - Search-based discovery (`discovery="search"`) for very large skill libraries.
-- In-memory / non-filesystem skill sources.
-- Optional `active_skills` observability via `outputs_to_state`.
