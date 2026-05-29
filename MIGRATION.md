@@ -337,6 +337,32 @@ pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "que
 If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
 For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
 
+#### Reserved `state_schema` keys for built-in run metadata
+
+**What changed:** `Agent` now auto-populates three new outputs — `step_count`, `token_usage`, and `tool_call_counts` — and reserves those names in its `state_schema`. Passing any of them as a `state_schema` key now raises `ValueError`.
+
+**Why:** These keys are managed by `Agent` itself and exposed as outputs only; allowing users to redefine them would let an input shadow the value the Agent is trying to write.
+
+**How to migrate:** Rename any clashing `state_schema` entries.
+
+Before (v2.x):
+```python
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    state_schema={"token_usage": {"type": dict}},
+)
+```
+
+After (v3.0):
+```python
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    state_schema={"my_token_usage": {"type": dict}},
+)
+```
+
 ### LLM
 
 #### Runtime `user_prompt` and `system_prompt` removed from `LLM.run` / `LLM.run_async`
