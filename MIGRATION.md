@@ -154,6 +154,20 @@ agent = Agent(
 The `convert_result_to_json_string` option (also previously set through `tool_invoker_kwargs`) has been removed.
 Non-string tool results are now always serialized with `json.dumps` rather than `str`, which changes their string form.
 
+### `haystack-experimental` is no longer a core dependency
+
+**What changed:** `haystack-experimental` has been removed from Haystack's core dependencies. Installing `haystack-ai` no longer pulls in `haystack-experimental` automatically.
+
+**Why:** Reduces the default installation footprint. Experimental features are opt-in and should not be installed for users who do not need them.
+
+**How to migrate:** If your code imports from `haystack_experimental` (directly or through an integration that depends on it), install the package explicitly:
+
+```bash
+pip install haystack-experimental
+```
+
+Installations that do not use `haystack_experimental` require no changes.
+
 ### Agent
 
 #### Breakpoint and snapshot API removed
