@@ -61,7 +61,7 @@ class TestTextEmbeddingRetrieverAsync:
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
-    async def test_run_async_falls_back_to_sync_when_no_run_async(self):
+    async def test_run_async_falls_back_to_sync_when_no_run_async(self, document_store_with_categorized_docs):
         @component
         class SyncOnlyEmbedder:
             @component.output_types(embedding=list[float])
@@ -69,12 +69,12 @@ class TestTextEmbeddingRetrieverAsync:
                 return {"embedding": np.ones(384).tolist()}
 
         retriever = TextEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
+            retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_categorized_docs),
             text_embedder=SyncOnlyEmbedder(),
         )
         result = await retriever.run_async(query="green energy")
         assert "documents" in result
-        assert result["documents"] == []
+        assert len(result["documents"]) > 0
 
     @pytest.fixture
     def document_store_with_categorized_docs(self):
