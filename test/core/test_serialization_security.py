@@ -320,13 +320,14 @@ class TestPipelineLoadAndLoadsPropagation:
     def test_load_loads_from_dict_equivalent_on_rejection(self, _registered_untrusted_component):
         """All three entry points produce the same rejection message for the same untrusted payload."""
         import io
+        from collections.abc import Callable
 
         from haystack.core.pipeline import Pipeline
 
         data = _registered_untrusted_component["data"]
         yaml_str = self._yaml_for(data)
 
-        def _capture(callable_) -> str:
+        def _capture(callable_: Callable[[], object]) -> str:
             with pytest.raises(DeserializationError) as exc_info:
                 callable_()
             return str(exc_info.value)
