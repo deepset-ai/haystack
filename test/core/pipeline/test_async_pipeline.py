@@ -9,6 +9,7 @@ from dataclasses import replace
 import pytest
 
 from haystack import AsyncPipeline, Document, component
+from haystack.components.joiners import BranchJoiner
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -280,3 +281,130 @@ def test_async_pipeline_does_not_corrupt_outputs():
 
     assert result["producer"]["doc"].content == "original"
     assert result["mutator"]["doc"].content == "mutated"
+
+
+@component
+class _Doubler:
+    """Minimal component used to exercise the isolation helper."""
+
+    @component.output_types(value=int)
+    def run(self, value: int) -> dict[str, int]:
+        return {"value": value * 2}
+
+
+def _build_isolation_state(pipeline: AsyncPipeline, data: dict) -> dict:
+    """
+    Build the ephemeral run state that `_run_component_in_isolation` expects.
+
+    Mirrors the setup `run_async_generator` performs before the scheduling loop.
+    """
+    inputs = pipeline._convert_to_internal_format(pipeline._prepare_component_input_data(data))
+    names = sorted(pipeline.graph.nodes.keys())
+    return {
+        "inputs": inputs,
+        "pipeline_outputs": {},
+        "component_visits": dict.fromkeys(names, 0),
+        "running_tasks": {},
+        "scheduled_components": set(),
+        "cached_receivers": {name: pipeline._find_receivers_from(name) for name in names},
+        "include_outputs_from": set(),
+        "parent_span": None,
+    }
+
+
+class TestRunComponentInIsolation:
+    @pytest.mark.asyncio
+    async def test_runs_component_and_yields_output(self):
+        pp = AsyncPipeline()
+        pp.add_component("doubler", _Doubler())
+        state = _build_isolation_state(pp, {"doubler": {"value": 3}})
+
+        results = [out async for out in pp._run_component_in_isolation(component_name="doubler", **state)]
+
+        assert results == [{"doubler": {"value": 6}}]
+        assert state["pipeline_outputs"] == {"doubler": {"value": 6}}
+        assert state["component_visits"]["doubler"] == 1
+        # The component is added to and removed from scheduled_components over the course of the run.
+        assert state["scheduled_components"] == set()
+
+    @pytest.mark.asyncio
+    async def test_runs_greedy_component_consuming_single_input(self):
+        pp = AsyncPipeline()
+        pp.add_component("joiner", BranchJoiner(type_=int))
+        state = _build_isolation_state(pp, {})
+        # Two values are queued on the greedy variadic socket; greedy consumption keeps only the first.
+        state["inputs"]["joiner"] = {"value": [{"sender": None, "value": 1}, {"sender": None, "value": 2}]}
+
+        results = [out async for out in pp._run_component_in_isolation(component_name="joiner", **state)]
+
+        assert results == [{"joiner": {"value": 1}}]
+        assert state["component_visits"]["joiner"] == 1
+
+    @pytest.mark.asyncio
+    async def test_drains_in_flight_tasks_before_running(self):
+        pp = AsyncPipeline()
+        pp.add_component("doubler", _Doubler())
+        state = _build_isolation_state(pp, {"doubler": {"value": 3}})
+
+        async def _in_flight() -> dict:
+            return {"value": 99}
+
+        task = asyncio.create_task(_in_flight())
+        state["running_tasks"][task] = "other"
+        state["scheduled_components"].add("other")
+
+        results = [out async for out in pp._run_component_in_isolation(component_name="doubler", **state)]
+
+        # The in-flight task is drained (and its output yielded) before the isolated component runs.
+        assert {"other": {"value": 99}} in results
+        assert {"doubler": {"value": 6}} in results
+        assert results.index({"other": {"value": 99}}) < results.index({"doubler": {"value": 6}})
+        assert state["running_tasks"] == {}
+        assert "other" not in state["scheduled_components"]
+
+    @pytest.mark.asyncio
+    async def test_skips_when_component_already_scheduled(self):
+        pp = AsyncPipeline()
+        pp.add_component("doubler", _Doubler())
+        state = _build_isolation_state(pp, {"doubler": {"value": 3}})
+        state["scheduled_components"].add("doubler")
+
+        results = [out async for out in pp._run_component_in_isolation(component_name="doubler", **state)]
+
+        # Already scheduled: the component is not run.
+        assert results == []
+        assert state["component_visits"]["doubler"] == 0
+        assert state["pipeline_outputs"] == {}
+        assert "doubler" in state["scheduled_components"]
+
+    @pytest.mark.asyncio
+    async def test_distributes_outputs_downstream_and_prunes_consumed(self):
+        pp = AsyncPipeline()
+        pp.add_component("first", _Doubler())
+        pp.add_component("second", _Doubler())
+        pp.connect("first.value", "second.value")
+        state = _build_isolation_state(pp, {"first": {"value": 3}})
+
+        results = [out async for out in pp._run_component_in_isolation(component_name="first", **state)]
+
+        # `first`'s output is consumed by `second`, so it is pruned: nothing is yielded or stored as a pipeline output.
+        assert results == []
+        assert state["pipeline_outputs"] == {}
+        # `second` can now consume the distributed value.
+        second = pp._get_component_with_graph_metadata_and_visits("second", 0)
+        assert pp._consume_component_inputs("second", second, state["inputs"]) == {"value": 6}
+
+    @pytest.mark.asyncio
+    async def test_include_outputs_from_yields_even_when_consumed(self):
+        pp = AsyncPipeline()
+        pp.add_component("first", _Doubler())
+        pp.add_component("second", _Doubler())
+        pp.connect("first.value", "second.value")
+        state = _build_isolation_state(pp, {"first": {"value": 3}})
+        state["include_outputs_from"] = {"first"}
+
+        results = [out async for out in pp._run_component_in_isolation(component_name="first", **state)]
+
+        # Even though `first`'s output is consumed by `second`, include_outputs_from forces it to be surfaced.
+        assert results == [{"first": {"value": 6}}]
+        assert state["pipeline_outputs"] == {"first": {"value": 6}}
