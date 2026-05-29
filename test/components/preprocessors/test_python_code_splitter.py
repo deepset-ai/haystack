@@ -248,16 +248,44 @@ class TestOrderingAndLineRanges:
     def test_chunks_read_top_to_bottom(self, class_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
         result = splitter.run(documents=[Document(content=class_source)])
-        source_lines = class_source.splitlines()
+        source_lines = class_source.splitlines(keepends=True)
         for chunk in result["documents"]:
             assert chunk.content is not None
             start = chunk.meta["start_line"]
             end = chunk.meta["end_line"]
-            expected_slice = "\n".join(source_lines[start - 1 : end])
-            content = chunk.content
-            # The chunk content should be the contiguous source slice
-            # (unless docstrings were stripped, which they aren't by default).
-            assert expected_slice.strip() in content or content.strip() in expected_slice
+            expected_slice = "".join(source_lines[start - 1 : end])
+            # The exact source slice for [start_line, end_line] must appear contiguously
+            # in the chunk content. With preserve_class_definition=True (the default) the
+            # chunk may additionally carry a prepended class signature, but the slice
+            # itself must be present byte-for-byte - a regression that dropped or
+            # reordered lines within the range would fail this assertion.
+            assert expected_slice in chunk.content, (
+                f"Chunk content is missing the source slice for lines {start}-{end}.\n"
+                f"--- expected slice ---\n{expected_slice!r}\n"
+                f"--- chunk content ---\n{chunk.content!r}"
+            )
+
+    def test_chunks_equal_source_slice_without_class_preservation(self, class_source):
+        # With preserve_class_definition=False there is no prepended signature, so
+        # the chunk content for [start_line, end_line] must equal the source slice
+        # minus at most a fixed-length preamble that bridges from the previous unit's
+        # end. We assert that the chunk content ends exactly with the slice and that
+        # nothing inside it is rewritten.
+        splitter = PythonCodeSplitter(
+            min_effective_lines=2, max_effective_lines=5, preserve_class_definition=False
+        )
+        result = splitter.run(documents=[Document(content=class_source)])
+        source_lines = class_source.splitlines(keepends=True)
+        for chunk in result["documents"]:
+            assert chunk.content is not None
+            start = chunk.meta["start_line"]
+            end = chunk.meta["end_line"]
+            expected_slice = "".join(source_lines[start - 1 : end])
+            assert chunk.content.endswith(expected_slice), (
+                f"Chunk content does not end with the source slice for lines {start}-{end}.\n"
+                f"--- expected slice ---\n{expected_slice!r}\n"
+                f"--- chunk content ---\n{chunk.content!r}"
+            )
 
 
 class TestFileNamePropagation:
