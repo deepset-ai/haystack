@@ -1,10 +1,10 @@
 # Plan: Skills support for the Haystack Agent
 
-Goal: let the Haystack `Agent` discover and read filesystem **Skills** the way Claude
-Code / Codex do — progressive disclosure of expert instructions — using a small set of
-pre-built tools plus a generic mechanism for tools to contribute system-prompt text.
+Goal: let the Haystack `Agent` discover and read filesystem **Skills** the way Claude Code / Codex do — progressive
+disclosure of expert instructions — using a small set of pre-built tools plus a generic mechanism for tools to
+contribute system-prompt text.
 
-## Background — what we're replicating
+## Background
 
 Claude Code / Codex Skills use **progressive disclosure**:
 
@@ -39,14 +39,15 @@ Level 1 lives in the system context (not a tool). Levels 2/3 are pulled in on de
 
 MCP servers return an optional top-level `instructions` string in their `initialize` response.
 The spec frames it as a hint clients MAY add to the system prompt to explain the server's tools as a whole.
-Advantage of adding the **System-prompt injection** feature is that we could extend MCPToolset to inject these
+
+**NOTE:** Advantage of adding the **System-prompt injection** feature is that we could extend MCPToolset to inject these
 top-level instructions.
 
 ## Part 1 — `system_prompt_contribution()` hook (generic, reusable)
 
 Add an optional method to both base classes, default `None`:
 
-TODO: Add support for ComponentTool + PipelineTool
+**TODO:** Add support for ComponentTool + PipelineTool
 
 ```python
 # haystack/tools/tool.py  (on Tool)
@@ -96,8 +97,8 @@ Merge rules:
 @dataclass
 class SkillMeta:
     name: str           # from frontmatter; falls back to directory name
-    description: str     # from frontmatter
-    path: Path           # the skill directory
+    description: str    # from frontmatter
+    path: Path          # the skill directory
 
 class SkillToolset(Toolset):
     def __init__(self, skills_dir: str | Path) -> None:
@@ -106,12 +107,11 @@ class SkillToolset(Toolset):
         super().__init__(tools=[self._load_skill_tool(), self._read_skill_file_tool()])
 ```
 
-- `_scan()` walks `skills_dir/*/SKILL.md`, parses YAML frontmatter (pyyaml — already a
-  dep), validates `name`/`description`, checks name uniqueness. Bodies are NOT read here.
+- `_scan()` walks `skills_dir/*/SKILL.md`, parses YAML frontmatter, validates `name`/`description`, checks name
+  uniqueness. Bodies are NOT read here.
 - `system_prompt_contribution()` renders the Level-1 catalog + behavioral rules (below).
-- `warm_up()` revalidates (idempotent).
-- `to_dict()`/`from_dict()` serialize `skills_dir` only and rescan on load (mirrors
-  `SearchableToolset`). `add`/`__add__` of new ad-hoc tools left as default Toolset behavior.
+- `warm_up()` revalidates.
+- `to_dict()`/`from_dict()` serialize `skills_dir` only and rescan on load.
 
 ### Tool: `load_skill` (Level 2)
 
@@ -120,8 +120,8 @@ def load_skill(name: Annotated[str, "Exact skill name from the Available Skills 
     """Load a skill's full instructions. Call this before doing a task the skill covers."""
 ```
 
-Returns the `SKILL.md` body plus a manifest of bundled files (so the model knows what
-`read_skill_file` can fetch). Unknown name → friendly error listing available skills.
+Returns the `SKILL.md` body plus a manifest of bundled files (so the model knows what `read_skill_file` can fetch).
+Unknown name → friendly error listing available skills.
 
 ### Tool: `read_skill_file` (Level 3)
 
@@ -133,8 +133,8 @@ def read_skill_file(
     """Read a file bundled with a skill (reference docs, examples, templates)."""
 ```
 
-Path-traversal guard: `(skill_dir / path).resolve()` must stay within `skill_dir.resolve()`,
-else error. Missing file → friendly error.
+Path-traversal guard: `(skill_dir / path).resolve()` must stay within `skill_dir.resolve()`, else error.
+Missing file → friendly error.
 
 ### System-prompt contribution text
 
