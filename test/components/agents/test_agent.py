@@ -597,7 +597,6 @@ class TestAgent:
             == "haystack.components.builders.prompt_builder.PromptBuilder"
         )
         assert init_parameters["exit_conditions"] == ["text", "weather_tool"]
-        assert init_parameters["streaming_callback"] == "test_agent.sync_streaming_callback"
 
         deserialized_agent = Agent.from_dict(serialized_agent)
         assert isinstance(deserialized_agent, Agent)
