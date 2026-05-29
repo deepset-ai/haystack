@@ -202,34 +202,9 @@ class PythonCodeSplitter:
     Docstring:  ['Add two numbers together.\n\n:param a: The first number.\n:param b: ...']
     ```
 
-    This might be useful for RAG, especially if the docstring is too large. One can strip the
-    docstring to save storage, and upon embedding, one can pass `doc.meta.get("docstrings", [])`
-    into `meta_fields_to_embed` field, which results in no performance degradation for
-    retrieval, for example:
-
-    ```python
-    from haystack.components.preprocessors import PythonCodeSplitter
-    from haystack import Document
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-    code = '''
-    def add(a: float, b: float) -> float:
-        \"\"\"
-        Add two numbers together.
-
-        :param a: The first number.
-        :param b: The second number.
-        :return: The sum of a and b.
-        \"\"\"
-        return a + b
-    '''
-
-    splitter = PythonCodeSplitter(strip_docstrings=True)
-    result = splitter.run(documents=[Document(content=code)])
-    document = result["documents"][0]
-    print(f"Content:\n{document.content}")
-    embedder = SentenceTransformersDocumentEmbedder(meta_fields_to_embed=["title"])
-    docs_w_embeddings = embedder.run(documents=[document])["documents"]
-    ```
+    This is useful for RAG when docstrings are large: stripping shrinks the stored content,
+    and the docstring text can still influence retrieval by passing ``meta_fields_to_embed=
+    ["docstrings"]`` to the downstream embedder (e.g. ``SentenceTransformersDocumentEmbedder``).
     """
 
     def __init__(
