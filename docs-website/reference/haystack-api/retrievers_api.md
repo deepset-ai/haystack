@@ -666,6 +666,29 @@ Retrieve documents using multiple queries in parallel.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
   - `documents`: List of retrieved documents sorted by relevance score.
 
+#### run_async
+
+```python
+run_async(
+    queries: list[str], retriever_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents using multiple queries concurrently.
+
+Uses each component's `run_async` method if available, otherwise falls back to running `run`
+in a thread executor. Queries are processed concurrently using asyncio.gather.
+
+**Parameters:**
+
+- **queries** (<code>list\[str\]</code>) – List of text queries to process.
+- **retriever_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of arguments to pass to the retriever's run method.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
+  - `documents`: List of retrieved documents sorted by relevance score.
+
 #### to_dict
 
 ```python
@@ -770,6 +793,29 @@ run(
 ```
 
 Retrieve documents using multiple queries in parallel.
+
+**Parameters:**
+
+- **queries** (<code>list\[str\]</code>) – List of text queries to process.
+- **retriever_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of arguments to pass to the retriever's run method.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
+  `documents`: List of retrieved documents sorted by relevance score.
+
+#### run_async
+
+```python
+run_async(
+    queries: list[str], retriever_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents using multiple queries concurrently.
+
+Uses the retriever's `run_async` method if available, otherwise falls back to running `run`
+in a thread executor. Queries are processed concurrently using asyncio.gather.
 
 **Parameters:**
 
@@ -1264,6 +1310,30 @@ run(
 ```
 
 Retrieve documents using a single query.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The query to retrieve documents for.
+- **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary of filters to apply when retrieving documents.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary containing:
+  - `documents`: List of retrieved documents sorted by relevance score.
+
+#### run_async
+
+```python
+run_async(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Retrieve documents using a single query asynchronously.
+
+Uses `run_async` on the text embedder and retriever if available, otherwise falls back to
+running `run` in a thread executor.
 
 **Parameters:**
 
