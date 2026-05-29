@@ -25,6 +25,13 @@ skills/
 
 Level 1 lives in the system context (not a tool). Levels 2/3 are pulled in on demand.
 
+References:
+- Anthropic, "Equipping agents for the real world with Agent Skills" — the three-stage progressive
+  disclosure model (discovery → activation → execution):
+  https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
+- Anthropic Agent Skills docs (overview + `SKILL.md` structure):
+  https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
+
 ## Decisions (locked)
 
 - **Two tools**, both pure/stateless: `load_skill`, `read_skill_file`.
@@ -39,6 +46,13 @@ Level 1 lives in the system context (not a tool). Levels 2/3 are pulled in on de
 
 MCP servers return an optional top-level `instructions` string in their `initialize` response.
 The spec frames it as a hint clients MAY add to the system prompt to explain the server's tools as a whole.
+
+References:
+- MCP lifecycle / `initialize` (the `InitializeResult.instructions` field):
+  https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
+- MCP schema (`instructions` docstring: "can be used by clients to improve the LLM's understanding of
+  available tools ... MAY be added to the system prompt"):
+  https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/schema/2025-06-18/schema.ts
 
 **NOTE:** Advantage of adding the **System-prompt injection** feature is that we could extend MCPToolset to inject these
 top-level instructions.
