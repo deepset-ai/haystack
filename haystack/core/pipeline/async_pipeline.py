@@ -182,40 +182,6 @@ class AsyncPipeline(PipelineBase):
 
             return outputs
 
-    def _distribute_component_outputs(
-        self,
-        *,
-        component_name: str,
-        component_outputs: Mapping[str, Any],
-        inputs: dict[str, dict[str, list[dict[str, Any]]]],
-        pipeline_outputs: dict[str, Any],
-        cached_receivers: dict[str, Any],
-        include_outputs_from: set[str],
-    ) -> Mapping[str, Any]:
-        """
-        Distributes a component's outputs to downstream inputs and records its pipeline-level outputs.
-
-        :param component_name: The name of the component that produced the outputs.
-        :param component_outputs: The raw outputs returned by the component.
-        :param inputs: The global input state shared by all components. Mutated in place to deliver outputs to
-            downstream receivers.
-        :param pipeline_outputs: The accumulated pipeline outputs. Mutated in place when the component contributes to
-            the pipeline's final output.
-        :param cached_receivers: Precomputed mapping of component name to its downstream receivers.
-        :param include_outputs_from: Set of component names whose outputs should always be included in the output.
-        :returns: The component outputs that were not consumed by any downstream socket (pruned outputs).
-        """
-        pruned = self._write_component_outputs(
-            component_name=component_name,
-            component_outputs=component_outputs,
-            inputs=inputs,
-            receivers=cached_receivers[component_name],
-            include_outputs_from=include_outputs_from,
-        )
-        if pruned or component_name in include_outputs_from:
-            pipeline_outputs[component_name] = pruned
-        return pruned
-
     @staticmethod
     async def _wait_for_tasks(
         running_tasks: dict[asyncio.Task, str], scheduled_components: set[str], *, return_when: str
@@ -297,14 +263,15 @@ class AsyncPipeline(PipelineBase):
             parent_span=parent_span,
         )
 
-        pruned = self._distribute_component_outputs(
+        pruned = self._write_component_outputs(
             component_name=component_name,
             component_outputs=component_outputs,
             inputs=inputs,
-            pipeline_outputs=pipeline_outputs,
-            cached_receivers=cached_receivers,
+            receivers=cached_receivers[component_name],
             include_outputs_from=include_outputs_from,
         )
+        if pruned or component_name in include_outputs_from:
+            pipeline_outputs[component_name] = pruned
 
         scheduled_components.remove(component_name)
         if pruned or component_name in include_outputs_from:
@@ -360,14 +327,16 @@ class AsyncPipeline(PipelineBase):
                     parent_span=parent_span,
                 )
 
-            pruned = self._distribute_component_outputs(
+            pruned = self._write_component_outputs(
                 component_name=component_name,
                 component_outputs=component_outputs,
                 inputs=inputs,
-                pipeline_outputs=pipeline_outputs,
-                cached_receivers=cached_receivers,
+                receivers=cached_receivers[component_name],
                 include_outputs_from=include_outputs_from,
             )
+            if pruned or component_name in include_outputs_from:
+                pipeline_outputs[component_name] = pruned
+
             scheduled_components.remove(component_name)
             return pruned
 
