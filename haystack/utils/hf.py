@@ -389,9 +389,9 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
     class HFTokenStreamingHandler(TextStreamer):
         """
-        Streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
+        Streaming handler for HuggingFaceLocalChatGenerator.
 
-        Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling streaming
+        Note: This is a helper class for HuggingFaceLocalChatGenerator enabling streaming
         of generated text via Haystack SyncStreamingCallbackT callbacks.
 
         Do not use this class directly.
@@ -424,9 +424,9 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
     class AsyncHFTokenStreamingHandler(TextStreamer):
         """
-        Async streaming handler for HuggingFaceLocalGenerator and HuggingFaceLocalChatGenerator.
+        Async streaming handler for HuggingFaceLocalChatGenerator.
 
-        Note: This is a helper class for HuggingFaceLocalGenerator & HuggingFaceLocalChatGenerator enabling
+        Note: This is a helper class for HuggingFaceLocalChatGenerator enabling
         async streaming of generated text via Haystack Callable[StreamingChunk, Awaitable[None]] callbacks.
 
         Do not use this class directly.

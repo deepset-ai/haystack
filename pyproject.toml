@@ -51,7 +51,7 @@ dependencies = [
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
   "pyyaml",
-  "more-itertools",         # TextDocumentSplitter
+  "more-itertools",         # DocumentSplitter
   "networkx",               # Pipeline graphs
   "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "httpx",
@@ -60,7 +60,6 @@ dependencies = [
   "jsonschema",             # JsonSchemaValidator, Tool
   "docstring-parser",       # ComponentTool
   "filetype",               # MIME type guessing for ImageContent
-  "haystack-experimental",
 ]
 
 [tool.hatch.envs.default]
@@ -369,7 +368,7 @@ ignore = [
 # install/lock time, so no manual date updates are needed.
 # First-party packages are exempted so freshly published releases are always resolvable.
 exclude-newer = "24 hours"
-exclude-newer-package = { haystack-experimental = "0 days", haystack-pydoc-tools = "0 days" }
+exclude-newer-package = { haystack-pydoc-tools = "0 days" }
 
 [tool.coverage.run]
 omit = ["haystack/testing/*"]

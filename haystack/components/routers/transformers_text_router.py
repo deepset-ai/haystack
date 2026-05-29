@@ -26,8 +26,9 @@ class TransformersTextRouter:
     ```python
     from haystack.core.pipeline import Pipeline
     from haystack.components.routers import TransformersTextRouter
-    from haystack.components.builders import PromptBuilder
-    from haystack.components.generators import HuggingFaceLocalGenerator
+    from haystack.components.builders import ChatPromptBuilder
+    from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+    from haystack.dataclasses import ChatMessage
 
     p = Pipeline()
     p.add_component(
@@ -35,27 +36,27 @@ class TransformersTextRouter:
         name="text_router"
     )
     p.add_component(
-        instance=PromptBuilder(template="Answer the question: {{query}}\\nAnswer:"),
+        instance=ChatPromptBuilder(template=[ChatMessage.from_user("Answer the question: {{query}}\\nAnswer:")]),
         name="english_prompt_builder"
     )
     p.add_component(
-        instance=PromptBuilder(template="Beantworte die Frage: {{query}}\\nAntwort:"),
+        instance=ChatPromptBuilder(template=[ChatMessage.from_user("Beantworte die Frage: {{query}}\\nAntwort:")]),
         name="german_prompt_builder"
     )
 
     p.add_component(
-        instance=HuggingFaceLocalGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
+        instance=HuggingFaceLocalChatGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
         name="german_llm"
     )
     p.add_component(
-        instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
+        instance=HuggingFaceLocalChatGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
         name="english_llm"
     )
 
     p.connect("text_router.en", "english_prompt_builder.query")
     p.connect("text_router.de", "german_prompt_builder.query")
-    p.connect("english_prompt_builder.prompt", "english_llm.prompt")
-    p.connect("german_prompt_builder.prompt", "german_llm.prompt")
+    p.connect("english_prompt_builder.prompt", "english_llm.messages")
+    p.connect("german_prompt_builder.prompt", "german_llm.messages")
 
     # English Example
     print(p.run({"text_router": {"text": "What is the capital of Germany?"}}))

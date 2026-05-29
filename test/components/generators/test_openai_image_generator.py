@@ -10,7 +10,7 @@ import pytest
 from openai.types import ImagesResponse
 from openai.types.image import Image
 
-from haystack.components.generators.openai_dalle import DALLEImageGenerator
+from haystack.components.generators.openai_image_generator import OpenAIImageGenerator
 from haystack.utils import Secret
 
 
@@ -24,9 +24,9 @@ def mock_image_response():
         yield mock_image_generate
 
 
-class TestDALLEImageGenerator:
+class TestOpenAIImageGenerator:
     def test_init_default(self, monkeypatch):
-        component = DALLEImageGenerator()
+        component = OpenAIImageGenerator()
         assert component.model == "gpt-image-2"
         assert component.quality == "auto"
         assert component.size == "1024x1024"
@@ -38,7 +38,7 @@ class TestDALLEImageGenerator:
         assert component.http_client_kwargs is None
 
     def test_init_with_params(self, monkeypatch):
-        component = DALLEImageGenerator(
+        component = OpenAIImageGenerator(
             model="gpt-image-1",
             quality="high",
             size="1024x1536",
@@ -61,31 +61,31 @@ class TestDALLEImageGenerator:
         """
         Test that the max_retries parameter is taken into account even if it is 0.
         """
-        component = DALLEImageGenerator(max_retries=0)
+        component = OpenAIImageGenerator(max_retries=0)
         assert component.max_retries == 0
 
     def test_init_invalid_quality_falls_back_to_auto(self, caplog):
-        component = DALLEImageGenerator(quality="hd")  # type: ignore[arg-type]
+        component = OpenAIImageGenerator(quality="hd")  # type: ignore[arg-type]
         assert component.quality == "auto"
         assert "Invalid quality" in caplog.text
 
     def test_init_non_default_response_format_warns(self, caplog):
-        DALLEImageGenerator(response_format="url")  # type: ignore[arg-type]
+        OpenAIImageGenerator(response_format="url")  # type: ignore[arg-type]
         assert "response_format is ignored" in caplog.text
 
     def test_warm_up(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = DALLEImageGenerator()
+        component = OpenAIImageGenerator()
         component.warm_up()
         assert component.client.api_key == "test-api-key"
         assert component.client.timeout == 30
         assert component.client.max_retries == 5
 
     def test_to_dict(self):
-        generator = DALLEImageGenerator()
+        generator = OpenAIImageGenerator()
         data = generator.to_dict()
         assert data == {
-            "type": "haystack.components.generators.openai_dalle.DALLEImageGenerator",
+            "type": "haystack.components.generators.openai_image_generator.OpenAIImageGenerator",
             "init_parameters": {
                 "model": "gpt-image-2",
                 "quality": "auto",
@@ -98,7 +98,7 @@ class TestDALLEImageGenerator:
         }
 
     def test_to_dict_with_params(self):
-        generator = DALLEImageGenerator(
+        generator = OpenAIImageGenerator(
             model="gpt-image-1",
             quality="high",
             size="1024x1536",
@@ -111,7 +111,7 @@ class TestDALLEImageGenerator:
         )
         data = generator.to_dict()
         assert data == {
-            "type": "haystack.components.generators.openai_dalle.DALLEImageGenerator",
+            "type": "haystack.components.generators.openai_image_generator.OpenAIImageGenerator",
             "init_parameters": {
                 "model": "gpt-image-1",
                 "quality": "high",
@@ -125,7 +125,7 @@ class TestDALLEImageGenerator:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack.components.generators.openai_dalle.DALLEImageGenerator",
+            "type": "haystack.components.generators.openai_image_generator.OpenAIImageGenerator",
             "init_parameters": {
                 "model": "gpt-image-2",
                 "quality": "auto",
@@ -136,7 +136,7 @@ class TestDALLEImageGenerator:
                 "http_client_kwargs": None,
             },
         }
-        generator = DALLEImageGenerator.from_dict(data)
+        generator = OpenAIImageGenerator.from_dict(data)
         assert generator.model == "gpt-image-2"
         assert generator.quality == "auto"
         assert generator.size == "1024x1024"
@@ -144,8 +144,11 @@ class TestDALLEImageGenerator:
         assert generator.http_client_kwargs is None
 
     def test_from_dict_default_params(self):
-        data = {"type": "haystack.components.generators.openai_dalle.DALLEImageGenerator", "init_parameters": {}}
-        generator = DALLEImageGenerator.from_dict(data)
+        data = {
+            "type": "haystack.components.generators.openai_image_generator.OpenAIImageGenerator",
+            "init_parameters": {},
+        }
+        generator = OpenAIImageGenerator.from_dict(data)
         assert generator.model == "gpt-image-2"
         assert generator.quality == "auto"
         assert generator.size == "1024x1024"
@@ -157,7 +160,7 @@ class TestDALLEImageGenerator:
         assert generator.http_client_kwargs is None
 
     def test_run(self, mock_image_response):
-        generator = DALLEImageGenerator(api_key=Secret.from_token("test-api-key"))
+        generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
         response = generator.run("Show me a picture of a black cat.")
         assert isinstance(response, dict)
         assert "images" in response and "revised_prompt" in response
@@ -171,7 +174,7 @@ class TestDALLEImageGenerator:
     @pytest.mark.integration
     @pytest.mark.slow
     def test_live_run(self):
-        generator = DALLEImageGenerator(model="gpt-image-1-mini", size="1024x1024", quality="low")
+        generator = OpenAIImageGenerator(model="gpt-image-1-mini", size="1024x1024", quality="low")
         response = generator.run("A nice cat")
         assert isinstance(response, dict)
         assert isinstance(response["revised_prompt"], str)
