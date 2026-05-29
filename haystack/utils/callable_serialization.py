@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.core.serialization_security import _check_module_allowed
 from haystack.utils.type_serialization import thread_safe_import
 
 
@@ -47,9 +48,18 @@ def deserialize_callable(callable_handle: str) -> Callable:
     """
     Deserializes a callable given its full import path as a string.
 
+    Every module path tried during resolution is checked against the
+    deserialization allowlist (see `haystack.core.serialization_security`). Callables in modules
+    outside the allowlist are rejected with a `DeserializationError` before any import is
+    attempted. To allow a third-party module, extend the allowlist via
+    `Pipeline.load(..., allowed_modules=[...])`, `allow_deserialization_module(...)`, or the
+    `HAYSTACK_DESERIALIZATION_ALLOWLIST` environment variable.
+
     :param callable_handle: The full path of the callable_handle
     :return: The callable
-    :raises DeserializationError: If the callable cannot be found
+    :raises DeserializationError:
+        If the module path is not on the deserialization allowlist, or if the callable cannot
+        be found.
     """
     # Import here to avoid circular imports
     from haystack.tools.tool import Tool
@@ -58,6 +68,7 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
     for i in range(len(parts), 0, -1):
         module_name = ".".join(parts[:i])
+        _check_module_allowed(module_name)
         try:
             mod: Any = thread_safe_import(module_name)
         except Exception:

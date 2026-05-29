@@ -10,9 +10,21 @@ from typing import Any, TypeVar
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.core.serialization_security import _check_module_allowed, allow_deserialization_module
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import thread_safe_import
+
+__all__ = [
+    "DeserializationCallbacks",
+    "allow_deserialization_module",
+    "component_from_dict",
+    "component_to_dict",
+    "default_from_dict",
+    "default_to_dict",
+    "generate_qualified_class_name",
+    "import_class_by_name",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +299,8 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
 
+    valid_init_param_names = _init_parameter_names(cls)
+
     # Automatically detect and deserialize objects with from_dict methods
     for key, value in init_params.items():
         if isinstance(value, dict) and "type" in value:
@@ -299,6 +313,12 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
                 init_params[key] = ComponentDevice.from_dict(value)
             # If type looks like a fully qualified class name, try to import it and deserialize
             elif isinstance(type_value, str) and "." in type_value:
+                # Reject before importing if the parent class does not accept this parameter.
+                # This blocks YAML that smuggles untrusted classes into unused parameter slots.
+                if valid_init_param_names is not None and key not in valid_init_param_names:
+                    raise DeserializationError(
+                        f"Refusing to deserialize unknown parameter '{key}' for '{cls.__name__}'."
+                    )
                 try:
                     imported_class = import_class_by_name(type_value)
                     if hasattr(imported_class, "from_dict") and callable(imported_class.from_dict):
@@ -311,6 +331,30 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     return cls(**init_params)
 
 
+def _init_parameter_names(cls: type[object]) -> set[str] | None:
+    """
+    Return the set of init parameter names accepted by `cls`.
+
+    Returns `None` if the constructor accepts arbitrary keyword arguments (`**kwargs`) — in
+    which case we cannot validate keys.
+    """
+    try:
+        signature = inspect.signature(cls.__init__)
+    except (TypeError, ValueError):
+        return None
+    names: set[str] = set()
+    for name, param in signature.parameters.items():
+        if name == "self":
+            continue
+        if param.kind is inspect.Parameter.VAR_KEYWORD:
+            # Constructor accepts **kwargs; we cannot tell whether `key` is a real parameter.
+            return None
+        if param.kind is inspect.Parameter.VAR_POSITIONAL:
+            continue
+        names.add(name)
+    return names
+
+
 def import_class_by_name(fully_qualified_name: str) -> type[object]:
     """
     Utility function to import (load) a class object based on its fully qualified class name.
@@ -319,12 +363,18 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
     It splits the name into module path and class name, imports the module,
     and returns the class object.
 
+    For security, the module path is checked against the deserialization allowlist
+    (see :mod:`haystack.core.serialization_security`). Modules outside the allowlist
+    are rejected with a :class:`DeserializationError`.
+
     :param fully_qualified_name: the fully qualified class name as a string
     :returns: the class object.
     :raises ImportError: If the class cannot be imported or found.
+    :raises DeserializationError: If the module is not on the deserialization allowlist.
     """
+    module_path, class_name = fully_qualified_name.rsplit(".", 1)
+    _check_module_allowed(module_path)
     try:
-        module_path, class_name = fully_qualified_name.rsplit(".", 1)
         logger.debug(
             "Attempting to import class '{cls_name}' from module '{md_path}'", cls_name=class_name, md_path=module_path
         )

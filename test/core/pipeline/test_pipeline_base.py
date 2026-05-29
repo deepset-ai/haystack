@@ -626,15 +626,55 @@ class TestPipelineBase:
         err.match("Missing 'type' in component 'add_two'")
 
     def test_from_dict_without_registered_component_type(self):
+        # A component type whose module passes the allowlist but cannot be imported should
+        # surface as a `PipelineError` ("not imported").
         data = {
             "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "components": {"add_two": {"type": "haystack.does.not.exist.Component", "init_parameters": {"add": 2}}},
             "connections": [],
         }
         with pytest.raises(PipelineError) as err:
             PipelineBase.from_dict(data)
 
         err.match(r"Component .+ not imported.")
+
+    def test_from_dict_rejects_untrusted_component_module(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+            PipelineBase.from_dict(data)
+
+    def test_from_dict_with_unsafe_bypasses_allowlist(self):
+        # `unsafe=True` bypasses the allowlist but the import itself still fails because the module
+        # is nonexistent — proving that the allowlist check (not the import) is what changes.
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        # Sanity check: without ``unsafe=True`` we'd get the allowlist rejection.
+        with pytest.raises(DeserializationError):
+            PipelineBase.from_dict(data)
+        # With ``unsafe=True`` the allowlist is bypassed; we fall through to a normal import error.
+        with pytest.raises(PipelineError, match="not imported"):
+            PipelineBase.from_dict(data, unsafe=True)
+
+    def test_from_dict_with_allowed_modules_kwarg(self):
+        # Passing the third-party module via `allowed_modules` should make the allowlist check pass.
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        # Without an extension, the allowlist rejects the module.
+        with pytest.raises(DeserializationError):
+            PipelineBase.from_dict(data)
+        # Passing the matching pattern lets us hit the actual import failure instead.
+        with pytest.raises(PipelineError, match="not imported"):
+            PipelineBase.from_dict(data, allowed_modules=["foo.*"])
 
     def test_from_dict_with_invalid_type(self):
         data = {

@@ -12,6 +12,7 @@ from types import GenericAlias, ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
 
 from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _check_module_allowed
 
 _import_lock = Lock()
 
@@ -147,12 +148,18 @@ def deserialize_type(type_str: str) -> Any:
     and then retrieve the type object from it. It also handles nested generic types like
     `list[dict[int, str]]`.
 
+    Every module path with a `.` prefix is checked against the deserialization
+    allowlist (see `haystack.core.serialization_security`) before being imported. Modules outside
+    the allowlist are rejected with a `DeserializationError`. Builtin and `typing`/`collections`
+    names without a module prefix bypass this check.
+
     :param type_str:
         The string representation of the type's full import path.
     :returns:
         The deserialized type object.
     :raises DeserializationError:
-        If the type cannot be deserialized due to missing module or type.
+        If the module is not on the deserialization allowlist, or if the type cannot be
+        deserialized due to a missing module or type.
     """
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)
@@ -180,6 +187,8 @@ def deserialize_type(type_str: str) -> Any:
         parts = type_str.split(".")
         module_name = ".".join(parts[:-1])
         type_name = parts[-1]
+
+        _check_module_allowed(module_name)
 
         module = sys.modules.get(module_name)
         if module is None:
