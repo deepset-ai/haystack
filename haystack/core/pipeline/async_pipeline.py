@@ -310,8 +310,7 @@ class AsyncPipeline(PipelineBase):
         if pruned or component_name in include_outputs_from:
             yield {component_name: _deepcopy_with_exceptions(pruned)}
 
-    # TODO Does this function need to be async, nothing is awaited inside
-    async def _schedule_component(
+    def _schedule_component(
         self,
         *,
         component_name: str,
@@ -518,10 +517,9 @@ class AsyncPipeline(PipelineBase):
             self.validate_pipeline(self._fill_queue(ordered_component_names, inputs, component_visits))
 
             while True:
-                # We refill the queue every iteration because concurrently running tasks may have changed `inputs`
-                # and therefore the priority of the components.
-                # TODO Why do we do this instead of using self._is_queue_stale at the end of the loop like in Pipeline?
-                #      If this needs to be this way should we switch Pipeline to do the same for consistency?
+                # We rebuild the priority queue every iteration: each iteration waits for one or more concurrent tasks
+                # to finish, which mutates `inputs` and can change many components' priorities at once, so we rebuild
+                # to give every scheduling decision an up-to-date view.
                 priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
@@ -577,7 +575,7 @@ class AsyncPipeline(PipelineBase):
 
                 if priority == ComponentPriority.READY:
                     # Schedule this component, then schedule as many additional READY components as concurrency allows.
-                    await self._schedule_component(
+                    self._schedule_component(
                         component_name=component_name,
                         inputs=inputs,
                         pipeline_outputs=pipeline_outputs,
@@ -593,30 +591,23 @@ class AsyncPipeline(PipelineBase):
                     # Possibly schedule more READY tasks if concurrency not fully used
                     while len(priority_queue) > 0 and not ready_sem.locked():
                         peek_priority, peek_name = priority_queue.peek()
-                        if peek_priority in (ComponentPriority.BLOCKED, ComponentPriority.HIGHEST):
-                            # The next component can't run or must run alone, so we stop scheduling.
+                        if peek_priority != ComponentPriority.READY:
+                            # We stop scheduling: the next component is BLOCKED (can't run), HIGHEST (must run alone),
+                            # or DEFER (waiting for more inputs - we only schedule it once it becomes READY).
                             break
-                        if peek_priority == ComponentPriority.READY:
-                            priority_queue.pop()
-                            await self._schedule_component(
-                                component_name=peek_name,
-                                inputs=inputs,
-                                pipeline_outputs=pipeline_outputs,
-                                component_visits=component_visits,
-                                running_tasks=running_tasks,
-                                scheduled_components=scheduled_components,
-                                ready_sem=ready_sem,
-                                cached_receivers=cached_receivers,
-                                include_outputs_from=include_outputs_from,
-                                parent_span=parent_span,
-                            )
-                            continue
-
-                        # TODO Couldn't this be moved to the if statement checking ComponentPriority.BlOCKED and
-                        #      ComponentPriority.HIGHEST?
-                        # The next is DEFER => we only schedule it once it becomes READY
-                        # We'll handle it in the next iteration or with incremental waiting
-                        break
+                        priority_queue.pop()
+                        self._schedule_component(
+                            component_name=peek_name,
+                            inputs=inputs,
+                            pipeline_outputs=pipeline_outputs,
+                            component_visits=component_visits,
+                            running_tasks=running_tasks,
+                            scheduled_components=scheduled_components,
+                            ready_sem=ready_sem,
+                            cached_receivers=cached_receivers,
+                            include_outputs_from=include_outputs_from,
+                            parent_span=parent_span,
+                        )
 
                 # We only schedule components with priority DEFER when no other tasks are running.
                 elif priority == ComponentPriority.DEFER and not running_tasks:
@@ -628,7 +619,7 @@ class AsyncPipeline(PipelineBase):
                             topological_sort=cached_topological_sort,
                         )
 
-                    await self._schedule_component(
+                    self._schedule_component(
                         component_name=component_name,
                         inputs=inputs,
                         pipeline_outputs=pipeline_outputs,
@@ -647,10 +638,9 @@ class AsyncPipeline(PipelineBase):
                 ):
                     yield partial_outputs
 
-            # TODO I'm confused, is this block actually needed? It seems all break conditions are contingent on
-            #      running_tasks being empty, but if that's the case, wouldn't we have already drained all tasks in
-            #      the loop?
-            # Drain any leftover tasks once the scheduling loop has finished.
+            # Safety net: drain any leftover tasks once the scheduling loop has finished. With the current loop both
+            # `break` paths require `running_tasks` to be empty, so this is a no-op. We keep it so that a future change
+            # adding a `break` that leaves tasks in flight doesn't lose outputs.
             async for partial_outputs in self._wait_for_tasks(
                 running_tasks, scheduled_components, return_when=asyncio.ALL_COMPLETED
             ):
