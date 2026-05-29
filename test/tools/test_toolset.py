@@ -157,6 +157,11 @@ def faulty_tool():
 
 
 class TestToolset:
+    def test_system_prompt_contribution_defaults_to_none(self):
+        """A plain Toolset contributes nothing to the system prompt by default."""
+        toolset = Toolset([])
+        assert toolset.system_prompt_contribution() is None
+
     def test_toolset_with_multiple_tools(self):
         """Test that a Toolset with multiple tools works properly."""
         add_tool = Tool(

@@ -260,6 +260,7 @@ class TestSerDe:
                             "inputs_from_state": None,
                             "name": "name",
                             "outputs_to_state": None,
+                            "system_prompt": None,
                             "outputs_to_string": None,
                             "parameters": {"x": {"type": "string"}},
                         },

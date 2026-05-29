@@ -249,6 +249,7 @@ class TestSerDe:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "system_prompt": None,
                         },
                     }
                 ]

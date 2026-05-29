@@ -86,6 +86,11 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
+    :param system_prompt:
+        Optional system prompt instructions associated with this Tool. When the Tool is used with an `Agent`,
+        this text is appended to the Agent's system prompt (see `system_prompt_contribution`). Use it to tell
+        the model how and when to use the Tool. Note that an enclosing `Toolset` that provides its own
+        `system_prompt_contribution` takes precedence and suppresses the contributions of its member tools.
     :raises ValueError: If `function` is async, if `parameters` is not a valid JSON schema, or if the
         `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
     :raises TypeError: If any configuration value in `outputs_to_state`, `outputs_to_string`, or
@@ -99,6 +104,7 @@ class Tool:
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
+    system_prompt: str | None = None
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         # Check that the function is not a coroutine (async function)
@@ -257,6 +263,18 @@ class Tool:
         as it may be called multiple times.
         """
         pass
+
+    def system_prompt_contribution(self) -> str | None:
+        """
+        Return optional system prompt instructions for this Tool.
+
+        When the Tool is used with an `Agent`, the returned text is appended to the Agent's system prompt.
+        By default this returns the `system_prompt` attribute (which may be `None`). Subclasses can override
+        this to generate instructions dynamically.
+
+        :returns: The system prompt contribution, or `None` if the Tool has nothing to contribute.
+        """
+        return getattr(self, "system_prompt", None)
 
     def invoke(self, **kwargs: Any) -> Any:
         """

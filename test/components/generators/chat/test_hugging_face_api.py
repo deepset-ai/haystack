@@ -278,6 +278,7 @@ class TestHuggingFaceAPIChatGenerator:
                     "inputs_from_state": None,
                     "name": "name",
                     "outputs_to_state": None,
+                    "system_prompt": None,
                     "outputs_to_string": None,
                     "parameters": {"x": {"type": "string"}},
                 },
@@ -342,6 +343,7 @@ class TestHuggingFaceAPIChatGenerator:
                                     "inputs_from_state": None,
                                     "name": "name",
                                     "outputs_to_state": None,
+                                    "system_prompt": None,
                                     "outputs_to_string": None,
                                     "description": "description",
                                     "parameters": {"x": {"type": "string"}},
@@ -1215,6 +1217,7 @@ class TestHuggingFaceAPIChatGenerator:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "system_prompt": None,
                         },
                     }
                 ]

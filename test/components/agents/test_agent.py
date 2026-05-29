@@ -263,6 +263,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "system_prompt": None,
                         },
                     },
                     {
@@ -346,6 +347,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "system_prompt": None,
                                 },
                             }
                         ]
@@ -416,6 +418,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "system_prompt": None,
                         },
                     },
                     {
@@ -506,6 +509,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "system_prompt": None,
                                 },
                             }
                         ]
@@ -1268,7 +1272,7 @@ class TestAgentTracing:
         assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
         assert (
             llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}'  # noqa: E501
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]}'  # noqa: E501
         )
         assert (
             llm_tags["haystack.agent.step.llm.output"]
@@ -1283,7 +1287,7 @@ class TestAgentTracing:
         _, run_tags = agent_spans[2]
         assert run_tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
             "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
@@ -1376,7 +1380,7 @@ class TestAgentTracing:
         assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
         assert (
             llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}'  # noqa: E501
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]}'  # noqa: E501
         )
         assert (
             llm_tags["haystack.agent.step.llm.output"]
@@ -1389,7 +1393,7 @@ class TestAgentTracing:
         _, run_tags = agent_spans[2]
         assert run_tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
             "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
@@ -2220,3 +2224,84 @@ class TestAgentNotTriggeredByInjectedInput:
 
         assert "agent" not in result
         chat_generator.run.assert_not_called()
+
+
+@component
+class CapturingChatGenerator:
+    """Records the messages it last received so tests can inspect the system prompt sent to the model."""
+
+    def __init__(self):
+        self.last_messages = None
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], tools=None, **kwargs) -> dict[str, Any]:
+        self.last_messages = messages
+        return {"replies": [ChatMessage.from_assistant("done")]}
+
+
+class _ContributingToolset(Toolset):
+    def __init__(self, tools, contribution):
+        super().__init__(tools)
+        self._contribution = contribution
+
+    def system_prompt_contribution(self):
+        return self._contribution
+
+
+class TestSystemPromptContributions:
+    def _tool(self, name, system_prompt=None):
+        return Tool(
+            name=name,
+            description="d",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: None,
+            system_prompt=system_prompt,
+        )
+
+    def test_toolset_contribution_appended_to_system_prompt(self):
+        generator = CapturingChatGenerator()
+        toolset = _ContributingToolset([self._tool("a")], "TOOLSET INSTRUCTIONS")
+        agent = Agent(chat_generator=generator, tools=toolset, system_prompt="You are helpful.")
+        agent.warm_up()
+        agent.run(messages=[ChatMessage.from_user("hi")])
+
+        system_message = generator.last_messages[0]
+        assert system_message.is_from(ChatRole.SYSTEM)
+        assert system_message.text == "You are helpful.\n\nTOOLSET INSTRUCTIONS"
+
+    def test_contribution_prepended_when_no_system_prompt(self):
+        generator = CapturingChatGenerator()
+        toolset = _ContributingToolset([self._tool("a")], "TOOLSET INSTRUCTIONS")
+        agent = Agent(chat_generator=generator, tools=toolset)
+        agent.warm_up()
+        agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert generator.last_messages[0].is_from(ChatRole.SYSTEM)
+        assert generator.last_messages[0].text == "TOOLSET INSTRUCTIONS"
+        assert generator.last_messages[1].is_from(ChatRole.USER)
+
+    def test_toolset_contribution_suppresses_member_tool_contributions(self):
+        generator = CapturingChatGenerator()
+        toolset = _ContributingToolset([self._tool("a", system_prompt="MEMBER")], "TOOLSET")
+        agent = Agent(chat_generator=generator, tools=toolset)
+        agent.warm_up()
+        agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert generator.last_messages[0].text == "TOOLSET"
+
+    def test_bare_tool_system_prompt_is_contributed(self):
+        generator = CapturingChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[self._tool("a", system_prompt="USE TOOL A")])
+        agent.warm_up()
+        agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert generator.last_messages[0].text == "USE TOOL A"
+
+    def test_no_contribution_leaves_messages_unchanged(self):
+        generator = CapturingChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[self._tool("a")])
+        agent.warm_up()
+        agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert len(generator.last_messages) == 1
+        assert generator.last_messages[0].is_from(ChatRole.USER)
