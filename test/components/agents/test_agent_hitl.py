@@ -166,6 +166,12 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["last_message"].text is not None
         assert "5" in result["last_message"].text
+        # Auto-populated run-metadata outputs: at least one tool call plus a final answer.
+        assert result["step_count"] >= 2
+        assert result["tool_call_counts"]["addition_tool"] >= 1
+        assert result["token_usage"]["prompt_tokens"] > 0
+        assert result["token_usage"]["completion_tokens"] > 0
+        assert result["token_usage"]["total_tokens"] > 0
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -188,3 +194,9 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["last_message"].text is not None
         assert "5" in result["last_message"].text
+        # Auto-populated run-metadata outputs: at least one tool call plus a final answer.
+        assert result["step_count"] >= 2
+        assert result["tool_call_counts"]["addition_tool"] >= 1
+        assert result["token_usage"]["prompt_tokens"] > 0
+        assert result["token_usage"]["completion_tokens"] > 0
+        assert result["token_usage"]["total_tokens"] > 0

@@ -2,7 +2,6 @@ loaders:
   - search_path: [../haystack/components/generators]
     modules:
       [
-        "azure",
         "chat/azure",
         "chat/azure_responses",
         "chat/fallback",
@@ -11,10 +10,7 @@ loaders:
         "chat/llm",
         "chat/openai",
         "chat/openai_responses",
-        "hugging_face_api",
-        "hugging_face_local",
-        "openai",
-        "openai_dalle",
+        "openai_image_generator",
         "utils",
       ]
 processors:

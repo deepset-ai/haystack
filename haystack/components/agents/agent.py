@@ -6,6 +6,7 @@ import asyncio
 import contextvars
 import inspect
 import re
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -47,6 +48,77 @@ logger = logging.getLogger(__name__)
 _JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 # Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
 _JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
+
+# State keys that the Agent populates automatically during a run.
+# Users may not define them in their own `state_schema`, and they are exposed only as Agent outputs.
+_INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
+    "step_count": {"type": int, "handler": replace_values},
+    "token_usage": {"type": dict[str, Any], "handler": replace_values},
+    "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+}
+
+
+def _accumulate_usage(current: Any, new: Any) -> Any:
+    """
+    Recursively sum numeric leaf values across two usage-like dicts.
+
+    Used to aggregate `ChatMessage.meta["usage"]` payloads across LLM calls in a run. Nested dicts (e.g. OpenAI's
+    `completion_tokens_details`) are merged recursively; numeric leaves are summed; other types fall back to the new
+    value.
+
+    :param current: The current accumulated usage data.
+    :param new: The new usage data to merge in.
+    """
+    if isinstance(current, dict) and isinstance(new, dict):
+        result = dict(current)
+        for k, v in new.items():
+            result[k] = _accumulate_usage(result[k], v) if k in result else deepcopy(v)
+        return result
+    if isinstance(current, (int, float)) and isinstance(new, (int, float)):
+        return current + new
+    return new
+
+
+def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
+    """
+    Aggregate token usage from the latest LLM messages into the State.
+
+    Only writes when at least one message reports `meta["usage"]`, so generators that don't surface usage data
+    leave `token_usage` at its default empty dict rather than overwriting it.
+
+    :param state: The Agent's State, used to read the running `token_usage` total and write back the new total.
+    :param llm_messages: The ChatMessage objects returned from the latest LLM call. Token usage is read from each
+        message's `meta["usage"]` field, if present.
+    """
+    current = state.get("token_usage")
+    updated = False
+    for msg in llm_messages:
+        usage = msg.meta.get("usage")
+        if isinstance(usage, dict):
+            current = _accumulate_usage(current or {}, usage)
+            updated = True
+    if updated:
+        state.set("token_usage", current)
+
+
+def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
+    """
+    Increment per-tool call counts in the State for every successfully dispatched tool.
+
+    :param state: The Agent's State, used to read the running `tool_call_counts` map and write back the new totals.
+    :param tool_messages: The ChatMessage objects returned from the latest tool execution. Per-tool counts are
+        incremented based on each message's `tool_call_result.origin.tool_name`.
+    """
+    counts = state.get("tool_call_counts") or {}
+    updated = False
+    for tm in tool_messages:
+        if tm.tool_call_result is None:
+            continue
+        name = tm.tool_call_result.origin.tool_name
+        counts[name] = counts.get(name, 0) + 1
+        updated = True
+    if updated:
+        state.set("tool_call_counts", counts)
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
@@ -292,7 +364,8 @@ class Agent:
             with `"type"` (required) and an optional `"handler"` for merging values across tool calls.
             Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
-            If the agent exceeds this number of steps, it will stop and return the current state.
+            A step is one chat-generator call plus the execution of every tool call the model requested in
+            that call (if any). If the agent reaches this number of steps it stops and returns the current state.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
@@ -324,6 +397,12 @@ class Agent:
             )
 
         if state_schema is not None:
+            reserved_used = sorted(set(state_schema) & _INTERNAL_STATE_KEYS.keys())
+            if reserved_used:
+                raise ValueError(
+                    f"state_schema keys {reserved_used} are reserved for Agent internal state and "
+                    f"cannot be redefined. Reserved keys: {sorted(_INTERNAL_STATE_KEYS)}."
+                )
             _validate_schema(state_schema)
         _validate_prompt_message_blocks(user_prompt, system_prompt)
         if tool_concurrency_limit < 1:
@@ -350,13 +429,16 @@ class Agent:
         self.state_schema = dict(self._state_schema)
         if self.state_schema.get("messages") is None:
             self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
+        for key, config in _INTERNAL_STATE_KEYS.items():
+            self.state_schema[key] = dict(config)
 
         # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
-        output_types = {"last_message": ChatMessage}
+        output_types: dict[str, Any] = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
             output_types[param] = config["type"]
-            if param not in self._run_method_params:
+            # Internal state keys are populated internally by the Agent itself and are not exposed as inputs
+            if param not in self._run_method_params and param not in _INTERNAL_STATE_KEYS:
                 component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
@@ -569,15 +651,18 @@ class Agent:
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
+        selected_tools = self._select_tools(tools)
+
         state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
         state = State(schema=self.state_schema, data=state_kwargs)
         state.set("messages", messages)
+        state.set("step_count", 0)
+        state.set("token_usage", {})
+        state.set("tool_call_counts", {tool.name: 0 for tool in flatten_tools_or_toolsets(selected_tools)})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
-
-        selected_tools = self._select_tools(tools)
         generator_inputs: dict[str, Any] = {}
         if self._chat_generator_supports_tools:
             generator_inputs["tools"] = selected_tools
@@ -669,6 +754,12 @@ class Agent:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
+            - "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+              execution of every tool call the model requested in that call (if any). The counter is incremented
+              after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
+            - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
+              `meta["usage"]`.
+            - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -738,6 +829,12 @@ class Agent:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
+            - "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+              execution of every tool call the model requested in that call (if any). The counter is incremented
+              after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
+            - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
+              `meta["usage"]`.
+            - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -787,9 +884,11 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
+            _record_llm_usage(exe_context.state, llm_messages)
 
             if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
+                exe_context.state.set("step_count", exe_context.counter)
                 return False
 
             modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
@@ -815,13 +914,14 @@ class Agent:
                     "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
                 )
             exe_context.state.set("messages", tool_messages)
-
-            if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                exe_context.counter += 1
-                return False
+            _record_tool_calls(exe_context.state, tool_messages)
 
             exe_context.counter += 1
-            return True
+            exe_context.state.set("step_count", exe_context.counter)
+            exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
+                llm_messages, tool_messages
+            )
+            return not exit_triggered
 
     async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
@@ -848,9 +948,11 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
+            _record_llm_usage(exe_context.state, llm_messages)
 
             if not any(msg.tool_call for msg in llm_messages) or not self.tools:
                 exe_context.counter += 1
+                exe_context.state.set("step_count", exe_context.counter)
                 return False
 
             modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
@@ -876,13 +978,14 @@ class Agent:
                     "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
                 )
             exe_context.state.set("messages", tool_messages)
-
-            if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                exe_context.counter += 1
-                return False
+            _record_tool_calls(exe_context.state, tool_messages)
 
             exe_context.counter += 1
-            return True
+            exe_context.state.set("step_count", exe_context.counter)
+            exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
+                llm_messages, tool_messages
+            )
+            return not exit_triggered
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """

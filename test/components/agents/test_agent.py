@@ -16,8 +16,8 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import Agent
-from haystack.components.agents.state import merge_lists
+from haystack.components.agents.agent import Agent, _accumulate_usage
+from haystack.components.agents.state import merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -43,6 +43,16 @@ def _user_msg(text: str) -> str:
 
 def _sys_msg(text: str) -> str:
     return f'{{% message role="system" %}}{text}{{% endmessage %}}'
+
+
+def _assistant_with_usage(text: str | None = None, *, tool_calls=None, usage: dict[str, Any] | None = None):
+    """Build an assistant ChatMessage with optional tool_calls and `meta['usage']` populated."""
+    meta: dict[str, Any] = {}
+    if usage is not None:
+        meta["usage"] = usage
+    if tool_calls is not None:
+        return ChatMessage.from_assistant(tool_calls=tool_calls, meta=meta or None)
+    return ChatMessage.from_assistant(text or "", meta=meta or None)
 
 
 def sync_streaming_callback(chunk: StreamingChunk) -> None:
@@ -194,7 +204,14 @@ class TestAgent:
         assert agent.__haystack_output__._sockets_dict == {
             "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
             "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
+            "step_count": OutputSocket(name="step_count", type=int, receivers=[]),
+            "token_usage": OutputSocket(name="token_usage", type=dict[str, Any], receivers=[]),
+            "tool_call_counts": OutputSocket(name="tool_call_counts", type=dict[str, int], receivers=[]),
         }
+        # Check that the internal-state keys are not set up as input sockets
+        assert {"step_count", "token_usage", "tool_call_counts"}.isdisjoint(
+            agent.__haystack_input__._sockets_dict.keys()
+        )
 
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -443,6 +460,9 @@ class TestAgent:
         assert agent.state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
+            "step_count": {"type": int, "handler": replace_values},
+            "token_usage": {"type": dict[str, Any], "handler": replace_values},
+            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
         }
         assert agent.tool_concurrency_limit == 5
         assert agent.tool_streaming_callback_passthrough is True
@@ -532,55 +552,24 @@ class TestAgent:
                         "http_client_kwargs": None,
                     },
                 },
-                "tools": [
-                    {
-                        "type": "haystack.tools.tool.Tool",
-                        "data": {
-                            "name": "weather_tool",
-                            "description": "Provides weather information for a given location.",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {"location": {"type": "string"}},
-                                "required": ["location"],
-                            },
-                            "function": "test_agent.weather_function",
-                            "outputs_to_string": None,
-                            "inputs_from_state": None,
-                            "outputs_to_state": None,
-                        },
-                    },
-                    {
-                        "type": "haystack.tools.component_tool.ComponentTool",
-                        "data": {
-                            "component": {
-                                "type": "haystack.components.builders.prompt_builder.PromptBuilder",
-                                "init_parameters": {
-                                    "template": "{{parrot}}",
-                                    "variables": None,
-                                    "required_variables": "*",
-                                },
-                            },
-                            "name": "parrot",
-                            "description": "This is a parrot.",
-                            "parameters": None,
-                            "outputs_to_string": None,
-                            "inputs_from_state": None,
-                            "outputs_to_state": None,
-                        },
-                    },
-                ],
+                "tools": None,
                 "system_prompt": None,
-                "exit_conditions": ["text", "weather_tool"],
+                "exit_conditions": ["text"],
                 "state_schema": None,
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
-                "tool_concurrency_limit": 5,
-                "tool_streaming_callback_passthrough": True,
+                "tool_concurrency_limit": 4,
+                "tool_streaming_callback_passthrough": False,
             },
         }
         agent = Agent.from_dict(data)
-        assert agent.state_schema == {"messages": {"type": list[ChatMessage], "handler": merge_lists}}
+        assert agent.state_schema == {
+            "messages": {"type": list[ChatMessage], "handler": merge_lists},
+            "step_count": {"type": int, "handler": replace_values},
+            "token_usage": {"type": dict[str, Any], "handler": replace_values},
+            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+        }
 
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -590,18 +579,18 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             exit_conditions=["text", "weather_tool"],
             state_schema={"foo": {"type": str}},
+            streaming_callback=sync_streaming_callback,
         )
 
         serialized_agent = agent.to_dict()
 
         init_parameters = serialized_agent["init_parameters"]
-
         assert serialized_agent["type"] == "haystack.components.agents.agent.Agent"
         assert (
             init_parameters["chat_generator"]["type"]
             == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
         )
-        assert init_parameters["streaming_callback"] is None
+        assert init_parameters["streaming_callback"] == "test_agent.sync_streaming_callback"
         assert init_parameters["tools"][0]["data"]["function"] == serialize_callable(weather_function)
         assert (
             init_parameters["tools"][1]["data"]["component"]["type"]
@@ -610,7 +599,6 @@ class TestAgent:
         assert init_parameters["exit_conditions"] == ["text", "weather_tool"]
 
         deserialized_agent = Agent.from_dict(serialized_agent)
-
         assert isinstance(deserialized_agent, Agent)
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
         assert deserialized_agent.tools[0].function is weather_function
@@ -619,21 +607,10 @@ class TestAgent:
         assert deserialized_agent.state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
+            "step_count": {"type": int, "handler": replace_values},
+            "token_usage": {"type": dict[str, Any], "handler": replace_values},
+            "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
         }
-
-    def test_serde_with_streaming_callback(self, weather_tool, component_tool, monkeypatch):
-        monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
-        generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
-        agent = Agent(
-            chat_generator=generator, tools=[weather_tool, component_tool], streaming_callback=sync_streaming_callback
-        )
-
-        serialized_agent = agent.to_dict()
-
-        init_parameters = serialized_agent["init_parameters"]
-        assert init_parameters["streaming_callback"] == "test_agent.sync_streaming_callback"
-
-        deserialized_agent = Agent.from_dict(serialized_agent)
         assert deserialized_agent.streaming_callback is sync_streaming_callback
 
     def test_exit_conditions_validation(self, weather_tool, component_tool, monkeypatch):
@@ -773,8 +750,9 @@ class TestAgent:
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
 
         with caplog.at_level(logging.WARNING):
-            agent.run([ChatMessage.from_user("Hello")])
+            result = agent.run([ChatMessage.from_user("Hello")])
             assert "Agent reached maximum agent steps" in caplog.text
+            assert result["step_count"] == 0
 
     def test_exit_condition_exits(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -950,6 +928,13 @@ class TestAgent:
         assert "last_message" in response
         assert isinstance(response["last_message"], ChatMessage)
         assert response["messages"][-1] == response["last_message"]
+        # Auto-populated run outputs:
+        # 4 messages → tool call + final answer = 2 LLM calls = 2 steps; one weather_tool invocation.
+        assert response["step_count"] == 2
+        assert response["tool_call_counts"] == {"weather_tool": 1}
+        assert response["token_usage"]["prompt_tokens"] > 0
+        assert response["token_usage"]["completion_tokens"] > 0
+        assert response["token_usage"]["total_tokens"] > 0
 
     @pytest.mark.asyncio
     async def test_generation_kwargs(self):
@@ -1025,13 +1010,21 @@ class TestAgent:
             streaming_callback_called = True
 
         result = agent.run(
-            [ChatMessage.from_user("What's the weather in Paris?")], streaming_callback=streaming_callback
+            [ChatMessage.from_user("What's the weather in Paris?")],
+            streaming_callback=streaming_callback,
+            generation_kwargs={"stream_options": {"include_usage": True}},
         )
 
         assert result is not None
         assert result["messages"] is not None
         assert result["last_message"] is not None
         assert streaming_callback_called
+        # Auto-populated run outputs.
+        assert result["step_count"] == 2
+        assert result["tool_call_counts"] == {"weather_tool": 1}
+        assert result["token_usage"]["prompt_tokens"] > 0
+        assert result["token_usage"]["completion_tokens"] > 0
+        assert result["token_usage"]["total_tokens"] > 0
 
     @pytest.mark.asyncio
     async def test_run_async_with_async_streaming_callback(self, weather_tool):
@@ -1059,6 +1052,140 @@ class TestAgent:
 
         with pytest.raises(ValueError, match="The init callback must be async compatible"):
             await agent.run_async([ChatMessage.from_user("Hello")])
+
+    def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        for reserved in ("step_count", "token_usage", "tool_call_counts"):
+            with pytest.raises(ValueError, match="reserved for Agent internal state"):
+                Agent(
+                    chat_generator=OpenAIChatGenerator(), tools=[weather_tool], state_schema={reserved: {"type": int}}
+                )
+
+    def test_run_populates_token_usage_and_tool_call_counts(self, monkeypatch, weather_tool, component_tool):
+        """A multi-step run aggregates step_count, token_usage (incl. nested details), and tool_call_counts."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool, component_tool])
+        # Step 1: two parallel tool calls + usage with nested detail dicts.
+        # Step 2: one more weather_tool call + flat usage.
+        # Step 3: final text answer + usage.
+        first_step = [
+            _assistant_with_usage(
+                tool_calls=[
+                    ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                    ToolCall(tool_name="parrot", arguments={"parrot": "hi"}),
+                ],
+                usage={
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                    "completion_tokens_details": {"reasoning_tokens": 2},
+                },
+            )
+        ]
+        second_step = [
+            _assistant_with_usage(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Paris"})],
+                usage={"prompt_tokens": 6, "completion_tokens": 3, "total_tokens": 9},
+            )
+        ]
+        third_step = [
+            _assistant_with_usage(
+                "Done.",
+                usage={
+                    "prompt_tokens": 4,
+                    "completion_tokens": 2,
+                    "total_tokens": 6,
+                    "completion_tokens_details": {"reasoning_tokens": 1},
+                },
+            )
+        ]
+        agent.chat_generator.run = MagicMock(
+            side_effect=[{"replies": first_step}, {"replies": second_step}, {"replies": third_step}]
+        )
+
+        result = agent.run([ChatMessage.from_user("Hi")])
+        assert result["step_count"] == 3
+        assert result["tool_call_counts"] == {"weather_tool": 2, "parrot": 1}
+        assert result["token_usage"] == {
+            "prompt_tokens": 20,
+            "completion_tokens": 10,
+            "total_tokens": 30,
+            "completion_tokens_details": {"reasoning_tokens": 3},
+        }
+
+    @pytest.mark.asyncio
+    async def test_run_async_populates_token_usage_and_tool_call_counts(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool])
+        first_step = [
+            _assistant_with_usage(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                usage={"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6},
+            )
+        ]
+        second_step = [
+            _assistant_with_usage("Done.", usage={"prompt_tokens": 3, "completion_tokens": 1, "total_tokens": 4})
+        ]
+        agent.chat_generator.run_async = AsyncMock(side_effect=[{"replies": first_step}, {"replies": second_step}])
+
+        result = await agent.run_async([ChatMessage.from_user("Hi")])
+        assert result["step_count"] == 2
+        assert result["tool_call_counts"] == {"weather_tool": 1}
+        assert result["token_usage"] == {"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10}
+
+    def test_metadata_outputs_show_defaults_when_no_data(self, weather_tool):
+        """`token_usage` stays empty and `tool_call_counts` reports zero for every tool when nothing happens."""
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
+        result = agent.run([ChatMessage.from_user("Hi")])
+        # MockChatGenerator returns a text-only reply with no `usage` meta and no tool calls.
+        assert result["step_count"] == 1
+        assert result["token_usage"] == {}
+        assert result["tool_call_counts"] == {"weather_tool": 0}
+
+
+class TestAccumulateUsage:
+    """Unit tests for the `_accumulate_usage` helper used to merge ChatGenerator usage dicts."""
+
+    def test_sums_flat_numeric_keys(self):
+        current = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+        new = {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
+        assert _accumulate_usage(current, new) == {"prompt_tokens": 13, "completion_tokens": 7, "total_tokens": 20}
+
+    def test_merges_nested_detail_dicts_recursively(self):
+        current = {"prompt_tokens": 10, "completion_tokens_details": {"reasoning_tokens": 2, "audio_tokens": 0}}
+        new = {
+            "prompt_tokens": 4,
+            "completion_tokens_details": {"reasoning_tokens": 3, "audio_tokens": 1},
+            "prompt_tokens_details": {"cached_tokens": 6},
+        }
+        assert _accumulate_usage(current, new) == {
+            "prompt_tokens": 14,
+            "completion_tokens_details": {"reasoning_tokens": 5, "audio_tokens": 1},
+            "prompt_tokens_details": {"cached_tokens": 6},
+        }
+
+    def test_adds_keys_missing_in_current(self):
+        assert _accumulate_usage({"prompt_tokens": 5}, {"completion_tokens": 7}) == {
+            "prompt_tokens": 5,
+            "completion_tokens": 7,
+        }
+
+    def test_empty_current_dict_returns_copy_of_new(self):
+        new = {"prompt_tokens": 5, "details": {"cached_tokens": 1}}
+        result = _accumulate_usage({}, new)
+        assert result == new
+        # Nested dicts must be deep-copied so future merges don't mutate the source.
+        new["details"]["cached_tokens"] = 999
+        assert result["details"]["cached_tokens"] == 1
+
+    def test_non_dict_non_numeric_falls_back_to_new(self):
+        # Strings, lists, or any other type that isn't a dict-or-number pair returns `new` unchanged.
+        assert _accumulate_usage("old-model", "new-model") == "new-model"
+        assert _accumulate_usage(5, "stringified") == "stringified"
+        assert _accumulate_usage({"model": "gpt-x"}, {"model": "gpt-y"}) == {"model": "gpt-y"}
+
+    def test_sums_floats(self):
+        assert _accumulate_usage(1.5, 2.25) == 3.75
 
 
 class TestAgentTracing:
@@ -1111,9 +1238,9 @@ class TestAgentTracing:
             "haystack.agent.max_steps": 100,
             "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
         }
 
@@ -1217,9 +1344,9 @@ class TestAgentTracing:
             "haystack.agent.max_steps": 100,
             "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
         }
 
