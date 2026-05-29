@@ -91,13 +91,25 @@ Use `strip_docstrings=True` when docstrings are verbose. Pass `meta_fields_to_em
 from haystack import Document
 from haystack.components.preprocessors import PythonCodeSplitter
 
+source = '''
+"""Example module."""
+from math import sqrt
+
+
+class Circle:
+    def __init__(self, r: float) -> None:
+        self.r = r
+
+    def area(self) -> float:
+        return 3.14159 * self.r * self.r
+'''
+
 splitter = PythonCodeSplitter(
     min_effective_lines=20,
     max_effective_lines=100,
     strip_docstrings=True,
 )
 result = splitter.run(documents=[Document(content=source, meta={"file_name": "my_module.py"})])
-
 for chunk in result["documents"]:
     print(chunk.content)
     print(chunk.meta.get("docstrings"))
