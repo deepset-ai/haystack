@@ -364,7 +364,8 @@ class Agent:
             with `"type"` (required) and an optional `"handler"` for merging values across tool calls.
             Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
-            If the agent exceeds this number of steps, it will stop and return the current state.
+            A step is one chat-generator call plus the execution of every tool call the model requested in
+            that call (if any). If the agent reaches this number of steps it stops and returns the current state.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
@@ -753,7 +754,9 @@ class Agent:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
-            - "step_count": The number of steps the agent ran.
+            - "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+              execution of every tool call the model requested in that call (if any). The counter is incremented
+              after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
             - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
@@ -826,7 +829,9 @@ class Agent:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
-            - "step_count": The number of steps the agent ran.
+            - "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+              execution of every tool call the model requested in that call (if any). The counter is incremented
+              after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
             - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.

@@ -10,6 +10,10 @@ enhancements:
 
     These fields are added to ``Agent.state_schema`` automatically so that tools registered via ``inputs_from_state`` can read them mid-run.
     They are exposed only as Agent outputs so cannot be passed in as inputs to ``Agent.run`` / ``Agent.run_async``.
+  - |
+    ``LLM`` now exposes a ``token_usage`` output alongside ``messages`` and ``last_message``. Because ``LLM`` never
+    invokes tools and always runs exactly one step, ``step_count`` and ``tool_call_counts`` inherited from ``Agent``
+    are not exposed on ``LLM``.
 upgrade:
   - |
     ``step_count``, ``token_usage``, and ``tool_call_counts`` are now reserved keys in ``Agent.state_schema``.
