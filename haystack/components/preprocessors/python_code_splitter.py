@@ -360,12 +360,14 @@ class PythonCodeSplitter:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
         # Refuse to strip if the docstring starts on the same line as the def/class
-        # statement - removing it would leave broken syntax behind.
-        if first.lineno <= node.lineno:
-            return self._slice_lines(source_lines, unit_start, unit_end), None
-
+        # statement (removing it would leave broken syntax) or extends past the
+        # slice that the caller asked for (e.g. a class_header slice that ends
+        # before the docstring's last line).
         ds_start = first.lineno
         ds_end = first.end_lineno or first.lineno
+        if ds_start <= node.lineno or ds_end > unit_end:
+            return self._slice_lines(source_lines, unit_start, unit_end), None
+
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
         return "".join(before + after), docstring
@@ -433,21 +435,8 @@ class PythonCodeSplitter:
         header_end = first_child_start - 1
         header_slice = self._slice_lines(source_lines, cursor, header_end)
         header_docstring: str | None = None
-        if self.strip_docstrings and cls.body:
-            first_body = cls.body[0]
-            if (
-                isinstance(first_body, ast.Expr)
-                and isinstance(first_body.value, ast.Constant)
-                and isinstance(first_body.value.value, str)
-                and first_body.lineno > cls.lineno
-                and (first_body.end_lineno or first_body.lineno) <= header_end
-            ):
-                ds_start = first_body.lineno
-                ds_end = first_body.end_lineno or first_body.lineno
-                before = source_lines[cursor - 1 : ds_start - 1]
-                after = source_lines[ds_end:header_end]
-                header_slice = "".join(before + after)
-                header_docstring = ast.get_docstring(cls)
+        if self.strip_docstrings:
+            header_slice, header_docstring = self._strip_docstring(cls, source_lines, cursor, header_end)
 
         units.append(
             _CodeUnit(
