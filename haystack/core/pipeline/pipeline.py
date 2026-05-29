@@ -231,7 +231,7 @@ class Pipeline(PipelineBase):
         :raises PipelineBreakpointException:
             When a pipeline_breakpoint is triggered. Contains the component name, state, and partial results.
         """
-        pipeline_running(self)
+        pipeline_running(self)  # telemetry
 
         if break_point and pipeline_snapshot:
             msg = (
@@ -244,8 +244,7 @@ class Pipeline(PipelineBase):
         if break_point:
             _validate_break_point_against_pipeline(break_point, self.graph)
 
-        # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
-        # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
+        # warm up the pipeline by running each component's warm_up method
         self.warm_up()
 
         if include_outputs_from is None:
