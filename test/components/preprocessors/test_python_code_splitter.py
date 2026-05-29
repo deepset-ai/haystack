@@ -75,8 +75,7 @@ def class_source():
 
 @pytest.fixture
 def oversized_function_source():
-    # A function whose body has many lines so that
-    # effective_lines >> oversized_factor * max_effective_lines.
+    """A function long enough to trigger the secondary line-based split."""
     body_lines = "\n".join(f"    x_{i} = {i}" for i in range(200))
     return f"def giant():\n{body_lines}\n    return x_0\n"
 
@@ -141,7 +140,6 @@ class TestRunInputValidation:
 
     def test_non_string_content_raises_type_error(self):
         splitter = PythonCodeSplitter()
-        # Document normally coerces, so bypass via construction-friendly path.
         doc = Document(content="placeholder")
         doc.content = 12345  # type: ignore[assignment]
         with pytest.raises(TypeError):
@@ -170,7 +168,7 @@ class TestBasicOutput:
         for chunk in result["documents"]:
             assert isinstance(chunk, Document)
             assert isinstance(chunk.content, str)
-            assert chunk.content  # checks non-empty
+            assert chunk.content
 
     def test_split_id_starts_at_zero_and_increments(self, class_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
@@ -246,61 +244,35 @@ class TestOrderingAndLineRanges:
     def test_chunks_are_in_source_order(self, class_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
         result = splitter.run(documents=[Document(content=class_source)])
-        chunks = result["documents"]
-        # start_line should be non-decreasing across chunks
         prev_start = 0
-        for chunk in chunks:
+        for chunk in result["documents"]:
             assert chunk.meta["start_line"] >= prev_start
             assert chunk.meta["end_line"] >= chunk.meta["start_line"]
             prev_start = chunk.meta["start_line"]
 
     def test_chunks_dont_overlap_in_primary_split(self, class_source):
-        # Primary AST split has no overlap; adjacent chunks should be disjoint.
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
-        result = splitter.run(documents=[Document(content=class_source)])
-        chunks = result["documents"]
+        chunks = splitter.run(documents=[Document(content=class_source)])["documents"]
         for prev, nxt in zip(chunks, chunks[1:], strict=False):
             assert nxt.meta["start_line"] > prev.meta["end_line"]
 
     def test_chunks_read_top_to_bottom(self, class_source):
+        # With the default preserve_class_definition=True, chunks may have a class
+        # signature prefixed but the source slice itself must still appear verbatim.
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5)
         result = splitter.run(documents=[Document(content=class_source)])
         source_lines = class_source.splitlines(keepends=True)
         for chunk in result["documents"]:
-            assert chunk.content is not None
-            start = chunk.meta["start_line"]
-            end = chunk.meta["end_line"]
-            expected_slice = "".join(source_lines[start - 1 : end])
-            # The exact source slice for [start_line, end_line] must appear contiguously
-            # in the chunk content. With preserve_class_definition=True (the default) the
-            # chunk may additionally carry a prepended class signature, but the slice
-            # itself must be present byte-for-byte - a regression that dropped or
-            # reordered lines within the range would fail this assertion.
-            assert expected_slice in chunk.content, (
-                f"Chunk content is missing the source slice for lines {start}-{end}.\n"
-                f"--- expected slice ---\n{expected_slice!r}\n"
-                f"--- chunk content ---\n{chunk.content!r}"
-            )
+            expected = "".join(source_lines[chunk.meta["start_line"] - 1 : chunk.meta["end_line"]])
+            assert expected in (chunk.content or "")
 
     def test_chunks_equal_source_slice_without_class_preservation(self, class_source):
-        # With preserve_class_definition=False there is no prepended signature, so
-        # the chunk content for [start_line, end_line] must equal the source slice
-        # minus at most a fixed-length preamble that bridges from the previous unit's
-        # end. We assert that the chunk content ends exactly with the slice and that
-        # nothing inside it is rewritten.
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, preserve_class_definition=False)
         result = splitter.run(documents=[Document(content=class_source)])
         source_lines = class_source.splitlines(keepends=True)
         for chunk in result["documents"]:
-            assert chunk.content is not None
-            start = chunk.meta["start_line"]
-            end = chunk.meta["end_line"]
-            expected_slice = "".join(source_lines[start - 1 : end])
-            assert chunk.content.endswith(expected_slice), (
-                f"Chunk content does not end with the source slice for lines {start}-{end}.\n"
-                f"--- expected slice ---\n{expected_slice!r}\n"
-                f"--- chunk content ---\n{chunk.content!r}"
-            )
+            expected = "".join(source_lines[chunk.meta["start_line"] - 1 : chunk.meta["end_line"]])
+            assert (chunk.content or "").endswith(expected)
 
 
 class TestFileNamePropagation:
@@ -358,15 +330,12 @@ class TestDecorators:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2)
         result = splitter.run(documents=[Document(content=source)])
-        # The chunk holding `def s` must also contain the `@staticmethod` line.
         chunks_with_s = [c for c in result["documents"] if "def s" in (c.content or "")]
         assert chunks_with_s
         for chunk in chunks_with_s:
             assert "@staticmethod" in (chunk.content or "")
 
     def test_decorators_deduped_in_chunk(self):
-        # Two methods sharing the same decorator should not list the
-        # decorator twice in the chunk's meta if they end up merged.
         source = textwrap.dedent(
             """
             class A:
@@ -409,14 +378,9 @@ class TestDecorators:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=200)
         result = splitter.run(documents=[Document(content=source)])
-
         chunks_with_triple = [c for c in result["documents"] if "def triple" in (c.content or "")]
-        assert chunks_with_triple, "Expected the `triple` function to appear in a chunk"
-
-        decorators = []
-        for chunk in chunks_with_triple:
-            decorators.extend(chunk.meta.get("decorators") or [])
-
+        assert chunks_with_triple
+        decorators = [d for c in chunks_with_triple for d in (c.meta.get("decorators") or [])]
         joined = " ".join(decorators)
         assert "deco_a" in joined
         assert "deco_b" in joined
@@ -445,28 +409,12 @@ class TestDecorators:
 
 
 class TestIncludeClassesMeta:
-    def test_circle_methods_carry_include_classes(self, class_source):
+    @pytest.mark.parametrize("class_name", ["Shape", "Circle"])
+    def test_class_methods_carry_include_classes(self, class_source, class_name):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
         result = splitter.run(documents=[Document(content=class_source)])
-        circle_chunks = [c for c in result["documents"] if "Circle" in (c.meta.get("include_classes") or [])]
-        assert circle_chunks, "Expected at least one chunk for class Circle"
-
-    def test_shape_methods_carry_include_classes(self, class_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
-        result = splitter.run(documents=[Document(content=class_source)])
-        shape_chunks = [c for c in result["documents"] if "Shape" in (c.meta.get("include_classes") or [])]
-        assert shape_chunks, "Expected at least one chunk for class Shape"
-
-    def test_include_classes_set_for_class_chunks(self, class_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3)
-        result = splitter.run(documents=[Document(content=class_source)])
-
-        all_classes = set()
-        for chunk in result["documents"]:
-            for cls in chunk.meta.get("include_classes") or []:
-                all_classes.add(cls)
-        assert "Shape" in all_classes
-        assert "Circle" in all_classes
+        chunks = [c for c in result["documents"] if class_name in (c.meta.get("include_classes") or [])]
+        assert chunks
 
     def test_include_classes_absent_when_no_class_involved(self, simple_module_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=200)
@@ -556,37 +504,23 @@ class TestPreserveClassDefinition:
 
     def test_class_signature_prepended_to_later_chunks(self, multi_method_class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
-        result = splitter.run(documents=[Document(content=multi_method_class_source)])
-        chunks = result["documents"]
-        assert len(chunks) >= 2, "Need multiple chunks for this test to be meaningful"
-
-        # Every chunk that includes a method of Greeter must show `class Greeter`.
+        chunks = splitter.run(documents=[Document(content=multi_method_class_source)])["documents"]
+        assert len(chunks) >= 2
         for chunk in chunks:
-            content = chunk.content or ""
-            include_classes = chunk.meta.get("include_classes") or []
-            if "Greeter" in include_classes:
-                assert "class Greeter" in content, (
-                    f"Expected 'class Greeter' to be preserved in chunk content but got:\n{content}"
-                )
+            if "Greeter" in (chunk.meta.get("include_classes") or []):
+                assert "class Greeter" in (chunk.content or "")
 
     def test_disabled_does_not_prepend_class_signature(self, multi_method_class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=False)
-        result = splitter.run(documents=[Document(content=multi_method_class_source)])
-        chunks = result["documents"]
-        # Exactly one chunk should contain the original `class Greeter` header
-        # (the one that actually produced from the class header unit).
+        chunks = splitter.run(documents=[Document(content=multi_method_class_source)])["documents"]
         chunks_with_header = [c for c in chunks if "class Greeter" in (c.content or "")]
-        assert len(chunks_with_header) == 1, (
-            "With preserve_class_definition=False, only the original chunk should contain the class header."
-        )
+        assert len(chunks_with_header) == 1
 
     def test_preserve_does_not_duplicate_header_in_original_chunk(self, multi_method_class_source):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=multi_method_class_source)])
         for chunk in result["documents"]:
-            content = chunk.content or ""
-            # The class header should never appear more than once in a single chunk.
-            assert content.count("class Greeter") <= 1
+            assert (chunk.content or "").count("class Greeter") <= 1
 
     def test_preserve_keeps_inheritance_and_metaclass(self):
         source = textwrap.dedent(
@@ -617,17 +551,10 @@ class TestPreserveClassDefinition:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=source)])
-
         child_chunks = [c for c in result["documents"] if "Child" in (c.meta.get("include_classes") or [])]
-        assert len(child_chunks) >= 2, "Need multiple Child chunks for this test"
-
-        # Every chunk that contains a member of Child must show the full class
-        # signature, including base classes and metaclass.
+        assert len(child_chunks) >= 2
         for chunk in child_chunks:
-            content = chunk.content or ""
-            assert "class Child(Base, metaclass=Meta):" in content, (
-                f"Expected the full class signature (with bases and metaclass) to be preserved, got:\n{content}"
-            )
+            assert "class Child(Base, metaclass=Meta):" in (chunk.content or "")
 
     def test_preserve_keeps_decorators_on_class(self):
         source = textwrap.dedent(
@@ -653,14 +580,12 @@ class TestPreserveClassDefinition:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=source)])
-
         decorated_chunks = [c for c in result["documents"] if "Decorated" in (c.meta.get("include_classes") or [])]
         assert len(decorated_chunks) >= 2
-
         for chunk in decorated_chunks:
             content = chunk.content or ""
             assert "class Decorated" in content
-            assert "@reg" in content, f"Expected '@reg' decorator to be preserved on class signature, got:\n{content}"
+            assert "@reg" in content
 
     def test_preserve_handles_multiple_classes(self):
         source = textwrap.dedent(
@@ -689,14 +614,10 @@ class TestPreserveClassDefinition:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=3, preserve_class_definition=True)
         result = splitter.run(documents=[Document(content=source)])
-
         for chunk in result["documents"]:
             content = chunk.content or ""
-            include_classes = chunk.meta.get("include_classes") or []
-            for cls in include_classes:
-                assert f"class {cls}" in content, (
-                    f"Expected 'class {cls}' to be preserved in chunk content but got:\n{content}"
-                )
+            for cls in chunk.meta.get("include_classes") or []:
+                assert f"class {cls}" in content
 
 
 class TestDocstringStripping:
@@ -705,9 +626,8 @@ class TestDocstringStripping:
         result = splitter.run(documents=[Document(content=class_source)])
         contents = "\n".join(c.content or "" for c in result["documents"])
         assert "A circle." in contents
-        # When not stripping, meta should not carry a docstrings list.
         for chunk in result["documents"]:
-            assert "docstrings" not in chunk.meta or not chunk.meta.get("docstrings")
+            assert not chunk.meta.get("docstrings")
 
     def test_strip_docstrings_moves_them_to_meta(self):
         source = textwrap.dedent(
@@ -724,14 +644,10 @@ class TestDocstringStripping:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
         result = splitter.run(documents=[Document(content=source)])
-        # Collect docstrings from meta
-        all_docstrings = []
-        for chunk in result["documents"]:
-            all_docstrings.extend(chunk.meta.get("docstrings") or [])
+        all_docstrings = [d for c in result["documents"] for d in (c.meta.get("docstrings") or [])]
         joined_docstrings = " | ".join(all_docstrings)
         assert "Foo docstring." in joined_docstrings
         assert "Bar docstring." in joined_docstrings
-        # And the docstring text should NOT remain in any chunk content
         joined_content = "\n".join(c.content or "" for c in result["documents"])
         assert "Foo docstring." not in joined_content
         assert "Bar docstring." not in joined_content
@@ -749,7 +665,6 @@ class TestDocstringStripping:
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=20, strip_docstrings=True)
         result = splitter.run(documents=[Document(content=source)])
         joined = "\n".join(c.content or "" for c in result["documents"])
-        # Module docstring should still appear (it's itself a unit).
         assert "Module-level docstring." in joined
 
     def test_strip_class_header_docstring_moves_to_meta(self):
@@ -766,14 +681,10 @@ class TestDocstringStripping:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
         result = splitter.run(documents=[Document(content=source)])
-
         header_chunks = [c for c in result["documents"] if "class_header" in c.meta.get("unit_kinds", [])]
-        assert header_chunks, "expected at least one class_header chunk"
-
+        assert header_chunks
         header = header_chunks[0]
-        # Docstring text must not appear in the chunk content.
         assert "Class-level docstring." not in (header.content or "")
-        # Docstring must be captured in meta instead.
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
 
 
@@ -824,32 +735,19 @@ class TestTopLevelStatements:
             '''
         ).lstrip()
 
-    def test_statement_unit_kind_present(self, rich_module_source):
+    @pytest.mark.parametrize("expected_kind", ["statement", "imports", "module_docstring"])
+    def test_unit_kind_present(self, rich_module_source, expected_kind):
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
         result = splitter.run(documents=[Document(content=rich_module_source)])
         all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
-        assert "statement" in all_kinds
-
-    def test_import_unit_kind_present(self, rich_module_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
-        result = splitter.run(documents=[Document(content=rich_module_source)])
-        all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
-        assert "imports" in all_kinds
-
-    def test_module_docstring_unit_kind_present(self, rich_module_source):
-        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=50)
-        result = splitter.run(documents=[Document(content=rich_module_source)])
-        all_kinds = [k for c in result["documents"] for k in c.meta.get("unit_kinds", [])]
-        assert "module_docstring" in all_kinds
+        assert expected_kind in all_kinds
 
     def test_first_chunk_contains_preamble_statements(self, rich_module_source):
-        # The preamble (module docstring + 3 imports + 3 assignments) totals 6 effective
-        # lines at the default expected_chars_per_line=45.  Setting max_effective_lines=6
-        # causes the greedy merger to flush before absorbing the first function definition,
-        # so the first chunk must be exactly the pre-function preamble.
+        # max_effective_lines=6 matches the preamble (module docstring + 3 imports + 3
+        # assignments) so the greedy merger flushes before the first function.
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=6)
         result = splitter.run(documents=[Document(content=rich_module_source)])
-        assert len(result["documents"]) >= 2, "Need at least two chunks for this assertion"
+        assert len(result["documents"]) >= 2
         first = result["documents"][0]
         content = first.content or ""
         assert '"""Utility helpers for the pipeline."""' in content
@@ -891,25 +789,21 @@ class TestOversizedFallback:
         import logging
 
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
-
         with caplog.at_level(logging.WARNING):
             result = splitter.run(documents=[Document(content=oversized_function_source)])
-
         text = caplog.text.lower()
-        assert "oversiz" in text or "secondary" in text, "Splitter should warn about oversized function fallback"
+        assert "oversiz" in text or "secondary" in text
         assert len(result["documents"]) >= 2
 
     def test_oversized_chunks_marked_with_secondary_split(self, oversized_function_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
         result = splitter.run(documents=[Document(content=oversized_function_source)])
-        secondary = [c for c in result["documents"] if c.meta.get("secondary_split")]
-        assert secondary, "Oversized function chunks must carry secondary_split metadata"
+        assert [c for c in result["documents"] if c.meta.get("secondary_split")]
 
     def test_oversized_chunks_belong_to_same_function(self, oversized_function_source):
         splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
         result = splitter.run(documents=[Document(content=oversized_function_source)])
         secondary = [c for c in result["documents"] if c.meta.get("secondary_split")]
-        # All secondary chunks should fall within the original function's line range.
         for chunk in secondary:
             assert chunk.meta["start_line"] >= 1
             assert chunk.meta["end_line"] <= oversized_function_source.count("\n") + 1
@@ -968,11 +862,9 @@ class TestEdgeCases:
         assert "def f" in (result["documents"][0].content or "")
 
     def test_empty_string_source(self):
+        # Empty source is valid Python; the splitter must not raise.
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=5)
-        # Empty source is valid Python (parses to an empty module).
         result = splitter.run(documents=[Document(content="")])
-        # Either yields no chunks or a single empty-ish chunk; both are acceptable
-        # but the call must not raise.
         assert isinstance(result["documents"], list)
 
     def test_invalid_syntax_raises_syntax_error(self):
