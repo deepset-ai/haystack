@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @component
-class DALLEImageGenerator:
+class OpenAIImageGenerator:
     """
     Generates images using OpenAI's image generation models such as `gpt-image-2`.
 
@@ -25,8 +25,8 @@ class DALLEImageGenerator:
 
     ### Usage example
     ```python
-    from haystack.components.generators import DALLEImageGenerator
-    image_generator = DALLEImageGenerator()
+    from haystack.components.generators import OpenAIImageGenerator
+    image_generator = OpenAIImageGenerator()
     response = image_generator.run("Show me a picture of a black cat.")
     print(response)
     ```
@@ -46,7 +46,7 @@ class DALLEImageGenerator:
         http_client_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
-        Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-image-2.
+        Creates an instance of OpenAIImageGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-image-2.
 
         :param model: The model to use for image generation. Model names can be found in the
             [OpenAI documentation](https://developers.openai.com/api/docs/models/all).
@@ -158,7 +158,7 @@ class DALLEImageGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "DALLEImageGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAIImageGenerator":
         """
         Deserialize this component from a dictionary.
 

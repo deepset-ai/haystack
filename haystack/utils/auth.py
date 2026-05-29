@@ -41,10 +41,10 @@ class Secret(ABC):
 
     Usage example:
     ```python
-    from haystack.components.generators import OpenAIGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.utils import Secret
 
-    generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+    generator = OpenAIChatGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
     ```
     """
 
