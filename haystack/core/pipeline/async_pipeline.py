@@ -182,6 +182,199 @@ class AsyncPipeline(PipelineBase):
 
             return outputs
 
+    def _distribute_component_outputs(
+        self,
+        *,
+        component_name: str,
+        component_outputs: Mapping[str, Any],
+        inputs: dict[str, dict[str, list[dict[str, Any]]]],
+        pipeline_outputs: dict[str, Any],
+        cached_receivers: dict[str, Any],
+        include_outputs_from: set[str],
+    ) -> Mapping[str, Any]:
+        """
+        Distributes a component's outputs to downstream inputs and records its pipeline-level outputs.
+
+        :param component_name: The name of the component that produced the outputs.
+        :param component_outputs: The raw outputs returned by the component.
+        :param inputs: The global input state shared by all components. Mutated in place to deliver outputs to
+            downstream receivers.
+        :param pipeline_outputs: The accumulated pipeline outputs. Mutated in place when the component contributes to
+            the pipeline's final output.
+        :param cached_receivers: Precomputed mapping of component name to its downstream receivers.
+        :param include_outputs_from: Set of component names whose outputs should always be included in the output.
+        :returns: The component outputs that were not consumed by any downstream socket (pruned outputs).
+        """
+        pruned = self._write_component_outputs(
+            component_name=component_name,
+            component_outputs=component_outputs,
+            inputs=inputs,
+            receivers=cached_receivers[component_name],
+            include_outputs_from=include_outputs_from,
+        )
+        if pruned or component_name in include_outputs_from:
+            pipeline_outputs[component_name] = pruned
+        return pruned
+
+    @staticmethod
+    async def _wait_for_tasks(
+        running_tasks: dict[asyncio.Task, str], scheduled_components: set[str], *, return_when: str
+    ) -> AsyncIterator[dict[str, Any]]:
+        """
+        Waits for running tasks to finish and yields their partial outputs.
+
+        :param running_tasks: Mapping of in-flight tasks to the name of the component they run. Finished tasks are
+            removed in place.
+        :param scheduled_components: Set of component names that are scheduled but not yet finished. Finished
+            components are discarded in place.
+        :param return_when: Either `asyncio.FIRST_COMPLETED` to wait for a single task or `asyncio.ALL_COMPLETED` to
+            wait for every running task.
+        :returns: An async iterator of partial outputs, one per finished component that produced an output.
+        """
+        if not running_tasks:
+            return
+
+        done, _pending = await asyncio.wait(running_tasks.keys(), return_when=return_when)
+        for finished in done:
+            finished_component_name = running_tasks.pop(finished)
+            partial_result = finished.result()
+            scheduled_components.discard(finished_component_name)
+            if partial_result:
+                yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
+
+    async def _run_component_in_isolation(
+        self,
+        *,
+        component_name: str,
+        inputs: dict[str, dict[str, list[dict[str, Any]]]],
+        pipeline_outputs: dict[str, Any],
+        component_visits: dict[str, int],
+        running_tasks: dict[asyncio.Task, str],
+        scheduled_components: set[str],
+        cached_receivers: dict[str, Any],
+        include_outputs_from: set[str],
+        parent_span: tracing.Span | None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """
+        Runs a component with HIGHEST priority in isolation.
+
+        We need to run components with HIGHEST priority (i.e. components with a GreedyVariadic input socket) by
+        themselves, without any other components running concurrently. Otherwise, downstream components could produce
+        additional inputs for the GreedyVariadic socket.
+
+        :param component_name: The name of the component to run.
+        :param inputs: The global input state shared by all components. Mutated in place.
+        :param pipeline_outputs: The accumulated pipeline outputs. Mutated in place.
+        :param component_visits: Current state of component visits. Mutated in place.
+        :param running_tasks: Mapping of in-flight tasks to component names. Drained in place before running.
+        :param scheduled_components: Set of scheduled-but-unfinished component names. Mutated in place.
+        :param cached_receivers: Precomputed mapping of component name to its downstream receivers.
+        :param include_outputs_from: Set of component names whose outputs should always be included in the output.
+        :param parent_span: The parent tracing span for the pipeline run.
+        :returns: An async iterator of partial outputs.
+        """
+        # 1) Wait for all in-flight tasks to finish so the HIGHEST component runs alone.
+        async for partial_outputs in self._wait_for_tasks(
+            running_tasks, scheduled_components, return_when=asyncio.ALL_COMPLETED
+        ):
+            yield partial_outputs
+
+        if component_name in scheduled_components:
+            # If it's already scheduled for some reason, skip.
+            return
+
+        # 2) Run the HIGHEST component by itself.
+        scheduled_components.add(component_name)
+        component = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
+        component_inputs = self._consume_component_inputs(component_name, component, inputs)
+        component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
+
+        component_outputs = await self._run_component_async(
+            component_name=component_name,
+            component=component,
+            component_inputs=component_inputs,
+            component_visits=component_visits,
+            parent_span=parent_span,
+        )
+
+        pruned = self._distribute_component_outputs(
+            component_name=component_name,
+            component_outputs=component_outputs,
+            inputs=inputs,
+            pipeline_outputs=pipeline_outputs,
+            cached_receivers=cached_receivers,
+            include_outputs_from=include_outputs_from,
+        )
+
+        scheduled_components.remove(component_name)
+        if pruned or component_name in include_outputs_from:
+            yield {component_name: _deepcopy_with_exceptions(pruned)}
+
+    # TODO Does this function need to be async, nothing is awaited inside
+    async def _schedule_component(
+        self,
+        *,
+        component_name: str,
+        inputs: dict[str, dict[str, list[dict[str, Any]]]],
+        pipeline_outputs: dict[str, Any],
+        component_visits: dict[str, int],
+        running_tasks: dict[asyncio.Task, str],
+        scheduled_components: set[str],
+        ready_sem: asyncio.Semaphore,
+        cached_receivers: dict[str, Any],
+        include_outputs_from: set[str],
+        parent_span: tracing.Span | None,
+    ) -> None:
+        """
+        Schedules a component to run as a background task without waiting for it to finish.
+
+        Inputs are consumed synchronously here (before the task is created) so that other components scheduled in the
+        same iteration of the scheduling loop observe the updated input state and don't race for the same inputs.
+
+        :param component_name: The name of the component to schedule.
+        :param inputs: The global input state shared by all components. Mutated in place.
+        :param pipeline_outputs: The accumulated pipeline outputs. Mutated in place by the task once it finishes.
+        :param component_visits: Current state of component visits. Mutated in place by the task once it finishes.
+        :param running_tasks: Mapping of in-flight tasks to component names. The new task is registered here.
+        :param scheduled_components: Set of scheduled-but-unfinished component names. Mutated in place.
+        :param ready_sem: Semaphore bounding how many components run concurrently.
+        :param cached_receivers: Precomputed mapping of component name to its downstream receivers.
+        :param include_outputs_from: Set of component names whose outputs should always be included in the output.
+        :param parent_span: The parent tracing span for the pipeline run.
+        """
+        if component_name in scheduled_components:
+            return  # already scheduled, do nothing
+
+        scheduled_components.add(component_name)
+
+        component = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
+        component_inputs = self._consume_component_inputs(component_name, component, inputs)
+        component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
+
+        async def _runner() -> Mapping[str, Any]:
+            async with ready_sem:
+                component_outputs = await self._run_component_async(
+                    component_name=component_name,
+                    component=component,
+                    component_inputs=component_inputs,
+                    component_visits=component_visits,
+                    parent_span=parent_span,
+                )
+
+            pruned = self._distribute_component_outputs(
+                component_name=component_name,
+                component_outputs=component_outputs,
+                inputs=inputs,
+                pipeline_outputs=pipeline_outputs,
+                cached_receivers=cached_receivers,
+                include_outputs_from=include_outputs_from,
+            )
+            scheduled_components.remove(component_name)
+            return pruned
+
+        task = asyncio.create_task(_runner())
+        running_tasks[task] = component_name
+
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncIterator[dict[str, Any]]:
@@ -276,203 +469,76 @@ class AsyncPipeline(PipelineBase):
             it to get stuck and fail running.
             Or if a Component fails or returns output in an unsupported type.
         """
+        pipeline_running(self)  # telemetry
+
+        # warm up the pipeline by running each component's warm_up method
+        self.warm_up()
+
         if include_outputs_from is None:
             include_outputs_from = set()
 
-        # 0) Basic pipeline init
-        pipeline_running(self)  # telemetry
-        self.warm_up()  # optional warm-up (if needed)
-
-        # 1) Prepare ephemeral state
-        ready_sem = asyncio.Semaphore(max(1, concurrency_limit))
-        inputs_state: dict[str, dict[str, list[dict[str, Any]]]] = {}
         pipeline_outputs: dict[str, Any] = {}
-        running_tasks: dict[asyncio.Task, str] = {}
 
-        # A set of component names that have been scheduled but not finished:
+        # Normalize `data` and raise ValueError if the input is malformed in some way.
+        data = self._prepare_component_input_data(data)
+
+        # Raise ValueError if input is malformed in some way
+        self.validate_input(data)
+
+        # We create a list of components in the pipeline sorted by name, so that the algorithm runs
+        # deterministically and independent of insertion order into the pipeline.
+        ordered_component_names = sorted(self.graph.nodes.keys())
+
+        # We track component visits to decide if a component can run.
+        component_visits = dict.fromkeys(ordered_component_names, 0)
+
+        cached_topological_sort = None
+        # We need to access a component's receivers multiple times during a pipeline run.
+        # We store them here for easy access.
+        cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
+
+        # Ephemeral concurrency state shared (and mutated in place) by the scheduling helpers below.
+        ready_sem = asyncio.Semaphore(max(1, concurrency_limit))
+        running_tasks: dict[asyncio.Task, str] = {}
+        # A set of component names that have been scheduled but not finished.
         scheduled_components: set[str] = set()
 
-        # 2) Convert input data
-        prepared_data = self._prepare_component_input_data(data)
-
-        # raises ValueError if input is malformed in some way
-        self.validate_input(prepared_data)
-        inputs_state = self._convert_to_internal_format(prepared_data)
-
-        # For quick lookup of downstream receivers
-        ordered_names = sorted(self.graph.nodes.keys())
-        cached_receivers = {n: self._find_receivers_from(n) for n in ordered_names}
-        component_visits = dict.fromkeys(ordered_names, 0)
-        cached_topological_sort = None
-
-        # We fill the queue once and raise if all components are BLOCKED
-        self.validate_pipeline(self._fill_queue(ordered_names, inputs_state, component_visits))
-
-        # Single parent span for entire pipeline execution
         with tracing.tracer.trace(
             "haystack.async_pipeline.run",
             tags={
-                "haystack.pipeline.input_data": prepared_data,
+                "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
             },
         ) as parent_span:
-            # -------------------------------------------------
-            # We define some functions here so that they have access to local runtime state
-            # (inputs, tasks, scheduled components) via closures.
-            # -------------------------------------------------
-            async def _run_highest_in_isolation(component_name: str) -> AsyncIterator[dict[str, Any]]:
-                """
-                Runs a component with HIGHEST priority in isolation.
+            inputs = self._convert_to_internal_format(pipeline_inputs=data)
 
-                We need to run components with HIGHEST priority (i.e. components with GreedyVariadic input socket)
-                by themselves, without any other components running concurrently. Otherwise, downstream components
-                could produce additional inputs for the GreedyVariadic socket.
+            # check if pipeline is blocked before execution
+            self.validate_pipeline(self._fill_queue(ordered_component_names, inputs, component_visits))
 
-                :param component_name: The name of the component.
-                :return: An async iterator of partial outputs.
-                """
-                # 1) Wait for all in-flight tasks to finish
-                while running_tasks:
-                    done, _pending = await asyncio.wait(running_tasks.keys(), return_when=asyncio.ALL_COMPLETED)
-                    for finished in done:
-                        finished_component_name = running_tasks.pop(finished)
-                        partial_result = finished.result()
-                        scheduled_components.discard(finished_component_name)
-                        if partial_result:
-                            yield_dict = {finished_component_name: _deepcopy_with_exceptions(partial_result)}
-                            yield yield_dict  # partial outputs
-
-                if component_name in scheduled_components:
-                    # If it's already scheduled for some reason, skip
-                    return
-
-                # 2) Run the HIGHEST component by itself
-                scheduled_components.add(component_name)
-                comp_dict = self._get_component_with_graph_metadata_and_visits(
-                    component_name, component_visits[component_name]
-                )
-                component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
-                component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
-
-                component_pipeline_outputs = await self._run_component_async(
-                    component_name=component_name,
-                    component=comp_dict,
-                    component_inputs=component_inputs,
-                    component_visits=component_visits,
-                    parent_span=parent_span,
-                )
-
-                # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                pruned = self._write_component_outputs(
-                    component_name=component_name,
-                    component_outputs=component_pipeline_outputs,
-                    inputs=inputs_state,
-                    receivers=cached_receivers[component_name],
-                    include_outputs_from=include_outputs_from,
-                )
-                if pruned or component_name in include_outputs_from:
-                    pipeline_outputs[component_name] = pruned
-
-                scheduled_components.remove(component_name)
-                if pruned or component_name in include_outputs_from:
-                    yield {component_name: _deepcopy_with_exceptions(pruned)}
-
-            async def _schedule_task(component_name: str) -> None:
-                """
-                Schedule a component to run.
-
-                We do NOT wait for it to finish here. This allows us to run other components concurrently.
-
-                :param component_name: The name of the component.
-                """
-
-                if component_name in scheduled_components:
-                    return  # already scheduled, do nothing
-
-                scheduled_components.add(component_name)
-
-                comp_dict = self._get_component_with_graph_metadata_and_visits(
-                    component_name, component_visits[component_name]
-                )
-                component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
-                component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
-
-                async def _runner() -> Mapping[str, Any]:
-                    async with ready_sem:
-                        component_pipeline_outputs = await self._run_component_async(
-                            component_name=component_name,
-                            component=comp_dict,
-                            component_inputs=component_inputs,
-                            component_visits=component_visits,
-                            parent_span=parent_span,
-                        )
-
-                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                    pruned = self._write_component_outputs(
-                        component_name=component_name,
-                        component_outputs=component_pipeline_outputs,
-                        inputs=inputs_state,
-                        receivers=cached_receivers[component_name],
-                        include_outputs_from=include_outputs_from,
-                    )
-                    if pruned or component_name in include_outputs_from:
-                        pipeline_outputs[component_name] = pruned
-
-                    scheduled_components.remove(component_name)
-                    return pruned
-
-                task = asyncio.create_task(_runner())
-                running_tasks[task] = component_name
-
-            async def _wait_for_one_task_to_complete() -> AsyncIterator[dict[str, Any]]:
-                """
-                Wait for exactly one running task to finish, yield partial outputs.
-
-                If no tasks are running, does nothing.
-                """
-                if running_tasks:
-                    done, _ = await asyncio.wait(running_tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
-                    for finished in done:
-                        finished_component_name = running_tasks.pop(finished)
-                        partial_result = finished.result()
-                        scheduled_components.discard(finished_component_name)
-                        if partial_result:
-                            yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
-
-            async def _wait_for_all_tasks_to_complete() -> AsyncIterator[dict[str, Any]]:
-                """
-                Wait for all running tasks to finish, yield partial outputs.
-                """
-                if running_tasks:
-                    done, _ = await asyncio.wait(running_tasks.keys(), return_when=asyncio.ALL_COMPLETED)
-                    for finished in done:
-                        finished_component_name = running_tasks.pop(finished)
-                        partial_result = finished.result()
-                        scheduled_components.discard(finished_component_name)
-                        if partial_result:
-                            yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
-
-            # -------------------------------------------------
-            # MAIN SCHEDULING LOOP
-            # -------------------------------------------------
             while True:
-                # 2) Build the priority queue of candidates
-                priority_queue = self._fill_queue(ordered_names, inputs_state, component_visits)
+                # We refill the queue every iteration because concurrently running tasks may have changed `inputs`
+                # and therefore the priority of the components.
+                # TODO Why do we do this instead of using self._is_queue_stale at the end of the loop like in Pipeline?
+                #      If this needs to be this way should we switch Pipeline to do the same for consistency?
+                priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
+                # If we can't make progress with the queue but tasks are running, we wait for one to finish and retry
+                # to potentially unblock the priority queue.
                 if (candidate is None or candidate[0] == ComponentPriority.BLOCKED) and running_tasks:
-                    # We need to wait for one task to finish to make progress and potentially unblock the priority_queue
-                    async for partial_res in _wait_for_one_task_to_complete():
-                        yield partial_res
+                    async for partial_outputs in self._wait_for_tasks(
+                        running_tasks, scheduled_components, return_when=asyncio.FIRST_COMPLETED
+                    ):
+                        yield partial_outputs
                     continue
 
+                # If there are no runnable components left and nothing is running, we can exit the loop.
                 if candidate is None and not running_tasks:
-                    # done
                     break
 
-                priority, comp_name, comp = candidate  # type: ignore
+                priority, component_name, component = candidate  # type: ignore
 
                 # If the next component is blocked, we do a check to see if the pipeline is possibly blocked and raise
                 # a warning if it is.
@@ -480,68 +546,117 @@ class AsyncPipeline(PipelineBase):
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
                         self._find_components_blocking_pipeline(
-                            priority_queue=priority_queue, component_visits=component_visits, inputs=inputs_state
+                            priority_queue=priority_queue, component_visits=component_visits, inputs=inputs
                         )
                     # We always exit the loop since we cannot run the next component.
                     break
 
-                if comp_name in scheduled_components:
-                    # We need to wait for one task to finish to make progress
-                    async for partial_res in _wait_for_one_task_to_complete():
-                        yield partial_res
+                # If the next component is already scheduled, we wait for a task to finish to make progress.
+                if component_name in scheduled_components:
+                    async for partial_outputs in self._wait_for_tasks(
+                        running_tasks, scheduled_components, return_when=asyncio.FIRST_COMPLETED
+                    ):
+                        yield partial_outputs
                     continue
 
                 if priority == ComponentPriority.HIGHEST:
-                    # 1) run alone
-                    async for partial_res in _run_highest_in_isolation(comp_name):
-                        yield partial_res
-                    # then continue the loop
+                    # A HIGHEST priority component must run alone, so we hand off to the isolation helper.
+                    async for partial_outputs in self._run_component_in_isolation(
+                        component_name=component_name,
+                        inputs=inputs,
+                        pipeline_outputs=pipeline_outputs,
+                        component_visits=component_visits,
+                        running_tasks=running_tasks,
+                        scheduled_components=scheduled_components,
+                        cached_receivers=cached_receivers,
+                        include_outputs_from=include_outputs_from,
+                        parent_span=parent_span,
+                    ):
+                        yield partial_outputs
                     continue
 
                 if priority == ComponentPriority.READY:
-                    # 1) schedule this one
-                    await _schedule_task(comp_name)
+                    # Schedule this component, then schedule as many additional READY components as concurrency allows.
+                    await self._schedule_component(
+                        component_name=component_name,
+                        inputs=inputs,
+                        pipeline_outputs=pipeline_outputs,
+                        component_visits=component_visits,
+                        running_tasks=running_tasks,
+                        scheduled_components=scheduled_components,
+                        ready_sem=ready_sem,
+                        cached_receivers=cached_receivers,
+                        include_outputs_from=include_outputs_from,
+                        parent_span=parent_span,
+                    )
 
-                    # 2) Possibly schedule more READY tasks if concurrency not fully used
+                    # Possibly schedule more READY tasks if concurrency not fully used
                     while len(priority_queue) > 0 and not ready_sem.locked():
-                        peek_prio, peek_name = priority_queue.peek()
-                        if peek_prio in (ComponentPriority.BLOCKED, ComponentPriority.HIGHEST):
-                            # can't run or must run alone => skip
+                        peek_priority, peek_name = priority_queue.peek()
+                        if peek_priority in (ComponentPriority.BLOCKED, ComponentPriority.HIGHEST):
+                            # The next component can't run or must run alone, so we stop scheduling.
                             break
-                        if peek_prio == ComponentPriority.READY:
+                        if peek_priority == ComponentPriority.READY:
                             priority_queue.pop()
-                            await _schedule_task(peek_name)
-                            # keep adding while concurrency is not locked
+                            await self._schedule_component(
+                                component_name=peek_name,
+                                inputs=inputs,
+                                pipeline_outputs=pipeline_outputs,
+                                component_visits=component_visits,
+                                running_tasks=running_tasks,
+                                scheduled_components=scheduled_components,
+                                ready_sem=ready_sem,
+                                cached_receivers=cached_receivers,
+                                include_outputs_from=include_outputs_from,
+                                parent_span=parent_span,
+                            )
                             continue
 
-                        # The next is DEFER => we only schedule it if it "becomes READY"
+                        # TODO Couldn't this be moved to the if statement checking ComponentPriority.BlOCKED and
+                        #      ComponentPriority.HIGHEST?
+                        # The next is DEFER => we only schedule it once it becomes READY
                         # We'll handle it in the next iteration or with incremental waiting
                         break
 
-                # We only schedule components with priority DEFER when no other tasks are running
+                # We only schedule components with priority DEFER when no other tasks are running.
                 elif priority == ComponentPriority.DEFER and not running_tasks:
                     if len(priority_queue) > 0:
-                        comp_name, topological_sort = self._tiebreak_waiting_components(
-                            component_name=comp_name,
+                        component_name, cached_topological_sort = self._tiebreak_waiting_components(
+                            component_name=component_name,
                             priority=priority,
                             priority_queue=priority_queue,
                             topological_sort=cached_topological_sort,
                         )
-                        cached_topological_sort = topological_sort
 
-                    await _schedule_task(comp_name)
+                    await self._schedule_component(
+                        component_name=component_name,
+                        inputs=inputs,
+                        pipeline_outputs=pipeline_outputs,
+                        component_visits=component_visits,
+                        running_tasks=running_tasks,
+                        scheduled_components=scheduled_components,
+                        ready_sem=ready_sem,
+                        cached_receivers=cached_receivers,
+                        include_outputs_from=include_outputs_from,
+                        parent_span=parent_span,
+                    )
 
-                # To make progress, we wait for one task to complete before re-starting the loop
-                async for partial_res in _wait_for_one_task_to_complete():
-                    yield partial_res
+                # To make progress, we wait for one task to complete before restarting the loop.
+                async for partial_outputs in self._wait_for_tasks(
+                    running_tasks, scheduled_components, return_when=asyncio.FIRST_COMPLETED
+                ):
+                    yield partial_outputs
 
-            # End main loop
+            # TODO I'm confused, is this block actually needed? It seems all break conditions are contingent on
+            #      running_tasks being empty, but if that's the case, wouldn't we have already drained all tasks in
+            #      the loop?
+            # Drain any leftover tasks once the scheduling loop has finished.
+            async for partial_outputs in self._wait_for_tasks(
+                running_tasks, scheduled_components, return_when=asyncio.ALL_COMPLETED
+            ):
+                yield partial_outputs
 
-            # 3) Drain leftover tasks
-            async for partial_res in _wait_for_all_tasks_to_complete():
-                yield partial_res
-
-            # 4) Yield final pipeline outputs
+            # Yield the final pipeline outputs.
             yield pipeline_outputs
 
     async def run_async(
