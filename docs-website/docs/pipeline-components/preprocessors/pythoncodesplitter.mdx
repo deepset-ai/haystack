@@ -1,0 +1,154 @@
+---
+title: "PythonCodeSplitter"
+id: pythoncodesplitter
+slug: "/pythoncodesplitter"
+description: "`PythonCodeSplitter` splits Python source code into syntax-aware chunks using the `ast` module. It preserves logical units like functions, classes, and methods, making it ideal for indexing Python codebases in RAG pipelines."
+---
+
+# PythonCodeSplitter
+
+`PythonCodeSplitter` splits Python source code into syntax-aware chunks using the `ast` module. It preserves logical units like functions, classes, and methods, making it ideal for indexing Python codebases in RAG pipelines.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) and [`DocumentCleaner`](documentcleaner.mdx), before [Classifiers](../classifiers.mdx) |
+| **Mandatory run variables**            | `documents`: A list of documents whose `content` is Python source code |
+| **Output variables**                   | `documents`: A list of documents |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/python_code_splitter.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`PythonCodeSplitter` expects a list of documents whose `content` is valid Python source code and returns a list of shorter documents split along syntactic boundaries. It parses each document using Python's built-in `ast` module into ordered *units* — module docstrings, consecutive import blocks, top-level functions, class headers, methods, nested classes, and remaining statements — then merges them greedily toward a configurable `max_effective_lines` target per chunk.
+
+Effective lines are computed as `ceil(len(source) / expected_chars_per_line)`, so long lines count as more than one. Functions and methods are always kept whole. The resulting chunks read top-to-bottom like the original file, with comments and blank lines preserved.
+
+Key behaviors:
+
+- **Greedy merging**: Units are merged into chunks while adding the next unit brings the running total closer to `max_effective_lines`. A `min_effective_lines` floor prevents creating very small chunks.
+- **Oversized fallback**: A function or method whose effective length exceeds `oversized_factor × max_effective_lines` is split using a line-based secondary split (via `DocumentSplitter` with `split_by="line"`) with configurable overlap. These chunks carry `secondary_split=True` in their metadata.
+- **Class definition preservation**: When `preserve_class_definition=True` (default), chunks containing class members but not the class header are prefixed with the bare class signature, so each chunk remains self-contained.
+- **Docstring stripping**: When `strip_docstrings=True`, function, method, and class docstrings are moved out of the chunk content and into `meta["docstrings"]`. This is useful in RAG when docstrings are large: the stored chunk stays compact while docstring text can still influence retrieval via `meta_fields_to_embed=["docstrings"]` on the embedder. The module-level docstring is always kept in place.
+
+### Per-chunk metadata
+
+Each output chunk's `meta` carries:
+
+| Field | Description |
+| --- | --- |
+| `source_id` | ID of the originating document |
+| `split_id` | Sequential index of this chunk within its source document |
+| `start_line` | First line of the chunk in the original source (1-indexed) |
+| `end_line` | Last line of the chunk in the original source (1-indexed) |
+| `unit_kinds` | List of syntactic unit kinds included in this chunk (e.g. `["class_header", "method"]`) |
+| `include_classes` | *(when applicable)* Ordered list of class names whose members appear in this chunk |
+| `decorators` | *(when applicable)* Ordered list of decorator strings found in this chunk |
+| `docstrings` | *(when `strip_docstrings=True`)* List of stripped docstring strings in source order |
+| `secondary_split` | `True` if this chunk was produced by the oversized fallback splitter |
+| `secondary_split_index` | Index of this piece within the secondary split sequence |
+| `secondary_split_total` | Total number of pieces produced by the secondary split |
+
+All fields from the parent document's `meta` (except `split_id`) are also propagated.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import PythonCodeSplitter
+
+source = '''
+"""Example module."""
+from math import sqrt
+
+
+class Circle:
+    def __init__(self, r: float) -> None:
+        self.r = r
+
+    def area(self) -> float:
+        return 3.14159 * self.r * self.r
+'''
+
+splitter = PythonCodeSplitter(min_effective_lines=4, max_effective_lines=6)
+result = splitter.run(documents=[Document(content=source, meta={"file_name": "circle.py"})])
+
+for chunk in result["documents"]:
+    print(chunk.meta["start_line"], chunk.meta["end_line"], chunk.meta.get("include_classes"))
+```
+
+### With docstring stripping for RAG
+
+Use `strip_docstrings=True` when docstrings are verbose. Pass `meta_fields_to_embed=["docstrings"]` to your embedder so the docstring text still influences retrieval even though it is not in the chunk content.
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import PythonCodeSplitter
+
+splitter = PythonCodeSplitter(
+    min_effective_lines=20,
+    max_effective_lines=100,
+    strip_docstrings=True,
+)
+result = splitter.run(documents=[Document(content=source, meta={"file_name": "my_module.py"})])
+
+for chunk in result["documents"]:
+    print(chunk.content)
+    print(chunk.meta.get("docstrings"))
+```
+
+### In a pipeline
+
+```python
+from pathlib import Path
+
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import PythonCodeSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(
+    instance=PythonCodeSplitter(
+        min_effective_lines=20,
+        max_effective_lines=100,
+        strip_docstrings=True,
+        preserve_class_definition=True,
+    ),
+    name="splitter",
+)
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("text_file_converter.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+path = "path/to/your/python/files"
+files = list(Path(path).glob("*.py"))
+p.run({"text_file_converter": {"sources": files}})
+```
+
+:::note
+`PythonCodeSplitter` requires valid Python source as input. It raises a `SyntaxError` if a document's content cannot be parsed, a `ValueError` if content is `None`, and a `TypeError` if content is not a string. Documents with empty content are skipped with a warning.
+:::
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `min_effective_lines` | `int` | `20` | Minimum effective lines per chunk. The splitter keeps merging units until this threshold is reached. |
+| `max_effective_lines` | `int` | `100` | Target effective lines per chunk. Units are merged greedily while doing so brings the running total closer to this value. |
+| `expected_chars_per_line` | `int` | `45` | Characters per line used to convert source length into effective lines via `ceil(len(source) / expected_chars_per_line)`. |
+| `oversized_factor` | `int` | `3` | A unit whose effective length exceeds `oversized_factor × max_effective_lines` triggers the line-based secondary split. |
+| `strip_docstrings` | `bool` | `False` | If `True`, moves function, method, and class docstrings out of chunk content into `meta["docstrings"]`. |
+| `preserve_class_definition` | `bool` | `True` | If `True`, chunks containing class members but not the class header are prefixed with the bare class signature. |
+| `secondary_split_overlap` | `int` | `5` | Line overlap used by the secondary splitter for oversized units. |
+| `secondary_split_length` | `int \| None` | `None` | Lines per chunk for the secondary splitter. Defaults to `max_effective_lines` when `None`. |
