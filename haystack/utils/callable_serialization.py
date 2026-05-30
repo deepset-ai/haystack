@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.core.serialization_security import _check_module_allowed
+from haystack.core.serialization_security import _check_module_allowed, _is_module_allowed
 from haystack.utils.type_serialization import thread_safe_import
 
 
@@ -66,9 +66,13 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
     parts = callable_handle.split(".")
 
+    # Allow if any prefix is on the allowlist; checking each one individually would wrongly
+    # reject patterns like `j*on` against `json.dumps` (matches `json`, not the full handle).
+    if not any(_is_module_allowed(".".join(parts[:i])) for i in range(1, len(parts) + 1)):
+        _check_module_allowed(callable_handle)  # raises with the standard help message
+
     for i in range(len(parts), 0, -1):
         module_name = ".".join(parts[:i])
-        _check_module_allowed(module_name)
         try:
             mod: Any = thread_safe_import(module_name)
         except Exception:

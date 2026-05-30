@@ -2,9 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import io
+import json
+import subprocess
+from collections.abc import Callable
+
 import pytest
 
+from haystack import component as component_module
 from haystack.core.errors import DeserializationError
+from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import allow_deserialization_module, import_class_by_name
 from haystack.core.serialization_security import (
     DESERIALIZATION_ALLOWLIST_ENV_VAR,
@@ -16,6 +23,8 @@ from haystack.core.serialization_security import (
     _is_module_allowed,
     _module_matches,
 )
+from haystack.marshal import YamlMarshaller
+from haystack.utils import deserialize_callable
 
 
 @pytest.fixture(autouse=True)
@@ -73,6 +82,15 @@ class TestModuleMatches:
     def test_fnmatch_character_class(self):
         assert _module_matches("data_3", "data_[0-9]")
         assert not _module_matches("data_x", "data_[0-9]")
+
+    def test_trailing_star_with_wildcards_in_prefix_uses_fnmatch(self):
+        # `j*on.*` has a `*` before the trailing `.*`, so it must NOT be short-circuited to a
+        # prefix match against the literal `j*on`. It should fall through to fnmatch.
+        assert _module_matches("json.tool", "j*on.*")
+        assert _module_matches("jaeon.subpkg.foo", "j*on.*")
+        # Pure fnmatch doesn't match the bare `json` for the pattern `j*on.*` (the `.*` requires
+        # a `.X` part).
+        assert not _module_matches("json", "j*on.*")
 
 
 class TestAllowlistDefaults:
@@ -168,8 +186,6 @@ class TestCheckModuleAllowed:
 class TestImportClassByNameAllowlist:
     def test_allowlisted_class(self):
         cls = import_class_by_name("haystack.core.pipeline.Pipeline")
-        from haystack.core.pipeline import Pipeline
-
         assert cls is Pipeline
 
     def test_rejects_untrusted_module(self):
@@ -183,9 +199,29 @@ class TestImportClassByNameAllowlist:
         # ... but extending the allowlist for a single call lets it through.
         with _deserialization_context(allowed_modules=["subprocess"]):
             cls = import_class_by_name("subprocess.Popen")
-            import subprocess
-
             assert cls is subprocess.Popen
+
+
+class TestDeserializeCallableAllowlist:
+    """
+    `deserialize_callable` walks progressively-shorter module prefixes when resolving a dotted
+    name. The allowlist check must apply to "is *any* prefix on the allowlist?", not to each
+    individual candidate — otherwise fnmatch patterns that match the actual module but not the
+    full handle (e.g. `j*on` matches `json` but not `json.dumps`) would be wrongly rejected.
+    """
+
+    def test_fnmatch_pattern_matches_shorter_prefix(self):
+        # `j*on` matches `json` (the actual module) but not `json.dumps` (the full handle).
+        # The deferred allowlist check should still accept this.
+        with _deserialization_context(allowed_modules=["j*on"]):
+            fn = deserialize_callable("json.dumps")
+            assert fn is json.dumps
+
+    def test_rejects_when_no_prefix_matches(self):
+        # No prefix of `subprocess.Popen` matches the default allowlist (or `unrelated`).
+        with _deserialization_context(allowed_modules=["unrelated"]):
+            with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+                deserialize_callable("subprocess.Popen")
 
 
 @pytest.fixture
@@ -195,8 +231,6 @@ def _registered_untrusted_component():
     (`evilpkg.evilmod.EvilComponent`). Yields a dict payload referencing it. The fixture cleans
     up the registry on teardown.
     """
-    from haystack import component as component_module
-
     fake_type = "evilpkg.evilmod.EvilComponent"
 
     @component_module
@@ -226,8 +260,6 @@ def _registered_untrusted_component():
 
 class TestPipelineFromDictAllowlistBypass:
     def test_pre_registered_untrusted_component_is_rejected(self, _registered_untrusted_component):
-        from haystack.core.pipeline import Pipeline
-
         with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
             Pipeline.from_dict(_registered_untrusted_component["data"])
 
@@ -238,8 +270,6 @@ class TestPipelineFromDictAllowlistBypass:
         doesn't match the test class's real qualified name — that's expected and proves the
         allowlist gate, not a downstream check, is what changed.)
         """
-        from haystack.core.pipeline import Pipeline
-
         data = _registered_untrusted_component["data"]
         # Without allowed_modules, this is rejected as untrusted.
         with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
@@ -262,20 +292,14 @@ class TestPipelineLoadAndLoadsPropagation:
         # We can't round-trip through `Pipeline.from_dict` + `dumps` because the registered
         # `EvilComponent`'s real qualified name doesn't match the fake type — the inner
         # `default_from_dict` would reject it. Build the YAML directly via the marshaller instead.
-        from haystack.marshal import YamlMarshaller
-
         return YamlMarshaller().marshal(data)
 
     def test_loads_rejects_untrusted_by_default(self, _registered_untrusted_component):
-        from haystack.core.pipeline import Pipeline
-
         yaml_str = self._yaml_for(_registered_untrusted_component["data"])
         with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
             Pipeline.loads(yaml_str)
 
     def test_loads_propagates_allowed_modules(self, _registered_untrusted_component):
-        from haystack.core.pipeline import Pipeline
-
         yaml_str = self._yaml_for(_registered_untrusted_component["data"])
         # With the matching pattern, the allowlist gate passes; downstream we get the type
         # mismatch — proving the kwarg reached the gate.
@@ -283,47 +307,28 @@ class TestPipelineLoadAndLoadsPropagation:
             Pipeline.loads(yaml_str, allowed_modules=["evilpkg.*"])
 
     def test_loads_propagates_unsafe(self, _registered_untrusted_component):
-        from haystack.core.pipeline import Pipeline
-
         yaml_str = self._yaml_for(_registered_untrusted_component["data"])
         # `unsafe=True` bypasses the allowlist entirely; downstream we still get the type mismatch.
         with pytest.raises(DeserializationError, match="can't be deserialized as"):
             Pipeline.loads(yaml_str, unsafe=True)
 
     def test_load_rejects_untrusted_by_default(self, _registered_untrusted_component):
-        import io
-
-        from haystack.core.pipeline import Pipeline
-
         yaml_str = self._yaml_for(_registered_untrusted_component["data"])
         with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
             Pipeline.load(io.StringIO(yaml_str))
 
     def test_load_propagates_allowed_modules(self, _registered_untrusted_component):
-        import io
-
-        from haystack.core.pipeline import Pipeline
-
         yaml_str = self._yaml_for(_registered_untrusted_component["data"])
         with pytest.raises(DeserializationError, match="can't be deserialized as"):
             Pipeline.load(io.StringIO(yaml_str), allowed_modules=["evilpkg.*"])
 
     def test_load_propagates_unsafe(self, _registered_untrusted_component):
-        import io
-
-        from haystack.core.pipeline import Pipeline
-
         yaml_str = self._yaml_for(_registered_untrusted_component["data"])
         with pytest.raises(DeserializationError, match="can't be deserialized as"):
             Pipeline.load(io.StringIO(yaml_str), unsafe=True)
 
     def test_load_loads_from_dict_equivalent_on_rejection(self, _registered_untrusted_component):
         """All three entry points produce the same rejection message for the same untrusted payload."""
-        import io
-        from collections.abc import Callable
-
-        from haystack.core.pipeline import Pipeline
-
         data = _registered_untrusted_component["data"]
         yaml_str = self._yaml_for(data)
 

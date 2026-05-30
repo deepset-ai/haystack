@@ -80,11 +80,14 @@ def allow_deserialization_module(pattern: str) -> None:
 
 def _module_matches(module_name: str, pattern: str) -> bool:
     """Return whether `module_name` matches the given allowlist `pattern`."""
-    # `pkg.*` is treated as a prefix match (matches `pkg` and any submodule); this is the most
-    # common form, and we want it to match the bare top-level package too, which fnmatch wouldn't.
-    if pattern.endswith(".*"):
-        pattern = pattern[:-2]
-        return module_name == pattern or module_name.startswith(pattern + ".")
+    # `pkg.*` (where the part before `.*` has no other wildcards) is treated as a prefix match —
+    # matches `pkg` and any submodule. This is the most common form, and we want it to match
+    # the bare top-level package too (which true fnmatch wouldn't, since `pkg.*` requires a
+    # literal `.` to follow). Patterns like `j*on.*` keep their wildcards and fall through to
+    # fnmatch so the semantics stay consistent.
+    if pattern.endswith(".*") and not any(c in pattern[:-2] for c in "*?["):
+        prefix = pattern[:-2]
+        return module_name == prefix or module_name.startswith(prefix + ".")
     if any(c in pattern for c in "*?["):
         return fnmatch.fnmatchcase(module_name, pattern)
     return module_name == pattern or module_name.startswith(pattern + ".")
