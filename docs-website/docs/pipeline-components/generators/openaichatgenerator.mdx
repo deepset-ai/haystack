@@ -39,6 +39,20 @@ You can pass any chat completion parameters valid for the `openai.ChatCompletion
 
 `OpenAIChatGenerator` can support custom deployments of your OpenAI models through the `api_base_url` init parameter.
 
+For example, you can route chat generation through a governed OpenAI-compatible endpoint such as [Tuning Engines](https://www.tuningengines.com/):
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+generator = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    api_key="your-tuning-engines-key",
+    api_base_url="https://api.tuningengines.com/v1",
+)
+```
+
+Haystack continues to own the pipeline while the gateway centralizes model routing, policy controls, audit logs, traces, approvals, and cost visibility.
+
 ### Structured Output
 
 `OpenAIChatGenerator` supports structured output generation, allowing you to receive responses in a predictable format. You can use Pydantic models or JSON schemas to define the structure of the output through the `response_format` parameter in `generation_kwargs`.
