@@ -479,6 +479,7 @@ export default {
             'pipeline-components/preprocessors/documentcleaner',
             'pipeline-components/preprocessors/documentpreprocessor',
             'pipeline-components/preprocessors/documentsplitter',
+            'pipeline-components/preprocessors/pythoncodesplitter',
             'pipeline-components/preprocessors/embeddingbaseddocumentsplitter',
             'pipeline-components/preprocessors/hierarchicaldocumentsplitter',
             'pipeline-components/preprocessors/recursivesplitter',
