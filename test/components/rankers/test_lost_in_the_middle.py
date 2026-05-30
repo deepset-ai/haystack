@@ -2,10 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
-from haystack import Document
+from haystack import Document, Pipeline
+from haystack.components.rankers import lost_in_the_middle as lost_in_the_middle_module
 from haystack.components.rankers.lost_in_the_middle import LostInTheMiddleRanker
+
+
+class FakeEncoding:
+    def encode(self, text: str) -> list[str]:
+        return text.split("|")
 
 
 class TestLostInTheMiddleRanker:
@@ -39,9 +47,16 @@ class TestLostInTheMiddleRanker:
         # tests that LostInTheMiddleRanker initializes with default values
         ranker = LostInTheMiddleRanker()
         assert ranker.word_count_threshold is None
+        assert ranker.count_mode == "word"
+        assert ranker.tokenizer_encoding == "o200k_base"
 
         ranker = LostInTheMiddleRanker(word_count_threshold=10)
         assert ranker.word_count_threshold == 10
+
+    def test_lost_in_the_middle_init_invalid_count_mode(self):
+        invalid_count_mode: Any = "byte"
+        with pytest.raises(ValueError, match="Invalid value for count_mode"):
+            LostInTheMiddleRanker(count_mode=invalid_count_mode)
 
     def test_lost_in_the_middle_init_invalid_word_count_threshold(self):
         # tests that LostInTheMiddleRanker raises an error when word_count_threshold is <= 0
@@ -74,6 +89,45 @@ class TestLostInTheMiddleRanker:
         expected_order = ["word1", "word3", "word5", "word7", "word9", "word8", "word6", "word4", "word2"]
         assert all(doc.content == expected_order[idx] for idx, doc in enumerate(ordered_docs["documents"]))
 
+    def test_lost_in_the_middle_with_char_count_mode(self):
+        ranker = LostInTheMiddleRanker(count_mode="char")
+        docs = [Document(content="aa"), Document(content="bbb"), Document(content="cccc"), Document(content="ddddd")]
+
+        result = ranker.run(documents=docs, word_count_threshold=5)
+
+        assert [doc.content for doc in result["documents"]] == ["aa", "bbb"]
+
+    def test_lost_in_the_middle_with_token_count_mode(self, monkeypatch):
+        encoding_names = []
+
+        def fake_get_encoding(name: str) -> FakeEncoding:
+            encoding_names.append(name)
+            return FakeEncoding()
+
+        monkeypatch.setattr(lost_in_the_middle_module.tiktoken, "get_encoding", fake_get_encoding)
+        ranker = LostInTheMiddleRanker(word_count_threshold=4, count_mode="token", tokenizer_encoding="test-encoding")
+        docs = [Document(content="a|b|c"), Document(content="d"), Document(content="e"), Document(content="f")]
+
+        result = ranker.run(documents=docs)
+
+        assert [doc.content for doc in result["documents"]] == ["a|b|c", "d"]
+        assert encoding_names == ["test-encoding"]
+
+    def test_pipeline_serialization_with_count_mode(self) -> None:
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "ranker",
+            LostInTheMiddleRanker(word_count_threshold=4, count_mode="token", tokenizer_encoding="test-encoding"),
+        )
+
+        restored_pipeline = Pipeline.loads(pipeline.dumps())
+        restored_ranker = restored_pipeline.get_component("ranker")
+
+        assert isinstance(restored_ranker, LostInTheMiddleRanker)
+        assert restored_ranker.word_count_threshold == 4
+        assert restored_ranker.count_mode == "token"
+        assert restored_ranker.tokenizer_encoding == "test-encoding"
+
     def test_empty_documents_returns_empty_list(self):
         ranker = LostInTheMiddleRanker()
         result = ranker.run(documents=[])
@@ -98,7 +152,7 @@ class TestLostInTheMiddleRanker:
         assert result["documents"][1].content == "unique"
 
     @pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8, 12, 20])
-    def test_lost_in_the_middle_order_with_top_k(self, top_k: int):
+    def test_lost_in_the_middle_order_with_top_k(self, top_k: int) -> None:
         # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
         docs = [Document(content=str(i)) for i in range(1, 10)]
         ranker = LostInTheMiddleRanker()

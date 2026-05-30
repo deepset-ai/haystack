@@ -3,8 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+from typing import Literal
+
 from haystack import Document, component
+from haystack.lazy_imports import LazyImport
 from haystack.utils.misc import _deduplicate_documents
+
+with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
+    import tiktoken
 
 
 @component
@@ -37,7 +43,14 @@ class LostInTheMiddleRanker:
     ```
     """
 
-    def __init__(self, word_count_threshold: int | None = None, top_k: int | None = None) -> None:
+    def __init__(
+        self,
+        word_count_threshold: int | None = None,
+        top_k: int | None = None,
+        *,
+        count_mode: Literal["word", "char", "token"] = "word",
+        tokenizer_encoding: str = "o200k_base",
+    ) -> None:
         """
         Initialize the LostInTheMiddleRanker.
 
@@ -46,8 +59,12 @@ class LostInTheMiddleRanker:
         be breached will be included in the resulting list of documents, but all subsequent documents will be
         discarded.
 
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold: The maximum total count across all documents selected by the ranker. The count is
+            measured in the unit configured by `count_mode`.
         :param top_k: The maximum number of documents to return.
+        :param count_mode: The unit used for threshold counting. It can be either "word", "char", or "token".
+            If "token" is selected, the text is counted using the tiktoken tokenizer.
+        :param tokenizer_encoding: The tiktoken encoding to use when `count_mode` is "token".
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
             raise ValueError(
@@ -55,9 +72,24 @@ class LostInTheMiddleRanker:
             )
         if isinstance(top_k, int) and top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
+        if count_mode not in ["word", "char", "token"]:
+            raise ValueError(
+                f"Invalid value for count_mode: {count_mode}. count_mode must be one of: 'word', 'char', 'token'."
+            )
 
         self.word_count_threshold = word_count_threshold
         self.top_k = top_k
+        self.count_mode = count_mode
+        self.tokenizer_encoding = tokenizer_encoding
+        self.tiktoken_tokenizer: "tiktoken.Encoding" | None = None
+
+    def warm_up(self) -> None:
+        """
+        Initialize the tokenizer when `count_mode` is "token".
+        """
+        if self.count_mode == "token" and self.tiktoken_tokenizer is None:
+            tiktoken_imports.check()
+            self.tiktoken_tokenizer = tiktoken.get_encoding(self.tokenizer_encoding)
 
     @component.output_types(documents=list[Document])
     def run(
@@ -71,7 +103,8 @@ class LostInTheMiddleRanker:
 
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold: The maximum total count across all documents selected by the ranker. The count is
+            measured in the unit configured by `count_mode`.
         :returns:
             A dictionary with the following keys:
             - `documents`: Reranked list of Documents
@@ -90,7 +123,7 @@ class LostInTheMiddleRanker:
             return {"documents": []}
 
         top_k = top_k or self.top_k
-        word_count_threshold = word_count_threshold or self.word_count_threshold
+        word_count_threshold = self.word_count_threshold if word_count_threshold is None else word_count_threshold
 
         deduplicated_documents = _deduplicate_documents(documents)
         documents_to_reorder = deduplicated_documents[:top_k] if top_k else deduplicated_documents
@@ -103,17 +136,18 @@ class LostInTheMiddleRanker:
         if any(not doc.content_type == "text" for doc in documents_to_reorder):
             raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
 
-        # Initialize word count and indices for the "lost in the middle" order
-        word_count = 0
+        # Initialize threshold count and indices for the "lost in the middle" order
+        count = 0
         document_index = list(range(len(documents_to_reorder)))
         lost_in_the_middle_indices = [0]
 
-        # If word count threshold is set and the first document has content, calculate word count for the first document
-        if word_count_threshold and documents_to_reorder[0].content:
-            word_count = len(documents_to_reorder[0].content.split())
+        # If threshold is set and the first document has content, calculate count for the first document.
+        first_document_content = documents_to_reorder[0].content
+        if word_count_threshold and first_document_content:
+            count = self._count_text_units(first_document_content)
 
-            # If the first document already meets the word count threshold, return it
-            if word_count >= word_count_threshold:
+            # If the first document already meets the threshold, return it.
+            if count >= word_count_threshold:
                 return {"documents": [documents_to_reorder[0]]}
 
         # Start from the second document and create "lost in the middle" order
@@ -124,14 +158,32 @@ class LostInTheMiddleRanker:
             # Insert the document index at the calculated position
             lost_in_the_middle_indices.insert(insertion_index, doc_idx)
 
-            # If word count threshold is set and the document has content, calculate the total word count
-            if word_count_threshold and documents_to_reorder[doc_idx].content:
-                word_count += len(documents_to_reorder[doc_idx].content.split())  # type: ignore[union-attr]
+            # If threshold is set and the document has content, calculate the total count.
+            document_content = documents_to_reorder[doc_idx].content
+            if word_count_threshold and document_content:
+                count += self._count_text_units(document_content)
 
-                # If the total word count meets the threshold, stop processing further documents
-                if word_count >= word_count_threshold:
+                # If the total count meets the threshold, stop processing further documents.
+                if count >= word_count_threshold:
                     break
 
         # Documents in the "lost in the middle" order
         ranked_docs = [documents_to_reorder[idx] for idx in lost_in_the_middle_indices]
         return {"documents": ranked_docs}
+
+    def _count_text_units(self, text: str) -> int:
+        """
+        Count text according to the configured count mode.
+        """
+        if self.count_mode == "word":
+            return len(text.split())
+        if self.count_mode == "char":
+            return len(text)
+
+        tokenizer = self.tiktoken_tokenizer
+        if tokenizer is None:
+            self.warm_up()
+            tokenizer = self.tiktoken_tokenizer
+        if tokenizer is None:
+            raise RuntimeError("Tokenizer was not initialized.")
+        return len(tokenizer.encode(text))

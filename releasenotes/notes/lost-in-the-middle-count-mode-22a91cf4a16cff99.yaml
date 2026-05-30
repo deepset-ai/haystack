@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added ``count_mode`` and ``tokenizer_encoding`` parameters to ``LostInTheMiddleRanker``.
+    The existing ``word_count_threshold`` behavior remains word-based by default, while ``count_mode="char"``
+    counts characters and ``count_mode="token"`` counts tokens using the configured tiktoken encoding.
