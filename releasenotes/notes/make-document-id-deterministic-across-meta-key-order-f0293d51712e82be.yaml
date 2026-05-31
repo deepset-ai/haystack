@@ -1,0 +1,20 @@
+---
+upgrade:
+  - |
+    The hash used to auto-generate ``Document.id`` is now computed from a
+    canonical (key-sorted) serialization of ``meta``. Documents created with
+    non-empty ``meta`` will therefore get different IDs than they did before.
+    Documents with empty ``meta`` are unaffected.
+
+    If you rely on auto-generated IDs to match documents already persisted in a
+    ``DocumentStore``, you will need to re-ingest the affected documents (or
+    pass the previous ``id`` explicitly when constructing the ``Document``).
+fixes:
+  - |
+    ``Document.id`` is now deterministic regardless of the insertion order of
+    keys in ``meta``. Previously the hash was built from ``dict``'s repr, which
+    reflects insertion order, so two documents with the same content and the
+    same ``meta`` could get different IDs depending on how the ``meta`` dict was
+    constructed. This silently broke ``DuplicatePolicy.SKIP`` / ``FAIL`` and
+    any cache or dedup table keyed on the document ID whenever upstream code
+    produced ``meta`` in different orders.
