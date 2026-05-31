@@ -13,6 +13,7 @@ from haystack.utils.misc import (
     _normalize_metadata_field_name,
     _parse_dict_from_json,
     _reciprocal_rank_fusion,
+    expand_page_range,
 )
 
 
@@ -168,3 +169,9 @@ class TestJsonParsing:
         assert "Missing expected keys in JSON: {missing_keys}" in args[0]
         assert kwargs["missing_keys"] == ["key2"]
         assert kwargs["keys"] == ["key1"]
+
+
+class TestExpandPageRange:
+    def test_malformed_range_with_multiple_hyphens_raises_clear_valueerror(self):
+        with pytest.raises(ValueError, match="Invalid page range"):
+            expand_page_range(["1-3", "5-10-15"])
