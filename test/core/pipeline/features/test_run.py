@@ -3104,7 +3104,7 @@ Documents:
                     ("rag_prompt", 1): {
                         "documents": [
                             Document(
-                                id="969664d0cf76e52b0ffb719d00d3e5a6b1c90bb29e56f6107dfd87bf2f5388ed",
+                                id="366a10745500c26f1177f434c74513daacaa7f9d2e09ba892cfcd48652eb80c1",
                                 content="This is a document potentially answering the question.",
                                 meta={"access_group": 1},
                             )
@@ -4381,7 +4381,7 @@ some,header,row
             content="Some test content",
             meta={
                 "file_type": "json",
-                "source_id": "0c6c5951d18da2935c7af3e24d417a9f94ca85403866dcfee1de93922504e1e5",
+                "source_id": "7eead7200d4ecead81a174a1da6512d8955f3a23acdc3f8431885d4793a63a74",
                 "page_number": 1,
                 "split_id": 0,
                 "split_idx_start": 0,
@@ -4391,7 +4391,7 @@ some,header,row
             content="Text file content ",
             meta={
                 "file_type": "txt",
-                "source_id": "41cb91740f6e64ab542122936ea746c238ae0a92fd29b698efabbe23d0ba4c42",
+                "source_id": "696d5c046b58b24bf806ff94f6b529fb3a08f068b6bf39e572683537736a0c27",
                 "page_number": 1,
                 "split_id": 0,
                 "split_idx_start": 0,
@@ -4401,7 +4401,7 @@ some,header,row
             content="for testing this.",
             meta={
                 "file_type": "txt",
-                "source_id": "41cb91740f6e64ab542122936ea746c238ae0a92fd29b698efabbe23d0ba4c42",
+                "source_id": "696d5c046b58b24bf806ff94f6b529fb3a08f068b6bf39e572683537736a0c27",
                 "page_number": 1,
                 "split_id": 1,
                 "split_idx_start": 18,
