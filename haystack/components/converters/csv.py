@@ -40,6 +40,8 @@ class CSVToDocument:
     print(documents[0].content)
     # >>  'col1,col2\\nrow1,row1\\nrow2,row2\\n'
     ```
+
+    TRIGGER!
     """
 
     def __init__(
