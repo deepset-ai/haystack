@@ -12,6 +12,9 @@ on:
 env:
   PYTHON_VERSION: "3.10"
 
+permissions:
+  contents: read
+
 jobs:
   license_check_direct:
     name: Direct dependencies only

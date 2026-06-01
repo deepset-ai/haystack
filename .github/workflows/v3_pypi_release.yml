@@ -6,6 +6,9 @@ on:
 env:
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   v3-release:
     runs-on: ubuntu-latest

@@ -5,6 +5,9 @@ on:
     paths:
       - ".github/workflows/**"
 
+permissions:
+  contents: read
+
 jobs:
   lint-workflows:
     runs-on: ubuntu-slim
