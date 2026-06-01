@@ -1,8 +1,27 @@
 ---
 enhancements:
   - |
-    `select_streaming_callback` now accepts a sync streaming callback in async contexts
-    (e.g. `run_async`), emitting a `UserWarning` instead of raising. The callback runs
-    inline on the event loop and may block it, so async callbacks remain preferred for
-    performance. The reverse case (an async callback in `run`) still raises, since
-    there is no way to await a coroutine from sync code.
+    Streaming-capable components (``OpenAIChatGenerator``, ``OpenAIResponsesGenerator``,
+    ``HuggingFaceAPIChatGenerator``, ``HuggingFaceLocalChatGenerator``, ``Agent``) now accept a **sync** streaming
+    callback in async contexts (``run_async``). A warning is logged because the callback runs synchronously on the
+    event loop and may block it, but the run proceeds. Async callbacks are still preferred for performance.
+
+    .. code-block:: python
+
+        import asyncio
+
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.dataclasses import ChatMessage, StreamingChunk
+
+        def print_chunk(chunk: StreamingChunk) -> None:
+            print(chunk.content, end="", flush=True)
+
+        async def main():
+            llm = OpenAIChatGenerator()
+            # previously this raised; now it logs a warning and streams as expected
+            await llm.run_async(
+                [ChatMessage.from_user("Tell me about Italy")],
+                streaming_callback=print_chunk,
+            )
+
+        asyncio.run(main())
