@@ -35,6 +35,9 @@ env:
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   check-if-changed:
     # This job checks if the relevant files have been changed.
@@ -85,7 +88,7 @@ jobs:
         run: hatch run fmt-check
 
       - name: Check presence of license header
-        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
+        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye:v6.5.1@sha256:0ebd72353053aa6d3f0cb44a6897786386347bd4636ffc9592f8e47c81ea2b9d check
 
   check-imports:
     needs: format

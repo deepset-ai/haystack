@@ -22,6 +22,9 @@ env:
   # see https://github.com/deepset-ai/haystack/issues/9552
   HF_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
 
+permissions:
+  contents: read
+
 jobs:
   run:
     timeout-minutes: 60
