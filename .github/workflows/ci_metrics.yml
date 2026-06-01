@@ -12,6 +12,9 @@ on:
     types:
       - opened
       - closed
+permissions:
+  contents: read
+
 jobs:
   send:
     runs-on: ubuntu-slim

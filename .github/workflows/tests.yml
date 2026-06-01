@@ -35,6 +35,9 @@ env:
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   check-if-changed:
     # This job checks if the relevant files have been changed.
