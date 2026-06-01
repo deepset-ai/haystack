@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from types import UnionType
 from typing import Annotated, Any, TypeAlias, TypedDict, TypeVar, get_args
 
+from haystack.core.errors import ComponentError
+
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
 HAYSTACK_GREEDY_VARIADIC_ANNOTATION = "__haystack__greedy_variadic_t"
 
@@ -97,7 +99,13 @@ class InputSocket:
         # alias for Iterable[int]. Since we're interested in getting the inner type `int`, we call `get_args`
         # twice: the first time to get `list[int]` out of `Variadic`, the second time to get `int` out of `list[int]`.
         if self.is_lazy_variadic or self.is_greedy:
-            self.type = get_args(get_args(self.type)[0])[0]
+            outer_args = get_args(self.type)
+            inner_args = get_args(outer_args[0]) if outer_args else ()
+            if not inner_args:
+                raise ComponentError(
+                    f"Variadic input '{self.name}' must have a type argument, e.g. Variadic[int]."
+                )
+            self.type = inner_args[0]
 
 
 class InputSocketTypeDescriptor(TypedDict):

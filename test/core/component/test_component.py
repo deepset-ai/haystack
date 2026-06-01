@@ -574,3 +574,18 @@ def test_pre_init_hooking_variadic_kwargs():
         assert c.pos_arg1 == 2
         assert c.pos_arg2 == 0
         assert c.kwargs == {"kwarg1": 999, "some_kwarg": "modified string"}
+
+
+def test_input_socket_variadic_without_type_arg_raises_component_error():
+    from typing import Annotated
+    from collections.abc import Iterable
+    from haystack.core.component.types import HAYSTACK_VARIADIC_ANNOTATION
+
+    @component
+    class BadJoiner:
+        @component.output_types(result=str)
+        def run(self, inputs: Annotated[Iterable, HAYSTACK_VARIADIC_ANNOTATION]):
+            return {"result": ""}
+
+    with pytest.raises(ComponentError, match="must have a type argument"):
+        BadJoiner()
