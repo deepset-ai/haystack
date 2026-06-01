@@ -109,8 +109,8 @@ Currently, Haystack has integrations with [DeepEval](https://docs.confident-ai.c
 | --- | --- | --- |
 | Feature/Integration | RagasEvaluator | DeepEvalEvaluator |
 | Evaluator Models | All GPT models from OpenAI  <br />Google VertexAI Models  <br />Azure OpenAI Models  <br />Amazon Bedrock Models | All GPT models from OpenAI |
-| Supported metrics | ANSWER_CORRECTNESS, FAITHFULNESS, ANSWER_SIMILARITY, CONTEXT_PRECISION, CONTEXT_UTILIZATION,CONTEXT_RECALL, ASPECT_CRITIQUE, CONTEXT_RELEVANCY, ANSWER_RELEVANCY | ANSWER_RELEVANCY, FAITHFULNESS, CONTEXTUAL_PRECISION, CONTEXTUAL_RECALL, CONTEXTUAL_RELEVANCE |
-| Customizable prompt for response evaluation | ✅, with ASPECT_CRITIQUE metric | ❌ |
+| Supported metrics | Any metric from `ragas.metrics.collections` (such as `Faithfulness`, `AnswerRelevancy`, `ContextPrecision`, `ContextRecall`, `AspectCritique`, `SemanticSimilarity`, `FactualCorrectness`) | ANSWER_RELEVANCY, FAITHFULNESS, CONTEXTUAL_PRECISION, CONTEXTUAL_RECALL, CONTEXTUAL_RELEVANCE |
+| Customizable prompt for response evaluation | ✅, with `AspectCritique` | ❌ |
 | Explanations of scores | ❌ | ✅ |
 | Monitoring dashboard | ❌ | ❌ |
 

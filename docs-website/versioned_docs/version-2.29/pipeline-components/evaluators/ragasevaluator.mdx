@@ -61,7 +61,7 @@ from haystack import Pipeline
 from haystack_integrations.components.evaluators.ragas import RagasEvaluator
 from openai import AsyncOpenAI
 from ragas.llms import llm_factory
-from ragas.embeddings import embedding_factory
+from ragas.embeddings.base import embedding_factory
 from ragas.metrics.collections import AnswerRelevancy
 
 client = AsyncOpenAI()
