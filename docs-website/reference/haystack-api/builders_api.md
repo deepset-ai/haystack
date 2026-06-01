@@ -119,9 +119,12 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 - **meta** (<code>list\[dict\[str, Any\]\] | None</code>) – The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
 - **documents** (<code>list\[Document\] | None</code>) – The documents used as the Generator inputs. If specified, they are added to
   the `GeneratedAnswer` objects.
-  Each Document.meta includes a "source_index" key, representing its 1-based position in the input list.
+  The Document copies inside the returned `GeneratedAnswer.documents` each include a "source_index" key,
+  representing the document's 1-based position in the input list. The original input documents are
+  not modified.
   When `reference_pattern` is provided:
-- "referenced" key is added to the Document.meta, indicating if the document was referenced in the output.
+- "referenced" key is added to the Document copies inside `GeneratedAnswer.documents`, indicating if
+  the document was referenced in the output.
 - `return_only_referenced_documents` init parameter controls if all or only referenced documents are
   returned.
 - **pattern** (<code>str | None</code>) – The regular expression pattern to extract the answer text from the Generator.

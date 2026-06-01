@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -101,6 +102,47 @@ class TextEmbeddingRetriever:
         docs: list[Document] = result["documents"]
 
         # sort
+        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        return {"documents": docs}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+    ) -> dict[str, list[Document]]:
+        """
+        Retrieve documents using a single query asynchronously.
+
+        Uses `run_async` on the text embedder and retriever if available, otherwise falls back to
+        running `run` in a thread executor.
+
+        :param query: The query to retrieve documents for.
+        :param filters: A dictionary of filters to apply when retrieving documents.
+        :param top_k: The maximum number of documents to return.
+        :returns:
+            A dictionary containing:
+                - `documents`: List of retrieved documents sorted by relevance score.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        loop = asyncio.get_running_loop()
+
+        if hasattr(self.text_embedder, "run_async") and callable(self.text_embedder.run_async):
+            embedding_result = await self.text_embedder.run_async(text=query)
+        else:
+            embedding_result = await loop.run_in_executor(None, lambda: self.text_embedder.run(text=query))
+
+        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
+            result = await self.retriever.run_async(
+                query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k
+            )
+        else:
+            result = await loop.run_in_executor(
+                None,
+                lambda: self.retriever.run(query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k),
+            )
+
+        docs: list[Document] = result["documents"]
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 

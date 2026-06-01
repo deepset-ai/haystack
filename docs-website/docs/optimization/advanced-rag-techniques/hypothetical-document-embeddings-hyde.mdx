@@ -33,28 +33,37 @@ import os
 from numpy import array, mean
 from typing import List
 
-from haystack.components.generators.openai import OpenAIGenerator
-from haystack.components.builders import PromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders import ChatPromptBuilder
 from haystack import component, Document
 from haystack.components.converters import OutputAdapter
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.dataclasses import ChatMessage
 
 # We need to ensure we have the OpenAI API key in our environment variables
 os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_KEY"
 
 # Initializing standard Haystack components
-generator = OpenAIGenerator(
+generator = OpenAIChatGenerator(
     model="gpt-3.5-turbo",
     generation_kwargs={"n": 5, "temperature": 0.75, "max_tokens": 400},
 )
-prompt_builder = PromptBuilder(
-    template="""Given a question, generate a paragraph of text that answers the question.    Question: {{question}}    Paragraph:""",
+prompt_builder = ChatPromptBuilder(
+    template=[
+        ChatMessage.from_user(
+            """Given a question, generate a paragraph of text that answers the question.    Question: {{question}}    Paragraph:""",
+        ),
+    ],
+    required_variables="*",
 )
 
+# The ChatGenerator returns ChatMessage replies, so we read each reply's text.
+# unsafe=True lets the adapter return actual Document objects instead of a string.
 adapter = OutputAdapter(
     template="{{answers | build_doc}}",
     output_type=List[Document],
-    custom_filters={"build_doc": lambda data: [Document(content=d) for d in data]},
+    custom_filters={"build_doc": lambda data: [Document(content=d.text) for d in data]},
+    unsafe=True,
 )
 
 embedder = SentenceTransformersDocumentEmbedder(
@@ -86,7 +95,7 @@ pipeline.add_component(name="adapter", instance=adapter)
 pipeline.add_component(name="embedder", instance=embedder)
 pipeline.add_component(name="hyde", instance=HypotheticalDocumentEmbedder())
 
-pipeline.connect("prompt_builder", "generator")
+pipeline.connect("prompt_builder.prompt", "generator.messages")
 pipeline.connect("generator.replies", "adapter.answers")
 pipeline.connect("adapter.output", "embedder.documents")
 pipeline.connect("embedder.documents", "hyde.documents")
