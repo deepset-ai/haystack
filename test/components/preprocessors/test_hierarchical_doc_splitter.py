@@ -88,6 +88,16 @@ class TestHierarchicalDocumentSplitter:
         assert len(docs[7].meta["__children_ids"]) == 0
         assert len(docs[8].meta["__children_ids"]) == 0
 
+    def test_run_does_not_mutate_input_document(self):
+        builder = HierarchicalDocumentSplitter(block_sizes={5, 2}, split_overlap=0, split_by="word")
+        doc = Document(content="one two three four five six seven eight", meta={"source": "test"})
+        builder.run([doc])
+
+        # the caller's Document should be untouched
+        assert doc.meta == {"source": "test"}
+        for key in ("__block_size", "__parent_id", "__children_ids", "__level"):
+            assert key not in doc.meta
+
     def test_to_dict_in_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
         hierarchical_doc_builder = HierarchicalDocumentSplitter(block_sizes={10, 5, 2})

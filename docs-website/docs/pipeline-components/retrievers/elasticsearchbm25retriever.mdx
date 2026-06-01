@@ -105,16 +105,17 @@ from elasticsearch import Elasticsearch
 from haystack import Document
 from haystack import Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.types import DuplicatePolicy
 
-import os
-
-api_key = os.environ["OPENAI_API_KEY"]
+# OpenAIChatGenerator reads the OPENAI_API_KEY environment variable by default.
 
 # Create a RAG query pipeline
-prompt_template = """
+prompt_template = [
+    ChatMessage.from_user(
+        """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
         {{ doc.content }}
@@ -122,7 +123,9 @@ prompt_template = """
 
     \nQuestion: {{question}}
     \nAnswer:
-    """
+    """,
+    ),
+]
 
 document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/")
 
@@ -145,15 +148,14 @@ retriever = ElasticsearchBM25Retriever(document_store=document_store)
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(name="retriever", instance=retriever)
 rag_pipeline.add_component(
-    instance=PromptBuilder(template=prompt_template),
+    instance=ChatPromptBuilder(template=prompt_template, required_variables="*"),
     name="prompt_builder",
 )
-rag_pipeline.add_component(instance=OpenAIGenerator(api_key=api_key), name="llm")
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 rag_pipeline.connect("llm.replies", "answer_builder.replies")
-rag_pipeline.connect("llm.meta", "answer_builder.meta")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 question = "How many languages are spoken around the world today?"

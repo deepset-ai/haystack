@@ -64,8 +64,10 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
+
+Create a `ValkeyEmbeddingRetriever` instance.
 
 **Parameters:**
 
@@ -238,7 +240,7 @@ __init__(
     distance_metric: Literal["l2", "cosine", "ip"] = "cosine",
     embedding_dim: int = 768,
     metadata_fields: dict[str, type[str] | type[int]] | None = None
-)
+) -> None
 ```
 
 Creates a new ValkeyDocumentStore instance.
@@ -265,6 +267,22 @@ Creates a new ValkeyDocumentStore instance.
   Supported types: str (for exact matching), int (for numeric comparisons).
   Example: `{"category": str, "priority": int}`.
   If not provided, no metadata fields will be indexed for filtering.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the synchronous Valkey client connection.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Close the asynchronous Valkey client connection.
 
 #### to_dict
 
