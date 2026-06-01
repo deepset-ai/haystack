@@ -49,9 +49,22 @@ class TestTool:
         with pytest.raises(ValueError):
             Tool(name="irrelevant", description="irrelevant", parameters=params, function=get_weather_report)
 
-    def test_init_async_function_raises_error(self):
-        with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+    def test_init_async_function_passed_as_function_raises_error(self):
+        with pytest.raises(ValueError, match="`function` must be a synchronous function"):
             Tool(name="weather", description="Get weather report", parameters=parameters, function=async_get_weather)
+
+    def test_init_requires_function_or_async_function(self):
+        with pytest.raises(ValueError, match="requires at least one of `function` or `async_function`"):
+            Tool(name="weather", description="Get weather report", parameters=parameters)
+
+    def test_init_sync_function_passed_as_async_function_raises_error(self):
+        with pytest.raises(ValueError, match="`async_function` must be a coroutine function"):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                async_function=get_weather_report,
+            )
 
     @pytest.mark.parametrize(
         "outputs_to_state",
@@ -158,6 +171,7 @@ class TestTool:
                 "description": "Get weather report",
                 "parameters": parameters,
                 "function": "test_tool.get_weather_report",
+                "async_function": None,
                 "outputs_to_string": {"handler": "test_tool.format_string"},
                 "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
@@ -332,6 +346,103 @@ class TestTool:
                 function=get_weather_report,
                 outputs_to_state={"result": {"source": "nonexistent"}},
             )
+
+
+@pytest.fixture
+def async_tool():
+    return Tool(
+        name="weather", description="Get weather report", parameters=parameters, async_function=async_get_weather
+    )
+
+
+@pytest.fixture
+def sync_tool():
+    return Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report)
+
+
+class TestToolAsync:
+    @pytest.mark.asyncio
+    async def test_invoke_async_awaits_async_function(self, async_tool):
+        assert async_tool.function is None
+        assert async_tool.async_function is async_get_weather
+        assert await async_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+    def test_invoke_on_async_only_tool_raises(self, async_tool):
+        with pytest.raises(ToolInvocationError, match=re.escape("has no sync `function`")):
+            async_tool.invoke(city="Berlin")
+
+    @pytest.mark.asyncio
+    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool):
+        # Sync-only tool: invoke_async dispatches to a worker thread via asyncio.to_thread.
+        assert await sync_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+    @pytest.mark.asyncio
+    async def test_async_function_is_preferred_when_both_set(self):
+        async def from_async(city: str) -> str:
+            return "async"
+
+        def from_sync(city: str) -> str:
+            return "sync"
+
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=from_sync,
+            async_function=from_async,
+        )
+
+        assert await tool.invoke_async(city="Berlin") == "async"
+        assert tool.invoke(city="Berlin") == "sync"
+
+    @pytest.mark.asyncio
+    async def test_invoke_async_wraps_exception(self):
+        async def boom(city: str) -> str:
+            raise RuntimeError("kaboom")
+
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, async_function=boom)
+
+        with pytest.raises(ToolInvocationError, match="kaboom"):
+            await tool.invoke_async(city="Berlin")
+
+    @pytest.mark.parametrize(
+        "kwargs, expected_function, expected_async_function",
+        [
+            pytest.param({"async_function": async_get_weather}, None, "test_tool.async_get_weather", id="async-only"),
+            pytest.param(
+                {"function": get_weather_report, "async_function": async_get_weather},
+                "test_tool.get_weather_report",
+                "test_tool.async_get_weather",
+                id="both",
+            ),
+        ],
+    )
+    def test_serde_roundtrip(self, kwargs, expected_function, expected_async_function):
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, **kwargs)
+
+        data = tool.to_dict()
+        assert data["data"]["function"] == expected_function
+        assert data["data"]["async_function"] == expected_async_function
+
+        restored = Tool.from_dict(data)
+        assert restored.function == kwargs.get("function")
+        assert restored.async_function == kwargs.get("async_function")
+
+    def test_from_dict_legacy_payload_without_async_function_key(self):
+        # Payload produced before `async_function` existed.
+        legacy = {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+            },
+        }
+
+        tool = Tool.from_dict(legacy)
+        assert tool.function is get_weather_report
+        assert tool.async_function is None
 
 
 def test_check_duplicate_tool_names():

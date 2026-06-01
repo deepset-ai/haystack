@@ -341,6 +341,7 @@ class TestOpenAIChatGenerator:
                     {
                         "type": "haystack.tools.tool.Tool",
                         "data": {
+                            "async_function": None,
                             "description": "description",
                             "function": "builtins.print",
                             "inputs_from_state": None,

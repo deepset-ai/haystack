@@ -288,7 +288,7 @@ class TestToolSerdeUtils:
         assert isinstance(data["tools"][0], Tool)
         assert data["tools"][0].name == "weather"
         assert data["tools"][0].parameters == weather_parameters
-        assert data["tools"][0].function("Paris") == "Weather report for Paris: 20°C, sunny"
+        assert data["tools"][0].function("Paris") == "Weather report for Paris: 20°C, sunny"  # type: ignore[misc]
 
         # Verify Toolset with calculator tool
         assert isinstance(data["tools"][1], Toolset)
@@ -326,14 +326,14 @@ class TestToolSerdeUtils:
         assert isinstance(data["tools"][0], Tool)
         assert data["tools"][0].name == "weather"
         assert data["tools"][0].parameters == weather_parameters
-        assert data["tools"][0].function("Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert data["tools"][0].function("Berlin") == "Weather report for Berlin: 20°C, sunny"  # type: ignore[misc]
 
         # Verify Tool 2 (calculator)
         assert isinstance(data["tools"][1], Tool)
         assert data["tools"][1].name == "calculator"
         assert data["tools"][1].parameters == calculator_parameters
-        assert data["tools"][1].function(5, 3, "add") == 8
-        assert data["tools"][1].function(5, 3, "multiply") == 15
+        assert data["tools"][1].function(5, 3, "add") == 8  # type: ignore[misc]
+        assert data["tools"][1].function(5, 3, "multiply") == 15  # type: ignore[misc]
 
         # Verify Toolset (with summarizer and formatter)
         assert isinstance(data["tools"][2], Toolset)
