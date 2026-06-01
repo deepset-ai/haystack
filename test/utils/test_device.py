@@ -35,6 +35,13 @@ def test_device_creation():
         Device.gpu(-1)
 
 
+def test_device_from_str_extra_colons():
+    # Device strings with extra colons (e.g. "cuda:0:1") must not raise
+    # "too many values to unpack"; only the first two colon-separated parts are used.
+    assert Device.from_str("cuda:0:1") == Device.gpu(0)
+    assert Device.from_str("cuda:1:extra") == Device.gpu(1)
+
+
 def test_device_map():
     device_map = DeviceMap({"layer1": Device.cpu(), "layer2": Device.gpu(1), "layer3": Device.disk()})
 
