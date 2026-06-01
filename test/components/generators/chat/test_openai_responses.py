@@ -500,6 +500,17 @@ class TestRun:
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
 
+    def test_run_with_string_input(self, openai_mock_responses):
+        component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
+        response = component.run("What's the capital of France?")
+
+        assert openai_mock_responses.call_args.kwargs["input"] == [
+            {"role": "user", "content": [{"type": "input_text", "text": "What's the capital of France?"}]}
+        ]
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
+
     def test_run_with_flattened_generation_kwargs(self, openai_mock_responses, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
@@ -965,6 +976,17 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    async def test_run_async_with_string_input(self, openai_mock_async_responses):
+        component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
+        response = await component.run_async("What's the capital of France?")
+
+        assert openai_mock_async_responses.call_args.kwargs["input"] == [
+            {"role": "user", "content": [{"type": "input_text", "text": "What's the capital of France?"}]}
+        ]
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(

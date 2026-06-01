@@ -86,6 +86,13 @@ class LLM(Agent):
                 )
             component.set_input_type(self, "messages", list[ChatMessage], None)
 
+        # The Agent base class declares `step_count` and `tool_call_counts` as outputs, but an LLM never has tools
+        # and always runs exactly one step — those values are uninformative, so drop them from the public surface.
+        # `token_usage` is still meaningful and stays exposed.
+        component.set_output_types(
+            self, messages=list[ChatMessage], last_message=ChatMessage, token_usage=dict[str, Any]
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the LLM component to a dictionary.
@@ -140,16 +147,22 @@ class LLM(Agent):
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
+            - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
+              chat generator did not return usage data.
         """
         # `messages` is intentionally omitted from the signature so the framework can treat it as required
         # or optional depending on init configuration. See __init__ for details.
         messages = kwargs.pop("messages", None)
-        return super(LLM, self).run(  # noqa: UP008
+        result = super(LLM, self).run(  # noqa: UP008
             messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
             **kwargs,
         )
+        # Inherited Agent-internal bookkeeping that isn't useful at the LLM surface.
+        result.pop("step_count", None)
+        result.pop("tool_call_counts", None)
+        return result
 
     async def run_async(  # type: ignore[override]  # `messages` is in **kwargs to allow dynamic required/optional status
         self,
@@ -174,13 +187,19 @@ class LLM(Agent):
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
+            - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
+              chat generator did not return usage data.
         """
         # `messages` is intentionally omitted from the signature so the framework can treat it as required
         # or optional depending on init configuration. See __init__ for details.
         messages = kwargs.pop("messages", None)
-        return await super(LLM, self).run_async(  # noqa: UP008
+        result = await super(LLM, self).run_async(  # noqa: UP008
             messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
             **kwargs,
         )
+        # Inherited Agent-internal bookkeeping that isn't useful at the LLM surface.
+        result.pop("step_count", None)
+        result.pop("tool_call_counts", None)
+        return result

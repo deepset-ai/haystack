@@ -55,6 +55,7 @@ __init__(
     progress_bar: bool = True,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
+    encoding_format: str = "base64_int8",
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
@@ -75,6 +76,7 @@ Creates a PerplexityDocumentEmbedder component.
   the logs clean.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document text.
+- **encoding_format** (<code>str</code>) – The Perplexity embedding encoding format. Supported values are `base64_int8` and `base64_binary`.
 - **timeout** (<code>float | None</code>) – Timeout for Perplexity client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
   variable, or 30 seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact Perplexity after an internal error.
@@ -150,6 +152,7 @@ __init__(
     api_base_url: str | None = "https://api.perplexity.ai/v1",
     prefix: str = "",
     suffix: str = "",
+    encoding_format: str = "base64_int8",
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
@@ -165,6 +168,7 @@ Creates a PerplexityTextEmbedder component.
 - **api_base_url** (<code>str | None</code>) – The Perplexity API base URL.
 - **prefix** (<code>str</code>) – A string to add to the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add to the end of each text.
+- **encoding_format** (<code>str</code>) – The Perplexity embedding encoding format. Supported values are `base64_int8` and `base64_binary`.
 - **timeout** (<code>float | None</code>) – Timeout for Perplexity client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
   variable, or 30 seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact Perplexity after an internal error.

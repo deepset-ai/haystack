@@ -154,6 +154,20 @@ agent = Agent(
 The `convert_result_to_json_string` option (also previously set through `tool_invoker_kwargs`) has been removed.
 Non-string tool results are now always serialized with `json.dumps` rather than `str`, which changes their string form.
 
+### `haystack-experimental` is no longer a core dependency
+
+**What changed:** `haystack-experimental` has been removed from Haystack's core dependencies. Installing `haystack-ai` no longer pulls in `haystack-experimental` automatically.
+
+**Why:** Reduces the default installation footprint. Experimental features are opt-in and should not be installed for users who do not need them.
+
+**How to migrate:** If your code imports from `haystack_experimental` (directly or through an integration that depends on it), install the package explicitly:
+
+```bash
+pip install haystack-experimental
+```
+
+Installations that do not use `haystack_experimental` require no changes.
+
 ### Agent
 
 #### Breakpoint and snapshot API removed
@@ -323,6 +337,32 @@ pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "que
 If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
 For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
 
+#### Reserved `state_schema` keys for built-in run metadata
+
+**What changed:** `Agent` now auto-populates three new outputs — `step_count`, `token_usage`, and `tool_call_counts` — and reserves those names in its `state_schema`. Passing any of them as a `state_schema` key now raises `ValueError`.
+
+**Why:** These keys are managed by `Agent` itself and exposed as outputs only; allowing users to redefine them would let an input shadow the value the Agent is trying to write.
+
+**How to migrate:** Rename any clashing `state_schema` entries.
+
+Before (v2.x):
+```python
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    state_schema={"token_usage": {"type": dict}},
+)
+```
+
+After (v3.0):
+```python
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    state_schema={"my_token_usage": {"type": dict}},
+)
+```
+
 ### LLM
 
 #### Runtime `user_prompt` and `system_prompt` removed from `LLM.run` / `LLM.run_async`
@@ -422,4 +462,135 @@ builder = PromptBuilder(
     required_variables=None,
 )
 builder.run(name="John")  # greeting renders as ""
+```
+
+### Generators removed
+
+**What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
+Generators living in Haystack Core Integrations will also be removed soon.
+Their chat counterparts (`OpenAIChatGenerator`, `AzureOpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`) are the replacement. As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
+
+**Why:** Over time, Generators became shallow wrappers over the ChatGenerators, converting `str → ChatMessage → str` around the exact same model calls. All new features (tool calling, structured outputs, etc.) were introduced only in ChatGenerators, leaving the legacy classes behind. They were also a source of confusion for newcomers and an unnecessary duplication of code and tests.
+
+**How to migrate:**
+
+#### Direct usage (running a generator from Python code)
+
+Before (v2.x):
+```python
+from haystack.components.generators import OpenAIGenerator
+
+gen = OpenAIGenerator()
+result = gen.run("What is NLP?")
+text = result["replies"][0]   # str
+meta = result["meta"][0]      # dict with model metadata
+```
+
+After (v3.0):
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+gen = OpenAIChatGenerator()
+result = gen.run("What is NLP?")   # str input accepted directly
+reply = result["replies"][0]       # ChatMessage
+text = reply.text                  # str
+meta = reply.meta                  # dict with model metadata (now on the message)
+```
+
+#### System prompt
+
+Before (v2.x):
+```python
+from haystack.components.generators import OpenAIGenerator
+
+gen = OpenAIGenerator(system_prompt="You are concise.")
+result = gen.run("What is NLP?")
+```
+
+After (v3.0):
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+gen = OpenAIChatGenerator()
+result = gen.run([
+    ChatMessage.from_system("You are concise."),
+    ChatMessage.from_user("What is NLP?"),
+])
+```
+
+#### Pipeline usage
+
+Pipelines that connected `PromptBuilder` (output: `str`) to a legacy Generator continue to work unchanged when you swap in a ChatGenerator. The Haystack pipeline type system automatically converts `str` to `list[ChatMessage]` at the connection edge.
+
+Before (v2.x):
+```python
+from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import PromptBuilder
+
+pipeline.add_component("prompt_builder", PromptBuilder(template=prompt_template))
+pipeline.add_component("llm", OpenAIGenerator())
+pipeline.connect("prompt_builder", "llm")   # str → str
+```
+
+After (v3.0), minimal change (smart connection still works):
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders import PromptBuilder
+
+pipeline.add_component("prompt_builder", PromptBuilder(template=prompt_template))
+pipeline.add_component("llm", OpenAIChatGenerator())
+pipeline.connect("prompt_builder", "llm")   # str → list[ChatMessage], auto-converted
+```
+
+Alternatively, for an idiomatic v3 pipeline use `ChatPromptBuilder`:
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = [ChatMessage.from_user(prompt_template)]
+pipeline.add_component("prompt_builder", ChatPromptBuilder(template=template))
+pipeline.add_component("llm", OpenAIChatGenerator())
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+```
+
+#### `meta` output socket removed
+
+Legacy Generators exposed a second output socket `meta: list[dict]`. ChatGenerators do not; per-reply metadata is embedded in each `ChatMessage.meta`. If you had a pipeline connection to `llm.meta`, remove it. `AnswerBuilder` already handles this automatically (it reads metadata from `ChatMessage.meta` when the replies are `list[ChatMessage]`).
+
+Before (v2.x):
+```python
+pipeline.connect("llm.replies", "answer_builder.replies")
+pipeline.connect("llm.meta", "answer_builder.meta")   # separate meta socket
+```
+
+After (v3.0):
+```python
+pipeline.connect("llm.replies", "answer_builder.replies")
+# no meta connection needed; AnswerBuilder reads it from ChatMessage.meta
+```
+
+### `DALLEImageGenerator` renamed to `OpenAIImageGenerator`
+
+**What changed:** `DALLEImageGenerator` has been renamed to `OpenAIImageGenerator` and moved to `haystack.components.generators.openai_image_generator`. The API and parameters are otherwise unchanged.
+
+**Why:** OpenAI retired the DALL-E model family. The new name reflects that the component works with the full OpenAI image generation API and is no longer tied to a specific model family.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.generators import DALLEImageGenerator
+
+generator = DALLEImageGenerator(model="dall-e-3")
+result = generator.run("A photo of a red apple")
+```
+
+After (v3.0):
+```python
+from haystack.components.generators import OpenAIImageGenerator
+
+generator = OpenAIImageGenerator(model="gpt-image-2")
+result = generator.run("A photo of a red apple")
 ```

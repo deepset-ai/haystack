@@ -9,7 +9,6 @@ import pytest
 
 from haystack import AsyncPipeline, Document, Pipeline, SuperComponent, component, super_component
 from haystack.components.builders import AnswerBuilder, PromptBuilder
-from haystack.components.generators import OpenAIGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.pipeline.base import component_from_dict, component_to_dict
@@ -19,18 +18,6 @@ from haystack.dataclasses import GeneratedAnswer
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.testing.sample_components import AddFixedValue, Double
-from haystack.utils.auth import Secret
-
-
-@pytest.fixture
-def mock_openai_generator(monkeypatch):
-    """Create a mock OpenAI Generator for testing."""
-
-    def mock_run(self: Any, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
-        return {"replies": ["This is a test response about capitals."]}
-
-    monkeypatch.setattr(OpenAIGenerator, "run", mock_run)
-    return OpenAIGenerator(api_key=Secret.from_token("test-key"))
 
 
 @pytest.fixture

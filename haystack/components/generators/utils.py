@@ -170,3 +170,12 @@ def _serialize_object(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_serialize_object(item) for item in obj]
     return obj
+
+
+def _normalize_messages(messages: list[ChatMessage] | str) -> list[ChatMessage]:
+    """Normalize messages to a list of ChatMessage objects."""
+    if isinstance(messages, str):
+        return [ChatMessage.from_user(messages)]
+    if isinstance(messages, list) and all(isinstance(msg, ChatMessage) for msg in messages):
+        return messages
+    raise TypeError("Invalid messages type. Expected list[ChatMessage] or str.")
