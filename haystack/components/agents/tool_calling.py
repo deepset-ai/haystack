@@ -20,6 +20,7 @@ from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _unwrap_optional
 from haystack.tracing.utils import _serializable_value
+from haystack.utils.asynchronous import _invoke_streaming_callback
 
 logger = logging.getLogger(__name__)
 
@@ -455,14 +456,15 @@ async def _run_tool_async(
                 )
 
             if streaming_callback is not None:
-                await streaming_callback(  # type: ignore[misc]
-                    _create_tool_result_streaming_chunk(tool_messages, tool_call)
+                await _invoke_streaming_callback(
+                    streaming_callback, _create_tool_result_streaming_chunk(tool_messages, tool_call)
                 )
 
     # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:
-        await streaming_callback(  # type: ignore[misc]
-            StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"})
+        await _invoke_streaming_callback(
+            streaming_callback,
+            StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"}),
         )
 
     return tool_messages, state

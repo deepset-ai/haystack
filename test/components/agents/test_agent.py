@@ -1093,12 +1093,15 @@ class TestAgent:
             agent.run([ChatMessage.from_user("Hello")])
 
     @pytest.mark.asyncio
-    async def test_run_async_with_sync_streaming_callback_fails(self, weather_tool):
+    async def test_run_async_with_sync_streaming_callback_warns(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
 
-        with pytest.raises(ValueError, match="The init callback must be async compatible"):
-            await agent.run_async([ChatMessage.from_user("Hello")])
+        with pytest.warns(UserWarning, match="sync streaming callback"):
+            result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 2
 
     def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")

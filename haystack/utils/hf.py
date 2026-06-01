@@ -9,16 +9,17 @@ from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     ImageContent,
     ReasoningContent,
+    StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
     TextContent,
 )
 from haystack.lazy_imports import LazyImport
+from haystack.utils.asynchronous import _invoke_streaming_callback
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 
@@ -435,7 +436,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         def __init__(
             self,
             tokenizer: PreTrainedTokenizerBase,
-            stream_handler: AsyncStreamingCallbackT,
+            stream_handler: StreamingCallbackT,
             stop_words: list[str] | None = None,
             component_info: ComponentInfo | None = None,
         ) -> None:
@@ -457,7 +458,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             while True:
                 try:
                     chunk = await self._queue.get()
-                    await self.token_handler(chunk)
+                    await _invoke_streaming_callback(self.token_handler, chunk)
                     self._queue.task_done()
                 except asyncio.CancelledError:
                     break

@@ -29,7 +29,6 @@ from haystack.components.generators.utils import (
     _serialize_object,
 )
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     FinishReason,
@@ -49,6 +48,7 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.asynchronous import _invoke_streaming_callback
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -537,7 +537,7 @@ class OpenAIChatGenerator:
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
-        self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
+        self, chat_completion: AsyncStream, callback: StreamingCallbackT
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
@@ -548,7 +548,7 @@ class OpenAIChatGenerator:
                     chunk=chunk, previous_chunks=chunks, component_info=component_info
                 )
                 chunks.append(chunk_delta)
-                await callback(chunk_delta)
+                await _invoke_streaming_callback(callback, chunk_delta)
 
         except asyncio.CancelledError:
             await asyncio.shield(chat_completion.close())

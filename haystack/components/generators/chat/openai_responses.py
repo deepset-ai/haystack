@@ -15,7 +15,6 @@ from pydantic import BaseModel
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     FileContent,
@@ -38,6 +37,7 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.asynchronous import _invoke_streaming_callback
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -548,7 +548,7 @@ class OpenAIResponsesChatGenerator:
         return [chat_message]
 
     async def _handle_async_stream_response(
-        self, responses: AsyncStream, callback: AsyncStreamingCallbackT
+        self, responses: AsyncStream, callback: StreamingCallbackT
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
@@ -557,7 +557,7 @@ class OpenAIResponsesChatGenerator:
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
             chunks.append(chunk_delta)
-            await callback(chunk_delta)
+            await _invoke_streaming_callback(callback, chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
         return [chat_message]
 

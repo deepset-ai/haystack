@@ -20,9 +20,10 @@ from haystack.core.pipeline.base import (
     _validate_component_output_keys,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
-from haystack.dataclasses import AsyncStreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
+from haystack.utils.asynchronous import _invoke_streaming_callback
 
 logger = logging.getLogger(__name__)
 
@@ -839,11 +840,11 @@ class AsyncPipeline(PipelineBase):
 
         queue: asyncio.Queue[StreamingChunk | _EndOfStream] = asyncio.Queue()
 
-        def make_forwarder(user_callback: AsyncStreamingCallbackT | None) -> AsyncStreamingCallbackT:
+        def make_forwarder(user_callback: StreamingCallbackT | None) -> AsyncStreamingCallbackT:
             async def forwarder(chunk: StreamingChunk) -> None:
                 await queue.put(chunk)
                 if user_callback is not None:
-                    await user_callback(chunk)
+                    await _invoke_streaming_callback(user_callback, chunk)
 
             return forwarder
 

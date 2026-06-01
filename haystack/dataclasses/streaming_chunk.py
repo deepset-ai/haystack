@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, overload
@@ -208,7 +209,7 @@ def select_streaming_callback(
 @overload
 def select_streaming_callback(
     init_callback: StreamingCallbackT | None, runtime_callback: StreamingCallbackT | None, requires_async: Literal[True]
-) -> AsyncStreamingCallbackT | None: ...
+) -> StreamingCallbackT | None: ...
 
 
 def select_streaming_callback(
@@ -219,24 +220,40 @@ def select_streaming_callback(
 
     The runtime callback takes precedence over the initial callback.
 
+    In an async context (`requires_async=True`), a sync callback is accepted but emits a
+    `UserWarning`: it will run inline on the event loop and may block it. In a sync context
+    (`requires_async=False`), an async callback is rejected because there is no way to await it.
+
     :param init_callback:
         The initial callback.
     :param runtime_callback:
         The runtime callback.
     :param requires_async:
-        Whether the selected callback must be async compatible.
+        Whether the selected callback will be invoked from an async context.
     :returns:
         The selected callback.
     """
     if init_callback is not None:
         if requires_async and not is_callable_async_compatible(init_callback):
-            raise ValueError("The init callback must be async compatible.")
+            warnings.warn(
+                "A sync streaming callback was provided at initialization for use in an async context. "
+                "It will run inline on the event loop and may block it. "
+                "For best performance, use an async callback.",
+                UserWarning,
+                stacklevel=2,
+            )
         if not requires_async and is_callable_async_compatible(init_callback):
             raise ValueError("The init callback cannot be a coroutine.")
 
     if runtime_callback is not None:
         if requires_async and not is_callable_async_compatible(runtime_callback):
-            raise ValueError("The runtime callback must be async compatible.")
+            warnings.warn(
+                "A sync streaming callback was provided at runtime for use in an async context. "
+                "It will run inline on the event loop and may block it. "
+                "For best performance, use an async callback.",
+                UserWarning,
+                stacklevel=2,
+            )
         if not requires_async and is_callable_async_compatible(runtime_callback):
             raise ValueError("The runtime callback cannot be a coroutine.")
 

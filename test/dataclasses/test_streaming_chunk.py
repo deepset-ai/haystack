@@ -15,7 +15,8 @@ from haystack.dataclasses import (
     ToolCallDelta,
     ToolCallResult,
 )
-from haystack.dataclasses.streaming_chunk import FinishReason
+from haystack.dataclasses.streaming_chunk import FinishReason, select_streaming_callback
+from haystack.utils.asynchronous import _invoke_streaming_callback
 
 
 @component
@@ -375,3 +376,66 @@ def test_streaming_chunk_warn_on_inplace_mutation():
     chunk = StreamingChunk(content="test")
     with pytest.warns(Warning, match="dataclasses.replace"):
         chunk.content = "other"
+
+
+def _sync_cb(chunk):
+    pass
+
+
+async def _async_cb(chunk):
+    pass
+
+
+class TestSelectStreamingCallback:
+    def test_runtime_precedes_init(self):
+        selected = select_streaming_callback(_sync_cb, _async_cb, requires_async=True)
+        assert selected is _async_cb
+
+    def test_runtime_only(self):
+        selected = select_streaming_callback(None, _sync_cb, requires_async=False)
+        assert selected is _sync_cb
+
+    def test_init_fallback_when_no_runtime(self):
+        selected = select_streaming_callback(_async_cb, None, requires_async=True)
+        assert selected is _async_cb
+
+    def test_both_none(self):
+        assert select_streaming_callback(None, None, requires_async=False) is None
+        assert select_streaming_callback(None, None, requires_async=True) is None
+
+    def test_async_callback_in_sync_context_raises(self):
+        with pytest.raises(ValueError, match="cannot be a coroutine"):
+            select_streaming_callback(None, _async_cb, requires_async=False)
+        with pytest.raises(ValueError, match="cannot be a coroutine"):
+            select_streaming_callback(_async_cb, None, requires_async=False)
+
+    def test_sync_callback_in_async_context_warns_but_returns(self):
+        with pytest.warns(UserWarning, match="sync streaming callback.*runtime"):
+            selected = select_streaming_callback(None, _sync_cb, requires_async=True)
+        assert selected is _sync_cb
+
+        with pytest.warns(UserWarning, match="sync streaming callback.*initialization"):
+            selected = select_streaming_callback(_sync_cb, None, requires_async=True)
+        assert selected is _sync_cb
+
+
+class TestInvokeStreamingCallback:
+    async def test_invokes_sync_callback(self):
+        captured: list[StreamingChunk] = []
+
+        def cb(chunk):
+            captured.append(chunk)
+
+        chunk = StreamingChunk(content="hello")
+        await _invoke_streaming_callback(cb, chunk)
+        assert captured == [chunk]
+
+    async def test_invokes_async_callback(self):
+        captured: list[StreamingChunk] = []
+
+        async def cb(chunk):
+            captured.append(chunk)
+
+        chunk = StreamingChunk(content="world")
+        await _invoke_streaming_callback(cb, chunk)
+        assert captured == [chunk]
