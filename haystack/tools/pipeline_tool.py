@@ -202,6 +202,11 @@ class PipelineTool(ComponentTool):
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
         )
+        # SuperComponent always defines `run_async` (so ComponentTool will return an `async_function`), but at runtime
+        # it will raise if the wrapped pipeline is not AsyncPipeline. So we clear async_function here when using
+        # a sync pipeline so `Tool.invoke_async` falls back to running the sync pipeline in a worker thread.
+        if not isinstance(pipeline, AsyncPipeline):
+            self.async_function = None
         self._unresolved_parameters = parameters
         self._pipeline = pipeline
         self._input_mapping = input_mapping
