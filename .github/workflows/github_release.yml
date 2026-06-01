@@ -60,7 +60,7 @@ jobs:
           reno report --no-show-source --ignore-cache --earliest-version "$EARLIEST_VERSION" -o relnotes.rst
 
       - name: Convert to Markdown
-        uses: docker://pandoc/core:3.8
+        uses: docker://pandoc/core:3.8@sha256:c7127705b9d84c1b4acbbe411a86e3a6d67ac57870654dc378b6fe636ab747df
         with:
           args: "--from rst --to gfm --syntax-highlighting=none --wrap=none relnotes.rst -o relnotes.md"
 
