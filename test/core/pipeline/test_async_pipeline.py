@@ -3,12 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextvars
 import logging
 from dataclasses import replace
 
 import pytest
 
 from haystack import AsyncPipeline, Document, component
+
+# Used by test_run_propagates_contextvars_into_separate_loop to verify the caller's context
+# is propagated when run() offloads execution to a separate event loop.
+_ctx_probe: contextvars.ContextVar[str | None] = contextvars.ContextVar("ctx_probe", default=None)
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -37,14 +42,49 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
-def test_run_in_async_context_raises_runtime_error():
+def test_run_in_async_context_executes_on_separate_loop(waiting_component):
+    """run() must work even when called from a thread that already has a running event loop
+    (e.g. inside a Jupyter notebook). It should not raise and should block until completion."""
     pp = AsyncPipeline()
+    pp.add_component("wait", waiting_component())
 
     async def call_run():
-        pp.run({})
+        # A loop is already running in this thread; the bare sync run() should still work.
+        return pp.run({"wait_for": 0.001})
 
-    with pytest.raises(RuntimeError, match="Cannot call run\\(\\) from within an async context"):
-        asyncio.run(call_run())
+    result = asyncio.run(call_run())
+
+    assert result == {"wait": {"waited_for": 0.001}}
+
+
+def test_run_propagates_contextvars_into_separate_loop():
+    """When run() offloads to a separate loop, the caller's contextvars (e.g. an active tracing
+    span) must be propagated to the components executing on that loop."""
+    seen: dict[str, str | None] = {}
+
+    @component
+    class ContextReader:
+        @component.output_types(value=str)
+        def run(self) -> dict[str, str | None]:
+            seen["value"] = _ctx_probe.get()
+            return {"value": _ctx_probe.get()}
+
+        @component.output_types(value=str)
+        async def run_async(self) -> dict[str, str | None]:
+            seen["value"] = _ctx_probe.get()
+            return {"value": _ctx_probe.get()}
+
+    pp = AsyncPipeline()
+    pp.add_component("reader", ContextReader())
+
+    async def call_run():
+        _ctx_probe.set("from-caller")
+        return pp.run({})
+
+    result = asyncio.run(call_run())
+
+    assert result == {"reader": {"value": "from-caller"}}
+    assert seen["value"] == "from-caller"
 
 
 def test_component_with_empty_dict_as_output_appears_in_results():

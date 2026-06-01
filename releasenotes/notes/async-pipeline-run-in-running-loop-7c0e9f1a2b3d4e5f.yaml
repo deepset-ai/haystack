@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    `AsyncPipeline.run()` can now be called from a thread that already has a running event loop,
+    such as inside a Jupyter notebook or from synchronous code invoked within an async application.
+    Previously this raised `RuntimeError: Cannot call run() from within an async context`. The pipeline
+    is now executed on its own event loop in a separate thread, and the call still blocks until
+    completion. The caller's `contextvars` context (for example the active tracing span) is propagated
+    to the pipeline execution. When already in an async context, prefer `run_async` to avoid blocking
+    the event loop.

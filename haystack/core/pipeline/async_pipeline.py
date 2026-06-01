@@ -4,7 +4,8 @@
 
 import asyncio
 import contextvars
-from collections.abc import AsyncIterator, Mapping
+import threading
+from collections.abc import AsyncIterator, Coroutine, Mapping
 from typing import Any
 
 from haystack import logging, tracing
@@ -23,6 +24,43 @@ from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
+
+
+def _run_coroutine_in_new_loop(coro: Coroutine[Any, Any, Any]) -> Any:
+    """
+    Run ``coro`` to completion on a fresh event loop in a short-lived dedicated thread.
+
+    This makes ``AsyncPipeline.run()`` usable even when it is called from a thread that already has a
+    running event loop (for example inside a Jupyter notebook, or when synchronous ``run()`` is invoked
+    from within an async application). In those situations ``asyncio.run()`` cannot be used because a loop
+    is already running in the calling thread, so we run the coroutine on its own loop in a separate
+    thread and block the caller until it finishes. The thread and loop are created per call and torn down
+    when the coroutine completes.
+
+    The caller's :mod:`contextvars` context (e.g. the active tracing span) is copied and used to run the
+    coroutine so that context-dependent behavior is preserved across the thread boundary.
+
+    :param coro: The coroutine to execute.
+    :returns: The result returned by the coroutine.
+    """
+    # Copy the caller's context so the coroutine sees the same context variables (active tracing span,
+    # etc.). Running ``asyncio.run`` inside ``ctx.run`` makes the new loop's main task inherit this context.
+    ctx = contextvars.copy_context()
+    box: dict[str, Any] = {}
+
+    def _worker() -> None:
+        try:
+            box["result"] = ctx.run(asyncio.run, coro)
+        except BaseException as error:  # noqa: BLE001 - captured and re-raised in the calling thread
+            box["error"] = error
+
+    thread = threading.Thread(target=_worker, name="haystack-async-pipeline-run", daemon=True)
+    thread.start()
+    thread.join()
+
+    if "error" in box:
+        raise box["error"]
+    return box["result"]
 
 
 class AsyncPipeline(PipelineBase):
@@ -591,7 +629,11 @@ class AsyncPipeline(PipelineBase):
         Internally, the pipeline components are executed asynchronously, but the method itself
         will block until the entire pipeline execution is complete.
 
-        In case you need asynchronous methods, consider using `run_async` or `run_async_generator`.
+        This method can be called both from a regular synchronous context and from a thread that already
+        has a running event loop (for example inside a Jupyter notebook). In the latter case the pipeline
+        is executed on its own event loop in a separate thread to avoid conflicting with the running loop,
+        and the call still blocks until completion. If you are already in an async context, prefer
+        `run_async` or `run_async_generator` to avoid blocking the event loop.
 
         Usage:
         ```python
@@ -690,20 +732,15 @@ class AsyncPipeline(PipelineBase):
             Or if a Component fails or returns output in an unsupported type.
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
-        :raises RuntimeError:
-            If called from within an async context. Use `run_async` instead.
         """
+        coro = self.run_async(data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit)
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            # No running loop: safe to use asyncio.run()
-            return asyncio.run(
-                self.run_async(
-                    data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit
-                )
-            )
+            # No event loop running in this thread: safe to run directly in a fresh loop.
+            return asyncio.run(coro)
         else:
-            # Running loop present: do not create the coroutine and do not call asyncio.run()
-            raise RuntimeError(
-                "Cannot call run() from within an async context. Use 'await pipeline.run_async(...)' instead."
-            )
+            # An event loop is already running in this thread (e.g. inside a Jupyter notebook, or when
+            # run() is called from within an async application). asyncio.run() cannot be used here, so we
+            # run the coroutine on its own loop in a separate thread and block until it completes.
+            return _run_coroutine_in_new_loop(coro)
