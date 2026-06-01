@@ -407,3 +407,22 @@ class TestPipelineTool:
                 description="A test tool",
                 outputs_to_state={"result": {"source": "nonexistent"}},
             )
+
+
+class TestPipelineToolAsync:
+    # SuperComponent always defines run_async, but PipelineTool clears it for sync pipelines so that
+    # invoke_async transparently falls back to running the sync pipeline in a thread.
+    @pytest.mark.parametrize(
+        "pipeline_fixture, expects_async_function", [("sample_pipeline", False), ("sample_async_pipeline", True)]
+    )
+    def test_async_function_is_set_only_for_async_pipelines(self, request, pipeline_fixture, expects_async_function):
+        tool = PipelineTool(
+            pipeline=request.getfixturevalue(pipeline_fixture),
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        assert tool.function is not None
+        assert (tool.async_function is not None) is expects_async_function

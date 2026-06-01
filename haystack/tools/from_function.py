@@ -61,7 +61,9 @@ def create_tool_from_function(
     ```
 
     :param function:
-        The function to be converted into a Tool.
+        The function to be converted into a Tool. May be either a regular function (assigned to the
+        resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
+        to `async_function`).
         The function must include type hints for all parameters.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
@@ -177,11 +179,14 @@ def create_tool_from_function(
         if param_name in schema["properties"]:
             schema["properties"][param_name]["description"] = param_description
 
+    is_async = inspect.iscoroutinefunction(function)
+
     return Tool(
         name=name or function.__name__,
         description=tool_description,
         parameters=schema,
-        function=function,
+        function=None if is_async else function,
+        async_function=function if is_async else None,
         inputs_from_state=inputs_from_state,
         outputs_to_state=outputs_to_state,
         outputs_to_string=outputs_to_string,
