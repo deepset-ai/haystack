@@ -415,6 +415,7 @@ export default {
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
             'pipeline-components/generators/huggingfacelocalgenerator',
+            'pipeline-components/generators/litellmchatgenerator',
             'pipeline-components/generators/llamacppchatgenerator',
             'pipeline-components/generators/llamacppgenerator',
             'pipeline-components/generators/llamastackchatgenerator',

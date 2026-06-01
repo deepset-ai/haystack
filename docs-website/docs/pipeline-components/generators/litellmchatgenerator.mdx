@@ -1,0 +1,137 @@
+---
+title: "LiteLLMChatGenerator"
+id: litellmchatgenerator
+slug: "/litellmchatgenerator"
+description: "Enables chat completion using any of 100+ LLM providers through LiteLLM."
+---
+
+# LiteLLMChatGenerator
+
+This component enables chat completion using any of 100+ LLM providers through [LiteLLM](https://docs.litellm.ai/).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | None. The provider's API key is read by LiteLLM from its standard environment variable (for example, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`). You can also pass it explicitly through the `api_key` init parameter. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [LiteLLM](/reference/integrations-litellm) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/litellm |
+| **Package name** | `litellm-haystack` |
+
+</div>
+
+## Overview
+
+`LiteLLMChatGenerator` routes chat completions through [LiteLLM](https://docs.litellm.ai/), which exposes a single, unified interface to over 100 LLM providers, including OpenAI, Anthropic, Google, AWS Bedrock, Azure, Cohere, Mistral, and Groq. This lets you switch providers by changing only the `model` string, without rewriting your pipeline.
+
+### Parameters
+
+Model names use the LiteLLM `provider/model-name` format, for example `openai/gpt-4o`, `anthropic/claude-sonnet-4-20250514`, or `bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0`. The default model is `openai/gpt-4o`. See the [LiteLLM providers documentation](https://docs.litellm.ai/docs/providers) for the full list of supported providers and their model identifiers.
+
+`LiteLLMChatGenerator` needs an API key for the selected provider. You can provide it in two ways:
+
+- Let LiteLLM resolve credentials itself from the provider's standard environment variable, such as `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` (recommended).
+- Pass it explicitly through the `api_key` init parameter and Haystack's [Secret](../../concepts/secret-management.mdx) API: `Secret.from_env_var("OPENAI_API_KEY")`. Use this only when you want Haystack to manage and serialize the key.
+
+If you run against a self-hosted LiteLLM proxy or a custom endpoint, set the `api_base_url` parameter.
+
+You can pass any parameter supported by [`litellm.completion()`](https://docs.litellm.ai/docs/completion/input) through the `generation_kwargs` parameter, both at initialization and when running the component. LiteLLM normalizes these parameters across providers and drops the ones a given provider does not support.
+
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+### Tool Support
+
+`LiteLLMChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+Tool calls work with both the synchronous and streaming responses, as long as the underlying provider and model support function calling. For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.litellm import LiteLLMChatGenerator
+
+generator = LiteLLMChatGenerator(
+    model="openai/gpt-4o",
+    streaming_callback=print_streaming_chunk,
+)
+generator.run([ChatMessage.from_user("Your question here")])
+```
+
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+### Asynchronous Execution
+
+`LiteLLMChatGenerator` provides a `run_async` method for use in asynchronous pipelines and applications. It accepts the same parameters as `run` and supports both regular and streaming responses (pass an async streaming callback when streaming).
+
+## Usage
+
+Install the `litellm-haystack` package to use the `LiteLLMChatGenerator`:
+
+```shell
+pip install litellm-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.generators.litellm import LiteLLMChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generator = LiteLLMChatGenerator(
+    model="anthropic/claude-sonnet-4-20250514",
+    generation_kwargs={"max_tokens": 1024, "temperature": 0.7},
+)
+
+messages = [
+    ChatMessage.from_system("You are a helpful assistant"),
+    ChatMessage.from_user("What's Natural Language Processing? Be brief."),
+]
+result = generator.run(messages=messages)
+print(result["replies"][0].text)
+```
+
+### In a pipeline
+
+You can also use `LiteLLMChatGenerator` in a pipeline together with a `ChatPromptBuilder`.
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.litellm import LiteLLMChatGenerator
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", LiteLLMChatGenerator(model="openai/gpt-4o"))
+pipe.connect("prompt_builder", "llm")
+
+country = "Germany"
+system_message = ChatMessage.from_system(
+    "You are an assistant giving out valuable information to language learners.",
+)
+messages = [
+    system_message,
+    ChatMessage.from_user("What's the official language of {{ country }}?"),
+]
+
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        },
+    },
+)
+print(res)
+```
