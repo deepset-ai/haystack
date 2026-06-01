@@ -41,31 +41,38 @@ By default, `preserve_class_definition=True`. When a chunk contains class member
 
 If `strip_docstrings=True`, function, method, and class docstrings are removed from chunk content and stored in `meta["docstrings"]`. Module docstrings stay in the chunk content because they are their own top-level unit.
 
-Each output document includes the original document's metadata plus:
+### Per-chunk metadata
 
-- `source_id`: ID of the original document
-- `split_id`: Index of the chunk within the original document
-- `start_line` and `end_line`: Source line range for the AST units in the chunk. Oversized secondary chunks keep the originating unit's range.
-- `unit_kinds`: Split units included in the chunk, such as `imports`, `function`, `class_header`, or `method`
-- `include_classes`: Class names included in the chunk, when applicable
-- `decorators`: Decorators found on included functions, methods, or classes, when applicable
-- `docstrings`: Stripped docstrings, when `strip_docstrings=True`
-- `secondary_split`, `secondary_split_index`, and `secondary_split_total`: Metadata for oversized fallback chunks
+Each output document carries the metadata below. All fields from the parent document's `meta` (except `split_id`) are also propagated.
+
+| Field | Description |
+| --- | --- |
+| `source_id` | ID of the originating document |
+| `split_id` | Sequential index of this chunk within its source document |
+| `start_line` | First line of the chunk in the original source (1-indexed). Oversized secondary chunks keep the originating unit's range. |
+| `end_line` | Last line of the chunk in the original source (1-indexed). Oversized secondary chunks keep the originating unit's range. |
+| `unit_kinds` | List of syntactic unit kinds included in this chunk, such as `imports`, `function`, `class_header`, or `method` |
+| `include_classes` | *(when applicable)* Ordered list of class names whose members appear in this chunk |
+| `decorators` | *(when applicable)* Ordered list of decorator strings found on included functions, methods, or classes |
+| `docstrings` | *(when `strip_docstrings=True`)* List of stripped docstring strings in source order |
+| `secondary_split` | `True` if this chunk was produced by the oversized fallback splitter |
+| `secondary_split_index` | Index of this piece within the secondary split sequence |
+| `secondary_split_total` | Total number of pieces produced by the secondary split |
 
 Documents with `None` content raise `ValueError`, documents with non-string content raise `TypeError`, and invalid Python source raises `SyntaxError`. Empty documents are skipped.
 
 ## Configuration
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `min_effective_lines` | `20` | Minimum effective lines per chunk. While a chunk is below this value, the splitter keeps merging in the next unit. |
-| `max_effective_lines` | `100` | Target effective lines per chunk. Units are merged greedily toward this value. |
-| `expected_chars_per_line` | `45` | Character count used to estimate effective lines. |
-| `oversized_factor` | `3` | Multiplier that triggers secondary line-based splitting for oversized syntactic units. |
-| `strip_docstrings` | `False` | Moves function, method, and class docstrings from content into metadata. |
-| `preserve_class_definition` | `True` | Prefixes class signatures on chunks that contain class members without the class header. |
-| `secondary_split_overlap` | `5` | Line overlap used only by the oversized secondary split. |
-| `secondary_split_length` | `None` | Line length for the oversized secondary split. Defaults to `max_effective_lines`. |
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `min_effective_lines` | `int` | `20` | Minimum effective lines per chunk. While a chunk is below this value, the splitter keeps merging in the next unit. |
+| `max_effective_lines` | `int` | `100` | Target effective lines per chunk. Units are merged greedily toward this value. |
+| `expected_chars_per_line` | `int` | `45` | Character count used to estimate effective lines via `ceil(len(source) / expected_chars_per_line)`. |
+| `oversized_factor` | `int` | `3` | Multiplier that triggers secondary line-based splitting for oversized syntactic units. |
+| `strip_docstrings` | `bool` | `False` | Moves function, method, and class docstrings from content into `meta["docstrings"]`. |
+| `preserve_class_definition` | `bool` | `True` | Prefixes class signatures on chunks that contain class members without the class header. |
+| `secondary_split_overlap` | `int` | `5` | Line overlap used only by the oversized secondary split. |
+| `secondary_split_length` | `int \| None` | `None` | Line length for the oversized secondary split. Defaults to `max_effective_lines` when `None`. |
 
 ## Usage
 
@@ -106,6 +113,38 @@ result = splitter.run(
 
 for chunk in result["documents"]:
     print(chunk.meta["start_line"], chunk.meta["end_line"], chunk.meta.get("include_classes"))
+```
+
+### With docstring stripping for RAG
+
+Set `strip_docstrings=True` when docstrings are verbose. The docstring text is moved out of the chunk content into `meta["docstrings"]`, keeping the stored chunk compact. Pass `meta_fields_to_embed=["docstrings"]` to your embedder so the docstring text still influences retrieval even though it is no longer in the chunk content.
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import PythonCodeSplitter
+
+source = '''
+"""Example module."""
+from math import sqrt
+
+
+class Circle:
+    def __init__(self, r: float) -> None:
+        self.r = r
+
+    def area(self) -> float:
+        return 3.14159 * self.r * self.r
+'''
+
+splitter = PythonCodeSplitter(
+    min_effective_lines=20,
+    max_effective_lines=100,
+    strip_docstrings=True,
+)
+result = splitter.run(documents=[Document(content=source, meta={"file_name": "my_module.py"})])
+for chunk in result["documents"]:
+    print(chunk.content)
+    print(chunk.meta.get("docstrings"))
 ```
 
 ### In a pipeline
