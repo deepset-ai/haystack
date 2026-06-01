@@ -19,7 +19,7 @@ from haystack.dataclasses import (
     ToolCall,
     select_streaming_callback,
 )
-from haystack.dataclasses.streaming_chunk import FinishReason
+from haystack.dataclasses.streaming_chunk import FinishReason, _invoke_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     ToolsType,
@@ -30,7 +30,6 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.asynchronous import _invoke_streaming_callback
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model, convert_message_to_hf_format
 from haystack.utils.url_validation import is_valid_http_url
 

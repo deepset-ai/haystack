@@ -1093,13 +1093,14 @@ class TestAgent:
             agent.run([ChatMessage.from_user("Hello")])
 
     @pytest.mark.asyncio
-    async def test_run_async_with_sync_streaming_callback_warns(self, weather_tool):
+    async def test_run_async_with_sync_streaming_callback_warns(self, weather_tool, caplog):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
 
-        with pytest.warns(UserWarning, match="sync streaming callback"):
+        with caplog.at_level(logging.WARNING):
             result = await agent.run_async([ChatMessage.from_user("Hello")])
 
+        assert "sync streaming callback" in caplog.text
         assert "messages" in result
         assert len(result["messages"]) == 2
 

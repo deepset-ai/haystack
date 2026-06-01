@@ -28,6 +28,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
@@ -37,7 +38,6 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.asynchronous import _invoke_streaming_callback
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -402,8 +402,8 @@ class OpenAIResponsesChatGenerator:
         :param messages:
             A list of ChatMessage instances representing the input messages.
         :param streaming_callback:
-            A callback function that is called when a new token is received from the stream.
-            Must be a coroutine.
+            A callback function that is called when a new token is received from the stream. Async callbacks are
+            preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.

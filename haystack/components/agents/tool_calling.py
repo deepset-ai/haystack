@@ -15,12 +15,11 @@ from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, _invoke_streaming_callback
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _unwrap_optional
 from haystack.tracing.utils import _serializable_value
-from haystack.utils.asynchronous import _invoke_streaming_callback
 
 logger = logging.getLogger(__name__)
 

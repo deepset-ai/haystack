@@ -2,15 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
+import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal, overload
 
+from haystack import logging
 from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ReasoningContent, ToolCallResult
-from haystack.utils.asynchronous import is_callable_async_compatible
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
+
+logger = logging.getLogger(__name__)
 
 # Type alias for standard finish_reason values following OpenAI's convention
 # plus Haystack-specific value ("tool_call_results")
@@ -200,6 +202,18 @@ AsyncStreamingCallbackT = Callable[[StreamingChunk], Awaitable[None]]
 StreamingCallbackT = SyncStreamingCallbackT | AsyncStreamingCallbackT
 
 
+def _is_callable_async_compatible(func: Callable) -> bool:
+    """
+    Returns if the given callable is usable inside a component's `run_async` method.
+
+    :param func:
+        The callable to check.
+    :returns:
+        True if the callable is compatible, False otherwise.
+    """
+    return inspect.iscoroutinefunction(func)
+
+
 @overload
 def select_streaming_callback(
     init_callback: StreamingCallbackT | None,
@@ -220,9 +234,9 @@ def select_streaming_callback(
 
     The runtime callback takes precedence over the initial callback.
 
-    In an async context (`requires_async=True`), a sync callback is accepted but emits a
-    `UserWarning`: it will run inline on the event loop and may block it. In a sync context
-    (`requires_async=False`), an async callback is rejected because there is no way to await it.
+    In an async context (`requires_async=True`), a sync callback is accepted but emits a warning: it will run inline on
+    the event loop and may block it. In a sync context (`requires_async=False`), an async callback is rejected because
+    there is no way to await it.
 
     :param init_callback:
         The initial callback.
@@ -234,27 +248,33 @@ def select_streaming_callback(
         The selected callback.
     """
     if init_callback is not None:
-        if requires_async and not is_callable_async_compatible(init_callback):
-            warnings.warn(
+        if requires_async and not _is_callable_async_compatible(init_callback):
+            logger.warning(
                 "A sync streaming callback was provided at initialization for use in an async context. "
-                "It will run inline on the event loop and may block it. "
-                "For best performance, use an async callback.",
-                UserWarning,
-                stacklevel=2,
+                "It will run synchronously on the event loop and may block it."
             )
-        if not requires_async and is_callable_async_compatible(init_callback):
+        if not requires_async and _is_callable_async_compatible(init_callback):
             raise ValueError("The init callback cannot be a coroutine.")
 
     if runtime_callback is not None:
-        if requires_async and not is_callable_async_compatible(runtime_callback):
-            warnings.warn(
+        if requires_async and not _is_callable_async_compatible(runtime_callback):
+            logger.warning(
                 "A sync streaming callback was provided at runtime for use in an async context. "
-                "It will run inline on the event loop and may block it. "
-                "For best performance, use an async callback.",
-                UserWarning,
-                stacklevel=2,
+                "It will run synchronously on the event loop and may block it."
             )
-        if not requires_async and is_callable_async_compatible(runtime_callback):
+        if not requires_async and _is_callable_async_compatible(runtime_callback):
             raise ValueError("The runtime callback cannot be a coroutine.")
 
     return runtime_callback or init_callback
+
+
+async def _invoke_streaming_callback(callback: StreamingCallbackT, chunk: StreamingChunk) -> None:
+    """
+    Invokes a streaming callback in an async context, handling both sync and async callbacks.
+
+    :param callback: The streaming callback to invoke.
+    :param chunk: The streaming chunk to pass to the callback.
+    """
+    result = callback(chunk)
+    if inspect.isawaitable(result):
+        await result

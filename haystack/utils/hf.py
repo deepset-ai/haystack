@@ -18,8 +18,8 @@ from haystack.dataclasses import (
     SyncStreamingCallbackT,
     TextContent,
 )
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.lazy_imports import LazyImport
-from haystack.utils.asynchronous import _invoke_streaming_callback
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 
@@ -427,8 +427,8 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         """
         Async streaming handler for HuggingFaceLocalChatGenerator.
 
-        Note: This is a helper class for HuggingFaceLocalChatGenerator enabling
-        async streaming of generated text via Haystack Callable[StreamingChunk, Awaitable[None]] callbacks.
+        Note: This is a helper class for HuggingFaceLocalChatGenerator enabling async streaming of generated text
+        via Haystack StreamingCallbackT callbacks (async preferred; sync accepted but blocks the event loop).
 
         Do not use this class directly.
         """
