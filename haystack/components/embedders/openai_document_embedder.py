@@ -24,18 +24,28 @@ class OpenAIDocumentEmbedder:
     Computes document embeddings using OpenAI models.
 
     ### Usage example
-    <!-- test-ignore -->
     ```python
+    from unittest.mock import patch, MagicMock
     from haystack import Document
+    from haystack.utils import Secret
     from haystack.components.embedders import OpenAIDocumentEmbedder
 
-    doc = Document(content="I love pizza!")
-    document_embedder = OpenAIDocumentEmbedder()
-    result = document_embedder.run([doc])
+    # Mock OpenAI client so that it runs without keys or network calls in CI
+    with patch("haystack.components.embedders.openai_document_embedder.OpenAI") as mock_openai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.data = [MagicMock(embedding=[0.017020374536514282, -0.023255806416273117])]
+        mock_response.model = "text-embedding-ada-002-v2"
+        mock_response.usage = {"prompt_tokens": 4, "total_tokens": 4}
+        mock_client.embeddings.create.return_value = mock_response
+        mock_openai.return_value = mock_client
 
-    print(result['documents'][0].embedding)
+        doc = Document(content="I love pizza!")
+        document_embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("dummy-key"))
+        result = document_embedder.run([doc])
+        print(result['documents'][0].embedding)
 
-    # [0.017020374536514282, -0.023255806416273117, ...]
+    # [0.017020374536514282, -0.023255806416273117]
     ```
     """
 

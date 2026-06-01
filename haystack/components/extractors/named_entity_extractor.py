@@ -89,19 +89,38 @@ class NamedEntityExtractor:
     in the documents.
 
     Usage example:
-    <!-- test-ignore -->
     ```python
+    from unittest.mock import patch, MagicMock
     from haystack import Document
-    from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
+    from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor, NamedEntityAnnotation
 
-    documents = [
-        Document(content="I'm Merlin, the happy pig!"),
-        Document(content="My name is Clara and I live in Berkeley, California."),
-    ]
-    extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-    results = extractor.run(documents=documents)["documents"]
-    annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
-    print(annotations)
+    # Mock the HF backend to avoid downloading any model or requiring dependencies in CI
+    with patch("haystack.components.extractors.named_entity_extractor._HfBackend") as mock_hf_backend:
+        mock_instance = MagicMock()
+        mock_instance.initialized = True
+        mock_instance.annotate.return_value = [
+            [NamedEntityAnnotation(entity="PER", start=4, end=10, score=0.99)],
+            [
+                NamedEntityAnnotation(entity="PER", start=11, end=16, score=0.99),
+                NamedEntityAnnotation(entity="LOC", start=31, end=39, score=0.99),
+                NamedEntityAnnotation(entity="LOC", start=41, end=51, score=0.99)
+            ]
+        ]
+        mock_hf_backend.return_value = mock_instance
+
+        documents = [
+            Document(content="I'm Merlin, the happy pig!"),
+            Document(content="My name is Clara and I live in Berkeley, California."),
+        ]
+        extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+        results = extractor.run(documents=documents)["documents"]
+        annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
+        print(annotations)
+
+    # [[NamedEntityAnnotation(entity='PER', start=4, end=10, score=0.99)],
+    #  [NamedEntityAnnotation(entity='PER', start=11, end=16, score=0.99),
+    #   NamedEntityAnnotation(entity='LOC', start=31, end=39, score=0.99),
+    #   NamedEntityAnnotation(entity='LOC', start=41, end=51, score=0.99)]]
     ```
     """
 

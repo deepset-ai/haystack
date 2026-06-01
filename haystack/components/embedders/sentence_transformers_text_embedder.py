@@ -21,17 +21,22 @@ class SentenceTransformersTextEmbedder:
     You can use it to embed user query and send it to an embedding retriever.
 
     Usage example:
-    <!-- test-ignore -->
     ```python
+    from unittest.mock import patch, MagicMock
+    import haystack.components.embedders.backends.sentence_transformers_backend as stb
     from haystack.components.embedders import SentenceTransformersTextEmbedder
 
-    text_to_embed = "I love pizza!"
+    # Mock the embedding backend so we don't download any models in CI
+    with patch.object(stb, "_SentenceTransformersEmbeddingBackendFactory") as mock_factory:
+        mock_backend = MagicMock()
+        mock_backend.embed.return_value = [[0.1, 0.2, 0.3]]
+        mock_factory.get_embedding_backend.return_value = mock_backend
 
-    text_embedder = SentenceTransformersTextEmbedder()
+        text_to_embed = "I love pizza!"
+        text_embedder = SentenceTransformersTextEmbedder()
+        print(text_embedder.run(text_to_embed))
 
-    print(text_embedder.run(text_to_embed))
-
-    # {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
+    # {'embedding': [0.1, 0.2, 0.3]}
     ```
     """
 

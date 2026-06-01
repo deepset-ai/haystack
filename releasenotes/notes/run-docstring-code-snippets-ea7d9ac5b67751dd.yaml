@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Enable more docstring code snippets to run in CI by removing ignore-test/test-ignore markers and resolving local execution prerequisites via mock patching and local test fixtures.

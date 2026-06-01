@@ -22,22 +22,21 @@ class FileToFileContent:
     Converts files to FileContent objects to be included in ChatMessage objects.
 
     ### Usage example
-    <!-- test-ignore -->
     ```python
     from haystack.components.converters import FileToFileContent
+    from haystack.dataclasses import ByteStream
 
     converter = FileToFileContent()
 
-    sources = ["document.pdf", "video.mp4"]
+    sources = [ByteStream(data=b"hello", mime_type="text/plain")]
 
     file_contents = converter.run(sources=sources)["file_contents"]
     print(file_contents)
 
-    # [FileContent(base64_data='...',
-    #              mime_type='application/pdf',
-    #              filename='document.pdf',
-    #              extra={}),
-    #  ...]
+    # [FileContent(base64_data='aGVsbG8=',
+    #              mime_type='text/plain',
+    #              filename=None,
+    #              extra={})]
     ```
     """
 

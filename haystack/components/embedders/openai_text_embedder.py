@@ -21,16 +21,26 @@ class OpenAITextEmbedder:
     You can use it to embed user query and send it to an embedding Retriever.
 
     ### Usage example
-    <!-- test-ignore -->
     ```python
+    from unittest.mock import patch, MagicMock
+    from haystack.utils import Secret
     from haystack.components.embedders import OpenAITextEmbedder
 
-    text_to_embed = "I love pizza!"
-    text_embedder = OpenAITextEmbedder()
+    # Mock OpenAI client so that it runs without keys or network calls in CI
+    with patch("haystack.components.embedders.openai_text_embedder.OpenAI") as mock_openai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.data = [MagicMock(embedding=[0.017020374536514282, -0.023255806416273117])]
+        mock_response.model = "text-embedding-ada-002-v2"
+        mock_response.usage = {"prompt_tokens": 4, "total_tokens": 4}
+        mock_client.embeddings.create.return_value = mock_response
+        mock_openai.return_value = mock_client
 
-    print(text_embedder.run(text_to_embed))
+        text_to_embed = "I love pizza!"
+        text_embedder = OpenAITextEmbedder(api_key=Secret.from_token("dummy-key"))
+        print(text_embedder.run(text_to_embed))
 
-    # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+    # {'embedding': [0.017020374536514282, -0.023255806416273117],
     # 'meta': {'model': 'text-embedding-ada-002-v2',
     #          'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
     ```

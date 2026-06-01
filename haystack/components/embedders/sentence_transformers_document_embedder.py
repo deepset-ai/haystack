@@ -25,17 +25,25 @@ class SentenceTransformersDocumentEmbedder:
     and send them to DocumentWriter to write into a Document Store.
 
     ### Usage example:
-    <!-- test-ignore -->
     ```python
+    from unittest.mock import patch, MagicMock
+    import haystack.components.embedders.backends.sentence_transformers_backend as stb
     from haystack import Document
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-    doc = Document(content="I love pizza!")
-    doc_embedder = SentenceTransformersDocumentEmbedder()
 
-    result = doc_embedder.run([doc])
-    print(result['documents'][0].embedding)
+    # Mock the embedding backend so we don't download any models in CI
+    with patch.object(stb, "_SentenceTransformersEmbeddingBackendFactory") as mock_factory:
+        mock_backend = MagicMock()
+        mock_backend.embed.return_value = [[0.1, 0.2, 0.3]]
+        mock_factory.get_embedding_backend.return_value = mock_backend
 
-    # [-0.07804739475250244, 0.1498992145061493, ...]
+        doc = Document(content="I love pizza!")
+        doc_embedder = SentenceTransformersDocumentEmbedder()
+
+        result = doc_embedder.run([doc])
+        print(result['documents'][0].embedding)
+
+    # [0.1, 0.2, 0.3]
     ```
     """
 
