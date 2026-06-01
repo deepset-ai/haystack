@@ -39,6 +39,8 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
     :param page_range: List of page numbers and ranges
     :returns:
         An expanded list of page integers
+    :raises ValueError:
+        If any element is not a valid integer or a range string in the format ``'start-end'``.
 
     """
     expanded_page_range = []
