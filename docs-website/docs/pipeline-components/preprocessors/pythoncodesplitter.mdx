@@ -125,15 +125,19 @@ from haystack.components.preprocessors import PythonCodeSplitter
 
 source = '''
 """Example module."""
-from math import sqrt
+from math import pi
 
 
 class Circle:
+    """A circle defined by its radius."""
+
     def __init__(self, r: float) -> None:
+        """Store the radius."""
         self.r = r
 
     def area(self) -> float:
-        return 3.14159 * self.r * self.r
+        """Return the area of the circle."""
+        return pi * self.r * self.r
 '''
 
 splitter = PythonCodeSplitter(
