@@ -10,6 +10,9 @@ on:
 env:
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   release-on-pypi:
     runs-on: ubuntu-latest

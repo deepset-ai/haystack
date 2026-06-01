@@ -17,6 +17,9 @@ on:
 env:
   DOCKER_REPO_NAME: deepset/haystack
 
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
     name: Build base image

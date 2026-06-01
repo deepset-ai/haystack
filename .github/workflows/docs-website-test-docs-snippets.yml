@@ -15,6 +15,9 @@ env:
   HATCH_VERSION: "1.16.5"
   PYTHON_VERSION: "3.11"
 
+permissions:
+  contents: read
+
 jobs:
   test-docs-snippets:
     runs-on: ubuntu-latest

@@ -6,6 +6,9 @@ on:
       - "haystack/**/*.py"
       - "pydoc/*.yml"
 
+permissions:
+  contents: read
+
 jobs:
   test-api-reference-build:
     runs-on: ubuntu-slim

@@ -9,6 +9,9 @@ on:
 env:
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   nightly-release:
     runs-on: ubuntu-latest

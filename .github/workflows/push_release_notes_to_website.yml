@@ -12,6 +12,9 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   VERSION: ${{ inputs.version }}
 
+permissions:
+  contents: read
+
 jobs:
   push-release-notes-to-website:
 
