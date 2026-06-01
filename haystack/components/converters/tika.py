@@ -60,7 +60,7 @@ class TikaDocumentConverter:
     see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
     Usage example:
-    <!-- test-ignore -->
+    {/* test-ignore */}
     ```python
     from haystack.components.converters.tika import TikaDocumentConverter
     from datetime import datetime

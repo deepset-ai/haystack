@@ -38,9 +38,6 @@ const config = {
   },
 
   markdown: {
-    mdx1Compat: {
-      comments: true,
-    },
     hooks: {
       onBrokenMarkdownLinks: 'throw',
     },

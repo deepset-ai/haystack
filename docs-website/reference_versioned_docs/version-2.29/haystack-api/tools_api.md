@@ -35,7 +35,7 @@ Below is an example of creating a ComponentTool from an existing SerperDevWebSea
 
 ## Usage Example:
 
-<!-- test-ignore -->
+{/* test-ignore */}
 
 ```python
 from haystack import component, Pipeline

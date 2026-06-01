@@ -68,10 +68,18 @@ from pathlib import Path
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
 FENCE_END_RE = re.compile(r"^\s*```\s*$")
-TEST_IGNORE_MARK = "<!-- test-ignore -->"
-TEST_CONCEPT_MARK = "<!-- test-concept -->"
-TEST_RUN_MARK = "<!-- test-run -->"
-TEST_REQUIRE_FILES_PREFIX = "<!-- test-require-files:"
+
+
+def normalize_marker(text: str) -> str:
+    """Strip comment wrappers to get the inner instruction."""
+    t = text.strip()
+    if t.startswith("<!--") and t.endswith("-->"):
+        return t[4:-3].strip()
+    if t.startswith("{/*") and t.endswith("*/}"):
+        return t[3:-3].strip()
+    if t.startswith("{/\\*") and t.endswith("\\*/}"):
+        return t[4:-4].strip()
+    return t
 
 
 UNSAFE_PATTERNS = [
@@ -168,8 +176,9 @@ def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
             if prev == "":
                 j -= 1
                 continue
-            if prev.startswith("<!--") and prev.endswith("-->"):
-                markers.append(prev)
+            normalized = normalize_marker(prev)
+            if normalized != prev:
+                markers.append(normalized)
                 j -= 1
                 continue
             break
@@ -179,15 +188,15 @@ def extract_python_snippets(file_path: str, repo_root: str) -> list[Snippet]:
         pending_forced_concept = False
         pending_requires_files: list[str] = []
 
-        if TEST_IGNORE_MARK in markers:
+        if "test-ignore" in markers:
             pending_skipped_reason = "test-ignore marker"
-        if TEST_CONCEPT_MARK in markers:
+        if "test-concept" in markers:
             pending_forced_concept = True
-        if TEST_RUN_MARK in markers:
+        if "test-run" in markers:
             pending_forced_run = True
         for marker in markers:
-            if marker.startswith(TEST_REQUIRE_FILES_PREFIX) and marker.endswith("-->"):
-                content = marker[len(TEST_REQUIRE_FILES_PREFIX) : -3].strip()
+            if marker.startswith("test-require-files:"):
+                content = marker[len("test-require-files:") :].strip()
                 if content:
                     pending_requires_files.extend(content.split())
 

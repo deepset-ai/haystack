@@ -20,27 +20,35 @@ pass input arguments to this component.
 
 Example:
 
-<!-- test-ignore -->
-
 ```python
+from unittest.mock import patch, MagicMock
 from haystack.utils import Secret
 from haystack.components.connectors.openapi import OpenAPIConnector
 
-serper_dev_token = Secret.from_env_var("SERPERDEV_API_KEY")
+serper_dev_token = Secret.from_token("dummy-key")
 
 def my_custom_config_factory():
     # Create and return a custom configuration for the OpenAPIClient
     pass
 
-connector = OpenAPIConnector(
-    openapi_spec="https://bit.ly/serperdev_openapi",
-    credentials=serper_dev_token,
-    service_kwargs={"config_factory": my_custom_config_factory()}
-)
-response = connector.run(
-    operation_id="search",
-    arguments={"q": "Who was Nikola Tesla?"}
-)
+# Mock the OpenAPI client to run without network/dependency constraints in CI
+with patch("haystack.components.connectors.openapi.OpenAPIClient") as mock_client_class:
+    mock_client = MagicMock()
+    mock_client.invoke.return_value = {"results": [{"title": "Nikola Tesla", "snippet": "Inventor..."}]}
+    mock_client_class.from_spec.return_value = mock_client
+
+    connector = OpenAPIConnector(
+        openapi_spec="https://bit.ly/serperdev_openapi",
+        credentials=serper_dev_token,
+        service_kwargs={"config_factory": my_custom_config_factory()}
+    )
+    response = connector.run(
+        operation_id="search",
+        arguments={"q": "Who was Nikola Tesla?"}
+    )
+    print(response)
+
+# {'response': {'results': [{'title': 'Nikola Tesla', 'snippet': 'Inventor...'}]}}
 ```
 
 Note:
@@ -166,8 +174,7 @@ Can be through the `SERPERDEV_API_KEY` environment variable or by directly assig
 variable in the code.
 
 Usage example:
-
-<!-- test-ignore -->
+{/* test-ignore */}
 
 ```python
 import json

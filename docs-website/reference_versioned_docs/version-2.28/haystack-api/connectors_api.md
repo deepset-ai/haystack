@@ -20,7 +20,7 @@ pass input arguments to this component.
 
 Example:
 
-<!-- test-ignore -->
+{/* test-ignore */}
 
 ```python
 from haystack.utils import Secret
@@ -167,7 +167,7 @@ variable in the code.
 
 Usage example:
 
-<!-- test-ignore -->
+{/* test-ignore */}
 
 ```python
 import json

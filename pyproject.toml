@@ -81,7 +81,7 @@ dependencies = [
 release-note = "reno new {args}"
 fmt = "ruff check --fix {args}; ruff format {args}"
 fmt-check = "ruff check {args} && ruff format --check {args}"
-docs = "haystack-pydoc pydoc tmp_api_reference"
+docs = "python scripts/generate_docs.py"
 
 [tool.hatch.envs.test]
 
