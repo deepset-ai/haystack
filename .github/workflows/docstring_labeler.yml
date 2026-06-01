@@ -1,15 +1,24 @@
-name: Add label on docstrings edit
+name: Detect docstrings edit
 
+# This workflow runs in the *untrusted* pull_request context: it has a read-only
+# token and no access to secrets, so checking out the PR head here is safe.
+# It only computes whether docstrings changed and hands the result to the
+# "Apply docstrings label" workflow (workflow_run), which holds the write token
+# but never checks out untrusted code. See:
+# https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/
 on:
-  pull_request_target:
+  pull_request:
     paths:
       - "haystack/**/*.py"
+
+permissions:
+  contents: read
 
 env:
   PYTHON_VERSION: "3.11"
 
 jobs:
-  label:
+  detect:
     runs-on: ubuntu-slim
 
     steps:
@@ -18,18 +27,12 @@ jobs:
         with:
           ref: ${{ github.base_ref }}
 
-      - name: Copy file
-        # We copy our script after base ref checkout so we keep executing
-        # the same version even after checking out the HEAD ref.
-        # This is done to prevent executing malicious code in forks' PRs.
-        run: cp .github/utils/docstrings_checksum.py "${{ runner.temp }}/docstrings_checksum.py"
-
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - name: Get docstrings
+      - name: Get base docstrings
         id: base-docstrings
         run: |
           CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
@@ -38,22 +41,28 @@ jobs:
       - name: Checkout HEAD commit
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          # This must be set to correctly checkout a fork
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Get docstrings
+      - name: Get HEAD docstrings
         id: head-docstrings
         run: |
           CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
-      - name: Check if we should label
-        id: run-check
-        run: echo "should_run=${{ steps.base-docstrings.outputs.checksum != steps.head-docstrings.outputs.checksum }}" >> "$GITHUB_OUTPUT"
+      - name: Write result
+        # The follow-up workflow reads these values; it never checks out the PR code.
+        run: |
+          mkdir -p result
+          echo "${{ github.event.pull_request.number }}" > result/pr_number
+          if [ "${{ steps.base-docstrings.outputs.checksum }}" != "${{ steps.head-docstrings.outputs.checksum }}" ]; then
+            echo "true" > result/should_label
+          else
+            echo "false" > result/should_label
+          fi
 
-      - name: Add label
-        if: ${{ steps.run-check.outputs.should_run == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr edit ${{ github.event.pull_request.html_url }} --add-label "type:documentation"
+      - name: Upload result
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docstring-label-result
+          path: result/
+          retention-days: 1

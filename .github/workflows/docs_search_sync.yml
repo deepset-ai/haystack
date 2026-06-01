@@ -10,6 +10,9 @@ concurrency:
   group: docs-search-sync
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   docs-search-sync:
     runs-on: ubuntu-latest
